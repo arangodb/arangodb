@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1detail_1_1vincenty__direct" kind="struct" prot="public">
+    <compoundname>boost::geometry::detail::vincenty_direct</compoundname>
+    <includes local="no">vincenty_direct.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename CT</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1detail_1_1vincenty__direct_1a9d4487d9dd27c21a2ae0fd5ef81c5318" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1detail_1_1result__direct" kindref="compound">result_direct</ref>&lt; CT &gt;</type>
+        <definition>typedef result_direct&lt;CT&gt; boost::geometry::detail::vincenty_direct&lt; CT &gt;::result_type</definition>
+        <argsstring></argsstring>
+        <name>result_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp" line="62" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp" bodystart="62" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1detail_1_1vincenty__direct_1ae161ac0763aab058c3fb1f1f4914e5ab" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+          <param>
+            <type>typename Dist</type>
+          </param>
+          <param>
+            <type>typename Azi</type>
+          </param>
+          <param>
+            <type>typename Spheroid</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1detail_1_1vincenty__direct_1a9d4487d9dd27c21a2ae0fd5ef81c5318" kindref="member">result_type</ref></type>
+        <definition>static result_type boost::geometry::detail::vincenty_direct&lt; CT &gt;::apply</definition>
+        <argsstring>(T const &amp;lo1, T const &amp;la1, Dist const &amp;distance, Azi const &amp;azimuth12, Spheroid const &amp;spheroid)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>lo1</declname>
+        </param>
+        <param>
+          <type>T const &amp;</type>
+          <declname>la1</declname>
+        </param>
+        <param>
+          <type>Dist const &amp;</type>
+          <declname>distance</declname>
+        </param>
+        <param>
+          <type>Azi const &amp;</type>
+          <declname>azimuth12</declname>
+        </param>
+        <param>
+          <type>Spheroid const &amp;</type>
+          <declname>spheroid</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp" line="66" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp" bodystart="66" bodyend="161"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>The solution of the direct problem of geodesics on latlong coordinates, after Vincenty, 1975. </para>    </briefdescription>
+    <detaileddescription>
+<para><simplesect kind="author"><para>See<itemizedlist>
+<listitem><para><ulink url="http://www.ngs.noaa.gov/PUBS_LIB/inverse.pdf">http://www.ngs.noaa.gov/PUBS_LIB/inverse.pdf</ulink></para></listitem><listitem><para><ulink url="http://www.icsm.gov.au/gda/gdav2.3.pdf">http://www.icsm.gov.au/gda/gdav2.3.pdf</ulink> </para></listitem></itemizedlist>
+</para><simplesectsep/><para>Adapted from various implementations to get it close to the original document<itemizedlist>
+<listitem><para><ulink url="http://www.movable-type.co.uk/scripts/LatLongVincenty.html">http://www.movable-type.co.uk/scripts/LatLongVincenty.html</ulink></para></listitem><listitem><para><ulink url="http://exogen.case.edu/projects/geopy/source/geopy.distance.html">http://exogen.case.edu/projects/geopy/source/geopy.distance.html</ulink></para></listitem><listitem><para><ulink url="http://futureboy.homeip.net/fsp/colorize.fsp?fileName=navigation.frink">http://futureboy.homeip.net/fsp/colorize.fsp?fileName=navigation.frink</ulink> </para></listitem></itemizedlist>
+</para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp" line="61" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp" bodystart="60" bodyend="172"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1detail_1_1vincenty__direct_1ae161ac0763aab058c3fb1f1f4914e5ab" prot="public" virt="non-virtual"><scope>boost::geometry::detail::vincenty_direct</scope><name>apply</name></member>
+      <member refid="structboost_1_1geometry_1_1detail_1_1vincenty__direct_1a9d4487d9dd27c21a2ae0fd5ef81c5318" prot="public" virt="non-virtual"><scope>boost::geometry::detail::vincenty_direct</scope><name>result_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

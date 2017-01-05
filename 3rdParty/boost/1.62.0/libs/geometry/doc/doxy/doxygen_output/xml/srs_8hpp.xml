@@ -1,0 +1,178 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="srs_8hpp" kind="file">
+    <compoundname>srs.hpp</compoundname>
+    <includes local="no">cstddef</includes>
+    <includes local="no">boost/static_assert.hpp</includes>
+    <includes refid="radius_8hpp" local="no">boost/geometry/core/radius.hpp</includes>
+    <includes refid="tag_8hpp" local="no">boost/geometry/core/tag.hpp</includes>
+    <includes refid="core_2tags_8hpp" local="no">boost/geometry/core/tags.hpp</includes>
+    <includedby refid="andoyer__inverse_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/andoyer_inverse.hpp</includedby>
+    <includedby refid="result__inverse_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/result_inverse.hpp</includedby>
+    <includedby refid="thomas__inverse_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/thomas_inverse.hpp</includedby>
+    <includedby refid="vincenty__direct_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp</includedby>
+    <includedby refid="vincenty__inverse_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_inverse.hpp</includedby>
+    <incdepgraph>
+      <node id="51561">
+        <label>boost/type_traits/remove_const.hpp</label>
+      </node>
+      <node id="51555">
+        <label>boost/static_assert.hpp</label>
+      </node>
+      <node id="51557">
+        <label>boost/type_traits/is_pointer.hpp</label>
+      </node>
+      <node id="51563">
+        <label>boost/type_traits/remove_reference.hpp</label>
+      </node>
+      <node id="51559">
+        <label>boost/geometry/core/tags.hpp</label>
+        <link refid="core_2tags_8hpp"/>
+      </node>
+      <node id="51556">
+        <label>boost/geometry/core/radius.hpp</label>
+        <link refid="radius_8hpp"/>
+        <childnode refid="51554" relation="include">
+        </childnode>
+        <childnode refid="51555" relation="include">
+        </childnode>
+        <childnode refid="51557" relation="include">
+        </childnode>
+        <childnode refid="51558" relation="include">
+        </childnode>
+        <childnode refid="51559" relation="include">
+        </childnode>
+        <childnode refid="51560" relation="include">
+        </childnode>
+      </node>
+      <node id="51554">
+        <label>cstddef</label>
+      </node>
+      <node id="51553">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/core/srs.hpp</label>
+        <link refid="srs.hpp"/>
+        <childnode refid="51554" relation="include">
+        </childnode>
+        <childnode refid="51555" relation="include">
+        </childnode>
+        <childnode refid="51556" relation="include">
+        </childnode>
+        <childnode refid="51558" relation="include">
+        </childnode>
+        <childnode refid="51559" relation="include">
+        </childnode>
+      </node>
+      <node id="51558">
+        <label>boost/geometry/core/tag.hpp</label>
+        <link refid="tag_8hpp"/>
+        <childnode refid="51559" relation="include">
+        </childnode>
+        <childnode refid="51560" relation="include">
+        </childnode>
+      </node>
+      <node id="51560">
+        <label>boost/geometry/util/bare_type.hpp</label>
+        <link refid="bare__type_8hpp"/>
+        <childnode refid="51561" relation="include">
+        </childnode>
+        <childnode refid="51562" relation="include">
+        </childnode>
+        <childnode refid="51563" relation="include">
+        </childnode>
+      </node>
+      <node id="51562">
+        <label>boost/type_traits/remove_pointer.hpp</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="51572">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/strategies.hpp</label>
+        <link refid="strategies_8hpp"/>
+      </node>
+      <node id="51565">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/andoyer_inverse.hpp</label>
+        <link refid="andoyer__inverse_8hpp"/>
+      </node>
+      <node id="51571">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track.hpp</label>
+        <link refid="distance__cross__track_8hpp"/>
+        <childnode refid="51572" relation="include">
+        </childnode>
+        <childnode refid="51573" relation="include">
+        </childnode>
+      </node>
+      <node id="51570">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/course.hpp</label>
+        <link refid="course_8hpp"/>
+        <childnode refid="51571" relation="include">
+        </childnode>
+        <childnode refid="51574" relation="include">
+        </childnode>
+      </node>
+      <node id="51567">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/thomas_inverse.hpp</label>
+        <link refid="thomas__inverse_8hpp"/>
+      </node>
+      <node id="51566">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/result_inverse.hpp</label>
+        <link refid="result__inverse_8hpp"/>
+        <childnode refid="51565" relation="include">
+        </childnode>
+        <childnode refid="51567" relation="include">
+        </childnode>
+        <childnode refid="51568" relation="include">
+        </childnode>
+      </node>
+      <node id="51568">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_inverse.hpp</label>
+        <link refid="vincenty__inverse_8hpp"/>
+        <childnode refid="51569" relation="include">
+        </childnode>
+      </node>
+      <node id="51574">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/side_by_cross_track.hpp</label>
+        <link refid="side__by__cross__track_8hpp"/>
+      </node>
+      <node id="51573">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp</label>
+        <link refid="distance__cross__track__point__box_8hpp"/>
+        <childnode refid="51572" relation="include">
+        </childnode>
+      </node>
+      <node id="51569">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/azimuth.hpp</label>
+        <link refid="azimuth_8hpp"/>
+        <childnode refid="51570" relation="include">
+        </childnode>
+      </node>
+      <node id="51564">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/core/srs.hpp</label>
+        <link refid="srs.hpp"/>
+        <childnode refid="51565" relation="include">
+        </childnode>
+        <childnode refid="51566" relation="include">
+        </childnode>
+        <childnode refid="51567" relation="include">
+        </childnode>
+        <childnode refid="51575" relation="include">
+        </childnode>
+        <childnode refid="51568" relation="include">
+        </childnode>
+      </node>
+      <node id="51575">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp</label>
+        <link refid="vincenty__direct_8hpp"/>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="classboost_1_1geometry_1_1srs_1_1sphere" prot="public">boost::geometry::srs::sphere</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1srs_1_1spheroid" prot="public">boost::geometry::srs::spheroid</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1srs">boost::geometry::srs</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/srs.hpp"/>
+  </compounddef>
+</doxygen>

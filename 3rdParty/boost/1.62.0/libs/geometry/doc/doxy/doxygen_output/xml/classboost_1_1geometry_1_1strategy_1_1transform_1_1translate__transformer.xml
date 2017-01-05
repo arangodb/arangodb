@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1transform_1_1translate__transformer" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::transform::translate_transformer</compoundname>
+    <includes local="no">matrix_transformers.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename CalculationType</type>
+      </param>
+      <param>
+        <type>std::size_t</type>
+        <declname>Dimension1</declname>
+        <defname>Dimension1</defname>
+      </param>
+      <param>
+        <type>std::size_t</type>
+        <declname>Dimension2</declname>
+        <defname>Dimension2</defname>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Strategy of translate transformation in Cartesian system. </para>    </briefdescription>
+    <detaileddescription>
+<para>Translate moves a geometry a fixed distance in 2 or 3 dimensions. <simplesect kind="see"><para><ulink url="http://en.wikipedia.org/wiki/Translation_%28geometry%29">http://en.wikipedia.org/wiki/Translation_%28geometry%29</ulink></para></simplesect>
+<parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Dimension1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>number of dimensions to transform from </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Dimension2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>number of dimensions to transform to </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/matrix_transformers.hpp" line="220" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/matrix_transformers.hpp" bodystart="219" bodyend="221"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

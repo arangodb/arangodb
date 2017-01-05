@@ -1,0 +1,88 @@
+[#change_error_message]
+[section change_error_message]
+
+[h1 Synopsis]
+
+  template <class P, class Msg>
+  struct change_error_message;
+
+This is a [link parser_combinator parser combinator].
+
+[table Arguments
+  [[Name]  [Type]]
+  [[`P`]   [[link parser parser]]]
+  [[`Msg`] [[link parsing_error_message parsing error message]]]
+]
+
+[h1 Description]
+
+It applies `P` on the input. When `P` succeeds, `change_error_message` returns
+the result `P` returns, otherwise `change_error_message` rejects the input and
+the reason will be `Msg`.
+
+[h1 Header]
+
+  #include <boost/metaparse/change_error_message.hpp>
+
+[h1 Expression semantics]
+
+For any `p` parser and `m` parsing error message, `s` compile-time string and
+`pos` source position
+
+  change_error_message<p, msg>::apply<s, pos>
+
+is equivalent to `p::apply<s, pos>` when `p` accepts the input.
+It is equivalent to `fail<msg>::apply<s, pos>` otherwise.
+
+[h1 Example]
+
+  #include <boost/metaparse/change_error_message.hpp>
+  #include <boost/metaparse/repeated1.hpp>
+  #include <boost/metaparse/letter.hpp>
+  #include <boost/metaparse/keyword.hpp>
+  #include <boost/metaparse/last_of.hpp>
+  #include <boost/metaparse/token.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/get_message.hpp>
+  #include <boost/metaparse/define_error.hpp>
+  
+  #include <type_traits>
+  
+  using namespace boost::metaparse;
+  
+  BOOST_METAPARSE_DEFINE_ERROR(name_expected, "Name expected");
+  
+  using keyword_name = token<keyword<BOOST_METAPARSE_STRING("name")>>;
+  using name_token = token<repeated1<letter>>;
+  
+  using name_parser =
+    last_of<keyword_name, change_error_message<name_token, name_expected>>;
+  
+  static_assert(
+    !is_error<
+      name_parser::apply<BOOST_METAPARSE_STRING("name Bela"), start>
+    >::type::value,
+    "name_parser should accept \"name <a name>\""
+  );
+  
+  static_assert(
+    is_error<
+      name_parser::apply<BOOST_METAPARSE_STRING("name ?"), start>
+    >::type::value,
+    "name_parser should reject input when name is a question mark"
+  );
+  
+  static_assert(
+    std::is_same<
+      get_message<
+        name_parser::apply<BOOST_METAPARSE_STRING("name ?"), start>
+      >::type,
+      name_expected
+    >::type::value,
+    "the error message should be the one specified by change_error_message"
+  );
+
+[endsect]
+

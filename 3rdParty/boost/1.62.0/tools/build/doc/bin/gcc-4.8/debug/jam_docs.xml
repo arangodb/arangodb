@@ -1,0 +1,3463 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//Boost//DTD BoostBook XML V1.0//EN" "http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<article id="jam" dirname="jam" last-revision="$Date: 2016/09/21 14:37:38 $" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <title>Boost.Jam : 3.1.19</title>
+  <articleinfo>
+    <authorgroup>
+    <author>
+      <firstname>Rene</firstname> <surname>Rivera</surname>
+    </author>
+    <author>
+      <firstname>David</firstname> <surname>Abrahams</surname>
+    </author>
+    <author>
+      <firstname>Vladimir</firstname> <surname>Prus</surname>
+    </author>
+    </authorgroup>
+    <copyright>
+      <year>2003</year> <year>2004</year> <year>2005</year> <year>2006</year> <year>2007</year>
+      <holder>Rene Rivera, David Abrahams, Vladimir Prus</holder>
+    </copyright>
+    <legalnotice id="jam.legal">
+      <para>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <ulink url="http://www.boost.org/LICENSE_1_0.txt">http://www.boost.org/LICENSE_1_0.txt</ulink>)
+      </para>
+    </legalnotice>
+    <articlepurpose>
+      Jam is a make(1) replacement that makes building simple things simple and building
+      complicated things manageable.
+    </articlepurpose>
+    <articlecategory name="category:tool-build"></articlecategory>
+  </articleinfo>
+  <section id="jam.building">
+    <title><link linkend="jam.building">Building B2</link></title>
+    <para>
+      Installing <literal>B2</literal> after building it is simply a matter of copying
+      the generated executables someplace in your <literal>PATH</literal>. For building
+      the executables there are a set of <literal>build</literal> bootstrap scripts
+      to accomodate particular environments. The scripts take one optional argument,
+      the name of the toolset to build with. When the toolset is not given an attempt
+      is made to detect an available toolset and use that. The build scripts accept
+      these arguments:
+    </para>
+<programlisting><emphasis>build</emphasis> [<emphasis>toolset</emphasis>]
+</programlisting>
+    <para>
+      Running the scripts without arguments will give you the best chance of success.
+      On Windows platforms from a command console do:
+    </para>
+<programlisting>cd <emphasis>jam source location</emphasis>
+.\build.bat
+</programlisting>
+    <para>
+      On Unix type platforms do:
+    </para>
+<programlisting>cd <emphasis>jam source location</emphasis>
+sh ./build.sh
+</programlisting>
+    <para>
+      For the Boost.Jam source included with the Boost distribution the <emphasis>jam
+      source location</emphasis> is <literal>BOOST_ROOT/tools/build/src/engine</literal>.
+    </para>
+    <para>
+      If the scripts fail to detect an appropriate toolset to build with your particular
+      toolset may not be auto-detectable. In that case, you can specify the toolset
+      as the first argument, this assumes that the toolset is readily available in
+      the <literal>PATH</literal>.
+    </para>
+    <note>
+      <para>
+        The toolset used to build Boost.Jam is independent of the toolsets used for
+        Boost.Build. Only one version of Boost.Jam is needed to use Boost.Build.
+      </para>
+    </note>
+    <para>
+      The supported toolsets, and whether they are auto-detected, are:
+    </para>
+    <table frame="all" id="jam.building.t0">
+      <title>Supported Toolsets</title>
+      <tgroup cols="4">
+        <thead>
+          <row>
+            <entry>
+              <para>
+                Script
+              </para>
+            </entry>
+            <entry>
+              <para>
+                Platform
+              </para>
+            </entry>
+            <entry>
+              <para>
+                Toolset
+              </para>
+            </entry>
+            <entry>
+              <para>
+                Detection and Notes
+              </para>
+            </entry>
+          </row>
+        </thead>
+        <tbody>
+          <row>
+            <entry>
+              <para>
+                <literal>build.bat</literal>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                Windows NT, 2000, and XP
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://www.codegear.com/downloads/free/cppbuilder"><literal>borland</literal></ulink></member>
+        <member><ulink
+                url="http://www.borland.com/">Borland</ulink> C++Builder (BCC 5.5)</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem>Common install location: &quot;<literal>C:\Borland\BCC55</literal>&quot;</listitem>
+        <listitem><literal>BCC32.EXE</literal>
+                in <literal>PATH</literal></listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://www.comeaucomputing.com/"><literal>como</literal></ulink></member>
+        <member>Comeau
+                Computing C/C++</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://gcc.gnu.org/"><literal>gcc</literal></ulink></member>
+        <member>GNU
+                GCC</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://gcc.gnu.org/"><literal>gcc-nocygwin</literal></ulink></member>
+        <member>GNU
+                GCC</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://www.intel.com/software/products/compilers/c60"><literal>intel-win32</literal></ulink></member>
+        <member>Intel
+                C++ Compiler for Windows</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem><literal>ICL.EXE</literal> in <literal>PATH</literal></listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://www.metrowerks.com/"><literal>metrowerks</literal></ulink></member>
+        <member>MetroWerks
+                CodeWarrior C/C++ 7.x, 8.x, 9.x</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem><literal>CWFolder</literal> variable configured</listitem>
+        <listitem><literal>MWCC.EXE</literal>
+                in <literal>PATH</literal></listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://www.mingw.org/"><literal>mingw</literal></ulink></member>
+        <member>GNU
+                <ulink url="http://gcc.gnu.org/">GCC</ulink> as the <ulink url="http://www.mingw.org/">MinGW</ulink>
+                configuration</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem>Common install location: &quot;<literal>C:\MinGW</literal>&quot;</listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://msdn.microsoft.com/visualc/"><literal>msvc</literal></ulink></member>
+        <member>Microsoft
+                Visual C++ 6.x</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem><literal>VCVARS32.BAT</literal> already configured</listitem>
+        <listitem><literal>%MSVCDir%</literal>
+                is present in environment</listitem>
+        <listitem>Common install locations: &quot;<literal>%ProgramFiles%\Microsoft
+                Visual Studio</literal>&quot;, &quot;<literal>%ProgramFiles%\Microsoft
+                Visual C++</literal>&quot;</listitem>
+        <listitem><literal>CL.EXE</literal> in <literal>PATH</literal></listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://msdn.microsoft.com/visualc/"><literal>vc7</literal></ulink></member>
+        <member>Microsoft
+                Visual C++ 7.x</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem><literal>VCVARS32.BAT</literal> or <literal>VSVARS32.BAT</literal>
+                already configured</listitem>
+        <listitem><literal>%VS71COMNTOOLS%</literal> is present in
+                environment</listitem>
+        <listitem><literal>%VCINSTALLDIR%</literal> is present in environment</listitem>
+        <listitem>Common
+                install locations: &quot;<literal>%ProgramFiles%\Microsoft Visual
+                Studio .NET</literal>&quot;, &quot;<literal>%ProgramFiles%\Microsoft
+                Visual Studio .NET 2003</literal>&quot;</listitem>
+        <listitem><literal>CL.EXE</literal>
+                in <literal>PATH</literal></listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://msdn.microsoft.com/visualc/"><literal>vc8</literal>
+                and <literal>vc9</literal></ulink></member>
+        <member>Microsoft Visual C++ 8.x and 9.x</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                Detection: <itemizedlist><listitem><literal>VCVARSALL.BAT</literal> already configured</listitem>
+            <listitem><literal>%VS90COMNTOOLS%</literal>
+                is present in environment</listitem>
+            <listitem>Common install location: &quot;<literal>%ProgramFiles%\Microsoft
+                Visual Studio 9</literal>&quot;</listitem>
+            <listitem><literal>%VS80COMNTOOLS%</literal>
+                is present in environment</listitem>
+            <listitem>Common install location: &quot;<literal>%ProgramFiles%\Microsoft
+                Visual Studio 8</literal>&quot;</listitem>
+            <listitem><literal>CL.EXE</literal> in <literal>PATH</literal></listitem>
+            </itemizedlist>
+              </para>
+              <para>
+                Notes: <itemizedlist><listitem>If <literal>VCVARSALL.BAT</literal> is called to set up the
+                toolset, it is passed all the extra arguments, see below for what
+                those arguments are. This can be used to build, for example, a Win64
+                specific version of <literal>b2</literal>. Consult the VisualStudio
+                documentation for what the possible argument values to the <literal>VCVARSALL.BAT</literal>
+                are.</listitem>
+            </itemizedlist>
+  </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+              <para>
+                <literal>build.sh</literal>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                Unix, Linux, Cygwin, etc.
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://www.hp.com/go/c++"><literal>acc</literal></ulink></member>
+        <member>HP-UX
+                aCC</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem><literal>aCC</literal> in <literal>PATH</literal></listitem>
+        <listitem><literal>uname</literal>
+                is &quot;HP-UX&quot;</listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://www.comeaucomputing.com/"><literal>como</literal></ulink></member>
+        <member>Comeau
+                Computing C/C++</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem>como in <literal>PATH</literal></listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://gcc.gnu.org/"><literal>gcc</literal></ulink></member>
+        <member>GNU
+                GCC</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem>gcc in <literal>PATH</literal></listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://www.intel.com/software/products/compilers/c60l/"><literal>intel-linux</literal></ulink></member>
+        <member>Intel
+                C++ for Linux</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem><literal>icc</literal> in <literal>PATH</literal></listitem>
+        <listitem>Common install locations:
+                &quot;<literal>/opt/intel/cc/9.0</literal>&quot;, &quot;<literal>/opt/intel_cc_80</literal>&quot;,
+                &quot;<literal>/opt/intel/compiler70</literal>&quot;, &quot;<literal>/opt/intel/compiler60</literal>&quot;,
+                &quot;<literal>/opt/intel/compiler50</literal>&quot;</listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><literal>kcc</literal></member>
+        <member>Intel KAI C++</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem><literal>KCC</literal> in <literal>PATH</literal></listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://www.codegear.com/downloads/free/cppbuilder"><literal>kylix</literal></ulink></member>
+        <member><ulink
+                url="http://www.borland.com/">Borland</ulink> C++Builder</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem>bc++ in PATH</listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://www.sgi.com/developers/devtools/languages/mipspro.html"><literal>mipspro</literal></ulink></member>
+        <member>SGI
+                MIPSpro C</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem><literal>uname</literal> is &quot;<literal>IRIX</literal>&quot; or
+                &quot;<literal>IRIX64</literal>&quot;</listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><literal>sunpro</literal></member>
+        <member>Sun Workshop 6 C++</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem>Standard install location: &quot;<literal>/opt/SUNWspro</literal>&quot;</listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><literal>qcc</literal></member>
+        <member><ulink url="http://www.qnx.com/">QNX Neutrino</ulink></member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem><literal>uname</literal> is &quot;<literal>QNX</literal>&quot; and
+                <literal>qcc</literal> in <literal>PATH</literal></listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://www.tru64unix.compaq.com/cplus/"><literal>true64cxx</literal></ulink></member>
+        <member>Compaq
+                C++ Compiler for True64 UNIX</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem><literal>uname</literal> is &quot;<literal>OSF1</literal>&quot;</listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://www.ibm.com/software/awdtools/vacpp/"><literal>vacpp</literal></ulink></member>
+        <member>IBM
+                VisualAge C++</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem><literal>xlc</literal> in <literal>PATH</literal></listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                MacOS X
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://developer.apple.com/tools/compilers.html"><literal>darwin</literal></ulink></member>
+        <member>Apple
+                MacOS X GCC</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem><literal>uname</literal> is &quot;<literal>Darwin</literal>&quot;</listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry>
+            </entry>
+            <entry>
+              <para>
+                Windows NT, 2000, and XP
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <simplelist type='vert' columns='1'><member><ulink url="http://www.mingw.org/"><literal>mingw</literal></ulink></member>
+        <member>GNU
+                <ulink url="http://gcc.gnu.org/">GCC</ulink> as the <ulink url="http://www.mingw.org/">MinGW</ulink>
+                configuration with the MSYS shell</member>
+        </simplelist>
+              </para>
+            </entry>
+            <entry>
+              <para>
+                <itemizedlist><listitem>Common install location: &quot;<literal>/mingw</literal>&quot;</listitem>
+        </itemizedlist>
+              </para>
+            </entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </table>
+    <para>
+      The built executables are placed in a subdirectory specific to your platform.
+      For example, in Linux running on an Intel x86 compatible chip, the executables
+      are placed in: &quot;<literal>bin.linuxx86</literal>&quot;. The =b2[.exe]=
+      executable can be used to invoke Boost.Build.
+    </para>
+    <para>
+      The build scripts support additional invocation arguments for use by developers
+      of Boost.Jam and for additional setup of the toolset. The extra arguments come
+      after the toolset:
+    </para>
+    <itemizedlist>
+      <listitem>
+        <simpara>
+          Arguments not in the form of an option, before option arguments, are used
+          for extra setup to toolset configuration scripts.
+        </simpara>
+      </listitem>
+      <listitem>
+        <simpara>
+          Arguments of the form &quot;<literal>--option</literal>&quot;, which are
+          passed to the <literal>build.jam</literal> build script.
+        </simpara>
+      </listitem>
+      <listitem>
+        <simpara>
+          Arguments not in the form of an option, after the options, which are targets
+          for the <literal>build.jam</literal> script.
+        </simpara>
+      </listitem>
+    </itemizedlist>
+<programlisting><emphasis>build</emphasis> [<emphasis>toolset</emphasis>] [<emphasis>setup</emphasis>*] [--<emphasis>option</emphasis>+ <emphasis>target</emphasis>*]
+</programlisting>
+    <para>
+      The arguments immediately after the toolset are passed directly to the setup
+      script of the toolset, if available and if it needs to be invoked. This allows
+      one to configure the toolset ass needed to do non-default builds of <literal>b2</literal>.
+      For example to build a Win64 version with <literal>vc8</literal>. See the toolset
+      descriptiona above for when particular toolsets support this.
+    </para>
+    <para>
+      The arguments starting with the &quot;<literal>--option</literal>&quot; forms
+      are passed to the <literal>build.jam</literal> script and are used to further
+      customize what gets built. Options and targets supported by the <literal>build.jam</literal>
+      script:
+    </para>
+    <variablelist>
+      <title></title>
+      <varlistentry>
+        <term><literallayout><literal>---</literal></literallayout></term>
+        <listitem>
+          <para>
+            Empty option when one wants to only specify a target.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><literallayout><literal>--release</literal></literallayout></term>
+        <listitem>
+          <para>
+            The default, builds the optimized executable.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><literallayout><literal>--debug</literal></literallayout></term>
+        <listitem>
+          <para>
+            Builds debugging versions of the executable. When built they are placed
+            in their own directory &quot;<literal>bin./platform/.debug</literal>&quot;.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><literallayout><literal>--grammar</literal></literallayout></term>
+        <listitem>
+          <para>
+            Normally the Jam language grammar parsing files are not regenerated.
+            This forces building of the grammar, although it may not force the regeneration
+            of the grammar parser. If the parser is out of date it will be regenerated
+            and subsequently built.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><literallayout><literal>--with-python=<emphasis>path</emphasis></literal></literallayout></term>
+        <listitem>
+          <para>
+            Enables Python integration, given a path to the Python libraries.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><literallayout><literal>--gc</literal></literallayout></term>
+        <listitem>
+          <para>
+            Enables use of the Boehm Garbage Collector. The build will look for the
+            Boehm-GC source in a &quot;boehm_gc&quot; subdirectory from the <literal>b2</literal>
+            sources.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><literallayout><literal>--duma</literal></literallayout></term>
+        <listitem>
+          <para>
+            Enables use of the DUMA (Detect Uintended Memory Access) debugging memory
+            allocator. The build expects to find the DUMA source files in a &quot;duma&quot;
+            subdirectory from the <literal>b2</literal> sources.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><literallayout><literal>--toolset-root=<emphasis>path</emphasis></literal></literallayout></term>
+        <listitem>
+          <para>
+            Indicates where the toolset used to build is located. This option is
+            passed in by the bootstrap (<literal>build.bat</literal> or <literal>build.sh</literal>)
+            script.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><literallayout><literal>--show-locate-target</literal></literallayout></term>
+        <listitem>
+          <para>
+            For information, prints out where it will put the built executable.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><literallayout><literal>--noassert</literal></literallayout></term>
+        <listitem>
+          <para>
+            Disable debug assertions, even if building the debug version of the executable.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><literallayout><literal>dist</literal></literallayout></term>
+        <listitem>
+          <para>
+            Generate packages (compressed archives) as appropriate for distribution
+            in the platform, if possible.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><literallayout><literal>clean</literal></literallayout></term>
+        <listitem>
+          <para>
+            Remove all the built executables and objects.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </section>
+  <section id="jam.language">
+    <title><link linkend="jam.language">Language</link></title>
+    <para>
+      <literal>B2</literal> has an interpreted, procedural language. Statements in
+      <literal>b2</literal> are rule (procedure) definitions, rule invocations, flow-of-control
+      structures, variable assignments, and sundry language support.
+    </para>
+    <section id="jam.language.lexical">
+      <title><link linkend="jam.language.lexical">Lexical Features</link></title>
+      <para>
+        <literal>B2</literal> treats its input files as whitespace-separated tokens,
+        with two exceptions: double quotes (&quot;) can enclose whitespace to embed
+        it into a token, and everything between the matching curly braces ({}) in
+        the definition of a rule action is treated as a single string. A backslash
+        (\) can escape a double quote, or any single whitespace character.
+      </para>
+      <para>
+        <literal>B2</literal> requires whitespace (blanks, tabs, or newlines) to
+        surround all tokens, including the colon (:) and semicolon (;) tokens.
+      </para>
+      <para>
+        <literal>B2</literal> keywords (an mentioned in this document) are reserved
+        and generally must be quoted with double quotes (&quot;) to be used as arbitrary
+        tokens, such as variable or target names.
+      </para>
+      <para>
+        Comments start with the <literal>#</literal> character and extend until the
+        end of line.
+      </para>
+    </section>
+    <section id="jam.language.target">
+      <title><link linkend="jam.language.target">Targets</link></title>
+      <para>
+        The essential <literal>b2</literal> data entity is a target. Build targets
+        are files to be updated. Source targets are the files used in updating built
+        targets. Built targets and source targets are collectively referred to as
+        file targets, and frequently built targets are source targets for other built
+        targets. Pseudotargets are symbols representing dependencies on other targets,
+        but which are not themselves associated with any real file.
+      </para>
+      <para>
+        A file target's identifier is generally the file's name, which can be absolutely
+        rooted, relative to the directory of <literal>b2</literal>'s invocation,
+        or simply local (no directory). Most often it is the last case, and the actual
+        file path is bound using the <literal>$(SEARCH)</literal> and <literal>$(LOCATE)</literal>
+        special variables. See <link linkend="jam.language.variables.builtins.search">SEARCH
+        and LOCATE Variables</link> below. A local filename is optionally qualified
+        with grist, a string value used to assure uniqueness. A file target with
+        an identifier of the form <emphasis>file(member)</emphasis> is a library
+        member (usually an <literal>ar</literal>(1) archive on Unix).
+      </para>
+      <section id="jam.language.target.binding_detection">
+        <title><link linkend="jam.language.target.binding_detection">Binding Detection</link></title>
+        <para>
+          Whenever a target is bound to a location in the filesystem, Boost Jam will
+          look for a variable called <literal>BINDRULE</literal> (first &quot;on&quot;
+          the target being bound, then in the global module). If non-empty, =$(BINDRULE[1])=
+          names a rule which is called with the name of the target and the path it
+          is being bound to. The signature of the rule named by =$(BINDRULE[1])=
+          should match the following:
+        </para>
+<programlisting>rule <emphasis>bind-rule</emphasis> ( <emphasis>target</emphasis> : <emphasis>path</emphasis> )
+</programlisting>
+        <para>
+          This facility is useful for correct header file scanning, since many compilers
+          will search for <code><phrase role="preprocessor">#include</phrase></code>
+          files first in the directory containing the file doing the <code><phrase
+          role="preprocessor">#include</phrase></code> directive. <literal>$(BINDRULE)</literal>
+          can be used to make a record of that directory.
+        </para>
+      </section>
+    </section>
+    <section id="jam.language.rules">
+      <title><link linkend="jam.language.rules">Rules</link></title>
+      <para>
+        The basic <literal>b2</literal> language entity is called a rule. A rule
+        is defined in two parts: the procedure and the actions. The procedure is
+        a body of jam statements to be run when the rule is invoked; the actions
+        are the OS shell commands to execute when updating the built targets of the
+        rule.
+      </para>
+      <para>
+        Rules can return values, which can be expanded into a list with &quot;[
+        <emphasis>rule</emphasis> <emphasis>args</emphasis> ... ]&quot;. A rule's
+        value is the value of its last statement, though only the following statements
+        have values: 'if' (value of the leg chosen), 'switch' (value of the case
+        chosen), set (value of the resulting variable), and 'return' (value of its
+        arguments).
+      </para>
+      <para>
+        The <literal>b2</literal> statements for defining and invoking rules are
+        as follows:
+      </para>
+      <para>
+        Define a rule's procedure, replacing any previous definition.
+      </para>
+<programlisting>rule <emphasis>rulename</emphasis> { <emphasis>statements</emphasis> }
+</programlisting>
+      <para>
+        Define a rule's updating actions, replacing any previous definition.
+      </para>
+<programlisting>actions [ <emphasis>modifiers</emphasis> ] <emphasis>rulename</emphasis> { <emphasis>commands</emphasis> }
+</programlisting>
+      <para>
+        Invoke a rule.
+      </para>
+<programlisting><emphasis>rulename</emphasis> <emphasis>field1</emphasis> : <emphasis>field2</emphasis> : <emphasis>...</emphasis> : <emphasis>fieldN</emphasis> ;
+</programlisting>
+      <para>
+        Invoke a rule under the influence of target's specific variables..
+      </para>
+<programlisting>on <emphasis>target</emphasis> <emphasis>rulename</emphasis> <emphasis>field1</emphasis> : <emphasis>field2</emphasis> : <emphasis>...</emphasis> : <emphasis>fieldN</emphasis> ;
+</programlisting>
+      <para>
+        Used as an argument, expands to the return value of the rule invoked.
+      </para>
+<programlisting>[ <emphasis>rulename</emphasis> <emphasis>field1</emphasis> : <emphasis>field2</emphasis> : <emphasis>...</emphasis> : <emphasis>fieldN</emphasis> ]
+[ on <emphasis>target</emphasis> <emphasis>rulename</emphasis> <emphasis>field1</emphasis> : <emphasis>field2</emphasis> : <emphasis>...</emphasis> : <emphasis>fieldN</emphasis> ]
+</programlisting>
+      <para>
+        A rule is invoked with values in <emphasis>field1</emphasis> through <emphasis>fieldN</emphasis>.
+        They may be referenced in the procedure's statements as <literal>$(1)</literal>
+        through <literal>$(<emphasis>N</emphasis>)</literal> (9 max), and the first
+        two only may be referenced in the action's <emphasis>commands</emphasis>
+        as <literal>$(1)</literal> and <literal>$(2)</literal>. <literal>$(&lt;)</literal>
+        and <literal>$(&gt;)</literal> are synonymous with <literal>$(1)</literal>
+        and <literal>$(2)</literal>.
+      </para>
+      <para>
+        Rules fall into two categories: updating rules (with actions), and pure procedure
+        rules (without actions). Updating rules treat arguments <literal>$(1)</literal>
+        and <literal>$(2)</literal> as built targets and sources, respectively, while
+        pure procedure rules can take arbitrary arguments.
+      </para>
+      <para>
+        When an updating rule is invoked, its updating actions are added to those
+        associated with its built targets (<literal>$(1)</literal>) before the rule's
+        procedure is run. Later, to build the targets in the updating phase, <emphasis>commands</emphasis>
+        are passed to the OS command shell, with <literal>$(1)</literal> and <literal>$(2)</literal>
+        replaced by bound versions of the target names. See Binding above.
+      </para>
+      <para>
+        Rule invocation may be indirected through a variable:
+      </para>
+<programlisting>$(<emphasis>var</emphasis>) <emphasis>field1</emphasis> : <emphasis>field2</emphasis> : <emphasis>...</emphasis> : <emphasis>fieldN</emphasis> ;
+
+on <emphasis>target</emphasis> $(<emphasis>var</emphasis>) <emphasis>field1</emphasis> : <emphasis>field2</emphasis> : <emphasis>...</emphasis> : <emphasis>fieldN</emphasis> ;
+
+[ $(<emphasis>var</emphasis>) <emphasis>field1</emphasis> : <emphasis>field2</emphasis> : <emphasis>...</emphasis> : <emphasis>fieldN</emphasis> ]
+[ on <emphasis>target</emphasis> $(<emphasis>var</emphasis>) <emphasis>field1</emphasis> : <emphasis>field2</emphasis> : <emphasis>...</emphasis> : <emphasis>fieldN</emphasis> ]
+</programlisting>
+      <para>
+        The variable's value names the rule (or rules) to be invoked. A rule is invoked
+        for each element in the list of <literal>$(<emphasis>var</emphasis>)</literal>'s
+        values. The fields <literal><emphasis>field1</emphasis> : <emphasis>field2</emphasis>
+        : <emphasis>...</emphasis></literal> are passed as arguments for each invokation.
+        For the [ ... ] forms, the return value is the concatenation of the return
+        values for all of the invocations.
+      </para>
+      <section id="jam.language.rules.action_modifiers">
+        <title><link linkend="jam.language.rules.action_modifiers">Action Modifiers</link></title>
+        <para>
+          The following action modifiers are understood:
+        </para>
+        <variablelist>
+          <title></title>
+          <varlistentry>
+            <term><literal>actions bind <emphasis>vars</emphasis></literal></term>
+            <listitem>
+              <para>
+                <literal>$(<emphasis>vars</emphasis>)</literal> will be replaced
+                with bound values.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>actions existing</literal></term>
+            <listitem>
+              <para>
+                <literal>$(&gt;)</literal> includes only source targets currently
+                existing.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>actions ignore</literal></term>
+            <listitem>
+              <para>
+                The return status of the commands is ignored.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>actions piecemeal</literal></term>
+            <listitem>
+              <para>
+                commands are repeatedly invoked with a subset of <literal>$(&gt;)</literal>
+                small enough to fit in the command buffer on this OS.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>actions quietly</literal></term>
+            <listitem>
+              <para>
+                The action is not echoed to the standard output.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>actions together</literal></term>
+            <listitem>
+              <para>
+                The <literal>$(&gt;)</literal> from multiple invocations of the same
+                action on the same built target are glommed together.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>actions updated</literal></term>
+            <listitem>
+              <para>
+                <literal>$(&gt;)</literal> includes only source targets themselves
+                marked for updating.
+              </para>
+            </listitem>
+          </varlistentry>
+        </variablelist>
+      </section>
+      <section id="jam.language.rules.argument_lists">
+        <title><link linkend="jam.language.rules.argument_lists">Argument lists</link></title>
+        <para>
+          You can describe the arguments accepted by a rule, and refer to them by
+          name within the rule. For example, the following prints &quot;I'm sorry,
+          Dave&quot; to the console:
+        </para>
+<programlisting>rule report ( pronoun index ? : state : names + )
+{
+    local he.suffix she.suffix it.suffix = s ;
+    local I.suffix = m ;
+    local they.suffix you.suffix = re ;
+    ECHO $(pronoun)'$($(pronoun).suffix) $(state), $(names[$(index)]) ;
+}
+report I 2 : sorry : Joe Dave Pete ;
+</programlisting>
+        <para>
+          Each name in a list of formal arguments (separated by &quot;<literal>:</literal>&quot;
+          in the rule declaration) is bound to a single element of the corresponding
+          actual argument unless followed by one of these modifiers:
+        </para>
+        <informaltable frame="all">
+          <tgroup cols="2">
+            <thead>
+              <row>
+                <entry>
+                  <para>
+                    Symbol
+                  </para>
+                </entry>
+                <entry>
+                  <para>
+                    Semantics of preceding symbol
+                  </para>
+                </entry>
+              </row>
+            </thead>
+            <tbody>
+              <row>
+                <entry>
+                  <para>
+                    <literal>?</literal>
+                  </para>
+                </entry>
+                <entry>
+                  <para>
+                    optional
+                  </para>
+                </entry>
+              </row>
+              <row>
+                <entry>
+                  <para>
+                    <literal>*</literal>
+                  </para>
+                </entry>
+                <entry>
+                  <para>
+                    Bind to zero or more unbound elements of the actual argument.
+                    When <literal>*</literal> appears where an argument name is expected,
+                    any number of additional arguments are accepted. This feature
+                    can be used to implement &quot;varargs&quot; rules.
+                  </para>
+                </entry>
+              </row>
+              <row>
+                <entry>
+                  <para>
+                    <literal>+</literal>
+                  </para>
+                </entry>
+                <entry>
+                  <para>
+                    Bind to one or more unbound elements of the actual argument.
+                  </para>
+                </entry>
+              </row>
+            </tbody>
+          </tgroup>
+        </informaltable>
+        <para>
+          The actual and formal arguments are checked for inconsistencies, which
+          cause <literal>b2</literal> to exit with an error code:
+        </para>
+<programlisting>### argument error
+# rule report ( pronoun index ?  : state  : names + )
+# called with: ( I 2 foo  : sorry  : Joe Dave Pete )
+# extra argument foo
+### argument error
+# rule report ( pronoun index ?  : state  : names + )
+# called with: ( I 2  : sorry )
+# missing argument names
+</programlisting>
+        <para>
+          If you omit the list of formal arguments, all checking is bypassed as in
+          &quot;classic&quot; Jam. Argument lists drastically improve the reliability
+          and readability of your rules, however, and are <emphasis role="bold">strongly
+          recommended</emphasis> for any new Jam code you write.
+        </para>
+      </section>
+      <section id="jam.language.rules.builtins">
+        <title><link linkend="jam.language.rules.builtins">Built-in Rules</link></title>
+        <para>
+          <literal>B2</literal> has a growing set of built-in rules, all of which
+          are pure procedure rules without updating actions. They are in three groups:
+          the first builds the dependency graph; the second modifies it; and the
+          third are just utility rules.
+        </para>
+        <section id="jam.language.rules.builtins.dependency_building">
+          <title><link linkend="jam.language.rules.builtins.dependency_building">Dependency
+          Building</link></title>
+          <section id="jam.language.rules.builtins.dependency_building._depends__">
+            <title><link linkend="jam.language.rules.builtins.dependency_building._depends__"><literal>DEPENDS</literal>
+            </link></title>
+<programlisting>rule DEPENDS ( <emphasis>targets1</emphasis> * : <emphasis>targets2</emphasis> * )
+</programlisting>
+            <para>
+              Builds a direct dependency: makes each of <emphasis>targets1</emphasis>
+              depend on each of <emphasis>targets2</emphasis>. Generally, <emphasis>targets1</emphasis>
+              will be rebuilt if <emphasis>targets2</emphasis> are themselves rebuilt
+              or are newer than <emphasis>targets1</emphasis>.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.dependency_building._includes__">
+            <title><link linkend="jam.language.rules.builtins.dependency_building._includes__"><literal>INCLUDES</literal>
+            </link></title>
+<programlisting>rule INCLUDES ( <emphasis>targets1</emphasis> * : <emphasis>targets2</emphasis> * )
+</programlisting>
+            <para>
+              Builds a sibling dependency: makes any target that depends on any of
+              <emphasis>targets1</emphasis> also depend on each of <emphasis>targets2</emphasis>.
+              This reflects the dependencies that arise when one source file includes
+              another: the object built from the source file depends both on the
+              original and included source file, but the two sources files don't
+              depend on each other. For example:
+            </para>
+<programlisting>DEPENDS foo.o : foo.c ;
+INCLUDES foo.c : foo.h ;
+</programlisting>
+            <para>
+              &quot;<literal>foo.o</literal>&quot; depends on &quot;<literal>foo.c</literal>&quot;
+              and &quot;<literal>foo.h</literal>&quot; in this example.
+            </para>
+          </section>
+        </section>
+        <section id="jam.language.rules.builtins.modifying_binding">
+          <title><link linkend="jam.language.rules.builtins.modifying_binding">Modifying
+          Binding</link></title>
+          <para>
+            The six rules <literal>ALWAYS</literal>, <literal>LEAVES</literal>,
+            <literal>NOCARE</literal>, <literal>NOTFILE</literal>, <literal>NOUPDATE</literal>,
+            and <literal>TEMPORARY</literal> modify the dependency graph so that
+            <literal>b2</literal> treats the targets differently during its target
+            binding phase. See Binding above. Normally, <literal>b2</literal> updates
+            a target if it is missing, if its filesystem modification time is older
+            than any of its dependencies (recursively), or if any of its dependencies
+            are being updated. This basic behavior can be changed by invoking the
+            following rules:
+          </para>
+          <section id="jam.language.rules.builtins.modifying_binding._always__">
+            <title><link linkend="jam.language.rules.builtins.modifying_binding._always__"><literal>ALWAYS</literal>
+            </link></title>
+<programlisting>rule ALWAYS ( <emphasis>targets</emphasis> * )
+</programlisting>
+            <para>
+              Causes <emphasis>targets</emphasis> to be rebuilt regardless of whether
+              they are up-to-date (they must still be in the dependency graph). This
+              is used for the clean and uninstall targets, as they have no dependencies
+              and would otherwise appear never to need building. It is best applied
+              to targets that are also <literal>NOTFILE</literal> targets, but it
+              can also be used to force a real file to be updated as well.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.modifying_binding._leaves__">
+            <title><link linkend="jam.language.rules.builtins.modifying_binding._leaves__"><literal>LEAVES</literal>
+            </link></title>
+<programlisting>rule LEAVES ( <emphasis>targets</emphasis> * )
+</programlisting>
+            <para>
+              Makes each of <emphasis>targets</emphasis> depend only on its leaf
+              sources, and not on any intermediate targets. This makes it immune
+              to its dependencies being updated, as the &quot;leaf&quot; dependencies
+              are those without their own dependencies and without updating actions.
+              This allows a target to be updated only if original source files change.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.modifying_binding._nocare__">
+            <title><link linkend="jam.language.rules.builtins.modifying_binding._nocare__"><literal>NOCARE</literal>
+            </link></title>
+<programlisting>rule NOCARE ( <emphasis>targets</emphasis> * )
+</programlisting>
+            <para>
+              Causes <literal>b2</literal> to ignore <emphasis>targets</emphasis>
+              that neither can be found nor have updating actions to build them.
+              Normally for such targets <literal>b2</literal> issues a warning and
+              then skips other targets that depend on these missing targets. The
+              <literal>HdrRule</literal> in <literal>Jambase</literal> uses <literal>NOCARE</literal>
+              on the header file names found during header file scanning, to let
+              <literal>b2</literal> know that the included files may not exist. For
+              example, if an <code><phrase role="preprocessor">#include</phrase></code>
+              is within an <code><phrase role="preprocessor">#ifdef</phrase></code>,
+              the included file may not actually be around.
+            </para>
+            <warning>
+              <para>
+                For targets with build actions: if their build actions exit with
+                a nonzero return code, dependent targets will still be built.
+              </para>
+            </warning>
+          </section>
+          <section id="jam.language.rules.builtins.modifying_binding._notfile__">
+            <title><link linkend="jam.language.rules.builtins.modifying_binding._notfile__"><literal>NOTFILE</literal>
+            </link></title>
+<programlisting>rule NOTFILE ( <emphasis>targets</emphasis> * )
+</programlisting>
+            <para>
+              Marks <emphasis>targets</emphasis> as pseudotargets and not real files.
+              No timestamp is checked, and so the actions on such a target are only
+              executed if the target's dependencies are updated, or if the target
+              is also marked with <literal>ALWAYS</literal>. The default <literal>b2</literal>
+              target &quot;<literal>all</literal>&quot; is a pseudotarget. In <literal>Jambase</literal>,
+              <literal>NOTFILE</literal> is used to define several addition convenient
+              pseudotargets.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.modifying_binding._noupdate__">
+            <title><link linkend="jam.language.rules.builtins.modifying_binding._noupdate__"><literal>NOUPDATE</literal>
+            </link></title>
+<programlisting>rule NOUPDATE ( <emphasis>targets</emphasis> * )
+</programlisting>
+            <para>
+              Causes the timestamps on <emphasis>targets</emphasis> to be ignored.
+              This has two effects: first, once the target has been created it will
+              never be updated; second, manually updating target will not cause other
+              targets to be updated. In <literal>Jambase</literal>, for example,
+              this rule is applied to directories by the <literal>MkDir</literal>
+              rule, because <literal>MkDir</literal> only cares that the target directory
+              exists, not when it has last been updated.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.modifying_binding._temporary__">
+            <title><link linkend="jam.language.rules.builtins.modifying_binding._temporary__"><literal>TEMPORARY</literal>
+            </link></title>
+<programlisting>rule TEMPORARY ( <emphasis>targets</emphasis> * )
+</programlisting>
+            <para>
+              Marks <emphasis>targets</emphasis> as temporary, allowing them to be
+              removed after other targets that depend upon them have been updated.
+              If a <literal>TEMPORARY</literal> target is missing, <literal>b2</literal>
+              uses the timestamp of the target's parent. <literal>Jambase</literal>
+              uses <literal>TEMPORARY</literal> to mark object files that are archived
+              in a library after they are built, so that they can be deleted after
+              they are archived.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.modifying_binding._fail_expected__">
+            <title><link linkend="jam.language.rules.builtins.modifying_binding._fail_expected__"><literal>FAIL_EXPECTED</literal>
+            </link></title>
+<programlisting>rule FAIL_EXPECTED ( <emphasis>targets</emphasis> * )
+</programlisting>
+            <para>
+              For handling targets whose build actions are expected to fail (e.g.
+              when testing that assertions or compile-time type checking work properly),
+              Boost Jam supplies the <literal>FAIL_EXPECTED</literal> rule in the
+              same style as <literal>NOCARE</literal>, et. al. During target updating,
+              the return code of the build actions for arguments to <literal>FAIL_EXPECTED</literal>
+              is inverted: if it fails, building of dependent targets continues as
+              though it succeeded. If it succeeds, dependent targets are skipped.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.modifying_binding._rmold__">
+            <title><link linkend="jam.language.rules.builtins.modifying_binding._rmold__"><literal>RMOLD</literal>
+            </link></title>
+<programlisting>rule RMOLD ( <emphasis>targets</emphasis> * )
+</programlisting>
+            <para>
+              <literal>B2</literal> removes any target files that may exist on disk
+              when the rule used to build those targets fails. However, targets whose
+              dependencies fail to build are not removed by default. The <literal>RMOLD</literal>
+              rule causes its arguments to be removed if any of their dependencies
+              fail to build.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.modifying_binding._isfile__">
+            <title><link linkend="jam.language.rules.builtins.modifying_binding._isfile__"><literal>ISFILE</literal>
+            </link></title>
+<programlisting>rule ISFILE ( <emphasis>targets</emphasis> * )
+</programlisting>
+            <para>
+              <literal>ISFILE</literal> marks targets as required to be files. This
+              changes the way <literal>b2</literal> searches for the target such
+              that it ignores matches for file system items that are not files, like
+              directories. This makes it possible to avoid <code><phrase role="preprocessor">#include</phrase>
+              <phrase role="string">&quot;exception&quot;</phrase></code> matching
+              if one happens to have a directory named exception in the header search
+              path.
+            </para>
+            <warning>
+              <para>
+                This is currently not fully implemented.
+              </para>
+            </warning>
+          </section>
+        </section>
+        <section id="jam.language.rules.builtins.utility">
+          <title><link linkend="jam.language.rules.builtins.utility">Utility</link></title>
+          <para>
+            The two rules <literal>ECHO</literal> and <literal>EXIT</literal> are
+            utility rules, used only in <literal>b2</literal>'s parsing phase.
+          </para>
+          <section id="jam.language.rules.builtins.utility._echo__">
+            <title><link linkend="jam.language.rules.builtins.utility._echo__"><literal>ECHO</literal>
+            </link></title>
+<programlisting>rule ECHO ( <emphasis>args</emphasis> * )
+</programlisting>
+            <para>
+              Blurts out the message <emphasis>args</emphasis> to stdout.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.utility._exit__">
+            <title><link linkend="jam.language.rules.builtins.utility._exit__"><literal>EXIT</literal>
+            </link></title>
+<programlisting>rule EXIT ( <emphasis>message</emphasis> * : <emphasis>result-value</emphasis> ? )
+</programlisting>
+            <para>
+              Blurts out the <emphasis>message</emphasis> to stdout and then exits
+              with a failure status if no <emphasis>result-value</emphasis> is given,
+              otherwise it exits with the given <emphasis>result-value</emphasis>.
+            </para>
+            <para>
+              &quot;<literal>Echo</literal>&quot;, &quot;<literal>echo</literal>&quot;,
+              &quot;<literal>Exit</literal>&quot;, and &quot;<literal>exit</literal>&quot;
+              are accepted as aliases for <literal>ECHO</literal> and <literal>EXIT</literal>,
+              since it is hard to tell that these are built-in rules and not part
+              of the language, like &quot;<literal>include</literal>&quot;.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.utility._glob__">
+            <title><link linkend="jam.language.rules.builtins.utility._glob__"><literal>GLOB</literal>
+            </link></title>
+            <para>
+              The <literal>GLOB</literal> rule does filename globbing.
+            </para>
+<programlisting>rule GLOB ( <emphasis>directories</emphasis> * : <emphasis>patterns</emphasis> * : <emphasis>downcase-opt</emphasis> ? )
+</programlisting>
+            <para>
+              Using the same wildcards as for the patterns in the switch statement.
+              It is invoked by being used as an argument to a rule invocation inside
+              of &quot;=[ ]=&quot;. For example: &quot;<literal>FILES = [ GLOB dir1
+              dir2 : *.c *.h ]</literal>&quot; sets <literal>FILES</literal> to the
+              list of C source and header files in <literal>dir1</literal> and <literal>dir2</literal>.
+              The resulting filenames are the full pathnames, including the directory,
+              but the pattern is applied only to the file name without the directory.
+            </para>
+            <para>
+              If <emphasis>downcase-opt</emphasis> is supplied, filenames are converted
+              to all-lowercase before matching against the pattern; you can use this
+              to do case-insensitive matching using lowercase patterns. The paths
+              returned will still have mixed case if the OS supplies them. On Windows
+              NT and Cygwin, and OpenVMS, filenames are always downcased before matching.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.utility._glob_archive__">
+            <title><link linkend="jam.language.rules.builtins.utility._glob_archive__"><literal>GLOB_ARCHIVE</literal>
+            </link></title>
+            <para>
+              The <literal>GLOB_ARCHIVE</literal> rule does name globbing of object
+              archive members.
+            </para>
+<programlisting>rule GLOB_ARCHIVE ( <emphasis>archives</emphasis> * : <emphasis>member-patterns</emphasis> * : <emphasis>downcase-opt</emphasis> ? : <emphasis>symbol-patterns</emphasis> ? )
+</programlisting>
+            <para>
+              Similarly to <literal>GLOB</literal>, this rule is used to match names
+              of member files in an archive (static object library). List of successfully
+              matched members is returned or null otherwise. The resulting member
+              names are qualified with pathname of the containing archive in the
+              form <literal>archive-path(member-name)</literal>. Member patterns
+              are for matching member name only; when no wildcards specified -- an
+              exact match is assumed. Member names generally correspond to object
+              file names and as such are platform-specific -- use of platform-defined
+              object suffix in the matching patterns can allow for portability.
+            </para>
+            <para>
+              If <emphasis>downcase-opt</emphasis> is supplied, the member names
+              are converted to all-lowercase before matching against the pattern;
+              you can use this to do case-insensitive matching using lowercase patterns.
+              The paths returned will still have mixed case if the OS supplies them.
+              On Windows NT, Cygwin, and OpenVMS, filenames are always downcased
+              before matching.
+            </para>
+            <para>
+              Additionally, members can be matched with symbol/function patterns
+              on supported platforms (currently, OpenVMS only). In this case, members
+              containing the matching symbols are returned. Member and symbol patterns
+              are applied as OR conditions, with member patterns taking precedence.
+              On unsupported platforms, null is returned when any symbol patterns
+              are specified.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.utility._match__">
+            <title><link linkend="jam.language.rules.builtins.utility._match__"><literal>MATCH</literal>
+            </link></title>
+            <para>
+              The <literal>MATCH</literal> rule does pattern matching.
+            </para>
+<programlisting>rule MATCH ( <emphasis>regexps</emphasis> + : <emphasis>list</emphasis> * )
+</programlisting>
+            <para>
+              Matches the <literal>egrep</literal>(1) style regular expressions
+              <emphasis>regexps</emphasis> against the strings in <emphasis>list</emphasis>.
+              The result is a list of matching <literal>()</literal> subexpressions
+              for each string in <emphasis>list</emphasis>, and for each regular
+              expression in <emphasis>regexps</emphasis>.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.utility._backtrace__">
+            <title><link linkend="jam.language.rules.builtins.utility._backtrace__"><literal>BACKTRACE</literal>
+            </link></title>
+<programlisting>rule BACKTRACE ( )
+</programlisting>
+            <para>
+              Returns a list of quadruples: <emphasis>filename</emphasis> <emphasis>line</emphasis>
+              <emphasis>module</emphasis> <emphasis>rulename</emphasis>..., describing
+              each shallower level of the call stack. This rule can be used to generate
+              useful diagnostic messages from Jam rules.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.utility._update__">
+            <title><link linkend="jam.language.rules.builtins.utility._update__"><literal>UPDATE</literal>
+            </link></title>
+<programlisting>rule UPDATE ( <emphasis>targets</emphasis> * )
+</programlisting>
+            <para>
+              Classic jam treats any non-option element of command line as a name
+              of target to be updated. This prevented more sophisticated handling
+              of command line. This is now enabled again but with additional changes
+              to the <literal>UPDATE</literal> rule to allow for the flexibility
+              of changing the list of targets to update. The UPDATE rule has two
+              effects:
+            </para>
+            <orderedlist>
+              <listitem>
+                <simpara>
+                  It clears the list of targets to update, and
+                </simpara>
+              </listitem>
+              <listitem>
+                <simpara>
+                  Causes the specified targets to be updated.
+                </simpara>
+              </listitem>
+            </orderedlist>
+            <para>
+              If no target was specified with the <literal>UPDATE</literal> rule,
+              no targets will be updated. To support changing of the update list
+              in more useful ways, the rule also returns the targets previously in
+              the update list. This makes it possible to add targets as such:
+            </para>
+<programlisting>local previous-updates = [ UPDATE ] ;
+UPDATE $(previous-updates) a-new-target ;
+</programlisting>
+          </section>
+          <section id="jam.language.rules.builtins.utility._w32_getreg__">
+            <title><link linkend="jam.language.rules.builtins.utility._w32_getreg__"><literal>W32_GETREG</literal>
+            </link></title>
+<programlisting>rule W32_GETREG ( <emphasis>path</emphasis> : <emphasis>data</emphasis> ? )
+</programlisting>
+            <para>
+              Defined only for win32 platform. It reads the registry of Windows.
+              '<emphasis>path</emphasis>' is the location of the information, and
+              '<emphasis>data</emphasis>' is the name of the value which we want
+              to get. If '<emphasis>data</emphasis>' is omitted, the default value
+              of '<emphasis>path</emphasis>' will be returned. The '<emphasis>path</emphasis>'
+              value must conform to MS key path format and must be prefixed with
+              one of the predefined root keys. As usual,
+            </para>
+            <itemizedlist>
+              <listitem>
+                <simpara>
+                  '<literal>HKLM</literal>' is equivalent to '<literal>HKEY_LOCAL_MACHINE</literal>'.
+                </simpara>
+              </listitem>
+              <listitem>
+                <simpara>
+                  '<literal>HKCU</literal>' is equivalent to '<literal>HKEY_CURRENT_USER</literal>'.
+                </simpara>
+              </listitem>
+              <listitem>
+                <simpara>
+                  '<literal>HKCR</literal>' is equivalent to '<literal>HKEY_CLASSES_ROOT</literal>'.
+                </simpara>
+              </listitem>
+            </itemizedlist>
+            <para>
+              Other predefined root keys are not supported.
+            </para>
+            <para>
+              Currently supported data types : '<literal>REG_DWORD</literal>', '<literal>REG_SZ</literal>',
+              '<literal>REG_EXPAND_SZ</literal>', '<literal>REG_MULTI_SZ</literal>'.
+              The data with '<literal>REG_DWORD</literal>' type will be turned into
+              a string, '<literal>REG_MULTI_SZ</literal>' into a list of strings,
+              and for those with '<literal>REG_EXPAND_SZ</literal>' type environment
+              variables in it will be replaced with their defined values. The data
+              with '<literal>REG_SZ</literal>' type and other unsupported types will
+              be put into a string without modification. If it can't receive the
+              value of the data, it just return an empty list. For example,
+            </para>
+<programlisting>local PSDK-location =
+  [ W32_GETREG HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\MicrosoftSDK\\Directories : &quot;Install Dir&quot; ] ;
+</programlisting>
+          </section>
+          <section id="jam.language.rules.builtins.utility._w32_getregnames__">
+            <title><link linkend="jam.language.rules.builtins.utility._w32_getregnames__"><literal>W32_GETREGNAMES</literal>
+            </link></title>
+<programlisting>rule W32_GETREGNAMES ( <emphasis>path</emphasis> : <emphasis>result-type</emphasis> )
+</programlisting>
+            <para>
+              Defined only for win32 platform. It reads the registry of Windows.
+              '<emphasis>path</emphasis>' is the location of the information, and
+              '<emphasis>result-type</emphasis>' is either '<literal>subkeys</literal>'
+              or '<literal>values</literal>'. For more information on '<emphasis>path</emphasis>'
+              format and constraints, please see <literal>W32_GETREG</literal>.
+            </para>
+            <para>
+              Depending on '<emphasis>result-type</emphasis>', the rule returns one
+              of the following:
+            </para>
+            <variablelist>
+              <title></title>
+              <varlistentry>
+                <term><literal>subkeys</literal></term>
+                <listitem>
+                  <para>
+                    Names of all direct subkeys of '<emphasis>path</emphasis>'.
+                  </para>
+                </listitem>
+              </varlistentry>
+              <varlistentry>
+                <term><literal>values</literal></term>
+                <listitem>
+                  <para>
+                    Names of values contained in registry key given by '<emphasis>path</emphasis>'.
+                    The &quot;default&quot; value of the key appears in the returned
+                    list only if its value has been set in the registry.
+                  </para>
+                </listitem>
+              </varlistentry>
+            </variablelist>
+            <para>
+              If '<emphasis>result-type</emphasis>' is not recognized, or requested
+              data cannot be retrieved, the rule returns an empty list. Example:
+            </para>
+<programlisting>local key = &quot;HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths&quot; ;
+local subkeys = [ W32_GETREGNAMES &quot;$(key)&quot; : subkeys ] ;
+for local subkey in $(subkeys)
+{
+    local values = [ W32_GETREGNAMES &quot;$(key)\\$(subkey)&quot; : values ] ;
+    for local value in $(values)
+    {
+        local data = [ W32_GETREG &quot;$(key)\\$(subkey)&quot; : &quot;$(value)&quot; ] ;
+        ECHO &quot;Registry path: &quot; $(key)\\$(subkey) &quot;:&quot; $(value) &quot;=&quot; $(data) ;
+    }
+}
+</programlisting>
+          </section>
+          <section id="jam.language.rules.builtins.utility._shell__">
+            <title><link linkend="jam.language.rules.builtins.utility._shell__"><literal>SHELL</literal>
+            </link></title>
+<programlisting>rule SHELL ( <emphasis>command</emphasis> : * )
+</programlisting>
+            <para>
+              <literal>SHELL</literal> executes <emphasis>command</emphasis>, and
+              then returns the standard output of <emphasis>command</emphasis>.
+              <literal>SHELL</literal> only works on platforms with a <literal>popen()</literal>
+              function in the C library. On platforms without a working <literal>popen()</literal>
+              function, <literal>SHELL</literal> is implemented as a no-op. <literal>SHELL</literal>
+              works on Unix, MacOS X, and most Windows compilers. <literal>SHELL</literal>
+              is a no-op on Metrowerks compilers under Windows. There is a variable
+              set of allowed options as additional arguments:
+            </para>
+            <variablelist>
+              <title></title>
+              <varlistentry>
+                <term><literal>exit-status</literal></term>
+                <listitem>
+                  <para>
+                    In addition to the output the result status of the executed command
+                    is returned as a second element of the result.
+                  </para>
+                </listitem>
+              </varlistentry>
+              <varlistentry>
+                <term><literal>no-output</literal></term>
+                <listitem>
+                  <para>
+                    Don't capture the output of the command. Instead an empty (&quot;&quot;)
+                    string value is returned in place of the output.
+                  </para>
+                </listitem>
+              </varlistentry>
+              <varlistentry>
+                <term><literal>strip-eol</literal></term>
+                <listitem>
+                  <para>
+                    Remove trailing end-of-line character from output, if any.
+                  </para>
+                </listitem>
+              </varlistentry>
+            </variablelist>
+            <para>
+              Because the Perforce/Jambase defines a <literal>SHELL</literal> rule
+              which hides the builtin rule, <literal>COMMAND</literal> can be used
+              as an alias for <literal>SHELL</literal> in such a case.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.utility._md5__">
+            <title><link linkend="jam.language.rules.builtins.utility._md5__"><literal>MD5</literal>
+            </link></title>
+<programlisting>rule MD5 ( <emphasis>string</emphasis> )
+</programlisting>
+            <para>
+              <literal>MD5</literal> computes the MD5 hash of the string passed as
+              paramater and returns it.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.utility._split_by_characters__">
+            <title><link linkend="jam.language.rules.builtins.utility._split_by_characters__"><literal>SPLIT_BY_CHARACTERS</literal>
+            </link></title>
+<programlisting>rule SPLIT_BY_CHARACTERS ( <emphasis>string</emphasis> : <emphasis>delimiters</emphasis> )
+</programlisting>
+            <para>
+              <literal>SPLIT_BY_CHARACTERS</literal> splits the specified <emphasis>string</emphasis>
+              on any delimiter character present in <emphasis>delimiters</emphasis>
+              and returns the resulting list.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.utility._precious__">
+            <title><link linkend="jam.language.rules.builtins.utility._precious__"><literal>PRECIOUS</literal>
+            </link></title>
+<programlisting>rule PRECIOUS ( <emphasis>targets</emphasis> * )
+</programlisting>
+            <para>
+              The <literal>PRECIOUS</literal> rule specifies that each of the targets
+              passed as the arguments should not be removed even if the command updating
+              that target fails.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.utility._pad__">
+            <title><link linkend="jam.language.rules.builtins.utility._pad__"><literal>PAD</literal>
+            </link></title>
+<programlisting>rule PAD ( <emphasis>string</emphasis> : <emphasis>width</emphasis> )
+</programlisting>
+            <para>
+              If <emphasis>string</emphasis> is shorter than <emphasis>width</emphasis>
+              characters, pads it with whitespace characters on the right, and returns
+              the result. Otherwise, returns <emphasis>string</emphasis> unmodified.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.utility._file_open__">
+            <title><link linkend="jam.language.rules.builtins.utility._file_open__"><literal>FILE_OPEN</literal>
+            </link></title>
+<programlisting>rule FILE_OPEN ( <emphasis>filename</emphasis> : <emphasis>mode</emphasis> )
+</programlisting>
+            <para>
+              The <literal>FILE_OPEN</literal> rule opens the specified file and
+              returns a file descriptor. The <emphasis>mode</emphasis> parameter
+              can be either &quot;w&quot; or &quot;r&quot;. Note that at present,
+              only the <literal>UPDATE_NOW</literal> rule can use the resulting file
+              descriptor number.
+            </para>
+          </section>
+          <section id="jam.language.rules.builtins.utility._update_now__">
+            <title><link linkend="jam.language.rules.builtins.utility._update_now__"><literal>UPDATE_NOW</literal>
+            </link></title>
+<programlisting>rule UPDATE_NOW ( <emphasis>targets</emphasis> * : <emphasis>log</emphasis> ? : <emphasis>ignore-minus-n</emphasis> ? )
+</programlisting>
+            <para>
+              The <literal>UPDATE_NOW</literal> caused the specified targets to be
+              updated immediately. If update was successfull, non-empty string is
+              returned. The <emphasis>log</emphasis> parameter, if present, specifies
+              a descriptor of a file where all output from building is redirected.
+              If the <emphasis>ignore-minus-n</emphasis> parameter is specified,
+              the targets are updated even if the <literal>-n</literal> parameter
+              is specified on the command line.
+            </para>
+          </section>
+        </section>
+      </section>
+    </section>
+    <section id="jam.language.flow_of_control">
+      <title><link linkend="jam.language.flow_of_control">Flow-of-Control</link></title>
+      <para>
+        <literal>B2</literal> has several simple flow-of-control statements:
+      </para>
+<programlisting>for <emphasis>var</emphasis> in <emphasis>list</emphasis> { <emphasis>statements</emphasis> }
+</programlisting>
+      <para>
+        Executes <emphasis>statements</emphasis> for each element in <emphasis>list</emphasis>,
+        setting the variable <emphasis>var</emphasis> to the element value.
+      </para>
+<programlisting>if <emphasis>cond</emphasis> { <emphasis>statements</emphasis> }
+[ else { <emphasis>statements</emphasis> } ]
+</programlisting>
+      <para>
+        Does the obvious; the <literal>else</literal> clause is optional. <emphasis>cond</emphasis>
+        is built of:
+      </para>
+      <variablelist>
+        <title></title>
+        <varlistentry>
+          <term><literal><emphasis>a</emphasis></literal></term>
+          <listitem>
+            <para>
+              true if any <emphasis>a</emphasis> element is a non-zero-length string
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><literal><emphasis>a</emphasis> = <emphasis>b</emphasis></literal></term>
+          <listitem>
+            <para>
+              list <emphasis>a</emphasis> matches list <emphasis>b</emphasis> string-for-string
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><literal><emphasis>a</emphasis> != <emphasis>b</emphasis></literal></term>
+          <listitem>
+            <para>
+              list <emphasis>a</emphasis> does not match list <emphasis>b</emphasis>
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><literal><emphasis>a</emphasis> &lt; <emphasis>b</emphasis></literal></term>
+          <listitem>
+            <para>
+              <emphasis>a[i]</emphasis> string is less than <emphasis>b[i]</emphasis>
+              string, where <emphasis>i</emphasis> is first mismatched element in
+              lists <emphasis>a</emphasis> and <emphasis>b</emphasis>
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><literal><emphasis>a</emphasis> &lt;= <emphasis>b</emphasis></literal></term>
+          <listitem>
+            <para>
+              every <emphasis>a</emphasis> string is less than or equal to its <emphasis>b</emphasis>
+              counterpart
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><literal><emphasis>a</emphasis> &gt; <emphasis>b</emphasis></literal></term>
+          <listitem>
+            <para>
+              <emphasis>a[i]</emphasis> string is greater than <emphasis>b[i]</emphasis>
+              string, where <emphasis>i</emphasis> is first mismatched element
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><literal><emphasis>a</emphasis> &gt;= <emphasis>b</emphasis></literal></term>
+          <listitem>
+            <para>
+              every <emphasis>a</emphasis> string is greater than or equal to its
+              <emphasis>b</emphasis> counterpart
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><literal><emphasis>a</emphasis> in <emphasis>b</emphasis></literal></term>
+          <listitem>
+            <para>
+              true if all elements of <emphasis>a</emphasis> can be found in <emphasis>b</emphasis>,
+              or if <emphasis>a</emphasis> has no elements
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><literal>! <emphasis>cond</emphasis></literal></term>
+          <listitem>
+            <para>
+              condition not true
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><literal><emphasis>cond</emphasis> &amp;&amp; <emphasis>cond</emphasis></literal></term>
+          <listitem>
+            <para>
+              conjunction
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><literal><emphasis>cond</emphasis> || <emphasis>cond</emphasis></literal></term>
+          <listitem>
+            <para>
+              disjunction
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><literal>( <emphasis>cond</emphasis> )</literal></term>
+          <listitem>
+            <para>
+              precedence grouping
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+<programlisting>include <emphasis>file</emphasis> ;
+</programlisting>
+      <para>
+        Causes <literal>b2</literal> to read the named <emphasis>file</emphasis>.
+        The <emphasis>file</emphasis> is bound like a regular target (see Binding
+        above) but unlike a regular target the include <emphasis>file</emphasis>
+        cannot be built.
+      </para>
+      <para>
+        The include <emphasis>file</emphasis> is inserted into the input stream during
+        the parsing phase. The primary input file and all the included file(s) are
+        treated as a single file; that is, <literal>b2</literal> infers no scope
+        boundaries from included files.
+      </para>
+<programlisting>local <emphasis>vars</emphasis> [ = <emphasis>values</emphasis> ] ;
+</programlisting>
+      <para>
+        Creates new <emphasis>vars</emphasis> inside to the enclosing <literal>{}</literal>
+        block, obscuring any previous values they might have. The previous values
+        for vars are restored when the current block ends. Any rule called or file
+        included will see the local and not the previous value (this is sometimes
+        called Dynamic Scoping). The local statement may appear anywhere, even outside
+        of a block (in which case the previous value is restored when the input ends).
+        The <emphasis>vars</emphasis> are initialized to <emphasis>values</emphasis>
+        if present, or left uninitialized otherwise.
+      </para>
+<programlisting>return <emphasis>values</emphasis> ;
+</programlisting>
+      <para>
+        Within a rule body, the return statement sets the return value for an invocation
+        of the rule and returns to the caller.
+      </para>
+<programlisting>switch <emphasis>value</emphasis>
+{
+    case <emphasis>pattern1</emphasis> : <emphasis>statements</emphasis> ;
+    case <emphasis>pattern2</emphasis> : <emphasis>statements</emphasis> ;
+    ...
+}
+</programlisting>
+      <para>
+        The switch statement executes zero or one of the enclosed <emphasis>statements</emphasis>,
+        depending on which, if any, is the first case whose <emphasis>pattern</emphasis>
+        matches <emphasis>value</emphasis>. The <emphasis>pattern</emphasis> values
+        are not variable-expanded. The pattern values may include the following wildcards:
+      </para>
+      <variablelist>
+        <title></title>
+        <varlistentry>
+          <term><literal>?</literal></term>
+          <listitem>
+            <para>
+              match any single character
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><literal>*</literal></term>
+          <listitem>
+            <para>
+              match zero or more characters
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><literal>[<emphasis>chars</emphasis>]</literal></term>
+          <listitem>
+            <para>
+              match any single character in <emphasis>chars</emphasis>
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><literal>[^<emphasis>chars</emphasis>]</literal></term>
+          <listitem>
+            <para>
+              match any single character not in <emphasis>chars</emphasis>
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term><literal>\<emphasis>x</emphasis></literal></term>
+          <listitem>
+            <para>
+              match <emphasis>x</emphasis> (escapes the other wildcards)
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+<programlisting>while <emphasis>cond</emphasis> { <emphasis>statements</emphasis> }
+</programlisting>
+      <para>
+        Repeatedly execute <emphasis>statements</emphasis> while <emphasis>cond</emphasis>
+        remains true upon entry. (See the description of <emphasis>cond</emphasis>
+        expression syntax under if, above).
+      </para>
+<programlisting>break ;
+</programlisting>
+      <para>
+        Immediately exits the nearest enclosing while or for loop.
+      </para>
+<programlisting>continue ;
+</programlisting>
+      <para>
+        Jumps to the top of the nearest enclosing while or for loop.
+      </para>
+    </section>
+    <section id="jam.language.variables">
+      <title><link linkend="jam.language.variables">Variables</link></title>
+      <para>
+        <literal>B2</literal> variables are lists of zero or more elements, with
+        each element being a string value. An undefined variable is indistinguishable
+        from a variable with an empty list, however, a defined variable may have
+        one more elements which are null strings. All variables are referenced as
+        <literal>$(<emphasis>variable</emphasis>)</literal>.
+      </para>
+      <para>
+        Variables are either global or target-specific. In the latter case, the variable
+        takes on the given value only during the updating of the specific target.
+      </para>
+      <para>
+        A variable is defined with:
+      </para>
+<programlisting><emphasis>variable</emphasis> = <emphasis>elements</emphasis> ;
+<emphasis>variable</emphasis> += <emphasis>elements</emphasis> ;
+<emphasis>variable</emphasis> on <emphasis>targets</emphasis> = <emphasis>elements</emphasis> ;
+<emphasis>variable</emphasis> on <emphasis>targets</emphasis> += <emphasis>elements</emphasis> ;
+<emphasis>variable</emphasis> default = <emphasis>elements</emphasis> ;
+<emphasis>variable</emphasis> ?= <emphasis>elements</emphasis> ;
+</programlisting>
+      <para>
+        The first two forms set <emphasis>variable</emphasis> globally. The third
+        and forth forms set a target-specific variable. The <literal>=</literal>
+        operator replaces any previous elements of <emphasis>variable</emphasis>
+        with <emphasis>elements</emphasis>; the <literal>+=</literal> operation adds
+        <emphasis>elements</emphasis> to <emphasis>variable</emphasis>'s list of
+        elements. The final two forms are synonymous: they set <emphasis>variable</emphasis>
+        globally, but only if it was previously unset.
+      </para>
+      <para>
+        Variables referenced in updating commands will be replaced with their values;
+        target-specific values take precedence over global values. Variables passed
+        as arguments (<literal>$(1)</literal> and <literal>$(2)</literal>) to actions
+        are replaced with their bound values; the &quot;<literal>bind</literal>&quot;
+        modifier can be used on actions to cause other variables to be replaced with
+        bound values. See Action Modifiers above.
+      </para>
+      <para>
+        <literal>B2</literal> variables are not re-exported to the environment of
+        the shell that executes the updating actions, but the updating actions can
+        reference <literal>b2</literal> variables with <literal>$(<emphasis>variable</emphasis>)</literal>.
+      </para>
+      <section id="jam.language.variables.expansion">
+        <title><link linkend="jam.language.variables.expansion">Variable Expansion</link></title>
+        <para>
+          During parsing, <literal>b2</literal> performs variable expansion on each
+          token that is not a keyword or rule name. Such tokens with embedded variable
+          references are replaced with zero or more tokens. Variable references are
+          of the form <literal>$(<emphasis>v</emphasis>)</literal> or <literal>$(<emphasis>vm</emphasis>)</literal>,
+          where <emphasis>v</emphasis> is the variable name, and <emphasis>m</emphasis>
+          are optional modifiers.
+        </para>
+        <para>
+          Variable expansion in a rule's actions is similar to variable expansion
+          in statements, except that the action string is tokenized at whitespace
+          regardless of quoting.
+        </para>
+        <para>
+          The result of a token after variable expansion is the <emphasis>product</emphasis>
+          of the components of the token, where each component is a literal substring
+          or a list substituting a variable reference. For example:
+        </para>
+<programlisting>$(X) -&gt; a b c
+t$(X) -&gt; ta tb tc
+$(X)z -&gt; az bz cz
+$(X)-$(X) -&gt; a-a a-b a-c b-a b-b b-c c-a c-b c-c
+</programlisting>
+        <para>
+          The variable name and modifiers can themselves contain a variable reference,
+          and this partakes of the product as well:
+        </para>
+<programlisting>$(X) -&gt; a b c
+$(Y) -&gt; 1 2
+$(Z) -&gt; X Y
+$($(Z)) -&gt; a b c 1 2
+</programlisting>
+        <para>
+          Because of this product expansion, if any variable reference in a token
+          is undefined, the result of the expansion is an empty list. If any variable
+          element is a null string, the result propagates the non-null elements:
+        </para>
+<programlisting>$(X) -&gt; a &quot;&quot;
+$(Y) -&gt; &quot;&quot; 1
+$(Z) -&gt;
+-$(X)$(Y)- -&gt; -a- -a1- -- -1-
+-$(X)$(Z)- -&gt;
+</programlisting>
+        <para>
+          A variable element's string value can be parsed into grist and filename-related
+          components. Modifiers to a variable are used to select elements, select
+          components, and replace components. The modifiers are:
+        </para>
+        <variablelist>
+          <title></title>
+          <varlistentry>
+            <term><literal>[<emphasis>n</emphasis>]</literal></term>
+            <listitem>
+              <para>
+                Select element number <emphasis>n</emphasis> (starting at 1). If
+                the variable contains fewer than <emphasis>n</emphasis> elements,
+                the result is a zero-element list. <emphasis>n</emphasis> can be
+                negative in which case the element number <emphasis>n</emphasis>
+                from the last leftward is returned.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>[<emphasis>n</emphasis>-<emphasis>m</emphasis>]</literal></term>
+            <listitem>
+              <para>
+                Select elements number <emphasis>n</emphasis> through <emphasis>m</emphasis>.
+                <emphasis>n</emphasis> and <emphasis>m</emphasis> can be negative
+                in which case they refer to elements counting from the last leftward.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>[<emphasis>n</emphasis>-]</literal></term>
+            <listitem>
+              <para>
+                Select elements number <emphasis>n</emphasis> through the last.
+                <emphasis>n</emphasis> can be negative in which case it refers to
+                the element counting from the last leftward.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:B</literal></term>
+            <listitem>
+              <para>
+                Select filename base.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:S</literal></term>
+            <listitem>
+              <para>
+                Select (last) filename suffix.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:M</literal></term>
+            <listitem>
+              <para>
+                Select archive member name.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:D</literal></term>
+            <listitem>
+              <para>
+                Select directory path.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:P</literal></term>
+            <listitem>
+              <para>
+                Select parent directory.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:G</literal></term>
+            <listitem>
+              <para>
+                Select grist.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:U</literal></term>
+            <listitem>
+              <para>
+                Replace lowercase characters with uppercase.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:L</literal></term>
+            <listitem>
+              <para>
+                Replace uppercase characters with lowercase.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:T</literal></term>
+            <listitem>
+              <para>
+                Converts all back-slashes (&quot;\&quot;) to forward slashes (&quot;/&quot;).
+                For example
+<programlisting><phrase role="identifier">x</phrase> <phrase role="special">=</phrase> <phrase role="string">&quot;C:\\Program Files\\Borland&quot;</phrase> <phrase role="special">;</phrase> <phrase role="identifier">ECHO</phrase> <phrase role="error">$</phrase><phrase role="special">(</phrase><phrase role="identifier">x</phrase><phrase role="special">:</phrase><phrase role="identifier">T</phrase><phrase role="special">)</phrase> <phrase role="special">;</phrase>
+</programlisting>
+                prints <literal>&quot;C:/Program Files/Borland&quot;</literal>
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:W</literal></term>
+            <listitem>
+              <para>
+                When invoking Windows-based tools from <ulink url="http://www.cygwin.com/">Cygwin</ulink>
+                it can be important to pass them true windows-style paths. The <literal>:W</literal>
+                modifier, <emphasis role="bold">under Cygwin only</emphasis>, turns
+                a cygwin path into a Win32 path using the <ulink url="http://www.cygwin.com/cygwin-api/func-cygwin-conv-to-win32-path.html"><literal>cygwin_conv_to_win32_path</literal></ulink>
+                function. For example
+<programlisting><phrase role="identifier">x</phrase> <phrase role="special">=</phrase> <phrase role="string">&quot;/cygdrive/c/Program Files/Borland&quot;</phrase> <phrase role="special">;</phrase> <phrase role="identifier">ECHO</phrase> <phrase role="error">$</phrase><phrase role="special">(</phrase><phrase role="identifier">x</phrase><phrase role="special">:</phrase><phrase role="identifier">W</phrase><phrase role="special">)</phrase> <phrase role="special">;</phrase>
+</programlisting>
+                prints <literal>&quot;C:\Program Files\Borland&quot;</literal> on
+                Cygwin
+              </para>
+              <para>
+                Similarly, when used on OpenVMS, the <literal>:W</literal> modifier
+                translates a POSIX-style path into native VMS-style format using
+                <literal>decc$to_vms</literal> CRTL function. This modifier is generally
+                used inside action blocks to properly specify file paths in VMS-specific
+                commands. For example
+<programlisting><phrase role="identifier">x</phrase> <phrase role="special">=</phrase> <phrase role="string">&quot;subdir/filename.c&quot;</phrase> <phrase role="special">;</phrase> <phrase role="identifier">ECHO</phrase> <phrase role="error">$</phrase><phrase role="special">(</phrase><phrase role="identifier">x</phrase><phrase role="special">:</phrase><phrase role="identifier">W</phrase><phrase role="special">)</phrase> <phrase role="special">;</phrase>
+</programlisting>
+                prints <literal>&quot;[.subdir]filename.c&quot;</literal> on OpenVMS
+              </para>
+              <para>
+                On other platforms, the string is unchanged.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:<emphasis>chars</emphasis></literal></term>
+            <listitem>
+              <para>
+                Select the components listed in <emphasis>chars</emphasis>.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:G=<emphasis>grist</emphasis></literal></term>
+            <listitem>
+              <para>
+                Replace grist with <emphasis>grist</emphasis>.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:D=<emphasis>path</emphasis></literal></term>
+            <listitem>
+              <para>
+                Replace directory with <emphasis>path</emphasis>.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:B=<emphasis>base</emphasis></literal></term>
+            <listitem>
+              <para>
+                Replace the base part of file name with <emphasis>base</emphasis>.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:S=<emphasis>suf</emphasis></literal></term>
+            <listitem>
+              <para>
+                Replace the suffix of file name with <emphasis>suf</emphasis>.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:M=<emphasis>mem</emphasis></literal></term>
+            <listitem>
+              <para>
+                Replace the archive member name with <emphasis>mem</emphasis>.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:R=<emphasis>root</emphasis></literal></term>
+            <listitem>
+              <para>
+                Prepend <emphasis>root</emphasis> to the whole file name, if not
+                already rooted.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:E=<emphasis>value</emphasis></literal></term>
+            <listitem>
+              <para>
+                Assign <emphasis>value</emphasis> to the variable if it is unset.
+              </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><literal>:J=<emphasis>joinval</emphasis></literal></term>
+            <listitem>
+              <para>
+                Concatentate list elements into single element, separated by <emphasis>joinval</emphasis>'.
+              </para>
+            </listitem>
+          </varlistentry>
+        </variablelist>
+        <para>
+          On VMS, <literal>$(var:P)</literal> is the parent directory of <literal>$(var:D)</literal>.
+        </para>
+      </section>
+      <section id="jam.language.variables.local_for_loop_variables">
+        <title><link linkend="jam.language.variables.local_for_loop_variables">Local
+        For Loop Variables</link></title>
+        <para>
+          Boost Jam allows you to declare a local for loop control variable right
+          in the loop:
+        </para>
+<programlisting>x = 1 2 3 ;
+y = 4 5 6 ;
+for <emphasis role="bold">local</emphasis> y in $(x)
+{
+    ECHO $(y) ; # prints &quot;1&quot;, &quot;2&quot;, or &quot;3&quot;
+}
+ECHO $(y) ;     # prints &quot;4 5 6&quot;
+</programlisting>
+      </section>
+      <section id="jam.language.variables.atfile">
+        <title><link linkend="jam.language.variables.atfile">Generated File Expansion</link></title>
+        <para>
+          During expansion of expressions <literal>b2</literal> also looks for subexpressions
+          of the form <literal>@(filename:E=filecontents)</literal> and replaces
+          the expression with <literal>filename</literal> after creating the given
+          file with the contents set to <literal>filecontents</literal>. This is
+          useful for creating compiler response files, and other &quot;internal&quot;
+          files. The expansion works both during parsing and action execution. Hence
+          it is possible to create files during any of the three build phases.
+        </para>
+      </section>
+      <section id="jam.language.variables.builtins">
+        <title><link linkend="jam.language.variables.builtins">Built-in Variables</link></title>
+        <para>
+          This section discusses variables that have special meaning to <literal>b2</literal>.
+          All of these must be defined or used in the global module -- using those
+          variables inside a named module will not have the desired effect. See
+          <link linkend="jam.language.modules">Modules</link>.
+        </para>
+        <section id="jam.language.variables.builtins.search">
+          <title><link linkend="jam.language.variables.builtins.search">SEARCH and
+          LOCATE</link></title>
+          <para>
+            These two variables control the binding of file target names to locations
+            in the file system. Generally, <literal>$(SEARCH)</literal> is used to
+            find existing sources while <literal>$(LOCATE)</literal> is used to fix
+            the location for built targets.
+          </para>
+          <para>
+            Rooted (absolute path) file targets are bound as is. Unrooted file target
+            names are also normally bound as is, and thus relative to the current
+            directory, but the settings of <literal>$(LOCATE)</literal> and <literal>$(SEARCH)</literal>
+            alter this:
+          </para>
+          <itemizedlist>
+            <listitem>
+              <simpara>
+                If <literal>$(LOCATE)</literal> is set then the target is bound relative
+                to the first directory in <literal>$(LOCATE)</literal>. Only the
+                first element is used for binding.
+              </simpara>
+            </listitem>
+            <listitem>
+              <simpara>
+                If <literal>$(SEARCH)</literal> is set then the target is bound to
+                the first directory in <literal>$(SEARCH)</literal> where the target
+                file already exists.
+              </simpara>
+            </listitem>
+            <listitem>
+              <simpara>
+                If the <literal>$(SEARCH)</literal> search fails, the target is bound
+                relative to the current directory anyhow.
+              </simpara>
+            </listitem>
+          </itemizedlist>
+          <para>
+            Both <literal>$(SEARCH)</literal> and <literal>$(LOCATE)</literal> should
+            be set target-specific and not globally. If they were set globally,
+            <literal>b2</literal> would use the same paths for all file binding,
+            which is not likely to produce sane results. When writing your own rules,
+            especially ones not built upon those in Jambase, you may need to set
+            <literal>$(SEARCH)</literal> or <literal>$(LOCATE)</literal> directly.
+            Almost all of the rules defined in Jambase set <literal>$(SEARCH)</literal>
+            and <literal>$(LOCATE)</literal> to sensible values for sources they
+            are looking for and targets they create, respectively.
+          </para>
+        </section>
+        <section id="jam.language.variables.builtins.hdrscan">
+          <title><link linkend="jam.language.variables.builtins.hdrscan">HDRSCAN
+          and HDRRULE</link></title>
+          <para>
+            These two variables control header file scanning. <literal>$(HDRSCAN)</literal>
+            is an <literal>egrep(1)</literal> pattern, with ()'s surrounding the
+            file name, used to find file inclusion statements in source files. <literal>Jambase</literal>
+            uses <literal>$(HDRPATTERN)</literal> as the pattern for <literal>$(HDRSCAN)</literal>.
+            <literal>$(HDRRULE)</literal> is the name of a rule to invoke with the
+            results of the scan: the scanned file is the target, the found files
+            are the sources. This is the only place where <literal>b2</literal> invokes
+            a rule through a variable setting.
+          </para>
+          <para>
+            Both <literal>$(HDRSCAN)</literal> and <literal>$(HDRRULE)</literal>
+            must be set for header file scanning to take place, and they should be
+            set target-specific and not globally. If they were set globally, all
+            files, including executables and libraries, would be scanned for header
+            file include statements.
+          </para>
+          <para>
+            The scanning for header file inclusions is not exact, but it is at least
+            dynamic, so there is no need to run something like <literal>makedepend(GNU)</literal>
+            to create a static dependency file. The scanning mechanism errs on the
+            side of inclusion (i.e., it is more likely to return filenames that are
+            not actually used by the compiler than to miss include files) because
+            it can't tell if <code><phrase role="preprocessor">#include</phrase></code>
+            lines are inside <code><phrase role="preprocessor">#ifdefs</phrase></code>
+            or other conditional logic. In <literal>Jambase</literal>, <literal>HdrRule</literal>
+            applies the <literal>NOCARE</literal> rule to each header file found
+            during scanning so that if the file isn't present yet doesn't cause the
+            compilation to fail, <literal>b2</literal> won't care.
+          </para>
+          <para>
+            Also, scanning for regular expressions only works where the included
+            file name is literally in the source file. It can't handle languages
+            that allow including files using variable names (as the <literal>Jam</literal>
+            language itself does).
+          </para>
+        </section>
+        <section id="jam.language.variables.builtins.semaphores">
+          <title><link linkend="jam.language.variables.builtins.semaphores">Semaphores</link></title>
+          <para>
+            It is sometimes desirable to disallow parallel execution of some actions.
+            For example:
+          </para>
+          <itemizedlist>
+            <listitem>
+              <simpara>
+                Old versions of yacc use files with fixed names. So, running two
+                yacc actions is dangerous.
+              </simpara>
+            </listitem>
+            <listitem>
+              <simpara>
+                One might want to perform parallel compiling, but not do parallel
+                linking, because linking is i/o bound and only gets slower.
+              </simpara>
+            </listitem>
+          </itemizedlist>
+          <para>
+            Craig McPeeters has extended Perforce Jam to solve such problems, and
+            that extension was integrated in Boost.Jam.
+          </para>
+          <para>
+            Any target can be assigned a <emphasis>semaphore</emphasis>, by setting
+            a variable called <literal>SEMAPHORE</literal> on that target. The value
+            of the variable is the semaphore name. It must be different from names
+            of any declared target, but is arbitrary otherwise.
+          </para>
+          <para>
+            The semantic of semaphores is that in a group of targets which have the
+            same semaphore, only one can be updated at the moment, regardless of
+            &quot;<literal>-j</literal>&quot; option.
+          </para>
+        </section>
+        <section id="jam.language.variables.builtins.platform_identifier">
+          <title><link linkend="jam.language.variables.builtins.platform_identifier">Platform
+          Identifier</link></title>
+          <para>
+            A number of Jam built-in variables can be used to identify runtime platform:
+          </para>
+          <variablelist>
+            <title></title>
+            <varlistentry>
+              <term><literal>OS</literal></term>
+              <listitem>
+                <para>
+                  OS identifier string
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>OSPLAT</literal></term>
+              <listitem>
+                <para>
+                  Underlying architecture, when applicable
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>MAC</literal></term>
+              <listitem>
+                <para>
+                  true on MAC platform
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>NT</literal></term>
+              <listitem>
+                <para>
+                  true on NT platform
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>OS2</literal></term>
+              <listitem>
+                <para>
+                  true on OS2 platform
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>UNIX</literal></term>
+              <listitem>
+                <para>
+                  true on Unix platforms
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>VMS</literal></term>
+              <listitem>
+                <para>
+                  true on VMS platform
+                </para>
+              </listitem>
+            </varlistentry>
+          </variablelist>
+        </section>
+        <section id="jam.language.variables.builtins.jam_version">
+          <title><link linkend="jam.language.variables.builtins.jam_version">Jam
+          Version</link></title>
+          <variablelist>
+            <title></title>
+            <varlistentry>
+              <term><literal>JAMDATE</literal></term>
+              <listitem>
+                <para>
+                  Time and date at <literal>b2</literal> start-up as an ISO-8601
+                  UTC value.
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>JAMUNAME</literal></term>
+              <listitem>
+                <para>
+                  Ouput of uname(1) command (Unix only)
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>JAMVERSION</literal></term>
+              <listitem>
+                <para>
+                  <literal>b2</literal> version, currently &quot;3.1.19&quot;
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>JAM_VERSION</literal></term>
+              <listitem>
+                <para>
+                  A predefined global variable with two elements indicates the version
+                  number of Boost Jam. Boost Jam versions start at &quot;<literal>03</literal>&quot;
+                  &quot;<literal>00</literal>&quot;. Earlier versions of <literal>Jam</literal>
+                  do not automatically define <literal>JAM_VERSION</literal>.
+                </para>
+              </listitem>
+            </varlistentry>
+          </variablelist>
+        </section>
+        <section id="jam.language.variables.builtins.jamshell">
+          <title><link linkend="jam.language.variables.builtins.jamshell">JAMSHELL</link></title>
+          <para>
+            When <literal>b2</literal> executes a rule's action block, it forks and
+            execs a shell, passing the action block as an argument to the shell.
+            The invocation of the shell can be controlled by <literal>$(JAMSHELL)</literal>.
+            The default on Unix is, for example:
+          </para>
+<programlisting>JAMSHELL = /bin/sh -c % ;
+</programlisting>
+          <para>
+            The <literal>%</literal> is replaced with the text of the action block.
+          </para>
+          <para>
+            <literal>B2</literal> does not directly support building in parallel
+            across multiple hosts, since that is heavily dependent on the local environment.
+            To build in parallel across multiple hosts, you need to write your own
+            shell that provides access to the multiple hosts. You then reset <literal>$(JAMSHELL)</literal>
+            to reference it.
+          </para>
+          <para>
+            Just as <literal>b2</literal> expands a <literal>%</literal> to be the
+            text of the rule's action block, it expands a <literal>!</literal> to
+            be the multi-process slot number. The slot number varies between 1 and
+            the number of concurrent jobs permitted by the <literal>-j</literal>
+            flag given on the command line. Armed with this, it is possible to write
+            a multiple host shell. For example:
+          </para>
+<programlisting>#!/bin/sh
+
+# This sample JAMSHELL uses the SunOS on(1) command to execute a
+# command string with an identical environment on another host.
+
+# Set JAMSHELL = jamshell ! %
+#
+# where jamshell is the name of this shell file.
+#
+# This version handles up to -j6; after that they get executed
+# locally.
+
+case $1 in
+1|4) on winken sh -c &quot;$2&quot;;;
+2|5) on blinken sh -c &quot;$2&quot;;;
+3|6) on nod sh -c &quot;$2&quot;;;
+*) eval &quot;$2&quot;;;
+esac
+</programlisting>
+        </section>
+        <section id="jam.language.variables.builtins.actionrule">
+          <title><link linkend="jam.language.variables.builtins.actionrule"><literal>__TIMING_RULE__</literal>
+          and <literal>__ACTION_RULE__</literal></link></title>
+          <para>
+            The <literal>__TIMING_RULE__</literal> and <literal>__ACTION_RULE__</literal>
+            can be set to the name of a rule for <literal>b2</literal> to call <emphasis
+            role="bold">after</emphasis> an action completes for a target. They both
+            give diagnostic information about the action that completed. For <literal>__TIMING_RULE__</literal>
+            the rule is called as:
+          </para>
+<programlisting><phrase role="identifier">rule</phrase> <phrase role="identifier">timing</phrase><phrase role="special">-</phrase><phrase role="identifier">rule</phrase> <phrase role="special">(</phrase> <phrase role="identifier">args</phrase> <phrase role="special">*</phrase> <phrase role="special">:</phrase> <phrase role="identifier">target</phrase> <phrase role="special">:</phrase> <phrase role="identifier">start</phrase> <phrase role="identifier">end</phrase> <phrase role="identifier">user</phrase> <phrase role="identifier">system</phrase> <phrase role="special">)</phrase>
+</programlisting>
+          <para>
+            And <literal>__ACTION_RULE__</literal> is called as:
+          </para>
+<programlisting><phrase role="identifier">rule</phrase> <phrase role="identifier">action</phrase><phrase role="special">-</phrase><phrase role="identifier">rule</phrase> <phrase role="special">(</phrase> <phrase role="identifier">args</phrase> <phrase role="special">*</phrase> <phrase role="special">:</phrase> <phrase role="identifier">target</phrase> <phrase role="special">:</phrase> <phrase role="identifier">command</phrase> <phrase role="identifier">status</phrase> <phrase role="identifier">start</phrase> <phrase role="identifier">end</phrase> <phrase role="identifier">user</phrase> <phrase role="identifier">system</phrase> <phrase role="special">:</phrase> <phrase role="identifier">output</phrase> <phrase role="special">?</phrase> <phrase role="special">)</phrase>
+</programlisting>
+          <para>
+            The arguments for both are:
+          </para>
+          <variablelist>
+            <title></title>
+            <varlistentry>
+              <term><literal>args</literal></term>
+              <listitem>
+                <para>
+                  Any values following the rule name in the <literal>__TIMING_RULE__</literal>
+                  or <literal>__ACTION_RULE__</literal> are passed along here.
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>target</literal></term>
+              <listitem>
+                <para>
+                  The <literal>b2</literal> target that was built.
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>command</literal></term>
+              <listitem>
+                <para>
+                  The text of the executed command in the action body.
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>status</literal></term>
+              <listitem>
+                <para>
+                  The integer result of the executed command.
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>start</literal></term>
+              <listitem>
+                <para>
+                  The starting timestamp of the executed command as a ISO-8601 UTC
+                  value.
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>end</literal></term>
+              <listitem>
+                <para>
+                  The completion timestamp of the executed command as a ISO-8601
+                  UTC value.
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>user</literal></term>
+              <listitem>
+                <para>
+                  The number of user CPU seconds the executed command spent as a
+                  floating point value.
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>system</literal></term>
+              <listitem>
+                <para>
+                  The number of system CPU seconds the executed command spent as
+                  a floating point value.
+                </para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term><literal>output</literal></term>
+              <listitem>
+                <para>
+                  The output of the command as a single string. The content of the
+                  output reflects the use of the <literal>-pX</literal> option.
+                </para>
+              </listitem>
+            </varlistentry>
+          </variablelist>
+          <note>
+            <para>
+              If both variables are set for a target both are called, first <literal>__TIMING_RULE__</literal>
+              then <literal>__ACTION_RULE__</literal>.
+            </para>
+          </note>
+        </section>
+      </section>
+    </section>
+    <section id="jam.language.modules">
+      <title><link linkend="jam.language.modules">Modules</link></title>
+      <para>
+        Boost Jam introduces support for modules, which provide some rudimentary
+        namespace protection for rules and variables. A new keyword, &quot;<literal>module</literal>&quot;
+        was also introduced. The features described in this section are primitives,
+        meaning that they are meant to provide the operations needed to write Jam
+        rules which provide a more elegant module interface.
+      </para>
+      <section id="jam.language.modules.declaration">
+        <title><link linkend="jam.language.modules.declaration">Declaration</link></title>
+<programlisting>module <emphasis>expression</emphasis> { ... }
+</programlisting>
+        <para>
+          Code within the <literal>{ ... }</literal> executes within the module named
+          by evaluating expression. Rule definitions can be found in the module's
+          own namespace, and in the namespace of the global module as <emphasis>module-name</emphasis>.<emphasis>rule-name</emphasis>,
+          so within a module, other rules in that module may always be invoked without
+          qualification:
+        </para>
+<programlisting><emphasis role="bold">module my_module</emphasis>
+<emphasis role="bold">{</emphasis>
+    rule salute ( x ) { ECHO $(x), world ; }
+    rule greet ( ) { salute hello ; }
+    greet ;
+<emphasis role="bold">}</emphasis>
+<emphasis role="bold">my_module.salute</emphasis> goodbye ;
+</programlisting>
+        <para>
+          When an invoked rule is not found in the current module's namespace, it
+          is looked up in the namespace of the global module, so qualified calls
+          work across modules:
+        </para>
+<programlisting>module your_module
+{
+    rule bedtime ( ) { <emphasis role="bold">my_module.salute</emphasis> goodnight ; }
+}
+</programlisting>
+      </section>
+      <section id="jam.language.modules.variable_scope">
+        <title><link linkend="jam.language.modules.variable_scope">Variable Scope</link></title>
+        <para>
+          Each module has its own set of dynamically nested variable scopes. When
+          execution passes from module A to module B, all the variable bindings from
+          A become unavailable, and are replaced by the bindings that belong to B.
+          This applies equally to local and global variables:
+        </para>
+<programlisting>module A
+{
+    x = 1 ;
+    rule f ( )
+    {
+        local y = 999 ; # becomes visible again when B.f calls A.g
+        B.f ;
+    }
+    rule g ( )
+    {
+        ECHO $(y) ;     # prints &quot;999&quot;
+    }
+}
+module B
+{
+    y = 2 ;
+    rule f ( )
+    {
+        ECHO $(y) ; # always prints &quot;2&quot;
+        A.g ;
+    }
+}
+</programlisting>
+        <para>
+          The only way to access another module's variables is by entering that module:
+        </para>
+<programlisting>rule peek ( module-name ? : variables + )
+{
+    module $(module-name)
+    {
+        return $($(&gt;)) ;
+    }
+}
+</programlisting>
+        <para>
+          Note that because existing variable bindings change whenever a new module
+          scope is entered, argument bindings become unavailable. That explains the
+          use of &quot;<literal>$(&gt;)</literal>&quot; in the peek rule above.
+        </para>
+      </section>
+      <section id="jam.language.modules.local_rules">
+        <title><link linkend="jam.language.modules.local_rules">Local Rules</link></title>
+<programlisting>local rule <emphasis>rulename</emphasis>...
+</programlisting>
+        <para>
+          The rule is declared locally to the current module. It is not entered in
+          the global module with qualification, and its name will not appear in the
+          result of:
+        </para>
+<programlisting>[ RULENAMES <emphasis>module-name</emphasis> ]
+</programlisting>
+      </section>
+      <section id="jam.language.modules.the__rulenames__rule">
+        <title><link linkend="jam.language.modules.the__rulenames__rule">The <literal>RULENAMES</literal>
+        Rule</link></title>
+<programlisting>rule RULENAMES ( <emphasis>module</emphasis> ? )
+</programlisting>
+        <para>
+          Returns a list of the names of all non-local rules in the given module.
+          If <emphasis>module</emphasis> is omitted, the names of all non-local rules
+          in the global module are returned.
+        </para>
+      </section>
+      <section id="jam.language.modules.the__varnames__rule">
+        <title><link linkend="jam.language.modules.the__varnames__rule">The <literal>VARNAMES</literal>
+        Rule</link></title>
+<programlisting>rule VARNAMES ( <emphasis>module</emphasis> ? )
+</programlisting>
+        <para>
+          Returns a list of the names of all variable bindings in the given module.
+          If <emphasis>module</emphasis> is omitted, the names of all variable bindings
+          in the global module are returned.
+        </para>
+        <note>
+          <para>
+            This includes any local variables in rules from the call stack which
+            have not returned at the time of the <literal>VARNAMES</literal> invocation.
+          </para>
+        </note>
+      </section>
+      <section id="jam.language.modules.the__import__rule">
+        <title><link linkend="jam.language.modules.the__import__rule">The <literal>IMPORT</literal>
+        Rule</link></title>
+        <para>
+          <literal>IMPORT</literal> allows rule name aliasing across modules:
+        </para>
+<programlisting>rule IMPORT ( <emphasis>source_module</emphasis> ? : <emphasis>source_rules</emphasis> *
+            : <emphasis>target_module</emphasis> ? : <emphasis>target_rules</emphasis> * )
+</programlisting>
+        <para>
+          The <literal>IMPORT</literal> rule copies rules from the <emphasis>source_module</emphasis>
+          into the <emphasis>target_module</emphasis> as local rules. If either
+          <emphasis>source_module</emphasis> or <emphasis>target_module</emphasis>
+          is not supplied, it refers to the global module. <emphasis>source_rules</emphasis>
+          specifies which rules from the <emphasis>source_module</emphasis> to import;
+          <emphasis>target_rules</emphasis> specifies the names to give those rules
+          in <emphasis>target_module</emphasis>. If <emphasis>source_rules</emphasis>
+          contains a name which doesn't correspond to a rule in <emphasis>source_module</emphasis>,
+          or if it contains a different number of items than <emphasis>target_rules</emphasis>,
+          an error is issued. For example,
+        </para>
+<programlisting># import m1.rule1 into m2 as local rule m1-rule1.
+IMPORT m1 : rule1 : m2 : m1-rule1 ;
+# import all non-local rules from m1 into m2
+IMPORT m1 : [ RULENAMES m1 ] : m2 : [ RULENAMES m1 ] ;
+</programlisting>
+      </section>
+      <section id="jam.language.modules.the__export__rule">
+        <title><link linkend="jam.language.modules.the__export__rule">The <literal>EXPORT</literal>
+        Rule</link></title>
+        <para>
+          <literal>EXPORT</literal> allows rule name aliasing across modules:
+        </para>
+<programlisting>rule EXPORT ( <emphasis>module</emphasis> ? : <emphasis>rules</emphasis> * )
+</programlisting>
+        <para>
+          The <literal>EXPORT</literal> rule marks <emphasis>rules</emphasis> from
+          the <literal>source_module</literal> as non-local (and thus exportable).
+          If an element of <emphasis>rules</emphasis> does not name a rule in <emphasis>module</emphasis>,
+          an error is issued. For example,
+        </para>
+<programlisting>module X {
+  local rule r { ECHO X.r ; }
+}
+IMPORT X : r : : r ; # error - r is local in X
+EXPORT X : r ;
+IMPORT X : r : : r ; # OK.
+</programlisting>
+      </section>
+      <section id="jam.language.modules.the__caller_module__rule">
+        <title><link linkend="jam.language.modules.the__caller_module__rule">The
+        <literal>CALLER_MODULE</literal> Rule</link></title>
+<programlisting>rule CALLER_MODULE ( <emphasis>levels</emphasis> ? )
+</programlisting>
+        <para>
+          <literal>CALLER_MODULE</literal> returns the name of the module scope enclosing
+          the call to its caller (if levels is supplied, it is interpreted as an
+          integer number of additional levels of call stack to traverse to locate
+          the module). If the scope belongs to the global module, or if no such module
+          exists, returns the empty list. For example, the following prints &quot;{Y}
+          {X}&quot;:
+        </para>
+<programlisting>module X {
+    rule get-caller { return [ CALLER_MODULE ] ; }
+    rule get-caller's-caller { return [ CALLER_MODULE 1 ] ; }
+    rule call-Y { return Y.call-X2 ; }
+}
+module Y {
+    rule call-X { return X.get-caller ; }
+    rule call-X2 { return X.get-caller's-caller ; }
+}
+callers = [ X.get-caller ] [ Y.call-X ] [ X.call-Y ] ;
+ECHO {$(callers)} ;
+</programlisting>
+      </section>
+      <section id="jam.language.modules.the__delete_module__rule">
+        <title><link linkend="jam.language.modules.the__delete_module__rule">The
+        <literal>DELETE_MODULE</literal> Rule</link></title>
+<programlisting>rule DELETE_MODULE ( <emphasis>module</emphasis> ? )
+</programlisting>
+        <para>
+          <literal>DELETE_MODULE</literal> removes all of the variable bindings and
+          otherwise-unreferenced rules from the given module (or the global module,
+          if no module is supplied), and returns their memory to the system.
+        </para>
+        <note>
+          <para>
+            Though it won't affect rules that are currently executing until they
+            complete, <literal>DELETE_MODULE</literal> should be used with extreme
+            care because it will wipe out any others and all variable (including
+            locals in that module) immediately. Because of the way dynamic binding
+            works, variables which are shadowed by locals will not be destroyed,
+            so the results can be really unpredictable.
+          </para>
+        </note>
+      </section>
+    </section>
+  </section>
+  <section id="jam.miscellaneous">
+    <title><link linkend="jam.miscellaneous">Miscellaneous</link></title>
+    <section id="jam.miscellaneous.diagnostics">
+      <title><link linkend="jam.miscellaneous.diagnostics">Diagnostics</link></title>
+      <para>
+        In addition to generic error messages, <literal>b2</literal> may emit one
+        of the following:
+      </para>
+<programlisting>warning: unknown rule X</programlisting>
+      <para>
+        A rule was invoked that has not been defined with an &quot;<literal>actions</literal>&quot;
+        or &quot;<literal>rule</literal>&quot; statement.
+      </para>
+<programlisting>using N temp target(s)</programlisting>
+      <para>
+        Targets marked as being temporary (but nonetheless present) have been found.
+      </para>
+<programlisting>updating N target(s)</programlisting>
+      <para>
+        Targets are out-of-date and will be updated.
+      </para>
+<programlisting>can't find N target(s)</programlisting>
+      <para>
+        Source files can't be found and there are no actions to create them.
+      </para>
+<programlisting>can't make N target(s)</programlisting>
+      <para>
+        Due to sources not being found, other targets cannot be made.
+      </para>
+<programlisting>warning: X depends on itself</programlisting>
+      <para>
+        A target depends on itself either directly or through its sources.
+      </para>
+<programlisting>don't know how to make X</programlisting>
+      <para>
+        A target is not present and no actions have been defined to create it.
+      </para>
+<programlisting>X skipped for lack of Y</programlisting>
+      <para>
+        A source failed to build, and thus a target cannot be built.
+      </para>
+<programlisting>warning: using independent target X</programlisting>
+      <para>
+        A target that is not a dependency of any other target is being referenced
+        with <literal>$(&lt;)</literal> or <literal>$(&gt;)</literal>.
+      </para>
+<programlisting>X removed</programlisting>
+      <para>
+        <literal>B2</literal> removed a partially built target after being interrupted.
+      </para>
+    </section>
+    <section id="jam.miscellaneous.bugs__limitations">
+      <title><link linkend="jam.miscellaneous.bugs__limitations">Bugs, Limitations</link></title>
+      <para>
+        For parallel building to be successful, the dependencies among files must
+        be properly spelled out, as targets tend to get built in a quickest-first
+        ordering. Also, beware of un-parallelizable commands that drop fixed-named
+        files into the current directory, like <literal>yacc(1)</literal> does.
+      </para>
+      <para>
+        A poorly set <literal>$(JAMSHELL)</literal> is likely to result in silent
+        failure.
+      </para>
+    </section>
+    <section id="jam.miscellaneous.fundamentals">
+      <title><link linkend="jam.miscellaneous.fundamentals">Fundamentals</link></title>
+      <para>
+        This section is derived from the official Jam documentation and from experience
+        using it and reading the Jambase rules. We repeat the information here mostly
+        because it is essential to understanding and using Jam, but is not consolidated
+        in a single place. Some of it is missing from the official documentation
+        altogether. We hope it will be useful to anyone wishing to become familiar
+        with Jam and the Boost build system.
+      </para>
+      <itemizedlist>
+        <listitem>
+          <simpara>
+            Jam &quot;<literal>rules</literal>&quot; are actually simple procedural
+            entities. Think of them as functions. Arguments are separated by colons.
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>
+            A Jam <emphasis role="bold">target</emphasis> is an abstract entity identified
+            by an arbitrary string. The build-in <literal>DEPENDS</literal> rule
+            creates a link in the dependency graph between the named targets.
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>
+            Note that the original Jam documentation for the built-in <literal>INCLUDES</literal>
+            rule is incorrect: <literal>INCLUDES <emphasis>targets1</emphasis> :
+            <emphasis>targets2</emphasis></literal> causes everything that depends
+            on a member of <emphasis>targets1</emphasis> to depend on all members
+            of <emphasis>targets2</emphasis>. It does this in an odd way, by tacking
+            <emphasis>targets2</emphasis> onto a special tail section in the dependency
+            list of everything in <emphasis>targets1</emphasis>. It seems to be OK
+            to create circular dependencies this way; in fact, it appears to be the
+            &quot;right thing to do&quot; when a single build action produces both
+            <emphasis>targets1</emphasis> and <emphasis>targets2</emphasis>.
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>
+            When a rule is invoked, if there are <literal>actions</literal> declared
+            with the same name as the rule, the actions are added to the updating
+            actions for the target identified by the rule's first argument. It is
+            actually possible to invoke an undeclared rule if corresponding actions
+            are declared: the rule is treated as empty.
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>
+            Targets (other than <literal>NOTFILE</literal> targets) are associated
+            with paths in the file system through a process called binding. Binding
+            is a process of searching for a file with the same name as the target
+            (sans grist), based on the settings of the target-specific <literal>SEARCH</literal>
+            and <literal>LOCATE</literal> variables.
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>
+            In addition to local and global variables, jam allows you to set a variable
+            <literal>on</literal> a target. Target-specific variable values can usually
+            not be read, and take effect only in the following contexts:
+            <itemizedlist>
+              <listitem>
+                <simpara>
+                  In updating actions, variable values are first looked up <literal>on</literal>
+                  the target named by the first argument (the target being updated).
+                  Because Jam builds its entire dependency tree before executing
+                  actions, Jam rules make target-specific variable settings as a
+                  way of supplying parameters to the corresponding actions.
+                </simpara>
+              </listitem>
+              <listitem>
+                <simpara>
+                  Binding is controlled <emphasis>entirely</emphasis> by the target-specific
+                  setting of the <literal>SEARCH</literal> and <literal>LOCATE</literal>
+                  variables, as described here.
+                </simpara>
+              </listitem>
+              <listitem>
+                <simpara>
+                  In the special rule used for header file scanning, variable values
+                  are first looked up <literal>on</literal> the target named by the
+                  rule's first argument (the source file being scanned).
+                </simpara>
+              </listitem>
+            </itemizedlist>
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>
+            The &quot;bound value&quot; of a variable is the path associated with
+            the target named by the variable. In build actions, the first two arguments
+            are automatically replaced with their bound values. Target-specific variables
+            can be selectively replaced by their bound values using the <literal>bind</literal>
+            action modifier.
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>
+            Note that the term &quot;binding&quot; as used in the Jam documentation
+            indicates a phase of processing that includes three sub-phases: <emphasis>binding</emphasis>
+            (yes!), update determination, and header file scanning. The repetition
+            of the term &quot;binding&quot; can lead to some confusion. In particular,
+            the Modifying Binding section in the Jam documentation should probably
+            be titled &quot;Modifying Update Determination&quot;.
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>
+            &quot;Grist&quot; is just a string prefix of the form &lt;<emphasis>characters</emphasis>&gt;.
+            It is used in Jam to create unique target names based on simpler names.
+            For example, the file name &quot;<literal>test.exe</literal>&quot; may
+            be used by targets in separate subprojects, or for the debug and release
+            variants of the &quot;same&quot; abstract target. Each distinct target
+            bound to a file called &quot;test.exe&quot; has its own unique grist
+            prefix. The Boost build system also takes full advantage of Jam's ability
+            to divide strings on grist boundaries, sometimes concatenating multiple
+            gristed elements at the beginning of a string. Grist is used instead
+            of identifying targets with absolute paths for two reasons:
+            <orderedlist>
+              <listitem>
+                <simpara>
+                  The location of targets cannot always be derived solely from what
+                  the user puts in a Jamfile, but sometimes depends also on the binding
+                  process. Some mechanism to distinctly identify targets with the
+                  same name is still needed.
+                </simpara>
+              </listitem>
+              <listitem>
+                <simpara>
+                  Grist allows us to use a uniform abstract identifier for each built
+                  target, regardless of target file location (as allowed by setting
+                  ALL_LOCATE_TARGET).
+                </simpara>
+              </listitem>
+            </orderedlist>
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>
+            When grist is extracted from a name with $(var:G), the result includes
+            the leading and trailing angle brackets. When grist is added to a name
+            with $(var:G=expr), existing grist is first stripped. Then, if expr is
+            non-empty, leading &lt;s and trailing &gt;s are added if necessary to
+            form an expression of the form &lt;expr2&gt;; &lt;expr2&gt; is then prepended.
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>
+            When Jam is invoked it imports all environment variable settings into
+            corresponding Jam variables, followed by all command-line (-s...) variable
+            settings. Variables whose name ends in PATH, Path, or path are split
+            into string lists on OS-specific path-list separator boundaries (e.g.
+            &quot;:&quot; for UNIX and &quot;;&quot; for Windows). All other variables
+            are split on space (&quot; &quot;) boundaries. Boost Jam modifies that
+            behavior by allowing variables to be quoted.
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>
+            A variable whose value is an empty list or which consists entirely of
+            empty strings has a negative logical value. Thus, for example, code like
+            the following allows a sensible non-empty default which can easily be
+            overridden by the user:
+<programlisting><phrase role="identifier">MESSAGE</phrase> <phrase role="special">?\=</phrase> <phrase role="identifier">starting</phrase> <phrase role="identifier">jam</phrase><phrase role="special">...</phrase> <phrase role="special">;</phrase>
+<phrase role="keyword">if</phrase> <phrase role="error">$</phrase><phrase role="special">(</phrase><phrase role="identifier">MESSAGE</phrase><phrase role="special">)</phrase> <phrase role="special">{</phrase> <phrase role="identifier">ECHO</phrase> <phrase role="identifier">The</phrase> <phrase role="identifier">message</phrase> <phrase role="identifier">is</phrase><phrase role="special">:</phrase> <phrase role="error">$</phrase><phrase role="special">(</phrase><phrase role="identifier">MESSAGE</phrase><phrase role="special">)</phrase> <phrase role="special">;</phrase> <phrase role="special">}</phrase>
+</programlisting>
+            If the user wants a specific message, he invokes jam with <literal>&quot;-sMESSAGE=message
+            text&quot;</literal>. If he wants no message, he invokes jam with <literal>-sMESSAGE=</literal>
+            and nothing at all is printed.
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>
+            The parsing of command line options in Jam can be rather unintuitive,
+            with regards to how other Unix programs accept options. There are two
+            variants accepted as valid for an option:
+            <orderedlist>
+              <listitem>
+                <simpara>
+                  <literal>-xvalue</literal>, and
+                </simpara>
+              </listitem>
+              <listitem>
+                <simpara>
+                  <literal>-x value</literal>.
+                </simpara>
+              </listitem>
+            </orderedlist>
+          </simpara>
+        </listitem>
+      </itemizedlist>
+    </section>
+  </section>
+  <section id="jam.history">
+    <title><link linkend="jam.history">History</link></title>
+    <variablelist>
+      <title></title>
+      <varlistentry>
+        <term>3.1.18</term>
+        <listitem>
+          <para>
+            After years of bjam developments.. This is going to be the last unbundled
+            release of the 3.1.x series. From this point forward bjam will only be
+            bundled as part of the larger Boost Build system. And hence will likely
+            change name at some point. As a side effect of this move people will
+            get more frequent release of bjam (or whatever it ends up being called).
+          </para>
+          <para>
+            <itemizedlist><listitem>New built-ins, MD5, SPLIT_BY_CHARACTERS, PRECIOUS, PAD, FILE_OPEN, and
+            UPDATE_NOW. -- <emphasis>Vladimir P.</emphasis> </listitem>
+    <listitem>Ensure all file descriptors
+            are closed when executing actions complete on *nix. -- <emphasis>Noel
+            B.</emphasis> </listitem>
+    <listitem>Fix warnings, patch from Mateusz Loskot. -- <emphasis>Vladimir
+            P.</emphasis> </listitem>
+    <listitem>Add KEEP_GOING var to programatically override the '-q'
+            option. -- <emphasis>Vladimir P.</emphasis> </listitem>
+    <listitem>Add more parameters, up to
+            19 from 9, to rule invocations. Patch from Jonathan Biggar. -- <emphasis>Vladimir
+            P.</emphasis> </listitem>
+    <listitem>Print failed command output even if the normally quite
+            '-d0' option. -- <emphasis>Vladimir P.</emphasis> </listitem>
+    <listitem>Build of bjam with
+            vc10, aka Visual Studio 2010. -- <emphasis>Vladimir P.</emphasis> </listitem>
+    <listitem>More
+            macros for detection of OSPLAT, patch from John W. Bito. -- <emphasis>Vladimir
+            P.</emphasis> </listitem>
+    <listitem>Add PARALLELISM var to programatically override the '-j'
+            option. -- <emphasis>Vladimir P.</emphasis> </listitem>
+    <listitem>Tweak doc building to allow
+            for PDF generation of docs. -- <emphasis>John M.</emphasis> </listitem>
+</itemizedlist>
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>3.1.17</term>
+        <listitem>
+          <para>
+            A year in the making this release has many stability improvements and
+            various performance improvements. And because of the efforts of Jurko
+            the code is considerably more readable!
+          </para>
+          <para>
+            <itemizedlist><listitem>Reflect the results of calling bjam from Python. -- <emphasis>Rene R.</emphasis>
+            </listitem>
+    <listitem>For building on Windows: Rework how arguments are parsed and tested to
+            fix handling of quoted arguments, options arguments, and arguments with
+            &quot;=&quot;. -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Try to work around at
+            least one compiler bug with GCC and variable aliasing that causes crashes
+            with hashing file cache entries. -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Add
+            -Wc,-fno-strict-aliasing for QCC/QNX to avoid the same aliasing crashes
+            as in the general GCC 4.x series (thanks to Niklas Angare for the fix).
+            -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>On Windows let the child bjam commands
+            inherit stdin, as some commands assume it's available. -- <emphasis>Rene
+            R.</emphasis> </listitem>
+    <listitem>On Windows don't limit bjam output to ASCII as some tools
+            output characters in extended character sets. -- <emphasis>Rene R.</emphasis>
+            </listitem>
+    <listitem>Isolate running of bjam tests to individual bjam instances to prevent
+            possible spillover errors from one test affecting another test. Separate
+            the bjam used to run the tests vs. the bjam being tested. And add automatic
+            re-building of the bjam being tested. -- <emphasis>Rene R.</emphasis>
+            </listitem>
+    <listitem>Fix some possible overrun issues revealed by Fortify build. Thanks to
+            Steven Robbins for pointing out the issues. -- <emphasis>Rene R.</emphasis>
+            </listitem>
+    <listitem>Handle \n and \r escape sequences. -- <emphasis>Vladimir P.</emphasis>
+            </listitem>
+    <listitem>Minor edits to remove -Wall warnings. -- <emphasis>Rene R.</emphasis>
+            </listitem>
+    <listitem>Dynamically adjust pwd buffer query size to allow for when PATH_MAX is
+            default defined instead of being provided by the system C library. --
+            <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Minor perf improvement for bjam by replacing
+            hash function with faster version. Only 1% diff for Boost tree. -- <emphasis>Rene
+            R.</emphasis> </listitem>
+    <listitem>Updated Boost Jam's error location reporting when parsing
+            Jamfiles. Now it reports the correct error location information when
+            encountering an unexpected EOF. It now also reports where an invalid
+            lexical token being read started instead of finished which makes it much
+            easier to find errors like unclosed quotes or curly braces. -- <emphasis>Jurko
+            G.</emphasis> </listitem>
+    <listitem>Removed the -xarch=generic architecture from build.jam
+            as this option is unknown so the Sun compilers on Linux. -- <emphasis>Noel
+            B.</emphasis> </listitem>
+    <listitem>Fixed a bug with T_FATE_ISTMP getting reported as T_FATE_ISTMP
+            &amp; T_FATE_NEEDTMP at the same time due to a missing break in a switch
+            statement. -- <emphasis>Jurko G.</emphasis> </listitem>
+    <listitem>Fixed a Boost Jam bug causing
+            it to sometimes trigger actions depending on targets that have not been
+            built yet. -- <emphasis>Jurko G.</emphasis> </listitem>
+    <listitem>Added missing documentation
+            for Boost Jam's :T variable expansion modifier which converts all back-slashes
+            ('\') to forward slashed ('/'). -- <emphasis>Jurko G.</emphasis> </listitem>
+    <listitem>Added
+            Boost Jam support for executing command lines longer than 2047 characters
+            (up to 8191) characters when running on Windows XP or later OS version.
+            -- <emphasis>Jurko G.</emphasis> </listitem>
+    <listitem>Fixed a Boost Jam bug on Windows causing
+            its SHELL command not to work correctly with some commands containing
+            quotes. -- <emphasis>Jurko G.</emphasis> </listitem>
+    <listitem>Corrected a potential memory
+            leak in Boost Jam's builtin_shell() function that would appear should
+            Boost Jam ever start to release its allocated string objects. -- <emphasis>Jurko
+            G.</emphasis> </listitem>
+    <listitem>Made all Boost Jam's ECHO commands automatically flush
+            the standard output to make that output more promptly displayed to the
+            user. -- <emphasis>Jurko G.</emphasis> </listitem>
+    <listitem>Made Boost Jam tests quote their
+            bjam executable name when calling it allowing those executables to contain
+            spaces in their name and/or path. -- <emphasis>Jurko G.</emphasis> </listitem>
+    <listitem>Change
+            execunix.c to always use fork() instead of vfork() on the Mac. This works
+            around known issues with bjam on PPC under Tiger and a problem reported
+            by Rene with bjam on x86 under Leopard. -- <emphasis>Noel B.</emphasis>
+            </listitem>
+    <listitem>Corrected a bug in Boost Jam's base Jambase script causing it to trim
+            the error message displayed when its boost-build rule gets called multiple
+            times. -- <emphasis>Jurko G.</emphasis> </listitem>
+    <listitem>When importing from Python into
+            an module with empty string as name, import into root module. -- <emphasis>Vladimir
+            P.</emphasis> </listitem>
+    <listitem>Patch for the NORMALIZE_PATH builtin Boost Jam rule as
+            well as an appropriate update for the path.jam Boost Build module where
+            that rule was being used to implement path join and related operations.
+            -- <emphasis>Jurko G.</emphasis> </listitem>
+    <listitem>Fixed a bug causing Boost Jam not to
+            handle target file names specified as both short and long file names
+            correctly. -- <emphasis>Jurko G.</emphasis> </listitem>
+    <listitem>Relaxed test, ignoring case
+            of drive letter. -- <emphasis>Roland S.</emphasis> </listitem>
+    <listitem>Implemented a patch
+            contributed by Igor Nazarenko reimplementing the list_sort() function
+            to use a C qsort() function instead of a hand-crafted merge-sort algorithm.
+            Makes some list sortings (e.g. 1,2,1,2,1,2,1,2, ...) extremely faster,
+            in turn significantly speeding up some project builds. -- <emphasis>Jurko
+            G.</emphasis> </listitem>
+    <listitem>Fixed a bug with bjam not handling the '' root Windows
+            path correctly without its drive letter being specified. -- <emphasis>Jurko
+            G.</emphasis> </listitem>
+    <listitem>Solved the problem with child process returning the value
+            259 (Windows constant STILL_ACTIVE) causing bjam never to detect that
+            it exited and therefore keep running in an endless loop. -- <emphasis>Jurko
+            G.</emphasis> </listitem>
+    <listitem>Solved the problem with bjam going into an active wait
+            state, hogging up processor resources, when waiting for one of its child
+            processes to terminate while not all of its available child process slots
+            are being used. -- <emphasis>Jurko G.</emphasis> </listitem>
+    <listitem>Solved a race condition
+            between bjam's output reading/child process termination detection and
+            the child process's output generation/termination which could have caused
+            bjam not to collect the terminated process's final output. -- <emphasis>Jurko
+            G.</emphasis> </listitem>
+    <listitem>Change from vfork to fork for executing actions on Darwin
+            to improve stability. -- <emphasis>Noel B.</emphasis> </listitem>
+    <listitem>Code reformatting
+            and cleanups. -- <emphasis>Jurko G.</emphasis> </listitem>
+    <listitem>Implement ISFILE built-in.
+            -- <emphasis>Vladimir P.</emphasis> </listitem>
+</itemizedlist>
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>3.1.16</term>
+        <listitem>
+          <para>
+            This is mostly a bug fix release.
+          </para>
+          <para>
+            <itemizedlist><listitem>Work around some Windows CMD.EXE programs that will fail executing a
+            totally empty batch file. -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Add support
+            for detection and building with <literal>vc9</literal>. -- <emphasis>John
+            P.</emphasis> </listitem>
+    <listitem>Plug memory leak when closing out actions. Thanks to Martin
+            Kortmann for finding this. -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Various improvements
+            to <literal>__TIMING_RULE__</literal> and <literal>__ACTION_RULE__</literal>
+            target variable hooks. -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Change <literal>JAMDATE</literal>
+            to use common ISO date format. -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Add test
+            for result status values of simple actions, i.e. empty actions. -- <emphasis>Rene
+            R.</emphasis> </listitem>
+    <listitem>Fix buffer overrun bug in expanding <literal>@()</literal>
+            subexpressions. -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Check empty string invariants,
+            instead of assuming all strings are allocated. And reset strings when
+            they are freed. -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Add <literal>OSPLAT=PARISC</literal>
+            for HP-UX PA-RISC. -- <emphasis>Boris G.</emphasis> </listitem>
+    <listitem>Make quietly actions
+            really quiet by not printing the command output. The output for the quietly
+            actions is still available through <literal>__ACTION_RULE__</literal>.
+            -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Switch intel-win32 to use static multi
+            thread runtime since the single thread static runtime is no longer available.
+            -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>When setting <literal>OSPLAT</literal>,
+            check <literal>__ia64</literal> macro. -- <emphasis>Boris G.</emphasis>
+            </listitem>
+    <listitem>Get the unix timing working correctly. -- <emphasis>Noel B.</emphasis>
+            </listitem>
+    <listitem>Add <literal>-fno-strict-aliasing</literal> to compilation with gcc.
+            Which works around GCC-4.2 crash problems. -- <emphasis>Boris G.</emphasis>
+            </listitem>
+    <listitem>Increased support for Python integration. -- <emphasis>Vladimir P.</emphasis>,
+            <emphasis>Daniel W.</emphasis> </listitem>
+    <listitem>Allow specifying options with quotes,
+            i.e. <literal>--with-python=xyz</literal>, to work around the CMD shell
+            using <literal>=</literal> as an argument separator. -- <emphasis>Rene
+            R.</emphasis> </listitem>
+    <listitem>Add values of variables specified with -s to .EVNRION module,
+            so that we can override environment on command line. -- <emphasis>Vladimir
+            P.</emphasis> </listitem>
+    <listitem>Make NORMALIZE_PATH convert \ to /. -- <emphasis>Vladimir
+            P.</emphasis> </listitem>
+</itemizedlist>
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>3.1.15</term>
+        <listitem>
+          <para>
+            This release sees a variety of fixes for long standing Perforce/Jam problems.
+            Most of them relating to running actions in parallel with the -jN option.
+            The end result of the changes is that running parallel actions is now
+            reliably possible in Unix and Windows environments. Many thanks to Noel
+            for joining the effort, to implement and fix the Unix side of stuff.
+          </para>
+          <para>
+            <itemizedlist><listitem>Add support for building bjam with pgi and pathscale toolsets. -- <emphasis>Noel
+            B.</emphasis> </listitem>
+    <listitem>Implement running action commands through pipes (-p option)
+            to fix jumbled output when using parallel execution with -j option. This
+            is implemented for Unix variants, and Windows (Win32/NT). -- <emphasis>Rene
+            R.</emphasis>, <emphasis>Noel B.</emphasis> </listitem>
+    <listitem>Add &quot;sun&quot; as alias
+            to Sun Workshop compiler tools. -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Set MAXLINE
+            in jam.h to 23k bytes for AIX. The piecemeal archive action was broken
+            with the default MAXLINE of 102400. Because the AIX shell uses some of
+            the 24k default buffer size for its own use, I reduced it to 23k. --
+            <emphasis>Noel B.</emphasis> </listitem>
+    <listitem>Make use of output dir options of msvc to
+            not polute src dir with compiled files. -- <emphasis>Rene R.</emphasis>
+            </listitem>
+    <listitem>A small fix, so -d+2 will always show the &quot;real&quot; commands being
+            executed instead of casually the name of a temporary batch file. --
+            <emphasis>Roland S.</emphasis> </listitem>
+    <listitem>Add test to check 'bjam -n'. -- <emphasis>Rene
+            R.</emphasis> </listitem>
+    <listitem>Add test to check 'bjam -d2'. -- <emphasis>Rene R.</emphasis>
+            </listitem>
+    <listitem>Bring back missing output of -n option. The -o option continues to be
+            broken as it has been for a long time now because of the @ file feature.
+            -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Update GC support to work with Boehm
+            GC 7.0. -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Revert the BOOST_BUILD_PATH change,
+            since the directory passed to boost-build should be first in searched
+            paths, else project local build system will not be picked correctly.
+            The order had been changed to allow searching of alternate user-config.jam
+            files from boost build. This better should be done with --user-config=
+            switch or similar. -- <emphasis>Roland S.</emphasis> </listitem>
+    <listitem>Initial support
+            for defining action body from Python. -- <emphasis>Vladimir P.</emphasis>
+            </listitem>
+    <listitem>Implement @() expansion during parse phase. -- <emphasis>Rene R.</emphasis>
+            </listitem>
+    <listitem>Define OSPLAT var unconditionally, and more generically, when possible.
+            -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Fix undeclared INT_MAX on some platforms,
+            i.e. Linux. -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Modified execunix.c to add
+            support for terminating processes that consume too much cpu or that hang
+            and fail to consume cpu at all. This in support of the bjam -lx option.
+            -- <emphasis>Noel B.</emphasis> </listitem>
+    <listitem>Add internal dependencies for multi-file
+            generating actions to indicate that the targets all only appear when
+            the first target appears. This fixes the long standing problem Perforce/Jam
+            has with multi-file actions and parallel execution (-jN). -- <emphasis>Rene
+            R.</emphasis> </listitem>
+    <listitem>Add test of -l limit option now that it's implemented on
+            windows and unix. -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Add test for no-op
+            @() expansion. -- <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Handle invalid formats
+            of @() as doing a straight substitution instead of erroring out. --
+            <emphasis>Rene R.</emphasis> </listitem>
+    <listitem>Various fixes to compile on SGI/Irix. --
+            <emphasis>Noel B.</emphasis> </listitem>
+    <listitem>Add output for when actions timeout with
+            -lN option. -- <emphasis>Rene R.</emphasis>, <emphasis>Noel B.</emphasis>
+            </listitem>
+    <listitem>Add needed include (according to XOPEN) for definition of WIFEXITED and
+            WEXITSTATUS. -- <emphasis>Markus S.</emphasis> </listitem>
+</itemizedlist>
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </section>
+</article>

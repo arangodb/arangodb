@@ -1,0 +1,165 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::within::crossings_multiply</compoundname>
+    <includes local="no">point_in_poly_crossings_multiply.hpp</includes>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply_1_1flags" prot="private">boost::geometry::strategy::within::crossings_multiply::flags</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>typename PointOfSegment</type>
+        <defval>Point</defval>
+      </param>
+      <param>
+        <type>typename CalculationType</type>
+        <defval>void</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply_1a5397ca98b1a14dbcf8afef0f598d19e7" prot="private" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1select__calculation__type" kindref="compound">select_calculation_type</ref>&lt; Point, PointOfSegment, CalculationType &gt;::type</type>
+        <definition>typedef select_calculation_type&lt; Point, PointOfSegment, CalculationType &gt;::type boost::geometry::strategy::within::crossings_multiply&lt; Point, PointOfSegment, CalculationType &gt;::calculation_type</definition>
+        <argsstring></argsstring>
+        <name>calculation_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp" line="55" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp" bodystart="55" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply_1a72cd359388e1cea6499a18900385dd38" prot="public" static="no">
+        <type>Point</type>
+        <definition>typedef Point boost::geometry::strategy::within::crossings_multiply&lt; Point, PointOfSegment, CalculationType &gt;::point_type</definition>
+        <argsstring></argsstring>
+        <name>point_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp" line="76" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp" bodystart="76" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply_1aad3a9f46a956991dec6838f2c2151cc6" prot="public" static="no">
+        <type>PointOfSegment</type>
+        <definition>typedef PointOfSegment boost::geometry::strategy::within::crossings_multiply&lt; Point, PointOfSegment, CalculationType &gt;::segment_point_type</definition>
+        <argsstring></argsstring>
+        <name>segment_point_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp" line="77" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp" bodystart="77" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply_1ade2c3b8b8743c319723572e33552bc37" prot="public" static="no">
+        <type>flags</type>
+        <definition>typedef flags boost::geometry::strategy::within::crossings_multiply&lt; Point, PointOfSegment, CalculationType &gt;::state_type</definition>
+        <argsstring></argsstring>
+        <name>state_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp" line="78" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp" bodystart="78" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply_1a562e8ff2b4ce23220d6f3f8c6be221e5" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::within::crossings_multiply&lt; Point, PointOfSegment, CalculationType &gt;::apply</definition>
+        <argsstring>(Point const &amp;point, PointOfSegment const &amp;seg1, PointOfSegment const &amp;seg2, flags &amp;state)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>point</declname>
+        </param>
+        <param>
+          <type>PointOfSegment const &amp;</type>
+          <declname>seg1</declname>
+        </param>
+        <param>
+          <type>PointOfSegment const &amp;</type>
+          <declname>seg2</declname>
+        </param>
+        <param>
+          <type>flags &amp;</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp" line="80" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp" bodystart="80" bodyend="108"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply_1a3ca68274d48b1312b37dd88ad7e3b4b8" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>int</type>
+        <definition>static int boost::geometry::strategy::within::crossings_multiply&lt; Point, PointOfSegment, CalculationType &gt;::result</definition>
+        <argsstring>(flags const &amp;state)</argsstring>
+        <name>result</name>
+        <param>
+          <type>flags const &amp;</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp" line="110" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp" bodystart="110" bodyend="113"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Within detection using cross counting,. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>PointOfSegment</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>segment point type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CalculationType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numeric type for calculation (e.g. high precision); if [*void] then it is extracted automatically from the coordinate type and (if necessary) promoted to floating point </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="see"><para><ulink url="http://tog.acm.org/resources/GraphicsGems/gemsiv/ptpoly_haines/ptinpoly.c">http://tog.acm.org/resources/GraphicsGems/gemsiv/ptpoly_haines/ptinpoly.c</ulink> </para></simplesect>
+<simplesect kind="note"><para>Does NOT work correctly for point ON border  <qbk>
+[heading See also]
+[link geometry.reference.algorithms.within.within_3_with_strategy within (with strategy)]
+</qbk>  </para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp" line="49" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp" bodystart="48" bodyend="114"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply_1a562e8ff2b4ce23220d6f3f8c6be221e5" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::crossings_multiply</scope><name>apply</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply_1a5397ca98b1a14dbcf8afef0f598d19e7" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::within::crossings_multiply</scope><name>calculation_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply_1a72cd359388e1cea6499a18900385dd38" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::crossings_multiply</scope><name>point_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply_1a3ca68274d48b1312b37dd88ad7e3b4b8" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::crossings_multiply</scope><name>result</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply_1aad3a9f46a956991dec6838f2c2151cc6" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::crossings_multiply</scope><name>segment_point_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply_1ade2c3b8b8743c319723572e33552bc37" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::crossings_multiply</scope><name>state_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

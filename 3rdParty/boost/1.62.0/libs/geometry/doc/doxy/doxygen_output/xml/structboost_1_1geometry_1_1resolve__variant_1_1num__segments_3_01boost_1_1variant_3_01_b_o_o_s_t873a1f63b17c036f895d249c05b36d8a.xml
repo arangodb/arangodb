@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1num__segments_3_01boost_1_1variant_3_01_b_o_o_s_t873a1f63b17c036f895d249c05b36d8a" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::num_segments&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</compoundname>
+    <includes local="no">num_segments.hpp</includes>
+    <innerclass refid="structboost_1_1geometry_1_1resolve__variant_1_1num__segments_3_01boost_1_1variant_3_01_b_o_o_s_t7d97bd4c4eaf5376ce18b94ff966e644" prot="public">boost::geometry::resolve_variant::num_segments&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</innerclass>
+    <templateparamlist>
+      <param>
+        <type>BOOST_VARIANT_ENUM_PARAMS(typename T)</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1num__segments_3_01boost_1_1variant_3_01_b_o_o_s_t873a1f63b17c036f895d249c05b36d8a_1a116be03908847018c99c0b9f729c31b5" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>std::size_t</type>
+        <definition>static std::size_t boost::geometry::resolve_variant::num_segments&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::apply</definition>
+        <argsstring>(boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; const &amp;geometry)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_segments.hpp" line="173" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_segments.hpp" bodystart="173" bodyend="176"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_segments.hpp" line="162" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_segments.hpp" bodystart="161" bodyend="177"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1num__segments_3_01boost_1_1variant_3_01_b_o_o_s_t873a1f63b17c036f895d249c05b36d8a_1a116be03908847018c99c0b9f729c31b5" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::num_segments&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,6 +1,8 @@
 v3.1.8 (XXXX-XX-XX)
 -------------------
 
+* upgraded Boost version to 1.62.0
+
 * fixed issue #2238
 
 * fixed issue #2234

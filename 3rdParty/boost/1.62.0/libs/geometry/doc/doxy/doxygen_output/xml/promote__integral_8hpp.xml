@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="promote__integral_8hpp" kind="file">
+    <compoundname>promote_integral.hpp</compoundname>
+    <includes local="no">climits</includes>
+    <includes local="no">cstddef</includes>
+    <includes local="no">boost/mpl/begin.hpp</includes>
+    <includes local="no">boost/mpl/deref.hpp</includes>
+    <includes local="no">boost/mpl/end.hpp</includes>
+    <includes local="no">boost/mpl/if.hpp</includes>
+    <includes local="no">boost/mpl/list.hpp</includes>
+    <includes local="no">boost/mpl/next.hpp</includes>
+    <includes local="no">boost/mpl/size_t.hpp</includes>
+    <includes local="no">boost/type_traits/integral_constant.hpp</includes>
+    <includes local="no">boost/type_traits/is_fundamental.hpp</includes>
+    <includes local="no">boost/type_traits/is_integral.hpp</includes>
+    <includes local="no">boost/type_traits/is_unsigned.hpp</includes>
+    <incdepgraph>
+      <node id="65566">
+        <label>boost/mpl/list.hpp</label>
+      </node>
+      <node id="65565">
+        <label>boost/mpl/if.hpp</label>
+      </node>
+      <node id="65567">
+        <label>boost/mpl/next.hpp</label>
+      </node>
+      <node id="65569">
+        <label>boost/type_traits/integral_constant.hpp</label>
+      </node>
+      <node id="65568">
+        <label>boost/mpl/size_t.hpp</label>
+      </node>
+      <node id="65570">
+        <label>boost/type_traits/is_fundamental.hpp</label>
+      </node>
+      <node id="65563">
+        <label>boost/mpl/deref.hpp</label>
+      </node>
+      <node id="65559">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp</label>
+        <link refid="promote_integral.hpp"/>
+        <childnode refid="65560" relation="include">
+        </childnode>
+        <childnode refid="65561" relation="include">
+        </childnode>
+        <childnode refid="65562" relation="include">
+        </childnode>
+        <childnode refid="65563" relation="include">
+        </childnode>
+        <childnode refid="65564" relation="include">
+        </childnode>
+        <childnode refid="65565" relation="include">
+        </childnode>
+        <childnode refid="65566" relation="include">
+        </childnode>
+        <childnode refid="65567" relation="include">
+        </childnode>
+        <childnode refid="65568" relation="include">
+        </childnode>
+        <childnode refid="65569" relation="include">
+        </childnode>
+        <childnode refid="65570" relation="include">
+        </childnode>
+        <childnode refid="65571" relation="include">
+        </childnode>
+        <childnode refid="65572" relation="include">
+        </childnode>
+      </node>
+      <node id="65564">
+        <label>boost/mpl/end.hpp</label>
+      </node>
+      <node id="65572">
+        <label>boost/type_traits/is_unsigned.hpp</label>
+      </node>
+      <node id="65561">
+        <label>cstddef</label>
+      </node>
+      <node id="65571">
+        <label>boost/type_traits/is_integral.hpp</label>
+      </node>
+      <node id="65560">
+        <label>climits</label>
+      </node>
+      <node id="65562">
+        <label>boost/mpl/begin.hpp</label>
+      </node>
+    </incdepgraph>
+    <innerclass refid="classboost_1_1geometry_1_1promote__integral" prot="public">boost::geometry::promote_integral</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1promote__integral_3_01_t_00_01_promote_unsigned_to_unsigned_00_01_use_checked_integer_00_01false_01_4" prot="public">boost::geometry::promote_integral&lt; T, PromoteUnsignedToUnsigned, UseCheckedInteger, false &gt;</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+      <sectiondef kind="define">
+      <memberdef kind="define" id="promote__integral_8hpp_1a2685e80f329bdf252153effc41f56c6b" prot="public" static="no">
+        <name>BOOST_GEOMETRY_NO_MULTIPRECISION_INTEGER</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" line="15" column="9" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" bodystart="15" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp"/>
+  </compounddef>
+</doxygen>

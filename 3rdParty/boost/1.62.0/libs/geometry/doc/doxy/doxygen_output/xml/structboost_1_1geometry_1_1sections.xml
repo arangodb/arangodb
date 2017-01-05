@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1sections" kind="struct" prot="public">
+    <compoundname>boost::geometry::sections</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">std::vector&lt; section&lt; Box, DimensionCount &gt; &gt;</basecompoundref>
+    <includes local="no">sectionalize.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Box</type>
+      </param>
+      <param>
+        <type>std::size_t</type>
+        <declname>DimensionCount</declname>
+        <defname>DimensionCount</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1sections_1ab75cef526ac13c94ecf150df9121b311" prot="public" static="no">
+        <type>Box</type>
+        <definition>typedef Box boost::geometry::sections&lt; Box, DimensionCount &gt;::box_type</definition>
+        <argsstring></argsstring>
+        <name>box_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/sections/sectionalize.hpp" line="127" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/sections/sectionalize.hpp" bodystart="127" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1sections_1a5a2befb3be707a2b44278ae6dec59eb4" prot="public" static="yes" mutable="no">
+        <type>std::size_t const</type>
+        <definition>std::size_t const boost::geometry::sections&lt; Box, DimensionCount &gt;::value</definition>
+        <argsstring></argsstring>
+        <name>value</name>
+        <initializer>= DimensionCount</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/sections/sectionalize.hpp" line="128" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/sections/sectionalize.hpp" bodystart="128" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Structure containing a collection of sections. </para>    </briefdescription>
+    <detaileddescription>
+<para><simplesect kind="note"><para>Derived from a vector, proves to be faster than of deque </para><simplesectsep/><para>vector might be templated in the future </para></simplesect>
+</para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="1265">
+        <label>boost::geometry::sections&lt; Box, DimensionCount &gt;</label>
+        <link refid="structboost_1_1geometry_1_1sections"/>
+        <childnode refid="1266" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1266">
+        <label>std::vector&lt; section&lt; Box, DimensionCount &gt; &gt;</label>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1269">
+        <label>T</label>
+      </node>
+      <node id="1267">
+        <label>boost::geometry::sections&lt; Box, DimensionCount &gt;</label>
+        <link refid="structboost_1_1geometry_1_1sections"/>
+        <childnode refid="1268" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1268">
+        <label>std::vector&lt; section&lt; Box, DimensionCount &gt; &gt;</label>
+        <childnode refid="1269" relation="usage">
+          <edgelabel>elements</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/sections/sectionalize.hpp" line="126" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/sections/sectionalize.hpp" bodystart="125" bodyend="129"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1sections_1ab75cef526ac13c94ecf150df9121b311" prot="public" virt="non-virtual"><scope>boost::geometry::sections</scope><name>box_type</name></member>
+      <member refid="classstd_1_1vector_1a2396209900e8f592db1f0b2467f7d899" prot="public" virt="non-virtual"><scope>boost::geometry::sections</scope><name>elements</name></member>
+      <member refid="structboost_1_1geometry_1_1sections_1a5a2befb3be707a2b44278ae6dec59eb4" prot="public" virt="non-virtual"><scope>boost::geometry::sections</scope><name>value</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1concepts_1_1_segment_intersect_strategy" kind="class" prot="public">
+    <compoundname>boost::geometry::concepts::SegmentIntersectStrategy</compoundname>
+    <includes local="no">segment_intersect_concept.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Strategy</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Checks strategy for segment intersection. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/concepts/segment_intersect_concept.hpp" line="33" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/concepts/segment_intersect_concept.hpp" bodystart="32" bodyend="72"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

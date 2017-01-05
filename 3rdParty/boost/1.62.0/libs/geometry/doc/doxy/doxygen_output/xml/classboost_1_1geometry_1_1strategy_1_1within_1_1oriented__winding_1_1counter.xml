@@ -1,0 +1,151 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter" kind="class" prot="private">
+    <compoundname>boost::geometry::strategy::within::oriented_winding::counter</compoundname>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1aad4315dd006aaecb41bc54bb721a45ac" prot="private" static="no" mutable="no">
+        <type>int</type>
+        <definition>int boost::geometry::strategy::within::oriented_winding&lt; Reverse, Point, PointOfSegment, CalculationType &gt;::counter::m_count</definition>
+        <argsstring></argsstring>
+        <name>m_count</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" line="74" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" bodystart="74" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1abe7fde60dc382a1b678ce4de9e1827de" prot="private" static="no" mutable="no">
+        <type>calculation_type</type>
+        <definition>calculation_type boost::geometry::strategy::within::oriented_winding&lt; Reverse, Point, PointOfSegment, CalculationType &gt;::counter::m_sum_area</definition>
+        <argsstring></argsstring>
+        <name>m_sum_area</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" line="76" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" bodystart="76" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1a8e1868b2809e7f78af904166d983aa55" prot="private" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool boost::geometry::strategy::within::oriented_winding&lt; Reverse, Point, PointOfSegment, CalculationType &gt;::counter::m_touches</definition>
+        <argsstring></argsstring>
+        <name>m_touches</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" line="75" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" bodystart="75" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="friend">
+      <memberdef kind="friend" id="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1ad290e264ff996bdbb43bc4ef025ede9f" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>friend class</type>
+        <definition>friend class oriented_winding</definition>
+        <argsstring></argsstring>
+        <name>oriented_winding</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" line="94" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" bodystart="94" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1a3eeefb42a467b110ec8ead1df24b2850" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>int</type>
+        <definition>int boost::geometry::strategy::within::oriented_winding&lt; Reverse, Point, PointOfSegment, CalculationType &gt;::counter::clockwise_oriented_code</definition>
+        <argsstring>() const </argsstring>
+        <name>clockwise_oriented_code</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" line="82" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" bodystart="82" bodyend="85"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1a5be40f9b53df00f220ed20584246574f" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>int</type>
+        <definition>int boost::geometry::strategy::within::oriented_winding&lt; Reverse, Point, PointOfSegment, CalculationType &gt;::counter::code</definition>
+        <argsstring>() const </argsstring>
+        <name>code</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" line="78" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" bodystart="78" bodyend="81"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1af34d5a72298ad9d7841b0b48eccc496c" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>int</type>
+        <definition>int boost::geometry::strategy::within::oriented_winding&lt; Reverse, Point, PointOfSegment, CalculationType &gt;::counter::oriented_code</definition>
+        <argsstring>() const </argsstring>
+        <name>oriented_code</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" line="86" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" bodystart="86" bodyend="91"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1a370e7684801d40dda768d6102bdb2c3e" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::strategy::within::oriented_winding&lt; Reverse, Point, PointOfSegment, CalculationType &gt;::counter::add_to_area</definition>
+        <argsstring>(calculation_type triangle)</argsstring>
+        <name>add_to_area</name>
+        <param>
+          <type>calculation_type</type>
+          <declname>triangle</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" line="102" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" bodystart="102" bodyend="105"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1a0052f2b1461c9f392e6d34925d20ce18" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::within::oriented_winding&lt; Reverse, Point, PointOfSegment, CalculationType &gt;::counter::counter</definition>
+        <argsstring>()</argsstring>
+        <name>counter</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" line="96" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" bodystart="96" bodyend="100"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>subclass to keep state </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" line="73" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_oriented_winding.hpp" bodystart="72" bodyend="107"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1a370e7684801d40dda768d6102bdb2c3e" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::oriented_winding::counter</scope><name>add_to_area</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1a3eeefb42a467b110ec8ead1df24b2850" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::within::oriented_winding::counter</scope><name>clockwise_oriented_code</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1a5be40f9b53df00f220ed20584246574f" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::within::oriented_winding::counter</scope><name>code</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1a0052f2b1461c9f392e6d34925d20ce18" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::oriented_winding::counter</scope><name>counter</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1aad4315dd006aaecb41bc54bb721a45ac" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::within::oriented_winding::counter</scope><name>m_count</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1abe7fde60dc382a1b678ce4de9e1827de" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::within::oriented_winding::counter</scope><name>m_sum_area</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1a8e1868b2809e7f78af904166d983aa55" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::within::oriented_winding::counter</scope><name>m_touches</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1af34d5a72298ad9d7841b0b48eccc496c" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::within::oriented_winding::counter</scope><name>oriented_code</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1oriented__winding_1_1counter_1ad290e264ff996bdbb43bc4ef025ede9f" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::oriented_winding::counter</scope><name>oriented_winding</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

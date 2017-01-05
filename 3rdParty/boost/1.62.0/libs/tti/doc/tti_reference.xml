@@ -1,0 +1,474 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference id="reference"><title>Reference</title><header name="boost/tti/gen/has_data_gen.hpp">
+<macro name="BOOST_TTI_HAS_DATA_GEN" kind="functionlike"><macro-parameter name="name"/><purpose>Generates the macro metafunction name for BOOST_TTI_HAS_DATA. </purpose><description><para>name = the name of the member data.</para><para>returns = the generated macro metafunction name. </para></description></macro>
+</header>
+<header name="boost/tti/gen/has_function_gen.hpp">
+<macro name="BOOST_TTI_HAS_FUNCTION_GEN" kind="functionlike"><macro-parameter name="name"/><purpose>Generates the macro metafunction name for BOOST_TTI_HAS_FUNCTION. </purpose><description><para>name = the name of the static member function.</para><para>returns = the generated macro metafunction name. </para></description></macro>
+</header>
+<header name="boost/tti/gen/has_member_data_gen.hpp">
+<macro name="BOOST_TTI_HAS_MEMBER_DATA_GEN" kind="functionlike"><macro-parameter name="name"/><purpose>Generates the macro metafunction name for BOOST_TTI_HAS_MEMBER_DATA. </purpose><description><para>name = the name of the member data.</para><para>returns = the generated macro metafunction name. </para></description></macro>
+</header>
+<header name="boost/tti/gen/has_member_function_gen.hpp">
+<macro name="BOOST_TTI_HAS_MEMBER_FUNCTION_GEN" kind="functionlike"><macro-parameter name="name"/><purpose>Generates the macro metafunction name for BOOST_TTI_HAS_MEMBER_FUNCTION. </purpose><description><para>name = the name of the member function.</para><para>returns = the generated macro metafunction name. </para></description></macro>
+</header>
+<header name="boost/tti/gen/has_static_member_data_gen.hpp">
+<macro name="BOOST_TTI_HAS_STATIC_MEMBER_DATA_GEN" kind="functionlike"><macro-parameter name="name"/><purpose>Generates the macro metafunction name for BOOST_TTI_HAS_STATIC_MEMBER_DATA. </purpose><description><para>name = the name of the static member data.</para><para>returns = the generated macro metafunction name. </para></description></macro>
+</header>
+<header name="boost/tti/gen/has_static_member_function_gen.hpp">
+<macro name="BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION_GEN" kind="functionlike"><macro-parameter name="name"/><purpose>Generates the macro metafunction name for BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION. </purpose><description><para>name = the name of the static member function.</para><para>returns = the generated macro metafunction name. </para></description></macro>
+</header>
+<header name="boost/tti/gen/has_template_gen.hpp">
+<macro name="BOOST_TTI_HAS_TEMPLATE_GEN" kind="functionlike"><macro-parameter name="name"/><purpose>Generates the macro metafunction name for BOOST_TTI_HAS_TEMPLATE. </purpose><description><para>name = the name of the class template.</para><para>returns = the generated macro metafunction name. </para></description></macro>
+</header>
+<header name="boost/tti/gen/has_type_gen.hpp">
+<macro name="BOOST_TTI_HAS_TYPE_GEN" kind="functionlike"><macro-parameter name="name"/><purpose>Generates the macro metafunction name for BOOST_TTI_HAS_TYPE. </purpose><description><para>name = the name of the type.</para><para>returns = the generated macro metafunction name. </para></description></macro>
+</header>
+<header name="boost/tti/gen/member_type_gen.hpp">
+<macro name="BOOST_TTI_MEMBER_TYPE_GEN" kind="functionlike"><macro-parameter name="name"/><purpose>Generates the macro metafunction name for BOOST_TTI_MEMBER_TYPE. </purpose><description><para>name = the name of the inner type.</para><para>returns = the generated macro metafunction name. </para></description></macro>
+</header>
+<header name="boost/tti/gen/namespace_gen.hpp">
+<macro name="BOOST_TTI_NAMESPACE"><purpose>Generates the name of the Boost TTI namespace. </purpose><description><para>returns = the generated name of the Boost TTI namespace. </para></description></macro>
+</header>
+<header name="boost/tti/has_data.hpp">
+<macro name="BOOST_TTI_TRAIT_HAS_DATA" kind="functionlike"><macro-parameter name="trait"/><macro-parameter name="name"/><purpose>Expands to a metafunction which tests whether member data or static member with a particular name and type exists. </purpose><description><para>trait = the name of the metafunction.</para><para>name = the name of the inner member to introspect.</para><para>generates a metafunction called "trait" where 'trait' is the macro parameter.       template&lt;class BOOST_TTI_TP_T,class BOOST_TTI_TP_TYPE&gt;
+      struct trait
+        {
+        static const value = unspecified;
+        typedef mpl::bool_&lt;true-or-false&gt; type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_T    = the enclosing type in which to look for our 'name'
+
+        BOOST_TTI_TP_TYPE = The type of the member data or static member.
+
+        returns  = 'value' is true if the 'name' exists, with the correct data type,
+                   otherwise 'value' is false. </para></description></macro>
+<macro name="BOOST_TTI_HAS_DATA" kind="functionlike"><macro-parameter name="name"/><purpose>Expands to a metafunction which tests whether member data or static member data with a particular name and type exists. </purpose><description><para>name = the name of the inner member.</para><para>generates a metafunction called "has_data_name" where 'name' is the macro parameter.       template&lt;class BOOST_TTI_TP_T,class BOOST_TTI_TP_TYPE&gt;
+      struct has_data_name
+        {
+        static const value = unspecified;
+        typedef mpl::bool_&lt;true-or-false&gt; type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_T    = the enclosing type in which to look for our 'name'
+
+        BOOST_TTI_TP_TYPE = The type of the member data or static member.
+
+        returns  = 'value' is true if the 'name' exists, with the correct data type,
+                   otherwise 'value' is false. </para></description></macro>
+</header>
+<header name="boost/tti/has_function.hpp">
+<macro name="BOOST_TTI_TRAIT_HAS_FUNCTION" kind="functionlike"><macro-parameter name="trait"/><macro-parameter name="name"/><purpose>Expands to a metafunction which tests whether a member function or a static member function with a particular name and signature exists. </purpose><description><para>trait = the name of the metafunction within the tti namespace.</para><para>name = the name of the inner member.</para><para>generates a metafunction called "trait" where 'trait' is the macro parameter.       template&lt;class BOOST_TTI_TP_T,class BOOST_TTI_TP_R,class BOOST_TTI_TP_FS,class BOOST_TTI_TP_TAG&gt;
+      struct trait
+        {
+        static const value = unspecified;
+        typedef mpl::bool_&lt;true-or-false&gt; type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_T   = the enclosing type in which to look for our 'name'.
+
+        BOOST_TTI_TP_R   = the return type of the function
+
+        BOOST_TTI_TP_FS  = (optional) the parameters of the function as a boost::mpl forward sequence
+                  if function parameters are not empty.
+
+        BOOST_TTI_TP_TAG = (optional) a boost::function_types tag to apply to the function
+                  if the need for a tag exists.
+
+        returns = 'value' is true if the 'name' exists, 
+                  with the appropriate static member function type,
+                  otherwise 'value' is false. </para></description></macro>
+<macro name="BOOST_TTI_HAS_FUNCTION" kind="functionlike"><macro-parameter name="name"/><purpose>Expands to a metafunction which tests whether a member function or a static member function with a particular name and signature exists. </purpose><description><para>name = the name of the inner member.</para><para>generates a metafunction called "has_function_name" where 'name' is the macro parameter.       template&lt;class BOOST_TTI_TP_T,class BOOST_TTI_TP_R,class BOOST_TTI_TP_FS,class BOOST_TTI_TP_TAG&gt;
+      struct trait
+        {
+        static const value = unspecified;
+        typedef mpl::bool_&lt;true-or-false&gt; type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_T   = the enclosing type in which to look for our 'name'.
+
+        BOOST_TTI_TP_R   = the return type of the function
+
+        BOOST_TTI_TP_FS  = (optional) the parameters of the function as a boost::mpl forward sequence
+                  if function parameters are not empty.
+
+        BOOST_TTI_TP_TAG = (optional) a boost::function_types tag to apply to the function
+                  if the need for a tag exists.
+
+        returns = 'value' is true if the 'name' exists, 
+                  with the appropriate function type,
+                  otherwise 'value' is false. </para></description></macro>
+</header>
+<header name="boost/tti/has_member_data.hpp">
+<macro name="BOOST_TTI_TRAIT_HAS_MEMBER_DATA" kind="functionlike"><macro-parameter name="trait"/><macro-parameter name="name"/><purpose>Expands to a metafunction which tests whether a member data with a particular name and type exists. </purpose><description><para>trait = the name of the metafunction.</para><para>name = the name of the inner member to introspect.</para><para>generates a metafunction called "trait" where 'trait' is the macro parameter.       template&lt;class BOOST_TTI_TP_ET,class BOOST_TTI_TP_TYPE&gt;
+      struct trait
+        {
+        static const value = unspecified;
+        typedef mpl::bool_&lt;true-or-false&gt; type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_ET   = the enclosing type in which to look for our 'name'
+                                                 OR
+                            The type of the member data in the form of a pointer
+                            to member data.
+
+        BOOST_TTI_TP_TYPE = (optional) The type of the member data if the first
+                            parameter is the enclosing type.
+
+        returns  = 'value' is true if the 'name' exists, with the correct data type,
+                   otherwise 'value' is false. </para></description></macro>
+<macro name="BOOST_TTI_HAS_MEMBER_DATA" kind="functionlike"><macro-parameter name="name"/><purpose>Expands to a metafunction which tests whether a member data with a particular name and type exists. </purpose><description><para>name = the name of the inner member.</para><para>generates a metafunction called "has_member_data_name" where 'name' is the macro parameter.       template&lt;class BOOST_TTI_TP_ET,class BOOST_TTI_TP_TYPE&gt;
+      struct has_member_data_name
+        {
+        static const value = unspecified;
+        typedef mpl::bool_&lt;true-or-false&gt; type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_ET   = the enclosing type in which to look for our 'name'
+                                                 OR
+                            The type of the member data in the form of a pointer
+                            to member data.
+
+        BOOST_TTI_TP_TYPE = (optional) The type of the member data if the first
+                            parameter is the enclosing type.
+
+        returns  = 'value' is true if the 'name' exists, with the correct data type,
+                   otherwise 'value' is false. </para></description></macro>
+</header>
+<header name="boost/tti/has_member_function.hpp">
+<macro name="BOOST_TTI_TRAIT_HAS_MEMBER_FUNCTION" kind="functionlike"><macro-parameter name="trait"/><macro-parameter name="name"/><purpose>Expands to a metafunction which tests whether a member function with a particular name and signature exists. </purpose><description><para>trait = the name of the metafunction within the tti namespace.</para><para>name = the name of the inner member.</para><para>generates a metafunction called "trait" where 'trait' is the macro parameter.<sbr/>
+       template&lt;class BOOST_TTI_TP_T,class BOOST_TTI_R,class BOOST_TTI_FS,class BOOST_TTI_TAG&gt;
+      struct trait
+        {
+        static const value = unspecified;
+        typedef mpl::bool_&lt;true-or-false&gt; type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_T   = the enclosing type in which to look for our 'name'
+                                    OR
+                  a pointer to member function as a single type.
+
+        BOOST_TTI_TP_R   = (optional) the return type of the member function
+                  if the first parameter is the enclosing type.
+
+        BOOST_TTI_TP_FS  = (optional) the parameters of the member function as a boost::mpl forward sequence
+                  if the first parameter is the enclosing type and the member function parameters
+                  are not empty.
+
+        BOOST_TTI_TP_TAG = (optional) a boost::function_types tag to apply to the member function
+                  if the first parameter is the enclosing type and a tag is needed.
+
+        returns = 'value' is true if the 'name' exists, 
+                  with the appropriate member function type,
+                  otherwise 'value' is false. </para></description></macro>
+<macro name="BOOST_TTI_HAS_MEMBER_FUNCTION" kind="functionlike"><macro-parameter name="name"/><purpose>Expands to a metafunction which tests whether a member function with a particular name and signature exists. </purpose><description><para>name = the name of the inner member.</para><para>generates a metafunction called "has_member_function_name" where 'name' is the macro parameter.       template&lt;class BOOST_TTI_TP_T,class BOOST_TTI_TP_R,class BOOST_TTI_TP_FS,class BOOST_TTI_TP_TAG&gt;
+      struct has_member_function_name
+        {
+        static const value = unspecified;
+        typedef mpl::bool_&lt;true-or-false&gt; type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_T   = the enclosing type in which to look for our 'name'
+                                    OR
+                  a pointer to member function as a single type.
+
+        BOOST_TTI_TP_R   = (optional) the return type of the member function
+                  if the first parameter is the enclosing type.
+
+        BOOST_TTI_TP_FS  = (optional) the parameters of the member function as a boost::mpl forward sequence
+                  if the first parameter is the enclosing type and the member function parameters
+                  are not empty.
+
+        BOOST_TTI_TP_TAG = (optional) a boost::function_types tag to apply to the member function
+                  if the first parameter is the enclosing type and a tag is needed.
+
+        returns = 'value' is true if the 'name' exists, 
+                  with the appropriate member function type,
+                  otherwise 'value' is false. </para></description></macro>
+</header>
+<header name="boost/tti/has_static_member_data.hpp">
+<macro name="BOOST_TTI_TRAIT_HAS_STATIC_MEMBER_DATA" kind="functionlike"><macro-parameter name="trait"/><macro-parameter name="name"/><purpose>Expands to a metafunction which tests whether a static member data with a particular name and type exists. </purpose><description><para>trait = the name of the metafunction within the tti namespace.</para><para>name = the name of the inner member.</para><para>generates a metafunction called "trait" where 'trait' is the macro parameter.       The metafunction types and return:
+
+        BOOST_TTI_TP_T    = the enclosing type.
+
+        BOOST_TTI_TP_TYPE = the static member data type,
+                   in the form of a data type,
+                   in which to look for our 'name'.
+
+        returns = 'value' is true if the 'name' exists,
+                  with the BOOST_TTI_TP_TYPE type,
+                  within the enclosing BOOST_TTI_TP_T type,
+                  otherwise 'value' is false. </para></description></macro>
+<macro name="BOOST_TTI_HAS_STATIC_MEMBER_DATA" kind="functionlike"><macro-parameter name="name"/><purpose>Expands to a metafunction which tests whether a static member data with a particular name and type exists. </purpose><description><para>name = the name of the inner member.</para><para>generates a metafunction called "has_static_member_data_name" where 'name' is the macro parameter.       The metafunction types and return:
+
+        BOOST_TTI_TP_T    = the enclosing type.
+
+        BOOST_TTI_TP_TYPE = the static member data type,
+                   in the form of a data type,
+                   in which to look for our 'name'.
+
+        returns = 'value' is true if the 'name' exists,
+                  with the appropriate BOOST_TTI_TP_TYPE type,
+                  within the enclosing BOOST_TTI_TP_T type,
+                  otherwise 'value' is false. </para></description></macro>
+</header>
+<header name="boost/tti/has_static_member_function.hpp">
+<macro name="BOOST_TTI_TRAIT_HAS_STATIC_MEMBER_FUNCTION" kind="functionlike"><macro-parameter name="trait"/><macro-parameter name="name"/><purpose>Expands to a metafunction which tests whether a static member function with a particular name and signature exists. </purpose><description><para>trait = the name of the metafunction within the tti namespace.</para><para>name = the name of the inner member.</para><para>generates a metafunction called "trait" where 'trait' is the macro parameter.       template&lt;class BOOST_TTI_TP_T,class BOOST_TTI_TP_R,class BOOST_TTI_TP_FS,class BOOST_TTI_TP_TAG&gt;
+      struct trait
+        {
+        static const value = unspecified;
+        typedef mpl::bool_&lt;true-or-false&gt; type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_T   = the enclosing type in which to look for our 'name'.
+
+        BOOST_TTI_TP_R   = the return type of the static member function
+                               OR
+                  the signature of a function in the form of Return_Type ( Parameter_Types )
+
+        BOOST_TTI_TP_FS  = (optional) the parameters of the static member function as a boost::mpl forward sequence
+                  if the second parameter is a return type and the function parameters exist.
+
+        BOOST_TTI_TP_TAG = (optional) a boost::function_types tag to apply to the static member function
+                  if the second parameter is a return type and the need for a tag exists.
+
+        returns = 'value' is true if the 'name' exists, 
+                  with the appropriate static member function type,
+                  otherwise 'value' is false. </para></description></macro>
+<macro name="BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION" kind="functionlike"><macro-parameter name="name"/><purpose>Expands to a metafunction which tests whether a static member function with a particular name and signature exists. </purpose><description><para>name = the name of the inner member.</para><para>generates a metafunction called "has_static_member_function_name" where 'name' is the macro parameter.       template&lt;class BOOST_TTI_TP_T,class BOOST_TTI_TP_R,class BOOST_TTI_TP_FS,class BOOST_TTI_TP_TAG&gt;
+      struct trait
+        {
+        static const value = unspecified;
+        typedef mpl::bool_&lt;true-or-false&gt; type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_T   = the enclosing type in which to look for our 'name'.
+
+        BOOST_TTI_TP_R   = the return type of the static member function
+                               OR
+                  the signature of a function in the form of Return_Type ( Parameter_Types )
+
+        BOOST_TTI_TP_FS  = (optional) the parameters of the static member function as a boost::mpl forward sequence
+                  if the second parameter is a return type and the function parameters exist.
+
+        BOOST_TTI_TP_TAG = (optional) a boost::function_types tag to apply to the static member function
+                  if the second parameter is a return type and the need for a tag exists.
+
+        returns = 'value' is true if the 'name' exists, 
+                  with the appropriate static member function type,
+                  otherwise 'value' is false. </para></description></macro>
+</header>
+<header name="boost/tti/has_template.hpp">
+<macro name="BOOST_TTI_TRAIT_HAS_TEMPLATE" kind="functionlike"><macro-parameter name="trait"/><macro-parameter name="..."/><purpose>Expands to a metafunction which tests whether an inner class template with a particular name exists. </purpose><description><para>trait = the name of the metafunction. ... = variadic parameters.     The first variadic parameter is the inner class template name.
+
+    Following variadic parameters are optional.
+
+    If no following variadic parameters exist, then the inner class template 
+    being introspected must be all template type parameters ( template parameters 
+    starting with `class` or `typename` ) and any number of template type parameters
+    can occur.
+
+    If the second variadic parameter is BOOST_PP_NIL and no other variadic 
+    parameter is given, then just as in the previous case the inner class template 
+    being introspected must be all template type parameters ( template parameters 
+    starting with `class` or `typename` ) and any number of template type parameters
+    can occur. This form is allowed in order to be consistent with using the 
+    non-variadic form of this macro.
+
+    If the second variadic parameter is a Boost preprocessor library array and no other 
+    variadic parameter is given, then the inner class template must have its template 
+    parameters matching the sequence in the tuple portion of the Boost PP array. This 
+    form is allowed in order to be consistent with using the non-variadic form of this 
+    macro.
+
+    Otherwise the inner class template must have its template parameters matching the 
+    sequence of the optional variadic parameters.
+</para><para>generates a metafunction called "trait" where 'trait' is the first macro parameter.       template&lt;class BOOST_TTI_TP_T&gt;
+      struct trait
+        {
+        static const value = unspecified;
+        typedef mpl::bool_&lt;true-or-false&gt; type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_T = the enclosing type in which to look for our 'name'.
+
+        returns = 'value' is true if the 'name' template exists within the enclosing type,
+                  otherwise 'value' is false.
+</para><para>Examples:</para><para>1) Search for an inner class template called 'MyTemplate', with all template type parameters, nested within the class 'MyClass' using a metafunction name of 'MyMeta'.</para><para>BOOST_TTI_TRAIT_HAS_TEMPLATE(MyMeta,MyTemplate)</para><para>or</para><para>BOOST_TTI_TRAIT_HAS_TEMPLATE(MyMeta,MyTemplate,BOOST_PP_NIL) // Non-variadic macro form</para><para>MyMeta&lt;MyClass&gt;::value</para><para>is a compile time boolean constant which is either 'true' or 'false' if the nested template exists.</para><para>2) Search for an inner class template called 'MyTemplate', with template parameters of 'class T,int x,template&lt;class&gt; class U', nested within the class 'MyClass' using a metafunction name of 'MyMeta'.</para><para>BOOST_TTI_TRAIT_HAS_TEMPLATE(MyMeta,MyTemplate,class,int,template&lt;class&gt; class)</para><para>or</para><para>BOOST_TTI_TRAIT_HAS_TEMPLATE(MyMeta,MyTemplate,(3,(class,int,template&lt;class&gt; class))) // Non-variadic macro form</para><para>MyMeta&lt;MyClass&gt;::value</para><para>is a compile time boolean constant which is either 'true' or 'false' if the nested template exists. </para></description></macro>
+<macro name="BOOST_TTI_HAS_TEMPLATE" kind="functionlike"><macro-parameter name="..."/><purpose>Expands to a metafunction which tests whether an inner class template with a particular name exists. </purpose><description><para>... = variadic parameters.     The first variadic parameter is the inner class template name.
+
+    Following variadic parameters are optional.
+
+    If no following variadic parameters exist, then the inner class template 
+    being introspected must be all template type parameters ( template parameters 
+    starting with `class` or `typename` ) and any number of template type parameters
+    can occur.
+
+    If the second variadic parameter is BOOST_PP_NIL and no other variadic 
+    parameter is given, then just as in the previous case the inner class template 
+    being introspected must be all template type parameters ( template parameters 
+    starting with `class` or `typename` ) and any number of template type parameters
+    can occur. This form is allowed in order to be consistent with using the 
+    non-variadic form of this macro.
+
+    If the second variadic parameter is a Boost preprocessor library array and no other 
+    variadic parameter is given, then the inner class template must have its template 
+    parameters matching the sequence in the tuple portion of the Boost PP array. This 
+    form is allowed in order to be consistent with using the non-variadic form of this 
+    macro.
+
+    Otherwise the inner class template must have its template parameters matching the 
+    sequence of the optional variadic parameters.
+</para><para>generates a metafunction called "has_template_'name'" where 'name' is the first variadic parameter.       template&lt;class BOOST_TTI_TP_T&gt;
+      struct has_template_'name'
+        {
+        static const value = unspecified;
+        typedef mpl::bool_&lt;true-or-false&gt; type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_T = the enclosing type in which to look for our 'name'.
+
+        returns = 'value' is true if the 'name' template exists within the enclosing type,
+                  otherwise 'value' is false.
+</para><para>Examples:</para><para>1) Search for an inner class template called 'MyTemplate', with all template type parameters, nested within the class 'MyClass'.</para><para>BOOST_TTI_HAS_TEMPLATE(MyTemplate)</para><para>or</para><para>BOOST_TTI_HAS_TEMPLATE(MyTemplate,BOOST_PP_NIL) // Non-variadic macro form</para><para>has_template_MyTemplate&lt;MyClass&gt;::value</para><para>is a compile time boolean constant which is either 'true' or 'false' if the nested template exists.</para><para>2) Search for an inner class template called 'MyTemplate' with template parameters of 'class T,int x,template&lt;class&gt; class U' nested within the class 'MyClass'.</para><para>BOOST_TTI_HAS_TEMPLATE(MyTemplate,class,int,template&lt;class&gt; class)</para><para>or</para><para>BOOST_TTI_HAS_TEMPLATE(MyTemplate,(3,(class,int,template&lt;class&gt; class))) // Non-variadic macro form</para><para>has_template_MyTemplate&lt;MyClass&gt;::value</para><para>is a compile time boolean constant which is either 'true' or 'false' if the nested template exists. </para></description></macro>
+</header>
+<header name="boost/tti/has_type.hpp">
+<macro name="BOOST_TTI_TRAIT_HAS_TYPE" kind="functionlike"><macro-parameter name="trait"/><macro-parameter name="name"/><description><para>BOOST_TTI_TRAIT_HAS_TYPE is a macro which expands to a metafunction. The metafunction tests whether an inner type with a particular name exists and, optionally, whether a lambda expression invoked with the inner type is true or not.</para><para>trait = the name of the metafunction within the tti namespace.</para><para>name = the name of the inner type.</para><para>generates a metafunction called "trait" where 'trait' is the macro parameter.       template&lt;class BOOST_TTI_TP_T,class BOOST_TTI_TP_U&gt;
+      struct trait
+        {
+        static const value = unspecified;
+        typedef mpl::bool_&lt;true-or-false&gt; type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_T = the enclosing type in which to look for our 'name'.
+
+        BOOST_TTI_TP_U = (optional) An optional template parameter, defaulting to a marker type.
+                           If specified it is an MPL lambda expression which is invoked 
+                           with the inner type found and must return a constant boolean 
+                           value.
+
+        returns = 'value' depends on whether or not the optional BOOST_TTI_TP_U is specified.
+
+                  If BOOST_TTI_TP_U is not specified, then 'value' is true if the 'name' type 
+                  exists within the enclosing type BOOST_TTI_TP_T; otherwise 'value' is false.
+
+                  If BOOST_TTI_TP_U is specified , then 'value' is true if the 'name' type exists 
+                  within the enclosing type BOOST_TTI_TP_T and the lambda expression as specified 
+                  by BOOST_TTI_TP_U, invoked by passing the actual inner type of 'name', returns 
+                  a 'value' of true; otherwise 'value' is false.
+
+                  The action taken with BOOST_TTI_TP_U occurs only when the 'name' type exists 
+                  within the enclosing type BOOST_TTI_TP_T.
+</para><para>Example usage:</para><para>BOOST_TTI_TRAIT_HAS_TYPE(LookFor,MyType) generates the metafunction LookFor in the current scope to look for an inner type called MyType.</para><para>LookFor&lt;EnclosingType&gt;::value is true if MyType is an inner type of EnclosingType, otherwise false.</para><para>LookFor&lt;EnclosingType,ALambdaExpression&gt;::value is true if MyType is an inner type of EnclosingType and invoking ALambdaExpression with the inner type returns a value of true, otherwise false.</para><para>A popular use of the optional MPL lambda expression is to check whether the type found is the same as another type, when the type found is a typedef. In that case our example would be:</para><para>LookFor&lt;EnclosingType,boost::is_same&lt;_,SomeOtherType&gt; &gt;::value is true if MyType is an inner type of EnclosingType and is the same type as SomeOtherType. </para></description></macro>
+<macro name="BOOST_TTI_HAS_TYPE" kind="functionlike"><macro-parameter name="name"/><description><para>BOOST_TTI_HAS_TYPE is a macro which expands to a metafunction. The metafunction tests whether an inner type with a particular name exists and, optionally, whether a lambda expression invoked with the inner type is true or not.</para><para>name = the name of the inner type.</para><para>generates a metafunction called "has_type_'name'" where 'name' is the macro parameter.       template&lt;class BOOST_TTI_TP_T,class BOOST_TTI_TP_U&gt;
+      struct has_type_'name'
+        {
+        static const value = unspecified;
+        typedef mpl::bool_&lt;true-or-false&gt; type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_T = the enclosing type in which to look for our 'name'.
+
+        BOOST_TTI_TP_U = (optional) An optional template parameter, defaulting to a marker type.
+                           If specified it is an MPL lambda expression which is invoked 
+                           with the inner type found and must return a constant boolean 
+                           value.
+
+        returns = 'value' depends on whether or not the optional BOOST_TTI_TP_U is specified.
+
+                  If BOOST_TTI_TP_U is not specified, then 'value' is true if the 'name' type 
+                  exists within the enclosing type BOOST_TTI_TP_T; otherwise 'value' is false.
+
+                  If BOOST_TTI_TP_U is specified , then 'value' is true if the 'name' type exists 
+                  within the enclosing type BOOST_TTI_TP_T and the lambda expression as specified 
+                  by BOOST_TTI_TP_U, invoked by passing the actual inner type of 'name', returns 
+                  a 'value' of true; otherwise 'value' is false.
+
+                  The action taken with BOOST_TTI_TP_U occurs only when the 'name' type exists 
+                  within the enclosing type BOOST_TTI_TP_T.
+</para><para>Example usage:</para><para>BOOST_TTI_HAS_TYPE(MyType) generates the metafunction has_type_MyType in the current scope to look for an inner type called MyType.</para><para>has_type_MyType&lt;EnclosingType&gt;::value is true if MyType is an inner type of EnclosingType, otherwise false.</para><para>has_type_MyType&lt;EnclosingType,ALambdaExpression&gt;::value is true if MyType is an inner type of EnclosingType and invoking ALambdaExpression with the inner type returns a value of true, otherwise false.</para><para>A popular use of the optional MPL lambda expression is to check whether the type found is the same as another type, when the type found is a typedef. In that case our example would be:</para><para>has_type_MyType&lt;EnclosingType,boost::is_same&lt;_,SomeOtherType&gt; &gt;::value is true if MyType is an inner type of EnclosingType and is the same type as SomeOtherType. </para></description></macro>
+</header>
+<header name="boost/tti/member_type.hpp">
+<namespace name="boost">
+<namespace name="tti">
+<struct name="valid_member_type"><template>
+      <template-type-parameter name="BOOST_TTI_TP_T"/>
+      <template-type-parameter name="BOOST_TTI_TP_MARKER_TYPE"><default>BOOST_TTI_NAMESPACE::detail::notype</default></template-type-parameter>
+    </template><inherit access="public">boost::mpl::not_&lt; boost::is_same&lt; BOOST_TTI_TP_T, BOOST_TTI_TP_MARKER_TYPE &gt; &gt;</inherit><purpose>A metafunction which checks whether the member 'type' returned from invoking the macro metafunction generated by BOOST_TTI_MEMBER_TYPE ( BOOST_TTI_TRAIT_MEMBER_TYPE ) is a valid type. </purpose><description><para>template&lt;class BOOST_TTI_TP_T,class BOOST_TTI_TP_MARKER_TYPE = boost::tti::detail::notype&gt; struct <classname alt="boost::tti::valid_member_type">valid_member_type</classname> { static const value = unspecified; typedef mpl::bool_&lt;true-or-false&gt; type; };</para><para>The metafunction types and return:</para><para>BOOST_TTI_TP_T = returned inner 'type' from invoking the macro metafunction generated by BOOST_TTI_MEMBER_TYPE ( BOOST_TTI_TRAIT_MEMBER_TYPE ). BOOST_TTI_TP_MARKER_TYPE = (optional) a type to use as the marker type. defaults to the internal boost::tti::detail::notype.</para><para>returns = 'value' is true if the type is valid, otherwise 'value' is false. A valid type means that the returned inner 'type' is not the marker type. </para></description></struct><struct name="valid_member_metafunction"><template>
+      <template-type-parameter name="TTI_METAFUNCTION"/>
+    </template><inherit access="public">boost::mpl::not_&lt; boost::is_same&lt; TTI_METAFUNCTION::type, TTI_METAFUNCTION::boost_tti_marker_type &gt; &gt;</inherit><purpose>A metafunction which checks whether the invoked macro metafunction generated by BOOST_TTI_MEMBER_TYPE ( BOOST_TTI_TRAIT_MEMBER_TYPE ) hold a valid type. </purpose><description><para>template&lt;class TTI_METAFUNCTION&gt; struct <classname alt="boost::tti::valid_member_metafunction">valid_member_metafunction</classname> { static const value = unspecified; typedef mpl::bool_&lt;true-or-false&gt; type; };</para><para>The metafunction types and return:</para><para>TTI_METAFUNCTION = The invoked macro metafunction generated by BOOST_TTI_MEMBER_TYPE ( BOOST_TTI_TRAIT_MEMBER_TYPE ).</para><para>returns = 'value' is true if the nested type of the invoked metafunction is valid, otherwise 'value' is false. A valid type means that the invoked metafunction's inner 'type' is not the marker type. </para></description></struct></namespace>
+</namespace>
+<macro name="BOOST_TTI_TRAIT_MEMBER_TYPE" kind="functionlike"><macro-parameter name="trait"/><macro-parameter name="name"/><purpose>Expands to a metafunction whose typedef 'type' is either the named type or a marker type. </purpose><description><para>trait = the name of the metafunction within the tti namespace.</para><para>name = the name of the inner type.</para><para>generates a metafunction called "trait" where 'trait' is the macro parameter.       template&lt;class BOOST_TTI_TP_T,class BOOST_TTI_TP_MARKER_TYPE = boost::tti::detail::notype&gt;
+      struct trait
+        {
+        typedef unspecified type;
+
+        typedef BOOST_TTI_TP_MARKER_TYPE boost_tti_marker_type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_T           = the enclosing type.
+        BOOST_TTI_TP_MARKER_TYPE = (optional) a type to use as the marker type.
+                          defaults to the internal boost::tti::detail::notype.
+
+        returns         = 'type' is the inner type of 'name' if the inner type exists
+                          within the enclosing type, else 'type' is a marker type.
+                          if the end-user does not specify a marker type then
+                          an internal boost::tti::detail::notype marker type is used.
+
+        The metafunction also encapsulates the type of the marker type as
+        a nested 'boost_tti_marker_type'.
+</para><para>The purpose of this macro is to encapsulate the 'name' type as the typedef 'type' of a metafunction, but only if it exists within the enclosing type. This allows for an evaluation of inner type existence, without generating a compiler error, which can be used by other metafunctions in this library. </para></description></macro>
+<macro name="BOOST_TTI_MEMBER_TYPE" kind="functionlike"><macro-parameter name="name"/><purpose>Expands to a metafunction whose typedef 'type' is either the named type or a marker type. </purpose><description><para>name = the name of the inner type.</para><para>generates a metafunction called "member_type_name" where 'name' is the macro parameter.       template&lt;class BOOST_TTI_TP_T,class BOOST_TTI_TP_MARKER_TYPE = boost::tti::detail::notype&gt;
+      struct member_type_name
+        {
+        typedef unspecified type;
+
+        typedef BOOST_TTI_TP_MARKER_TYPE boost_tti_marker_type;
+        };
+
+      The metafunction types and return:
+
+        BOOST_TTI_TP_T           = the enclosing type.
+        BOOST_TTI_TP_MARKER_TYPE = (optional) a type to use as the marker type.
+                          defaults to the internal boost::tti::detail::notype.
+
+        returns         = 'type' is the inner type of 'name' if the inner type exists
+                          within the enclosing type, else 'type' is a marker type.
+                          if the end-user does not specify a marker type then
+                          an internal boost::tti::detail::notype marker type is used.
+
+        The metafunction also encapsulates the type of the marker type as
+        a nested 'boost_tti_marker_type'.
+</para><para>The purpose of this macro is to encapsulate the 'name' type as the typedef 'type' of a metafunction, but only if it exists within the enclosing type. This allows for an evaluation of inner type existence, without generating a compiler error, which can be used by other metafunctions in this library. </para></description></macro>
+</header>
+</library-reference>

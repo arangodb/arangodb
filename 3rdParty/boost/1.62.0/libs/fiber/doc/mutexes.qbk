@@ -1,0 +1,349 @@
+[/
+  (C) Copyright 2007-8 Anthony Williams.
+  (C) Copyright 2013 Oliver Kowalke.
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:mutex_types Mutex Types]
+
+[class_heading mutex]
+
+        #include <boost/fiber/mutex.hpp>
+
+        namespace boost {
+        namespace fibers {
+        
+        class mutex {
+        public:
+            mutex();
+            ~mutex();
+        
+            mutex( mutex const& other) = delete;
+            mutex & operator=( mutex const& other) = delete;
+
+            void lock();
+            bool try_lock();
+            void unlock();
+        };
+
+        }}
+
+__mutex__ provides an exclusive-ownership mutex. At most one fiber can own the
+lock on a given instance of __mutex__ at any time. Multiple concurrent calls to
+__lock__, __try_lock__ and __unlock__ shall be permitted.
+
+Any fiber blocked in __lock__ is suspended until the owning fiber releases the
+lock by calling __unlock__.
+
+[member_heading mutex..lock]
+
+        void lock();
+
+[variablelist
+[[Precondition:] [The calling fiber doesn't own the mutex.]]
+[[Effects:] [The current fiber blocks until ownership can be obtained.]]
+[[Throws:] [`lock_error`]]
+[[Error Conditions:] [
+[*resource_deadlock_would_occur]: if `boost::this_fiber::get_id()` already owns the mutex.]]
+]
+
+[member_heading mutex..try_lock]
+
+            bool try_lock();
+
+[variablelist
+[[Precondition:] [The calling fiber doesn't own the mutex.]]
+[[Effects:] [Attempt to obtain ownership for the current fiber without
+blocking.]]
+[[Returns:] [`true` if ownership was obtained for the current fiber, `false`
+otherwise.]]
+[[Throws:] [`lock_error`]]
+[[Error Conditions:] [
+[*resource_deadlock_would_occur]: if `boost::this_fiber::get_id()` already owns the mutex.]]
+]
+
+[member_heading mutex..unlock]
+
+        void unlock();
+
+[variablelist
+[[Precondition:] [The current fiber owns `*this`.]]
+[[Effects:] [Releases a lock on `*this` by the current fiber.]]
+[[Throws:] [`lock_error`]]
+[[Error Conditions:] [
+[*operation_not_permitted]: if `boost::this_fiber::get_id()` does not own the mutex.]]
+]
+
+
+[class_heading timed_mutex]
+
+        #include <boost/fiber/timed_mutex.hpp>
+
+        namespace boost {
+        namespace fibers {
+
+        class timed_mutex {
+        public:
+            timed_mutex();
+            ~timed_mutex();
+
+            timed_mutex( timed_mutex const& other) = delete;
+            timed_mutex & operator=( timed_mutex const& other) = delete;
+
+            void lock();
+            bool try_lock();
+            void unlock();
+
+            template< typename Clock, typename Duration >
+            bool try_lock_until( std::chrono::time_point< Clock, Duration > const& timeout_time);
+            template< typename Rep, typename Period >
+            bool try_lock_for( std::chrono::duration< Rep, Period > const& timeout_duration);
+        };
+
+        }}
+
+__timed_mutex__ provides an exclusive-ownership mutex. At most one fiber can own
+the lock on a given instance of __timed_mutex__ at any time. Multiple concurrent
+calls to __lock__, __try_lock__, __try_lock_until__, __try_lock_for__ and
+__unlock__ shall be permitted.
+
+[member_heading timed_mutex..lock]
+
+        void lock();
+
+[variablelist
+[[Precondition:] [The calling fiber doesn't own the mutex.]]
+[[Effects:] [The current fiber blocks until ownership can be obtained.]]
+[[Throws:] [`lock_error`]]
+[[Error Conditions:] [
+[*resource_deadlock_would_occur]: if `boost::this_fiber::get_id()` already owns the mutex.]]
+]
+
+[member_heading timed_mutex..try_lock]
+
+        bool try_lock();
+
+[variablelist
+[[Precondition:] [The calling fiber doesn't own the mutex.]]
+[[Effects:] [Attempt to obtain ownership for the current fiber without
+blocking.]]
+[[Returns:] [`true` if ownership was obtained for the current fiber, `false`
+otherwise.]]
+[[Throws:] [`lock_error`]]
+[[Error Conditions:] [
+[*resource_deadlock_would_occur]: if `boost::this_fiber::get_id()` already owns the mutex.]]
+]
+
+[member_heading timed_mutex..unlock]
+
+        void unlock();
+
+[variablelist
+[[Precondition:] [The current fiber owns `*this`.]]
+[[Effects:] [Releases a lock on `*this` by the current fiber.]]
+[[Throws:] [`lock_error`]]
+[[Error Conditions:] [
+[*operation_not_permitted]: if `boost::this_fiber::get_id()` does not own the mutex.]]
+]
+
+[template_member_heading timed_mutex..try_lock_until]
+
+        template< typename Clock, typename Duration >
+        bool try_lock_until( std::chrono::time_point< Clock, Duration > const& timeout_time);
+
+[variablelist
+[[Precondition:] [The calling fiber doesn't own the mutex.]]
+[[Effects:] [Attempt to obtain ownership for the current fiber. Blocks until
+ownership can be obtained, or the specified time is reached. If the specified
+time has already passed, behaves as [member_link timed_mutex..try_lock].]]
+[[Returns:] [`true` if ownership was obtained for the current fiber, `false`
+otherwise.]]
+[[Throws:] [`lock_error`, timeout-related exceptions.]]
+[[Error Conditions:] [
+[*resource_deadlock_would_occur]: if `boost::this_fiber::get_id()` already owns the mutex.]]
+]
+
+[template_member_heading timed_mutex..try_lock_for]
+
+        template< typename Rep, typename Period >
+        bool try_lock_for( std::chrono::duration< Rep, Period > const& timeout_duration);
+
+[variablelist
+[[Precondition:] [The calling fiber doesn't own the mutex.]]
+[[Effects:] [Attempt to obtain ownership for the current fiber. Blocks until
+ownership can be obtained, or the specified time is reached. If the specified
+time has already passed, behaves as [member_link timed_mutex..try_lock].]]
+[[Returns:] [`true` if ownership was obtained for the current fiber, `false`
+otherwise.]]
+[[Throws:] [`lock_error`, timeout-related exceptions.]]
+[[Error Conditions:] [
+[*resource_deadlock_would_occur]: if `boost::this_fiber::get_id()` already owns the mutex.]]
+]
+
+
+[class_heading recursive_mutex]
+
+        #include <boost/fiber/recursive_mutex.hpp>
+
+        namespace boost {
+        namespace fibers {
+
+        class recursive_mutex {
+        public:
+            recursive_mutex();
+            ~recursive_mutex();
+
+            recursive_mutex( recursive_mutex const& other) = delete;
+            recursive_mutex & operator=( recursive_mutex const& other) = delete;
+
+            void lock();
+            bool try_lock() noexcept;
+            void unlock();
+        };
+
+        }}
+
+__recursive_mutex__ provides an exclusive-ownership recursive mutex. At most one
+fiber can own the lock on a given instance of __recursive_mutex__ at any time.
+Multiple concurrent calls to __lock__, __try_lock__ and __unlock__ shall be
+permitted. A fiber that already has exclusive ownership of a given
+__recursive_mutex__ instance can call __lock__ or __try_lock__ to acquire an
+additional level of ownership of the mutex. __unlock__ must be called once for
+each level of ownership acquired by a single fiber before ownership can be
+acquired by another fiber.
+
+[member_heading recursive_mutex..lock]
+
+        void lock();
+
+[variablelist
+[[Effects:] [The current fiber blocks until ownership can be obtained.]]
+[[Throws:] [Nothing]]
+]
+
+[member_heading recursive_mutex..try_lock]
+
+        bool try_lock() noexcept;
+
+[variablelist
+[[Effects:] [Attempt to obtain ownership for the current fiber without
+blocking.]]
+[[Returns:] [`true` if ownership was obtained for the current fiber, `false`
+otherwise.]]
+[[Throws:] [Nothing.]]
+]
+
+[member_heading recursive_mutex..unlock]
+
+        void unlock();
+
+[variablelist
+[[Effects:] [Releases a lock on `*this` by the current fiber.]]
+[[Throws:] [`lock_error`]]
+[[Error Conditions:] [
+[*operation_not_permitted]: if `boost::this_fiber::get_id()` does not own the mutex.]]
+]
+
+
+[class_heading recursive_timed_mutex]
+
+        #include <boost/fiber/recursive_timed_mutex.hpp>
+
+        namespace boost {
+        namespace fibers {
+
+        class recursive_timed_mutex {
+        public:
+            recursive_timed_mutex();
+            ~recursive_timed_mutex();
+
+            recursive_timed_mutex( recursive_timed_mutex const& other) = delete;
+            recursive_timed_mutex & operator=( recursive_timed_mutex const& other) = delete;
+
+            void lock();
+            bool try_lock() noexcept;
+            void unlock();
+
+            template< typename Clock, typename Duration >
+            bool try_lock_until( std::chrono::time_point< Clock, Duration > const& timeout_time);
+            template< typename Rep, typename Period >
+            bool try_lock_for( std::chrono::duration< Rep, Period > const& timeout_duration);
+        };
+
+        }}
+
+__recursive_timed_mutex__ provides an exclusive-ownership recursive mutex. At
+most one fiber can own the lock on a given instance of
+__recursive_timed_mutex__ at any time. Multiple concurrent calls to __lock__,
+__try_lock__, __try_lock_for__, __try_lock_until__ and __unlock__ shall be
+permitted. A fiber that already has exclusive ownership of a given
+__recursive_timed_mutex__ instance can call __lock__, __try_lock__,
+__try_lock_for__ or __try_lock_until__ to acquire an additional level of
+ownership of the mutex. __unlock__ must be called once for each level of
+ownership acquired by a single fiber before ownership can be acquired by another
+fiber.
+
+[member_heading recursive_timed_mutex..lock]
+
+        void lock();
+
+[variablelist
+[[Effects:] [The current fiber blocks until ownership can be obtained.]]
+[[Throws:] [Nothing]]
+]
+
+[member_heading recursive_timed_mutex..try_lock]
+
+        bool try_lock() noexcept;
+
+[variablelist
+[[Effects:] [Attempt to obtain ownership for the current fiber without
+blocking.]]
+[[Returns:] [`true` if ownership was obtained for the current fiber, `false`
+otherwise.]]
+[[Throws:] [Nothing.]]
+]
+
+[member_heading recursive_timed_mutex..unlock]
+
+        void unlock();
+
+[variablelist
+[[Effects:] [Releases a lock on `*this` by the current fiber.]]
+[[Throws:] [`lock_error`]]
+[[Error Conditions:] [
+[*operation_not_permitted]: if `boost::this_fiber::get_id()` does not own the mutex.]]
+]
+
+[template_member_heading recursive_timed_mutex..try_lock_until]
+
+        template< typename Clock, typename Duration >
+        bool try_lock_until( std::chrono::time_point< Clock, Duration > const& timeout_time);
+
+[variablelist
+[[Effects:] [Attempt to obtain ownership for the current fiber. Blocks until
+ownership can be obtained, or the specified time is reached. If the specified
+time has already passed, behaves as [member_link recursive_timed_mutex..try_lock].]]
+[[Returns:] [`true` if ownership was obtained for the current fiber, `false`
+otherwise.]]
+[[Throws:] [Timeout-related exceptions.]]
+]
+
+[template_member_heading recursive_timed_mutex..try_lock_for]
+
+        template< typename Rep, typename Period >
+        bool try_lock_for( std::chrono::duration< Rep, Period > const& timeout_duration);
+
+[variablelist
+[[Effects:] [Attempt to obtain ownership for the current fiber. Blocks until
+ownership can be obtained, or the specified time is reached. If the specified
+time has already passed, behaves as [member_link recursive_timed_mutex..try_lock].]]
+[[Returns:] [`true` if ownership was obtained for the current fiber, `false`
+otherwise.]]
+[[Throws:] [Timeout-related exceptions.]]
+]
+
+
+[endsect]

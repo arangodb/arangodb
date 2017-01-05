@@ -1,0 +1,195 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::area::huiller</compoundname>
+    <includes local="no">area_huiller.hpp</includes>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1_1excess__sum" prot="protected">boost::geometry::strategy::area::huiller::excess_sum</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename PointOfSegment</type>
+      </param>
+      <param>
+        <type>typename CalculationType</type>
+        <defval>void</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1a5e7d3f384d30d376865cf59c0b5dfbf1" prot="private" static="no">
+        <type>boost::mpl::if_c&lt; boost::is_void&lt; CalculationType &gt;::type::value, typename <ref refid="structboost_1_1geometry_1_1select__most__precise" kindref="compound">select_most_precise</ref>&lt; typename <ref refid="structboost_1_1geometry_1_1coordinate__type" kindref="compound">coordinate_type</ref>&lt; PointOfSegment &gt;::type, double &gt;::type, CalculationType &gt;::type</type>
+        <definition>typedef boost::mpl::if_c&lt; boost::is_void&lt;CalculationType&gt;::type::value, typename select_most_precise &lt; typename coordinate_type&lt;PointOfSegment&gt;::type, double &gt;::type, CalculationType &gt;::type boost::geometry::strategy::area::huiller&lt; PointOfSegment, CalculationType &gt;::calculation_type</definition>
+        <argsstring></argsstring>
+        <name>calculation_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" line="87" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" bodystart="87" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1afd6c4e54b9fb086eca7630b8f50eaf81" prot="public" static="no">
+        <type>calculation_type</type>
+        <definition>typedef calculation_type boost::geometry::strategy::area::huiller&lt; PointOfSegment, CalculationType &gt;::return_type</definition>
+        <argsstring></argsstring>
+        <name>return_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" line="109" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" bodystart="109" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1a2ec31243d35ffaebcf60e76046bd6b4a" prot="public" static="no">
+        <type>PointOfSegment</type>
+        <definition>typedef PointOfSegment boost::geometry::strategy::area::huiller&lt; PointOfSegment, CalculationType &gt;::segment_point_type</definition>
+        <argsstring></argsstring>
+        <name>segment_point_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" line="110" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" bodystart="110" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1a67222a1964b0458b34367fbfb23ae942" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1_1excess__sum" kindref="compound">excess_sum</ref></type>
+        <definition>typedef excess_sum boost::geometry::strategy::area::huiller&lt; PointOfSegment, CalculationType &gt;::state_type</definition>
+        <argsstring></argsstring>
+        <name>state_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" line="111" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" bodystart="111" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1a24e8d82d4f62fd3818f955275987cc97" prot="private" static="no" mutable="no">
+        <type>calculation_type</type>
+        <definition>calculation_type boost::geometry::strategy::area::huiller&lt; PointOfSegment, CalculationType &gt;::m_radius</definition>
+        <argsstring></argsstring>
+        <name>m_radius</name>
+        <briefdescription>
+<para>Radius of the sphere. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" line="180" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" bodystart="180" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1acc2ad98fa0ae1a6c32419f455c1aeb81" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::strategy::area::huiller&lt; PointOfSegment, CalculationType &gt;::apply</definition>
+        <argsstring>(PointOfSegment const &amp;p1, PointOfSegment const &amp;p2, excess_sum &amp;state) const </argsstring>
+        <name>apply</name>
+        <param>
+          <type>PointOfSegment const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>PointOfSegment const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1_1excess__sum" kindref="compound">excess_sum</ref> &amp;</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" line="117" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" bodystart="117" bodyend="171"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1a68d4bfec6da6c181cf1cf56faa134fda" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::area::huiller&lt; PointOfSegment, CalculationType &gt;::huiller</definition>
+        <argsstring>(calculation_type radius=1.0)</argsstring>
+        <name>huiller</name>
+        <param>
+          <type>calculation_type</type>
+          <declname>radius</declname>
+          <defval>1.0</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" line="113" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" bodystart="113" bodyend="115"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1ab5db2c52ce8b4cdcc504d07990d7c2b9" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1afd6c4e54b9fb086eca7630b8f50eaf81" kindref="member">return_type</ref></type>
+        <definition>return_type boost::geometry::strategy::area::huiller&lt; PointOfSegment, CalculationType &gt;::result</definition>
+        <argsstring>(excess_sum const &amp;state) const </argsstring>
+        <name>result</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1_1excess__sum" kindref="compound">excess_sum</ref> const &amp;</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" line="173" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" bodystart="173" bodyend="176"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Area calculation by spherical excess / Huiller&apos;s formula. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>PointOfSegment</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>point type of segments of rings/polygons </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CalculationType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numeric type for calculation (e.g. high precision); if [*void] then it is extracted automatically from the coordinate type and (if necessary) promoted to floating point </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="author"><para>Barend Gehrels. Adapted from:<itemizedlist>
+<listitem><para><ulink url="http://webdocs.cs.ualberta.ca/~graphics/books/GraphicsGems/gemsiv/sph_poly.c">http://webdocs.cs.ualberta.ca/~graphics/books/GraphicsGems/gemsiv/sph_poly.c</ulink></para></listitem><listitem><para><ulink url="http://tog.acm.org/resources/GraphicsGems/gemsiv/sph_poly.c">http://tog.acm.org/resources/GraphicsGems/gemsiv/sph_poly.c</ulink></para></listitem><listitem><para><ulink url="http://williams.best.vwh.net/avform.htm">http://williams.best.vwh.net/avform.htm</ulink> </para></listitem></itemizedlist>
+</para></simplesect>
+<simplesect kind="note"><para>The version in Graphics Gems IV (page 132-137) didn&apos;t account for polygons crossing the 0 and 180 meridians. The fix for this algorithm can be found in Graphics Gems V (pages 45-46). See:<itemizedlist>
+<listitem><para><ulink url="http://kysmykseka.net/koti/wizardry/Game%20Development/Programming/Graphics%20Gems%204.pdf">http://kysmykseka.net/koti/wizardry/Game%20Development/Programming/Graphics%20Gems%204.pdf</ulink></para></listitem><listitem><para><ulink url="http://kysmykseka.net/koti/wizardry/Game%20Development/Programming/Graphics%20Gems%205.pdf">http://kysmykseka.net/koti/wizardry/Game%20Development/Programming/Graphics%20Gems%205.pdf</ulink> </para></listitem></itemizedlist>
+</para><simplesectsep/><para>This version works for convex and non-convex polygons, for 180 meridian crossing polygons and for polygons with holes. However, some cases (especially 180 meridian cases) must still be checked. </para><simplesectsep/><para>The version which sums angles, which is often seen, doesn&apos;t handle non-convex polygons correctly. </para><simplesectsep/><para>The version which sums longitudes, see <ulink url="http://hdl.handle.net/2014/40409,">http://hdl.handle.net/2014/40409,</ulink> is simple and works well in most cases but not in 180 meridian crossing cases. This probably could be solved.</para><simplesectsep/><para>This version is made for spherical equatorial coordinate systems</para></simplesect>
+ <qbk>
+
+[heading Example]
+[area_with_strategy]
+[area_with_strategy_output]
+
+
+[heading See also]
+[link geometry.reference.algorithms.area.area_2_with_strategy area (with strategy)]
+</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" line="77" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" bodystart="76" bodyend="181"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1acc2ad98fa0ae1a6c32419f455c1aeb81" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::area::huiller</scope><name>apply</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1a5e7d3f384d30d376865cf59c0b5dfbf1" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::area::huiller</scope><name>calculation_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1a68d4bfec6da6c181cf1cf56faa134fda" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::area::huiller</scope><name>huiller</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1a24e8d82d4f62fd3818f955275987cc97" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::area::huiller</scope><name>m_radius</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1ab5db2c52ce8b4cdcc504d07990d7c2b9" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::area::huiller</scope><name>result</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1afd6c4e54b9fb086eca7630b8f50eaf81" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::area::huiller</scope><name>return_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1a2ec31243d35ffaebcf60e76046bd6b4a" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::area::huiller</scope><name>segment_point_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1a67222a1964b0458b34367fbfb23ae942" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::area::huiller</scope><name>state_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

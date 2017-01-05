@@ -1,0 +1,483 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="group__assign" kind="group">
+    <compoundname>assign</compoundname>
+    <title>assign: assign values to geometries</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__assign_1ga384744a79ea0798e6def3a5dfa577af3" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry1</type>
+          </param>
+          <param>
+            <type>typename Geometry2</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::assign</definition>
+        <argsstring>(Geometry1 &amp;geometry1, Geometry2 const &amp;geometry2)</argsstring>
+        <name>assign</name>
+        <param>
+          <type>Geometry1 &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <param>
+          <type>Geometry2 const &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <briefdescription>
+<para>Assigns one geometry to another geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para>The assign algorithm assigns one geometry, e.g. a BOX, to another geometry, e.g. a RING. This only works if it is possible and applicable.</para><para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Geometry2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept (target) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>geometry2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept (source)</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[assign] [assign_output]
+
+[heading See also]
+\* [link geometry.reference.algorithms.convert convert]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" line="369" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" bodystart="369" bodyend="372"/>
+      </memberdef>
+      <memberdef kind="function" id="group__assign_1gac2a4b4117524f23c5a04309182172375" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::assign_inverse</definition>
+        <argsstring>(Geometry &amp;geometry)</argsstring>
+        <name>assign_inverse</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+<para>assign to a box inverse infinite </para>        </briefdescription>
+        <detaileddescription>
+<para>The assign_inverse function initialize a 2D or 3D box with large coordinates, the min corner is very large, the max corner is very small. This is a convenient starting point to collect the minimum bounding box of a geometry.</para><para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[assign_inverse] [assign_inverse_output]
+
+[heading See also]
+\* [link geometry.reference.algorithms.make.make_inverse make_inverse]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" line="97" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" bodystart="97" bodyend="106"/>
+      </memberdef>
+      <memberdef kind="function" id="group__assign_1ga1fdbc43645872ba459c455318706a925" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename Range</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::assign_points</definition>
+        <argsstring>(Geometry &amp;geometry, Range const &amp;range)</argsstring>
+        <name>assign_points</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Range const &amp;</type>
+          <declname>range</declname>
+        </param>
+        <briefdescription>
+<para>Assign a range of points to a linestring, ring or polygon. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="note"><para>The point-type of the range might be different from the point-type of the geometry</para></simplesect>
+<parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Range</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Range Concept where it range_value type fulfills the Point Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>range</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A range containg points fulfilling range and point concepts</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Notes]
+[note Assign automatically clears the geometry before assigning (use append if you don't want that)]
+[heading Example]
+[assign_points] [assign_points_output]
+
+[heading See also]
+\* [link geometry.reference.algorithms.append append]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" line="70" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" bodystart="70" bodyend="76"/>
+      </memberdef>
+      <memberdef kind="function" id="group__assign_1ga9ee6c10e38a19e8e52bf9a1fc5a19a05" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename Type</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::assign_values</definition>
+        <argsstring>(Geometry &amp;geometry, Type const &amp;c1, Type const &amp;c2)</argsstring>
+        <name>assign_values</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Type const &amp;</type>
+          <declname>c1</declname>
+        </param>
+        <param>
+          <type>Type const &amp;</type>
+          <declname>c2</declname>
+        </param>
+        <briefdescription>
+<para>Assign two coordinates to a geometry (usually a 2D point) </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Type</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numerical type (int, double, ttmath, ...) to specify the coordinates </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>c1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>First coordinate (usually x-coordinate) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>c2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Second coordinate (usually y-coordinate)</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk.distinguish> 2 coordinate values</qbk.distinguish>   <qbk>
+[heading Example]
+[assign_2d_point] [assign_2d_point_output]
+
+[heading See also]
+\* [link geometry.reference.algorithms.make.make_2_2_coordinate_values make]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" line="147" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" bodystart="147" bodyend="157"/>
+      </memberdef>
+      <memberdef kind="function" id="group__assign_1ga8ab0619796142e5d72e104349d827738" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename Type</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::assign_values</definition>
+        <argsstring>(Geometry &amp;geometry, Type const &amp;c1, Type const &amp;c2, Type const &amp;c3)</argsstring>
+        <name>assign_values</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Type const &amp;</type>
+          <declname>c1</declname>
+        </param>
+        <param>
+          <type>Type const &amp;</type>
+          <declname>c2</declname>
+        </param>
+        <param>
+          <type>Type const &amp;</type>
+          <declname>c3</declname>
+        </param>
+        <briefdescription>
+<para>Assign three values to a geometry (usually a 3D point) </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Type</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numerical type (int, double, ttmath, ...) to specify the coordinates </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>c1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>First coordinate (usually x-coordinate) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>c2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Second coordinate (usually y-coordinate) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>c3</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Third coordinate (usually z-coordinate)</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk.distinguish> 3 coordinate values</qbk.distinguish>   <qbk>
+[heading Example]
+[assign_3d_point] [assign_3d_point_output]
+
+[heading See also]
+\* [link geometry.reference.algorithms.make.make_3_3_coordinate_values make]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" line="179" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" bodystart="179" bodyend="190"/>
+      </memberdef>
+      <memberdef kind="function" id="group__assign_1gaaf4e377b4c3c28f42be6d76f2df0ce6b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename Type</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::assign_values</definition>
+        <argsstring>(Geometry &amp;geometry, Type const &amp;c1, Type const &amp;c2, Type const &amp;c3, Type const &amp;c4)</argsstring>
+        <name>assign_values</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Type const &amp;</type>
+          <declname>c1</declname>
+        </param>
+        <param>
+          <type>Type const &amp;</type>
+          <declname>c2</declname>
+        </param>
+        <param>
+          <type>Type const &amp;</type>
+          <declname>c3</declname>
+        </param>
+        <param>
+          <type>Type const &amp;</type>
+          <declname>c4</declname>
+        </param>
+        <briefdescription>
+<para>Assign four values to a geometry (usually a box or segment) </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Type</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numerical type (int, double, ttmath, ...) to specify the coordinates </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>c1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>First coordinate (usually x1) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>c2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Second coordinate (usually y1) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>c3</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Third coordinate (usually x2) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>c4</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Fourth coordinate (usually y2)</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk.distinguish> 4 coordinate values</qbk.distinguish>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" line="206" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" bodystart="206" bodyend="217"/>
+      </memberdef>
+      <memberdef kind="function" id="group__assign_1gaa7e4279800ffd8a60d4b60bb2ee5c5a7" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::assign_zero</definition>
+        <argsstring>(Geometry &amp;geometry)</argsstring>
+        <name>assign_zero</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+<para>assign zero values to a box, point </para>        </briefdescription>
+        <detaileddescription>
+<para>The assign_zero function initializes a 2D or 3D point or box with coordinates of zero <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" line="117" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" bodystart="117" bodyend="126"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

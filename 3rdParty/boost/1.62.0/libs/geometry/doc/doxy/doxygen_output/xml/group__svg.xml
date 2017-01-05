@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="group__svg" kind="group">
+    <compoundname>svg</compoundname>
+    <title>svg: Stream SVG (Scalable Vector Graphics)</title>
+    <innerclass refid="classboost_1_1geometry_1_1svg__manipulator" prot="public">boost::geometry::svg_manipulator</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1svg__mapper" prot="public">boost::geometry::svg_mapper</innerclass>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__svg_1ga0d9c53eb308ab2276aec264c1404e5a2" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>svg_manipulator&lt; Geometry &gt;</type>
+        <definition>svg_manipulator&lt;Geometry&gt; boost::geometry::svg</definition>
+        <argsstring>(Geometry const &amp;geometry, std::string const &amp;style, double size=-1.0)</argsstring>
+        <name>svg</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>std::string const &amp;</type>
+          <declname>style</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>size</declname>
+          <defval>-1.0</defval>
+        </param>
+        <briefdescription>
+<para>Manipulator to stream geometries as SVG. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>style</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>String containing verbatim SVG style information </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>size</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Optional size (used for SVG points) in SVG pixels. For linestrings, specify linewidth in the SVG style information </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/io/svg/write.hpp" line="408" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/io/svg/write.hpp" bodystart="408" bodyend="414"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

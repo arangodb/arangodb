@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1assign_3_01_geometry1_00_01variant_3_01_b_o_o_s_t070acd18a3df4b43a48d462342d0759a" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::assign&lt; Geometry1, variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">boost::static_visitor&lt; void &gt;</basecompoundref>
+    <includes local="no">assign.hpp</includes>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1resolve__variant_1_1assign_3_01_geometry1_00_01variant_3_01_b_o_o_s_t070acd18a3df4b43a48d462342d0759a_1ae694b4345908ba7665eed4d49203621c" prot="public" static="no" mutable="no">
+        <type>Geometry1 &amp;</type>
+        <definition>Geometry1&amp; boost::geometry::resolve_variant::assign&lt; Geometry1, variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor::m_geometry1</definition>
+        <argsstring></argsstring>
+        <name>m_geometry1</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" line="293" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" bodystart="293" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1assign_3_01_geometry1_00_01variant_3_01_b_o_o_s_t070acd18a3df4b43a48d462342d0759a_1a327d012ee029433339da292f80427497" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry2</type>
+          </param>
+        </templateparamlist>
+        <type>result_type</type>
+        <definition>result_type boost::geometry::resolve_variant::assign&lt; Geometry1, variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor::operator()</definition>
+        <argsstring>(Geometry2 const &amp;geometry2) const </argsstring>
+        <name>operator()</name>
+        <param>
+          <type>Geometry2 const &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" line="300" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" bodystart="300" bodyend="308"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1assign_3_01_geometry1_00_01variant_3_01_b_o_o_s_t070acd18a3df4b43a48d462342d0759a_1adea687ffc2053b33c2f72f5d7d9b5fec" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::resolve_variant::assign&lt; Geometry1, variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor::visitor</definition>
+        <argsstring>(Geometry1 const &amp;geometry1)</argsstring>
+        <name>visitor</name>
+        <param>
+          <type>Geometry1 const &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" line="295" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" bodystart="295" bodyend="297"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="776">
+        <label>boost::static_visitor&lt; void &gt;</label>
+      </node>
+      <node id="775">
+        <label>boost::geometry::resolve_variant::assign&lt; Geometry1, variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</label>
+        <link refid="structboost_1_1geometry_1_1resolve__variant_1_1assign_3_01_geometry1_00_01variant_3_01_b_o_o_s_t070acd18a3df4b43a48d462342d0759a"/>
+        <childnode refid="776" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="778">
+        <label>boost::static_visitor&lt; void &gt;</label>
+      </node>
+      <node id="777">
+        <label>boost::geometry::resolve_variant::assign&lt; Geometry1, variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</label>
+        <link refid="structboost_1_1geometry_1_1resolve__variant_1_1assign_3_01_geometry1_00_01variant_3_01_b_o_o_s_t070acd18a3df4b43a48d462342d0759a"/>
+        <childnode refid="778" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" line="292" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/assign.hpp" bodystart="291" bodyend="309"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1assign_3_01_geometry1_00_01variant_3_01_b_o_o_s_t070acd18a3df4b43a48d462342d0759a_1ae694b4345908ba7665eed4d49203621c" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::assign&lt; Geometry1, variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>m_geometry1</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1assign_3_01_geometry1_00_01variant_3_01_b_o_o_s_t070acd18a3df4b43a48d462342d0759a_1a327d012ee029433339da292f80427497" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::assign&lt; Geometry1, variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>operator()</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1assign_3_01_geometry1_00_01variant_3_01_b_o_o_s_t070acd18a3df4b43a48d462342d0759a_1adea687ffc2053b33c2f72f5d7d9b5fec" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::assign&lt; Geometry1, variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>visitor</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

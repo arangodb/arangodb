@@ -1,0 +1,97 @@
+[/
+          Copyright Oliver Kowalke 2013.
+ Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+          http://www.boost.org/LICENSE_1_0.txt
+]
+
+[section:rationale Rationale]
+
+[heading distinction between coroutines and fibers]
+
+The fiber library extends the coroutine library by adding a scheduler and
+synchronization mechanisms.
+
+* a coroutine yields
+* a fiber blocks
+
+When a coroutine yields, it passes control directly to its caller (or, in the
+case of symmetric coroutines, a designated other coroutine). When a fiber
+blocks, it implicitly passes control to the fiber scheduler. Coroutines have
+no scheduler because they need no scheduler.[footnote
+[@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4024.pdf 'N4024:
+Distinguishing coroutines and fibers']].
+
+
+[heading what about transactional memory]
+
+GCC supports transactional memory since version 4.7. Unfortunately tests show
+that transactional memory is slower (ca. 4x) than spinlocks using atomics.
+Once transactional memory is improved (supporting hybrid tm), spinlocks will
+be replaced by __transaction_atomic{} statements surrounding the critical
+sections.
+
+
+[heading synchronization between fibers running in different threads]
+
+Synchronization classes from __boost_thread__ block the entire thread. In
+contrast, the synchronization classes from __boost_fiber__ block only specific
+fibers, so that the scheduler can still keep the thread busy running other
+fibers in the meantime.
+The synchronization classes from __boost_fiber__ are designed to be
+thread-safe, i.e. it is possible to synchronize fibers running in different
+threads as well as fibers running in the same thread. (However, there is a
+build option to disable cross-thread fiber synchronization support; see [link
+cross_thread_sync this description].)
+
+[#spurious_wakeup]
+[heading spurious wakeup]
+
+Spurious wakeup can happen when using
+[@http://en.cppreference.com/w/cpp/thread/condition_variable
+`std::condition_variable`]: the condition variable appears to be have been
+signaled while the awaited condition may still be false. Spurious wakeup can
+happen repeatedly and is caused on some multiprocessor systems where making
+`std::condition_variable` wakeup completely predictable would slow down all
+`std::condition_variable` operations.[footnote David R. Butenhof ["Programming
+with POSIX Threads]]
+
+__condition__ is not subject to spurious wakeup. Nonetheless it is
+prudent to test the business-logic condition in a `wait()` loop [mdash] or,
+equivalently, use one of the `wait( lock, predicate )` overloads.
+
+See also [link condition_variable_spurious_wakeups No Spurious Wakeups].
+
+
+[heading migrating fibers between threads]
+
+Support for migrating fibers between threads has been integrated. The
+user-defined scheduler must call __context_detach__ on a fiber-context on the
+source thread and __context_attach__ on the destination thread, passing the
+fiber-context to migrate. (For more information about custom schedulers, see
+[link custom Customization].)
+Examples `work_sharing` and `work_stealing` in directory `examples` might be
+used as a blueprint.
+
+See also [link migration Migrating fibers between threads].
+
+
+[heading support for Boost.Asio]
+
+Support for __boost_asio__[s] __async_result__ is not part of the official API.
+However, to integrate with a __io_service__, see [link integration Sharing a
+Thread with Another Main Loop]. To interface smoothly with an arbitrary Asio
+async I/O operation, see [link callbacks_asio Then There[s] __boost_asio__].
+
+[heading tested compilers]
+
+The library was tested with GCC-5.1.1, Clang-3.6.0 and MSVC-14.0 in c++11-mode.
+
+
+[heading supported architectures]
+
+__boost_fiber__ depends on __boost_context__ - the list of supported architectures
+can be found [@http://www.boost.org/doc/libs/release/libs/context/doc/html/context/architectures.html here].
+
+
+[endsect]

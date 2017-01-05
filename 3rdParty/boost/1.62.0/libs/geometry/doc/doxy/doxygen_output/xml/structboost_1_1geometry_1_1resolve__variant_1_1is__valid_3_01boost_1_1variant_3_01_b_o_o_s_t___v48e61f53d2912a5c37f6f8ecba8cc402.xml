@@ -1,0 +1,101 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1is__valid_3_01boost_1_1variant_3_01_b_o_o_s_t___v48e61f53d2912a5c37f6f8ecba8cc402" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::is_valid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">boost::static_visitor&lt; bool &gt;</basecompoundref>
+    <includes local="no">interface.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename VisitPolicy</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1resolve__variant_1_1is__valid_3_01boost_1_1variant_3_01_b_o_o_s_t___v48e61f53d2912a5c37f6f8ecba8cc402_1a7431c6ab6b4eba7c5f860622f71804a4" prot="public" static="no" mutable="no">
+        <type>VisitPolicy &amp;</type>
+        <definition>VisitPolicy&amp; boost::geometry::resolve_variant::is_valid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; VisitPolicy &gt;::m_policy</definition>
+        <argsstring></argsstring>
+        <name>m_policy</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" line="59" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" bodystart="59" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1is__valid_3_01boost_1_1variant_3_01_b_o_o_s_t___v48e61f53d2912a5c37f6f8ecba8cc402_1a202f4fc5fb0e513be43252c47f51f20e" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::resolve_variant::is_valid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; VisitPolicy &gt;::operator()</definition>
+        <argsstring>(Geometry const &amp;geometry) const </argsstring>
+        <name>operator()</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" line="54" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" bodystart="54" bodyend="57"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1is__valid_3_01boost_1_1variant_3_01_b_o_o_s_t___v48e61f53d2912a5c37f6f8ecba8cc402_1a60043b264a5798aa165531794b40b67a" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::resolve_variant::is_valid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; VisitPolicy &gt;::visitor</definition>
+        <argsstring>(VisitPolicy &amp;policy)</argsstring>
+        <name>visitor</name>
+        <param>
+          <type>VisitPolicy &amp;</type>
+          <declname>policy</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" line="51" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" bodystart="51" bodyend="51"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1071">
+        <label>boost::static_visitor&lt; bool &gt;</label>
+      </node>
+      <node id="1070">
+        <label>boost::geometry::resolve_variant::is_valid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; VisitPolicy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1resolve__variant_1_1is__valid_3_01boost_1_1variant_3_01_b_o_o_s_t___v48e61f53d2912a5c37f6f8ecba8cc402"/>
+        <childnode refid="1071" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1073">
+        <label>boost::static_visitor&lt; bool &gt;</label>
+      </node>
+      <node id="1072">
+        <label>boost::geometry::resolve_variant::is_valid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; VisitPolicy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1resolve__variant_1_1is__valid_3_01boost_1_1variant_3_01_b_o_o_s_t___v48e61f53d2912a5c37f6f8ecba8cc402"/>
+        <childnode refid="1073" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" line="50" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" bodystart="49" bodyend="60"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1is__valid_3_01boost_1_1variant_3_01_b_o_o_s_t___v48e61f53d2912a5c37f6f8ecba8cc402_1a7431c6ab6b4eba7c5f860622f71804a4" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::is_valid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>m_policy</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1is__valid_3_01boost_1_1variant_3_01_b_o_o_s_t___v48e61f53d2912a5c37f6f8ecba8cc402_1a202f4fc5fb0e513be43252c47f51f20e" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::is_valid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>operator()</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1is__valid_3_01boost_1_1variant_3_01_b_o_o_s_t___v48e61f53d2912a5c37f6f8ecba8cc402_1a60043b264a5798aa165531794b40b67a" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::is_valid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>visitor</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

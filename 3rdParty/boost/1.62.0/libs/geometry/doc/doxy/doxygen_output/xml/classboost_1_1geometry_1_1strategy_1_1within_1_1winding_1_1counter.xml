@@ -1,0 +1,116 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1within_1_1winding_1_1counter" kind="class" prot="private">
+    <compoundname>boost::geometry::strategy::within::winding::counter</compoundname>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1within_1_1winding_1_1counter_1ab26c5bf731fa3e3146b1b8aaf67744ec" prot="private" static="no" mutable="no">
+        <type>int</type>
+        <definition>int boost::geometry::strategy::within::winding&lt; Point, PointOfSegment, CalculationType &gt;::counter::m_count</definition>
+        <argsstring></argsstring>
+        <name>m_count</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" line="353" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" bodystart="353" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1within_1_1winding_1_1counter_1ae03bc3c5b6aa19b92ee07ff94cc0270e" prot="private" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool boost::geometry::strategy::within::winding&lt; Point, PointOfSegment, CalculationType &gt;::counter::m_touches</definition>
+        <argsstring></argsstring>
+        <name>m_touches</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" line="354" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" bodystart="354" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="friend">
+      <memberdef kind="friend" id="classboost_1_1geometry_1_1strategy_1_1within_1_1winding_1_1counter_1ac2a2dbae5822c82c94b7c32df9090f90" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>friend class</type>
+        <definition>friend class winding</definition>
+        <argsstring></argsstring>
+        <name>winding</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" line="362" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" bodystart="362" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="friend" id="classboost_1_1geometry_1_1strategy_1_1within_1_1winding_1_1counter_1a2921b0da3a1c4360682475dc218ca4f9" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename P</type>
+          </param>
+          <param>
+            <type>typename CT</type>
+          </param>
+          <param>
+            <type>typename CST</type>
+          </param>
+        </templateparamlist>
+        <type>friend struct</type>
+        <definition>friend struct winding_check_touch</definition>
+        <argsstring></argsstring>
+        <name>winding_check_touch</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" line="365" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" bodystart="365" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1within_1_1winding_1_1counter_1a46cfbcbd4e1bd02a1fb6a125d6de7a58" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>int</type>
+        <definition>int boost::geometry::strategy::within::winding&lt; Point, PointOfSegment, CalculationType &gt;::counter::code</definition>
+        <argsstring>() const </argsstring>
+        <name>code</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" line="356" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" bodystart="356" bodyend="359"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1within_1_1winding_1_1counter_1a2df3f1fdcf1b85d3a6134504a58acdf8" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::within::winding&lt; Point, PointOfSegment, CalculationType &gt;::counter::counter</definition>
+        <argsstring>()</argsstring>
+        <name>counter</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" line="367" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" bodystart="367" bodyend="370"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>subclass to keep state </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" line="352" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" bodystart="351" bodyend="372"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1winding_1_1counter_1a46cfbcbd4e1bd02a1fb6a125d6de7a58" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::within::winding::counter</scope><name>code</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1winding_1_1counter_1a2df3f1fdcf1b85d3a6134504a58acdf8" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::winding::counter</scope><name>counter</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1winding_1_1counter_1ab26c5bf731fa3e3146b1b8aaf67744ec" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::within::winding::counter</scope><name>m_count</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1winding_1_1counter_1ae03bc3c5b6aa19b92ee07ff94cc0270e" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::within::winding::counter</scope><name>m_touches</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1winding_1_1counter_1ac2a2dbae5822c82c94b7c32df9090f90" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::winding::counter</scope><name>winding</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1winding_1_1counter_1a2921b0da3a1c4360682475dc218ca4f9" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::winding::counter</scope><name>winding_check_touch</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

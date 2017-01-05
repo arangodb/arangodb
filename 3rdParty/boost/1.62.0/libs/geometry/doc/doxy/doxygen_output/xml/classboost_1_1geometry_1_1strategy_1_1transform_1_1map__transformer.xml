@@ -1,0 +1,269 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::transform::map_transformer</compoundname>
+    <basecompoundref refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer" prot="public" virt="non-virtual">boost::geometry::strategy::transform::ublas_transformer&lt; CalculationType, Dimension1, Dimension2 &gt;</basecompoundref>
+    <includes local="no">map_transformer.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename CalculationType</type>
+      </param>
+      <param>
+        <type>std::size_t</type>
+        <declname>Dimension1</declname>
+        <defname>Dimension1</defname>
+      </param>
+      <param>
+        <type>std::size_t</type>
+        <declname>Dimension2</declname>
+        <defname>Dimension2</defname>
+      </param>
+      <param>
+        <type>bool</type>
+        <declname>Mirror</declname>
+        <defname>Mirror</defname>
+        <defval>false</defval>
+      </param>
+      <param>
+        <type>bool</type>
+        <declname>SameScale</declname>
+        <defname>SameScale</defname>
+        <defval>true</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer_1a416db5cfd8ae96934826bdd3d04c4a2c" prot="private" static="no">
+        <type>boost::numeric::ublas::matrix&lt; CalculationType &gt;</type>
+        <definition>typedef boost::numeric::ublas::matrix&lt;CalculationType&gt; boost::geometry::strategy::transform::map_transformer&lt; CalculationType, Dimension1, Dimension2, Mirror, SameScale &gt;::M</definition>
+        <argsstring></argsstring>
+        <name>M</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/map_transformer.hpp" line="51" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/map_transformer.hpp" bodystart="51" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer_1aa0973e14c29879db15b67d63c571d7dd" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename B</type>
+          </param>
+          <param>
+            <type>typename D</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::strategy::transform::map_transformer&lt; CalculationType, Dimension1, Dimension2, Mirror, SameScale &gt;::map_transformer</definition>
+        <argsstring>(B const &amp;box, D const &amp;width, D const &amp;height)</argsstring>
+        <name>map_transformer</name>
+        <param>
+          <type>B const &amp;</type>
+          <declname>box</declname>
+        </param>
+        <param>
+          <type>D const &amp;</type>
+          <declname>width</declname>
+        </param>
+        <param>
+          <type>D const &amp;</type>
+          <declname>height</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/map_transformer.hpp" line="55" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/map_transformer.hpp" bodystart="55" bodyend="61"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer_1aec8d46f54b17a0e9f57386f43a566ccf" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename W</type>
+          </param>
+          <param>
+            <type>typename D</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::strategy::transform::map_transformer&lt; CalculationType, Dimension1, Dimension2, Mirror, SameScale &gt;::map_transformer</definition>
+        <argsstring>(W const &amp;wx1, W const &amp;wy1, W const &amp;wx2, W const &amp;wy2, D const &amp;width, D const &amp;height)</argsstring>
+        <name>map_transformer</name>
+        <param>
+          <type>W const &amp;</type>
+          <declname>wx1</declname>
+        </param>
+        <param>
+          <type>W const &amp;</type>
+          <declname>wy1</declname>
+        </param>
+        <param>
+          <type>W const &amp;</type>
+          <declname>wx2</declname>
+        </param>
+        <param>
+          <type>W const &amp;</type>
+          <declname>wy2</declname>
+        </param>
+        <param>
+          <type>D const &amp;</type>
+          <declname>width</declname>
+        </param>
+        <param>
+          <type>D const &amp;</type>
+          <declname>height</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/map_transformer.hpp" line="64" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/map_transformer.hpp" bodystart="64" bodyend="68"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer_1aaed2f446537b9e354cf10eb712bfd690" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename W</type>
+          </param>
+          <param>
+            <type>typename D</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::strategy::transform::map_transformer&lt; CalculationType, Dimension1, Dimension2, Mirror, SameScale &gt;::set_transformation</definition>
+        <argsstring>(W const &amp;wx1, W const &amp;wy1, W const &amp;wx2, W const &amp;wy2, D const &amp;width, D const &amp;height)</argsstring>
+        <name>set_transformation</name>
+        <param>
+          <type>W const &amp;</type>
+          <declname>wx1</declname>
+        </param>
+        <param>
+          <type>W const &amp;</type>
+          <declname>wy1</declname>
+        </param>
+        <param>
+          <type>W const &amp;</type>
+          <declname>wx2</declname>
+        </param>
+        <param>
+          <type>W const &amp;</type>
+          <declname>wy2</declname>
+        </param>
+        <param>
+          <type>D const &amp;</type>
+          <declname>width</declname>
+        </param>
+        <param>
+          <type>D const &amp;</type>
+          <declname>height</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/map_transformer.hpp" line="103" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/map_transformer.hpp" bodystart="103" bodyend="158"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer_1aa295338b3acd1839be29734f587173e4" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename W</type>
+          </param>
+          <param>
+            <type>typename P</type>
+          </param>
+          <param>
+            <type>typename S</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::strategy::transform::map_transformer&lt; CalculationType, Dimension1, Dimension2, Mirror, SameScale &gt;::set_transformation_point</definition>
+        <argsstring>(W const &amp;wx, W const &amp;wy, P const &amp;px, P const &amp;py, S const &amp;scalex, S const &amp;scaley)</argsstring>
+        <name>set_transformation_point</name>
+        <param>
+          <type>W const &amp;</type>
+          <declname>wx</declname>
+        </param>
+        <param>
+          <type>W const &amp;</type>
+          <declname>wy</declname>
+        </param>
+        <param>
+          <type>P const &amp;</type>
+          <declname>px</declname>
+        </param>
+        <param>
+          <type>P const &amp;</type>
+          <declname>py</declname>
+        </param>
+        <param>
+          <type>S const &amp;</type>
+          <declname>scalex</declname>
+        </param>
+        <param>
+          <type>S const &amp;</type>
+          <declname>scaley</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/map_transformer.hpp" line="73" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/map_transformer.hpp" bodystart="73" bodyend="99"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Transformation strategy to map from one to another Cartesian coordinate system. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Mirror</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>if true map is mirrored upside-down (in most cases pixels are from top to bottom, while map is from bottom to top) </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="1553">
+        <label>boost::geometry::strategy::transform::ublas_transformer&lt; CalculationType, Dimension1, Dimension2 &gt;</label>
+        <link refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer"/>
+      </node>
+      <node id="1552">
+        <label>boost::geometry::strategy::transform::map_transformer&lt; CalculationType, Dimension1, Dimension2, Mirror, SameScale &gt;</label>
+        <link refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer"/>
+        <childnode refid="1553" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1555">
+        <label>boost::geometry::strategy::transform::ublas_transformer&lt; CalculationType, Dimension1, Dimension2 &gt;</label>
+        <link refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer"/>
+      </node>
+      <node id="1554">
+        <label>boost::geometry::strategy::transform::map_transformer&lt; CalculationType, Dimension1, Dimension2, Mirror, SameScale &gt;</label>
+        <link refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer"/>
+        <childnode refid="1555" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/map_transformer.hpp" line="50" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/map_transformer.hpp" bodystart="48" bodyend="159"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer_1a416db5cfd8ae96934826bdd3d04c4a2c" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::transform::map_transformer</scope><name>M</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer_1aa0973e14c29879db15b67d63c571d7dd" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::transform::map_transformer</scope><name>map_transformer</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer_1aec8d46f54b17a0e9f57386f43a566ccf" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::transform::map_transformer</scope><name>map_transformer</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer_1aaed2f446537b9e354cf10eb712bfd690" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::transform::map_transformer</scope><name>set_transformation</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer_1aa295338b3acd1839be29734f587173e4" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::transform::map_transformer</scope><name>set_transformation_point</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="parameters_8hpp" kind="file">
+    <compoundname>parameters.hpp</compoundname>
+    <includes local="no">limits</includes>
+    <incdepgraph>
+      <node id="26">
+        <label>limits</label>
+      </node>
+      <node id="25">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp</label>
+        <link refid="parameters.hpp"/>
+        <childnode refid="26" relation="include">
+        </childnode>
+      </node>
+    </incdepgraph>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1detail_1_1default__min__elements__s" prot="public">boost::geometry::index::detail::default_min_elements_s</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1detail_1_1default__rstar__reinserted__elements__s" prot="public">boost::geometry::index::detail::default_rstar_reinserted_elements_s</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1linear" prot="public">boost::geometry::index::linear</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1quadratic" prot="public">boost::geometry::index::quadratic</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1rstar" prot="public">boost::geometry::index::rstar</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1index_1_1dynamic__linear" prot="public">boost::geometry::index::dynamic_linear</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1index_1_1dynamic__quadratic" prot="public">boost::geometry::index::dynamic_quadratic</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar" prot="public">boost::geometry::index::dynamic_rstar</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1index">boost::geometry::index</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1index_1_1detail">boost::geometry::index::detail</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp"/>
+  </compounddef>
+</doxygen>

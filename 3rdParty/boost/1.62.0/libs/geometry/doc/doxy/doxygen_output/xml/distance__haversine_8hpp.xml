@@ -1,0 +1,356 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="distance__haversine_8hpp" kind="file">
+    <compoundname>distance_haversine.hpp</compoundname>
+    <includes refid="cs_8hpp" local="no">boost/geometry/core/cs.hpp</includes>
+    <includes refid="access_8hpp" local="no">boost/geometry/core/access.hpp</includes>
+    <includes refid="radian__access_8hpp" local="no">boost/geometry/core/radian_access.hpp</includes>
+    <includes refid="math_8hpp" local="no">boost/geometry/util/math.hpp</includes>
+    <includes refid="select__calculation__type_8hpp" local="no">boost/geometry/util/select_calculation_type.hpp</includes>
+    <includes refid="promote__floating__point_8hpp" local="no">boost/geometry/util/promote_floating_point.hpp</includes>
+    <includes refid="strategies_2distance_8hpp" local="no">boost/geometry/strategies/distance.hpp</includes>
+    <includedby refid="strategies_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/strategies/strategies.hpp</includedby>
+    <includedby refid="area__huiller_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp</includedby>
+    <includedby refid="distance__cross__track_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track.hpp</includedby>
+    <incdepgraph>
+      <node id="62346">
+        <label>boost/geometry/util/math.hpp</label>
+        <link refid="math_8hpp"/>
+        <childnode refid="62347" relation="include">
+        </childnode>
+        <childnode refid="62348" relation="include">
+        </childnode>
+        <childnode refid="62339" relation="include">
+        </childnode>
+        <childnode refid="62349" relation="include">
+        </childnode>
+        <childnode refid="62350" relation="include">
+        </childnode>
+        <childnode refid="62345" relation="include">
+        </childnode>
+        <childnode refid="62351" relation="include">
+        </childnode>
+        <childnode refid="62343" relation="include">
+        </childnode>
+        <childnode refid="62322" relation="include">
+        </childnode>
+        <childnode refid="62352" relation="include">
+        </childnode>
+      </node>
+      <node id="62329">
+        <label>boost/type_traits/remove_const.hpp</label>
+      </node>
+      <node id="62348">
+        <label>limits</label>
+      </node>
+      <node id="62349">
+        <label>boost/math/constants/constants.hpp</label>
+      </node>
+      <node id="62332">
+        <label>boost/type_traits/is_const.hpp</label>
+      </node>
+      <node id="62338">
+        <label>boost/geometry/core/access.hpp</label>
+        <link refid="access_8hpp"/>
+        <childnode refid="62323" relation="include">
+        </childnode>
+        <childnode refid="62339" relation="include">
+        </childnode>
+        <childnode refid="62324" relation="include">
+        </childnode>
+        <childnode refid="62340" relation="include">
+        </childnode>
+        <childnode refid="62337" relation="include">
+        </childnode>
+        <childnode refid="62341" relation="include">
+        </childnode>
+        <childnode refid="62327" relation="include">
+        </childnode>
+        <childnode refid="62334" relation="include">
+        </childnode>
+        <childnode refid="62336" relation="include">
+        </childnode>
+      </node>
+      <node id="62347">
+        <label>cmath</label>
+      </node>
+      <node id="62331">
+        <label>boost/mpl/if.hpp</label>
+      </node>
+      <node id="62340">
+        <label>boost/type_traits/is_pointer.hpp</label>
+      </node>
+      <node id="62350">
+        <label>boost/math/special_functions/fpclassify.hpp</label>
+      </node>
+      <node id="62341">
+        <label>boost/geometry/core/coordinate_type.hpp</label>
+        <link refid="coordinate__type_8hpp"/>
+        <childnode refid="62324" relation="include">
+        </childnode>
+        <childnode refid="62327" relation="include">
+        </childnode>
+        <childnode refid="62334" relation="include">
+        </childnode>
+        <childnode refid="62336" relation="include">
+        </childnode>
+        <childnode refid="62342" relation="include">
+        </childnode>
+      </node>
+      <node id="62324">
+        <label>boost/mpl/assert.hpp</label>
+      </node>
+      <node id="62333">
+        <label>boost/type_traits/remove_reference.hpp</label>
+      </node>
+      <node id="62326">
+        <label>boost/geometry/core/coordinate_system.hpp</label>
+        <link refid="coordinate__system_8hpp"/>
+        <childnode refid="62324" relation="include">
+        </childnode>
+        <childnode refid="62327" relation="include">
+        </childnode>
+        <childnode refid="62336" relation="include">
+        </childnode>
+      </node>
+      <node id="62339">
+        <label>boost/core/ignore_unused.hpp</label>
+      </node>
+      <node id="62342">
+        <label>boost/geometry/util/promote_floating_point.hpp</label>
+        <link refid="promote__floating__point_8hpp"/>
+        <childnode refid="62331" relation="include">
+        </childnode>
+        <childnode refid="62343" relation="include">
+        </childnode>
+      </node>
+      <node id="62335">
+        <label>boost/geometry/core/tags.hpp</label>
+        <link refid="core_2tags_8hpp"/>
+      </node>
+      <node id="62325">
+        <label>boost/type_traits/integral_constant.hpp</label>
+      </node>
+      <node id="62355">
+        <label>boost/type_traits/is_void.hpp</label>
+      </node>
+      <node id="62351">
+        <label>boost/type_traits/is_fundamental.hpp</label>
+      </node>
+      <node id="62356">
+        <label>boost/geometry/util/select_coordinate_type.hpp</label>
+        <link refid="select__coordinate__type_8hpp"/>
+        <childnode refid="62341" relation="include">
+        </childnode>
+        <childnode refid="62352" relation="include">
+        </childnode>
+      </node>
+      <node id="62321">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp</label>
+        <link refid="distance_haversine.hpp"/>
+        <childnode refid="62322" relation="include">
+        </childnode>
+        <childnode refid="62338" relation="include">
+        </childnode>
+        <childnode refid="62344" relation="include">
+        </childnode>
+        <childnode refid="62346" relation="include">
+        </childnode>
+        <childnode refid="62354" relation="include">
+        </childnode>
+        <childnode refid="62342" relation="include">
+        </childnode>
+        <childnode refid="62357" relation="include">
+        </childnode>
+      </node>
+      <node id="62327">
+        <label>boost/geometry/core/point_type.hpp</label>
+        <link refid="point__type_8hpp"/>
+        <childnode refid="62324" relation="include">
+        </childnode>
+        <childnode refid="62328" relation="include">
+        </childnode>
+        <childnode refid="62329" relation="include">
+        </childnode>
+        <childnode refid="62330" relation="include">
+        </childnode>
+        <childnode refid="62334" relation="include">
+        </childnode>
+        <childnode refid="62335" relation="include">
+        </childnode>
+        <childnode refid="62336" relation="include">
+        </childnode>
+      </node>
+      <node id="62328">
+        <label>boost/range/value_type.hpp</label>
+      </node>
+      <node id="62323">
+        <label>cstddef</label>
+      </node>
+      <node id="62330">
+        <label>boost/geometry/core/ring_type.hpp</label>
+        <link refid="ring__type_8hpp"/>
+        <childnode refid="62324" relation="include">
+        </childnode>
+        <childnode refid="62331" relation="include">
+        </childnode>
+        <childnode refid="62328" relation="include">
+        </childnode>
+        <childnode refid="62332" relation="include">
+        </childnode>
+        <childnode refid="62329" relation="include">
+        </childnode>
+        <childnode refid="62333" relation="include">
+        </childnode>
+        <childnode refid="62334" relation="include">
+        </childnode>
+        <childnode refid="62335" relation="include">
+        </childnode>
+      </node>
+      <node id="62343">
+        <label>boost/type_traits/is_integral.hpp</label>
+      </node>
+      <node id="62354">
+        <label>boost/geometry/util/select_calculation_type.hpp</label>
+        <link refid="select__calculation__type_8hpp"/>
+        <childnode refid="62331" relation="include">
+        </childnode>
+        <childnode refid="62355" relation="include">
+        </childnode>
+        <childnode refid="62356" relation="include">
+        </childnode>
+      </node>
+      <node id="62353">
+        <label>boost/type_traits/is_floating_point.hpp</label>
+      </node>
+      <node id="62344">
+        <label>boost/geometry/core/radian_access.hpp</label>
+        <link refid="radian__access_8hpp"/>
+        <childnode refid="62323" relation="include">
+        </childnode>
+        <childnode refid="62345" relation="include">
+        </childnode>
+        <childnode refid="62338" relation="include">
+        </childnode>
+        <childnode refid="62322" relation="include">
+        </childnode>
+        <childnode refid="62341" relation="include">
+        </childnode>
+        <childnode refid="62346" relation="include">
+        </childnode>
+      </node>
+      <node id="62334">
+        <label>boost/geometry/core/tag.hpp</label>
+        <link refid="tag_8hpp"/>
+        <childnode refid="62335" relation="include">
+        </childnode>
+        <childnode refid="62336" relation="include">
+        </childnode>
+      </node>
+      <node id="62322">
+        <label>boost/geometry/core/cs.hpp</label>
+        <link refid="cs_8hpp"/>
+        <childnode refid="62323" relation="include">
+        </childnode>
+        <childnode refid="62324" relation="include">
+        </childnode>
+        <childnode refid="62325" relation="include">
+        </childnode>
+        <childnode refid="62326" relation="include">
+        </childnode>
+        <childnode refid="62335" relation="include">
+        </childnode>
+      </node>
+      <node id="62336">
+        <label>boost/geometry/util/bare_type.hpp</label>
+        <link refid="bare__type_8hpp"/>
+        <childnode refid="62329" relation="include">
+        </childnode>
+        <childnode refid="62337" relation="include">
+        </childnode>
+        <childnode refid="62333" relation="include">
+        </childnode>
+      </node>
+      <node id="62337">
+        <label>boost/type_traits/remove_pointer.hpp</label>
+      </node>
+      <node id="62352">
+        <label>boost/geometry/util/select_most_precise.hpp</label>
+        <link refid="select__most__precise_8hpp"/>
+        <childnode refid="62331" relation="include">
+        </childnode>
+        <childnode refid="62353" relation="include">
+        </childnode>
+        <childnode refid="62351" relation="include">
+        </childnode>
+      </node>
+      <node id="62357">
+        <label>boost/geometry/strategies/distance.hpp</label>
+        <link refid="strategies_2distance_8hpp"/>
+        <childnode refid="62324" relation="include">
+        </childnode>
+        <childnode refid="62322" relation="include">
+        </childnode>
+        <childnode refid="62358" relation="include">
+        </childnode>
+      </node>
+      <node id="62358">
+        <label>boost/geometry/strategies/tags.hpp</label>
+        <link refid="strategies_2tags_8hpp"/>
+      </node>
+      <node id="62345">
+        <label>boost/numeric/conversion/cast.hpp</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="62360">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/strategies.hpp</label>
+        <link refid="strategies_8hpp"/>
+      </node>
+      <node id="62362">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track.hpp</label>
+        <link refid="distance__cross__track_8hpp"/>
+        <childnode refid="62360" relation="include">
+        </childnode>
+        <childnode refid="62363" relation="include">
+        </childnode>
+      </node>
+      <node id="62363">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp</label>
+        <link refid="distance__cross__track__point__box_8hpp"/>
+        <childnode refid="62360" relation="include">
+        </childnode>
+      </node>
+      <node id="62359">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp</label>
+        <link refid="distance_haversine.hpp"/>
+        <childnode refid="62360" relation="include">
+        </childnode>
+        <childnode refid="62361" relation="include">
+        </childnode>
+        <childnode refid="62362" relation="include">
+        </childnode>
+      </node>
+      <node id="62361">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp</label>
+        <link refid="area__huiller_8hpp"/>
+        <childnode refid="62360" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1comparable_1_1haversine" prot="public">boost::geometry::strategy::distance::comparable::haversine</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1comparable_1_1haversine_1_1calculation__type" prot="public">boost::geometry::strategy::distance::comparable::haversine::calculation_type</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine" prot="public">boost::geometry::strategy::distance::haversine</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1haversine_1_1calculation__type" prot="public">boost::geometry::strategy::distance::haversine::calculation_type</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy">boost::geometry::strategy</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1distance">boost::geometry::strategy::distance</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1distance_1_1comparable">boost::geometry::strategy::distance::comparable</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp"/>
+  </compounddef>
+</doxygen>

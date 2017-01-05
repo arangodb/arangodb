@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="dir_19144ff23f2feaf79e9fd0085ce60eac" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic</compoundname>
+    <innerfile refid="buffer__distance__asymmetric_8hpp">buffer_distance_asymmetric.hpp</innerfile>
+    <innerfile refid="buffer__distance__symmetric_8hpp">buffer_distance_symmetric.hpp</innerfile>
+    <innerfile refid="hull__graham__andrew_8hpp">hull_graham_andrew.hpp</innerfile>
+    <innerfile refid="point__in__box__by__side_8hpp">point_in_box_by_side.hpp</innerfile>
+    <innerfile refid="point__in__point_8hpp">point_in_point.hpp</innerfile>
+    <innerfile refid="point__in__poly__oriented__winding_8hpp">point_in_poly_oriented_winding.hpp</innerfile>
+    <innerfile refid="point__in__poly__winding_8hpp">point_in_poly_winding.hpp</innerfile>
+    <innerfile refid="strategies_2agnostic_2relate_8hpp">relate.hpp</innerfile>
+    <innerfile refid="simplify__douglas__peucker_8hpp">simplify_douglas_peucker.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/"/>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1model_1_1detail_1_1array__assign" kind="struct" prot="public">
+    <compoundname>boost::geometry::model::detail::array_assign</compoundname>
+    <includes local="no">point.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>std::size_t</type>
+        <declname>DimensionCount</declname>
+        <defname>DimensionCount</defname>
+      </param>
+      <param>
+        <type>std::size_t</type>
+        <declname>Index</declname>
+        <defname>Index</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1model_1_1detail_1_1array__assign_1a44052843b1b89ae68e8b954010c8b921" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>static void boost::geometry::model::detail::array_assign&lt; DimensionCount, Index &gt;::apply</definition>
+        <argsstring>(T values[], T const &amp;value)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>T</type>
+          <declname>values</declname>
+          <array>[]</array>
+        </param>
+        <param>
+          <type>T const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" line="60" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" bodystart="60" bodyend="63"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" line="58" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" bodystart="57" bodyend="64"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1model_1_1detail_1_1array__assign_1a44052843b1b89ae68e8b954010c8b921" prot="public" virt="non-virtual"><scope>boost::geometry::model::detail::array_assign</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>
