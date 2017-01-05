@@ -111,7 +111,7 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 
 ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
-                                         const char* InstallDirectory)
+                                         char const* InstallDirectory)
     : _binaryName(TRI_BinaryName(argv[0])),
       _runRoot(
           TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), InstallDirectory)),

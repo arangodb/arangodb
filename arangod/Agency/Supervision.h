@@ -110,9 +110,9 @@ class Supervision : public arangodb::Thread {
   /// @brief Upgrade agency
   void upgradeAgency();
 
-  static constexpr const char* HEALTH_STATUS_GOOD = "GOOD";
-  static constexpr const char* HEALTH_STATUS_BAD = "BAD";
-  static constexpr const char* HEALTH_STATUS_FAILED = "FAILED";
+  static constexpr char const* HEALTH_STATUS_GOOD = "GOOD";
+  static constexpr char const* HEALTH_STATUS_BAD = "BAD";
+  static constexpr char const* HEALTH_STATUS_FAILED = "FAILED";
 
  private:
 

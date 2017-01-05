@@ -51,7 +51,7 @@ void arangodb::options::DefineEnvironment(std::string const& keyValues) {
 }
 
 std::string arangodb::options::EnvironmentTranslator(std::string const& value,
-                                                     const char* binaryPath) {
+                                                     char const* binaryPath) {
   if (value.empty()) {
     return value;
   }

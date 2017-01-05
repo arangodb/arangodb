@@ -37,7 +37,7 @@ class LanguageFeature final : public application_features::ApplicationFeature {
 
  private:
   std::string _language;
-  const char* _binaryPath;
+  char const* _binaryPath;
 };
 }
 

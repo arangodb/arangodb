@@ -1408,7 +1408,7 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
   size_t numWords = wordlist.size();
   while (w < numWords) {
     node_t* node;
-    const char* p;
+    char const* p;
     size_t start;
     size_t i;
 

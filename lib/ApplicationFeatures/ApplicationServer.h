@@ -163,7 +163,7 @@ class ApplicationServer {
 
  public:
   explicit ApplicationServer(std::shared_ptr<options::ProgramOptions>,
-                             const char *binaryPath);
+                             char const* binaryPath);
 
   ~ApplicationServer();
 
@@ -216,7 +216,7 @@ class ApplicationServer {
     _progressReports.emplace_back(reporter);
   }
 
-  const char* getBinaryPath() { return _binaryPath;}
+  char const* getBinaryPath() { return _binaryPath;}
  private:
   // look up a feature and return a pointer to it. may be nullptr
   static ApplicationFeature* lookupFeature(std::string const&);
@@ -307,7 +307,7 @@ class ApplicationServer {
   std::string _helpSection;
 
   // the install directory of this program:
-  const char* _binaryPath;
+  char const* _binaryPath;
 };
 }
 }

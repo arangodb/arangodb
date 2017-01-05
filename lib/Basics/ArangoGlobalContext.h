@@ -31,7 +31,7 @@ class ArangoGlobalContext {
   static ArangoGlobalContext* CONTEXT;
 
  public:
-  ArangoGlobalContext(int argc, char* argv[], const char* InstallDirectory);
+  ArangoGlobalContext(int argc, char* argv[], char const* InstallDirectory);
   ~ArangoGlobalContext();
 
  public:
