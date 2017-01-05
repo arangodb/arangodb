@@ -240,18 +240,6 @@ bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection* collecti
       LOG(ERR) << "someone resurrected the collection '" << name << "'";
       return false;
     }
-
-    // unload collection
-    if (collection->status() == TRI_VOC_COL_STATUS_LOADED || 
-        collection->status() == TRI_VOC_COL_STATUS_UNLOADING) {
-      int res = collection->close();
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG(ERR) << "failed to close collection '" << name
-                << "': " << TRI_last_error();
-        return false;
-      }
-    }
   } // release status lock
 
   // remove from list of collections
@@ -517,6 +505,10 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
         collection->setDeleted(false);
         events::DropCollection(colName, ex.code());
         return ex.code();
+      } catch (std::exception const& ex) {
+        collection->setDeleted(false);
+        events::DropCollection(colName, TRI_ERROR_INTERNAL);
+        return TRI_ERROR_INTERNAL;
       }
     }
 

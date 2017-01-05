@@ -739,11 +739,12 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalColl
         if (!systemError.empty()) {
           systemError = ", error details: " + systemError;
         }
-        LOG(ERR) << "cannot rename dropped collection '" << name
+        LOG(ERR) << "cannot rename directory of dropped collection '" << name
                  << "' from '" << collection->path() << "' to '"
                  << newFilename << "': " << TRI_errno_string(res) << systemError
                  << ", source exists: " << TRI_IsDirectory(collection->path().c_str()) 
-                 << ", dest exists: " << TRI_IsDirectory(newFilename.c_str());
+                 << ", dest exists: " << TRI_IsDirectory(newFilename.c_str()) 
+                 << ", status: " << collection->statusString();
       } else {
         LOG(DEBUG) << "wiping dropped collection '" << name
                    << "' from disk";
