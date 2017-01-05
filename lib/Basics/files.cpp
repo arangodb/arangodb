@@ -1273,7 +1273,7 @@ int TRI_VerifyLockFile(char const* filename) {
     return TRI_ERROR_NO_ERROR;
   }
 
-#ifdef TRU_HAVE_SETLK
+#ifdef TRI_HAVE_SETLK
   struct flock lock;
 
   lock.l_start = 0;
@@ -1294,8 +1294,13 @@ int TRI_VerifyLockFile(char const* filename) {
 
   canLock = errno;
 
-  LOG(WARN) << "fcntl on lockfile '" << filename
-            << "' failed: " << TRI_errno_string(canLock);
+  // from man 2 fcntl: "If a conflicting lock is held by another process, 
+  // this call returns -1 and sets errno to EACCES or EAGAIN."
+  if (canLock != EACCES && canLock != EAGAIN) {
+    LOG(WARN) << "fcntl on lockfile '" << filename
+              << "' failed: " << TRI_errno_string(canLock) 
+              << ". a possible reason is that the filesystem does not support file-locking";
+  }
 #endif
   
   TRI_CLOSE(fd);
