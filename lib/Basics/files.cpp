@@ -876,6 +876,15 @@ int TRI_UnlinkFile(char const* filename) {
   int res = TRI_UNLINK(filename);
 
   if (res != 0) {
+#ifdef _WIN32
+    int hihi = errno;
+    TRI_ERRORBUF;
+    TRI_SYSTEM_ERROR();
+    
+    LOG(ERR) << "cannot unlink file: " << windowsErrorBuf << ", hihi: " << hihi << ", ENOENT: " << ENOENT;
+    errno = hihi;
+#endif
+
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG(TRACE) << "cannot unlink file '" << filename
                << "': " << TRI_LAST_ERROR_STR;
