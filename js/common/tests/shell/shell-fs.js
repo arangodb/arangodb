@@ -714,7 +714,7 @@ function FileSystemSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_FILE_NOT_FOUND.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_SYS_ERROR.code, err.errorNum);
       }
     },
 
