@@ -462,7 +462,9 @@ if [ -z "${MSVC}" ]; then
     if test -z "${STRIP}"; then
         STRIP=/usr/bin/strip
         if [ ! -f ${STRIP} ] ; then
+            set +e
             STRIP=`which strip`
+            set -e
         fi
         export STRIP
     fi
@@ -473,7 +475,9 @@ if [ -z "${MSVC}" ]; then
     if test -z "${OBJCOPY}"; then
         OBJCOPY=/usr/bin/objcopy
         if [ ! -f ${OBJCOPY} ] ; then
+            set +e
             OBJCOPY=`which objcopy`
+            set -e
         fi
         export OBJCOPY
     fi
