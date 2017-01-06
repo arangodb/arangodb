@@ -2064,55 +2064,56 @@ int LogicalCollection::insert(Transaction* trx, VPackSlice const slice,
 
   try {
     insertRevision(revisionId, marker->vpack(), 0, true);
+    // and go on with the insertion...
   } catch (basics::Exception const& ex) {
-    res = ex.code();
+    return ex.code();
   } catch (std::bad_alloc const&) {
-    res = TRI_ERROR_OUT_OF_MEMORY;
+    return TRI_ERROR_OUT_OF_MEMORY;
   } catch (...) {
-    res = TRI_ERROR_INTERNAL;
-  }
-  if (res != TRI_ERROR_NO_ERROR) {
-    try {
-      removeRevision(revisionId, false);
-    } catch (basics::Exception const& ex) {
-      res = ex.code();
-    } catch (std::bad_alloc const&) {
-      res = TRI_ERROR_OUT_OF_MEMORY;
-    } catch (...) {
-      res = TRI_ERROR_INTERNAL;
-    }
-    return res;
+    return TRI_ERROR_INTERNAL;
   }
 
   {
-    // use lock
+    // use lock?
     bool const useDeadlockDetector =
         (lock && !trx->isSingleOperationTransaction());
-    arangodb::CollectionWriteLocker collectionLocker(this, useDeadlockDetector,
-                                                     lock);
-
     try {
-      // insert into indexes
-      res = insertDocument(trx, revisionId, doc, operation, marker,
-                           options.waitForSync);
-    } catch (basics::Exception const& ex) {
-      res = ex.code();
-    } catch (std::bad_alloc const&) {
-      res = TRI_ERROR_OUT_OF_MEMORY;
+      arangodb::CollectionWriteLocker collectionLocker(this, useDeadlockDetector,
+                                                      lock);
+
+      try {
+        // insert into indexes
+        res = insertDocument(trx, revisionId, doc, operation, marker,
+                            options.waitForSync);
+      } catch (basics::Exception const& ex) {
+        res = ex.code();
+      } catch (std::bad_alloc const&) {
+        res = TRI_ERROR_OUT_OF_MEMORY;
+      } catch (...) {
+        res = TRI_ERROR_INTERNAL;
+      }
     } catch (...) {
-      res = TRI_ERROR_INTERNAL;
+      // the collectionLocker may have thrown in its constructor...
+      // if it did, then we need to manually remove the revision id
+      // from the list of revisions 
+      try {
+        removeRevision(revisionId, false);
+      } catch (...) {
+      }
+      throw;
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
       operation.revert(trx);
     }
   }
+
   if (res == TRI_ERROR_NO_ERROR) {
     readRevision(trx, result, revisionId);
 
     // store the tick that was used for writing the document
     resultMarkerTick = operation.tick();
-  }
+  } 
 
   return res;
 }

@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
-const download = internal.download;
+const download = internal.clusterDownload;
 const cluster = require('@arangodb/cluster');
 
 const db = require('@arangodb').db;
@@ -495,20 +495,20 @@ router.get("/coordshort", function(req, res) {
   };
 
   var coordinators = global.ArangoClusterInfo.getCoordinators();
-  
-  var coordinatorStats = coordinators.map(coordinator => {
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinator);
-    var response = download(endpoint.replace(/^tcp/, "http") + "/_db/_system/_admin/aardvark/statistics/short?count=" + coordinators.length);
+  if (Array.isArray(coordinators)) {
+    var coordinatorStats = coordinators.map(coordinator => {
+      var endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinator);
+      var response = download(endpoint.replace(/^tcp/, "http") + "/_db/_system/_admin/aardvark/statistics/short?count=" + coordinators.length, '', {headers: {}});
+      try {
+        return JSON.parse(response.body);
+      } catch (e) {
+        console.error("Couldn't read statistics response:", response.body);
+        throw e;
+      }
+    });
 
-    try {
-      return JSON.parse(response.body);
-    } catch (e) {
-      console.error("Couldn't read statistics response:", response.body);
-      throw e;
-    }
-  });
-  
-  mergeHistory(coordinatorStats);
+    mergeHistory(coordinatorStats);
+  }
   res.json({"enabled": coordinatorStats.some(stat => stat.enabled), "data": merged});
 })
 .summary("Short term history for all coordinators")

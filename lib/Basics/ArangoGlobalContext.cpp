@@ -193,6 +193,8 @@ void ArangoGlobalContext::runStartupChecks() {
 #ifdef __arm__
   // detect alignment settings for ARM
   {
+    LOG(TRACE)
+        << "running CPU alignment check";
     // To change the alignment trap behavior, simply echo a number into
     // /proc/cpu/alignment.  The number is made up from various bits:
     //

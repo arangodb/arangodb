@@ -64,7 +64,7 @@ VocbaseContext::~VocbaseContext() { _vocbase->release(); }
 
 rest::ResponseCode VocbaseContext::authenticate() {
   TRI_ASSERT(_vocbase != nullptr);
-
+  
   if (!_authentication->isEnabled()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
@@ -94,6 +94,9 @@ rest::ResponseCode VocbaseContext::authenticate() {
   std::string const& username = _request->user();
   // mop: internal request => no username present
   if (username.empty()) {
+    // mop: set user to root so that the foxx stuff
+    // knows about us
+    _request->setUser("root");
     return rest::ResponseCode::OK;
   }
 
@@ -101,7 +104,6 @@ rest::ResponseCode VocbaseContext::authenticate() {
   if (!forceOpen) {
     if (!StringUtils::isPrefix(path, "/_api/user/")) {
       std::string const& dbname = _request->databaseName();
-      
       if (!username.empty() || !dbname.empty()) {
         AuthLevel level =
             _authentication->canUseDatabase(username, dbname);
@@ -196,12 +198,12 @@ rest::ResponseCode VocbaseContext::basicAuthentication(char const* auth) {
   AuthResult result = _authentication->authInfo()->checkAuthentication(
       AuthInfo::AuthType::BASIC, auth);
 
-  _request->setUser(std::move(result._username));
-
   if (!result._authorized) {
     events::CredentialsBad(_request, rest::AuthenticationMethod::BASIC);
     return rest::ResponseCode::UNAUTHORIZED;
   }
+
+  _request->setUser(std::move(result._username));
 
   // we have a user name, verify 'mustChange'
   if (result._mustChange) {
@@ -232,7 +234,6 @@ rest::ResponseCode VocbaseContext::jwtAuthentication(std::string const& auth) {
     return rest::ResponseCode::UNAUTHORIZED;
   }
 
-  // we have a user name, verify 'mustChange'
   _request->setUser(std::move(result._username));
   events::Authenticated(_request, rest::AuthenticationMethod::JWT);
 

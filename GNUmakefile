@@ -6,7 +6,7 @@
 
 SRC=$(shell pwd |sed "s;.*/;;")
 
-.PHONY: warning help
+.PHONY: warning waning-mac help
 
 warning:
 	@echo "ArangoDB has switched to CMAKE. In order to compile, use:"
@@ -16,6 +16,10 @@ warning:
 	@echo "  cmake .. -DCMAKE_BUILD_TYPE=Release"
 	@echo "  make"
 	@echo ""
+	@if test `uname` == 'Darwin'; then make warning-mac; fi
+	@echo "Use 'make help' to see more options."
+
+warning-mac:
 	@echo "MacOS users:"
 	@echo "  Please use OPENSSL from homebrew and use"
 	@echo ""
@@ -24,7 +28,6 @@ warning:
 	@echo "  Note that some versions of Apple's clang have severe performance"
 	@echo "  issues. Use GCC5 from homebrew in this case."
 	@echo ""
-	@echo "Use 'make help' to see more options."
 
 help:
 	@echo "The most common -D<options> are"

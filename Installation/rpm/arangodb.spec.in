@@ -77,6 +77,14 @@ Group:          Productivity/Databases/Servers
 Conflicts:	arangodb, @CPACKG_PACKAGE_CONFLICTS@, @CPACKG_PACKAGE_CONFLICTS@-client, @CPACK_PACKAGE_NAME@
 
 ## -----------------------------------------------------------------------------
+## --SECTION--                                                build dependencies
+## -----------------------------------------------------------------------------
+
+%package debuginfo
+Summary:        ArangoDB debug symbols
+Group:          Productivity/Databases/Servers
+
+## -----------------------------------------------------------------------------
 ## --SECTION--                                                       description
 ## -----------------------------------------------------------------------------
 
@@ -90,6 +98,9 @@ It is written in C/C++.
 
 %description client
 The ArangoDB shell as stand-alone program. It also contains the utility programs: arangobench (benchmark), arangorestore & arangodump (backup), arangoimp (import).
+
+%description debuginfo
+Debug symbols for the arangodb database
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             build
@@ -178,6 +189,8 @@ mkdir -p %{buildroot}%{_piddir}
 %{_datadir}/arangodb3/js/client
 %{_datadir}/arangodb3/js/node
 
+%files debuginfo
+/usr/lib*/debug/*
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                              post
