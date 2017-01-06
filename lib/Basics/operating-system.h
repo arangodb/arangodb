@@ -53,6 +53,8 @@
 
 #if defined(__arm__) || defined(__aarch64__)
 #define TRI_V8_MAXHEAP 1 * 1024
+#elif TRI_PADDING_32
+#define TRI_V8_MAXHEAP 1 * 1024
 #else
 #define TRI_V8_MAXHEAP 3 * 1024
 #endif
