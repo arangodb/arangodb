@@ -111,3 +111,10 @@ add_custom_target(remove_packages
 
 list(APPEND CLEAN_PACKAGES_LIST remove_packages)
 
+if (NOT ${ENV{SYMSRV}} STREQUAL "")
+  message("Storing symbols:")
+  add_custom_command(TARGET ${BIN_ARANGOD} POST_BUILD
+    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+    COMMAND "find -name \*pdb |grep -v Release |grep -v Debug |grep -v 3rdParty |grep -v vc120.pdb  > pdbfiles_list.txt"
+    COMMAND "symstore.exe add /f '@${PROJECT_BINARY_DIR}/pdbfiles_list.txt' /s '${ENV{SYMSRV}}' /t ArangoDB /compress")
+endif()
