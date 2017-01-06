@@ -30,6 +30,7 @@
 #include "VocBase/replication-common.h"
 
 namespace arangodb {
+class ClusterInfo;
 class CollectionNameResolver;
 class LogicalCollection;
 class Transaction;
@@ -352,6 +353,37 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandGetIdForReadLockCollection();
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Send content of buffers to each shard and wait for results
+  //////////////////////////////////////////////////////////////////////////////
+
+  int sendBuffersToShards(
+      std::unordered_map<std::string,
+                         std::unique_ptr<arangodb::basics::StringBuffer>> const&
+          shardTab,
+      std::string const& dbName, std::string& errorMsg) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Insert a NON-REMOVE marker into the shardTab.
+  //////////////////////////////////////////////////////////////////////////////
+
+  int insertDocInBuffer(
+      arangodb::ClusterInfo* ci, arangodb::LogicalCollection* col,
+      arangodb::velocypack::Slice doc,
+      std::unordered_map<std::string,
+                         std::unique_ptr<arangodb::basics::StringBuffer>> const&
+          shardTab,
+      char const* ptr, char const* pos, std::string& errorMsg) const;
+
+  /// @brief Prepare the ShardTable mapping a ShardID => StringBuffer
+
+  void prepareShardTable(
+      arangodb::ClusterInfo* ci, arangodb::LogicalCollection* col,
+      std::unordered_map<std::string,
+                         std::unique_ptr<arangodb::basics::StringBuffer>>&
+          shardTab) const;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
