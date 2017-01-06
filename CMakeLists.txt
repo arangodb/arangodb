@@ -245,6 +245,8 @@ endif ()
 find_package(PythonInterp 2 EXACT REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
+set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
+
 if (NOT WINDOWS)
   find_program(CHMOD_EXECUTABLE chmod)
   find_program(CHOWN_EXECUTABLE chown)
@@ -833,16 +835,11 @@ if (USE_MAINTAINER_MODE)
 
   foreach (m IN LISTS ERROR_FILES)
     add_custom_command(
-      OUTPUT
-        ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND
-        PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE} ./utils/generateErrorfile.sh ./${ERRORS_DAT} ./${m}
-      DEPENDS
-        ${CMAKE_SOURCE_DIR}/${ERRORS_DAT}
-      WORKING_DIRECTORY
-        ${CMAKE_SOURCE_DIR}
-      COMMENT
-        "Building errors files ${m}"
+      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
+      COMMAND ./utils/generateErrorfile.sh ./${ERRORS_DAT} ./${m}
+      DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT}
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      COMMENT  "Building errors files ${m}"
       VERBATIM
     )
 
@@ -867,16 +864,11 @@ if (USE_MAINTAINER_MODE)
 
   foreach (m IN LISTS MIMETYPES_FILES)
     add_custom_command(
-      OUTPUT
-        ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND
-        PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE} ./utils/generateMimetypes.sh ./${MIMETYPES_DAT} ./${m}
-      DEPENDS
-        ${CMAKE_SOURCE_DIR}/${MIMETYPES_DAT}
-      WORKING_DIRECTORY
-        ${CMAKE_SOURCE_DIR}
-      COMMENT
-        "Building mimetypes files ${m}"
+      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
+      COMMAND ./utils/generateMimetypes.sh ./${MIMETYPES_DAT} ./${m}
+      DEPENDS ${CMAKE_SOURCE_DIR}/${MIMETYPES_DAT}
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      COMMENT "Building mimetypes files ${m}"
       VERBATIM
     )
 
