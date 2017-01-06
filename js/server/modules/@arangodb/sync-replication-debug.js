@@ -1,4 +1,5 @@
 /* jshint strict: false */
+/* global ArangoServerState */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,12 +26,12 @@
 exports.setup = function() {
   global.ArangoServerState.enableSyncReplicationDebug();
   ArangoServerState.setRole('PRIMARY');
-  global.ArangoAgency.set = function() { return true };
-  global.ArangoAgency.write = function() { return true };
-  global.ArangoAgency.increaseVersion = function() { return true };
-  global.ArangoAgency.get = function() { return true };
-  global.ArangoAgency.lockRead = function() { return true };
-  global.ArangoAgency.lockWrite = function() { return true };
-  global.ArangoAgency.unlockRead = function() { return true };
-  global.ArangoAgency.unlockWrite = function() { return true };
-}
+  global.ArangoAgency.set = function() { return true; };
+  global.ArangoAgency.write = function() { return true; };
+  global.ArangoAgency.increaseVersion = function() { return true; };
+  global.ArangoAgency.get = function() { return true; };
+  global.ArangoAgency.lockRead = function() { return true; };
+  global.ArangoAgency.lockWrite = function() { return true; };
+  global.ArangoAgency.unlockRead = function() { return true; };
+  global.ArangoAgency.unlockWrite = function() { return true; };
+};
