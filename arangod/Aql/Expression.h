@@ -280,10 +280,15 @@ class Expression {
   AqlValue executeSimpleExpressionMinus(AstNode const*, arangodb::Transaction*,
                                         bool& mustDestroy);
 
-  /// @brief execute an expression of type SIMPLE with AND or OR
-  AqlValue executeSimpleExpressionAndOr(AstNode const*,
-                                        arangodb::Transaction*,
-                                        bool& mustDestroy);
+  /// @brief execute an expression of type SIMPLE with AND 
+  AqlValue executeSimpleExpressionAnd(AstNode const*,
+                                      arangodb::Transaction*,
+                                      bool& mustDestroy);
+  
+  /// @brief execute an expression of type SIMPLE with OR 
+  AqlValue executeSimpleExpressionOr(AstNode const*,
+                                     arangodb::Transaction*,
+                                     bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with NARY AND or OR
   AqlValue executeSimpleExpressionNaryAndOr(AstNode const*,

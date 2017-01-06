@@ -503,7 +503,9 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
     return true;
   }
 #ifdef DEBUG_SYNC_REPLICATION
-  return false;
+  if (dbname == "sync-replication-test") {
+    return false;
+  }
 #endif
 
   ClusterInfo* ci = ClusterInfo::instance();
