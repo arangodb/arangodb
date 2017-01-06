@@ -36,8 +36,8 @@
 /// @brief use padding for pointers in binary data
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef __arm__
-// must properly align memory on ARM architecture to prevent
+#ifndef TRI_UNALIGNED_ACCESS
+// must properly align memory on some architectures to prevent
 // unaligned memory accesses
 #define FULLTEXT_PADDING 1
 #else
