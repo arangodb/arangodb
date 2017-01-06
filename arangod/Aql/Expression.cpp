@@ -467,8 +467,9 @@ AqlValue Expression::executeSimpleExpression(
     case NODE_TYPE_OPERATOR_UNARY_MINUS:
       return executeSimpleExpressionMinus(node, trx, mustDestroy);
     case NODE_TYPE_OPERATOR_BINARY_AND:
+      return executeSimpleExpressionAnd(node, trx, mustDestroy);
     case NODE_TYPE_OPERATOR_BINARY_OR:
-      return executeSimpleExpressionAndOr(node, trx, mustDestroy);
+      return executeSimpleExpressionOr(node, trx, mustDestroy);
     case NODE_TYPE_OPERATOR_BINARY_EQ:
     case NODE_TYPE_OPERATOR_BINARY_NE:
     case NODE_TYPE_OPERATOR_BINARY_LT:
@@ -996,34 +997,38 @@ AqlValue Expression::executeSimpleExpressionMinus(AstNode const* node,
   return AqlValue(-value);
 }
 
-/// @brief execute an expression of type SIMPLE with AND or OR
-AqlValue Expression::executeSimpleExpressionAndOr(
+/// @brief execute an expression of type SIMPLE with AND
+AqlValue Expression::executeSimpleExpressionAnd(
     AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
 
   AqlValue left =
-      executeSimpleExpression(node->getMember(0), trx, mustDestroy, true);
+      executeSimpleExpression(node->getMemberUnchecked(0), trx, mustDestroy, true);
 
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-    // AND
-    if (left.toBoolean()) {
-      // left is true => return right
-      if (mustDestroy) { left.destroy(); }
-      return executeSimpleExpression(node->getMember(1), trx, mustDestroy, true);
-    }
+  if (left.toBoolean()) {
+    // left is true => return right
+    if (mustDestroy) { left.destroy(); }
+    return executeSimpleExpression(node->getMemberUnchecked(1), trx, mustDestroy, true);
+  }
 
-    // left is false, return left
-    return left;
-  } 
-    
-  // OR
+  // left is false, return left
+  return left;
+}
+
+/// @brief execute an expression of type SIMPLE with OR
+AqlValue Expression::executeSimpleExpressionOr(
+    AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
+
+  AqlValue left =
+      executeSimpleExpression(node->getMemberUnchecked(0), trx, mustDestroy, true);
+
   if (left.toBoolean()) {
     // left is true => return left
     return left;
   }
 
   // left is false => return right
-  left.destroy();
-  return executeSimpleExpression(node->getMember(1), trx, mustDestroy, true);
+  if (mustDestroy) { left.destroy(); }
+  return executeSimpleExpression(node->getMemberUnchecked(1), trx, mustDestroy, true);
 }
 
 /// @brief execute an expression of type SIMPLE with AND or OR
@@ -1076,11 +1081,11 @@ AqlValue Expression::executeSimpleExpressionComparison(
     AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
 
   AqlValue left =
-      executeSimpleExpression(node->getMember(0), trx, mustDestroy, false);
+      executeSimpleExpression(node->getMemberUnchecked(0), trx, mustDestroy, false);
   AqlValueGuard guardLeft(left, mustDestroy);
     
   AqlValue right =
-      executeSimpleExpression(node->getMember(1), trx, mustDestroy, false);
+      executeSimpleExpression(node->getMemberUnchecked(1), trx, mustDestroy, false);
   AqlValueGuard guardRight(right, mustDestroy);
 
   mustDestroy = false; // we're returning a boolean only
@@ -1486,10 +1491,10 @@ AqlValue Expression::executeSimpleExpressionIterator(
 AqlValue Expression::executeSimpleExpressionArithmetic(
     AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
 
-  AqlValue lhs = executeSimpleExpression(node->getMember(0), trx, mustDestroy, true);
+  AqlValue lhs = executeSimpleExpression(node->getMemberUnchecked(0), trx, mustDestroy, true);
   AqlValueGuard guardLhs(lhs, mustDestroy);
 
-  AqlValue rhs = executeSimpleExpression(node->getMember(1), trx, mustDestroy, true);
+  AqlValue rhs = executeSimpleExpression(node->getMemberUnchecked(1), trx, mustDestroy, true);
   AqlValueGuard guardRhs(rhs, mustDestroy);
 
   mustDestroy = false;
@@ -1523,6 +1528,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
     }
   }
 
+  mustDestroy = false;
   double result;
 
   switch (node->type) {
@@ -1542,18 +1548,9 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
       result = fmod(l, r);
       break;
     default:
-      mustDestroy = false;
       return AqlValue(VelocyPackHelper::ZeroValue());
   }
-      
-  if (std::isnan(result) || !std::isfinite(result) || result == HUGE_VAL || result == -HUGE_VAL) {
-    // convert NaN, +inf & -inf to null
-    mustDestroy = false;
-    return AqlValue(VelocyPackHelper::NullValue());
-  }
-
-  TransactionBuilderLeaser builder(trx);
-  mustDestroy = true; // builder = dynamic data
-  builder->add(VPackValue(result));
-  return AqlValue(*builder.get());
+  
+  // this will convert NaN, +inf & -inf to null
+  return AqlValue(result);
 }
