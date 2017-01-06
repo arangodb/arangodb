@@ -316,7 +316,6 @@ function createLocalDatabases (plannedDatabases, currentDatabases, writeLocked) 
 
   // check which databases need to be created locally
   for (name in plannedDatabases) {
-    console.log("NAME", name, plannedDatabases[name]);
     if (plannedDatabases.hasOwnProperty(name)) {
       var payload = plannedDatabases[name];
       payload.error = false;
@@ -374,7 +373,6 @@ function dropLocalDatabases (plannedDatabases, writeLocked) {
 
   var localDatabases = getLocalDatabases();
   var name;
-  console.log(localDatabases);
 
   // check which databases need to be deleted locally
   for (name in localDatabases) {
