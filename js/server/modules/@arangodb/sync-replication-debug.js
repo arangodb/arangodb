@@ -29,7 +29,17 @@ exports.setup = function() {
   global.ArangoAgency.set = function() { return true; };
   global.ArangoAgency.write = function() { return true; };
   global.ArangoAgency.increaseVersion = function() { return true; };
-  global.ArangoAgency.get = function() { return true; };
+  global.ArangoAgency.get = function(path) {
+    let value = {};
+    let pathSegments = path.split('/');
+    let keyValue = 1;
+    value.arango = pathSegments.reverse().reduce((v, key) => {
+      let kv = {};
+      kv[key] = v;
+      return kv;
+    }, keyValue);
+    return value;
+  };
   global.ArangoAgency.lockRead = function() { return true; };
   global.ArangoAgency.lockWrite = function() { return true; };
   global.ArangoAgency.unlockRead = function() { return true; };
