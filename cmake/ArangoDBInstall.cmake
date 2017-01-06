@@ -17,8 +17,12 @@ if (MSVC)
 endif()
 
 # debug info directory:
-set(CMAKE_INSTALL_DEBINFO_DIR "${CMAKE_INSTALL_LIBDIR}/debug/${CMAKE_PROJECT_NAME}")
-
+if (${CMAKE_INSTALL_LIBDIR} STREQUAL "usr/lib64")
+  # some systems have weird places for usr/lib: 
+  set(CMAKE_INSTALL_DEBINFO_DIR "usr/lib/debug/${CMAKE_PROJECT_NAME}")
+else ()
+  set(CMAKE_INSTALL_DEBINFO_DIR "${CMAKE_INSTALL_LIBDIR}/debug/${CMAKE_PROJECT_NAME}")
+endif ()
 
 set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/${CMAKE_PROJECT_NAME}")
 set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/${CMAKE_PROJECT_NAME}")
@@ -35,7 +39,6 @@ FILE(MAKE_DIRECTORY "${ARANGODB_APPS_DIRECTORY}")
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/${CMAKE_PROJECT_NAME}")
 
 set(INSTALL_ICU_DT_DEST "${CMAKE_INSTALL_DATAROOTDIR}/${CMAKE_PROJECT_NAME}")
-
 include(InstallMacros)
 # install ----------------------------------------------------------------------
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
