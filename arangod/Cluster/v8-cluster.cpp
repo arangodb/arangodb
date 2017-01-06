@@ -40,6 +40,8 @@
 #include "VocBase/ticks.h"
 #include "V8Server/v8-vocbaseprivate.h"
 
+#include <chrono>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -269,8 +271,12 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_APIAgency(std::string const& method,
                          v8::FunctionCallbackInfo<v8::Value> const& args) {
+
+  using namespace std::chrono;
+
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
+  
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("read([[...]])");
