@@ -264,10 +264,44 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief acquires a read-lock in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_LockReadAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() < 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("lockRead(<part>, <ttl>, <timeout>)");
+  }
+
+  std::string const part = TRI_ObjectToString(args[0]);
+
+  double ttl = 0.0;
+  if (args.Length() > 1) {
+    ttl = TRI_ObjectToDouble(args[1]);
+  }
+
+  double timeout = 0.0;
+  if (args.Length() > 2) {
+    timeout = TRI_ObjectToDouble(args[2]);
+  }
+
+  AgencyComm comm;
+  if (!comm.lockRead(part, ttl, timeout)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unable to acquire lock");
+  }
+
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief read transaction to the agency
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_APIAgency(std::string const& method,
+static void JS_APIAgency(std::string const& envelope,
                          v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
@@ -288,7 +322,7 @@ static void JS_APIAgency(std::string const& method,
     comm.sendWithFailover(
       arangodb::rest::RequestType::POST,
       AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
-      std::string("/_api/agency/") + method, builder.toJson());
+      std::string("/_api/agency/") + envelope, builder.toJson());
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
@@ -323,6 +357,101 @@ static void JS_TransactAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   JS_APIAgency("transact", args);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief acquires a write-lock in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_LockWriteAgency(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() < 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("lockWrite(<part>, <ttl>, <timeout>)");
+  }
+
+  std::string const part = TRI_ObjectToString(args[0]);
+
+  double ttl = 0.0;
+  if (args.Length() > 1) {
+    ttl = TRI_ObjectToDouble(args[1]);
+  }
+
+  double timeout = 0.0;
+  if (args.Length() > 2) {
+    timeout = TRI_ObjectToDouble(args[2]);
+  }
+
+  AgencyComm comm;
+  if (!comm.lockWrite(part, ttl, timeout)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unable to acquire lock");
+  }
+
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases a read-lock in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_UnlockReadAgency(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("unlockRead(<part>, <timeout>)");
+  }
+
+  std::string const part = TRI_ObjectToString(args[0]);
+
+  double timeout = 0.0;
+  if (args.Length() > 1) {
+    timeout = TRI_ObjectToDouble(args[1]);
+  }
+
+  AgencyComm comm;
+  if (!comm.unlockRead(part, timeout)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unable to release lock");
+  }
+
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases a write-lock in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_UnlockWriteAgency(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("unlockWrite(<part>, <timeout>)");
+  }
+
+  std::string const part = TRI_ObjectToString(args[0]);
+
+  double timeout = 0.0;
+  if (args.Length() > 1) {
+    timeout = TRI_ObjectToDouble(args[1]);
+  }
+
+  AgencyComm comm;
+  if (!comm.unlockWrite(part, timeout)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unable to release lock");
+  }
+
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a value from the agency
@@ -1189,25 +1318,6 @@ static void JS_CoordinatorConfigServerState(
   TRI_V8_TRY_CATCH_END
 }
 
-#ifdef DEBUG_SYNC_REPLICATION
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set arangoserver state to initialized
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_SetInitializedServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("setInitialized()");
-  }
-
-  ServerState::instance()->setInitialized();
-  TRI_V8_TRY_CATCH_END
-}
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the cluster is initialized
 ////////////////////////////////////////////////////////////////////////////////
@@ -1995,6 +2105,10 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_IsEnabledAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("increaseVersion"),
                        JS_IncreaseVersionAgency);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("lockRead"),
+                       JS_LockReadAgency);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("lockWrite"),
+                       JS_LockWriteAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("remove"),
                        JS_RemoveAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("set"), JS_SetAgency);
@@ -2004,6 +2118,10 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_PrefixAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("uniqid"),
                        JS_UniqidAgency);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("unlockRead"),
+                       JS_UnlockReadAgency);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("unlockWrite"),
+                       JS_UnlockWriteAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("version"),
                        JS_VersionAgency);
 
@@ -2109,10 +2227,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_DBserverConfigServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("coordinatorConfig"),
                        JS_CoordinatorConfigServerState);
-#ifdef DEBUG_SYNC_REPLICATION
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("setInitialized"),
-                       JS_SetInitializedServerState);
-#endif
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("initialized"),
                        JS_InitializedServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("isCoordinator"),

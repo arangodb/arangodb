@@ -873,14 +873,18 @@ int CollectorThread::transferMarkers(Logfile* logfile,
   arangodb::CollectionGuard collectionGuard(vocbase, collectionId, true);
   arangodb::LogicalCollection* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
+  
+  // no need to go on if the collection is already deleted
+  if (collection->status() == TRI_VOC_COL_STATUS_DELETED) {
+    return TRI_ERROR_NO_ERROR;
+  }
 
   LOG_TOPIC(TRACE, Logger::COLLECTOR) << "collector transferring markers for '"
              << collection->name()
              << "', totalOperationsCount: " << totalOperationsCount;
-
-  std::unique_ptr<CollectorCache> cache(
-      new CollectorCache(collectionId, databaseId, logfile,
-                         totalOperationsCount, operations.size()));
+    
+  auto cache = std::make_unique<CollectorCache>(collectionId, databaseId, logfile,
+                         totalOperationsCount, operations.size());
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = TRI_ERROR_INTERNAL;
