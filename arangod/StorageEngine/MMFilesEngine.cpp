@@ -747,6 +747,7 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalColl
                  << ", status: " << collection->statusString();
 
         std::vector<std::string> files = TRI_FilesDirectory(collection->path().c_str());
+        LOG(ERR) << "ALL FILES: " << files;
         for (auto const& f : files) {
           bool isDir = TRI_IsDirectory(f.c_str());
           std::string full = basics::FileUtils::buildFilename(collection->path(), f);
@@ -754,9 +755,11 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalColl
           if (isDir) {
             LOG(ERR) << "- removing dir: " << TRI_RemoveDirectory(full.c_str());
           } else {
+            LOG(ERR) << "- file: " << full << ", size: " << TRI_SizeFile(full.c_str());
             LOG(ERR) << "- removing file: " << TRI_UnlinkFile(full.c_str());
           }
         }
+        LOG(ERR) << "ALL FILES AGAIN: " << TRI_FilesDirectory(collection->path().c_str());
 
       } else {
         LOG(DEBUG) << "wiping dropped collection '" << name
