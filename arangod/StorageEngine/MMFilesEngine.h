@@ -339,6 +339,7 @@ class MMFilesEngine final : public StorageEngine {
   TRI_voc_tick_t _maxTick;
   std::vector<std::pair<std::string, std::string>> _deleted;
 
+  arangodb::basics::ReadWriteLock mutable _pathsLock;
   std::unordered_map<TRI_voc_tick_t, std::unordered_map<TRI_voc_cid_t, std::string>> _collectionPaths;
 
   struct CompactionBlocker {
@@ -350,7 +351,7 @@ class MMFilesEngine final : public StorageEngine {
   };
 
   // lock for compaction blockers
-  arangodb::basics::ReadWriteLock _compactionBlockersLock;
+  arangodb::basics::ReadWriteLock mutable _compactionBlockersLock;
   // cross-database map of compaction blockers, protected by _compactionBlockersLock
   std::unordered_map<TRI_vocbase_t*, std::vector<CompactionBlocker>> _compactionBlockers;
   
