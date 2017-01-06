@@ -1727,7 +1727,7 @@ TRI_datafile_t* TRI_datafile_t::open(std::string const& filename, bool ignoreFai
   // change to read-write if no footer has been found
   if (!datafile->_isSealed) {
     if (!datafile->readWrite()) {
-      LOG(ERR) << "unable to change file protection for datafile '" << datafile->getName() << "'. please check file permissions and mount options.";
+      LOG(ERR) << "unable to change memory protection for memory backed by datafile '" << datafile->getName() << "'. please check file permissions and mount options.";
       return nullptr;
     }
     datafile->_state = TRI_DF_STATE_WRITE; 
@@ -1743,9 +1743,6 @@ TRI_datafile_t* TRI_datafile_t::open(std::string const& filename, bool ignoreFai
 /// @brief opens a datafile
 TRI_datafile_t* TRI_datafile_t::openHelper(std::string const& filename, bool ignoreErrors) {
   TRI_ERRORBUF;
-  void* data;
-  TRI_stat_t status;
-  void* mmHandle;
 
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(!filename.empty());
@@ -1764,6 +1761,7 @@ TRI_datafile_t* TRI_datafile_t::openHelper(std::string const& filename, bool ign
   }
 
   // compute the size of the file
+  TRI_stat_t status;
   int res = TRI_FSTAT(fd, &status);
 
   if (res < 0) {
@@ -1783,7 +1781,7 @@ TRI_datafile_t* TRI_datafile_t::openHelper(std::string const& filename, bool ign
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
     TRI_CLOSE(fd);
 
-    LOG(ERR) << "datafile '" << filename << "' is corrupt, size is only " << (unsigned int)size;
+    LOG(ERR) << "datafile '" << filename << "' is corrupt, size is only " << size;
 
     return nullptr;
   }
@@ -1854,6 +1852,8 @@ TRI_datafile_t* TRI_datafile_t::openHelper(std::string const& filename, bool ign
   }
 
   // map datafile into memory
+  void* data;
+  void* mmHandle;
   res = TRI_MMFile(0, size, PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1862,8 +1862,7 @@ TRI_datafile_t* TRI_datafile_t::openHelper(std::string const& filename, bool ign
 
     LOG(ERR) << "cannot memory map datafile '" << filename << "': " << TRI_errno_string(res);
     LOG(ERR) << "The database directory might reside on a shared folder "
-                "(VirtualBox, VMWare) or an NFS "
-                "mounted volume which does not allow memory mapped files.";
+                "(VirtualBox, VMWare) or an NFS-mounted volume which does not allow memory mapped files.";
     return nullptr;
   }
 

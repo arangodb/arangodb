@@ -505,7 +505,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
         collection->setDeleted(false);
         events::DropCollection(colName, ex.code());
         return ex.code();
-      } catch (std::exception const& ex) {
+      } catch (std::exception const&) {
         collection->setDeleted(false);
         events::DropCollection(colName, TRI_ERROR_INTERNAL);
         return TRI_ERROR_INTERNAL;
