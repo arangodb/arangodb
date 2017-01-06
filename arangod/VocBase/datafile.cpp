@@ -295,7 +295,6 @@ TRI_datafile_t* TRI_datafile_t::create(std::string const& filename, TRI_voc_fid_
   if (filename.empty()) {
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
     datafile.reset(CreateAnonymousDatafile(fid, maximalSize));
-    return nullptr;
 #endif
   } else {
     datafile.reset(CreatePhysicalDatafile(filename, fid, maximalSize));
