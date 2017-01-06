@@ -24,6 +24,7 @@
 #include "MMFilesEngine.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -525,7 +526,10 @@ int MMFilesEngine::dropDatabase(TRI_vocbase_t* vocbase) {
   // stop compactor thread
   shutdownDatabase(vocbase);
 
-  _collectionPaths.erase(vocbase->id());
+  {
+    WRITE_LOCKER(locker, _pathsLock);
+    _collectionPaths.erase(vocbase->id());
+  }
 
   return dropDatabaseDirectory(databaseDirectory(vocbase->id()));
 }
@@ -681,96 +685,79 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalColl
   RocksDBFeature::dropCollection(vocbase->id(), collection->cid());
 
   // rename collection directory
-  if (!collection->path().empty()) {
-    std::string const collectionPath = collection->path();
+  if (collection->path().empty()) {
+    return;
+  }
+
+  std::string const collectionPath = collection->path();
 
 #ifdef _WIN32
-    size_t pos = collectionPath.find_last_of('\\');
+  size_t pos = collectionPath.find_last_of('\\');
 #else
-    size_t pos = collectionPath.find_last_of('/');
+  size_t pos = collectionPath.find_last_of('/');
 #endif
 
-    bool invalid = false;
+  bool invalid = false;
 
-    if (pos == std::string::npos || pos + 1 >= collectionPath.size()) {
+  if (pos == std::string::npos || pos + 1 >= collectionPath.size()) {
+    invalid = true;
+  }
+
+  std::string path;
+  std::string relName;
+  if (!invalid) {
+    // extract path part
+    if (pos > 0) {
+      path = collectionPath.substr(0, pos); 
+    }
+
+    // extract relative filename
+    relName = collectionPath.substr(pos + 1);
+
+    if (!StringUtils::isPrefix(relName, "collection-") || 
+        StringUtils::isSuffix(relName, ".tmp")) {
       invalid = true;
     }
+  }
 
-    std::string path;
-    std::string relName;
-    if (!invalid) {
-      // extract path part
-      if (pos > 0) {
-        path = collectionPath.substr(0, pos); 
-      }
+  if (invalid) {
+    LOG(ERR) << "cannot rename dropped collection '" << name
+              << "': unknown path '" << collection->path() << "'";
+  } else {
+    // prefix the collection name with "deleted-"
 
-      // extract relative filename
-      relName = collectionPath.substr(pos + 1);
+    std::string const newFilename = 
+      FileUtils::buildFilename(path, "deleted-" + relName.substr(std::string("collection-").size()));
 
-      if (!StringUtils::isPrefix(relName, "collection-") || 
-          StringUtils::isSuffix(relName, ".tmp")) {
-        invalid = true;
-      }
+    // check if target directory already exists
+    if (TRI_IsDirectory(newFilename.c_str())) {
+      // remove existing target directory
+      TRI_RemoveDirectory(newFilename.c_str());
     }
 
-    if (invalid) {
-      LOG(ERR) << "cannot rename dropped collection '" << name
-               << "': unknown path '" << collection->path() << "'";
-    } else {
-      // prefix the collection name with "deleted-"
+    // perform the rename
+    LOG(TRACE) << "renaming collection directory from '"
+                << collection->path() << "' to '" << newFilename << "'";
 
-      std::string const newFilename = 
-        FileUtils::buildFilename(path, "deleted-" + relName.substr(std::string("collection-").size()));
-
-      // check if target directory already exists
-      if (TRI_IsDirectory(newFilename.c_str())) {
-        // remove existing target directory
-        TRI_RemoveDirectory(newFilename.c_str());
+    std::string systemError;
+    int res = TRI_RenameFile(collection->path().c_str(), newFilename.c_str(), nullptr, &systemError);
+      
+    if (res != TRI_ERROR_NO_ERROR) {
+      if (!systemError.empty()) {
+        systemError = ", error details: " + systemError;
       }
+      LOG(ERR) << "cannot rename directory of dropped collection '" << name
+                << "' from '" << collection->path() << "' to '"
+                << newFilename << "': " << TRI_errno_string(res) << systemError;
+    } else {
+      LOG(DEBUG) << "wiping dropped collection '" << name
+                  << "' from disk";
 
-      // perform the rename
-      LOG(TRACE) << "renaming collection directory from '"
-                 << collection->path() << "' to '" << newFilename << "'";
+      res = TRI_RemoveDirectory(newFilename.c_str());
 
-      std::string systemError;
-      int res = TRI_RenameFile(collection->path().c_str(), newFilename.c_str(), nullptr, &systemError);
-        
       if (res != TRI_ERROR_NO_ERROR) {
-        if (!systemError.empty()) {
-          systemError = ", error details: " + systemError;
-        }
-        LOG(ERR) << "cannot rename directory of dropped collection '" << name
-                 << "' from '" << collection->path() << "' to '"
-                 << newFilename << "': " << TRI_errno_string(res) << systemError
-                 << ", source exists: " << TRI_IsDirectory(collection->path().c_str()) 
-                 << ", dest exists: " << TRI_IsDirectory(newFilename.c_str()) 
-                 << ", status: " << collection->statusString();
-
-        std::vector<std::string> files = TRI_FilesDirectory(collection->path().c_str());
-        LOG(ERR) << "ALL FILES: " << files;
-        for (auto const& f : files) {
-          bool isDir = TRI_IsDirectory(f.c_str());
-          std::string full = basics::FileUtils::buildFilename(collection->path(), f);
-          LOG(ERR) << "- found: " << f << ", IS DIR: " << isDir;
-          if (isDir) {
-            LOG(ERR) << "- removing dir: " << TRI_RemoveDirectory(full.c_str());
-          } else {
-            LOG(ERR) << "- file: " << full << ", size: " << TRI_SizeFile(full.c_str());
-            LOG(ERR) << "- removing file: " << TRI_UnlinkFile(full.c_str());
-          }
-        }
-        LOG(ERR) << "ALL FILES AGAIN: " << TRI_FilesDirectory(collection->path().c_str());
-
-      } else {
-        LOG(DEBUG) << "wiping dropped collection '" << name
-                   << "' from disk";
-
-        res = TRI_RemoveDirectory(newFilename.c_str());
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          LOG(ERR) << "cannot wipe dropped collection '" << name
-                   << "' from disk: " << TRI_errno_string(res);
-        }
+        LOG(ERR) << "cannot wipe dropped collection '" << name
+                  << "' from disk: " << TRI_errno_string(res);
       }
     }
   }
@@ -1167,6 +1154,8 @@ std::string MMFilesEngine::databaseParametersFilename(TRI_voc_tick_t id) const {
 }
 
 std::string MMFilesEngine::collectionDirectory(TRI_voc_tick_t databaseId, TRI_voc_cid_t id) const {
+  READ_LOCKER(locker, _pathsLock);
+
   auto it = _collectionPaths.find(databaseId);
 
   if (it == _collectionPaths.end()) {
@@ -1307,6 +1296,8 @@ std::string MMFilesEngine::createCollectionDirectoryName(std::string const& base
 }
 
 void MMFilesEngine::registerCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, std::string const& path) {
+  WRITE_LOCKER(locker, _pathsLock);
+
   auto it = _collectionPaths.find(databaseId);
 
   if (it == _collectionPaths.end()) {
@@ -1316,12 +1307,16 @@ void MMFilesEngine::registerCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_ci
 }
 
 void MMFilesEngine::unregisterCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id) {
+  /*
+  WRITE_LOCKER(locker, _pathsLock);
+
   auto it = _collectionPaths.find(databaseId);
 
   if (it == _collectionPaths.end()) {
     return;
   }
-//  (*it).second.erase(id);
+  (*it).second.erase(id);
+  */
 }
 
 void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,

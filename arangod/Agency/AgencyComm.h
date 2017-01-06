@@ -477,6 +477,11 @@ class AgencyComm {
   static uint64_t const INITIAL_SLEEP_TIME = 5000;
   static uint64_t const MAX_SLEEP_TIME = 50000;
 
+#ifdef DEBUG_SYNC_REPLICATION
+ public:
+  static bool syncReplDebug;
+#endif
+
  public:
   AgencyCommResult sendServerState(double ttl);
 

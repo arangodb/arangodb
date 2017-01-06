@@ -1318,6 +1318,26 @@ static void JS_CoordinatorConfigServerState(
   TRI_V8_TRY_CATCH_END
 }
 
+#ifdef DEBUG_SYNC_REPLICATION
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set arangoserver state to initialized
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_EnableSyncReplicationDebug(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("enableSyncReplicationDebug()");
+  }
+
+  ServerState::instance()->setInitialized();
+  AgencyComm::syncReplDebug = true;
+  TRI_V8_TRY_CATCH_END
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the cluster is initialized
 ////////////////////////////////////////////////////////////////////////////////
@@ -2227,6 +2247,10 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_DBserverConfigServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("coordinatorConfig"),
                        JS_CoordinatorConfigServerState);
+#ifdef DEBUG_SYNC_REPLICATION
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("enableSyncReplicationDebug"),
+                       JS_EnableSyncReplicationDebug);
+#endif
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("initialized"),
                        JS_InitializedServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("isCoordinator"),

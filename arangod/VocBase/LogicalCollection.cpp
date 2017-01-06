@@ -1038,6 +1038,9 @@ void LogicalCollection::drop() {
   if (_revisionsCache != nullptr) {
     _revisionsCache->clear();
   }
+  
+  // make sure collection has been closed
+  this->close();
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
