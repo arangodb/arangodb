@@ -309,7 +309,7 @@ function makeArgsArangod (options, appDir, role) {
 
   return {
     'configuration': 'etc/testing/' + config,
-    '--define': 'TOP_DIR=' + TOP_DIR,
+    'define': 'TOP_DIR=' + TOP_DIR,
     'javascript.app-path': appDir,
     'http.trusted-origin': options.httpTrustedOrigin || 'all'
   };
