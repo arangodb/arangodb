@@ -12,6 +12,11 @@
   !include nsDialogs.nsh
   !include WinMessages.nsh
 
+;--------------------------------
+; get commandline parameters
+!include FileFunc.nsh
+!insertmacro GetParameters
+!insertmacro GetOptions
 
 ;--------------------------------
 ; You must define these values
@@ -28,23 +33,27 @@
 @CPACK_ARANGODB_NSIS_DEFINES@
 
 ;--------------------------------
-;Variables
+;Variables                        x -> from userinput
 !define EMPTY ""
   var retryCount
   Var MUI_TEMP
   Var STARTMENU_FOLDER
   Var SV_ALLUSERS
   Var START_MENU
-  Var DO_NOT_ADD_TO_PATH
-  Var ADD_TO_PATH_ALL_USERS
-  Var ADD_TO_PATH_CURRENT_USER
-  Var INSTALL_DESKTOP
+
+  Var DO_NOT_ADD_TO_PATH        ; x bool
+  Var ADD_TO_PATH_ALL_USERS     ; x bool
+  Var ADD_TO_PATH_CURRENT_USER  ; x bool
+
+  Var INSTALL_DESKTOP           ; x bool: add desktop icon
   Var IS_DEFAULT_INSTALLDIR
-  Var PASSWORD
-  Var PASSWORD_AGAIN
+        
+  Var PASSWORD                  ; x string
+  Var PASSWORD_AGAIN            ; x string / only for comparison
+
 ; Variables for definition of instdir
 ; posible values: SingleUser | AllUsers | Service
-  VAR TRI_INSTALL_TYPE
+  VAR TRI_INSTALL_TYPE          ; x 
   !define TEMP1 $R0 ;Temp variable
   
 ;--------------------------------
@@ -73,7 +82,7 @@ Function openLinkNewWindow
     DetailPrint $0
   StrCpy $2 '"'                 ;"
   StrCpy $1 $0 1
-  StrCmp $1 $2 +2 # if path is not enclosed in "" look for space as final char
+  StrCmp $1 $2 +2 ; if path is not enclosed in " look for space as final char 
     StrCpy $2 ' '
   StrCpy $3 1
   loop:
@@ -1136,6 +1145,15 @@ Function un.onInit
     SetShellVarContext current
   ${EndIf}
 
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $PASSWORD /PASSWORD= $0
+  ${GetOptions} $INSTALL_DESKTOP /DESKTOPICON $0
+  ${GetOptions} $DO_NOT_ADD_TO_PATH /NOPATH $0
+  ${GetOptions} $ADD_TO_PATH_ALL_USERS /ALLPATH $0
+  ${GetOptions} $ADD_TO_PATH_CURRENT_USER /CURPATH $0
+  ${GetOptions} $TRI_INSTALL_TYPE /INSTALLTYPE= $0
+  ${GetOptions} $INSTDIR /INSTDIR= $0
 FunctionEnd
 
 ;--- Add/Remove callback functions: ---
