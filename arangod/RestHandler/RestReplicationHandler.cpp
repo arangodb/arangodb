@@ -2670,7 +2670,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
+    THROW_ARANGO_EXCEPTION_Message(res, errorMessage);
   }
 
   VPackBuilder result;
