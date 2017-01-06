@@ -220,28 +220,16 @@ actions.defineHttp({
       }
     } catch (e) {}
 
-    // Now get to work, first get the write lock on the Plan in the Agency:
-    var success = ArangoAgency.lockRead('Supervision', timeout);
-    if (!success) {
-      actions.resultError(req, res, actions.HTTP_REQUEST_TIMEOUT, 0,
-        'could not get a read lock on Plan in Agency');
+    var Health;
+    try {
+      Health = ArangoAgency.get('Supervision/Health', false, true).arango.Supervision.Health;
+    } catch (e1) {
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+        'Failed to retrieve supervision node from agency!');
       return;
     }
 
-    try {
-      var Health;
-      try {
-        Health = ArangoAgency.get('Supervision/Health', false, true).arango.Supervision.Health;
-      } catch (e1) {
-        actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
-          'Failed to retrieve supervision node from agency!');
-        return;
-      }
-
-      actions.resultOk(req, res, actions.HTTP_OK, {Health});
-    } finally {
-      ArangoAgency.unlockRead('Supervision', timeout);
-    }
+    actions.resultOk(req, res, actions.HTTP_OK, {Health});
   }
 });
 
