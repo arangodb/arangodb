@@ -97,7 +97,6 @@ rest::ResponseCode VocbaseContext::authenticate() {
   if (username.empty()) {
     // mop: set user to root so that the foxx stuff
     // knows about us
-    _request->setUser("root");
     return rest::ResponseCode::OK;
   }
 
