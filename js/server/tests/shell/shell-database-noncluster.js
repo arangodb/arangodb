@@ -203,10 +203,10 @@ function DatabaseSuite () {
       if (tries > 15) {
         require("internal").printf("[WARNING] waited " + tries * 2 +" seconds for " + path + " do disappear");
       }
-      if (require("internal").platform.substr(0,3) !== 'win') {
+      // if (require("internal").platform.substr(0,3) !== 'win') {
         // yes, we know this test fails in windows now and then.
         assertFalse(fs.exists(path));
-      }
+      //}
     }
 
   };
