@@ -1229,7 +1229,7 @@ function scheduleOneShardSynchronization (database, shard, planId, leader) {
 
 function synchronizeLocalFollowerCollections (plannedCollections,
   currentCollections) {
-  if (typeof currentCollections != 'object') {
+  if (typeof currentCollections !== 'object') {
     throw new Error('Current.Collections is not an object!');
   }
   var ourselves = global.ArangoServerState.id();
