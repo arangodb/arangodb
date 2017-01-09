@@ -49,7 +49,7 @@ GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, GraphFormat<V, E>* graphFormat)
 template <typename V, typename E>
 GraphStore<V, E>::~GraphStore() {
   _destroyed = true;
-  _cleanupTransactions();
+  cleanupTransactions();
 }
 
 template <typename V, typename E>
@@ -83,7 +83,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig const& state) {
       }
     }
   }
-  _cleanupTransactions();
+  cleanupTransactions();
 }
 
 template <typename V, typename E>
@@ -98,12 +98,16 @@ void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
 
   auto collInfo = Utils::resolveCollection(config.database(), collectionName,
                                            config.collectionPlanIdMap());
-
   ShardID responsibleShard;
   Utils::resolveShard(collInfo.get(), StaticStrings::KeyString, _key,
                       responsibleShard);
-  prgl_shard_t source = (prgl_shard_t)config.shardId(responsibleShard);
-  loadDocument(config, source, _key);
+  
+  std::vector<ShardID> const& shards = config.localVertexShardIDs();
+  auto const& it = std::find(shards.begin(), shards.end(), responsibleShard);
+  if (it != shards.end()) {
+    prgl_shard_t source = (prgl_shard_t)config.shardId(responsibleShard);
+    loadDocument(config, source, _key);
+  }
 }
 
 template <typename V, typename E>
@@ -129,7 +133,7 @@ void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
   OperationResult opResult =
       _readTrx->document(vertexShard, builder.slice(), options);
   if (!opResult.successful()) {
-    _cleanupTransactions();
+    cleanupTransactions();
     THROW_ARANGO_EXCEPTION(opResult.code);
   }
 
@@ -212,7 +216,7 @@ void GraphStore<V, E>::_createReadTransaction(WorkerConfig const& state) {
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::_cleanupTransactions() {
+void GraphStore<V, E>::cleanupTransactions() {
   if (_readTrx) {
     if (_readTrx->getStatus() == TRI_TRANSACTION_RUNNING) {
       if (_readTrx->commit() != TRI_ERROR_NO_ERROR) {

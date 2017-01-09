@@ -43,6 +43,8 @@
 #include "V8/v8-globals.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/vocbase.h"
+#include "Pregel/PregelFeature.h"
+#include "Pregel/Recovery.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -500,6 +502,13 @@ void HeartbeatThread::runCoordinator() {
             }
           }
           ClusterInfo::instance()->setFailedServers(failedServers);
+          pregel::PregelFeature *prgl = pregel::PregelFeature::instance();
+          if (prgl) {
+            pregel::RecoveryManager* mngr = prgl->recoveryManager();
+            if (mngr) {
+              mngr->updatedFailedServers();
+            }
+          }
         } else {
           LOG_TOPIC(WARN, Logger::HEARTBEAT)
               << "FailedServers is not an object. ignoring for now";

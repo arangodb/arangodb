@@ -49,7 +49,7 @@ template <typename V, typename E>
 class GraphStore {
   VocbaseGuard _vocbaseGuard;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
-  Transaction* _readTrx;  // temporary transaction
+  Transaction* _readTrx = nullptr;  // temporary transaction
 
   // int _indexFd, _vertexFd, _edgeFd;
   // void *_indexMapping, *_vertexMapping, *_edgeMapping;
@@ -66,7 +66,6 @@ class GraphStore {
   size_t _localEdgeCount = 0;
 
   void _createReadTransaction(WorkerConfig const& state);
-  void _cleanupTransactions();
   void _loadVertices(WorkerConfig const& state, ShardID const& vertexShard,
                      ShardID const& edgeShard);
   void _loadEdges(WorkerConfig const& state, ShardID const& shard,
@@ -93,6 +92,7 @@ class GraphStore {
   void* mutableVertexData(VertexEntry const* entry);
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
 
+  void cleanupTransactions();
   /// Write results to database
   void storeResults(WorkerConfig const& state);
 };

@@ -157,6 +157,7 @@ bool Conductor::_startGlobalStep() {
     b.close();
   }
   b.close();
+  LOG(INFO) << b.toString();
 
   // start vertex level operations, does not get a response
   res = _sendToAllDBServers(Utils::startGSSPath, b.slice());  // call me maybe
@@ -290,6 +291,7 @@ void Conductor::cancel() {
       _state == ExecutionState::RECOVERING) {
     _state = ExecutionState::CANCELED;
 
+    LOG(INFO) << "Telling workers to discard results";
     VPackBuilder b;
     b.openObject();
     b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -320,7 +322,7 @@ void Conductor::startRecovery() {
   basics::ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this] {
     // let's wait for a final state in the cluster
-    usleep(2 * 15 * 1000000);
+    usleep(15 * 1000000);
     std::vector<ServerID> goodServers;
     int res = PregelFeature::instance()->recoveryManager()->filterGoodServers(
         _dbServers, goodServers);
@@ -337,7 +339,7 @@ void Conductor::startRecovery() {
     b.close();
     _dbServers = goodServers;
     _sendToAllDBServers(Utils::cancelGSSPath, b.slice());
-    usleep(5 * 1000000);  // workers may need a little bit
+    usleep(5 * 1000000);// workers may need a bit of time (5 secs)
 
     // Let's try recovery
     if (_algorithm->supportsCompensation()) {
@@ -493,19 +495,24 @@ int Conductor::_finalizeWorkers() {
     mngr->stopMonitoring(this);
   }
 
+  LOG(INFO) << "Finalizing workers";
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
   b.add(Utils::storeResultsKey, VPackValue(storeResults));
   b.close();
-  LOG(INFO) << "Finalizing workers";
   int res = _sendToAllDBServers(Utils::finalizeExecutionPath, b.slice());
   _endTimeSecs = TRI_microtime();
-
   b.clear();
+  
   b.openObject();
-  _statistics.serializeValues(b);
+  b.add("stats", VPackValue(VPackValueType::Object));
+    _statistics.serializeValues(b);
+    b.close();
+  b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+    _aggregators->serializeValues(b);
+    b.close();
   b.close();
 
   LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";

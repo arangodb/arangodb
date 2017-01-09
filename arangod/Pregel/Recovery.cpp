@@ -22,8 +22,10 @@
 
 #include "Recovery.h"
 
+#include <algorithm>
 #include "Agency/Supervision.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/ThreadPool.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
@@ -84,6 +86,7 @@ void RecoveryManager::monitorCollections(
   }
 }
 
+/// Only call while holding _lock
 void RecoveryManager::_monitorShard(CollectionID const& cid,
                                     ShardID const& shard) {
   std::function<bool(VPackSlice const& result)> listener =
@@ -119,7 +122,7 @@ void RecoveryManager::_monitorShard(CollectionID const& cid,
 
   std::string path = "Plan/Collections/" + cid + "/shards/" + shard;
 
-  // first let's resolve the primary so we know if it has change later
+  // first let's resolve the primary so we know if it has changed later
   // AgencyCommResult result = _agency.getValues(path);
   std::shared_ptr<std::vector<ServerID>> servers =
       ClusterInfo::instance()->getResponsibleServer(shard);
@@ -163,3 +166,48 @@ int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
   }
   return TRI_ERROR_NO_ERROR;
 }
+
+void RecoveryManager::updatedFailedServers() {
+  MUTEX_LOCKER(guard, _lock);  // we are accessing _primaryServers
+  
+  std::vector<std::string> const failed = ClusterInfo::instance()->getFailedServers();
+  for (auto const& pair : _primaryServers) {
+    auto const& it = std::find(failed.begin(), failed.end(), pair.second);
+    if (it != failed.end()) {
+      // found a failed server
+      ShardID const& shard = pair.first;
+      basics::ThreadPool *pool = PregelFeature::instance()->threadPool();
+      pool->enqueue([this, shard]{
+        _renewPrimaryServer(shard);
+      });
+    }
+  }
+}
+
+//
+void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
+  ClusterInfo *ci = ClusterInfo::instance();
+  auto const& conductors = _listeners.find(shard);
+  auto const& currentPrimary = _primaryServers.find(shard);
+  if (conductors == _listeners.end()
+      || currentPrimary == _primaryServers.end()) {
+    return;
+  }
+  
+  int tries = 0;
+  do {
+    std::shared_ptr<std::vector<ServerID>> servers = ci->getResponsibleServer(shard);
+    if (servers) {
+      ServerID const& nextPrimary = servers->front();
+      if (currentPrimary->second != nextPrimary) {
+        _primaryServers[shard] = nextPrimary;
+        for (Conductor* cc : conductors->second) {
+          cc->startRecovery();
+        }
+      }
+    }
+    usleep(250000);// 250ms
+    tries++;
+  } while (tries < 2);
+}
+

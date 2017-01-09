@@ -47,6 +47,7 @@ class RecoveryManager {
   std::map<ShardID, std::shared_ptr<AgencyCallback>> _agencyCallbacks;
 
   void _monitorShard(CollectionID const& cid, ShardID const& shard);
+  void _renewPrimaryServer(ShardID const& shard);
 
  public:
   RecoveryManager(AgencyCallbackRegistry* registry);
@@ -58,9 +59,10 @@ class RecoveryManager {
   void stopMonitoring(Conductor*);
   int filterGoodServers(std::vector<ServerID> const& servers,
                         std::vector<ServerID>& goodServers);
+  void updatedFailedServers();
   // bool allServersAvailable(std::vector<ServerID> const& dbServers);
 };
-
+/*
 class RecoveryWorker {
   friend class RestPregelHandler;
 
@@ -74,7 +76,7 @@ class RecoveryWorker {
   void replicateGraphData(GraphStore<V, E>* graphStore) {}
 
   void reloadPlanData() { _secondaries.clear(); }
-};
+};*/
 }
 }
 #endif

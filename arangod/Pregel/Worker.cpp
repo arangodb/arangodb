@@ -265,8 +265,12 @@ void Worker<V, E, M>::_startProcessing() {
   size_t total = _graphStore->vertexCount();
   size_t delta = total / pool->numThreads();
   size_t start = 0, end = delta;
-  _runningThreads = total / delta;  // rounds-up unsigned integers
-  unsigned i = 0;
+  if (total > 1000) {
+    _runningThreads = total / delta;  // rounds-up unsigned integers
+  } else {
+    _runningThreads = 1;
+    end = total;
+  }
   do {
     pool->enqueue([this, start, end] {
       if (_state != WorkerState::COMPUTING) {
@@ -278,14 +282,10 @@ void Worker<V, E, M>::_startProcessing() {
     });
     start = end;
     end = end + delta;
-    if (total < delta + end) {  // swallow the rest
+    if (total < end + delta) {// swallow the rest
       end = total;
     }
-    i++;
   } while (start != total);
-  if (i != total / delta) {
-    LOG(ERR) << "What a terrible failure";
-  }
 }
 
 template <typename V, typename E, typename M>
@@ -363,7 +363,7 @@ void Worker<V, E, M>::_processVertices(
   }
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
-  if (!_requestedNextGSS && vertexComputation->_nextPhase) {
+  if (vertexComputation->_nextPhase) {
     _requestedNextGSS = true;
     _nextGSSSendMessageCount += outCache->sendCountNextGSS();
   }
@@ -459,6 +459,10 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice body) {
 
   VPackSlice store = body.get(Utils::storeResultsKey);
   if (store.isBool() && store.getBool() == true) {
+    LOG(INFO) << "Storing results";
+    if (_config.lazyLoading()) {// tell graphstore to remove read locks
+      _graphStore->cleanupTransactions();
+    }
     _graphStore->storeResults(_config);
   } else {
     LOG(WARN) << "Discarding results";
@@ -516,8 +520,6 @@ void Worker<V, E, M>::compensateStep(VPackSlice data) {
     }
 
     auto vertexIterator = _graphStore->vertexIterator();
-
-    // TODO look if we can avoid instantiating this
     std::unique_ptr<VertexCompensation<V, E, M>> vCompensate(
         _algorithm->createCompensation(&_config));
     _initializeVertexContext(vCompensate.get());
