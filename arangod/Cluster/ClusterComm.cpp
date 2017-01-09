@@ -1104,9 +1104,15 @@ void ClusterCommThread::run() {
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
 
   while (!isStopping()) {
-    abortRequestsToFailedServers();
-    _cc->communicator()->work_once();
-    _cc->communicator()->wait();
+    try {
+      abortRequestsToFailedServers();
+      _cc->communicator()->work_once();
+      _cc->communicator()->wait();
+    } catch (std::exception const& ex) {
+      LOG(ERR) << "caught exception in ClusterCommThread: " << ex.what();
+    } catch (...) {
+      LOG(ERR) << "caught unknown exception in ClusterCommThread";
+    }
   }
   _cc->communicator()->abortRequests();
 
