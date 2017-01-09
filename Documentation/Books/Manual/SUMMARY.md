@@ -216,6 +216,7 @@
     * [db](Appendix/References/DBObject.md)
     * [collection](Appendix/References/CollectionObject.md)
   * [JavaScript Modules](Appendix/JavaScriptModules/README.md)
+    * [@arangodb](Appendix/JavaScriptModules/ArangoDB.md)
     * [console](Appendix/JavaScriptModules/Console.md)
     * [crypto](Appendix/JavaScriptModules/Crypto.md)
     * [fs](Appendix/JavaScriptModules/FileSystem.md)

@@ -1,10 +1,9 @@
 Console Module
 ==============
 
-`require('console')`
+`global.console === require('console')`
 
-The implementation follows the CommonJS specification
-[Console](http://wiki.commonjs.org/wiki/Console).
+**Note**: You don't need to load this module directly. The `console` object is globally defined throughout ArangoDB and provides access to all functions in this module.
 
 ### console.assert
 

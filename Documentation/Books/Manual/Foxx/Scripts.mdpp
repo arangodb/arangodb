@@ -116,6 +116,8 @@ if (textsCollection) {
 Queues
 ------
 
+`const queues = require('@arangodb/foxx/queues')`
+
 Foxx allows defining job queues that let you perform slow or expensive actions asynchronously. These queues can be used to send e-mails, call external APIs or perform other actions that you do not want to perform directly or want to retry on failure.
 
 @startDocuBlock foxxQueues
