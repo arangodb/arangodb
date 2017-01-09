@@ -1018,21 +1018,26 @@ int LogicalCollection::close() {
     idx->unload();
   }
 
-  TRI_ASSERT(_revisionsCache);
-  _revisionsCache->clear();
+  if (_revisionsCache != nullptr) {
+    _revisionsCache->clear();
+  }
 
   return getPhysical()->close();
 }
 
 void LogicalCollection::unload() {
-  TRI_ASSERT(_revisionsCache);
-  _revisionsCache->closeWriteChunk();
+  if (_revisionsCache != nullptr) {
+    _revisionsCache->closeWriteChunk();
+  }
 }
 
 void LogicalCollection::drop() {
-  if (_revisionsCache) {
+  if (_revisionsCache != nullptr) {
     _revisionsCache->clear();
   }
+
+  // make sure collection has been closed
+  this->close();
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -1920,8 +1925,9 @@ int LogicalCollection::read(Transaction* trx, StringRef const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogicalCollection::truncate(Transaction* trx) {
-  TRI_ASSERT(_revisionsCache);
-  _revisionsCache->clear();
+  if (_revisionsCache != nullptr) {
+    _revisionsCache->clear();
+  }
   return TRI_ERROR_NO_ERROR;
 }
 
