@@ -877,14 +877,17 @@ int TRI_UnlinkFile(char const* filename) {
   int res = TRI_UNLINK(filename);
 
   if (res != 0) {
+    int e = errno;
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG(TRACE) << "cannot unlink file '" << filename
                << "': " << TRI_LAST_ERROR_STR;
-    int e = TRI_errno();
     if (e == ENOENT) {
       return TRI_ERROR_FILE_NOT_FOUND;
     }
-    return e;
+    if (e == EPERM) {
+      return TRI_ERROR_FORBIDDEN;
+    }
+    return TRI_ERROR_SYS_ERROR;
   }
 
   return TRI_ERROR_NO_ERROR;
