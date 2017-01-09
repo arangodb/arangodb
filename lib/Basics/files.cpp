@@ -1289,7 +1289,15 @@ int TRI_VerifyLockFile(char const* filename) {
   // file was not yet locked; could be locked
   if (canLock == 0) {
     lock.l_type = F_UNLCK;
-    fcntl(fd, F_GETLK, &lock);
+    res = fcntl(fd, F_GETLK, &lock);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      canLock = errno;
+      LOG(WARN) << "fcntl on lockfile '" << filename
+                << "' failed: " << TRI_errno_string(canLock) 
+                << ". a possible reason is that the filesystem does not support file-locking";
+    }
+
     TRI_CLOSE(fd);
 
     return TRI_ERROR_NO_ERROR;

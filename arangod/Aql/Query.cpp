@@ -248,7 +248,13 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
 
 /// @brief destroys a query
 Query::~Query() {
-  double tracing = getNumericOption("tracing", 0);
+  double tracing = 0.0;
+  try {
+    // may throw
+    tracing = getNumericOption("tracing", 0);
+  } catch (...) {
+  }
+
   if (tracing > 0) {
     LOG_TOPIC(INFO, Logger::QUERIES)
       << TRI_microtime() - _startTime << " "

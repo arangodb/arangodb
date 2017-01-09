@@ -172,7 +172,10 @@ class SkipList {
   //////////////////////////////////////////////////////////////////////////////
 
   ~SkipList() {
-    truncate(false);
+    try {
+      truncate(false);
+    } catch (...) {
+    }
   }
 
   void truncate(bool createStartNode) {

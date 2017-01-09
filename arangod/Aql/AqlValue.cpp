@@ -67,7 +67,11 @@ bool AqlValue::isNone() const noexcept {
     return false;
   }
 
-  return slice().isNone();
+  try {
+    return slice().isNone();
+  } catch (...) {
+    return false;
+  }
 }
 
 /// @brief whether or not the value is a null value
@@ -77,8 +81,12 @@ bool AqlValue::isNull(bool emptyIsNull) const noexcept {
     return false;
   }
 
-  VPackSlice s(slice());
-  return (s.isNull() || (emptyIsNull && s.isNone()));
+  try {
+    VPackSlice s(slice());
+    return (s.isNull() || (emptyIsNull && s.isNone()));
+  } catch (...) {
+    return false;
+  }
 }
 
 /// @brief whether or not the value is a boolean value
@@ -87,7 +95,11 @@ bool AqlValue::isBoolean() const noexcept {
   if (t == DOCVEC || t == RANGE) {
     return false;
   }
-  return slice().isBoolean();
+  try {
+    return slice().isBoolean();
+  } catch (...) {
+    return false;
+  }
 }
 
 /// @brief whether or not the value is a number
@@ -96,7 +108,11 @@ bool AqlValue::isNumber() const noexcept {
   if (t == DOCVEC || t == RANGE) {
     return false;
   }
-  return slice().isNumber();
+  try {
+    return slice().isNumber();
+  } catch (...) {
+    return false;
+  }
 }
 
 /// @brief whether or not the value is a string
@@ -105,7 +121,11 @@ bool AqlValue::isString() const noexcept {
   if (t == DOCVEC || t == RANGE) {
     return false;
   }
-  return slice().isString();
+  try {
+    return slice().isString();
+  } catch (...) {
+    return false;
+  }
 }
 
 /// @brief whether or not the value is an object
@@ -114,7 +134,11 @@ bool AqlValue::isObject() const noexcept {
   if (t == RANGE || t == DOCVEC) {
     return false;
   }
-  return slice().isObject();
+  try {
+    return slice().isObject();
+  } catch (...) {
+    return false;
+  }
 }
 
 /// @brief whether or not the value is an array (note: this treats ranges
@@ -124,7 +148,11 @@ bool AqlValue::isArray() const noexcept {
   if (t == RANGE || t == DOCVEC) {
     return true;
   }
-  return slice().isArray();
+  try {
+    return slice().isArray();
+  } catch (...) {
+    return false;
+  }
 }
 
 /// @brief get the (array) length (note: this treats ranges as arrays, too!)
