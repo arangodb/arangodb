@@ -1966,8 +1966,9 @@ int LogicalCollection::read(Transaction* trx, StringRef const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogicalCollection::truncate(Transaction* trx) {
-  TRI_ASSERT(_revisionsCache);
-  _revisionsCache->clear();
+  if (_revisionsCache != nullptr) {
+    _revisionsCache->clear();
+  }
   return TRI_ERROR_NO_ERROR;
 }
 
