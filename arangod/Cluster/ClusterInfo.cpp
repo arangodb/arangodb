@@ -1108,7 +1108,8 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
             }
           }
           if (tmpHaveError) {
-            *errMsg = "Error in creation of collection:" + tmpMsg;
+            *errMsg = "Error in creation of collection:" + tmpMsg + " "
+                      + __FILE__ + std::to_string(__LINE__);
             *dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
             return true;
           }
@@ -1150,6 +1151,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   AgencyCommResult res = ac.sendTransactionWithFailover(transaction);
 
   if (!res.successful()) {
+    errorMsg += std::string(" ") + __FILE__ + std::to_string(__LINE__);
     events::CreateCollection(
         name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
@@ -1724,6 +1726,7 @@ int ClusterInfo::ensureIndexCoordinator(
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
   if (!result.successful()) {
+    errorMsg += std::string(" ") + __FILE__ + ":" + std::to_string(__LINE__);
     resultBuilder = *resBuilder;
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
                        errorMsg);
@@ -1944,6 +1947,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
   if (!result.successful()) {
+    errorMsg += std::string(" ") + __FILE__ + ":" + std::to_string(__LINE__);
     events::DropIndex(collectionID, idString,
                       TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
@@ -2071,6 +2075,11 @@ void ClusterInfo::loadServers() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
+#ifdef DEBUG_SYNC_REPLICATION
+  if (serverID == "debug-follower") {
+    return "tcp://127.0.0.1:3000";
+  }
+#endif
   int tries = 0;
 
   if (!_serversProt.isValid) {

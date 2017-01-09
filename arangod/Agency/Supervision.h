@@ -110,11 +110,14 @@ class Supervision : public arangodb::Thread {
   /// @brief Upgrade agency
   void upgradeAgency();
 
-  static constexpr const char* HEALTH_STATUS_GOOD = "GOOD";
-  static constexpr const char* HEALTH_STATUS_BAD = "BAD";
-  static constexpr const char* HEALTH_STATUS_FAILED = "FAILED";
+  static constexpr char const* HEALTH_STATUS_GOOD = "GOOD";
+  static constexpr char const* HEALTH_STATUS_BAD = "BAD";
+  static constexpr char const* HEALTH_STATUS_FAILED = "FAILED";
 
  private:
+
+  /// @brief Check for inconsistencies in distributeShardsLike
+  void missingPrototype();
 
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
@@ -140,9 +143,6 @@ class Supervision : public arangodb::Thread {
 
   /// @brief Get unique ids from agency
   void getUniqueIds();
-
-  /// @brief Read db
-  Store const& store() const;
 
   /// @brief Perform sanity checking
   bool doChecks();

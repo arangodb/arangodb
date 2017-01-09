@@ -318,7 +318,7 @@ int GeoIndexNewPot(GeoIx* gix) {
     gp = static_cast<GeoPot*>(TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gix->pots,
                                              newpotct * sizeof(GeoPot)));
 
-    if (gp == NULL) {
+    if (gp == nullptr) {
       return -2;
     }
     gix->pots = gp;
@@ -363,7 +363,7 @@ GeoIdx* GeoIndex_new(void) {
   gix = static_cast<GeoIx*>(
       TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoIx), false));
 
-  if (gix == NULL) {
+  if (gix == nullptr) {
     return (GeoIdx*)gix;
   }
 
@@ -374,13 +374,13 @@ GeoIdx* GeoIndex_new(void) {
       TRI_UNKNOWN_MEM_ZONE, GEOSLOTSTART * sizeof(GeoCoordinate), false));
 
   /* if any of them fail, free the ones that succeeded  */
-  /* and then return the NULL pointer for our user      */
-  if ((gix->pots == NULL) || (gix->gc == NULL)) {
-    if (gix->pots != NULL) {
+  /* and then return the nullptr for our user      */
+  if ((gix->pots == nullptr) || (gix->gc == nullptr)) {
+    if (gix->pots != nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->pots);
     }
 
-    if (gix->gc != NULL) {
+    if (gix->gc != nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->gc);
     }
 
@@ -654,10 +654,13 @@ void GeoMkDetail(GeoIx* gix, GeoDetailedPoint* gd, GeoCoordinate* c) {
   gd->gc = c;
   /* The GeoString computation takes about 0.17 microseconds  */
   gd->gs = GeoMkHilbert(c);
+  double const lat = c->latitude * M_PI / 180.0;
+  double const lon = c->longitude * M_PI / 180.0;
+  double const latCos = cos(lat);
   /* This part takes about 0.32 microseconds  */
-  gd->z = sin(c->latitude * M_PI / 180.0);
-  gd->x = cos(c->latitude * M_PI / 180.0) * cos(c->longitude * M_PI / 180.0);
-  gd->y = cos(c->latitude * M_PI / 180.0) * sin(c->longitude * M_PI / 180.0);
+  gd->z = sin(lat);
+  gd->x = latCos * cos(lon);
+  gd->y = latCos * sin(lon);
   /* And this bit takes about 0.45 microseconds  */
   for (int i = 0; i < GeoIndexFIXEDPOINTS; i++) {
     double xx1 = (gix->fixed.x)[i];
@@ -927,7 +930,7 @@ int GeoResultsGrow(GeoResults* gr) {
 /* distances that could be calculated by a separate    */
 /* call to GeoIndex_distance because of rounding errors*/
 /* =================================================== */
-GeoCoordinates* GeoAnswers(GeoIx* gix, GeoResults* gr) {
+GeoCoordinates* GeoAnswers(GeoIx* gix, GeoResults* gr, bool returnDistances) {
   GeoCoordinates* ans;
   GeoCoordinate* gc;
   int i, j;
@@ -967,11 +970,14 @@ GeoCoordinates* GeoAnswers(GeoIx* gix, GeoResults* gr) {
     ans->coordinates[j].latitude = (gix->gc)[slot].latitude;
     ans->coordinates[j].longitude = (gix->gc)[slot].longitude;
     ans->coordinates[j].data = (gix->gc)[slot].data;
-    mole = sqrt(gr->snmd[i]);
-    if (mole > 2.0) mole = 2.0; /* make sure arcsin succeeds! */
-    gr->snmd[j] = 2.0 * EARTHRADIAN * asin(mole / 2.0);
+    if (returnDistances) {
+      mole = sqrt(gr->snmd[i]);
+      if (mole > 2.0) mole = 2.0; /* make sure arcsin succeeds! */
+      gr->snmd[j] = 2.0 * EARTHRADIAN * asin(mole / 2.0);
+    }
     j++;
   }
+  // note that these are uncalculated if returnDistances is false!
   ans->distances = gr->snmd;
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr->slot);
@@ -1094,7 +1100,7 @@ GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, GeoCoordinate* c,
       gk.potid[gk.stacksize++] = gp->RorPoints;
     }
   }
-  answer = GeoAnswers(gix, gres);
+  answer = GeoAnswers(gix, gres, true);
   return answer; /* note - this may be NULL  */
 }
 /* =================================================== */
@@ -1159,7 +1165,7 @@ GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
       }
     }
   }
-  answer = GeoAnswers(gix, gr);
+  answer = GeoAnswers(gix, gr, true);
   return answer; /* note - this may be NULL  */
 }
 /* =================================================== */
@@ -2060,21 +2066,29 @@ GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c) {
   return (GeoCursor*)gcr;
 }
 
-GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count) {
+GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool returnDistances, double maxDistance) {
   int i, j, r;
   GeoCoordinate* ct;
-  GeoResults* gr;
   GeoCoordinates* gcts;
   GeoCr* gcr;
   GeoPot pot;
-  int slox;
   double tsnmd;
   hslot hs;
   hpot hp;
   gcr = (GeoCr*)gc;
 
-  gr = GeoResultsCons(count);
-  if (gr == NULL) return NULL;
+  /*
+  double maxsnmd;
+  if (maxDistance >= 0.0) {
+    maxsnmd = GeoMetersToSNMD(maxDistance);
+  } else {
+    // should be enough
+    maxsnmd = 10.e40;
+  }
+  */
+
+  GeoResults* gr = GeoResultsCons(count);
+  if (gr == nullptr) return nullptr;
   while (gr->pointsct < count) {
     if (gcr->potsnmd < gcr->slotsnmd * 1.000001) {
       // smash top pot - if there is one
@@ -2089,14 +2103,25 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count) {
         for (i = 0; i < pot.RorPoints; i++) {
           j = pot.points[i];
           ct = ((gcr->Ix)->gc + j);
-          hs.slot = j;
           hs.snmd = GeoSNMD(&(gcr->gd), ct);
+          hs.slot = j;
           gcr->slotheap.push_back(hs);
           std::push_heap(gcr->slotheap.begin(), gcr->slotheap.end(),
                          hslotcompare);
+          /* 
+            TODO: skip useless results early here
+          if (hs.snmd <= (maxsnmd * 1.00000000000001)) {
+            gcr->slotheap.push_back(hs);
+            std::push_heap(gcr->slotheap.begin(), gcr->slotheap.end(),
+                           hslotcompare);
+          } else if (gcr->slotheap.front().snmd < hs.snmd) {
+            gcr->slotheap.push_back(hs);
+            std::push_heap(gcr->slotheap.begin(), gcr->slotheap.end(),
+                           hslotcompare);
+          }
+          */
         }
-        if (gcr->slotheap.size() != 0) {
-          slox = gcr->slotheap.front().slot;
+        if (!gcr->slotheap.empty()) {
           gcr->slotsnmd = gcr->slotheap.front().snmd;
         }
       } else {
@@ -2110,20 +2135,20 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count) {
         std::push_heap(gcr->potheap.begin(), gcr->potheap.end(), hpotcompare);
       }
       gcr->potsnmd = 10.0;
-      if (gcr->potheap.size() != 0) {
+      if (!gcr->potheap.empty()) {
         pot = *((gcr->Ix)->pots + (gcr->potheap.front().pot));
         gcr->potsnmd = GeoFixtoSNMD(makedist(&pot, &(gcr->gd)));
       }
     } else {
-      if (gcr->slotheap.size() == 0) break;  // that's all there is
-      slox = gcr->slotheap.front().slot;
+      if (gcr->slotheap.empty()) break;  // that's all there is
+      int slox = gcr->slotheap.front().slot;
       tsnmd = gcr->slotheap.front().snmd;
       r = GeoResultsGrow(gr);
       if (r == -1) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr->snmd);
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr->slot);
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr);
-        return NULL;
+        return nullptr;
       }
       gr->slot[gr->pointsct] = slox;
       gr->snmd[gr->pointsct] = tsnmd;
@@ -2131,13 +2156,12 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count) {
       gcr->slotsnmd = 5.0;
       std::pop_heap(gcr->slotheap.begin(), gcr->slotheap.end(), hslotcompare);
       gcr->slotheap.pop_back();
-      if (gcr->slotheap.size() != 0) {
-        slox = gcr->slotheap.front().slot;
+      if (!gcr->slotheap.empty()) {
         gcr->slotsnmd = gcr->slotheap.front().snmd;
       }
     }
   }
-  gcts = GeoAnswers(gcr->Ix, gr);
+  gcts = GeoAnswers(gcr->Ix, gr, returnDistances);
   return gcts;
 }
 

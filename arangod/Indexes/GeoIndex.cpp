@@ -46,7 +46,6 @@ GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
       _cursor(nullptr),
       _coor(),
       _condition(cond),
-      _variable(var),
       _lat(0.0),
       _lon(0.0),
       _near(true),
@@ -127,31 +126,77 @@ void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t
   }
 
   if (batchSize > 0) {
-    auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor, batchSize));
+    // only need to calculate distances for WITHIN queries, but not for NEAR queries
+    bool withDistances;
+    double maxDistance;
+    if (_near) {
+      withDistances = false;
+      maxDistance = -1.0;
+    } else {
+      withDistances = true;
+      maxDistance = _radius;
+    }
+    auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor, static_cast<int>(batchSize), withDistances, maxDistance));
 
     size_t const length = coords ? coords->length : 0;
-    if (!length) {
+    
+    if (length == 0) {
       return;
     }
 
     // determine which documents to return...
     size_t numDocs = length;
+
     if (!_near) {
       // WITHIN
       // only return those documents that are within the specified radius
       TRI_ASSERT(numDocs > 0);
+      
+      // linear scan for the first document outside the specified radius
       // scan backwards because documents with higher distances are more interesting
-      // this can be improved to use a binary search if block size is increased in the future
+      int iterations = 0;
       while ((_inclusive && coords->distances[numDocs - 1] > _radius) ||
             (!_inclusive && coords->distances[numDocs - 1] >= _radius)) {
         // document is outside the specified radius!
         --numDocs;
+
         if (numDocs == 0) {
+          break;
+        }
+
+        if (++iterations == 8 && numDocs >= 10) {
+          // switch to a binary search for documents inside/outside the specified radius
+          size_t l = 0;
+          size_t r = numDocs - 1;
+
+          while (true) {
+            // determine midpoint
+            size_t m = l + ((r - l) / 2);
+            if ((_inclusive && coords->distances[m] > _radius) ||
+                (!_inclusive && coords->distances[m] >= _radius)) {
+              // document is outside the specified radius!
+              if (m == 0) {
+                numDocs = 0;
+                break;
+              }
+              r = m - 1;
+            } else {
+              // still inside the radius
+              numDocs = m + 1;
+              l = m + 1;
+            }
+
+            if (r < l) {
+              break;
+            }
+          }
           break;
         }
       }
     }
-      
+  
+    result.reserve(numDocs);
+        
     for (size_t i = 0; i < numDocs; ++i) {
       result.emplace_back(IndexLookupResult(::GeoIndex::toRevision(coords->coordinates[i].data)));
     }

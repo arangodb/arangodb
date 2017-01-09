@@ -1,0 +1,243 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled" kind="struct" prot="public">
+    <compoundname>boost::geometry::policies::relate::segments_tupled</compoundname>
+    <includes local="no">tupled.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Policy1</type>
+      </param>
+      <param>
+        <type>typename Policy2</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1a45265c76563fecceb0cd2253c8f3f5a9" prot="public" static="no">
+        <type>boost::tuple&lt; typename Policy1::return_type, typename Policy2::return_type &gt;</type>
+        <definition>typedef boost::tuple&lt; typename Policy1::return_type, typename Policy2::return_type &gt; boost::geometry::policies::relate::segments_tupled&lt; Policy1, Policy2 &gt;::return_type</definition>
+        <argsstring></argsstring>
+        <name>return_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" line="34" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1accfc4ff1242e6ee85baafecd7edde3bc" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Segment</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1a45265c76563fecceb0cd2253c8f3f5a9" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_tupled&lt; Policy1, Policy2 &gt;::degenerate</definition>
+        <argsstring>(Segment const &amp;segment, bool a_degenerate)</argsstring>
+        <name>degenerate</name>
+        <param>
+          <type>Segment const &amp;</type>
+          <declname>segment</declname>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>a_degenerate</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" line="70" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" bodystart="70" bodyend="78"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1a9b038ca81d4d7a977d3983b1d546f0d5" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1a45265c76563fecceb0cd2253c8f3f5a9" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_tupled&lt; Policy1, Policy2 &gt;::disjoint</definition>
+        <argsstring>()</argsstring>
+        <name>disjoint</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" line="92" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" bodystart="92" bodyend="99"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1ae4e6ca0a63b85aaf680d3f48232ca850" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1a45265c76563fecceb0cd2253c8f3f5a9" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_tupled&lt; Policy1, Policy2 &gt;::error</definition>
+        <argsstring>(std::string const &amp;msg)</argsstring>
+        <name>error</name>
+        <param>
+          <type>std::string const &amp;</type>
+          <declname>msg</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" line="101" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" bodystart="101" bodyend="108"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1aee120d217a2ec0ded30de7f738b06d98" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Segment</type>
+          </param>
+          <param>
+            <type>typename Ratio</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1a45265c76563fecceb0cd2253c8f3f5a9" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_tupled&lt; Policy1, Policy2 &gt;::one_degenerate</definition>
+        <argsstring>(Segment const &amp;segment, Ratio const &amp;ratio, bool a_degenerate)</argsstring>
+        <name>one_degenerate</name>
+        <param>
+          <type>Segment const &amp;</type>
+          <declname>segment</declname>
+        </param>
+        <param>
+          <type>Ratio const &amp;</type>
+          <declname>ratio</declname>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>a_degenerate</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" line="81" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" bodystart="81" bodyend="90"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1addccceadc84431d8ee98826c3e68e9ce" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Segment1</type>
+          </param>
+          <param>
+            <type>typename Segment2</type>
+          </param>
+          <param>
+            <type>typename Ratio</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1a45265c76563fecceb0cd2253c8f3f5a9" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_tupled&lt; Policy1, Policy2 &gt;::segments_collinear</definition>
+        <argsstring>(Segment1 const &amp;segment1, Segment2 const &amp;segment2, bool opposite, int pa1, int pa2, int pb1, int pb2, Ratio const &amp;ra1, Ratio const &amp;ra2, Ratio const &amp;rb1, Ratio const &amp;rb2)</argsstring>
+        <name>segments_collinear</name>
+        <param>
+          <type>Segment1 const &amp;</type>
+          <declname>segment1</declname>
+        </param>
+        <param>
+          <type>Segment2 const &amp;</type>
+          <declname>segment2</declname>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>opposite</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>pa1</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>pa2</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>pb1</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>pb2</declname>
+        </param>
+        <param>
+          <type>Ratio const &amp;</type>
+          <declname>ra1</declname>
+        </param>
+        <param>
+          <type>Ratio const &amp;</type>
+          <declname>ra2</declname>
+        </param>
+        <param>
+          <type>Ratio const &amp;</type>
+          <declname>rb1</declname>
+        </param>
+        <param>
+          <type>Ratio const &amp;</type>
+          <declname>rb2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" line="49" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" bodystart="49" bodyend="67"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1af3415e105d1c3a317b82595c452ef7c2" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Segment1</type>
+          </param>
+          <param>
+            <type>typename Segment2</type>
+          </param>
+          <param>
+            <type>typename SegmentIntersectionInfo</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1a45265c76563fecceb0cd2253c8f3f5a9" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_tupled&lt; Policy1, Policy2 &gt;::segments_crosses</definition>
+        <argsstring>(side_info const &amp;sides, SegmentIntersectionInfo const &amp;sinfo, Segment1 const &amp;s1, Segment2 const &amp;s2)</argsstring>
+        <name>segments_crosses</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1side__info" kindref="compound">side_info</ref> const &amp;</type>
+          <declname>sides</declname>
+        </param>
+        <param>
+          <type>SegmentIntersectionInfo const &amp;</type>
+          <declname>sinfo</declname>
+        </param>
+        <param>
+          <type>Segment1 const &amp;</type>
+          <declname>s1</declname>
+        </param>
+        <param>
+          <type>Segment2 const &amp;</type>
+          <declname>s2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" line="37" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" bodystart="37" bodyend="46"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" line="29" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/tupled.hpp" bodystart="28" bodyend="110"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1accfc4ff1242e6ee85baafecd7edde3bc" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_tupled</scope><name>degenerate</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1a9b038ca81d4d7a977d3983b1d546f0d5" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_tupled</scope><name>disjoint</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1ae4e6ca0a63b85aaf680d3f48232ca850" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_tupled</scope><name>error</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1aee120d217a2ec0ded30de7f738b06d98" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_tupled</scope><name>one_degenerate</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1a45265c76563fecceb0cd2253c8f3f5a9" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_tupled</scope><name>return_type</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1addccceadc84431d8ee98826c3e68e9ce" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_tupled</scope><name>segments_collinear</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled_1af3415e105d1c3a317b82595c452ef7c2" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_tupled</scope><name>segments_crosses</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

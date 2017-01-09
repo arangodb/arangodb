@@ -141,6 +141,7 @@ const optionsDocumentation = [
 
 const optionsDefaults = {
   'agencySize': 3,
+  'agencyWaitForSync' : false,
   'agencySupervision': true,
   'build': '',
   'buildType': '',
@@ -308,7 +309,7 @@ function makeArgsArangod (options, appDir, role) {
 
   return {
     'configuration': 'etc/testing/' + config,
-    '--define': 'TOP_DIR=' + TOP_DIR,
+    'define': 'TOP_DIR=' + TOP_DIR,
     'javascript.app-path': appDir,
     'http.trusted-origin': options.httpTrustedOrigin || 'all'
   };
@@ -1467,9 +1468,7 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     instanceArgs['server.endpoint'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.my-address'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.supervision-grace-period'] = '5';
-    //instanceArgs['agency.election-timeout-min'] = '0.5';
-    //instanceArgs['agency.election-timeout-max'] = '4.0';
-    
+    instanceArgs['agency.supervision-frequency'] = '1'; 
 
     if (i === N - 1) {
       let l = [];

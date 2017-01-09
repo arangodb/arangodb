@@ -1,0 +1,88 @@
+[#foldl_reject_incomplete1]
+[section foldl_reject_incomplete1]
+
+[h1 Synopsis]
+
+  template <class P, class State, class ForwardOp>
+  struct foldl_reject_incomplete1;
+
+This is a [link parser_combinator parser combinator].
+
+[table Arguments
+  [[Name]        [Type]]
+  [[`P`]         [[link parser parser]]]
+  [[`State`]     [[link metaprogramming_value template metaprogramming value]]]
+  [[`ForwardOp`] [[link metafunction_class template metafunction class] taking two arguments]]
+]
+
+[h1 Description]
+
+The same as [link foldl1 `foldl1`], but once `P` rejects the input,
+`foldl_reject_incomplete1` checks if `P` consumes any characters before
+rejecting the input. If so, `foldl_reject_incomplete1` rejects the input with
+the same error message this last application of `P` returned. Otherwise
+`foldl_reject_incomplete1` accepts the input and gives the same result as
+[link foldl1 `foldl1`].
+
+[h1 Header]
+
+  #include <boost/metaparse/foldl_reject_incomplete1.hpp>
+
+[h1 Expression semantics]
+
+For any `p` parser, `t` class, `f` metafunction class taking two arguments,
+`s` compile-time string and `pos` source position
+
+  foldl_reject_incomplete1<p, t, f>::apply<s, pos>
+
+is equivalent to
+
+  first_of<foldl1<p, t, f>, fail_at_first_char_expected<p> >::apply<s, pos>
+
+[h1 Example]
+
+  #include <boost/metaparse/foldl_reject_incomplete1.hpp>
+  #include <boost/metaparse/lit_c.hpp>
+  #include <boost/metaparse/last_of.hpp>
+  #include <boost/metaparse/token.hpp>
+  #include <boost/metaparse/int_.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  
+  #include <boost/mpl/lambda.hpp>
+  #include <boost/mpl/plus.hpp>
+  #include <boost/mpl/int.hpp>
+  
+  using namespace boost::metaparse;
+  
+  using int_token = token<int_>;
+  using plus_token = token<lit_c<'+'>>;
+  using plus_int = last_of<plus_token, int_token>;
+  using sum_op =
+    boost::mpl::lambda<boost::mpl::plus<boost::mpl::_1, boost::mpl::_2>>::type;
+  
+  using ints = foldl_reject_incomplete1<plus_int, boost::mpl::int_<11>, sum_op>;
+  
+  static_assert(
+    get_result<
+      ints::apply<BOOST_METAPARSE_STRING("+ 13 + 3 + 21"), start>
+    >::type::value == 48,
+    "ints should sum the numbers"
+  );
+  
+  static_assert(
+    is_error<
+      ints::apply<BOOST_METAPARSE_STRING("+ 13 + 3 +"), start>
+    >::type::value,
+    "when the last number is missing, it should be an error"
+  );
+  
+  static_assert(
+    is_error<ints::apply<BOOST_METAPARSE_STRING(""), start>>::type::value,
+    "when no numbers are provided, it should be an error"
+  );
+
+[endsect]
+

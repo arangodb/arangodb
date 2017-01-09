@@ -67,7 +67,7 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,
-                                const char* binaryPath) {
+                                char const* binaryPath) {
   for (auto const& def : _defines) {
     DefineEnvironment(def);
   }
@@ -81,7 +81,7 @@ void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,
 
 void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
                                    std::string const& progname,
-                                   const char* binaryPath) {
+                                   char const* binaryPath) {
   if (StringUtils::tolower(_file) == "none") {
     LOG_TOPIC(DEBUG, Logger::CONFIG) << "use no config file at all";
     return;

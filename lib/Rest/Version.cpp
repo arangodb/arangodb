@@ -91,6 +91,11 @@ void Version::initialize() {
   }
 
   Values["architecture"] = (sizeof(void*) == 4 ? "32" : "64") + std::string("bit");
+#ifdef __arm__
+  Values["arm"] = "true";
+#else
+  Values["arm"] = "false";
+#endif
   Values["asm-crc32"] = (ENABLE_ASM_CRC32) ? "true" : "false";
   Values["boost-version"] = getBoostVersion();
   Values["build-date"] = getBuildDate();
@@ -104,12 +109,16 @@ void Version::initialize() {
   Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
   Values["full-version-string"] = getVerboseVersionString();
   Values["icu-version"] = getICUVersion();
-  Values["libev-version"] = getLibevVersion();
   Values["openssl-version"] = getOpenSSLVersion();
   Values["platform"] = TRI_PLATFORM;
   Values["server-version"] = getServerVersion();
   Values["sizeof int"] = arangodb::basics::StringUtils::itoa(sizeof(int));
   Values["sizeof void*"] = arangodb::basics::StringUtils::itoa(sizeof(void*));
+#ifdef TRI_UNALIGNED_ACCESS
+  Values["unaligned-access"] = "true";
+#else
+  Values["unaligned-access"] = "false";
+#endif
   Values["v8-version"] = getV8Version();
   Values["vpack-version"] = getVPackVersion();
   Values["zlib-version"] = getZLibVersion();
@@ -258,18 +267,6 @@ std::string Version::getOpenSSLVersion() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get libev version
-////////////////////////////////////////////////////////////////////////////////
-
-std::string Version::getLibevVersion() {
-#ifdef ARANGODB_LIBEV_VERSION
-  return std::string(ARANGODB_LIBEV_VERSION);
-#else
-  return std::string();
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get vpack version
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -361,7 +358,6 @@ std::string Version::getBuildRepository() {
   return std::string();
 #endif
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a server version string

@@ -92,9 +92,6 @@ class Version {
   /// @brief get OpenSSL version
   static std::string getOpenSSLVersion();
 
-  /// @brief get libev version
-  static std::string getLibevVersion();
-
   /// @brief get vpack version
   static std::string getVPackVersion();
 

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="..\..\test\inverse_q_test.cpp">
+        <Filter>qvm\test</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="qvm">
+      <UniqueIdentifier>{4C314D3A-6E7D-158C-5808-210D2E3F40D9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="qvm\test">
+      <UniqueIdentifier>{41AA1FC9-0469-377F-2191-26CD24723C67}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

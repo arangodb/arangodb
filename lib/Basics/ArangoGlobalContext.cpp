@@ -28,16 +28,36 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
-#include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Rest/InitializeRest.h"
 
+#include <regex>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
-static void AbortHandler(int signum) {
+namespace {
+
+/// @brief quick test of regex functionality of the underlying stdlib
+static bool supportsStdRegex() {
+  try {
+    // compile a relatively simple regex... 
+    std::regex re("^[ \t]*([#;].*)?$", std::regex::nosubs | std::regex::ECMAScript);
+    // ...and test whether it matches a static string
+    std::string test(" # ArangoDB");
+    if (std::regex_match(test, re)) {
+      // compiler properly supports std::regex
+      return true;
+    }
+  } catch (...) {
+  }
+  // compiler does not support std::regex properly, though pretending to
+  return false;
+}
+
+static void abortHandler(int signum) {
   TRI_PrintBacktrace();
 #ifdef _WIN32
   exit(255 + signum);
@@ -108,10 +128,12 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
 }
 #endif
 
+}
+
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 
 ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
-                                         const char* InstallDirectory)
+                                         char const* InstallDirectory)
     : _binaryName(TRI_BinaryName(argv[0])),
       _runRoot(
           TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), InstallDirectory)),
@@ -162,7 +184,7 @@ void ArangoGlobalContext::installHup() {
 #endif
 }
 
-void ArangoGlobalContext::installSegv() { signal(SIGSEGV, AbortHandler); }
+void ArangoGlobalContext::installSegv() { signal(SIGSEGV, abortHandler); }
 
 void ArangoGlobalContext::maskAllSignals() {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -182,7 +204,7 @@ void ArangoGlobalContext::unmaskStandardSignals() {
 
 void ArangoGlobalContext::runStartupChecks() {
   // test if this binary uses and stdlib that supports std::regex properly
-  if (!TRI_SupportsRegexDebugging()) {
+  if (!supportsStdRegex()) {
     LOG(FATAL) << "the required std::regex functionality required to run "
                << "ArangoDB is not provided by this build. please try "
                << "rebuilding ArangoDB in a build environment that properly "
@@ -193,6 +215,8 @@ void ArangoGlobalContext::runStartupChecks() {
 #ifdef __arm__
   // detect alignment settings for ARM
   {
+    LOG(TRACE)
+        << "running CPU alignment check";
     // To change the alignment trap behavior, simply echo a number into
     // /proc/cpu/alignment.  The number is made up from various bits:
     //
@@ -274,31 +298,30 @@ void ArangoGlobalContext::createMiniDumpFilename() {
   miniDumpFilename = TRI_GetTempPath();
 
   miniDumpFilename +=
-      "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
+    "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
 #endif
 }
 
 void ArangoGlobalContext::normalizePath(std::vector<std::string>& paths,
-                                        const char* whichPath, bool fatal) {
+                                        char const* whichPath, bool fatal) {
   for (auto& path : paths) {
     normalizePath(path, whichPath, fatal);
   }
 }
 
 void ArangoGlobalContext::normalizePath(std::string& path,
-                                        const char* whichPath, bool fatal) {
+                                        char const* whichPath, bool fatal) {
   StringUtils::rTrimInPlace(path, TRI_DIR_SEPARATOR_STR);
 
   if (!arangodb::basics::FileUtils::exists(path)) {
-    std::string directory;
-    directory = arangodb::basics::FileUtils::buildFilename(_runRoot, path);
+    std::string directory = arangodb::basics::FileUtils::buildFilename(_runRoot, path);
     if (!arangodb::basics::FileUtils::exists(directory)) {
       if (!fatal) {
         return;
       }
-      LOG(ERR) << "failed to locate " << whichPath
-               << " directory, its neither available in  '" << path
-               << "' nor in '" << directory << "'";
+      LOG(FATAL) << "failed to locate " << whichPath
+                 << " directory, its neither available in '" << path
+                 << "' nor in '" << directory << "'";
       FATAL_ERROR_EXIT();
     }
     arangodb::basics::FileUtils::normalizePath(directory);

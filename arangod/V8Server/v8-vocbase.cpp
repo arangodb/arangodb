@@ -2019,9 +2019,17 @@ static void JS_IsSystemDatabase(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fake this method so the interface is similar to the client.
+////////////////////////////////////////////////////////////////////////////////
+static void JS_fakeFlushCache(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock databaseUseDatabase
 ////////////////////////////////////////////////////////////////////////////////
-
 static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -2810,6 +2818,9 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                        JS_Databases);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_useDatabase"),
                        JS_UseDatabase);
+
+  TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_flushCache"),
+                       JS_fakeFlushCache, true);
 
   TRI_InitV8Statistics(isolate, context);
 

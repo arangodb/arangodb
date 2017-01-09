@@ -193,9 +193,14 @@ void ClusterFeature::prepare() {
   auto agency =
     application_features::ApplicationServer::getFeature<AgencyFeature>("Agency");
 
+#ifdef DEBUG_SYNC_REPLICATION
+  bool startClusterComm = true;
+#else
+  bool startClusterComm = false;
+#endif
+
   if (agency->isEnabled() || _enableCluster) {
-    // initialize ClusterComm library, must call initialize only once
-    ClusterComm::initialize();
+    startClusterComm = true;
     auto authenticationFeature =
       application_features::ApplicationServer::getFeature<AuthenticationFeature>(
         "Authentication");
@@ -205,6 +210,11 @@ void ClusterFeature::prepare() {
         << " provide --server.jwt-secret which is used throughout the cluster.";
       FATAL_ERROR_EXIT();
     }
+  }
+
+  if (startClusterComm) {
+    // initialize ClusterComm library, must call initialize only once
+    ClusterComm::initialize();
   }
 
   // return if cluster is disabled

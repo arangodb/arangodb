@@ -419,15 +419,32 @@ inline RestStatus RestAgencyHandler::handleRead() {
 }
 
 RestStatus RestAgencyHandler::handleConfig() {
+
+  // Update endpoint of peer
+  if (_request->requestType() == rest::RequestType::POST) {
+    try {
+      arangodb::velocypack::Options options;
+      _agent->updatePeerEndpoint(_request->toVelocyPackBuilderPtr(&options));
+    } catch (std::exception const& e) {
+      generateError(
+        rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
+      return RestStatus::DONE;
+    }
+  }
+
+  // Respond with configuration
   Builder body;
-  body.add(VPackValue(VPackValueType::Object));
-  body.add("term", Value(_agent->term()));
-  body.add("leaderId", Value(_agent->leaderID()));
-  body.add("lastCommitted", Value(_agent->lastCommitted()));
-  body.add("lastAcked", _agent->lastAckedAgo()->slice());
-  body.add("configuration", _agent->config().toBuilder()->slice());
-  body.close();
+  {
+    VPackObjectBuilder b(&body);
+    body.add("term", Value(_agent->term()));
+    body.add("leaderId", Value(_agent->leaderID()));
+    body.add("lastCommitted", Value(_agent->lastCommitted()));
+    body.add("lastAcked", _agent->lastAckedAgo()->slice());
+    body.add("configuration", _agent->config().toBuilder()->slice());
+  }
+  
   generateResult(rest::ResponseCode::OK, body.slice());
+  
   return RestStatus::DONE;
 }
 
@@ -466,7 +483,8 @@ RestStatus RestAgencyHandler::execute() {
       } else if (suffixes[0] == "transact") {
         return handleTransact();
       } else if (suffixes[0] == "config") {
-        if (_request->requestType() != rest::RequestType::GET) {
+        if (_request->requestType() != rest::RequestType::GET &&
+            _request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
         return handleConfig();

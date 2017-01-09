@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1numeric_1_1bounds_3_01rational_3_01_t_01_4_01_4" kind="struct" prot="public">
+    <compoundname>boost::numeric::bounds&lt; rational&lt; T &gt; &gt;</compoundname>
+    <includes local="no">rational.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>class T</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1numeric_1_1bounds_3_01rational_3_01_t_01_4_01_4_1a779b8a4d8e4a268c1c66a0c35bedfd95" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>rational&lt; T &gt;</type>
+        <definition>static rational&lt;T&gt; boost::numeric::bounds&lt; rational&lt; T &gt; &gt;::highest</definition>
+        <argsstring>()</argsstring>
+        <name>highest</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/rational.hpp" line="128" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/rational.hpp" bodystart="128" bodyend="131"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1numeric_1_1bounds_3_01rational_3_01_t_01_4_01_4_1aceccccc260aa07f8cbe37d35ee519719" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>rational&lt; T &gt;</type>
+        <definition>static rational&lt;T&gt; boost::numeric::bounds&lt; rational&lt; T &gt; &gt;::lowest</definition>
+        <argsstring>()</argsstring>
+        <name>lowest</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/rational.hpp" line="124" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/rational.hpp" bodystart="124" bodyend="127"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/rational.hpp" line="123" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/rational.hpp" bodystart="122" bodyend="132"/>
+    <listofallmembers>
+      <member refid="structboost_1_1numeric_1_1bounds_3_01rational_3_01_t_01_4_01_4_1a779b8a4d8e4a268c1c66a0c35bedfd95" prot="public" virt="non-virtual"><scope>boost::numeric::bounds&lt; rational&lt; T &gt; &gt;</scope><name>highest</name></member>
+      <member refid="structboost_1_1numeric_1_1bounds_3_01rational_3_01_t_01_4_01_4_1aceccccc260aa07f8cbe37d35ee519719" prot="public" virt="non-virtual"><scope>boost::numeric::bounds&lt; rational&lt; T &gt; &gt;</scope><name>lowest</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

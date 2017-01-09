@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__side__equal_3_01cartesian__tag_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::within::winding_side_equal&lt; cartesian_tag &gt;</compoundname>
+    <includes local="no">point_in_poly_winding.hpp</includes>
+    <templateparamlist>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__side__equal_3_01cartesian__tag_01_4_1aa3f322179a4f71a941cd12c285e3b913" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+          <param>
+            <type>typename PointOfSegment</type>
+          </param>
+        </templateparamlist>
+        <type>int</type>
+        <definition>static int boost::geometry::strategy::within::winding_side_equal&lt; cartesian_tag &gt;::apply</definition>
+        <argsstring>(Point const &amp;point, PointOfSegment const &amp;se, int count)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>point</declname>
+        </param>
+        <param>
+          <type>PointOfSegment const &amp;</type>
+          <declname>se</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>count</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" line="124" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" bodystart="124" bodyend="135"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" line="122" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" bodystart="121" bodyend="136"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__side__equal_3_01cartesian__tag_01_4_1aa3f322179a4f71a941cd12c285e3b913" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::winding_side_equal&lt; cartesian_tag &gt;</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1index_1_1detail_1_1std__tuple__equals_3_01_tuple_00_01_i_00_01_i_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::index::detail::std_tuple_equals&lt; Tuple, I, I &gt;</compoundname>
+    <templateparamlist>
+      <param>
+        <type>typename Tuple</type>
+      </param>
+      <param>
+        <type>size_t</type>
+        <declname>I</declname>
+        <defname>I</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1detail_1_1std__tuple__equals_3_01_tuple_00_01_i_00_01_i_01_4_1aa58941438b5f6fd03372782fad7fa70c" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::index::detail::std_tuple_equals&lt; Tuple, I, I &gt;::apply</definition>
+        <argsstring>(Tuple const &amp;, Tuple const &amp;)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Tuple const &amp;</type>
+        </param>
+        <param>
+          <type>Tuple const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" line="184" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" bodystart="184" bodyend="187"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" line="183" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" bodystart="182" bodyend="188"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1std__tuple__equals_3_01_tuple_00_01_i_00_01_i_01_4_1aa58941438b5f6fd03372782fad7fa70c" prot="public" virt="non-virtual"><scope>boost::geometry::index::detail::std_tuple_equals&lt; Tuple, I, I &gt;</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

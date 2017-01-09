@@ -220,6 +220,13 @@ bool AuthInfo::populate(VPackSlice const& slice) {
 }
 
 void AuthInfo::reload() {
+  auto role = ServerState::instance()->getRole();
+
+  if (role != ServerState::ROLE_SINGLE
+      && role != ServerState::ROLE_COORDINATOR) {
+    _outdated = false;
+    return;
+  }
   insertInitial();
 
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();

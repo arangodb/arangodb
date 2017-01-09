@@ -1,0 +1,67 @@
+[#source_position]
+[section source_position]
+
+[h1 Synopsis]
+
+  template <class Line, class Col, class PrevChar>
+  struct source_position;
+
+This is a [link metaprogramming_value template metaprogramming value].
+
+[table Arguments
+  [[Name]       [Type]]
+  [[`Line`]     [[link boxed_value boxed] integer value]]
+  [[`Col`]      [[link boxed_value boxed] integer value]]
+  [[`PrevChar`] [[link boxed_value boxed] character value]]
+]
+
+[h1 Description]
+
+Compile-time data-structure describing a position of the input text.
+
+The values of this data-structure store the last character that was parsed
+before reaching the position of the input described by the `source_position`
+value.
+
+Its tag is [link source_position_tag `source_position_tag`].
+
+The beginning of the input text is represented by [link start `start`].
+
+[h1 Header]
+
+  #include <boost/metaparse/source_position.hpp>
+
+[h1 Expression semantics]
+
+For any `l`, `c` compile-time boxed integral values and `p` compile-time boxed
+character value, the following are equivalent
+
+  get_col<source_position<l, c, p>>::type
+  c::type
+
+  get_line<source_position<l, c, p>>::type
+  l::type
+
+  get_prev_char<source_position<l, c, p>>::type
+  p::type
+
+[h1 Constant values of this type]
+
+* [link start `start`]
+
+[h1 Operations]
+
+* `boost::mpl::equal_to`
+* `boost::mpl::greater`
+* `boost::mpl::greater_equal`
+* `boost::mpl::less`
+* `boost::mpl::less_equal`
+* `boost::mpl::not_equal_to`
+* [link get_col `get_col`]
+* [link get_line `get_line`]
+* [link get_prev_char `get_prev_char`]
+* [link next_char `next_char`]
+* [link next_line `next_line`]
+
+[endsect]
+

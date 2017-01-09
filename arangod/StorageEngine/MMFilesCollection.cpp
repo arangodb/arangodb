@@ -469,6 +469,7 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
                                            TRI_voc_size_t size,
                                            char*& resultPosition,
                                            TRI_datafile_t*& resultDatafile) {
+
   // reset results
   resultPosition = nullptr;
   resultDatafile = nullptr;
@@ -484,6 +485,11 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
   }
 
   while (true) {
+    // no need to go on if the collection is already deleted
+    if (_logicalCollection->status() == TRI_VOC_COL_STATUS_DELETED) {
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    }
+
     TRI_datafile_t* datafile = nullptr;
 
     if (_journals.empty()) {
@@ -515,7 +521,6 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
     TRI_ASSERT(datafile != nullptr);
 
     // try to reserve space in the datafile
-
     TRI_df_marker_t* position = nullptr;
     int res = datafile->reserveElement(size, &position, targetSize);
 

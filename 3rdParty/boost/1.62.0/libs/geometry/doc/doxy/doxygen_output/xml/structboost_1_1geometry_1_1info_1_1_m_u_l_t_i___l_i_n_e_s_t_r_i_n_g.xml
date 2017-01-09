@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1info_1_1_m_u_l_t_i___l_i_n_e_s_t_r_i_n_g" kind="struct" prot="public">
+    <compoundname>boost::geometry::info::MULTI_LINESTRING</compoundname>
+    <includes local="no">not_implemented.hpp</includes>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="43" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" bodystart="43" bodyend="43"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

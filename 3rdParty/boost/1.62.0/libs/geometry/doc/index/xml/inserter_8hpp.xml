@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="inserter_8hpp" kind="file">
+    <compoundname>inserter.hpp</compoundname>
+    <includes local="no">iterator</includes>
+    <includedby refid="rtree_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp</includedby>
+    <incdepgraph>
+      <node id="22">
+        <label>iterator</label>
+      </node>
+      <node id="21">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp</label>
+        <link refid="inserter.hpp"/>
+        <childnode refid="22" relation="include">
+        </childnode>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="23">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp</label>
+        <link refid="inserter.hpp"/>
+        <childnode refid="24" relation="include">
+        </childnode>
+      </node>
+      <node id="24">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp</label>
+        <link refid="rtree_8hpp_source"/>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="classboost_1_1geometry_1_1index_1_1insert__iterator" prot="public">boost::geometry::index::insert_iterator</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1index">boost::geometry::index</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp"/>
+  </compounddef>
+</doxygen>

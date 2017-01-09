@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1order__as__direction_3_01counterclockwise_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::order_as_direction&lt; counterclockwise &gt;</compoundname>
+    <includes local="no">order_as_direction.hpp</includes>
+    <templateparamlist>
+    </templateparamlist>
+      <sectiondef kind="public-static-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1order__as__direction_3_01counterclockwise_01_4_1ab5215e302a9a5e01eba527bb9a8f618b" prot="public" static="yes" mutable="no">
+        <type>const <ref refid="namespaceboost_1_1geometry_1a6424afc319f6cc4d4276a3900e966d3f" kindref="member">iterate_direction</ref></type>
+        <definition>const iterate_direction boost::geometry::order_as_direction&lt; counterclockwise &gt;::value</definition>
+        <argsstring></argsstring>
+        <name>value</name>
+        <initializer>= <ref refid="namespaceboost_1_1geometry_1a6424afc319f6cc4d4276a3900e966d3fa37daa24e30befa9d690d75fb5439718a" kindref="member">iterate_reverse</ref></initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/order_as_direction.hpp" line="39" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/order_as_direction.hpp" bodystart="39" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/order_as_direction.hpp" line="38" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/order_as_direction.hpp" bodystart="37" bodyend="40"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1order__as__direction_3_01counterclockwise_01_4_1ab5215e302a9a5e01eba527bb9a8f618b" prot="public" virt="non-virtual"><scope>boost::geometry::order_as_direction&lt; counterclockwise &gt;</scope><name>value</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

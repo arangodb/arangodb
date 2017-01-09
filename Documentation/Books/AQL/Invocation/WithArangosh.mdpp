@@ -104,7 +104,7 @@ allowed to use:
     |db._query(
     | 'FOR i IN 1..100000 SORT i RETURN i', {}, {
     |   memoryLimit: 100000
-    }).toArray();
+    }).toArray(); // xpError(ERROR_RESOURCE_LIMIT)
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 02_workWithAQL_memoryLimit
 

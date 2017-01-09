@@ -36,8 +36,8 @@
 /// @brief use padding for pointers in binary data
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef __arm__
-// must properly align memory on ARM architecture to prevent
+#ifndef TRI_UNALIGNED_ACCESS
+// must properly align memory on some architectures to prevent
 // unaligned memory accesses
 #define FULLTEXT_PADDING 1
 #else
@@ -1408,7 +1408,7 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
   size_t numWords = wordlist.size();
   while (w < numWords) {
     node_t* node;
-    const char* p;
+    char const* p;
     size_t start;
     size_t i;
 

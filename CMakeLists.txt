@@ -62,6 +62,11 @@ if (USE_ENTERPRISE)
   add_subdirectory(enterprise)
 endif ()
 
+option(DEBUG_SYNC_REPLICATION OFF "Enable debug code to enable synchronous replication debugging")
+if (DEBUG_SYNC_REPLICATION)
+  add_definitions("-DDEBUG_SYNC_REPLICATION=1")
+endif ()
+
 ################################################################################
 ## ARANGODB
 ################################################################################
@@ -245,6 +250,8 @@ endif ()
 find_package(PythonInterp 2 EXACT REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
+set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
+
 if (NOT WINDOWS)
   find_program(CHMOD_EXECUTABLE chmod)
   find_program(CHOWN_EXECUTABLE chown)
@@ -270,10 +277,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CMAKE_COMPILER_IS_CLANG 1)
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
   set(CMAKE_COMPILER_IS_CLANG 1)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-  set(CMAKE_COMPILER_IS_INTEL 1)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-  set(CMAKE_COMPILER_IS_INTEL 1)
 endif ()
 
 if (WINDOWS)
@@ -503,31 +506,52 @@ endif ()
 ################################################################################
 ## JEMALLOC
 ################################################################################
-
-set(DEFAULT_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
-set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_STATIC_LIBRARY_SUFFIX})
-find_package(jemalloc)
-set(JEMALLOC_DEFAULT_VALUE ${JEMALLOC_FOUND})
-
 if (WINDOWS OR SOLARIS OR USE_TCMALLOC)
   set(JEMALLOC_DEFAULT_VALUE OFF)
 endif ()
-
 option(USE_JEMALLOC
   "use JEMALLOC if the library is available"
   ${JEMALLOC_DEFAULT_VALUE}
 )
 
-# mop: FORCE_JEMALLOC_LIB removed...set JEMALLOC_jemalloc_LIBRARY instead
-if (USE_JEMALLOC)
-  if (NOT JEMALLOC_FOUND)
-    message(FATAL_ERROR "jemalloc build was requested but jemalloc not found")
-  endif ()
-  add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
+# try to detect a static libjemalloc.a:
+set(_DEFAULT_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
+set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_STATIC_LIBRARY_SUFFIX})
+find_package(jemalloc)
+set(CMAKE_FIND_LIBRARY_SUFFIXES ${_DEFAULT_LIBRARY_SUFFIXES})
 
+
+# check whether we can use the static jemalloc on the system (if):
+if (JEMALLOC_FOUND)
+  set(HAS_PROPER_STATIC_JEMALLOC TRUE)
+  set(SOURCE "#include <stdlib.h>
+#include <jemalloc/jemalloc.h>
+int main() {
+malloc_stats_print(NULL, NULL, NULL);
+return 0; }"
+    )
+  set(TSTSRC "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp/jemalloc.cxx")
+  file(WRITE ${TSTSRC} "${SOURCE}\n")
+
+  try_compile(HAS_PROPER_STATIC_JEMALLOC
+    ${CMAKE_BINARY_DIR}
+    ${TSTSRC}
+    LINK_LIBRARIES "jemalloc.a" "pthread"
+    )
+  if (USE_JEMALLOC AND NOT HAS_PROPER_STATIC_JEMALLOC)
+    message(FATAL_ERROR "the static system jemalloc isn't suitable! Recompile with the current compiler or disable using `-DCMAKE_CXX_FLAGS=-no-pie -DCMAKE_C_FLAGS=-no-pie`")
+  elseif (NOT USE_JEMALLOC AND NOT HAS_PROPER_STATIC_JEMALLOC)
+    # the user didn't force the use, so if its broken, ignore its existance:
+    set(JEMALLOC_FOUND FALSE)
+  endif ()
+endif()
+
+if (USE_JEMALLOC AND NOT JEMALLOC_FOUND)
+  message(FATAL_ERROR "jemalloc build was requested but jemalloc not found")
+elseif (USE_JEMALLOC AND JEMALLOC_FOUND)
+  add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
   set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_jemalloc_LIBRARY})
 endif ()
-set(CMAKE_FIND_LIBRARY_SUFFIXES ${DEFAULT_LIBRARY_SUFFIXES})
 
 ################################################################################
 ## TCMALLOC
@@ -583,13 +607,13 @@ if (CMAKE_COMPILER_IS_GNUCC)
   set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter ${BASE_FLAGS}")
 
   set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "-O0 -g"                         CACHE INTERNAL "C debug flags")
+  set(CMAKE_C_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C debug flags")
   set(CMAKE_C_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C minimal size flags")
   set(CMAKE_C_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C release flags")
   set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C release with debug info flags")
 
   set(CMAKE_CXX_FLAGS                "-g"                             CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g"                         CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C++ release with debug info flags")
@@ -602,13 +626,13 @@ elseif (CMAKE_COMPILER_IS_CLANG)
   set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter ${BASE_FLAGS}")
 
   set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "-O0 -g"                         CACHE INTERNAL "C debug flags")
+  set(CMAKE_C_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C debug flags")
   set(CMAKE_C_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C minimal size flags")
   set(CMAKE_C_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C release flags")
   set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C release with debug info flags")
 
   set(CMAKE_CXX_FLAGS                "-g"                             CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g"                         CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C++ release with debug info flags")
@@ -718,6 +742,7 @@ endif ()
 # ZLIB_INCLUDE_DIR
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
+add_definitions("-DARANGODB_BOOST_VERSION=\"1.62.0\"")
 
 ################################################################################
 ## VELOCYPACK
@@ -770,7 +795,7 @@ endif ()
 ################################################################################
 
 include_directories(${V8_INCLUDE_DIR})
-add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
+add_definitions("-DARANGODB_V8_VERSION=\"1.62.0\"")
 
 ################################################################################
 ## ZLIB
@@ -814,16 +839,11 @@ if (USE_MAINTAINER_MODE)
 
   foreach (m IN LISTS ERROR_FILES)
     add_custom_command(
-      OUTPUT
-        ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND
-        PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE} ./utils/generateErrorfile.sh ./${ERRORS_DAT} ./${m}
-      DEPENDS
-        ${CMAKE_SOURCE_DIR}/${ERRORS_DAT}
-      WORKING_DIRECTORY
-        ${CMAKE_SOURCE_DIR}
-      COMMENT
-        "Building errors files ${m}"
+      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
+      COMMAND ./utils/generateErrorfile.sh ./${ERRORS_DAT} ./${m}
+      DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT}
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      COMMENT  "Building errors files ${m}"
       VERBATIM
     )
 
@@ -848,16 +868,11 @@ if (USE_MAINTAINER_MODE)
 
   foreach (m IN LISTS MIMETYPES_FILES)
     add_custom_command(
-      OUTPUT
-        ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND
-        PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE} ./utils/generateMimetypes.sh ./${MIMETYPES_DAT} ./${m}
-      DEPENDS
-        ${CMAKE_SOURCE_DIR}/${MIMETYPES_DAT}
-      WORKING_DIRECTORY
-        ${CMAKE_SOURCE_DIR}
-      COMMENT
-        "Building mimetypes files ${m}"
+      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
+      COMMAND ./utils/generateMimetypes.sh ./${MIMETYPES_DAT} ./${m}
+      DEPENDS ${CMAKE_SOURCE_DIR}/${MIMETYPES_DAT}
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      COMMENT "Building mimetypes files ${m}"
       VERBATIM
     )
 

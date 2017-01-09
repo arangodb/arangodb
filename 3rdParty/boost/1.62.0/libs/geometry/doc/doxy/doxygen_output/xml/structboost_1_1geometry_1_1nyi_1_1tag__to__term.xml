@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1nyi_1_1tag__to__term" kind="struct" prot="public">
+    <compoundname>boost::geometry::nyi::tag_to_term</compoundname>
+    <includes local="no">not_implemented.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Tag</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1nyi_1_1tag__to__term_1ac9edd13323d6c9fcc586432d26f2fa73" prot="public" static="no">
+        <type>Tag</type>
+        <definition>typedef Tag boost::geometry::nyi::tag_to_term&lt; Tag &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="82" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" bodystart="82" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="81" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" bodystart="80" bodyend="83"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_1ac9edd13323d6c9fcc586432d26f2fa73" prot="public" virt="non-virtual"><scope>boost::geometry::nyi::tag_to_term</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

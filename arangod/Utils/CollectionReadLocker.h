@@ -40,8 +40,7 @@ class CollectionReadLocker {
   CollectionReadLocker(LogicalCollection* collection, bool useDeadlockDetector, bool doLock)
       : _collection(collection), _useDeadlockDetector(useDeadlockDetector), _doLock(false) {
     if (doLock) {
-      int res = _collection->beginReadTimed(_useDeadlockDetector,
-          0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+      int res = _collection->beginReadTimed(_useDeadlockDetector);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);

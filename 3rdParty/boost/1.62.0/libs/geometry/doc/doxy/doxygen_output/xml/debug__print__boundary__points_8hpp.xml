@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="debug__print__boundary__points_8hpp" kind="file">
+    <compoundname>debug_print_boundary_points.hpp</compoundname>
+    <includedby refid="is__simple_2linear_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/linear.hpp</includedby>
+    <invincdepgraph>
+      <node id="24052">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/debug_print_boundary_points.hpp</label>
+        <link refid="debug_print_boundary_points.hpp"/>
+        <childnode refid="24053" relation="include">
+        </childnode>
+      </node>
+      <node id="24054">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/implementation.hpp</label>
+        <link refid="is__simple_2implementation_8hpp"/>
+        <childnode refid="24055" relation="include">
+        </childnode>
+      </node>
+      <node id="24053">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/linear.hpp</label>
+        <link refid="is__simple_2linear_8hpp"/>
+        <childnode refid="24054" relation="include">
+        </childnode>
+      </node>
+      <node id="24055">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/is_simple.hpp</label>
+        <link refid="is__simple_8hpp"/>
+      </node>
+    </invincdepgraph>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1detail">boost::geometry::detail</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1detail_1_1is__simple">boost::geometry::detail::is_simple</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/debug_print_boundary_points.hpp"/>
+  </compounddef>
+</doxygen>

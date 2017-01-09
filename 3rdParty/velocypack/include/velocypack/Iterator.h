@@ -119,7 +119,7 @@ class ArrayIterator {
     return operator*();
   }
 
-  inline void next() noexcept {
+  inline void next() {
     operator++();
   }
 
@@ -286,7 +286,7 @@ class ObjectIterator {
     return _slice.getNthValue(_position);
   }
 
-  inline void next() noexcept {
+  inline void next() {
     operator++();
   }
 

@@ -274,6 +274,7 @@ function walSuite () {
       db._collection("UnitTestsExample").unload();
       
       while (db._collection("UnitTestsExample").status() !== ArangoCollection.STATUS_UNLOADED) {
+        db._collection("UnitTestsExample").unload();
         internal.wait(1, false);
       }
 

@@ -78,7 +78,7 @@ static TRI_voc_crc_t Crc28(TRI_voc_crc_t crc, void const* data, size_t length) {
   return crc;
 }
 
-static bool IsMarker28 (void const* marker) {
+static bool IsMarker28(void const* marker) {
   struct Marker28 {
     TRI_voc_size_t       _size; 
     TRI_voc_crc_t        _crc;     
@@ -142,8 +142,6 @@ static bool CheckCrcMarker(TRI_df_marker_t const* marker, char const* end) {
   return marker->getCrc() == expected;
 }
 
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
 /// the filename must look like this: /.*type-abc\.ending$/, where abc is
@@ -164,6 +162,8 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
   }
 
   return StringUtils::uint64(pos2 + 1, pos1 - pos2 - 1);
+}
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,10 +254,9 @@ static TRI_datafile_t* CreatePhysicalDatafile(std::string const& filename,
     // remove empty file
     TRI_UnlinkFile(filename.c_str());
 
-    LOG(ERR) << "cannot memory map file '" << filename << "': '" << TRI_errno_string((int)res) << "'";
+    LOG(ERR) << "cannot memory map file '" << filename << "': '" << TRI_errno_string(res) << "'";
     LOG(ERR) << "The database directory might reside on a shared folder "
-                "(VirtualBox, VMWare) or an NFS "
-                "mounted volume which does not allow memory mapped files.";
+                "(VirtualBox, VMWare) or an NFS-mounted volume which does not allow memory mapped files.";
     return nullptr;
   }
 
@@ -296,9 +295,6 @@ TRI_datafile_t* TRI_datafile_t::create(std::string const& filename, TRI_voc_fid_
   if (filename.empty()) {
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
     datafile.reset(CreateAnonymousDatafile(fid, maximalSize));
-#else
-    // system does not support anonymous mmap
-    return nullptr;
 #endif
   } else {
     datafile.reset(CreatePhysicalDatafile(filename, fid, maximalSize));
@@ -472,27 +468,27 @@ int TRI_datafile_t::reserveElement(TRI_voc_size_t size, TRI_df_marker_t** positi
 }
   
 void TRI_datafile_t::sequentialAccess() {
-  TRI_MMFileAdvise(_data, _maximalSize, TRI_MADVISE_SEQUENTIAL);
+  TRI_MMFileAdvise(_data, _initSize, TRI_MADVISE_SEQUENTIAL);
 }
 
 void TRI_datafile_t::randomAccess() {
-  TRI_MMFileAdvise(_data, _maximalSize, TRI_MADVISE_RANDOM);
+  TRI_MMFileAdvise(_data, _initSize, TRI_MADVISE_RANDOM);
 }
 
 void TRI_datafile_t::willNeed() {
-  TRI_MMFileAdvise(_data, _maximalSize, TRI_MADVISE_WILLNEED);
+  TRI_MMFileAdvise(_data, _initSize, TRI_MADVISE_WILLNEED);
 }
 
 void TRI_datafile_t::dontNeed() {
-  TRI_MMFileAdvise(_data, _maximalSize, TRI_MADVISE_DONTNEED);
+  TRI_MMFileAdvise(_data, _initSize, TRI_MADVISE_DONTNEED);
 }
 
 bool TRI_datafile_t::readOnly() {
-  return (TRI_ProtectMMFile(_data, _maximalSize, PROT_READ, _fd) == TRI_ERROR_NO_ERROR);
+  return (TRI_ProtectMMFile(_data, _initSize, PROT_READ, _fd) == TRI_ERROR_NO_ERROR);
 }
 
 bool TRI_datafile_t::readWrite() {
-  return (TRI_ProtectMMFile(_data, _maximalSize, PROT_READ | PROT_WRITE, _fd) == TRI_ERROR_NO_ERROR);
+  return (TRI_ProtectMMFile(_data, _initSize, PROT_READ | PROT_WRITE, _fd) == TRI_ERROR_NO_ERROR);
 }
 
 int TRI_datafile_t::lockInMemory() {
@@ -980,6 +976,7 @@ int TRI_datafile_t::close() {
     int res = TRI_UNMMFile(_data, _initSize, _fd, &_mmHandle);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      // leave file open here as it will still be memory-mapped
       LOG(ERR) << "munmap failed with: " << res;
       _state = TRI_DF_STATE_WRITE_ERROR;
       _lastError = res;
@@ -987,6 +984,7 @@ int TRI_datafile_t::close() {
     }
 
     if (isPhysical()) {
+      TRI_ASSERT(_fd >= 0);
       int res = TRI_CLOSE(_fd);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -1003,9 +1001,12 @@ int TRI_datafile_t::close() {
   } 
   
   if (_state == TRI_DF_STATE_CLOSED) {
+    TRI_ASSERT(_fd == -1);
     LOG(TRACE) << "closing an already closed datafile '" << getName() << "'";
     return TRI_ERROR_NO_ERROR;
   } 
+
+  LOG(ERR) << "attempting to close datafile with an invalid state";
   
   return TRI_ERROR_ARANGO_ILLEGAL_STATE;
 }
@@ -1142,6 +1143,7 @@ int TRI_datafile_t::truncateAndSeal(TRI_voc_size_t position) {
   _currentSize = position;
   // do not change _initSize!
   TRI_ASSERT(_initSize == _maximalSize);
+  TRI_ASSERT(maximalSize <= _initSize);
   _maximalSize = static_cast<TRI_voc_size_t>(maximalSize);
   _fd = fd;
   _mmHandle = mmHandle;
@@ -1447,6 +1449,7 @@ bool TRI_datafile_t::fix(TRI_voc_size_t currentSize) {
 
   _currentSize = currentSize;
   TRI_ASSERT(_initSize == _maximalSize);
+  TRI_ASSERT(currentSize <= _initSize);
   _maximalSize = static_cast<TRI_voc_size_t>(currentSize);
   _next = _data + _currentSize;
   _full = true;
@@ -1727,7 +1730,7 @@ TRI_datafile_t* TRI_datafile_t::open(std::string const& filename, bool ignoreFai
   // change to read-write if no footer has been found
   if (!datafile->_isSealed) {
     if (!datafile->readWrite()) {
-      LOG(ERR) << "unable to change file protection for datafile '" << datafile->getName() << "'. please check file permissions and mount options.";
+      LOG(ERR) << "unable to change memory protection for memory backed by datafile '" << datafile->getName() << "'. please check file permissions and mount options.";
       return nullptr;
     }
     datafile->_state = TRI_DF_STATE_WRITE; 
@@ -1743,9 +1746,6 @@ TRI_datafile_t* TRI_datafile_t::open(std::string const& filename, bool ignoreFai
 /// @brief opens a datafile
 TRI_datafile_t* TRI_datafile_t::openHelper(std::string const& filename, bool ignoreErrors) {
   TRI_ERRORBUF;
-  void* data;
-  TRI_stat_t status;
-  void* mmHandle;
 
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(!filename.empty());
@@ -1764,6 +1764,7 @@ TRI_datafile_t* TRI_datafile_t::openHelper(std::string const& filename, bool ign
   }
 
   // compute the size of the file
+  TRI_stat_t status;
   int res = TRI_FSTAT(fd, &status);
 
   if (res < 0) {
@@ -1783,7 +1784,7 @@ TRI_datafile_t* TRI_datafile_t::openHelper(std::string const& filename, bool ign
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
     TRI_CLOSE(fd);
 
-    LOG(ERR) << "datafile '" << filename << "' is corrupt, size is only " << (unsigned int)size;
+    LOG(ERR) << "datafile '" << filename << "' is corrupt, size is only " << size;
 
     return nullptr;
   }
@@ -1850,10 +1851,12 @@ TRI_datafile_t* TRI_datafile_t::openHelper(std::string const& filename, bool ign
 
   // check the maximal size
   if (size > header->_maximalSize) {
-    LOG(DEBUG) << "datafile '" << filename << "' has size '" << size << "', but maximal size is '" << header->_maximalSize << "'";
+    LOG(DEBUG) << "datafile '" << filename << "' has size " << size << ", but maximal size is " << header->_maximalSize;
   }
 
   // map datafile into memory
+  void* data;
+  void* mmHandle;
   res = TRI_MMFile(0, size, PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1862,8 +1865,7 @@ TRI_datafile_t* TRI_datafile_t::openHelper(std::string const& filename, bool ign
 
     LOG(ERR) << "cannot memory map datafile '" << filename << "': " << TRI_errno_string(res);
     LOG(ERR) << "The database directory might reside on a shared folder "
-                "(VirtualBox, VMWare) or an NFS "
-                "mounted volume which does not allow memory mapped files.";
+                "(VirtualBox, VMWare) or an NFS-mounted volume which does not allow memory mapped files.";
     return nullptr;
   }
 

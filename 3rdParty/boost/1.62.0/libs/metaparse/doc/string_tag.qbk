@@ -1,0 +1,19 @@
+[#string_tag]
+[section string_tag]
+
+[h1 Synopsis]
+
+  struct string_tag;
+
+This is a [link tag tag].
+
+[h1 Description]
+
+This is the tag of the [link string `string`] values.
+
+[h1 Header]
+
+  #include <boost/metaparse/string_tag.hpp>
+
+[endsect]
+

@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1is__areal" kind="struct" prot="public">
+    <compoundname>boost::geometry::is_areal</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">core_dispatch::is_areal&lt; tag&lt; Geometry &gt;::type &gt;</basecompoundref>
+    <includes local="no">is_areal.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Meta-function defining &quot;true&quot; for areal types (box, (multi)polygon, ring),. </para>    </briefdescription>
+    <detaileddescription>
+<para><simplesect kind="note"><para>Used for tag dispatching and meta-function finetuning </para><simplesectsep/><para>Also a &quot;ring&quot; has areal properties within Boost.Geometry </para></simplesect>
+</para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="469">
+        <label>boost::geometry::is_areal&lt; Geometry &gt;</label>
+        <link refid="structboost_1_1geometry_1_1is__areal"/>
+        <childnode refid="470" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="470">
+        <label>core_dispatch::is_areal&lt; tag&lt; Geometry &gt;::type &gt;</label>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="471">
+        <label>boost::geometry::is_areal&lt; Geometry &gt;</label>
+        <link refid="structboost_1_1geometry_1_1is__areal"/>
+        <childnode refid="472" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="472">
+        <label>core_dispatch::is_areal&lt; tag&lt; Geometry &gt;::type &gt;</label>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/is_areal.hpp" line="53" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/is_areal.hpp" bodystart="52" bodyend="53"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

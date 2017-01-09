@@ -1,0 +1,87 @@
+[/
+  Copyright 2004 Pavel Vozenilek
+  Copyright 2014 Peter Dimov
+
+  Distributed under the Boost Software License, Version 1.0.
+
+  See accompanying file LICENSE_1_0.txt
+  or copy at http://boost.org/LICENSE_1_0.txt
+]
+
+[section:no_exceptions_support no_exceptions_support]
+
+[simplesect Authors]
+
+* Pavel Vozenilek
+
+[endsimplesect]
+
+[section Header <boost/core/no_exceptions_support.hpp>]
+
+The header `<boost/core/no_exceptions_support.hpp>` defines
+macros for use in code that needs to be portable to environments
+that do not have support for C++ exceptions.
+
+[section Synopsis]
+
+``
+#define BOOST_TRY /*unspecified*/
+#define BOOST_CATCH(x) /*unspecified*/
+#define BOOST_CATCH_END /*unspecified*/
+#define BOOST_RETHROW /*unspecified*/
+``
+
+[endsect]
+
+[section Example Use]
+
+``
+void foo() {
+  BOOST_TRY {
+    ...
+  } BOOST_CATCH(const std::bad_alloc&) {
+      ...
+      BOOST_RETHROW
+  } BOOST_CATCH(const std::exception& e) {
+      ...
+  }
+  BOOST_CATCH_END
+}
+``
+
+With exception support enabled it will expand into:
+
+``
+void foo() {
+  { try {
+    ...
+  } catch (const std::bad_alloc&) {
+      ...
+      throw;
+  } catch (const std::exception& e) {
+      ...
+  }
+  }
+}
+``
+
+With exception support disabled it will expand into:
+
+``
+void foo() {
+  { if(true) {
+    ...
+  } else if (false) {
+      ...
+  } else if (false)  {
+      ...
+  }
+  }
+}
+``
+
+[endsect]
+
+[endsect]
+
+[endsect]

@@ -406,6 +406,7 @@ elif [ "${XCGCC}" = 1 ]; then
     export LD=$TOOL_PREFIX-g++
     export LINK=$TOOL_PREFIX-g++
     export STRIP=$TOOL_PREFIX-strip
+    export OBJCOPY=$TOOL_PREFIX-objcopy
     # we need ARM LD:
     GOLD=0;
 
@@ -461,13 +462,29 @@ if [ -z "${MSVC}" ]; then
     if test -z "${STRIP}"; then
         STRIP=/usr/bin/strip
         if [ ! -f ${STRIP} ] ; then
+            set +e
             STRIP=`which strip`
+            set -e
         fi
         export STRIP
     fi
     if test -n "${STRIP}"; then
         CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_STRIP=${STRIP}"
     fi
+
+    if test -z "${OBJCOPY}"; then
+        OBJCOPY=/usr/bin/objcopy
+        if [ ! -f ${OBJCOPY} ] ; then
+            set +e
+            OBJCOPY=`which objcopy`
+            set -e
+        fi
+        export OBJCOPY
+    fi
+    if test -n "${OBJCOPY}"; then
+        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_OBJCOPY=${OBJCOPY}"
+    fi
+
 fi
 
 CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} ${MAINTAINER_MODE}"
@@ -535,6 +552,7 @@ DST=`pwd`
 SOURCE_DIR=`compute_relative ${DST}/ ${SRC}/`
 
 if [ ! -f Makefile -o ! -f CMakeCache.txt ];  then
+    rm -rf CMakeFiles
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
           cmake ${SOURCE_DIR} ${CONFIGURE_OPTIONS} -G "${GENERATOR}" || exit 1
 fi

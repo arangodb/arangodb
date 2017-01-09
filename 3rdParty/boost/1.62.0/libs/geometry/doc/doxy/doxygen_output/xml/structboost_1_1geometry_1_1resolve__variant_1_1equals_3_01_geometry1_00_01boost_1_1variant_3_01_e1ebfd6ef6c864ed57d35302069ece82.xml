@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1equals_3_01_geometry1_00_01boost_1_1variant_3_01_e1ebfd6ef6c864ed57d35302069ece82" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::equals&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</compoundname>
+    <includes local="no">equals.hpp</includes>
+    <innerclass refid="structboost_1_1geometry_1_1resolve__variant_1_1equals_3_01_geometry1_00_01boost_1_1variant_3_01_7725e2b0b19b4b6b64dbd6594c4ae15d" prot="public">boost::geometry::resolve_variant::equals&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry1</type>
+      </param>
+      <param>
+        <type>BOOST_VARIANT_ENUM_PARAMS(typename T)</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1equals_3_01_geometry1_00_01boost_1_1variant_3_01_e1ebfd6ef6c864ed57d35302069ece82_1a22f74e5796cfbad9844d7386f6578790" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::resolve_variant::equals&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::apply</definition>
+        <argsstring>(Geometry1 const &amp;geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; const &amp;geometry2)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Geometry1 const &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <param>
+          <type>boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; const &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/equals.hpp" line="415" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/equals.hpp" bodystart="415" bodyend="421"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/equals.hpp" line="397" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/equals.hpp" bodystart="396" bodyend="422"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1equals_3_01_geometry1_00_01boost_1_1variant_3_01_e1ebfd6ef6c864ed57d35302069ece82_1a22f74e5796cfbad9844d7386f6578790" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::equals&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

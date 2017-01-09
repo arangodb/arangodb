@@ -34,7 +34,7 @@ class ConfigFeature final : public application_features::ApplicationFeature {
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void loadOptions(std::shared_ptr<options::ProgramOptions>,
-                   const char* binaryPath) override final;
+                   char const* binaryPath) override final;
 
  private:
   std::string _file;
@@ -44,7 +44,7 @@ class ConfigFeature final : public application_features::ApplicationFeature {
  private:
   void loadConfigFile(std::shared_ptr<options::ProgramOptions>,
                       std::string const& progname,
-                      const char* binaryPath);
+                      char const* binaryPath);
 
  private:
   std::string _progname;

@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1crosses_3_01_geometry1_00_01variant_3_01_b_o_o_s_9c9b31604a5541a96b14654638afff96" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::crosses&lt; Geometry1, variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</compoundname>
+    <includes local="no">crosses.hpp</includes>
+    <innerclass refid="structboost_1_1geometry_1_1resolve__variant_1_1crosses_3_01_geometry1_00_01variant_3_01_b_o_o_s_33365f9449c79783586b8bff7adb1db9" prot="public">boost::geometry::resolve_variant::crosses&lt; Geometry1, variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry1</type>
+      </param>
+      <param>
+        <type>BOOST_VARIANT_ENUM_PARAMS(typename T)</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1crosses_3_01_geometry1_00_01variant_3_01_b_o_o_s_9c9b31604a5541a96b14654638afff96_1a6a20da7a89e24704b158758801d82a15" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::resolve_variant::crosses&lt; Geometry1, variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::apply</definition>
+        <argsstring>(Geometry1 const &amp;geometry1, const variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &amp;geometry2)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Geometry1 const &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <param>
+          <type>const variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/crosses.hpp" line="137" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/crosses.hpp" bodystart="137" bodyend="141"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/crosses.hpp" line="116" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/crosses.hpp" bodystart="115" bodyend="142"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1crosses_3_01_geometry1_00_01variant_3_01_b_o_o_s_9c9b31604a5541a96b14654638afff96_1a6a20da7a89e24704b158758801d82a15" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::crosses&lt; Geometry1, variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="dir_054af7bbe036a67261726b73e573b3ce" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/iterators</compoundname>
+    <innerfile refid="base_8hpp">base.hpp</innerfile>
+    <innerfile refid="closing__iterator_8hpp">closing_iterator.hpp</innerfile>
+    <innerfile refid="concatenate__iterator_8hpp">concatenate_iterator.hpp</innerfile>
+    <innerfile refid="ever__circling__iterator_8hpp">ever_circling_iterator.hpp</innerfile>
+    <innerfile refid="flatten__iterator_8hpp">flatten_iterator.hpp</innerfile>
+    <innerfile refid="has__one__element_8hpp">has_one_element.hpp</innerfile>
+    <innerfile refid="point__iterator_8hpp">point_iterator.hpp</innerfile>
+    <innerfile refid="point__reverse__iterator_8hpp">point_reverse_iterator.hpp</innerfile>
+    <innerfile refid="segment__iterator_8hpp">segment_iterator.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/"/>
+  </compounddef>
+</doxygen>

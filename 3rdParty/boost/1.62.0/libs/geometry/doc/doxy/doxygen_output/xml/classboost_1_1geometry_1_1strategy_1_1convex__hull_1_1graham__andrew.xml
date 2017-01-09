@@ -1,0 +1,289 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::convex_hull::graham_andrew</compoundname>
+    <includes local="no">hull_graham_andrew.hpp</includes>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1_1partitions" prot="private">boost::geometry::strategy::convex_hull::graham_andrew::partitions</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename InputGeometry</type>
+      </param>
+      <param>
+        <type>typename OutputPoint</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a456c123d0655ecf2c4409b38b95668c7" prot="public" static="no">
+        <type>InputGeometry</type>
+        <definition>typedef InputGeometry boost::geometry::strategy::convex_hull::graham_andrew&lt; InputGeometry, OutputPoint &gt;::geometry_type</definition>
+        <argsstring></argsstring>
+        <name>geometry_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" line="205" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" bodystart="205" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a2678e51becdbb307f68bccc89f2f62c0" prot="public" static="no">
+        <type>OutputPoint</type>
+        <definition>typedef OutputPoint boost::geometry::strategy::convex_hull::graham_andrew&lt; InputGeometry, OutputPoint &gt;::point_type</definition>
+        <argsstring></argsstring>
+        <name>point_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" line="204" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" bodystart="204" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a550176a736837847b6df1b46ef6f6b3f" prot="public" static="no">
+        <type>partitions</type>
+        <definition>typedef partitions boost::geometry::strategy::convex_hull::graham_andrew&lt; InputGeometry, OutputPoint &gt;::state_type</definition>
+        <argsstring></argsstring>
+        <name>state_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" line="227" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" bodystart="227" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a20c858057ff4ecebc2218b6ea7eb13c7" prot="private" static="no">
+        <type>std::vector&lt; <ref refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a2678e51becdbb307f68bccc89f2f62c0" kindref="member">point_type</ref> &gt;</type>
+        <definition>typedef std::vector&lt;point_type&gt; boost::geometry::strategy::convex_hull::graham_andrew&lt; InputGeometry, OutputPoint &gt;::container_type</definition>
+        <argsstring></argsstring>
+        <name>container_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" line="211" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" bodystart="211" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a4dbfc79ce66b03dd91332e97e4d5804e" prot="private" static="no">
+        <type>cs_tag&lt; <ref refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a2678e51becdbb307f68bccc89f2f62c0" kindref="member">point_type</ref> &gt;::type</type>
+        <definition>typedef cs_tag&lt;point_type&gt;::type boost::geometry::strategy::convex_hull::graham_andrew&lt; InputGeometry, OutputPoint &gt;::cs_tag</definition>
+        <argsstring></argsstring>
+        <name>cs_tag</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" line="209" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" bodystart="209" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a8c59e7ca676836e65861080cc3663e3e" prot="private" static="no">
+        <type>std::vector&lt; <ref refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a2678e51becdbb307f68bccc89f2f62c0" kindref="member">point_type</ref> &gt;::const_iterator</type>
+        <definition>typedef std::vector&lt;point_type&gt;::const_iterator boost::geometry::strategy::convex_hull::graham_andrew&lt; InputGeometry, OutputPoint &gt;::iterator</definition>
+        <argsstring></argsstring>
+        <name>iterator</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" line="212" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" bodystart="212" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a677299f59be4a384a044dc04e3ee7561" prot="private" static="no">
+        <type>std::vector&lt; <ref refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a2678e51becdbb307f68bccc89f2f62c0" kindref="member">point_type</ref> &gt;::const_reverse_iterator</type>
+        <definition>typedef std::vector&lt;point_type&gt;::const_reverse_iterator boost::geometry::strategy::convex_hull::graham_andrew&lt; InputGeometry, OutputPoint &gt;::rev_iterator</definition>
+        <argsstring></argsstring>
+        <name>rev_iterator</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" line="213" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" bodystart="213" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1ab8fbeb9a58c503ac5803a27eedab9f12" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::strategy::convex_hull::graham_andrew&lt; InputGeometry, OutputPoint &gt;::apply</definition>
+        <argsstring>(InputGeometry const &amp;geometry, partitions &amp;state) const </argsstring>
+        <name>apply</name>
+        <param>
+          <type>InputGeometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>partitions &amp;</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" line="230" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" bodystart="230" bodyend="286"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a354c3eb0a5083c5695e7225ac431f588" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename OutputIterator</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::strategy::convex_hull::graham_andrew&lt; InputGeometry, OutputPoint &gt;::result</definition>
+        <argsstring>(partitions const &amp;state, OutputIterator out, bool clockwise, bool closed) const </argsstring>
+        <name>result</name>
+        <param>
+          <type>partitions const &amp;</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>OutputIterator</type>
+          <declname>out</declname>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>clockwise</declname>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>closed</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" line="290" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" bodystart="290" bodyend="303"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-static-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a6558a1cbbeeced98850f670bdf4ace2f" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>int</type>
+            <declname>Factor</declname>
+            <defname>Factor</defname>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>static void boost::geometry::strategy::convex_hull::graham_andrew&lt; InputGeometry, OutputPoint &gt;::add_to_hull</definition>
+        <argsstring>(point_type const &amp;p, container_type &amp;output)</argsstring>
+        <name>add_to_hull</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a2678e51becdbb307f68bccc89f2f62c0" kindref="member">point_type</ref> const &amp;</type>
+          <declname>p</declname>
+        </param>
+        <param>
+          <type>container_type &amp;</type>
+          <declname>output</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" line="323" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" bodystart="323" bodyend="349"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1ae79906f82e7ae5074bc0d5052bbef4f4" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>int</type>
+            <declname>Factor</declname>
+            <defname>Factor</defname>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>static void boost::geometry::strategy::convex_hull::graham_andrew&lt; InputGeometry, OutputPoint &gt;::build_half_hull</definition>
+        <argsstring>(container_type const &amp;input, container_type &amp;output, point_type const &amp;left, point_type const &amp;right)</argsstring>
+        <name>build_half_hull</name>
+        <param>
+          <type>container_type const &amp;</type>
+          <declname>input</declname>
+        </param>
+        <param>
+          <type>container_type &amp;</type>
+          <declname>output</declname>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a2678e51becdbb307f68bccc89f2f62c0" kindref="member">point_type</ref> const &amp;</type>
+          <declname>left</declname>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a2678e51becdbb307f68bccc89f2f62c0" kindref="member">point_type</ref> const &amp;</type>
+          <declname>right</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" line="309" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" bodystart="309" bodyend="319"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a99154140187312486137f992a03e06f7" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename OutputIterator</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>static void boost::geometry::strategy::convex_hull::graham_andrew&lt; InputGeometry, OutputPoint &gt;::output_ranges</definition>
+        <argsstring>(container_type const &amp;first, container_type const &amp;second, OutputIterator out, bool closed)</argsstring>
+        <name>output_ranges</name>
+        <param>
+          <type>container_type const &amp;</type>
+          <declname>first</declname>
+        </param>
+        <param>
+          <type>container_type const &amp;</type>
+          <declname>second</declname>
+        </param>
+        <param>
+          <type>OutputIterator</type>
+          <declname>out</declname>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>closed</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" line="353" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" bodystart="353" bodyend="373"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Graham scan strategy to calculate convex hull. </para>    </briefdescription>
+    <detaileddescription>
+<para><simplesect kind="note"><para>Completely reworked version inspired on the sources listed below </para></simplesect>
+<simplesect kind="see"><para><ulink url="http://www.ddj.com/architect/201806315">http://www.ddj.com/architect/201806315</ulink> </para><simplesectsep/><para><ulink url="http://marknelson.us/2007/08/22/convex">http://marknelson.us/2007/08/22/convex</ulink> </para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" line="202" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/hull_graham_andrew.hpp" bodystart="201" bodyend="374"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a6558a1cbbeeced98850f670bdf4ace2f" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::convex_hull::graham_andrew</scope><name>add_to_hull</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1ab8fbeb9a58c503ac5803a27eedab9f12" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::convex_hull::graham_andrew</scope><name>apply</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1ae79906f82e7ae5074bc0d5052bbef4f4" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::convex_hull::graham_andrew</scope><name>build_half_hull</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a20c858057ff4ecebc2218b6ea7eb13c7" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::convex_hull::graham_andrew</scope><name>container_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a4dbfc79ce66b03dd91332e97e4d5804e" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::convex_hull::graham_andrew</scope><name>cs_tag</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a456c123d0655ecf2c4409b38b95668c7" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::convex_hull::graham_andrew</scope><name>geometry_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a8c59e7ca676836e65861080cc3663e3e" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::convex_hull::graham_andrew</scope><name>iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a99154140187312486137f992a03e06f7" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::convex_hull::graham_andrew</scope><name>output_ranges</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a2678e51becdbb307f68bccc89f2f62c0" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::convex_hull::graham_andrew</scope><name>point_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a354c3eb0a5083c5695e7225ac431f588" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::convex_hull::graham_andrew</scope><name>result</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a677299f59be4a384a044dc04e3ee7561" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::convex_hull::graham_andrew</scope><name>rev_iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1convex__hull_1_1graham__andrew_1a550176a736837847b6df1b46ef6f6b3f" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::convex_hull::graham_andrew</scope><name>state_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

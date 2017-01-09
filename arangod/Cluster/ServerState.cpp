@@ -1011,11 +1011,10 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
 
 bool ServerState::storeRole(RoleEnum role) {
   if (isClusterRole(role)) {
-    AgencyComm comm;
-    AgencyCommResult result;
-
+    VPackBuilder builder;
+    std::unique_ptr<AgencyTransaction> trx;
+    bool fatalError = true;
     if (role == ServerState::ROLE_COORDINATOR) {
-      VPackBuilder builder;
       try {
         builder.add(VPackValue("none"));
       } catch (...) {
@@ -1023,16 +1022,9 @@ bool ServerState::storeRole(RoleEnum role) {
         FATAL_ERROR_EXIT();
       }
 
-      // register coordinator
-      AgencyCommResult result =
-          comm.setValue("Current/Coordinators/" + _id, builder.slice(), 0.0);
-
-      if (!result.successful()) {
-        LOG(FATAL) << "unable to register coordinator in agency";
-        FATAL_ERROR_EXIT();
-      }
+      AgencyOperation op("Current/Coordinators/" + _id, AgencyValueOperationType::SET, builder.slice());
+      trx.reset(new AgencyWriteTransaction(op));
     } else if (role == ServerState::ROLE_PRIMARY) {
-      VPackBuilder builder;
       try {
         builder.add(VPackValue("none"));
       } catch (...) {
@@ -1040,17 +1032,10 @@ bool ServerState::storeRole(RoleEnum role) {
         FATAL_ERROR_EXIT();
       }
 
-      // register server
-      AgencyCommResult result =
-          comm.setValue("Current/DBServers/" + _id, builder.slice(), 0.0);
-
-      if (!result.successful()) {
-        LOG(FATAL) << "unable to register db server in agency";
-        FATAL_ERROR_EXIT();
-      }
+      AgencyOperation op("Current/DBServers/" + _id, AgencyValueOperationType::SET, builder.slice());
+      trx.reset(new AgencyWriteTransaction(op));
     } else if (role == ServerState::ROLE_SECONDARY) {
       std::string keyName = _id;
-      VPackBuilder builder;
       try {
         builder.add(VPackValue(keyName));
       } catch (...) {
@@ -1065,14 +1050,23 @@ bool ServerState::storeRole(RoleEnum role) {
       AgencyOperation incrementVersion("Plan/Version",
                                        AgencySimpleOperationType::INCREMENT_OP);
       AgencyPrecondition precondition(myId, AgencyPrecondition::Type::EMPTY, true);
-      AgencyWriteTransaction trx({addMe, incrementVersion}, precondition);
+      trx.reset(new AgencyWriteTransaction({addMe, incrementVersion}, precondition));
+      // mop: try again for secondaries
+      fatalError = false;
+    }
 
-      // register server
-      AgencyCommResult result = comm.sendTransactionWithFailover(trx, 0.0);
-
-      if (!result.successful()) {
-        // mop: fail gracefully (allow retry)
-        return false;
+    if (trx) {
+      if (AgencyCommManager::MANAGER) {
+        AgencyComm comm;
+        AgencyCommResult result = comm.sendTransactionWithFailover(*trx.get(), 0.0);
+        if (!result.successful()) {
+          if (fatalError) {
+            LOG(FATAL) << "unable to register server in agency";
+            FATAL_ERROR_EXIT();
+          } else {
+            return false;
+          }
+        }
       }
     }
   }

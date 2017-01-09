@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1distance__result_3_01boost_1_1variant_3_01_b_o_o_27e5378efd1db1dd68f3b143d390bb39" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::distance_result&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Strategy &gt;</compoundname>
+    <includes local="no">distance_result.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>BOOST_VARIANT_ENUM_PARAMS(typename T)</type>
+      </param>
+      <param>
+        <type>typename Strategy</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1resolve__variant_1_1distance__result_3_01boost_1_1variant_3_01_b_o_o_27e5378efd1db1dd68f3b143d390bb39_1a7502a6bae05e4912e22ef704a3d22501" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1util_1_1combine__if" kindref="compound">util::combine_if</ref>&lt; typename boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;::types, typename boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;::types, boost::mpl::always&lt; boost::mpl::true_ &gt; &gt;::<ref refid="structboost_1_1geometry_1_1resolve__variant_1_1distance__result_3_01boost_1_1variant_3_01_b_o_o_27e5378efd1db1dd68f3b143d390bb39_1ad673a0325cd306abb9b21fa63189e836" kindref="member">type</ref></type>
+        <definition>typedef util::combine_if&lt; typename boost::variant&lt;BOOST_VARIANT_ENUM_PARAMS(T)&gt;::types, typename boost::variant&lt;BOOST_VARIANT_ENUM_PARAMS(T)&gt;::types, boost::mpl::always&lt;boost::mpl::true_&gt; &gt;::type boost::geometry::resolve_variant::distance_result&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Strategy &gt;::possible_input_types</definition>
+        <argsstring></argsstring>
+        <name>possible_input_types</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/distance_result.hpp" line="168" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/distance_result.hpp" bodystart="168" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1resolve__variant_1_1distance__result_3_01boost_1_1variant_3_01_b_o_o_27e5378efd1db1dd68f3b143d390bb39_1ad673a0325cd306abb9b21fa63189e836" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1compress__variant" kindref="compound">compress_variant</ref>&lt; typename <ref refid="structboost_1_1geometry_1_1transform__variant" kindref="compound">transform_variant</ref>&lt; <ref refid="structboost_1_1geometry_1_1resolve__variant_1_1distance__result_3_01boost_1_1variant_3_01_b_o_o_27e5378efd1db1dd68f3b143d390bb39_1a7502a6bae05e4912e22ef704a3d22501" kindref="member">possible_input_types</ref>, <ref refid="structboost_1_1geometry_1_1resolve__strategy_1_1distance__result" kindref="compound">resolve_strategy::distance_result</ref>&lt; boost::mpl::first&lt; boost::mpl::_ &gt;, boost::mpl::second&lt; boost::mpl::_ &gt;, Strategy &gt;, boost::mpl::back_inserter&lt; boost::mpl::vector0&lt;&gt; &gt; &gt;::<ref refid="structboost_1_1geometry_1_1resolve__variant_1_1distance__result_3_01boost_1_1variant_3_01_b_o_o_27e5378efd1db1dd68f3b143d390bb39_1ad673a0325cd306abb9b21fa63189e836" kindref="member">type</ref> &gt;::<ref refid="structboost_1_1geometry_1_1resolve__variant_1_1distance__result_3_01boost_1_1variant_3_01_b_o_o_27e5378efd1db1dd68f3b143d390bb39_1ad673a0325cd306abb9b21fa63189e836" kindref="member">type</ref></type>
+        <definition>typedef compress_variant&lt; typename transform_variant&lt; possible_input_types, resolve_strategy::distance_result&lt; boost::mpl::first&lt;boost::mpl::_&gt;, boost::mpl::second&lt;boost::mpl::_&gt;, Strategy &gt;, boost::mpl::back_inserter&lt;boost::mpl::vector0&lt;&gt; &gt; &gt;::type &gt;::type boost::geometry::resolve_variant::distance_result&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Strategy &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/distance_result.hpp" line="181" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/distance_result.hpp" bodystart="181" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/distance_result.hpp" line="154" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/distance_result.hpp" bodystart="148" bodyend="182"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1distance__result_3_01boost_1_1variant_3_01_b_o_o_27e5378efd1db1dd68f3b143d390bb39_1a7502a6bae05e4912e22ef704a3d22501" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::distance_result&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Strategy &gt;</scope><name>possible_input_types</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1distance__result_3_01boost_1_1variant_3_01_b_o_o_27e5378efd1db1dd68f3b143d390bb39_1ad673a0325cd306abb9b21fa63189e836" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::distance_result&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Strategy &gt;</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

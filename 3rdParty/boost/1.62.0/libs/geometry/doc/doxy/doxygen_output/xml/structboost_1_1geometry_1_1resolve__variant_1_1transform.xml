@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1transform" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::transform</compoundname>
+    <includes local="no">transform.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry1</type>
+      </param>
+      <param>
+        <type>typename Geometry2</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1transform_1abbaf6d06c43d8f9cfee89be9787b7c96" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Strategy</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::resolve_variant::transform&lt; Geometry1, Geometry2 &gt;::apply</definition>
+        <argsstring>(Geometry1 const &amp;geometry1, Geometry2 &amp;geometry2, Strategy const &amp;strategy)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Geometry1 const &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <param>
+          <type>Geometry2 &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>strategy</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/transform.hpp" line="384" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/transform.hpp" bodystart="384" bodyend="393"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/transform.hpp" line="382" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/transform.hpp" bodystart="381" bodyend="394"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1transform_1abbaf6d06c43d8f9cfee89be9787b7c96" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::transform</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

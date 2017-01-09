@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="debug__turn_8hpp" kind="file">
+    <compoundname>debug_turn.hpp</compoundname>
+    <includedby refid="follow__linear__linear_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/follow_linear_linear.hpp</includedby>
+    <invincdepgraph>
+      <node id="37184">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/interface.hpp</label>
+        <link refid="intersection_2interface_8hpp"/>
+        <childnode refid="37185" relation="include">
+        </childnode>
+        <childnode refid="37186" relation="include">
+        </childnode>
+        <childnode refid="37188" relation="include">
+        </childnode>
+      </node>
+      <node id="37187">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/implementation.hpp</label>
+        <link refid="intersection_2implementation_8hpp"/>
+        <childnode refid="37185" relation="include">
+        </childnode>
+      </node>
+      <node id="37185">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/intersection.hpp</label>
+        <link refid="algorithms_2intersection_8hpp"/>
+        <childnode refid="37181" relation="include">
+        </childnode>
+      </node>
+      <node id="37179">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/linear_linear.hpp</label>
+        <link refid="overlay_2linear__linear_8hpp"/>
+        <childnode refid="37180" relation="include">
+        </childnode>
+        <childnode refid="37182" relation="include">
+        </childnode>
+      </node>
+      <node id="37180">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/union.hpp</label>
+        <link refid="union_8hpp"/>
+        <childnode refid="37181" relation="include">
+        </childnode>
+      </node>
+      <node id="37182">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/intersection_insert.hpp</label>
+        <link refid="intersection__insert_8hpp"/>
+        <childnode refid="37183" relation="include">
+        </childnode>
+        <childnode refid="37184" relation="include">
+        </childnode>
+      </node>
+      <node id="37177">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/debug_turn.hpp</label>
+        <link refid="debug_turn.hpp"/>
+        <childnode refid="37178" relation="include">
+        </childnode>
+      </node>
+      <node id="37183">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/difference.hpp</label>
+        <link refid="difference_8hpp"/>
+      </node>
+      <node id="37188">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/multi.hpp</label>
+        <link refid="multi_8hpp"/>
+        <childnode refid="37187" relation="include">
+        </childnode>
+      </node>
+      <node id="37181">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/sym_difference.hpp</label>
+        <link refid="sym__difference_8hpp"/>
+      </node>
+      <node id="37178">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/follow_linear_linear.hpp</label>
+        <link refid="follow__linear__linear_8hpp"/>
+        <childnode refid="37179" relation="include">
+        </childnode>
+      </node>
+      <node id="37186">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/box_box.hpp</label>
+        <link refid="intersection_2box__box_8hpp"/>
+        <childnode refid="37187" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/debug_turn.hpp"/>
+  </compounddef>
+</doxygen>

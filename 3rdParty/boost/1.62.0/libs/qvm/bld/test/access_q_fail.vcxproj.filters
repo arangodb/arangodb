@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="..\..\test\access_q_fail.cpp">
+        <Filter>qvm\test</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="qvm">
+      <UniqueIdentifier>{4F487DD4-65B7-70E6-6E87-210A2C7C71A9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="qvm\test">
+      <UniqueIdentifier>{3A466BF1-7897-6122-61B9-404016F94251}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

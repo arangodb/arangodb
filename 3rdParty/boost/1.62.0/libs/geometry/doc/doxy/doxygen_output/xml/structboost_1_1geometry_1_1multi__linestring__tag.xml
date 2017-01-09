@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1multi__linestring__tag" kind="struct" prot="public">
+    <compoundname>boost::geometry::multi_linestring_tag</compoundname>
+    <basecompoundref refid="structboost_1_1geometry_1_1multi__tag" prot="public" virt="non-virtual">boost::geometry::multi_tag</basecompoundref>
+    <basecompoundref refid="structboost_1_1geometry_1_1linear__tag" prot="public" virt="non-virtual">boost::geometry::linear_tag</basecompoundref>
+    <includes local="no">tags.hpp</includes>
+    <briefdescription>
+<para>OGC Multi linestring identifying tag. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="540">
+        <label>boost::geometry::linear_tag</label>
+        <link refid="structboost_1_1geometry_1_1linear__tag"/>
+      </node>
+      <node id="538">
+        <label>boost::geometry::multi_linestring_tag</label>
+        <link refid="structboost_1_1geometry_1_1multi__linestring__tag"/>
+        <childnode refid="539" relation="public-inheritance">
+        </childnode>
+        <childnode refid="540" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="539">
+        <label>boost::geometry::multi_tag</label>
+        <link refid="structboost_1_1geometry_1_1multi__tag"/>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="543">
+        <label>boost::geometry::linear_tag</label>
+        <link refid="structboost_1_1geometry_1_1linear__tag"/>
+      </node>
+      <node id="541">
+        <label>boost::geometry::multi_linestring_tag</label>
+        <link refid="structboost_1_1geometry_1_1multi__linestring__tag"/>
+        <childnode refid="542" relation="public-inheritance">
+        </childnode>
+        <childnode refid="543" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="542">
+        <label>boost::geometry::multi_tag</label>
+        <link refid="structboost_1_1geometry_1_1multi__tag"/>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" line="108" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" bodystart="108" bodyend="108"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

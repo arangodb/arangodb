@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="group__equals" kind="group">
+    <compoundname>equals</compoundname>
+    <title>equals: detect if two geometries are spatially equal</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__equals_1gaf75334fd455c4d01a57a2f2d590d068c" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry1</type>
+          </param>
+          <param>
+            <type>typename Geometry2</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::equals</definition>
+        <argsstring>(Geometry1 const &amp;geometry1, Geometry2 const &amp;geometry2)</argsstring>
+        <name>equals</name>
+        <param>
+          <type>Geometry1 const &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <param>
+          <type>Geometry2 const &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <briefdescription>
+<para>Checks if a geometry are spatially equal. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function equals checks if the first geometry is spatially equal the second geometry. Spatially equal means that the same point set is included. A box can therefore be spatially equal to a ring or a polygon, or a linestring can be spatially equal to a multi-linestring or a segment. This only works theoretically, not all combinations are implemented yet.</para><para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Geometry2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>geometry2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Returns true if two geometries are spatially equal</para></simplesect>
+ <qbk>[include reference/algorithms/equals.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/equals.hpp" line="475" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/equals.hpp" bodystart="475" bodyend="479"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

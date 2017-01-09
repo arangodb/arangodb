@@ -1,0 +1,311 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="intersects__antimeridian_8hpp" kind="file">
+    <compoundname>intersects_antimeridian.hpp</compoundname>
+    <includes refid="access_8hpp" local="no">boost/geometry/core/access.hpp</includes>
+    <includes refid="coordinate__system_8hpp" local="no">boost/geometry/core/coordinate_system.hpp</includes>
+    <includes refid="math_8hpp" local="no">boost/geometry/util/math.hpp</includes>
+    <includes refid="normalize_8hpp" local="no">boost/geometry/algorithms/detail/normalize.hpp</includes>
+    <incdepgraph>
+      <node id="18851">
+        <label>boost/geometry/util/math.hpp</label>
+        <link refid="math_8hpp"/>
+        <childnode refid="18852" relation="include">
+        </childnode>
+        <childnode refid="18853" relation="include">
+        </childnode>
+        <childnode refid="18833" relation="include">
+        </childnode>
+        <childnode refid="18854" relation="include">
+        </childnode>
+        <childnode refid="18855" relation="include">
+        </childnode>
+        <childnode refid="18856" relation="include">
+        </childnode>
+        <childnode refid="18857" relation="include">
+        </childnode>
+        <childnode refid="18849" relation="include">
+        </childnode>
+        <childnode refid="18858" relation="include">
+        </childnode>
+        <childnode refid="18860" relation="include">
+        </childnode>
+      </node>
+      <node id="18840">
+        <label>boost/type_traits/remove_const.hpp</label>
+      </node>
+      <node id="18853">
+        <label>limits</label>
+      </node>
+      <node id="18854">
+        <label>boost/math/constants/constants.hpp</label>
+      </node>
+      <node id="18863">
+        <label>boost/geometry/util/normalize_spheroidal_coordinates.hpp</label>
+        <link refid="normalize__spheroidal__coordinates_8hpp"/>
+        <childnode refid="18864" relation="include">
+        </childnode>
+        <childnode refid="18858" relation="include">
+        </childnode>
+        <childnode refid="18851" relation="include">
+        </childnode>
+      </node>
+      <node id="18843">
+        <label>boost/type_traits/is_const.hpp</label>
+      </node>
+      <node id="18831">
+        <label>boost/geometry/core/access.hpp</label>
+        <link refid="access_8hpp"/>
+        <childnode refid="18832" relation="include">
+        </childnode>
+        <childnode refid="18833" relation="include">
+        </childnode>
+        <childnode refid="18834" relation="include">
+        </childnode>
+        <childnode refid="18835" relation="include">
+        </childnode>
+        <childnode refid="18836" relation="include">
+        </childnode>
+        <childnode refid="18837" relation="include">
+        </childnode>
+        <childnode refid="18838" relation="include">
+        </childnode>
+        <childnode refid="18845" relation="include">
+        </childnode>
+        <childnode refid="18847" relation="include">
+        </childnode>
+      </node>
+      <node id="18864">
+        <label>boost/geometry/core/assert.hpp</label>
+        <link refid="assert_8hpp"/>
+        <childnode refid="18865" relation="include">
+        </childnode>
+      </node>
+      <node id="18852">
+        <label>cmath</label>
+      </node>
+      <node id="18842">
+        <label>boost/mpl/if.hpp</label>
+      </node>
+      <node id="18835">
+        <label>boost/type_traits/is_pointer.hpp</label>
+      </node>
+      <node id="18855">
+        <label>boost/math/special_functions/fpclassify.hpp</label>
+      </node>
+      <node id="18837">
+        <label>boost/geometry/core/coordinate_type.hpp</label>
+        <link refid="coordinate__type_8hpp"/>
+        <childnode refid="18834" relation="include">
+        </childnode>
+        <childnode refid="18838" relation="include">
+        </childnode>
+        <childnode refid="18845" relation="include">
+        </childnode>
+        <childnode refid="18847" relation="include">
+        </childnode>
+        <childnode refid="18848" relation="include">
+        </childnode>
+      </node>
+      <node id="18834">
+        <label>boost/mpl/assert.hpp</label>
+      </node>
+      <node id="18844">
+        <label>boost/type_traits/remove_reference.hpp</label>
+      </node>
+      <node id="18850">
+        <label>boost/geometry/core/coordinate_system.hpp</label>
+        <link refid="coordinate__system_8hpp"/>
+        <childnode refid="18834" relation="include">
+        </childnode>
+        <childnode refid="18838" relation="include">
+        </childnode>
+        <childnode refid="18847" relation="include">
+        </childnode>
+      </node>
+      <node id="18833">
+        <label>boost/core/ignore_unused.hpp</label>
+      </node>
+      <node id="18848">
+        <label>boost/geometry/util/promote_floating_point.hpp</label>
+        <link refid="promote__floating__point_8hpp"/>
+        <childnode refid="18842" relation="include">
+        </childnode>
+        <childnode refid="18849" relation="include">
+        </childnode>
+      </node>
+      <node id="18846">
+        <label>boost/geometry/core/tags.hpp</label>
+        <link refid="core_2tags_8hpp"/>
+      </node>
+      <node id="18859">
+        <label>boost/type_traits/integral_constant.hpp</label>
+      </node>
+      <node id="18865">
+        <label>boost/assert.hpp</label>
+      </node>
+      <node id="18867">
+        <label>boost/geometry/views/detail/indexed_point_view.hpp</label>
+      </node>
+      <node id="18857">
+        <label>boost/type_traits/is_fundamental.hpp</label>
+      </node>
+      <node id="18866">
+        <label>boost/geometry/util/normalize_spheroidal_box_coordinates.hpp</label>
+        <link refid="normalize__spheroidal__box__coordinates_8hpp"/>
+        <childnode refid="18864" relation="include">
+        </childnode>
+        <childnode refid="18851" relation="include">
+        </childnode>
+        <childnode refid="18863" relation="include">
+        </childnode>
+      </node>
+      <node id="18830">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/intersects_antimeridian.hpp</label>
+        <link refid="intersects_antimeridian.hpp"/>
+        <childnode refid="18831" relation="include">
+        </childnode>
+        <childnode refid="18850" relation="include">
+        </childnode>
+        <childnode refid="18851" relation="include">
+        </childnode>
+        <childnode refid="18862" relation="include">
+        </childnode>
+      </node>
+      <node id="18838">
+        <label>boost/geometry/core/point_type.hpp</label>
+        <link refid="point__type_8hpp"/>
+        <childnode refid="18834" relation="include">
+        </childnode>
+        <childnode refid="18839" relation="include">
+        </childnode>
+        <childnode refid="18840" relation="include">
+        </childnode>
+        <childnode refid="18841" relation="include">
+        </childnode>
+        <childnode refid="18845" relation="include">
+        </childnode>
+        <childnode refid="18846" relation="include">
+        </childnode>
+        <childnode refid="18847" relation="include">
+        </childnode>
+      </node>
+      <node id="18839">
+        <label>boost/range/value_type.hpp</label>
+      </node>
+      <node id="18862">
+        <label>boost/geometry/algorithms/detail/normalize.hpp</label>
+        <link refid="normalize_8hpp"/>
+        <childnode refid="18832" relation="include">
+        </childnode>
+        <childnode refid="18856" relation="include">
+        </childnode>
+        <childnode refid="18831" relation="include">
+        </childnode>
+        <childnode refid="18850" relation="include">
+        </childnode>
+        <childnode refid="18837" relation="include">
+        </childnode>
+        <childnode refid="18858" relation="include">
+        </childnode>
+        <childnode refid="18845" relation="include">
+        </childnode>
+        <childnode refid="18846" relation="include">
+        </childnode>
+        <childnode refid="18863" relation="include">
+        </childnode>
+        <childnode refid="18866" relation="include">
+        </childnode>
+        <childnode refid="18867" relation="include">
+        </childnode>
+      </node>
+      <node id="18832">
+        <label>cstddef</label>
+      </node>
+      <node id="18841">
+        <label>boost/geometry/core/ring_type.hpp</label>
+        <link refid="ring__type_8hpp"/>
+        <childnode refid="18834" relation="include">
+        </childnode>
+        <childnode refid="18842" relation="include">
+        </childnode>
+        <childnode refid="18839" relation="include">
+        </childnode>
+        <childnode refid="18843" relation="include">
+        </childnode>
+        <childnode refid="18840" relation="include">
+        </childnode>
+        <childnode refid="18844" relation="include">
+        </childnode>
+        <childnode refid="18845" relation="include">
+        </childnode>
+        <childnode refid="18846" relation="include">
+        </childnode>
+      </node>
+      <node id="18849">
+        <label>boost/type_traits/is_integral.hpp</label>
+      </node>
+      <node id="18861">
+        <label>boost/type_traits/is_floating_point.hpp</label>
+      </node>
+      <node id="18845">
+        <label>boost/geometry/core/tag.hpp</label>
+        <link refid="tag_8hpp"/>
+        <childnode refid="18846" relation="include">
+        </childnode>
+        <childnode refid="18847" relation="include">
+        </childnode>
+      </node>
+      <node id="18858">
+        <label>boost/geometry/core/cs.hpp</label>
+        <link refid="cs_8hpp"/>
+        <childnode refid="18832" relation="include">
+        </childnode>
+        <childnode refid="18834" relation="include">
+        </childnode>
+        <childnode refid="18859" relation="include">
+        </childnode>
+        <childnode refid="18850" relation="include">
+        </childnode>
+        <childnode refid="18846" relation="include">
+        </childnode>
+      </node>
+      <node id="18847">
+        <label>boost/geometry/util/bare_type.hpp</label>
+        <link refid="bare__type_8hpp"/>
+        <childnode refid="18840" relation="include">
+        </childnode>
+        <childnode refid="18836" relation="include">
+        </childnode>
+        <childnode refid="18844" relation="include">
+        </childnode>
+      </node>
+      <node id="18836">
+        <label>boost/type_traits/remove_pointer.hpp</label>
+      </node>
+      <node id="18860">
+        <label>boost/geometry/util/select_most_precise.hpp</label>
+        <link refid="select__most__precise_8hpp"/>
+        <childnode refid="18842" relation="include">
+        </childnode>
+        <childnode refid="18861" relation="include">
+        </childnode>
+        <childnode refid="18857" relation="include">
+        </childnode>
+      </node>
+      <node id="18856">
+        <label>boost/numeric/conversion/cast.hpp</label>
+      </node>
+    </incdepgraph>
+    <innerclass refid="structboost_1_1geometry_1_1detail_1_1envelope_1_1intersects__antimeridian" prot="public">boost::geometry::detail::envelope::intersects_antimeridian</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1detail">boost::geometry::detail</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1detail_1_1envelope">boost::geometry::detail::envelope</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/intersects_antimeridian.hpp"/>
+  </compounddef>
+</doxygen>

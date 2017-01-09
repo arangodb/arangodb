@@ -337,8 +337,6 @@ std::string const Endpoint::defaultEndpoint(TransportType type) {
                                      "invalid transport type");
     }
   }
-
-  TRI_UNREACHABLE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

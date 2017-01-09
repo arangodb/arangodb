@@ -1,0 +1,112 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="group__perimeter" kind="group">
+    <compoundname>perimeter</compoundname>
+    <title>perimeter: calculate perimeter of a geometry</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__perimeter_1gabf1b8b04c850eece3b57dcb5d95a0bd9" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>default_length_result&lt; Geometry &gt;::type</type>
+        <definition>default_length_result&lt;Geometry&gt;::type boost::geometry::perimeter</definition>
+        <argsstring>(Geometry const &amp;geometry)</argsstring>
+        <name>perimeter</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+<para>Calculates the perimeter of a geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para>The function perimeter returns the perimeter of a geometry, using the default distance-calculation-strategy <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The calculated perimeter</para></simplesect>
+ <qbk>[include reference/algorithms/perimeter.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/perimeter.hpp" line="197" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/perimeter.hpp" bodystart="197" bodyend="202"/>
+      </memberdef>
+      <memberdef kind="function" id="group__perimeter_1gad580959ac971e1617c5f8cd08e32c6df" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename Strategy</type>
+          </param>
+        </templateparamlist>
+        <type>default_length_result&lt; Geometry &gt;::type</type>
+        <definition>default_length_result&lt;Geometry&gt;::type boost::geometry::perimeter</definition>
+        <argsstring>(Geometry const &amp;geometry, Strategy const &amp;strategy)</argsstring>
+        <name>perimeter</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>strategy</declname>
+        </param>
+        <briefdescription>
+<para>Calculates the perimeter of a geometry using the specified strategy. </para>        </briefdescription>
+        <detaileddescription>
+<para>The function perimeter returns the perimeter of a geometry, using specified strategy <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a distance Strategy Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>strategy to be used for distance calculations. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The calculated perimeter</para></simplesect>
+ <qbk.distinguish>with strategy</qbk.distinguish>   <qbk>[include reference/algorithms/perimeter.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/perimeter.hpp" line="219" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/perimeter.hpp" bodystart="219" bodyend="224"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

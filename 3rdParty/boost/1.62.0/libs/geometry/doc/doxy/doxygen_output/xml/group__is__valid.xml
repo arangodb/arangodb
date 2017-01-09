@@ -1,0 +1,152 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="group__is__valid" kind="group">
+    <compoundname>is_valid</compoundname>
+    <title>is_valid: detect if a geometry is valid</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__is__valid_1ga356cf864eac8d92b2b841419c945b03f" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::is_valid</definition>
+        <argsstring>(Geometry const &amp;geometry)</argsstring>
+        <name>is_valid</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+<para>Checks if a geometry is valid (in the OGC sense) </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Returns true if the geometry is valid (in the OGC sense); furthermore, the following geometries are considered valid: multi-geometries with no elements, linear geometries containing spikes, areal geometries with duplicate (consecutive) points</para></simplesect>
+ <qbk>[include reference/algorithms/is_valid.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" line="97" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" bodystart="97" bodyend="101"/>
+      </memberdef>
+      <memberdef kind="function" id="group__is__valid_1ga679fa00f8e9cc0a124fcdba608516dfc" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::is_valid</definition>
+        <argsstring>(Geometry const &amp;geometry, validity_failure_type &amp;failure)</argsstring>
+        <name>is_valid</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>validity_failure_type &amp;</type>
+          <declname>failure</declname>
+        </param>
+        <briefdescription>
+<para>Checks if a geometry is valid (in the OGC sense) </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>failure</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>An enumeration value indicating that the geometry is valid or not, and if not valid indicating the reason why </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Returns true if the geometry is valid (in the OGC sense); furthermore, the following geometries are considered valid: multi-geometries with no elements, linear geometries containing spikes, areal geometries with duplicate (consecutive) points</para></simplesect>
+ <qbk.distinguish>with failure value</qbk.distinguish>   <qbk>[include reference/algorithms/is_valid_with_failure.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" line="121" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" bodystart="121" bodyend="127"/>
+      </memberdef>
+      <memberdef kind="function" id="group__is__valid_1gaf0867398eaeea60e5c004a8615c7c28c" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::is_valid</definition>
+        <argsstring>(Geometry const &amp;geometry, std::string &amp;message)</argsstring>
+        <name>is_valid</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>std::string &amp;</type>
+          <declname>message</declname>
+        </param>
+        <briefdescription>
+<para>Checks if a geometry is valid (in the OGC sense) </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>message</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A string containing a message stating if the geometry is valid or not, and if not valid a reason why </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Returns true if the geometry is valid (in the OGC sense); furthermore, the following geometries are considered valid: multi-geometries with no elements, linear geometries containing spikes, areal geometries with duplicate (consecutive) points</para></simplesect>
+ <qbk.distinguish>with message</qbk.distinguish>   <qbk>[include reference/algorithms/is_valid_with_message.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" line="147" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" bodystart="147" bodyend="154"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

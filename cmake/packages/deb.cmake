@@ -99,8 +99,6 @@ add_custom_target(package-arongodb-client
   COMMAND cp *.deb ${PROJECT_BINARY_DIR} 
   WORKING_DIRECTORY ${CLIENT_BUILD_DIR})
 
-
-
 list(APPEND PACKAGES_LIST package-arongodb-client)
 
 
@@ -116,3 +114,18 @@ add_custom_target(remove_packages
   )
 
 list(APPEND CLEAN_PACKAGES_LIST remove_packages)
+
+
+################################################################################
+# hook to build the debug package
+################################################################################
+set(DEBUG_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb3-dbg)
+configure_file(cmake/packages/dbg/deb.txt ${DEBUG_BUILD_DIR}/CMakeLists.txt @ONLY)
+
+add_custom_target(package-arongodb-dbg
+  COMMAND ${CMAKE_COMMAND} .
+  COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
+  COMMAND cp *.deb ${PROJECT_BINARY_DIR} 
+  WORKING_DIRECTORY ${DEBUG_BUILD_DIR})
+
+list(APPEND PACKAGES_LIST package-arongodb-dbg)

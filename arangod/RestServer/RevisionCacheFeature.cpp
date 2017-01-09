@@ -53,7 +53,7 @@ RevisionCacheFeature::RevisionCacheFeature(ApplicationServer* server)
   if (TRI_PhysicalMemory >= 2147483648ULL) { // 2 GB
     // reset target size to a fraction of the available memory
     _targetSize = TRI_PhysicalMemory - 1073741824ULL; // 1 GB
-    _targetSize *= 0.4; // 40 % or RAM
+    _targetSize = static_cast<decltype(_targetSize)>(_targetSize * 0.4); // 40 % or RAM
   }
 }
 

@@ -301,8 +301,8 @@ static void JS_LockReadAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief read transaction to the agency
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_InterfaceAgency(std::string const& interface,
-                               v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_APIAgency(std::string const& envelope,
+                         v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -322,7 +322,7 @@ static void JS_InterfaceAgency(std::string const& interface,
     comm.sendWithFailover(
       arangodb::rest::RequestType::POST,
       AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
-      std::string("/_api/agency/") + interface, builder.toJson());
+      std::string("/_api/agency/") + envelope, builder.toJson());
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
@@ -348,13 +348,13 @@ static void JS_InterfaceAgency(std::string const& interface,
 
 }
 static void JS_ReadAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  JS_InterfaceAgency("read", args);
+  JS_APIAgency("read", args);
 }
 static void JS_WriteAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  JS_InterfaceAgency("write", args);
+  JS_APIAgency("write", args);
 }
 static void JS_TransactAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  JS_InterfaceAgency("transact", args);
+  JS_APIAgency("transact", args);
 }
 
 
@@ -1318,6 +1318,26 @@ static void JS_CoordinatorConfigServerState(
   TRI_V8_TRY_CATCH_END
 }
 
+#ifdef DEBUG_SYNC_REPLICATION
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set arangoserver state to initialized
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_EnableSyncReplicationDebug(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("enableSyncReplicationDebug()");
+  }
+
+  ServerState::instance()->setInitialized();
+  AgencyComm::syncReplDebug = true;
+  TRI_V8_TRY_CATCH_END
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the cluster is initialized
 ////////////////////////////////////////////////////////////////////////////////
@@ -2227,6 +2247,10 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_DBserverConfigServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("coordinatorConfig"),
                        JS_CoordinatorConfigServerState);
+#ifdef DEBUG_SYNC_REPLICATION
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("enableSyncReplicationDebug"),
+                       JS_EnableSyncReplicationDebug);
+#endif
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("initialized"),
                        JS_InitializedServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("isCoordinator"),

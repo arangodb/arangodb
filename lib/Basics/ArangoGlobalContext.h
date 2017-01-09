@@ -31,22 +31,22 @@ class ArangoGlobalContext {
   static ArangoGlobalContext* CONTEXT;
 
  public:
-  ArangoGlobalContext(int argc, char* argv[], const char* InstallDirectory);
+  ArangoGlobalContext(int argc, char* argv[], char const* InstallDirectory);
   ~ArangoGlobalContext();
 
  public:
-  std::string binaryName() { return _binaryName; }
-  std::string runRoot() { return _runRoot; }
-  void normalizePath(std::vector<std::string>& path, const char* whichPath,
+  std::string binaryName() const { return _binaryName; }
+  std::string runRoot() const { return _runRoot; }
+  void createMiniDumpFilename();
+  void normalizePath(std::vector<std::string>& path, char const* whichPath,
                      bool fatal);
-  void normalizePath(std::string& path, const char* whichPath, bool fatal);
+  void normalizePath(std::string& path, char const* whichPath, bool fatal);
   int exit(int ret);
   void installHup();
   void installSegv();
   void maskAllSignals();
   void unmaskStandardSignals();
   void runStartupChecks();
-  void createMiniDumpFilename();
   bool useEventLog() { return _useEventLog; }
 
  private:

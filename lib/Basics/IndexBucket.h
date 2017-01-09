@@ -140,6 +140,8 @@ struct IndexBucket {
       TRI_ASSERT(_file == -1);
       throw;
     }
+
+    _nrCollisions = 0;
   }
 
   void deallocate() {
@@ -206,6 +208,7 @@ struct IndexBucket {
     _table = nullptr;
     _nrAlloc = 0;
     _nrUsed = 0;
+    _nrCollisions = 0;
   }
 
   int allocateTempfile(char*& filename, size_t filesize) {

@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1greater" kind="struct" prot="public">
+    <compoundname>boost::geometry::greater</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">dispatch::compare_geometries&lt; -1, Point, Strategy, Dimension &gt;</basecompoundref>
+    <includes local="no">compare.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>int</type>
+        <declname>Dimension</declname>
+        <defname>Dimension</defname>
+        <defval>-1</defval>
+      </param>
+      <param>
+        <type>typename Strategy</type>
+        <defval><ref refid="structboost_1_1geometry_1_1strategy_1_1compare_1_1default__strategy" kindref="compound">strategy::compare::default_strategy</ref></defval>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Greater functor. </para>    </briefdescription>
+    <detaileddescription>
+<para>Can be used to sort points in reverse order <simplesect kind="see"><para>Less functor </para></simplesect>
+</para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="418">
+        <label>boost::geometry::greater&lt; Point, Dimension, Strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1greater"/>
+        <childnode refid="419" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="419">
+        <label>dispatch::compare_geometries&lt; -1, Point, Strategy, Dimension &gt;</label>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="420">
+        <label>boost::geometry::greater&lt; Point, Dimension, Strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1greater"/>
+        <childnode refid="421" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="421">
+        <label>dispatch::compare_geometries&lt; -1, Point, Strategy, Dimension &gt;</label>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/compare.hpp" line="210" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/compare.hpp" bodystart="202" bodyend="210"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

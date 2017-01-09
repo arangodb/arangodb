@@ -27,8 +27,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
 
-#include <regex>
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
 #include <sstream>
@@ -414,22 +412,3 @@ void TRI_FlushDebugging(char const* file, int line, char const* message) {
   Logger::shutdown();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief quick test of regex functionality of the underlying stdlib
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_SupportsRegexDebugging() {
-  try {
-    // compile a relatively simple regex... 
-    std::regex re("^[ \t]*([#;].*)?$", std::regex::nosubs | std::regex::ECMAScript);
-    // ...and test whether it matches a static string
-    std::string test(" # ArangoDB");
-    if (std::regex_match(test, re)) {
-      // compiler properly supports std::regex
-      return true;
-    }
-  } catch (...) {
-  }
-  // compiler does not support std::regex properly, though pretending to
-  return false;
-}

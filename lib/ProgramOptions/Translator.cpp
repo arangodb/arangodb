@@ -31,7 +31,7 @@ std::unordered_map<std::string, std::string> environment;
 }
 
 void arangodb::options::DefineEnvironment(std::string const& keyValues) {
-  std::vector<std::string> kvs = basics::StringUtils::split(keyValues, ',', '\\');
+  std::vector<std::string> kvs = basics::StringUtils::split(keyValues, ',', '\0');
 
   for (auto const& keyValue : kvs) {
     std::string key;
@@ -51,7 +51,7 @@ void arangodb::options::DefineEnvironment(std::string const& keyValues) {
 }
 
 std::string arangodb::options::EnvironmentTranslator(std::string const& value,
-                                                     const char* binaryPath) {
+                                                     char const* binaryPath) {
   if (value.empty()) {
     return value;
   }

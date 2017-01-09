@@ -1925,6 +1925,8 @@ AstNode* AstNode::clone(Ast* ast) const { return ast->clone(this); }
 /// the string representation does not need to be JavaScript-compatible
 /// except for node types NODE_TYPE_VALUE, NODE_TYPE_ARRAY and NODE_TYPE_OBJECT
 /// (only for objects that do not contain dynamic attributes)
+/// note that this may throw and that the caller is responsible for
+/// catching the error
 void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
                         bool failIfLong) const {
   // any arrays/objects with more values than this will not be stringified if
@@ -2199,6 +2201,8 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
 }
 
+/// note that this may throw and that the caller is responsible for
+/// catching the error
 std::string AstNode::toString() const {
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
   stringify(&buffer, false, false);

@@ -1,0 +1,261 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1collected__vector" kind="struct" prot="public">
+    <compoundname>boost::geometry::collected_vector</compoundname>
+    <includes local="no">collect_vectors.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename T</type>
+      </param>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+      <param>
+        <type>typename CSTag</type>
+        <defval>typename <ref refid="structboost_1_1geometry_1_1cs__tag" kindref="compound">cs_tag</ref>&lt;Geometry&gt;::<ref refid="structboost_1_1geometry_1_1collected__vector_1a13528c67ca2c2ce974f822673930177a" kindref="member">type</ref></defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1collected__vector_1a13528c67ca2c2ce974f822673930177a" prot="public" static="no">
+        <type>T</type>
+        <definition>typedef T boost::geometry::collected_vector&lt; T, Geometry, CSTag &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="51" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="51" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1collected__vector_1a4e7d2a3fc2c66492d234a1e0e98e7197" prot="private" static="no" mutable="no">
+        <type>T</type>
+        <definition>T boost::geometry::collected_vector&lt; T, Geometry, CSTag &gt;::dx</definition>
+        <argsstring></argsstring>
+        <name>dx</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="135" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="135" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1collected__vector_1aec27afa4b10a3a8c332edabbe5bfa15b" prot="private" static="no" mutable="no">
+        <type>T</type>
+        <definition>T boost::geometry::collected_vector&lt; T, Geometry, CSTag &gt;::dy</definition>
+        <argsstring></argsstring>
+        <name>dy</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="135" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="135" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1collected__vector_1ae513ad403fcf7c03bbab922dfe748bd4" prot="private" static="no" mutable="no">
+        <type>T</type>
+        <definition>T boost::geometry::collected_vector&lt; T, Geometry, CSTag &gt;::x</definition>
+        <argsstring></argsstring>
+        <name>x</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="134" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="134" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1collected__vector_1a62675608e980b8e1f819c77eafc72753" prot="private" static="no" mutable="no">
+        <type>T</type>
+        <definition>T boost::geometry::collected_vector&lt; T, Geometry, CSTag &gt;::y</definition>
+        <argsstring></argsstring>
+        <name>y</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="134" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="134" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1collected__vector_1a4dbcda65f8de8a5a1e8888fd6e2349f8" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::collected_vector&lt; T, Geometry, CSTag &gt;::collected_vector</definition>
+        <argsstring>()</argsstring>
+        <name>collected_vector</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="53" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="53" bodyend="54"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1collected__vector_1a96e0255a6683fbbe6147d46daa21dffb" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::collected_vector&lt; T, Geometry, CSTag &gt;::collected_vector</definition>
+        <argsstring>(T const &amp;px, T const &amp;py, T const &amp;pdx, T const &amp;pdy)</argsstring>
+        <name>collected_vector</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>px</declname>
+        </param>
+        <param>
+          <type>T const &amp;</type>
+          <declname>py</declname>
+        </param>
+        <param>
+          <type>T const &amp;</type>
+          <declname>pdx</declname>
+        </param>
+        <param>
+          <type>T const &amp;</type>
+          <declname>pdy</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="56" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="56" bodyend="64"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1collected__vector_1ac43c444237a219043e305366085f5876" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::collected_vector&lt; T, Geometry, CSTag &gt;::collected_vector</definition>
+        <argsstring>(Point const &amp;p1, Point const &amp;p2)</argsstring>
+        <name>collected_vector</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="67" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="67" bodyend="74"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1collected__vector_1a0268b5a8819cb04356446b0756088560" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::collected_vector&lt; T, Geometry, CSTag &gt;::next_is_collinear</definition>
+        <argsstring>(collected_vector const &amp;other) const </argsstring>
+        <name>next_is_collinear</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1collected__vector" kindref="compound">collected_vector</ref> const &amp;</type>
+          <declname>other</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="110" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="110" bodyend="113"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1collected__vector_1a705caca7edd6392e3ed570ebe3f87518" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::collected_vector&lt; T, Geometry, CSTag &gt;::normalize</definition>
+        <argsstring>()</argsstring>
+        <name>normalize</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="76" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="76" bodyend="90"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1collected__vector_1aa9f2030ac11e66d3c9644859d415b1b6" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::collected_vector&lt; T, Geometry, CSTag &gt;::operator&lt;</definition>
+        <argsstring>(collected_vector const &amp;other) const </argsstring>
+        <name>operator&lt;</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1collected__vector" kindref="compound">collected_vector</ref> const &amp;</type>
+          <declname>other</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="93" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="93" bodyend="108"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1collected__vector_1af0e511efe41b11120d53c3cb04946d80" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::collected_vector&lt; T, Geometry, CSTag &gt;::operator==</definition>
+        <argsstring>(collected_vector const &amp;other) const </argsstring>
+        <name>operator==</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1collected__vector" kindref="compound">collected_vector</ref> const &amp;</type>
+          <declname>other</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="116" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="116" bodyend="121"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1collected__vector_1ad55f9f8d409ea5588971d9b8f74cb6c1" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::collected_vector&lt; T, Geometry, CSTag &gt;::same_direction</definition>
+        <argsstring>(collected_vector const &amp;other) const </argsstring>
+        <name>same_direction</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1collected__vector" kindref="compound">collected_vector</ref> const &amp;</type>
+          <declname>other</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="124" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="124" bodyend="132"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" line="50" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/collect_vectors.hpp" bodystart="49" bodyend="137"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1collected__vector_1a4dbcda65f8de8a5a1e8888fd6e2349f8" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector</scope><name>collected_vector</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_1a96e0255a6683fbbe6147d46daa21dffb" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector</scope><name>collected_vector</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_1ac43c444237a219043e305366085f5876" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector</scope><name>collected_vector</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_1a4e7d2a3fc2c66492d234a1e0e98e7197" prot="private" virt="non-virtual"><scope>boost::geometry::collected_vector</scope><name>dx</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_1aec27afa4b10a3a8c332edabbe5bfa15b" prot="private" virt="non-virtual"><scope>boost::geometry::collected_vector</scope><name>dy</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_1a0268b5a8819cb04356446b0756088560" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector</scope><name>next_is_collinear</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_1a705caca7edd6392e3ed570ebe3f87518" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector</scope><name>normalize</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_1aa9f2030ac11e66d3c9644859d415b1b6" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector</scope><name>operator&lt;</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_1af0e511efe41b11120d53c3cb04946d80" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector</scope><name>operator==</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_1ad55f9f8d409ea5588971d9b8f74cb6c1" prot="private" virt="non-virtual"><scope>boost::geometry::collected_vector</scope><name>same_direction</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_1a13528c67ca2c2ce974f822673930177a" prot="public" virt="non-virtual"><scope>boost::geometry::collected_vector</scope><name>type</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_1ae513ad403fcf7c03bbab922dfe748bd4" prot="private" virt="non-virtual"><scope>boost::geometry::collected_vector</scope><name>x</name></member>
+      <member refid="structboost_1_1geometry_1_1collected__vector_1a62675608e980b8e1f819c77eafc72753" prot="private" virt="non-virtual"><scope>boost::geometry::collected_vector</scope><name>y</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1util_1_1combine__if_1_1combine_1_1apply" kind="struct" prot="public">
+    <compoundname>boost::geometry::util::combine_if::combine::apply</compoundname>
+    <includes local="no">combine_if.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Result</type>
+      </param>
+      <param>
+        <type>typename T</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1util_1_1combine__if_1_1combine_1_1apply_1a236951d8d049a520ed6527f28ec10e2b" prot="public" static="no">
+        <type>boost::mpl::fold&lt; Sequence2, Result, boost::mpl::if_&lt; boost::mpl::bind&lt; typename boost::mpl::lambda&lt; Pred &gt;::<ref refid="structboost_1_1geometry_1_1util_1_1combine__if_1_1combine_1_1apply_1a236951d8d049a520ed6527f28ec10e2b" kindref="member">type</ref>, T, boost::mpl::_2 &gt;, boost::mpl::insert&lt; boost::mpl::_1, boost::mpl::pair&lt; T, boost::mpl::_2 &gt; &gt;, boost::mpl::_1 &gt; &gt;::<ref refid="structboost_1_1geometry_1_1util_1_1combine__if_1_1combine_1_1apply_1a236951d8d049a520ed6527f28ec10e2b" kindref="member">type</ref></type>
+        <definition>typedef boost::mpl::fold&lt;Sequence2, Result, boost::mpl::if_ &lt; boost::mpl::bind &lt; typename boost::mpl::lambda&lt;Pred&gt;::type, T, boost::mpl::_2 &gt;, boost::mpl::insert &lt; boost::mpl::_1, boost::mpl::pair&lt;T, boost::mpl::_2&gt; &gt;, boost::mpl::_1 &gt; &gt;::type boost::geometry::util::combine_if&lt; Sequence1, Sequence2, Pred &gt;::combine::apply&lt; Result, T &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/combine_if.hpp" line="77" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/combine_if.hpp" bodystart="77" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/combine_if.hpp" line="61" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/combine_if.hpp" bodystart="60" bodyend="78"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1util_1_1combine__if_1_1combine_1_1apply_1a236951d8d049a520ed6527f28ec10e2b" prot="public" virt="non-virtual"><scope>boost::geometry::util::combine_if::combine::apply</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -161,23 +161,29 @@ bool Inception::restartingActiveAgent() {
 
   using namespace std::chrono;
 
-  auto const  path = pubApiPrefix + "config";
-  auto const  myConfig   = _agent->config();
-  auto const  startTime  = system_clock::now();
-  auto        pool       = myConfig.pool();
-  auto        active     = myConfig.active();
-  auto const& clientId   = myConfig.id();
+  auto const  path      = pubApiPrefix + "config";
+  auto const  myConfig  = _agent->config();
+  auto const  startTime = system_clock::now();
+  auto        active    = myConfig.active();
+  auto const& clientId  = myConfig.id();
+  auto const& clientEp  = myConfig.endpoint();
   auto const majority   = (myConfig.size()+1)/2;
 
+  Builder greeting;
+  {
+    VPackObjectBuilder b(&greeting);
+    greeting.add(clientId, VPackValue(clientEp));
+  }
+  auto const& greetstr = greeting.toJson();
+
   seconds const timeout(3600);
-  
-  CONDITION_LOCKER(guard, _cv);
-  
   long waitInterval(500000);  
   
+  CONDITION_LOCKER(guard, _cv);
+
   active.erase(
     std::remove(active.begin(), active.end(), myConfig.id()), active.end());
-  
+
   while (!this->isStopping() && !_agent->isStopping()) {
     
     active.erase(
@@ -189,13 +195,37 @@ bool Inception::restartingActiveAgent() {
            "Finishing startup sequence.";
       return true;
     }
+
+    auto gp = myConfig.gossipPeers();
+    std::vector<std::string> informed;
+    
+    for (auto& p : gp) {
+      auto comres = arangodb::ClusterComm::instance()->syncRequest(
+        clientId, 1, p, rest::RequestType::POST, path, greetstr,
+        std::unordered_map<std::string, std::string>(), 2.0);
+      if (comres->status == CL_COMM_SENT) {
+        auto const  theirConfigVP = comres->result->getBodyVelocyPack();
+        auto const& theirConfig   = theirConfigVP->slice();
+        auto const& tcc           = theirConfig.get("configuration");
+        auto const& theirId       = tcc.get("id").copyString();
+        
+        _agent->updatePeerEndpoint(theirId, p);
+        informed.push_back(p);
+      }
+    }
+    
+    auto pool = _agent->config().pool();    
+    for (const auto& i : informed) {
+      active.erase(
+        std::remove(active.begin(), active.end(), i), active.end());
+    }
     
     for (auto& p : pool) {
       
       if (p.first != myConfig.id() && p.first != "") {
         
         auto comres = arangodb::ClusterComm::instance()->syncRequest(
-          clientId, 1, p.second, rest::RequestType::GET, path, std::string(),
+          clientId, 1, p.second, rest::RequestType::POST, path, greetstr,
           std::unordered_map<std::string, std::string>(), 2.0);
         
         if (comres->status == CL_COMM_SENT) {
@@ -205,12 +235,30 @@ bool Inception::restartingActiveAgent() {
             auto const& theirConfig   = theirConfigVP->slice();
             auto const& theirLeaderId = theirConfig.get("leaderId").copyString();
             auto const& tcc           = theirConfig.get("configuration");
+            auto const& theirId       = tcc.get("id").copyString();            
             
-            // Known leader. We are done.
+            // Found RAFT with leader
             if (!theirLeaderId.empty()) {
               LOG_TOPIC(INFO, Logger::AGENCY) <<
                 "Found active RAFTing agency lead by " << theirLeaderId <<
-                "Finishing startup sequence.";
+                ". Finishing startup sequence.";
+              
+              auto const theirLeaderEp =
+                tcc.get(
+                  std::vector<std::string>({"pool", theirLeaderId})).copyString();
+
+              // Contact leader to update endpoint
+              if (theirLeaderId != theirId) { 
+                comres = arangodb::ClusterComm::instance()->syncRequest(
+                  clientId, 1, theirLeaderEp, rest::RequestType::POST, path,
+                  greetstr, std::unordered_map<std::string, std::string>(), 2.0);
+                // Failed to contact leader move on until we do. This way at
+                // least we inform everybody individually of the news.
+                if (comres->status != CL_COMM_SENT) {
+                  continue;
+                }
+              }
+              
               auto agency = std::make_shared<Builder>();
               agency->openObject();
               agency->add("term", theirConfig.get("term"));
@@ -227,7 +275,7 @@ bool Inception::restartingActiveAgent() {
             auto const theirActive = tcc.get("active").toJson();
             auto const myActive = myConfig.activeToBuilder()->toJson();
             auto i = std::find(active.begin(),active.end(),p.first);
-
+            
             if (i != active.end()) {
               if (theirActive != myActive) {
                 LOG_TOPIC(FATAL, Logger::AGENCY)

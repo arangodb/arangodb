@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1concepts_1_1_multi_polygon" kind="class" prot="public">
+    <compoundname>boost::geometry::concepts::MultiPolygon</compoundname>
+    <includes local="no">multi_polygon_concept.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>multi-polygon concept </para>    </briefdescription>
+    <detaileddescription>
+<para><simplesect kind="par"><title>Formal definition:</title><para>The multi polygon concept is defined as following:<itemizedlist>
+<listitem><para>there must be a specialization of <ref refid="structboost_1_1geometry_1_1traits_1_1tag" kindref="compound">traits::tag</ref> defining <ref refid="structboost_1_1geometry_1_1multi__polygon__tag" kindref="compound">multi_polygon_tag</ref> as type</para></listitem><listitem><para>it must behave like a Boost.Range</para></listitem><listitem><para>its range value must fulfil the <ref refid="classboost_1_1geometry_1_1concepts_1_1_polygon" kindref="compound">Polygon</ref> concept </para></listitem></itemizedlist>
+</para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/multi_polygon_concept.hpp" line="43" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/multi_polygon_concept.hpp" bodystart="42" bodyend="62"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

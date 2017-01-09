@@ -1,0 +1,119 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1distance_3_01variant_3_01_b_o_o_s_t___v_a_r_i_a_ne7672df281a75c21189b4824f46fde14" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::distance&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2 &gt;::visitor</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">boost::static_visitor&lt; distance_result&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2, Strategy &gt;::type &gt;</basecompoundref>
+    <includes local="no">interface.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Strategy</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1resolve__variant_1_1distance_3_01variant_3_01_b_o_o_s_t___v_a_r_i_a_ne7672df281a75c21189b4824f46fde14_1aa266e9bfc8200b58d0010859959bcdaf" prot="public" static="no" mutable="no">
+        <type>Geometry2 const &amp;</type>
+        <definition>Geometry2 const&amp; boost::geometry::resolve_variant::distance&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2 &gt;::visitor&lt; Strategy &gt;::m_geometry2</definition>
+        <argsstring></argsstring>
+        <name>m_geometry2</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/interface.hpp" line="166" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/interface.hpp" bodystart="166" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1resolve__variant_1_1distance_3_01variant_3_01_b_o_o_s_t___v_a_r_i_a_ne7672df281a75c21189b4824f46fde14_1a1de5dc171a95e18bb6ad68014417857d" prot="public" static="no" mutable="no">
+        <type>Strategy const &amp;</type>
+        <definition>Strategy const&amp; boost::geometry::resolve_variant::distance&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2 &gt;::visitor&lt; Strategy &gt;::m_strategy</definition>
+        <argsstring></argsstring>
+        <name>m_strategy</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/interface.hpp" line="167" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/interface.hpp" bodystart="167" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1distance_3_01variant_3_01_b_o_o_s_t___v_a_r_i_a_ne7672df281a75c21189b4824f46fde14_1af358de28052806cb0a6eed32c33cf07a" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry1</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1resolve__variant_1_1distance__result" kindref="compound">distance_result</ref>&lt; Geometry1, Geometry2, Strategy &gt;::type</type>
+        <definition>distance_result&lt;Geometry1, Geometry2, Strategy&gt;::type boost::geometry::resolve_variant::distance&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2 &gt;::visitor&lt; Strategy &gt;::operator()</definition>
+        <argsstring>(Geometry1 const &amp;geometry1) const </argsstring>
+        <name>operator()</name>
+        <param>
+          <type>Geometry1 const &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/interface.hpp" line="177" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/interface.hpp" bodystart="177" bodyend="187"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1distance_3_01variant_3_01_b_o_o_s_t___v_a_r_i_a_ne7672df281a75c21189b4824f46fde14_1ae5ffbe67fdfe58c952f0f784135f4d51" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::resolve_variant::distance&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2 &gt;::visitor&lt; Strategy &gt;::visitor</definition>
+        <argsstring>(Geometry2 const &amp;geometry2, Strategy const &amp;strategy)</argsstring>
+        <name>visitor</name>
+        <param>
+          <type>Geometry2 const &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>strategy</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/interface.hpp" line="169" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/interface.hpp" bodystart="169" bodyend="173"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="970">
+        <label>boost::static_visitor&lt; distance_result&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2, Strategy &gt;::type &gt;</label>
+      </node>
+      <node id="969">
+        <label>boost::geometry::resolve_variant::distance&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2 &gt;::visitor&lt; Strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1resolve__variant_1_1distance_3_01variant_3_01_b_o_o_s_t___v_a_r_i_a_ne7672df281a75c21189b4824f46fde14"/>
+        <childnode refid="970" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="972">
+        <label>boost::static_visitor&lt; distance_result&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2, Strategy &gt;::type &gt;</label>
+      </node>
+      <node id="971">
+        <label>boost::geometry::resolve_variant::distance&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2 &gt;::visitor&lt; Strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1resolve__variant_1_1distance_3_01variant_3_01_b_o_o_s_t___v_a_r_i_a_ne7672df281a75c21189b4824f46fde14"/>
+        <childnode refid="972" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/interface.hpp" line="165" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/distance/interface.hpp" bodystart="156" bodyend="188"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1distance_3_01variant_3_01_b_o_o_s_t___v_a_r_i_a_ne7672df281a75c21189b4824f46fde14_1aa266e9bfc8200b58d0010859959bcdaf" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::distance&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2 &gt;::visitor</scope><name>m_geometry2</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1distance_3_01variant_3_01_b_o_o_s_t___v_a_r_i_a_ne7672df281a75c21189b4824f46fde14_1a1de5dc171a95e18bb6ad68014417857d" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::distance&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2 &gt;::visitor</scope><name>m_strategy</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1distance_3_01variant_3_01_b_o_o_s_t___v_a_r_i_a_ne7672df281a75c21189b4824f46fde14_1af358de28052806cb0a6eed32c33cf07a" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::distance&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2 &gt;::visitor</scope><name>operator()</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1distance_3_01variant_3_01_b_o_o_s_t___v_a_r_i_a_ne7672df281a75c21189b4824f46fde14_1ae5ffbe67fdfe58c952f0f784135f4d51" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::distance&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2 &gt;::visitor</scope><name>visitor</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

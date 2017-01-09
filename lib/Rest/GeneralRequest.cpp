@@ -43,8 +43,6 @@ std::string GeneralRequest::translateVersion(ProtocolVersion version) {
     case ProtocolVersion::UNKNOWN:
     default: { return "HTTP/1.0"; }
   }
-
-  TRI_UNREACHABLE;
 }
 
 std::string GeneralRequest::translateMethod(RequestType method) {

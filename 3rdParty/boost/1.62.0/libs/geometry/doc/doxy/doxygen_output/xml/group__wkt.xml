@@ -1,0 +1,102 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="group__wkt" kind="group">
+    <compoundname>wkt</compoundname>
+    <title>wkt: parse and stream WKT (Well-Known Text)</title>
+    <innerclass refid="structboost_1_1geometry_1_1read__wkt__exception" prot="public">boost::geometry::read_wkt_exception</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1wkt__manipulator" prot="public">boost::geometry::wkt_manipulator</innerclass>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__wkt_1ga972597e2ff21d50a85b19de43ed6cd76" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::read_wkt</definition>
+        <argsstring>(std::string const &amp;wkt, Geometry &amp;geometry)</argsstring>
+        <name>read_wkt</name>
+        <param>
+          <type>std::string const &amp;</type>
+          <declname>wkt</declname>
+        </param>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+<para>Parses OGC Well-Known Text (<ref refid="_w_k_t" kindref="compound">WKT (Well-Known Text)</ref>) into a geometry (any geometry) </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>wkt</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>string containing <ref refid="_w_k_t" kindref="compound">WKT (Well-Known Text)</ref> </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept output geometry</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/io/read_wkt.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/io/wkt/read.hpp" line="895" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/io/wkt/read.hpp" bodystart="895" bodyend="899"/>
+      </memberdef>
+      <memberdef kind="function" id="group__wkt_1ga32f68b63c9c15ed3c31f386001c4ec29" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>wkt_manipulator&lt; Geometry &gt;</type>
+        <definition>wkt_manipulator&lt;Geometry&gt; boost::geometry::wkt</definition>
+        <argsstring>(Geometry const &amp;geometry)</argsstring>
+        <name>wkt</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+<para>Main WKT-streaming function. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/io/wkt.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/io/wkt/write.hpp" line="502" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/io/wkt/write.hpp" bodystart="502" bodyend="507"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

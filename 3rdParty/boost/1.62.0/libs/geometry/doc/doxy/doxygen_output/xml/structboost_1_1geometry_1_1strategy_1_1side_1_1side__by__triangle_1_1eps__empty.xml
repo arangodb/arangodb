@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle_1_1eps__empty" kind="struct" prot="private">
+    <compoundname>boost::geometry::strategy::side::side_by_triangle::eps_empty</compoundname>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle_1_1eps__empty_1a7bb836e62eff58baa45b072864da6a38" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::side::side_by_triangle&lt; CalculationType &gt;::eps_empty::eps_empty</definition>
+        <argsstring>()</argsstring>
+        <name>eps_empty</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" line="63" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" bodystart="63" bodyend="63"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle_1_1eps__empty_1a9282eb2d14a276bfa051e3fc5155c120" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Type</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::strategy::side::side_by_triangle&lt; CalculationType &gt;::eps_empty::eps_empty</definition>
+        <argsstring>(Type const &amp;, Type const &amp;, Type const &amp;, Type const &amp;)</argsstring>
+        <name>eps_empty</name>
+        <param>
+          <type>Type const &amp;</type>
+        </param>
+        <param>
+          <type>Type const &amp;</type>
+        </param>
+        <param>
+          <type>Type const &amp;</type>
+        </param>
+        <param>
+          <type>Type const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" line="65" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" bodystart="65" bodyend="65"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" line="62" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" bodystart="61" bodyend="66"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle_1_1eps__empty_1a7bb836e62eff58baa45b072864da6a38" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::side_by_triangle::eps_empty</scope><name>eps_empty</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle_1_1eps__empty_1a9282eb2d14a276bfa051e3fc5155c120" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::side_by_triangle::eps_empty</scope><name>eps_empty</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="namespaceboost_1_1geometry_1_1info" kind="namespace">
+    <compoundname>boost::geometry::info</compoundname>
+    <innerclass refid="structboost_1_1geometry_1_1info_1_1_b_o_x" prot="public">boost::geometry::info::BOX</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1info_1_1_d_i_m_e_n_s_i_o_n" prot="public">boost::geometry::info::DIMENSION</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1info_1_1_g_e_o_m_e_t_r_y___c_o_l_l_e_c_t_i_o_n" prot="public">boost::geometry::info::GEOMETRY_COLLECTION</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1info_1_1_l_i_n_e_s_t_r_i_n_g" prot="public">boost::geometry::info::LINESTRING</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1info_1_1_m_u_l_t_i___l_i_n_e_s_t_r_i_n_g" prot="public">boost::geometry::info::MULTI_LINESTRING</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1info_1_1_m_u_l_t_i___p_o_i_n_t" prot="public">boost::geometry::info::MULTI_POINT</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1info_1_1_m_u_l_t_i___p_o_l_y_g_o_n" prot="public">boost::geometry::info::MULTI_POLYGON</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1info_1_1_p_o_i_n_t" prot="public">boost::geometry::info::POINT</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1info_1_1_p_o_l_y_g_o_n" prot="public">boost::geometry::info::POLYGON</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1info_1_1_r_i_n_g" prot="public">boost::geometry::info::RING</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1info_1_1_s_e_g_m_e_n_t" prot="public">boost::geometry::info::SEGMENT</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1info_1_1_u_n_r_e_c_o_g_n_i_z_e_d___g_e_o_m_e_t_r_y___t_y_p_e" prot="public">boost::geometry::info::UNRECOGNIZED_GEOMETRY_TYPE</innerclass>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="34" column="1"/>
+  </compounddef>
+</doxygen>

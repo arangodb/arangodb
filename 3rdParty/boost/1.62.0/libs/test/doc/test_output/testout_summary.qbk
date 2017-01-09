@@ -1,0 +1,44 @@
+[/
+ / Copyright (c) 2015 Raffi Enficiaud
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:summary Summary of the API for controlling the output]
+
+[table
+  [
+    [Macro]
+    [Short description]
+  ] 
+  
+  [/ ###############################################################################################]
+  [
+    [__BOOST_TEST_MESSAGE__]
+    [Custom message output]
+  ]
+  [
+    [__BOOST_TEST_DONT_PRINT_LOG_VALUE__]
+    [Disabling the printing of a specific type in case of test failure]
+  ]
+  [
+    [__BOOST_TEST_CHECKPOINT__]
+    [Indicates a named checkpoint that will be printed in case of failure]
+  ]
+  [
+    [__BOOST_TEST_PASSPOINT__]
+    [Indicates an unnamed checkpoint that will be printed in case of failure]
+  ]
+  [
+    [__BOOST_TEST_INFO__]
+    [Defines a message to be printed as part of the context of the first encountered assertion, if it fails]
+  ]
+  [
+    [__BOOST_TEST_CONTEXT__]
+    [Defines a scope and a message to be printed as part of the context of every failed assertion within the scope]
+  ]
+  
+]
+
+[endsect]

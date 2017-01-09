@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1buffer" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::buffer</compoundname>
+    <includes local="no">buffer.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1buffer_1a2a7f9c441af625bdcc8ecccf61ea67a0" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Distance</type>
+          </param>
+          <param>
+            <type>typename GeometryOut</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>static void boost::geometry::resolve_variant::buffer&lt; Geometry &gt;::apply</definition>
+        <argsstring>(Geometry const &amp;geometry, Distance const &amp;distance, Distance const &amp;chord_length, GeometryOut &amp;out)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Distance const &amp;</type>
+          <declname>distance</declname>
+        </param>
+        <param>
+          <type>Distance const &amp;</type>
+          <declname>chord_length</declname>
+        </param>
+        <param>
+          <type>GeometryOut &amp;</type>
+          <declname>out</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/buffer.hpp" line="118" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/buffer.hpp" bodystart="118" bodyend="124"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/buffer.hpp" line="116" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/buffer.hpp" bodystart="115" bodyend="125"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1buffer_1a2a7f9c441af625bdcc8ecccf61ea67a0" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::buffer</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,205 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1detail_1_1partition_1_1partition__two__ranges" kind="class" prot="public">
+    <compoundname>boost::geometry::detail::partition::partition_two_ranges</compoundname>
+    <includes local="no">partition.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>int</type>
+        <declname>Dimension</declname>
+        <defname>Dimension</defname>
+      </param>
+      <param>
+        <type>typename Box</type>
+      </param>
+      <param>
+        <type>typename OverlapsPolicy1</type>
+      </param>
+      <param>
+        <type>typename OverlapsPolicy2</type>
+      </param>
+      <param>
+        <type>typename ExpandPolicy1</type>
+      </param>
+      <param>
+        <type>typename ExpandPolicy2</type>
+      </param>
+      <param>
+        <type>typename VisitBoxPolicy</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-static-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1detail_1_1partition_1_1partition__two__ranges_1af9c24bbb26ed8fc8680f10bfc7202098" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename ExpandPolicy</type>
+          </param>
+          <param>
+            <type>typename IteratorVector</type>
+          </param>
+        </templateparamlist>
+        <type>Box</type>
+        <definition>static Box boost::geometry::detail::partition::partition_two_ranges&lt; Dimension, Box, OverlapsPolicy1, OverlapsPolicy2, ExpandPolicy1, ExpandPolicy2, VisitBoxPolicy &gt;::get_new_box</definition>
+        <argsstring>(IteratorVector const &amp;input)</argsstring>
+        <name>get_new_box</name>
+        <param>
+          <type>IteratorVector const &amp;</type>
+          <declname>input</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/partition.hpp" line="358" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/partition.hpp" bodystart="358" bodyend="364"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1detail_1_1partition_1_1partition__two__ranges_1a43c79a39d48a7e42be3b6011cb0cf465" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename IteratorVector1</type>
+          </param>
+          <param>
+            <type>typename IteratorVector2</type>
+          </param>
+        </templateparamlist>
+        <type>Box</type>
+        <definition>static Box boost::geometry::detail::partition::partition_two_ranges&lt; Dimension, Box, OverlapsPolicy1, OverlapsPolicy2, ExpandPolicy1, ExpandPolicy2, VisitBoxPolicy &gt;::get_new_box</definition>
+        <argsstring>(IteratorVector1 const &amp;input1, IteratorVector2 const &amp;input2)</argsstring>
+        <name>get_new_box</name>
+        <param>
+          <type>IteratorVector1 const &amp;</type>
+          <declname>input1</declname>
+        </param>
+        <param>
+          <type>IteratorVector2 const &amp;</type>
+          <declname>input2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/partition.hpp" line="367" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/partition.hpp" bodystart="367" bodyend="373"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1detail_1_1partition_1_1partition__two__ranges_1a9d36a01bec811860cb0821b456d3595f" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Policy</type>
+          </param>
+          <param>
+            <type>typename IteratorVector1</type>
+          </param>
+          <param>
+            <type>typename IteratorVector2</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>static void boost::geometry::detail::partition::partition_two_ranges&lt; Dimension, Box, OverlapsPolicy1, OverlapsPolicy2, ExpandPolicy1, ExpandPolicy2, VisitBoxPolicy &gt;::next_level</definition>
+        <argsstring>(Box const &amp;box, IteratorVector1 const &amp;input1, IteratorVector2 const &amp;input2, std::size_t level, std::size_t min_elements, Policy &amp;policy, VisitBoxPolicy &amp;box_policy)</argsstring>
+        <name>next_level</name>
+        <param>
+          <type>Box const &amp;</type>
+          <declname>box</declname>
+        </param>
+        <param>
+          <type>IteratorVector1 const &amp;</type>
+          <declname>input1</declname>
+        </param>
+        <param>
+          <type>IteratorVector2 const &amp;</type>
+          <declname>input2</declname>
+        </param>
+        <param>
+          <type>std::size_t</type>
+          <declname>level</declname>
+        </param>
+        <param>
+          <type>std::size_t</type>
+          <declname>min_elements</declname>
+        </param>
+        <param>
+          <type>Policy &amp;</type>
+          <declname>policy</declname>
+        </param>
+        <param>
+          <type>VisitBoxPolicy &amp;</type>
+          <declname>box_policy</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/partition.hpp" line="338" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/partition.hpp" bodystart="338" bodyend="355"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1detail_1_1partition_1_1partition__two__ranges_1a0dd829e555605022126f0ba2d552128d" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Policy</type>
+          </param>
+          <param>
+            <type>typename IteratorVector1</type>
+          </param>
+          <param>
+            <type>typename IteratorVector2</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>static void boost::geometry::detail::partition::partition_two_ranges&lt; Dimension, Box, OverlapsPolicy1, OverlapsPolicy2, ExpandPolicy1, ExpandPolicy2, VisitBoxPolicy &gt;::apply</definition>
+        <argsstring>(Box const &amp;box, IteratorVector1 const &amp;input1, IteratorVector2 const &amp;input2, std::size_t level, std::size_t min_elements, Policy &amp;policy, VisitBoxPolicy &amp;box_policy)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Box const &amp;</type>
+          <declname>box</declname>
+        </param>
+        <param>
+          <type>IteratorVector1 const &amp;</type>
+          <declname>input1</declname>
+        </param>
+        <param>
+          <type>IteratorVector2 const &amp;</type>
+          <declname>input2</declname>
+        </param>
+        <param>
+          <type>std::size_t</type>
+          <declname>level</declname>
+        </param>
+        <param>
+          <type>std::size_t</type>
+          <declname>min_elements</declname>
+        </param>
+        <param>
+          <type>Policy &amp;</type>
+          <declname>policy</declname>
+        </param>
+        <param>
+          <type>VisitBoxPolicy &amp;</type>
+          <declname>box_policy</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/partition.hpp" line="382" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/partition.hpp" bodystart="382" bodyend="471"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/partition.hpp" line="207" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/partition.hpp" bodystart="207" bodyend="-1"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1detail_1_1partition_1_1partition__two__ranges_1a0dd829e555605022126f0ba2d552128d" prot="public" virt="non-virtual"><scope>boost::geometry::detail::partition::partition_two_ranges</scope><name>apply</name></member>
+      <member refid="classboost_1_1geometry_1_1detail_1_1partition_1_1partition__two__ranges_1af9c24bbb26ed8fc8680f10bfc7202098" prot="private" virt="non-virtual"><scope>boost::geometry::detail::partition::partition_two_ranges</scope><name>get_new_box</name></member>
+      <member refid="classboost_1_1geometry_1_1detail_1_1partition_1_1partition__two__ranges_1a43c79a39d48a7e42be3b6011cb0cf465" prot="private" virt="non-virtual"><scope>boost::geometry::detail::partition::partition_two_ranges</scope><name>get_new_box</name></member>
+      <member refid="classboost_1_1geometry_1_1detail_1_1partition_1_1partition__two__ranges_1a9d36a01bec811860cb0821b456d3595f" prot="private" virt="non-virtual"><scope>boost::geometry::detail::partition::partition_two_ranges</scope><name>next_level</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -438,6 +438,7 @@ class AgencyCommManager {
                        std::string& url);
 
   void addEndpoint(std::string const&);
+  void removeEndpoint(std::string const&);
   std::string endpointsString() const;
   std::vector<std::string> endpoints() const;
 
@@ -475,6 +476,11 @@ class AgencyComm {
   static std::string const AGENCY_URL_PREFIX;
   static uint64_t const INITIAL_SLEEP_TIME = 5000;
   static uint64_t const MAX_SLEEP_TIME = 50000;
+
+#ifdef DEBUG_SYNC_REPLICATION
+ public:
+  static bool syncReplDebug;
+#endif
 
  public:
   AgencyCommResult sendServerState(double ttl);

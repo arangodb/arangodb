@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::transform::ublas_transformer</compoundname>
+    <derivedcompoundref refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1inverse__transformer" prot="public" virt="non-virtual">boost::geometry::strategy::transform::inverse_transformer&lt; CalculationType, Dimension1, Dimension2 &gt;</derivedcompoundref>
+    <derivedcompoundref refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer" prot="public" virt="non-virtual">boost::geometry::strategy::transform::map_transformer&lt; CalculationType, Dimension1, Dimension2, Mirror, SameScale &gt;</derivedcompoundref>
+    <includes local="no">matrix_transformers.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename CalculationType</type>
+      </param>
+      <param>
+        <type>std::size_t</type>
+        <declname>Dimension1</declname>
+        <defname>Dimension1</defname>
+      </param>
+      <param>
+        <type>std::size_t</type>
+        <declname>Dimension2</declname>
+        <defname>Dimension2</defname>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Affine transformation strategy in Cartesian system. </para>    </briefdescription>
+    <detaileddescription>
+<para>The strategy serves as a generic definition of affine transformation matrix and procedure of application it to given point. <simplesect kind="see"><para><ulink url="http://en.wikipedia.org/wiki/Affine_transformation">http://en.wikipedia.org/wiki/Affine_transformation</ulink> and <ulink url="http://www.devmaster.net/wiki/Transformation_matrices">http://www.devmaster.net/wiki/Transformation_matrices</ulink></para></simplesect>
+<parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Dimension1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>number of dimensions to transform from </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Dimension2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>number of dimensions to transform to </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="1582">
+        <label>boost::geometry::strategy::transform::ublas_transformer&lt; CalculationType, Dimension1, Dimension2 &gt;</label>
+        <link refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer"/>
+      </node>
+      <node id="1584">
+        <label>boost::geometry::strategy::transform::map_transformer&lt; CalculationType, Dimension1, Dimension2 &gt;</label>
+        <link refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer"/>
+        <childnode refid="1582" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1583">
+        <label>boost::geometry::strategy::transform::inverse_transformer&lt; CalculationType, Dimension1, Dimension2 &gt;</label>
+        <link refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1inverse__transformer"/>
+        <childnode refid="1582" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/matrix_transformers.hpp" line="79" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/matrix_transformers.hpp" bodystart="78" bodyend="80"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

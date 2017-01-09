@@ -1,0 +1,16 @@
+{
+    "key": "graph",
+    "name": "Graph",
+    "authors": [
+        "Jeremy Siek and a University of Notre Dame team; now maintained by Andrew Sutton and Jeremiah Willcock."
+    ],
+    "description": "The BGL graph interface and graph components are generic, in the same sense as the the Standard Template Library (STL).",
+    "category": [
+        "Algorithms",
+        "Containers",
+        "Iterators"
+    ],
+    "maintainers": [
+        "Andrew Sutton <asutton -at- cs.kent.edu>"
+    ]
+}

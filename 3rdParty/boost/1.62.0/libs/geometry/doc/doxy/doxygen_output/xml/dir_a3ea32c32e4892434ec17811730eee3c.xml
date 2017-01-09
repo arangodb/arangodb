@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="dir_a3ea32c32e4892434ec17811730eee3c" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer</compoundname>
+    <innerfile refid="buffer__inserter_8hpp">buffer_inserter.hpp</innerfile>
+    <innerfile refid="buffer__policies_8hpp">buffer_policies.hpp</innerfile>
+    <innerfile refid="buffered__piece__collection_8hpp">buffered_piece_collection.hpp</innerfile>
+    <innerfile refid="buffered__ring_8hpp">buffered_ring.hpp</innerfile>
+    <innerfile refid="get__piece__turns_8hpp">get_piece_turns.hpp</innerfile>
+    <innerfile refid="line__line__intersection_8hpp">line_line_intersection.hpp</innerfile>
+    <innerfile refid="parallel__continue_8hpp">parallel_continue.hpp</innerfile>
+    <innerfile refid="turn__in__original__visitor_8hpp">turn_in_original_visitor.hpp</innerfile>
+    <innerfile refid="turn__in__piece__visitor_8hpp">turn_in_piece_visitor.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/"/>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1length" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::length</compoundname>
+    <includes local="no">length.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1length_1ae4b2ba841c8188b927e3f34096ea4853" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Strategy</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1resolve__variant_1_1default__length__result" kindref="compound">default_length_result</ref>&lt; Geometry &gt;::type</type>
+        <definition>static default_length_result&lt;Geometry&gt;::type boost::geometry::resolve_variant::length&lt; Geometry &gt;::apply</definition>
+        <argsstring>(Geometry const &amp;geometry, Strategy const &amp;strategy)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>strategy</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/length.hpp" line="194" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/length.hpp" bodystart="194" bodyend="197"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/length.hpp" line="191" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/length.hpp" bodystart="190" bodyend="198"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1length_1ae4b2ba841c8188b927e3f34096ea4853" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::length</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>
