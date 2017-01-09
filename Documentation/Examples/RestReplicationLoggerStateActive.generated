@@ -6,14 +6,14 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 { 
   <span class="hljs-string">"state"</span> : { 
     <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"10474"</span>, 
-    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"10474"</span>, 
-    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">3822</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-12-29T12:01:52Z"</span> 
+    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"10477"</span>, 
+    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"10477"</span>, 
+    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">3823</span>, 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-01-09T16:28:23Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
-    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.1.7"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"80373626235509"</span> 
+    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.1.8"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"144453289040258"</span> 
   }, 
   <span class="hljs-string">"clients"</span> : [ ] 
 }

@@ -1,5 +1,9 @@
-v3.1.8 (XXXX-XX-XX)
+v3.1.8 (2017-01-09)
 -------------------
+
+* add windows silent installer
+
+* add handling of debug symbols during Linux & windows release builds.
 
 * fixed issue #2181
 
