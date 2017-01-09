@@ -1,6 +1,8 @@
 v3.1.8 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #2181
+
 * fixed issue #2248: reduce V8 max old space size from 3 GB to 1 GB on 32 bit systems
 
 * upgraded Boost version to 1.62.0
