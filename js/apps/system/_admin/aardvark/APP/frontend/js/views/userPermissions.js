@@ -35,8 +35,35 @@
       if (checked) {
         this.grantPermission(this.currentUser.get('user'), db);
       } else {
-        this.revokePermission(this.currentUser.get('user'), db);
+        if (db === '_system') {
+          // special case, ask if user really want to revoke persmission here
+          var buttons = []; var tableContent = [];
+
+          tableContent.push(
+            window.modalView.createReadOnlyEntry(
+              'db-system-revoke-button',
+              'Caution',
+              'You are removing your permissions to _system database. Really continue?',
+              undefined,
+              undefined,
+              false
+            )
+          );
+          buttons.push(
+            window.modalView.createSuccessButton('Revoke', this.revokePermission.bind(this, this.currentUser.get('user'), db))
+          );
+          buttons.push(
+            window.modalView.createCloseButton('Cancel', this.rollbackInputButton.bind(this, db))
+          );
+          window.modalView.show('modalTable.ejs', 'Revoke _system Database Permission', buttons, tableContent);
+        } else {
+          this.revokePermission(this.currentUser.get('user'), db);
+        }
       }
+    },
+
+    rollbackInputButton: function (name) {
+      $('input[name="' + name + '"').prop('checked', 'true');
     },
 
     grantPermission: function (user, db) {
@@ -56,6 +83,7 @@
         url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db)),
         contentType: 'application/json'
       });
+      window.modalView.hide();
     },
 
     continueRender: function () {
