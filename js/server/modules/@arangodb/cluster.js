@@ -372,7 +372,7 @@ function dropLocalDatabases (plannedDatabases) {
       envelope[curDatabases + payload.name + '/' + ourselves] = {'op':'delete'};
       envelope[curVersion] = {'op':'increment'};
       global.ArangoAgency.write([[envelope]]);
-    } catch (err) {s
+    } catch (err) {
       // ignore errors
     }
   };
@@ -749,7 +749,8 @@ function createLocalCollections (plannedCollections, planVersion,
       }
       return cb(...args);
     };
-    writeLocked({ part: 'Current' }, migrate, [fakeLock]);
+    migrate();
+    //writeLocked({ part: 'Current' }, migrate, [fakeLock]);
   } else {
     migrate();
   }
