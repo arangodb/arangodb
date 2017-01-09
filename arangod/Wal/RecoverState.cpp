@@ -870,6 +870,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           // TODO: how to signal a dropDatabase failure here?
           state->databaseFeature->dropDatabase(nameString, false, true, false);
         }
+        
+        RocksDBFeature::dropDatabase(databaseId);
 
         vocbase = nullptr;
         /* TODO: check what TRI_ERROR_ARANGO_DATABASE_NOT_FOUND means here 
@@ -884,7 +886,6 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return state->canContinue();
         }
 
-        RocksDBFeature::dropDatabase(databaseId);
         break;
       }
 
