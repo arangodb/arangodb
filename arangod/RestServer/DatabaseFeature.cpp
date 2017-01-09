@@ -81,132 +81,136 @@ void DatabaseManagerThread::run() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   while (true) {
-    // check if we have to drop some database
-    TRI_vocbase_t* database = nullptr;
+    try { 
+      // check if we have to drop some database
+      TRI_vocbase_t* database = nullptr;
 
-    {
-      auto unuser(databaseFeature->_databasesProtector.use());
-      auto theLists = databaseFeature->_databasesLists.load();
-
-      for (TRI_vocbase_t* vocbase : theLists->_droppedDatabases) {
-        if (!vocbase->canBeDropped()) {
-          continue;
-        }
-
-        // found a database to delete
-        database = vocbase;
-        break;
-      }
-    }
-
-    if (database != nullptr) {
-      // found a database to delete, now remove it from the struct
       {
-        MUTEX_LOCKER(mutexLocker, databaseFeature->_databasesMutex);
-
-        // Build the new value:
-        auto oldLists = databaseFeature->_databasesLists.load();
-        decltype(oldLists) newLists = nullptr;
-        try {
-          newLists = new DatabasesLists();
-          newLists->_databases = oldLists->_databases;
-          newLists->_coordinatorDatabases = oldLists->_coordinatorDatabases;
-          for (TRI_vocbase_t* vocbase : oldLists->_droppedDatabases) {
-            if (vocbase != database) {
-              newLists->_droppedDatabases.insert(vocbase);
-            }
-          }
-        } catch (...) {
-          delete newLists;
-          continue;  // try again later
-        }
-
-        // Replace the old by the new:
-        databaseFeature->_databasesLists = newLists;
-        databaseFeature->_databasesProtector.scan();
-        delete oldLists;
-
-        // From now on no other thread can possibly see the old TRI_vocbase_t*,
-        // note that there is only one DatabaseManager thread, so it is
-        // not possible that another thread has seen this very database
-        // and tries to free it at the same time!
-      }
-
-      if (database->type() != TRI_VOCBASE_TYPE_COORDINATOR) {
-// regular database
-// ---------------------------
-
-        // delete persistent indexes for this database
-        RocksDBFeature::dropDatabase(database->id());
-
-        LOG(TRACE) << "physically removing database directory '"
-                   << engine->databasePath(database) << "' of database '"
-                   << database->name() << "'";
-
-        std::string path;
-
-        // remove apps directory for database
-        auto appPath = dealer->appPath();
-
-        if (database->isOwnAppsDirectory() && !appPath.empty()) {
-          path = arangodb::basics::FileUtils::buildFilename(
-              arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
-              database->name());
-
-          if (TRI_IsDirectory(path.c_str())) {
-            LOG(TRACE) << "removing app directory '" << path
-                       << "' of database '" << database->name() << "'";
-
-            TRI_RemoveDirectory(path.c_str());
-          }
-        }
-
-        database->shutdown();
-        engine->dropDatabase(database);
-      }
-
-      delete database;
-
-      // directly start next iteration
-    } else {
-      if (isStopping()) {
-        // done
-        break;
-      }
-
-      usleep(waitTime());
-
-      // The following is only necessary after a wait:
-      auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
-
-      if (queryRegistry != nullptr) {
-        queryRegistry->expireQueries();
-      }
-
-      // on a coordinator, we have no cleanup threads for the databases
-      // so we have to do cursor cleanup here
-      if (++cleanupCycles >= 10 &&
-          arangodb::ServerState::instance()->isCoordinator()) {
-        // note: if no coordinator then cleanupCycles will increase endlessly,
-        // but it's only used for the following part
-        cleanupCycles = 0;
-
         auto unuser(databaseFeature->_databasesProtector.use());
         auto theLists = databaseFeature->_databasesLists.load();
 
-        for (auto& p : theLists->_coordinatorDatabases) {
-          TRI_vocbase_t* vocbase = p.second;
-          TRI_ASSERT(vocbase != nullptr);
-          auto cursorRepository = vocbase->cursorRepository();
+        for (TRI_vocbase_t* vocbase : theLists->_droppedDatabases) {
+          if (!vocbase->canBeDropped()) {
+            continue;
+          }
 
+          // found a database to delete
+          database = vocbase;
+          break;
+        }
+      }
+
+      if (database != nullptr) {
+        // found a database to delete, now remove it from the struct
+        {
+          MUTEX_LOCKER(mutexLocker, databaseFeature->_databasesMutex);
+
+          // Build the new value:
+          auto oldLists = databaseFeature->_databasesLists.load();
+          decltype(oldLists) newLists = nullptr;
           try {
-            cursorRepository->garbageCollect(false);
+            newLists = new DatabasesLists();
+            newLists->_databases = oldLists->_databases;
+            newLists->_coordinatorDatabases = oldLists->_coordinatorDatabases;
+            for (TRI_vocbase_t* vocbase : oldLists->_droppedDatabases) {
+              if (vocbase != database) {
+                newLists->_droppedDatabases.insert(vocbase);
+              }
+            }
           } catch (...) {
+            delete newLists;
+            continue;  // try again later
+          }
+
+          // Replace the old by the new:
+          databaseFeature->_databasesLists = newLists;
+          databaseFeature->_databasesProtector.scan();
+          delete oldLists;
+
+          // From now on no other thread can possibly see the old TRI_vocbase_t*,
+          // note that there is only one DatabaseManager thread, so it is
+          // not possible that another thread has seen this very database
+          // and tries to free it at the same time!
+        }
+
+        if (database->type() != TRI_VOCBASE_TYPE_COORDINATOR) {
+          // regular database
+          // ---------------------------
+
+          // delete persistent indexes for this database
+          RocksDBFeature::dropDatabase(database->id());
+
+          LOG(TRACE) << "physically removing database directory '"
+            << engine->databasePath(database) << "' of database '"
+            << database->name() << "'";
+
+          std::string path;
+
+          // remove apps directory for database
+          auto appPath = dealer->appPath();
+
+          if (database->isOwnAppsDirectory() && !appPath.empty()) {
+            path = arangodb::basics::FileUtils::buildFilename(
+                arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
+                database->name());
+
+            if (TRI_IsDirectory(path.c_str())) {
+              LOG(TRACE) << "removing app directory '" << path
+                << "' of database '" << database->name() << "'";
+
+              TRI_RemoveDirectory(path.c_str());
+            }
+          }
+
+          database->shutdown();
+          engine->dropDatabase(database);
+        }
+
+        delete database;
+
+        // directly start next iteration
+      } else {
+        if (isStopping()) {
+          // done
+          break;
+        }
+
+        usleep(waitTime());
+
+        // The following is only necessary after a wait:
+        auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+
+        if (queryRegistry != nullptr) {
+          queryRegistry->expireQueries();
+        }
+
+        // on a coordinator, we have no cleanup threads for the databases
+        // so we have to do cursor cleanup here
+        if (++cleanupCycles >= 10 &&
+            arangodb::ServerState::instance()->isCoordinator()) {
+          // note: if no coordinator then cleanupCycles will increase endlessly,
+          // but it's only used for the following part
+          cleanupCycles = 0;
+
+          auto unuser(databaseFeature->_databasesProtector.use());
+          auto theLists = databaseFeature->_databasesLists.load();
+
+          for (auto& p : theLists->_coordinatorDatabases) {
+            TRI_vocbase_t* vocbase = p.second;
+            TRI_ASSERT(vocbase != nullptr);
+            auto cursorRepository = vocbase->cursorRepository();
+
+            try {
+              cursorRepository->garbageCollect(false);
+            } catch (...) {
+            }
           }
         }
       }
-    }
 
+    } catch (...) {
+    }
+    
     // next iteration
   }
 }
