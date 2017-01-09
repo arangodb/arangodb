@@ -1762,8 +1762,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
       VPackCollection::merge(parameters, sliceToMerge, false);
   VPackSlice const merged = mergedBuilder.slice();
 
-  int res = ci->createCollectionCoordinator(dbName, newId, numberOfShards, replicationFactor,
-                                            merged, errorMsg, 0.0);
+  int res = ci->createCollectionCoordinator(
+    dbName, newId, numberOfShards, replicationFactor,  merged, errorMsg, 0.0);
   if (res != TRI_ERROR_NO_ERROR) {
     errorMsg =
         "unable to create collection: " + std::string(TRI_errno_string(res));

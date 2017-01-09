@@ -767,14 +767,17 @@ function leaderResign (database, collId, shardName, ourselves) {
     db._executeTransaction(
       { 'collections': { 'write': [shardName] },
         'action': function () {
-          var path = 'Current/Collections/' + database + '/' + collId + '/' +
+          var path = curCollections + database + '/' + collId + '/' +
             shardName + '/servers';
-          var servers = global.ArangoAgency.get(path).arango.Current
-            .Collections[database][collId][shardName].servers;
+          var servers = global.ArangoAgency.read([[path]])[0]
+              .arango.Current.Collections[database][collId][shardName].servers;
           if (servers[0] === ourselves) {
             servers[0] = '_' + ourselves;
-            global.ArangoAgency.set(path, servers);
-            global.ArangoAgency.increaseVersion('Current/Version');
+            
+            var envelope = {};
+            envelope[path] = {'op':'set', 'new':servers};
+            envelope[curVersion] = {'op':'increment'};
+            global.ArangoAgency.write([[envelope]]);
           }
       } });
   } catch (x) {
