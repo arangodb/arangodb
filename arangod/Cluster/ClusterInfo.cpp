@@ -903,7 +903,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
         (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
       return setErrormsg(TRI_ERROR_ARANGO_DUPLICATE_NAME, errorMsg);
     }
-
+    errorMsg = std::string("Failed to create database in ") + __FILE__ + ":" + std::to_string(__LINE__);
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,
                        errorMsg);
   }
@@ -1154,8 +1154,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     errorMsg += std::string(" ") + __FILE__ + std::to_string(__LINE__);
     events::CreateCollection(
         name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
-    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
-                       errorMsg);
+    return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
   }
 
   // Update our cache:
@@ -1728,8 +1727,7 @@ int ClusterInfo::ensureIndexCoordinator(
   if (!result.successful()) {
     errorMsg += std::string(" ") + __FILE__ + ":" + std::to_string(__LINE__);
     resultBuilder = *resBuilder;
-    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
-                       errorMsg);
+    return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
   }
 
   loadPlan();
@@ -1950,8 +1948,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     errorMsg += std::string(" ") + __FILE__ + ":" + std::to_string(__LINE__);
     events::DropIndex(collectionID, idString,
                       TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
-    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
-                       errorMsg);
+    return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
   }
 
   // load our own cache:
