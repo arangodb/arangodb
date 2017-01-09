@@ -749,7 +749,7 @@ function createLocalCollections (plannedCollections, planVersion,
       }
       return cb(...args);
     };
-    migrate();
+    migrate(fakeLock);
     //writeLocked({ part: 'Current' }, migrate, [fakeLock]);
   } else {
     migrate();
