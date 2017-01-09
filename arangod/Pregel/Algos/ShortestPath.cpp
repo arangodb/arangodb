@@ -71,7 +71,6 @@ struct ShortestPathComp : public VertexComputation<int64_t, int64_t, int64_t> {
 struct arangodb::pregel::algos::SPGraphFormat
     : public GraphFormat<int64_t, int64_t> {
   std::string _sourceDocId, _targetDocId;
-  PregelID _target;
 
  public:
   SPGraphFormat(std::string const& source, std::string const& target)
@@ -83,14 +82,7 @@ struct arangodb::pregel::algos::SPGraphFormat
                         size_t maxSize) override {
     // arangodb::velocypack::Slice val = document.get(_sourceField);
     // = val.isInteger() ? val.getInt() : _vDefault;
-    if (documentId == _sourceDocId) {
-      *((int64_t*)targetPtr) = 0;
-    } else {
-      if (documentId == _targetDocId) {
-        _target = vertex.pregelId();
-      }
-      *((int64_t*)targetPtr) = INT64_MAX;
-    }
+    *((int64_t*)targetPtr) = documentId == _sourceDocId ? 0 : INT64_MAX;
     return sizeof(int64_t);
   }
 
@@ -140,7 +132,8 @@ MessageCombiner<int64_t>* ShortestPathAlgorithm::messageCombiner() const {
 
 VertexComputation<int64_t, int64_t, int64_t>*
 ShortestPathAlgorithm::createComputation(WorkerConfig const* _config) const {
-  return new ShortestPathComp(_format->_target);
+  PregelID target = _config->documentIdToPregel(_format->_targetDocId);
+  return new ShortestPathComp(target);
 }
 
 Aggregator* ShortestPathAlgorithm::aggregator(std::string const& name) const {

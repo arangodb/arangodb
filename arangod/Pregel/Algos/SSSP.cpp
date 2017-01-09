@@ -68,3 +68,20 @@ VertexComputation<int64_t, int64_t, int64_t>* SSSPAlgorithm::createComputation(
     WorkerConfig const* config) const {
   return new SSSPComputation();
 }
+
+struct SSSPCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
+  SSSPCompensation() {}
+  void compensate(bool inLostPartition) override {
+    if (inLostPartition) {
+      int64_t* data = mutableVertexData();
+      *data = INT64_MAX;
+    }
+  }
+};
+
+VertexCompensation<int64_t, int64_t, int64_t>* SSSPAlgorithm::createCompensation(
+                                                                               WorkerConfig const* config) const {
+  return new SSSPCompensation();
+}
+
+

@@ -78,23 +78,20 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
     _collectionPlanIdMap.emplace(it.key.copyString(), it.value.copyString());
   }
 }
-/*
-PregelID WorkerConfig::convertToPregelKey(std::string const& documentID) const {
+
+PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
   size_t pos = documentID.find("/");
   if (pos == std::string::npos) {
-    return PregelKey();
+    return PregelID();
   }
   CollectionID coll = documentID.substr(0, pos);
-  std::string key = documentID.substr(pos+1);
+  std::string _key = documentID.substr(pos+1);
 
-  ShardID const& shard = _workerConfig->globalShardIDs()[this->shard()];
-  std::map<CollectionID, std::vector<ShardID>>
-  const& map = _workerConfig->edgeCollectionShards();
-  for (auto const& pair : map) {
-    std::vector<ShardID> const& shards = pair.second;
-    if (std::find(shards.begin(), shards.end(), shard) != shards.end()) {
-      return PregelID(key) coll == pair.first;
-    }
-  }
-  return false;
-}*/
+  auto collInfo = Utils::resolveCollection(_database, coll, _collectionPlanIdMap);
+  ShardID responsibleShard;
+  Utils::resolveShard(collInfo.get(), StaticStrings::KeyString, _key,
+                      responsibleShard);
+  
+  prgl_shard_t source = this->shardId(responsibleShard);
+  return PregelID(source, _key);
+}

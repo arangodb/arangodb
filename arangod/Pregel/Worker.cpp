@@ -79,25 +79,24 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   // of time. Therefore this is performed asynchronous
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this, vocbase] {
-    if (_config.lazyLoading()) {
-      std::vector<std::string> activeSet = _algorithm->initialActiveSet();
-      if (activeSet.size() == 0) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "There needs to be one active vertice");
+    
+    {// never modify the graph store without holding the mutex
+      MUTEX_LOCKER(guard, _commandMutex);
+      if (_config.lazyLoading()) {
+        std::vector<std::string> activeSet = _algorithm->initialActiveSet();
+        if (activeSet.size() == 0) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "There needs to be one active vertice");
+        }
+        for (std::string const& documentID : activeSet) {
+          _graphStore->loadDocument(_config, documentID);
+        }
+      } else {
+        _graphStore->loadShards(this->_config);
       }
-      for (std::string const& documentID : activeSet) {
-        _graphStore->loadDocument(_config, documentID);
-      }
-    } else {
-      _graphStore->loadShards(this->_config);
+      _state = WorkerState::IDLE;
     }
-    _state = WorkerState::IDLE;
 
-    // execute the user defined startup code
-    if (_workerContext) {
-      _workerContext->_conductorAggregators = _conductorAggregators.get();
-      _workerContext->_workerAggregators = _workerAggregators.get();
-    }
     VPackBuilder package;
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
@@ -131,7 +130,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::IDLE) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "Cannot start a gss when the worker is not idle");
+        TRI_ERROR_INTERNAL, "Cannot prepare a gss when the worker is not idle");
   }
   _state = WorkerState::PREPARING;  // stop any running step
   LOG(INFO) << "Prepare GSS: " << data.toJson();
@@ -149,6 +148,8 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
   }
 
   if (_workerContext && gss == 0 && _config.localSuperstep() == 0) {
+    _workerContext->_conductorAggregators = _conductorAggregators.get();
+    _workerContext->_workerAggregators = _workerAggregators.get();
     _workerContext->_vertexCount = data.get(Utils::vertexCount).getUInt();
     _workerContext->_edgeCount = data.get(Utils::edgeCount).getUInt();
     _workerContext->preApplication();
@@ -176,14 +177,17 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
   // responds with info which allows the conductor to decide whether
   // to start the next GSS or end the execution
   response.openObject();
-  response.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-  response.add(Utils::activeCountKey, VPackValue(_activeCount));
-  response.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-  _workerAggregators->serializeValues(response);
-  response.close();
+    response.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+    response.add(Utils::activeCountKey, VPackValue(_activeCount));
+    response.add(Utils::vertexCount,
+                 VPackValue(_graphStore->localVerticeCount()));
+    response.add(Utils::edgeCount, VPackValue(_graphStore->localEdgeCount()));
+    response.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+      _workerAggregators->serializeValues(response);
+    response.close();
   response.close();
 
-  LOG(INFO) << "Worker sent a response";
+  LOG(INFO) << "Worker sent prepare GSS response: " << response.toJson();
 }
 
 template <typename V, typename E, typename M>
@@ -242,6 +246,8 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
   }
   // execute context
   if (_workerContext != nullptr) {
+    _workerContext->_vertexCount = data.get(Utils::vertexCount).getUInt();
+    _workerContext->_edgeCount = data.get(Utils::edgeCount).getUInt();
     _workerContext->preGlobalSuperstep(gss);
   }
 
@@ -391,21 +397,11 @@ void Worker<V, E, M>::_finishedProcessing(AggregatorHandler* threadAggregators,
     // merge the thread local stats and aggregators
     _workerAggregators->aggregateValues(*threadAggregators);
     _superstepStats.accumulate(threadStats);
+    _activeCount += activeCount;
     _runningThreads--;
     if (_runningThreads > 0) {  // should work like a join operation
       return;                   // there are still threads running
     }
-  }
-
-  if (_config.lazyLoading()) {  // TODO how to improve this?
-    auto vertexIterator = _graphStore->vertexIterator();
-    for (VertexEntry* vertexEntry : vertexIterator) {
-      _readCache->erase(vertexEntry->shard(), vertexEntry->key());
-    }
-    _readCache->forEach(
-        [this](prgl_shard_t shard, std::string const& key, M const&) {
-          _graphStore->loadDocument(_config, shard, key);
-        });
   }
 
   VPackBuilder package;
@@ -423,7 +419,24 @@ void Worker<V, E, M>::_finishedProcessing(AggregatorHandler* threadAggregators,
     _expectedGSS = _config._globalSuperstep + 1;
     _config._localSuperstep++;
     _superstepStats.receivedCount = _readCache->receivedMessageCount();
-    _activeCount += activeCount;
+    // load vertices which received messages for the next lss / gss
+    size_t currentAVCount = _graphStore->localVerticeCount();
+    if (_config.lazyLoading()) {  // TODO how to improve this?
+      auto vertexIterator = _graphStore->vertexIterator();
+      for (VertexEntry* vertexEntry : vertexIterator) {
+        _readCache->erase(vertexEntry->shard(), vertexEntry->key());
+      }
+      _readCache->forEach([this](prgl_shard_t shard, std::string const& key, M const&) {
+                            _graphStore->loadDocument(_config, shard, key);
+                          });
+      // Adding the new vertices as active
+      if (_graphStore->localVerticeCount() >= currentAVCount) {
+        _activeCount += _graphStore->localVerticeCount() - currentAVCount;
+      } else {
+        LOG(ERR) << "WTF! Removing vertices is currently unsupported";
+      }
+    }
+    
     _readCache->clear();  // no need to keep old messages around
 
     package.openObject();

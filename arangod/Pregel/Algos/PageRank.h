@@ -37,7 +37,6 @@ struct PageRankAlgorithm : public SimpleAlgorithm<float, float, float> {
  public:
   PageRankAlgorithm(arangodb::velocypack::Slice params);
 
-  bool supportsAsyncMode() const override { return true; }
   bool supportsCompensation() const override { return true; }
   MasterContext* masterContext(VPackSlice userParams) const override;
 

@@ -37,12 +37,14 @@ struct SSSPAlgorithm : public SimpleAlgorithm<int64_t, int64_t, int64_t> {
   SSSPAlgorithm(VPackSlice userParams) : SimpleAlgorithm("SSSP", userParams) {}
 
   bool supportsAsyncMode() const override { return true; }
+  bool supportsCompensation() const override { return true; }
 
   GraphFormat<int64_t, int64_t>* inputFormat() override;
   MessageFormat<int64_t>* messageFormat() const override;
   MessageCombiner<int64_t>* messageCombiner() const override;
   VertexComputation<int64_t, int64_t, int64_t>* createComputation(
       WorkerConfig const*) const override;
+  VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(WorkerConfig const*) const override;
 };
 }
 }

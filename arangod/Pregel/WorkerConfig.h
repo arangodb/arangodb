@@ -92,7 +92,7 @@ class WorkerConfig {
   inline std::vector<ShardID> const& localEdgeShardIDs() const {
     return _localEdgeShardIDs;
   };
-  inline size_t shardId(ShardID const& responsibleShard) const {
+  inline uint16_t shardId(ShardID const& responsibleShard) const {
     auto it = std::find(_globalShardIDs.begin(), _globalShardIDs.end(),
                         responsibleShard);
     return it != _globalShardIDs.end() ? it - _globalShardIDs.begin()
@@ -105,6 +105,8 @@ class WorkerConfig {
     return std::find(_localVertexShardIDs.begin(), _localVertexShardIDs.end(),
                      shard) != _localVertexShardIDs.end();
   }
+  
+  PregelID documentIdToPregel(std::string const& documentID) const;
 
  private:
   uint64_t _executionNumber = 0;

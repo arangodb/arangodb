@@ -163,6 +163,7 @@ void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
     }
   }
   _index.push_back(entry);
+  _localVerticeCount++;
 }
 
 template <typename V, typename E>

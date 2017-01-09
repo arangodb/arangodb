@@ -184,13 +184,16 @@ void RecoveryManager::updatedFailedServers() {
   }
 }
 
-//
+// don't call while holding _lock
 void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
+  MUTEX_LOCKER(guard, _lock);
+  
   ClusterInfo *ci = ClusterInfo::instance();
   auto const& conductors = _listeners.find(shard);
   auto const& currentPrimary = _primaryServers.find(shard);
   if (conductors == _listeners.end()
       || currentPrimary == _primaryServers.end()) {
+    LOG(ERR) << "Shard is not properly registered";
     return;
   }
   
@@ -204,6 +207,8 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
         for (Conductor* cc : conductors->second) {
           cc->startRecovery();
         }
+        LOG(INFO) << "Recovery action was initiated";
+        break;
       }
     }
     usleep(250000);// 250ms

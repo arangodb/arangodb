@@ -43,7 +43,7 @@ using namespace arangodb::pregel::algos;
 PageRankAlgorithm::PageRankAlgorithm(arangodb::velocypack::Slice params)
     : SimpleAlgorithm("PageRank", params) {
   VPackSlice t = params.get("convergenceThreshold");
-  _threshold = t.isNumber() ? t.getNumber<float>() : 0.00002f;
+  _threshold = t.isNumber() ? t.getNumber<float>() : 0.0000002f;
 }
 
 struct PageRankGraphFormat : public FloatGraphFormat {
@@ -93,10 +93,10 @@ struct PRComputation : public VertexComputation<float, float, float> {
     }
     float diff = fabsf(copy - *ptr);
     aggregate("convergence", &diff);
-    const float* val = getAggregatedValue<float>("convergence");
-    if (val) {  // if global convergence is available use it
-      diff = *val;
-    }
+    //const float* val = getAggregatedValue<float>("convergence");
+    //if (val) {  // if global convergence is available use it
+    //  diff = *val;
+    //}
 
     if (globalSuperstep() < 50 && diff > _limit) {
       RangeIterator<Edge<float>> edges = getEdges();

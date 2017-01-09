@@ -80,10 +80,16 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
   VPackSlice async = _userParams.slice().get("async");
   _asyncMode = _algorithm->supportsAsyncMode();
   _asyncMode = _asyncMode && (async.isNone() || async.getBoolean());
+  if (_asyncMode) {
+    LOG(INFO) << "Running in async mode";
+  }
   VPackSlice lazy = _userParams.slice().get("lazyLoading");
   _lazyLoading = _algorithm->supportsLazyLoading();
   _lazyLoading = _lazyLoading && (lazy.isNone() || lazy.getBoolean());
-
+  if (_lazyLoading) {
+    LOG(INFO) << "Enabled lazy loading";
+  }
+  
   LOG(INFO) << "Telling workers to load the data";
   int res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
@@ -119,13 +125,17 @@ bool Conductor::_startGlobalStep() {
   /// collect the aggregators
   _aggregators->resetValues();
   _statistics.resetActiveCount();
+  _totalVerticesCount = 0;// might change during execution
+  _totalEdgesCount = 0;
   for (auto const& req : requests) {
     VPackSlice payload = req.result.answer->payload();
-    VPackSlice slice = payload.get(Utils::aggregatorValuesKey);
-    if (slice.isObject()) {
-      _aggregators->aggregateValues(slice);
+    VPackSlice aggVals = payload.get(Utils::aggregatorValuesKey);
+    if (aggVals.isObject()) {
+      _aggregators->aggregateValues(aggVals);
     }
     _statistics.accumulate(payload);
+    _totalVerticesCount += payload.get(Utils::vertexCount).getUInt();
+    _totalEdgesCount += payload.get(Utils::edgeCount).getUInt();
   }
 
   // workers are done if all messages were processed and no active vertices
@@ -151,6 +161,8 @@ bool Conductor::_startGlobalStep() {
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+  b.add(Utils::vertexCount, VPackValue(_totalVerticesCount));
+  b.add(Utils::edgeCount, VPackValue(_totalEdgesCount));
   if (_aggregators->size() > 0) {
     b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
     _aggregators->serializeValues(b);
@@ -223,8 +235,8 @@ void Conductor::finishedWorkerStep(VPackSlice& data) {
     if (_respondedServers.size() != _dbServers.size()) {
       return;
     }
-  } else if (_statistics.clientCount() < _dbServers.size() ||
-             !_statistics.allMessagesProcessed()) {
+  } else if (_statistics.clientCount() < _dbServers.size() ||// no messages
+             !_statistics.allMessagesProcessed()) {// haven't received msgs
     return;
   }
 
