@@ -112,15 +112,14 @@ void MMFilesRevisionsCache::update(TRI_voc_rid_t revisionId, uint8_t const* data
 
   WRITE_LOCKER(locker, _lock);
   
-  MMFilesDocumentPosition old = _positions.removeByKey(nullptr, &revisionId);
-  if (!old) {
+  MMFilesDocumentPosition* old = _positions.findByKeyRef(nullptr, &revisionId);
+  if (old == nullptr) {
     return;
   }
      
-  old.dataptr(dataptr);
-  old.fid(fid, isInWal); 
-  
-  _positions.insert(nullptr, old);
+  // update the element in place
+  old->dataptr(dataptr);
+  old->fid(fid, isInWal); 
 }
   
 bool MMFilesRevisionsCache::updateConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal) {
