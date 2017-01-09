@@ -1,6 +1,8 @@
 Module "actions"
 ================
 
+`const actions = require('@arangodb/actions')`
+
 The action module provides the infrastructure for defining low-level HTTP actions.
 
 If you want to define HTTP endpoints in ArangoDB you should probably use the [Foxx microservice framework](../../Foxx/README.md) instead.

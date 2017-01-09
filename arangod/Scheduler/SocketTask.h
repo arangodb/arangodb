@@ -29,6 +29,7 @@
 
 #include <boost/asio/ssl.hpp>
 
+#include "Basics/Mutex.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/asio-helper.h"
 #include "Scheduler/Socket.h"
@@ -93,12 +94,15 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   basics::StringBuffer _readBuffer;
 
+ private:
+  Mutex _writeLock;
   basics::StringBuffer* _writeBuffer = nullptr;
   TRI_request_statistics_t* _writeBufferStatistics = nullptr;
 
   std::deque<basics::StringBuffer*> _writeBuffers;
   std::deque<TRI_request_statistics_t*> _writeBuffersStats;
 
+ protected:
   std::unique_ptr<Socket> _peer;
   boost::posix_time::milliseconds _keepAliveTimeout;
   boost::asio::deadline_timer _keepAliveTimer;

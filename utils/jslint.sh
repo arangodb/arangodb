@@ -61,6 +61,7 @@ fi
 exec $ARANGOSH \
     -c none \
     --log.level error \
+    --log.file - \
     --server.password "" \
     --javascript.startup-directory ./js \
     ${FILELIST}

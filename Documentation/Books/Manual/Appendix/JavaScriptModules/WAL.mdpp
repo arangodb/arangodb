@@ -1,6 +1,8 @@
 Write-ahead log
 ===============
 
+`const wal = require('internal').wal`
+
 This module provides functionality for administering the write-ahead logs.
 
 ### Configuration

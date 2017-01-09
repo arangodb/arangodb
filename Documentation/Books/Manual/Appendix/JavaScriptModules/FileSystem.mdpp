@@ -1,10 +1,11 @@
 Filesystem Module
 =================
 
-`require('fs')`
+`const fs = require('fs')`
 
-The implementation tries to follow the CommonJS specification where possible.
-[Filesystem/A/0](http://wiki.commonjs.org/wiki/Filesystem/A/0).
+The implementation tries to follow the CommonJS
+[Filesystem/A/0](http://wiki.commonjs.org/wiki/Filesystem/A/0)
+specification where possible.
 
 Single File Directory Manipulation
 ----------------------------------

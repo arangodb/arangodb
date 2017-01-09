@@ -1672,18 +1672,25 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
     return true;
   }
 
-  {
-    arangodb::aql::QueryCache::instance()->invalidate(_vocbase, name());
-    if (!removeIndex(iid)) {
-      // We tried to remove an index that does not exist
-      events::DropIndex("", std::to_string(iid),
-                        TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-      return false;
-    }
+  arangodb::aql::QueryCache::instance()->invalidate(_vocbase, name());
+  if (!removeIndex(iid)) {
+    // We tried to remove an index that does not exist
+    events::DropIndex("", std::to_string(iid),
+                      TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+    return false;
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->dropIndex(_vocbase, cid(), iid);
+
+  {
+    VPackBuilder builder;
+    bool const doSync =
+        application_features::ApplicationServer::getFeature<DatabaseFeature>(
+            "Database")->forceSyncProperties();
+    toVelocyPack(builder, false);
+    update(builder.slice(), doSync);
+  }
 
   if (writeMarker) {
     int res = TRI_ERROR_NO_ERROR;

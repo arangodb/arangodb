@@ -881,6 +881,17 @@ Section "-Core installation"
 SectionEnd
 
 Function .onInstSuccess
+        
+  IfSilent 0 continueUI
+  Call insert_registration_keys
+  Push "$INSTDIR/${BIN_DIR}"
+  StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 doNotAddToPath
+  StrCmp $DO_NOT_ADD_TO_PATH "1" doNotAddToPath 0
+  Call AddToPath
+doNotAddToPath:
+  Return
+
+continueUI:
   ${If} $TRI_INSTALL_TYPE == 'Service'
     ${OpenURL} ${TRI_AARDVARK_URL}
   ${EndIf}
@@ -897,6 +908,10 @@ SectionEnd
 ;--------------------------------
 ; Create custom pages
 Function InstallOptionsPage
+   IfSilent 0 continueUI
+   Return
+
+continueUI:
    Push ${TEMP1}
 displayAgain:
 
@@ -1145,15 +1160,6 @@ Function un.onInit
     SetShellVarContext current
   ${EndIf}
 
-  ${GetParameters} $R0
-  ClearErrors
-  ${GetOptions} $PASSWORD /PASSWORD= $0
-  ${GetOptions} $INSTALL_DESKTOP /DESKTOPICON $0
-  ${GetOptions} $DO_NOT_ADD_TO_PATH /NOPATH $0
-  ${GetOptions} $ADD_TO_PATH_ALL_USERS /ALLPATH $0
-  ${GetOptions} $ADD_TO_PATH_CURRENT_USER /CURPATH $0
-  ${GetOptions} $TRI_INSTALL_TYPE /INSTALLTYPE= $0
-  ${GetOptions} $INSTDIR /INSTDIR= $0
 FunctionEnd
 
 ;--- Add/Remove callback functions: ---
@@ -1349,15 +1355,73 @@ SectionEnd
 ;--------------------------------
 ; determine admin versus local install
 ; Is install for "AllUsers" or "JustMe"?
-; Default to "JustMe" - set to "AllUsers" if admin or on Win9x
+; Default to "JustMe" - set to "AllUsers" if admin
 ; This function is used for the very first "custom page" of the installer.
 ; This custom page does not show up visibly, but it executes prior to the
 ; first visible page and sets up $INSTDIR properly...
 ; Choose different default installation folder based on SV_ALLUSERS...
 ; "Program Files" for AllUsers, "My Documents" for JustMe...
-
+        
+var allPathOpts
+        
 Function .onInit
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/PASSWORD="    $PASSWORD
+  IfErrors 0 +2
+  StrCpy $PASSWORD ""
+        
+  ${GetParameters} $R0        
+  ClearErrors
+  ${GetOptions} $R0 "/INSTDIR="     $INSTDIR
+  IfErrors 0 +2
+  StrCpy $INSTDIR ""
+
+  ${GetParameters} $R0        
+  ${GetOptions} $R0 "/DESKTOPICON=" $INSTALL_DESKTOP
+  IfErrors 0 +2
+  StrCpy $INSTALL_DESKTOP "1"
+        
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/NOPATH="       $DO_NOT_ADD_TO_PATH
+  IfErrors 0 +2
+  StrCpy $DO_NOT_ADD_TO_PATH "0"
+
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/ALLPATH="      $ADD_TO_PATH_ALL_USERS
+  IfErrors 0 +2
+  StrCpy $ADD_TO_PATH_ALL_USERS "0"
+        
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/CURPATH="      $ADD_TO_PATH_CURRENT_USER
+  IfErrors 0 +3
+  StrCpy $ADD_TO_PATH_CURRENT_USER "0"
+
+  IfSilent 0 dontValidatePathOption
+  StrCpy $allPathOpts "0"
+  IntOp $allPathOpts $allPathOpts + $DO_NOT_ADD_TO_PATH
+  IntOp $allPathOpts $allPathOpts + $ADD_TO_PATH_ALL_USERS
+  IntOp $allPathOpts $allPathOpts + $ADD_TO_PATH_CURRENT_USER
+  ${If} $allPathOpts != 1
+      MessageBox MB_OK "You have to exactly set one of /NOPATH=$DO_NOT_ADD_TO_PATH, /ALLPATH=$ADD_TO_PATH_ALL_USERS or /CURPATH=$ADD_TO_PATH_CURRENT_USER to 1!"
+      Abort
+  ${EndIf}
+dontValidatePathOption:
+
+  IfSilent 0 dontFetchPath
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/INSTALLTYPE=" $TRI_INSTALL_TYPE
+  StrLen $0 "$INSTDIR"
+  ${If} $0 < 3
+    MessageBox MB_OK 'Refusing to install flat on drive "$INSTDIR"'
+    Abort
+  ${EndIf}
   StrCmp "@CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL@" "ON" 0 inst
+dontFetchPath:
 
   ReadRegStr $0 HKLM "${TRI_UNINSTALL_REG_PATH}" "UninstallString"
   StrCmp $0 "" inst

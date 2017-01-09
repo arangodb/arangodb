@@ -3246,6 +3246,8 @@ const recoveryTests = [
   'many-logs',
   'multiple-logs',
   'collection-recreate',
+  'drop-index',
+  'drop-index-shutdown',
   'drop-indexes',
   'create-indexes',
   'create-collections',

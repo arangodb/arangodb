@@ -313,7 +313,8 @@ function createLocalDatabases (plannedDatabases, currentDatabases) {
   var ourselves = global.ArangoServerState.id();
   var createDatabaseAgency = function (payload) {
     var envelope = {};
-    envelope[curDatabases + payload.name + '/' + ourselves] = payload;
+    envelope[curDatabases + payload.name + '/' + ourselves] = 
+      { 'op': 'set', 'new': payload };
     envelope[curVersion] = {"op":"increment"};
     global.ArangoAgency.write([[envelope]]);
   };
@@ -476,22 +477,24 @@ function createLocalCollections (plannedCollections, planVersion,
   var ourselves = global.ArangoServerState.id();
 
   var createCollectionAgency = function (database, shard, collInfo, error) {
-    var payload = { error: error.error,
+    
+    var payload = {
+      error: error.error,
       errorNum: error.errorNum,
       errorMessage: error.errorMessage,
       satellite: collInfo.replicationFactor === 0,
       indexes: collInfo.indexes,
       servers: [ ourselves ],
-    planVersion: planVersion };
-
+      planVersion: planVersion };
+    
     console.debug('creating Current/Collections/' + database + '/' +
                   collInfo.planId + '/' + shard);
 
     var envelope = {};
-    //envelope[curCollections + database + '/' + collInfo.planId + '/' + shard] = payload;
-    global.ArangoAgency.set('Current/Collections/' + database + '/' + collInfo.planId + '/' + shard, payload);
+    envelope[curCollections  + database + '/' + collInfo.planId + '/' + shard] =
+      { 'op': 'set', 'new': payload };
     envelope[curVersion] = {'op':'increment'};
-    global.ArangoAgency.write([[envelope]]);
+    var ret = global.ArangoAgency.write([[envelope]]);
     
     console.debug('creating Current/Collections/' + database + '/' +
                   collInfo.planId + '/' + shard + ' done.');
@@ -749,7 +752,7 @@ function createLocalCollections (plannedCollections, planVersion,
       }
       return cb(...args);
     };
-    migrate();
+    migrate(fakeLock);
     //writeLocked({ part: 'Current' }, migrate, [fakeLock]);
   } else {
     migrate();
@@ -764,14 +767,17 @@ function leaderResign (database, collId, shardName, ourselves) {
     db._executeTransaction(
       { 'collections': { 'write': [shardName] },
         'action': function () {
-          var path = 'Current/Collections/' + database + '/' + collId + '/' +
+          var path = curCollections + database + '/' + collId + '/' +
             shardName + '/servers';
-          var servers = global.ArangoAgency.get(path).arango.Current
-            .Collections[database][collId][shardName].servers;
+          var servers = global.ArangoAgency.read([[path]])[0]
+              .arango.Current.Collections[database][collId][shardName].servers;
           if (servers[0] === ourselves) {
             servers[0] = '_' + ourselves;
-            global.ArangoAgency.set(path, servers);
-            global.ArangoAgency.increaseVersion('Current/Version');
+            
+            var envelope = {};
+            envelope[path] = {'op':'set', 'new':servers};
+            envelope[curVersion] = {'op':'increment'};
+            global.ArangoAgency.write([[envelope]]);
           }
       } });
   } catch (x) {
@@ -1223,6 +1229,9 @@ function scheduleOneShardSynchronization (database, shard, planId, leader) {
 
 function synchronizeLocalFollowerCollections (plannedCollections,
   currentCollections) {
+  if (typeof currentCollections !== 'object') {
+    throw new Error('Current.Collections is not an object!');
+  }
   var ourselves = global.ArangoServerState.id();
 
   var db = require('internal').db;
