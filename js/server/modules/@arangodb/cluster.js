@@ -314,7 +314,7 @@ function createLocalDatabases (plannedDatabases, currentDatabases) {
   var createDatabaseAgency = function (payload) {
     var envelope = {};
     envelope[curDatabases + payload.name + '/' + ourselves] = 
-      { 'op': 'set', 'new': payload }
+      { 'op': 'set', 'new': payload };
     envelope[curVersion] = {"op":"increment"};
     global.ArangoAgency.write([[envelope]]);
   };
@@ -492,7 +492,7 @@ function createLocalCollections (plannedCollections, planVersion,
 
     var envelope = {};
     envelope[curCollections  + database + '/' + collInfo.planId + '/' + shard] =
-      { 'op': 'set', 'new': payload }
+      { 'op': 'set', 'new': payload };
     envelope[curVersion] = {'op':'increment'};
     var ret = global.ArangoAgency.write([[envelope]]);
     
