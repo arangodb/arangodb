@@ -40,7 +40,7 @@ using namespace arangodb::basics;
 #ifdef TRI_SHOW_LOCK_TIME
 
 MutexLocker::MutexLocker(Mutex* mutex, char const* file, int line)
-    : _mutex(mutex), _file(file), _line(line), _time(0.0) {
+    : _mutex(mutex), isLocked(true), _file(file), _line(line), _time(0.0) {
   double t = TRI_microtime();
   _mutex->lock();
   _time = TRI_microtime() - t;
@@ -48,7 +48,9 @@ MutexLocker::MutexLocker(Mutex* mutex, char const* file, int line)
 
 #else
 
-MutexLocker::MutexLocker(Mutex* mutex) : _mutex(mutex) { _mutex->lock(); }
+MutexLocker::MutexLocker(Mutex* mutex) : _mutex(mutex), _isLocked(true) { 
+  _mutex->lock(); 
+}
 
 #endif
 
@@ -57,11 +59,20 @@ MutexLocker::MutexLocker(Mutex* mutex) : _mutex(mutex) { _mutex->lock(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 MutexLocker::~MutexLocker() {
-  _mutex->unlock();
+  if (_isLocked) {
+    _mutex->unlock();
+  }
 
 #ifdef TRI_SHOW_LOCK_TIME
   if (_time > TRI_SHOW_LOCK_THRESHOLD) {
     LOG(WARN) << "MutexLocker " << _file << ":" << _line << " took " << _time << " s";
   }
 #endif
+}
+
+void MutexLocker::unlock() {
+  if (_isLocked) {
+    _mutex->unlock();
+    _isLocked = false;
+  }
 }

@@ -26,6 +26,7 @@
 
 #include "SocketTask.h"
 
+#include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/socket-utils.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -134,11 +135,13 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
       LOG_TOPIC(TRACE, Logger::COMMUNICATION)
           << "SocketTask::addWriteBuffer - "
              "Statistics release: nullptr - "
-             "nothing to realease";
+             "nothing to release";
     }
 
     return;
   }
+
+  MUTEX_LOCKER(locker, _writeLock);
 
   if (_writeBuffer != nullptr) {
     _writeBuffers.push_back(buffer);
@@ -156,19 +159,19 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
   }
 
   if (_writeBuffer != nullptr) {
-    boost::system::error_code ec;
     size_t total = _writeBuffer->length();
     size_t written = 0;
 
     boost::system::error_code err;
     do {
-      ec.assign(boost::system::errc::success,
-                boost::system::generic_category());
+      err.assign(boost::system::errc::success,
+                 boost::system::generic_category());
       written = _peer->write(_writeBuffer, err);
       if(_writeBufferStatistics){
         _writeBufferStatistics->_sentBytes += written;
       }
       if (written == total) {
+        locker.unlock();
         completedWriteBuffer();
         return;
       }
@@ -181,19 +184,27 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
       closeStream();
       return;
     }
+      
+    boost::system::error_code ec;
+    ec.assign(boost::system::errc::success,
+              boost::system::generic_category());
 
     auto self = shared_from_this();
     auto handler = [self, this](const boost::system::error_code& ec,
                                 std::size_t transferred) {
-      if(_writeBufferStatistics){
+      MUTEX_LOCKER(locker, _writeLock);
+
+      if (_writeBufferStatistics){
         _writeBufferStatistics->_sentBytes += transferred;
       }
+
       if (ec) {
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
             << "SocketTask::addWriterBuffer(async_write) - write on stream "
             << " failed with: " << ec.message();
         closeStream();
       } else {
+        locker.unlock();
         completedWriteBuffer();
       }
     };
@@ -205,44 +216,49 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
 }
 
 void SocketTask::completedWriteBuffer() {
-  delete _writeBuffer;
-  _writeBuffer = nullptr;
+  StringBuffer* buffer = nullptr;
+  TRI_request_statistics_t* statistics = nullptr;
+  {
+    MUTEX_LOCKER(locker, _writeLock);
 
-  if (_writeBufferStatistics != nullptr) {
-    _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
-#ifdef DEBUG_STATISTICS
-    LOG_TOPIC(TRACE, Logger::REQUESTS)
-      << "SocketTask::addWriteBuffer - Statistics release: "
-      << _writeBufferStatistics->to_string();
-#endif
-    TRI_ReleaseRequestStatistics(_writeBufferStatistics);
-    _writeBufferStatistics = nullptr;
-  } else {
-#ifdef DEBUG_STATISTICS
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << "SocketTask::addWriteBuffer - "
-                                          "Statistics release: nullptr - "
-                                          "nothing to realease";
-#endif
-  }
-  
-  if (_writeBuffers.empty()) {
-    if (_closeRequested) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "SocketTask::"
-                                                 "completedWriteBuffer - close "
-                                                 "requested, closing stream";
+    delete _writeBuffer;
+    _writeBuffer = nullptr;
 
-      closeStream();
+    if (_writeBufferStatistics != nullptr) {
+      _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
+#ifdef DEBUG_STATISTICS
+      LOG_TOPIC(TRACE, Logger::REQUESTS)
+        << "SocketTask::addWriteBuffer - Statistics release: "
+        << _writeBufferStatistics->to_string();
+#endif
+      TRI_ReleaseRequestStatistics(_writeBufferStatistics);
+      _writeBufferStatistics = nullptr;
+    } else {
+#ifdef DEBUG_STATISTICS
+      LOG_TOPIC(TRACE, Logger::REQUESTS) << "SocketTask::addWriteBuffer - "
+        "Statistics release: nullptr - "
+        "nothing to release";
+#endif
     }
 
-    return;
+    if (_writeBuffers.empty()) {
+      if (_closeRequested) {
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "SocketTask::"
+          "completedWriteBuffer - close "
+          "requested, closing stream";
+
+        closeStream();
+      }
+
+      return;
+    }
+
+    buffer = _writeBuffers.front();
+    _writeBuffers.pop_front();
+
+    statistics = _writeBuffersStats.front();
+    _writeBuffersStats.pop_front();
   }
-
-  StringBuffer* buffer = _writeBuffers.front();
-  _writeBuffers.pop_front();
-
-  TRI_request_statistics_t* statistics = _writeBuffersStats.front();
-  _writeBuffersStats.pop_front();
-
   addWriteBuffer(buffer, statistics);
 }
 
