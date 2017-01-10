@@ -123,7 +123,7 @@ set(DEBUG_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb3-dbg)
 configure_file(cmake/packages/dbg/deb.txt ${DEBUG_BUILD_DIR}/CMakeLists.txt @ONLY)
 
 add_custom_target(package-arongodb-dbg
-  COMMAND ${CMAKE_COMMAND} .
+	COMMAND ${CMAKE_COMMAND} . -DCMAKE_OBJCOPY=${CMAKE_OBJCOPY} 
   COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
   COMMAND cp *.deb ${PROJECT_BINARY_DIR} 
   WORKING_DIRECTORY ${DEBUG_BUILD_DIR})

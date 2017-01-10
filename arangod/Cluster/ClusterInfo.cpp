@@ -1150,8 +1150,13 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
   AgencyCommResult res = ac.sendTransactionWithFailover(transaction);
 
-  if (!res.successful()) {
-    errorMsg += std::string(" ") + __FILE__ + std::to_string(__LINE__);
+  // Only if not precondition failed
+  if (!res.successful() && res.httpCode() !=
+      (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+    errorMsg += std::string("\n") + __FILE__ + std::to_string(__LINE__);
+    errorMsg += std::string("\n") + res.errorMessage();
+    errorMsg += std::string("\n") + res.errorDetails();
+    errorMsg += std::string("\n") + res.body();
     events::CreateCollection(
         name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
     return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;

@@ -521,6 +521,10 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
       waitForSync, waitForCollector, writeShutdownFile);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_LOCK_TIMEOUT) {
+      // improved diagnostic message for this special case
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res, "timed out waiting for WAL flush operation");
+    }
     TRI_V8_THROW_EXCEPTION(res);
   }
 
