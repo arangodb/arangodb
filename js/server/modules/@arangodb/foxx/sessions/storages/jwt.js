@@ -39,7 +39,7 @@ module.exports = function jwtStorage (cfg) {
   return {
     fromClient(sid) {
       const token = crypto.jwtDecode(cfg.secret, sid, cfg.verify === false);
-      if (token.exp < Date.now()) {
+      if (token.exp < Date.now() / 1000) {
         return null;
       }
       return {
