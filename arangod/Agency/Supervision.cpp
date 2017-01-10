@@ -630,6 +630,7 @@ void Supervision::enforceReplication() {
       } catch (std::exception const& e) {
         LOG_TOPIC(WARN, Logger::AGENCY)
           << "no replicationFactor entry in " << col.toJson();
+        continue;
       }
 
       // mop: satellites => distribute to every server
