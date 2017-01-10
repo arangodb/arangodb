@@ -942,7 +942,7 @@ void Supervision::missingPrototype() {
   auto available = Job::availableServers(_snapshot);
   
   // key: prototype, value: clone
-  std::multimap<std::string, std::string> likeness;
+  //std::multimap<std::string, std::string> likeness;
   
   for (const auto& db_ : plannedDBs) { // Planned databases
     auto const& db = *(db_.second);
