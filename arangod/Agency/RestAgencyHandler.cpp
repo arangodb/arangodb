@@ -164,7 +164,6 @@ RestStatus RestAgencyHandler::handleWrite() {
     std::this_thread::sleep_for(duration_t(100));
   }
 
-
   // Do write
   write_ret_t ret;
   try {
@@ -192,6 +191,7 @@ RestStatus RestAgencyHandler::handleWrite() {
     size_t errors = 0;
     Builder body;
     body.openObject();
+    Agent::raft_commit_t result = Agent::raft_commit_t::OK;
     
     if (call_mode != "noWait") {
       // Note success/error
@@ -216,18 +216,25 @@ RestStatus RestAgencyHandler::handleWrite() {
         }
         
         if (max_index > 0) {
-          _agent->waitFor(max_index);
+          result = _agent->waitFor(max_index);
         }
         
       }
     }
     
     body.close();
-    
-    if (errors > 0) { // Some/all requests failed
-      generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
-    } else {          // All good
+
+    LOG(WARN) << result;
+    if (result == Agent::raft_commit_t::UNKNOWN) {
+      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+    } else if (result == Agent::raft_commit_t::TIMEOUT) {
+      generateResult(rest::ResponseCode::REQUEST_TIMEOUT, body.slice());
+    } else {
+      if (errors > 0) { // Some/all requests failed
+        generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
+      } else {          // All good
         generateResult(rest::ResponseCode::OK, body.slice());
+      }
     }
     
   } else {            // Redirect to leader
