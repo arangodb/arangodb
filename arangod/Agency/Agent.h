@@ -39,7 +39,11 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace consensus {
 class Agent : public arangodb::Thread {
+
  public:
+  /// @brief Possible outcome of write process
+  enum raft_commit_t {OK, UNKNOWN, TIMEOUT};
+  
   /// @brief Construct with program options
   explicit Agent(config_t const&);
 
@@ -137,7 +141,7 @@ class Agent : public arangodb::Thread {
   void reportIn(std::string const& id, index_t idx);
 
   /// @brief Wait for slaves to confirm appended entries
-  bool waitFor(index_t last_entry, double timeout = 2.0);
+  raft_commit_t waitFor(index_t last_entry, double timeout = 2.0);
 
   /// @brief Convencience size of agency
   size_t size() const;

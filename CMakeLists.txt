@@ -504,6 +504,18 @@ if (USE_FAILURE_TESTS)
 endif ()
 
 ################################################################################
+## LIBRARY RESOLV
+################################################################################
+
+if (NOT WINDOWS)
+  set(SYS_LIBS ${SYS_LIBS} resolv)
+
+  if (NOT DARWIN)
+    set(SYS_LIBS ${SYS_LIBS} rt)
+  endif ()
+endif ()
+
+################################################################################
 ## JEMALLOC
 ################################################################################
 if (WINDOWS OR SOLARIS OR USE_TCMALLOC)
@@ -536,7 +548,7 @@ return 0; }"
   try_compile(HAS_PROPER_STATIC_JEMALLOC
     ${CMAKE_BINARY_DIR}
     ${TSTSRC}
-    LINK_LIBRARIES "jemalloc.a" "pthread"
+    LINK_LIBRARIES "jemalloc.a" "pthread" ${SYS_LIBS}
     )
   if (USE_JEMALLOC AND NOT HAS_PROPER_STATIC_JEMALLOC)
     message(FATAL_ERROR "the static system jemalloc isn't suitable! Recompile with the current compiler or disable using `-DCMAKE_CXX_FLAGS=-no-pie -DCMAKE_C_FLAGS=-no-pie`")
@@ -577,18 +589,6 @@ endif ()
 if (${USE_JEMALLOC} AND ${USE_TCMALLOC})
   MESSAGE(FATAL_ERROR " you mustn't demand for tcmalloc and jemalloc at the same time!")
 endif()
-
-################################################################################
-## LIBRARY RESOLV
-################################################################################
-
-if (NOT WINDOWS)
-  set(SYS_LIBS ${SYS_LIBS} resolv)
-
-  if (NOT DARWIN)
-    set(SYS_LIBS ${SYS_LIBS} rt)
-  endif ()
-endif ()
 
 ################################################################################
 ## FLAGS
