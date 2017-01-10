@@ -34,6 +34,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <array>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -155,7 +157,7 @@ bool AqlValue::isArray() const noexcept {
   }
 }
 
-std::array<std::string const, 8> AqlValue::typeStrings = {
+std::array<std::string const, 8> AqlValue::typeStrings = { {
   "none",
   "null",
   "bool",
@@ -163,7 +165,7 @@ std::array<std::string const, 8> AqlValue::typeStrings = {
   "string",
   "object",
   "array",
-  "unknown"};
+  "unknown"} };
 
 std::string const & AqlValue::getTypeString() const noexcept {
   if(isNone()) {
