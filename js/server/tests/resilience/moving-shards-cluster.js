@@ -161,10 +161,10 @@ function MovingShardsSuite () {
       count = 100;
       while (--count > 0) {
         var obj = getCleanedOutServers();
-        if (obj.cleanedServers.indexOf(id) < 0) {
+        console.warn(obj);
+        if (obj.cleanedServers.indexOf(id) >= 0) {
           break;
         }
-        console.info("cleanedServers:", obj);
         wait(1.0);
       }
       if (count <= 0) {

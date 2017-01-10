@@ -623,7 +623,14 @@ void Supervision::enforceReplication() {
     auto const& db = *(db_.second);
     for (const auto& col_ : db.children()) { // Planned collections
       auto const& col = *(col_.second);
-      auto replicationFactor = col("replicationFactor").slice().getUInt();
+      
+      size_t replicationFactor;
+      try {
+        replicationFactor = col("replicationFactor").slice().getUInt();
+      } catch (std::exception const& e) {
+        LOG_TOPIC(WARN, Logger::AGENCY)
+          << "no replicationFactor entry in " << col.toJson();
+      }
 
       // mop: satellites => distribute to every server
       if (replicationFactor == 0) {
