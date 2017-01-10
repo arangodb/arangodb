@@ -1150,7 +1150,9 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
   AgencyCommResult res = ac.sendTransactionWithFailover(transaction);
 
-  if (!res.successful()) {
+  // Only if not precondition failed
+  if (!res.successful() && res.httpCode() !=
+      (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
     errorMsg += std::string("\n") + __FILE__ + std::to_string(__LINE__);
     errorMsg += std::string("\n") + res.errorMessage();
     errorMsg += std::string("\n") + res.errorDetails();
