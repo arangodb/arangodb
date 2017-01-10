@@ -479,7 +479,11 @@ if [ -z "${MSVC}" ]; then
         if [ ! -f ${OBJCOPY} ] ; then
             set +e
             OBJCOPY=`which objcopy`
+            
             set -e
+            if test -n "${OBJCOPY}" -a ! -x "${OBJCOPY}"; then
+                OBJCOPY=""
+            fi
         fi
         export OBJCOPY
     fi
