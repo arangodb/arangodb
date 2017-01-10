@@ -285,7 +285,7 @@ void Worker<V, E, M>::_startProcessing() {
       }
       auto vertices = _graphStore->vertexIterator(start, end);
       if (_processVertices(vertices)) {// should work like a join operation
-        _finishedProcessing();
+        _finishedProcessing();//last thread turns the lights out
       }
     });
     start = end;
@@ -397,19 +397,6 @@ void Worker<V, E, M>::_finishedProcessing() {
   VPackBuilder package;
   {  // only lock after there are no more processing threads
     MUTEX_LOCKER(guard, _commandMutex);
-    _state = WorkerState::IDLE;
-
-    // ==================== Track statistics =================================
-    // the stats we want to keep should be final. At this point we can only be
-    // sure of the
-    // messages we have received in total from the last superstep, and the
-    // messages we have send in
-    // the current superstep. Other workers are likely not finished yet, and
-    // might still send stuff
-    _expectedGSS = _config._globalSuperstep + 1;
-    _config._localSuperstep++;
-    _superstepStats.receivedCount = _readCache->receivedMessageCount();
-    // load vertices which received messages for the next lss / gss
     
     if (_config.lazyLoading()) {  // TODO how to improve this?
       // hack to determine newly added vertices
@@ -423,11 +410,27 @@ void Worker<V, E, M>::_finishedProcessing() {
                           });
       
       size_t total = _graphStore->localVertexCount();
-      auto addedVertices = _graphStore->vertexIterator(currentAVCount, total);
-      _processVertices(addedVertices);
+      if (total > currentAVCount) {
+        _runningThreads = 1;
+        auto addedVertices = _graphStore->vertexIterator(currentAVCount, total);
+        _processVertices(addedVertices);
+      }
     }
+    
+    // ==================== Track statistics =================================
+    // the stats we want to keep should be final. At this point we can only be
+    // sure of the
+    // messages we have received in total from the last superstep, and the
+    // messages we have send in
+    // the current superstep. Other workers are likely not finished yet, and
+    // might still send stuff
+    _state = WorkerState::IDLE;// only set the state here, because _processVertices checks for it
+    _expectedGSS = _config._globalSuperstep + 1;
+    _config._localSuperstep++;
+    _superstepStats.receivedCount = _readCache->receivedMessageCount();
+    // load vertices which received messages for the next lss / gss
     _readCache->clear();  // no need to keep old messages around
-
+    
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey,
