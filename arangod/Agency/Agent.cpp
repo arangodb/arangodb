@@ -178,7 +178,7 @@ bool Agent::waitFor(index_t index, double timeout) {
 
     // timeout
     if (!_waitForCV.wait(static_cast<uint64_t>(1.0e6 * timeout))) {
-      return false;
+      return (_lastCommitIndex >= index);
     }
 
     // shutting down
