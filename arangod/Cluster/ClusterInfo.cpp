@@ -1294,6 +1294,17 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
                                precondition);
   res = ac.sendTransactionWithFailover(trans);
 
+  if (!res.successful()) {
+    LOG(ERR) << "###################### WAS ERLAUBE? ####################";
+    AgencyCommResult ag = ac.getValues("");
+    if (ag.successful()) {
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+                                      << ag.slice().toJson();
+    } else {
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+    }
+  }
+
   // Update our own cache:
   loadPlan();
 
