@@ -224,7 +224,6 @@ RestStatus RestAgencyHandler::handleWrite() {
     
     body.close();
 
-    LOG(WARN) << result;
     if (result == Agent::raft_commit_t::UNKNOWN) {
       generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
     } else if (result == Agent::raft_commit_t::TIMEOUT) {
