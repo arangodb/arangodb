@@ -57,6 +57,7 @@
 #include "Wal/LogfileManager.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/AggregatorHandler.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HexDump.h>
@@ -1975,6 +1976,9 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   result.add("state", VPackValue(pregel::ExecutionStateNames[c->getState()]));
   result.add("gss", VPackValue(c->globalSuperstep()));
   result.add("totalRuntime", VPackValue(c->totalRuntimeSecs()));
+  result.add("aggregators", VPackValue(VPackValueType::Object));
+  c->aggregators()->serializeValues(result);
+  result.close();
   c->workerStats().serializeValues(result);
   result.close();
   TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));

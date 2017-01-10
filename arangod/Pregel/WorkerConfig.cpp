@@ -85,13 +85,14 @@ PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
     return PregelID();
   }
   CollectionID coll = documentID.substr(0, pos);
-  std::string _key = documentID.substr(pos+1);
+  std::string _key = documentID.substr(pos + 1);
 
-  auto collInfo = Utils::resolveCollection(_database, coll, _collectionPlanIdMap);
+  auto collInfo =
+      Utils::resolveCollection(_database, coll, _collectionPlanIdMap);
   ShardID responsibleShard;
   Utils::resolveShard(collInfo.get(), StaticStrings::KeyString, _key,
                       responsibleShard);
-  
+
   prgl_shard_t source = this->shardId(responsibleShard);
   return PregelID(source, _key);
 }

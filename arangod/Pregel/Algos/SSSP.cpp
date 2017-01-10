@@ -79,9 +79,7 @@ struct SSSPCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
   }
 };
 
-VertexCompensation<int64_t, int64_t, int64_t>* SSSPAlgorithm::createCompensation(
-                                                                               WorkerConfig const* config) const {
+VertexCompensation<int64_t, int64_t, int64_t>*
+SSSPAlgorithm::createCompensation(WorkerConfig const* config) const {
   return new SSSPCompensation();
 }
-
-

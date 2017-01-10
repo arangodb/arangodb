@@ -44,8 +44,14 @@ struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   bool supportsLazyLoading() const override { return true; }
 
   GraphFormat<int64_t, int64_t>* inputFormat() override;
-  MessageFormat<int64_t>* messageFormat() const override;
-  MessageCombiner<int64_t>* messageCombiner() const override;
+  MessageFormat<int64_t>* messageFormat() const override {
+    return new IntegerMessageFormat();
+  }
+
+  MessageCombiner<int64_t>* messageCombiner() const override {
+    return new IntegerMinCombiner();
+  }
+
   VertexComputation<int64_t, int64_t, int64_t>* createComputation(
       WorkerConfig const* config) const override;
   Aggregator* aggregator(std::string const& name) const override;

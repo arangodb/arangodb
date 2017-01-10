@@ -169,17 +169,16 @@ int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
 
 void RecoveryManager::updatedFailedServers() {
   MUTEX_LOCKER(guard, _lock);  // we are accessing _primaryServers
-  
-  std::vector<std::string> const failed = ClusterInfo::instance()->getFailedServers();
+
+  std::vector<std::string> const failed =
+      ClusterInfo::instance()->getFailedServers();
   for (auto const& pair : _primaryServers) {
     auto const& it = std::find(failed.begin(), failed.end(), pair.second);
     if (it != failed.end()) {
       // found a failed server
       ShardID const& shard = pair.first;
-      basics::ThreadPool *pool = PregelFeature::instance()->threadPool();
-      pool->enqueue([this, shard]{
-        _renewPrimaryServer(shard);
-      });
+      basics::ThreadPool* pool = PregelFeature::instance()->threadPool();
+      pool->enqueue([this, shard] { _renewPrimaryServer(shard); });
     }
   }
 }
@@ -187,19 +186,20 @@ void RecoveryManager::updatedFailedServers() {
 // don't call while holding _lock
 void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
   MUTEX_LOCKER(guard, _lock);
-  
-  ClusterInfo *ci = ClusterInfo::instance();
+
+  ClusterInfo* ci = ClusterInfo::instance();
   auto const& conductors = _listeners.find(shard);
   auto const& currentPrimary = _primaryServers.find(shard);
-  if (conductors == _listeners.end()
-      || currentPrimary == _primaryServers.end()) {
+  if (conductors == _listeners.end() ||
+      currentPrimary == _primaryServers.end()) {
     LOG(ERR) << "Shard is not properly registered";
     return;
   }
-  
+
   int tries = 0;
   do {
-    std::shared_ptr<std::vector<ServerID>> servers = ci->getResponsibleServer(shard);
+    std::shared_ptr<std::vector<ServerID>> servers =
+        ci->getResponsibleServer(shard);
     if (servers) {
       ServerID const& nextPrimary = servers->front();
       if (currentPrimary->second != nextPrimary) {
@@ -211,8 +211,7 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
         break;
       }
     }
-    usleep(250000);// 250ms
+    usleep(250000);  // 250ms
     tries++;
   } while (tries < 2);
 }
-

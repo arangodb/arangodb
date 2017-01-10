@@ -89,7 +89,7 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
   if (_lazyLoading) {
     LOG(INFO) << "Enabled lazy loading";
   }
-  
+
   LOG(INFO) << "Telling workers to load the data";
   int res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
@@ -125,7 +125,7 @@ bool Conductor::_startGlobalStep() {
   /// collect the aggregators
   _aggregators->resetValues();
   _statistics.resetActiveCount();
-  _totalVerticesCount = 0;// might change during execution
+  _totalVerticesCount = 0;  // might change during execution
   _totalEdgesCount = 0;
   for (auto const& req : requests) {
     VPackSlice payload = req.result.answer->payload();
@@ -235,8 +235,8 @@ void Conductor::finishedWorkerStep(VPackSlice& data) {
     if (_respondedServers.size() != _dbServers.size()) {
       return;
     }
-  } else if (_statistics.clientCount() < _dbServers.size() ||// no messages
-             !_statistics.allMessagesProcessed()) {// haven't received msgs
+  } else if (_statistics.clientCount() < _dbServers.size() ||  // no messages
+             !_statistics.allMessagesProcessed()) {  // haven't received msgs
     return;
   }
 
@@ -351,7 +351,7 @@ void Conductor::startRecovery() {
     b.close();
     _dbServers = goodServers;
     _sendToAllDBServers(Utils::cancelGSSPath, b.slice());
-    usleep(5 * 1000000);// workers may need a bit of time (5 secs)
+    usleep(5 * 1000000);  // workers may need a bit of time (5 secs)
 
     // Let's try recovery
     if (_algorithm->supportsCompensation()) {
@@ -517,14 +517,14 @@ int Conductor::_finalizeWorkers() {
   int res = _sendToAllDBServers(Utils::finalizeExecutionPath, b.slice());
   _endTimeSecs = TRI_microtime();
   b.clear();
-  
+
   b.openObject();
   b.add("stats", VPackValue(VPackValueType::Object));
-    _statistics.serializeValues(b);
-    b.close();
+  _statistics.serializeValues(b);
+  b.close();
   b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-    _aggregators->serializeValues(b);
-    b.close();
+  _aggregators->serializeValues(b);
+  b.close();
   b.close();
 
   LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";

@@ -105,7 +105,7 @@ class WorkerConfig {
     return std::find(_localVertexShardIDs.begin(), _localVertexShardIDs.end(),
                      shard) != _localVertexShardIDs.end();
   }
-  
+
   PregelID documentIdToPregel(std::string const& documentID) const;
 
  private:

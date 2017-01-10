@@ -84,7 +84,8 @@ class MinAggregator : public Aggregator {
   T _value, _initial;
 
  public:
-  MinAggregator(T init, bool perm = false) : Aggregator(perm), _value(init), _initial(init) {}
+  MinAggregator(T init, bool perm = false)
+      : Aggregator(perm), _value(init), _initial(init) {}
 
   void aggregate(void const* valuePtr) override {
     T other = *((T*)valuePtr);

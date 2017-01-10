@@ -101,7 +101,7 @@ void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
   ShardID responsibleShard;
   Utils::resolveShard(collInfo.get(), StaticStrings::KeyString, _key,
                       responsibleShard);
-  
+
   std::vector<ShardID> const& shards = config.localVertexShardIDs();
   auto const& it = std::find(shards.begin(), shards.end(), responsibleShard);
   if (it != shards.end()) {
@@ -402,7 +402,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
     b.add(StaticStrings::KeyString, VPackValue(vertexEntry.key()));
     bool store = _graphFormat->buildVertexDocument(b, data, sizeof(V));
     b.close();
-    
+
     if (store) {
       OperationResult result = writeTrx.update(shard, b.slice(), options);
       if (result.code != TRI_ERROR_NO_ERROR) {

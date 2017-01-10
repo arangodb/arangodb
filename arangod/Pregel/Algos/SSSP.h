@@ -44,7 +44,8 @@ struct SSSPAlgorithm : public SimpleAlgorithm<int64_t, int64_t, int64_t> {
   MessageCombiner<int64_t>* messageCombiner() const override;
   VertexComputation<int64_t, int64_t, int64_t>* createComputation(
       WorkerConfig const*) const override;
-  VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(WorkerConfig const*) const override;
+  VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(
+      WorkerConfig const*) const override;
 };
 }
 }

@@ -79,14 +79,14 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   // of time. Therefore this is performed asynchronous
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this, vocbase] {
-    
-    {// never modify the graph store without holding the mutex
+
+    {  // never modify the graph store without holding the mutex
       MUTEX_LOCKER(guard, _commandMutex);
       if (_config.lazyLoading()) {
         std::vector<std::string> activeSet = _algorithm->initialActiveSet();
         if (activeSet.size() == 0) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "There needs to be one active vertice");
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL, "There needs to be one active vertice");
         }
         for (std::string const& documentID : activeSet) {
           _graphStore->loadDocument(_config, documentID);
@@ -177,14 +177,13 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
   // responds with info which allows the conductor to decide whether
   // to start the next GSS or end the execution
   response.openObject();
-    response.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    response.add(Utils::activeCountKey, VPackValue(_activeCount));
-    response.add(Utils::vertexCount,
-                 VPackValue(_graphStore->localVertexCount()));
-    response.add(Utils::edgeCount, VPackValue(_graphStore->localEdgeCount()));
-    response.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-      _workerAggregators->serializeValues(response);
-    response.close();
+  response.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+  response.add(Utils::activeCountKey, VPackValue(_activeCount));
+  response.add(Utils::vertexCount, VPackValue(_graphStore->localVertexCount()));
+  response.add(Utils::edgeCount, VPackValue(_graphStore->localEdgeCount()));
+  response.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+  _workerAggregators->serializeValues(response);
+  response.close();
   response.close();
 
   LOG(INFO) << "Worker sent prepare GSS response: " << response.toJson();
@@ -265,7 +264,7 @@ void Worker<V, E, M>::cancelGlobalStep(VPackSlice data) {
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_startProcessing() {
   _state = WorkerState::COMPUTING;
-  _activeCount = 0;// active count is only valid after the run
+  _activeCount = 0;  // active count is only valid after the run
 
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   size_t total = _graphStore->localVertexCount();
@@ -284,13 +283,13 @@ void Worker<V, E, M>::_startProcessing() {
         return;
       }
       auto vertices = _graphStore->vertexIterator(start, end);
-      if (_processVertices(vertices)) {// should work like a join operation
-        _finishedProcessing();//last thread turns the lights out
+      if (_processVertices(vertices)) {  // should work like a join operation
+        _finishedProcessing();           // last thread turns the lights out
       }
     });
     start = end;
     end = end + delta;
-    if (total < end + delta) {// swallow the rest
+    if (total < end + delta) {  // swallow the rest
       end = total;
     }
   } while (start != total);
@@ -377,7 +376,7 @@ bool Worker<V, E, M>::_processVertices(
   WorkerStats stats;
   stats.sendCount = outCache->sendCount();
   stats.superstepRuntimeSecs = TRI_microtime() - start;
-  
+
   {  // only one thread at a time
     MUTEX_LOCKER(guard, _threadMutex);
     // merge the thread local stats and aggregators
@@ -385,19 +384,17 @@ bool Worker<V, E, M>::_processVertices(
     _superstepStats.accumulate(stats);
     _activeCount += activeCount;
     _runningThreads--;
-    return _runningThreads == 0;// should work like a join operation
+    return _runningThreads == 0;  // should work like a join operation
   }
 }
 
 // called at the end of a worker thread, needs mutex
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_finishedProcessing() {
-  
-
   VPackBuilder package;
   {  // only lock after there are no more processing threads
     MUTEX_LOCKER(guard, _commandMutex);
-    
+
     if (_config.lazyLoading()) {  // TODO how to improve this?
       // hack to determine newly added vertices
       size_t currentAVCount = _graphStore->localVertexCount();
@@ -405,10 +402,11 @@ void Worker<V, E, M>::_finishedProcessing() {
       for (VertexEntry* vertexEntry : currentVertices) {
         _readCache->erase(vertexEntry->shard(), vertexEntry->key());
       }
-      _readCache->forEach([this](prgl_shard_t shard, std::string const& key, M const&) {
-                            _graphStore->loadDocument(_config, shard, key);
-                          });
-      
+      _readCache->forEach(
+          [this](prgl_shard_t shard, std::string const& key, M const&) {
+            _graphStore->loadDocument(_config, shard, key);
+          });
+
       size_t total = _graphStore->localVertexCount();
       if (total > currentAVCount) {
         _runningThreads = 1;
@@ -416,7 +414,7 @@ void Worker<V, E, M>::_finishedProcessing() {
         _processVertices(addedVertices);
       }
     }
-    
+
     // ==================== Track statistics =================================
     // the stats we want to keep should be final. At this point we can only be
     // sure of the
@@ -424,13 +422,14 @@ void Worker<V, E, M>::_finishedProcessing() {
     // messages we have send in
     // the current superstep. Other workers are likely not finished yet, and
     // might still send stuff
-    _state = WorkerState::IDLE;// only set the state here, because _processVertices checks for it
+    _state = WorkerState::IDLE;  // only set the state here, because
+                                 // _processVertices checks for it
     _expectedGSS = _config._globalSuperstep + 1;
     _config._localSuperstep++;
     _superstepStats.receivedCount = _readCache->receivedMessageCount();
     // load vertices which received messages for the next lss / gss
     _readCache->clear();  // no need to keep old messages around
-    
+
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey,
@@ -482,9 +481,8 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice body) {
   VPackSlice store = body.get(Utils::storeResultsKey);
   if (store.isBool() && store.getBool() == true) {
     LOG(INFO) << "Storing results";
-    if (_config.lazyLoading()) {// tell graphstore to remove read locks
-      _graphStore->cleanupTransactions();
-    }
+    // tell graphstore to remove read locks
+    _graphStore->cleanupTransactions();
     _graphStore->storeResults(_config);
   } else {
     LOG(WARN) << "Discarding results";
@@ -579,7 +577,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice data) {
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string path, VPackSlice message) {
   LOG(INFO) << "Calling the conductor";
-  
+
   ClusterComm* cc = ClusterComm::instance();
   std::string baseUrl = Utils::baseUrl(_config.database());
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();

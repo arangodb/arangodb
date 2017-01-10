@@ -50,15 +50,14 @@ Aggregator* AggregatorHandler::_create(std::string const& name) {
 
 void AggregatorHandler::aggregate(std::string const& name,
                                   const void* valuePtr) {
-  Aggregator *agg = _create(name);
+  Aggregator* agg = _create(name);
   if (agg) {
     agg->aggregate(valuePtr);
   }
 }
 
-const void* AggregatorHandler::getAggregatedValue(
-    std::string const& name) {
-  Aggregator *agg =  _create(name);
+const void* AggregatorHandler::getAggregatedValue(std::string const& name) {
+  Aggregator* agg = _create(name);
   return agg != nullptr ? agg->getValue() : nullptr;
 }
 
@@ -73,7 +72,7 @@ void AggregatorHandler::resetValues() {
 void AggregatorHandler::aggregateValues(AggregatorHandler const& workerValues) {
   for (auto const& pair : workerValues._values) {
     std::string const& name = pair.first;
-    Aggregator *agg = _create(name);
+    Aggregator* agg = _create(name);
     if (agg) {
       agg->aggregate(pair.second->getValue());
     }
@@ -83,7 +82,7 @@ void AggregatorHandler::aggregateValues(AggregatorHandler const& workerValues) {
 void AggregatorHandler::aggregateValues(VPackSlice workerValues) {
   for (auto const& keyValue : VPackObjectIterator(workerValues)) {
     std::string name = keyValue.key.copyString();
-    Aggregator *agg = _create(name);
+    Aggregator* agg = _create(name);
     if (agg) {
       agg->aggregate(keyValue.value);
     }

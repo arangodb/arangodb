@@ -93,8 +93,8 @@ struct PRComputation : public VertexComputation<float, float, float> {
     }
     float diff = fabsf(copy - *ptr);
     aggregate("convergence", &diff);
-    //const float* val = getAggregatedValue<float>("convergence");
-    //if (val) {  // if global convergence is available use it
+    // const float* val = getAggregatedValue<float>("convergence");
+    // if (val) {  // if global convergence is available use it
     //  diff = *val;
     //}
 

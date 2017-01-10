@@ -107,6 +107,7 @@ class Conductor {
   void start(std::string const& algoName, VPackSlice userConfig);
   void cancel();
   void startRecovery();
+  AggregatorHandler const* aggregators() const { return _aggregators.get(); }
 
   ExecutionState getState() const { return _state; }
   StatsManager workerStats() const { return _statistics; }

@@ -20,7 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ShortestPath.h"
+#include "Pregel/Algos/ShortestPath.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/GraphStore.h"
@@ -45,7 +45,7 @@ struct ShortestPathComp : public VertexComputation<int64_t, int64_t, int64_t> {
         current = *msg;
       };
     }
-    
+
     bool isSource = current == 0 && localSuperstep() == 0;
     int64_t* state = mutableVertexData();
     if ((current < *state && current < *max) || isSource) {
@@ -68,6 +68,7 @@ struct ShortestPathComp : public VertexComputation<int64_t, int64_t, int64_t> {
     voteHalt();
   }
 };
+
 struct arangodb::pregel::algos::SPGraphFormat
     : public GraphFormat<int64_t, int64_t> {
   std::string _sourceDocId, _targetDocId;
@@ -125,14 +126,6 @@ GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() {
   return _format;
 }
 
-MessageFormat<int64_t>* ShortestPathAlgorithm::messageFormat() const {
-  return new IntegerMessageFormat();
-}
-
-MessageCombiner<int64_t>* ShortestPathAlgorithm::messageCombiner() const {
-  return new IntegerMinCombiner();
-}
-
 VertexComputation<int64_t, int64_t, int64_t>*
 ShortestPathAlgorithm::createComputation(WorkerConfig const* _config) const {
   PregelID target = _config->documentIdToPregel(_format->_targetDocId);
@@ -140,7 +133,7 @@ ShortestPathAlgorithm::createComputation(WorkerConfig const* _config) const {
 }
 
 Aggregator* ShortestPathAlgorithm::aggregator(std::string const& name) const {
-  if (name == spUpperPathBound) {// persistent min operator
+  if (name == spUpperPathBound) {  // persistent min operator
     return new MinAggregator<int64_t>(INT64_MAX, true);
   }
   return nullptr;
