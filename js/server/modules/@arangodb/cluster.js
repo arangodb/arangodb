@@ -1328,9 +1328,47 @@ function handleCollectionChanges (plan, current, takeOverResponsibility) {
   return ok;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+// / @brief take care of collections on primary DBservers according to Plan
+// /////////////////////////////////////////////////////////////////////////////
+
+function migratePrimary(plan, current) {
+  // will analyze local state and then issue db._create(),
+  // db._drop() etc. to sync plan and local state for shards
+  let localErrors = executePlanForDatabases(plan);
+
+  // will do a diff between plan and current to find out
+  // the shards for which this db server is a planned
+  // follower. Background jobs for this activity are scheduled.
+  // This will then supervise any actions necessary
+  // to bring the shard into sync and ultimately register
+  // at the leader using addFollower
+  // this step should assume that the local state matches the
+  // plan...can NOT be sure that the plan was completely executed
+  // may react on the errors that have been created
+  syncReplicatedShardsWithLeaders(plan, current, localErrors);
+
+  // diff current and local and prepare agency transactions or whatever
+  // to update current. Will report the errors created locally to the agency
+  updateCurrentForDatabases(localErrors, current);
+} 
+
+// /////////////////////////////////////////////////////////////////////////////
+// / @brief take care of databases on any type of server according to Plan
+// /////////////////////////////////////////////////////////////////////////////
+
+function migrateAnyServer(plan, current) {
+  // will analyze local state and then issue db._createDatabase(),
+  // db._dropDatabase() etc. to sync plan and local state for databases
+  let localErrors = executePlanForCollections(plan);
+  // diff current and local and prepare agency transactions or whatever
+  // to update current. will report the errors created locally to the agency
+  updateCurrentForCollections(localErrors, current);
+} 
+
+// /////////////////////////////////////////////////////////////////////////////
 // / @brief make sure that replication is set up for all databases
-// //////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
 
 function setupReplication () {
   console.debug('Setting up replication...');
@@ -1459,6 +1497,15 @@ function handleChanges (plan, current) {
     }
   }
 
+  // The next generation will look like this:
+  // migrateAnyServer(plan, current)
+  // if (role === 'PRIMARY') {
+  //   migratePrimary(plan, current);
+  // } else if (role == 'SECONDARY') {
+  //   setupReplication();
+  // }
+
+  // The rest of this function will be removed when the above is activated.
   handleDatabaseChanges(plan, current);
   var success;
   if (role === 'PRIMARY' || role === 'COORDINATOR') {
