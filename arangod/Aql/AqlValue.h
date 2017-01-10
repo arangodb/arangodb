@@ -83,6 +83,7 @@ struct AqlValueFromManagedDocument {};
 struct AqlValue final {
  friend struct std::hash<arangodb::aql::AqlValue>;
  friend struct std::equal_to<arangodb::aql::AqlValue>;
+ static std::array<std::string const, 8> typeStrings;
 
  public:
 
@@ -388,6 +389,10 @@ struct AqlValue final {
   /// @brief whether or not the value is an array (note: this treats ranges
   /// as arrays, too!)
   bool isArray() const noexcept;
+
+  // @brief return a string describing the content of this aqlvalue
+  std::string const & getTypeString() const noexcept;
+
   
   /// @brief get the (array) length (note: this treats ranges as arrays, too!)
   size_t length() const;

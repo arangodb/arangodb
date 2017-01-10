@@ -54,7 +54,7 @@ class EnumerateListBlock : public ExecutionBlock {
   AqlValue getAqlValue(AqlValue const&, bool& mustDestroy);
 
   // cppcheck-suppress *
-  void throwArrayExpectedException();
+  void throwArrayExpectedException(AqlValue const& value);
 
  private:
   // current position in the _inVariable
