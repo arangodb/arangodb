@@ -43,7 +43,7 @@ using namespace arangodb::pregel::algos;
 PageRankAlgorithm::PageRankAlgorithm(arangodb::velocypack::Slice params)
     : SimpleAlgorithm("PageRank", params) {
   VPackSlice t = params.get("convergenceThreshold");
-  _threshold = t.isNumber() ? t.getNumber<float>() : 0.0000002f;
+  _threshold = t.isNumber() ? t.getNumber<float>() : 0.000002f;
 }
 
 struct PageRankGraphFormat : public FloatGraphFormat {

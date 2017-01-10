@@ -180,7 +180,7 @@ bool Conductor::_startGlobalStep() {
   } else {
     LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
   }
-  return res != TRI_ERROR_NO_ERROR;
+  return res == TRI_ERROR_NO_ERROR;
 }
 
 // ============ Conductor callbacks ===============
@@ -334,7 +334,11 @@ void Conductor::startRecovery() {
   basics::ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this] {
     // let's wait for a final state in the cluster
-    usleep(15 * 1000000);
+    for (int i = 0; i < 15; i++) {
+      // on some systems usleep does not
+      // like arguments greater than 1000000
+      usleep(1000000);
+    }
     std::vector<ServerID> goodServers;
     int res = PregelFeature::instance()->recoveryManager()->filterGoodServers(
         _dbServers, goodServers);
@@ -351,7 +355,6 @@ void Conductor::startRecovery() {
     b.close();
     _dbServers = goodServers;
     _sendToAllDBServers(Utils::cancelGSSPath, b.slice());
-    usleep(5 * 1000000);  // workers may need a bit of time (5 secs)
 
     // Let's try recovery
     if (_algorithm->supportsCompensation()) {

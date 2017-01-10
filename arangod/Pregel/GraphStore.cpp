@@ -185,8 +185,10 @@ void* GraphStore<V, E>::mutableVertexData(VertexEntry const* entry) {
 template <typename V, typename E>
 void GraphStore<V, E>::replaceVertexData(VertexEntry const* entry, void* data,
                                          size_t size) {
+  //if (size <= entry->_vertexDataOffset)
   void* ptr = _vertexData.data() + entry->_vertexDataOffset;
   memcpy(ptr, data, size);
+  LOG(WARN) << "Don't use this function with varying sizes";
 }
 
 template <typename V, typename E>
