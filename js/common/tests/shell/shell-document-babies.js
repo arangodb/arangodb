@@ -882,6 +882,32 @@ function CollectionDocumentSuiteBabies() {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
           err6.errorNum);
       }
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test insert/replace/update/remove with empty lists
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyBabiesList: function() {
+      // Insert
+      let result = collection.insert([]);
+      assertTrue(Array.isArray(result));
+      assertEqual(result.length, 0);
+
+      // Update
+      result = collection.update([], []);
+      assertTrue(Array.isArray(result));
+      assertEqual(result.length, 0);
+
+      // Replace
+      result = collection.replace([], []);
+      assertTrue(Array.isArray(result));
+      assertEqual(result.length, 0);
+
+      // Remove
+      result = collection.remove([]);
+      assertTrue(Array.isArray(result));
+      assertEqual(result.length, 0);
     }
 
   };

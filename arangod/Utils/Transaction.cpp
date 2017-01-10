@@ -141,7 +141,7 @@ static OperationResult DBServerResponseBad(std::shared_ptr<VPackBuilder> resultB
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Insert an errror reported instead of the new document
+/// @brief Insert an error reported instead of the new document
 ////////////////////////////////////////////////////////////////////////////////
 
 static void createBabiesError(VPackBuilder& builder,
@@ -162,6 +162,15 @@ static void createBabiesError(VPackBuilder& builder,
   } else {
     it->second++;
   }
+}
+
+static OperationResult EmptyResult(bool waitForSync) {
+  VPackBuilder resultBuilder;
+  resultBuilder.openArray();
+  resultBuilder.close();
+  std::unordered_map<int, size_t> errorCounter;
+  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
+                         waitForSync, errorCounter); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1774,6 +1783,9 @@ OperationResult Transaction::insert(std::string const& collectionName,
     // must provide a document object or an array of documents
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
+  if (value.isArray() && value.length() == 0) {
+    return EmptyResult(options.waitForSync);
+  }
 
   // Validate Edges
   OperationOptions optionsCopy = options;
@@ -2024,6 +2036,9 @@ OperationResult Transaction::update(std::string const& collectionName,
     // must provide a document object or an array of documents
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
+  if (newValue.isArray() && newValue.length() == 0) {
+    return EmptyResult(options.waitForSync);
+  }
 
   OperationOptions optionsCopy = options;
 
@@ -2077,6 +2092,9 @@ OperationResult Transaction::replace(std::string const& collectionName,
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (newValue.isArray() && newValue.length() == 0) {
+    return EmptyResult(options.waitForSync);
   }
 
   OperationOptions optionsCopy = options;
@@ -2337,6 +2355,9 @@ OperationResult Transaction::remove(std::string const& collectionName,
   if (!value.isObject() && !value.isArray() && !value.isString()) {
     // must provide a document object or an array of documents
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (value.isArray() && value.length() == 0) {
+    return EmptyResult(options.waitForSync);
   }
 
   OperationOptions optionsCopy = options;
