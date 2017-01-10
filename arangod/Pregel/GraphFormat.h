@@ -47,9 +47,9 @@ struct GraphFormat {
   virtual size_t copyEdgeData(arangodb::velocypack::Slice edgeDocument,
                               void* targetPtr, size_t maxSize) = 0;
 
-  virtual void buildVertexDocument(arangodb::velocypack::Builder& b,
+  virtual bool buildVertexDocument(arangodb::velocypack::Builder& b,
                                    const void* targetPtr, size_t size) = 0;
-  virtual void buildEdgeDocument(arangodb::velocypack::Builder& b,
+  virtual bool buildEdgeDocument(arangodb::velocypack::Builder& b,
                                  const void* targetPtr, size_t size) = 0;
 };
 
@@ -81,14 +81,16 @@ class IntegerGraphFormat : public GraphFormat<int64_t, int64_t> {
     return sizeof(int64_t);
   }
 
-  void buildVertexDocument(arangodb::velocypack::Builder& b,
+  bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            const void* targetPtr, size_t size) override {
     b.add(_resultField, VPackValue(*((int64_t*)targetPtr)));
+    return true;
   }
 
-  void buildEdgeDocument(arangodb::velocypack::Builder& b,
+  bool buildEdgeDocument(arangodb::velocypack::Builder& b,
                          const void* targetPtr, size_t size) override {
     b.add(_resultField, VPackValue(*((int64_t*)targetPtr)));
+    return true;
   }
 };
 
@@ -124,14 +126,16 @@ class FloatGraphFormat : public GraphFormat<float, float> {
     return sizeof(float);
   }
 
-  void buildVertexDocument(arangodb::velocypack::Builder& b,
+  bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            const void* targetPtr, size_t size) override {
     b.add(_resultField, VPackValue(readVertexData(targetPtr)));
+    return true;
   }
 
-  void buildEdgeDocument(arangodb::velocypack::Builder& b,
+  bool buildEdgeDocument(arangodb::velocypack::Builder& b,
                          const void* targetPtr, size_t size) override {
     b.add(_resultField, VPackValue(readEdgeData(targetPtr)));
+    return true;
   }
 };
 /*

@@ -114,10 +114,8 @@ class Worker : public IWorker {
   size_t _runningThreads = 0;
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   void _startProcessing();
-  void _processVertices(RangeIterator<VertexEntry>& vertexIterator);
-  void _finishedProcessing(AggregatorHandler* threadAggregators,
-                           WorkerStats const& threadStats,
-                           uint64_t activeCount);
+  bool _processVertices(RangeIterator<VertexEntry>& vertexIterator);
+  void _finishedProcessing();
   void _continueAsync();
   void _callConductor(std::string path, VPackSlice message);
 

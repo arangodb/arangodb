@@ -80,8 +80,6 @@ struct arangodb::pregel::algos::SPGraphFormat
                         std::string const& documentId,
                         arangodb::velocypack::Slice document, void* targetPtr,
                         size_t maxSize) override {
-    // arangodb::velocypack::Slice val = document.get(_sourceField);
-    // = val.isInteger() ? val.getInt() : _vDefault;
     *((int64_t*)targetPtr) = documentId == _sourceDocId ? 0 : INT64_MAX;
     return sizeof(int64_t);
   }
@@ -92,14 +90,19 @@ struct arangodb::pregel::algos::SPGraphFormat
     return sizeof(int64_t);
   }
 
-  void buildVertexDocument(arangodb::velocypack::Builder& b,
+  bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            const void* targetPtr, size_t size) override {
-     b.add("length", VPackValue(*((int64_t*)targetPtr)));
+    int64_t* val = (int64_t*)targetPtr;
+    if (*val != INT64_MAX) {
+      b.add("length", VPackValue(*val));
+      return true;
+    }
+    return false;
   }
 
-  void buildEdgeDocument(arangodb::velocypack::Builder& b,
+  bool buildEdgeDocument(arangodb::velocypack::Builder& b,
                          const void* targetPtr, size_t size) override {
-    // b.add(_resultField, VPackValue(*((int64_t*)targetPtr)));
+    return false;
   }
 };
 

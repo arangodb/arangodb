@@ -103,7 +103,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
     package.add(Utils::executionNumberKey,
                 VPackValue(_config.executionNumber()));
     package.add(Utils::vertexCount,
-                VPackValue(_graphStore->localVerticeCount()));
+                VPackValue(_graphStore->localVertexCount()));
     package.add(Utils::edgeCount, VPackValue(_graphStore->localEdgeCount()));
     package.close();
     _callConductor(Utils::finishedStartupPath, package.slice());
@@ -180,7 +180,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
     response.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     response.add(Utils::activeCountKey, VPackValue(_activeCount));
     response.add(Utils::vertexCount,
-                 VPackValue(_graphStore->localVerticeCount()));
+                 VPackValue(_graphStore->localVertexCount()));
     response.add(Utils::edgeCount, VPackValue(_graphStore->localEdgeCount()));
     response.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
       _workerAggregators->serializeValues(response);
@@ -268,7 +268,7 @@ void Worker<V, E, M>::_startProcessing() {
   _activeCount = 0;// active count is only valid after the run
 
   ThreadPool* pool = PregelFeature::instance()->threadPool();
-  size_t total = _graphStore->vertexCount();
+  size_t total = _graphStore->localVertexCount();
   size_t delta = total / pool->numThreads();
   size_t start = 0, end = delta;
   if (total > 1000) {
@@ -283,8 +283,10 @@ void Worker<V, E, M>::_startProcessing() {
         LOG(INFO) << "Execution aborted prematurely.";
         return;
       }
-      auto vertexIterator = _graphStore->vertexIterator(start, end);
-      _processVertices(vertexIterator);
+      auto vertices = _graphStore->vertexIterator(start, end);
+      if (_processVertices(vertices)) {// should work like a join operation
+        _finishedProcessing();
+      }
     });
     start = end;
     end = end + delta;
@@ -305,7 +307,7 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 
 // internally called in a WORKER THREAD!!
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::_processVertices(
+bool Worker<V, E, M>::_processVertices(
     RangeIterator<VertexEntry>& vertexIterator) {
   double start = TRI_microtime();
 
@@ -331,18 +333,17 @@ void Worker<V, E, M>::_processVertices(
       outCache.reset(new ArrayOutCache<M>(&_config, inCache.get()));
     }
   }
+  if (_config.asynchronousMode()) {
+    outCache->sendToNextGSS(_requestedNextGSS);
+  }
 
   AggregatorHandler workerAggregator(_algorithm.get());
-
   // TODO look if we can avoid instantiating this
   std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
       _algorithm->createComputation(&_config));
   _initializeVertexContext(vertexComputation.get());
   vertexComputation->_workerAggregators = &workerAggregator;
   vertexComputation->_cache = outCache.get();
-  if (_config.asynchronousMode()) {
-    outCache->sendToNextGSS(_requestedNextGSS);
-  }
 
   size_t activeCount = 0;
   for (VertexEntry* vertexEntry : vertexIterator) {
@@ -354,14 +355,8 @@ void Worker<V, E, M>::_processVertices(
       vertexComputation->compute(messages);
       if (vertexEntry->active()) {
         activeCount++;
-      } /* else {
-         LOG(INFO) << vertexEntry->key() << " vertex has halted";
-       }*/
+      }
     }
-    // TODO delete read messages immediatly
-    // technically messages to non-existing vertices trigger
-    // their creation
-
     if (_state != WorkerState::COMPUTING) {
       LOG(INFO) << "Execution aborted prematurely.";
       break;
@@ -379,30 +374,25 @@ void Worker<V, E, M>::_processVertices(
   // TODO ask how to implement message sending without waiting for a response
 
   LOG(INFO) << "Finished executing vertex programs.";
-
   WorkerStats stats;
   stats.sendCount = outCache->sendCount();
   stats.superstepRuntimeSecs = TRI_microtime() - start;
-  _finishedProcessing(vertexComputation->_workerAggregators, stats,
-                      activeCount);
+  
+  {  // only one thread at a time
+    MUTEX_LOCKER(guard, _threadMutex);
+    // merge the thread local stats and aggregators
+    _workerAggregators->aggregateValues(workerAggregator);
+    _superstepStats.accumulate(stats);
+    _activeCount += activeCount;
+    _runningThreads--;
+    return _runningThreads == 0;// should work like a join operation
+  }
 }
 
 // called at the end of a worker thread, needs mutex
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::_finishedProcessing(AggregatorHandler* threadAggregators,
-                                          WorkerStats const& threadStats,
-                                          uint64_t activeCount) {
-  {  // only one thread at a time
-    MUTEX_LOCKER(guard, _threadMutex);
-    // merge the thread local stats and aggregators
-    _workerAggregators->aggregateValues(*threadAggregators);
-    _superstepStats.accumulate(threadStats);
-    _activeCount += activeCount;
-    _runningThreads--;
-    if (_runningThreads > 0) {  // should work like a join operation
-      return;                   // there are still threads running
-    }
-  }
+void Worker<V, E, M>::_finishedProcessing() {
+  
 
   VPackBuilder package;
   {  // only lock after there are no more processing threads
@@ -420,23 +410,22 @@ void Worker<V, E, M>::_finishedProcessing(AggregatorHandler* threadAggregators,
     _config._localSuperstep++;
     _superstepStats.receivedCount = _readCache->receivedMessageCount();
     // load vertices which received messages for the next lss / gss
-    size_t currentAVCount = _graphStore->localVerticeCount();
+    
     if (_config.lazyLoading()) {  // TODO how to improve this?
-      auto vertexIterator = _graphStore->vertexIterator();
-      for (VertexEntry* vertexEntry : vertexIterator) {
+      // hack to determine newly added vertices
+      size_t currentAVCount = _graphStore->localVertexCount();
+      auto currentVertices = _graphStore->vertexIterator();
+      for (VertexEntry* vertexEntry : currentVertices) {
         _readCache->erase(vertexEntry->shard(), vertexEntry->key());
       }
       _readCache->forEach([this](prgl_shard_t shard, std::string const& key, M const&) {
                             _graphStore->loadDocument(_config, shard, key);
                           });
-      // Adding the new vertices as active
-      if (_graphStore->localVerticeCount() >= currentAVCount) {
-        _activeCount += _graphStore->localVerticeCount() - currentAVCount;
-      } else {
-        LOG(ERR) << "WTF! Removing vertices is currently unsupported";
-      }
+      
+      size_t total = _graphStore->localVertexCount();
+      auto addedVertices = _graphStore->vertexIterator(currentAVCount, total);
+      _processVertices(addedVertices);
     }
-    
     _readCache->clear();  // no need to keep old messages around
 
     package.openObject();
@@ -461,6 +450,23 @@ void Worker<V, E, M>::_finishedProcessing(AggregatorHandler* threadAggregators,
   // call this without locking, to avoid a race condition. The conductor
   // might immdediatly call us back
   _callConductor(Utils::finishedWorkerStepPath, package.slice());
+}
+
+/// WARNING only call this while holding the _commandMutex
+/// in async mode checks if there are messages to process
+template <typename V, typename E, typename M>
+void Worker<V, E, M>::_continueAsync() {
+  if (_state == WorkerState::IDLE && _writeCache->receivedMessageCount() > 0) {
+    {  // swap these pointers atomically
+      WriteLocker<ReadWriteLock> guard(&_cacheRWLock);
+      std::swap(_readCache, _writeCache);
+    }
+    // overwrite conductor values with local values
+    _conductorAggregators->resetValues();
+    _conductorAggregators->aggregateValues(*_workerAggregators.get());
+    _workerAggregators->resetValues();
+    _startProcessing();
+  }
 }
 
 template <typename V, typename E, typename M>
@@ -505,7 +511,8 @@ void Worker<V, E, M>::startRecovery(VPackSlice data) {
   _state = WorkerState::RECOVERING;
   VPackSlice method = data.get(Utils::recoveryMethodKey);
   if (method.compareString(Utils::compensate) == 0) {
-    _preRecoveryTotal = _graphStore->vertexCount();
+    // hack to determine newly added vertices
+    _preRecoveryTotal = _graphStore->localVertexCount();
     WorkerConfig nextState(_config.database(), data);
     _graphStore->loadShards(nextState);
     _config = nextState;
@@ -564,23 +571,6 @@ void Worker<V, E, M>::compensateStep(VPackSlice data) {
     package.close();
     _callConductor(Utils::finishedRecoveryPath, package.slice());
   });
-}
-
-/// WARNING only call this while holding the _commandMutex
-/// in async mode checks if there are messages to process
-template <typename V, typename E, typename M>
-void Worker<V, E, M>::_continueAsync() {
-  if (_state == WorkerState::IDLE && _writeCache->receivedMessageCount() > 0) {
-    {  // swap these pointers atomically
-      WriteLocker<ReadWriteLock> guard(&_cacheRWLock);
-      std::swap(_readCache, _writeCache);
-    }
-    // overwrite conductor values with local values
-    _conductorAggregators->resetValues();
-    _conductorAggregators->aggregateValues(*_workerAggregators.get());
-    _workerAggregators->resetValues();
-    _startProcessing();
-  }
 }
 
 template <typename V, typename E, typename M>

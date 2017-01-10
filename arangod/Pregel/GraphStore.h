@@ -76,7 +76,7 @@ class GraphStore {
   GraphStore(TRI_vocbase_t* vocbase, GraphFormat<V, E>* graphFormat);
   ~GraphStore();
 
-  size_t localVerticeCount() const { return _localVerticeCount; }
+  size_t localVertexCount() const { return _localVerticeCount; }
   size_t localEdgeCount() const { return _localEdgeCount; }
 
   void loadShards(WorkerConfig const& state);
@@ -84,7 +84,6 @@ class GraphStore {
   void loadDocument(WorkerConfig const& config, prgl_shard_t sourceShard,
                     std::string const& _key);
 
-  inline size_t vertexCount() { return _index.size(); }
   RangeIterator<VertexEntry> vertexIterator();
   RangeIterator<VertexEntry> vertexIterator(size_t start, size_t count);
   RangeIterator<Edge<E>> edgeIterator(VertexEntry const* entry);

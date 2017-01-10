@@ -400,14 +400,15 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
     VPackBuilder b;
     b.openObject();
     b.add(StaticStrings::KeyString, VPackValue(vertexEntry.key()));
-    _graphFormat->buildVertexDocument(b, data, sizeof(V));
+    bool store = _graphFormat->buildVertexDocument(b, data, sizeof(V));
     b.close();
-
-    OperationResult result = writeTrx.update(shard, b.slice(), options);
-    if (result.code != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(result.code);
+    
+    if (store) {
+      OperationResult result = writeTrx.update(shard, b.slice(), options);
+      if (result.code != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(result.code);
+      }
     }
-
     // TODO loop over edges
   }
   res = writeTrx.finish(res);
