@@ -1333,6 +1333,28 @@ function handleCollectionChanges (plan, current, takeOverResponsibility) {
 }
 
 // /////////////////////////////////////////////////////////////////////////////
+// / @brief executePlanForCollections
+// /////////////////////////////////////////////////////////////////////////////
+
+function executePlanForCollections(plan) {
+  return {};
+}
+
+// /////////////////////////////////////////////////////////////////////////////
+// / @brief syncReplicatedShardsWithLeaders
+// /////////////////////////////////////////////////////////////////////////////
+
+function syncReplicatedShardsWithLeaders(plan, current, localErrors) {
+}
+
+// /////////////////////////////////////////////////////////////////////////////
+// / @brief updateCurrentForCollections
+// /////////////////////////////////////////////////////////////////////////////
+
+function updateCurrentForCollections(localErrors, current) {
+}
+
+// /////////////////////////////////////////////////////////////////////////////
 // / @brief take care of collections on primary DBservers according to Plan
 // /////////////////////////////////////////////////////////////////////////////
 
@@ -1447,9 +1469,11 @@ function updateCurrentForDatabases(localErrors, current) {
   let name;
   let trx = [{}];   // Here we collect all write operations
 
+  console.error("FOXY:", localDatabases, currentDatabases);
+
   // Add entries that we have but that are not in Current:
   for (name in localDatabases) {
-    if (localDatabases.hasOwnProperty(name) && name.substr(0, 1) !== '_') {
+    if (localDatabases.hasOwnProperty(name)) {
       if (!currentDatabases.hasOwnProperty(name) ||
           !currentDatabases[name].hasOwnProperty(ourselves)) {
         console.debug("adding entry in Current for database '%s'", name);
@@ -1498,12 +1522,15 @@ function migrateAnyServer(plan, current) {
   // diff current and local and prepare agency transactions or whatever
   // to update current. will report the errors created locally to the agency
   let trx = updateCurrentForDatabases(localErrors, current);
-  if (Object.keys().length !== 0) {
+  console.error("FUxx:", [trx]);
+  if (Object.keys(trx[0]).length !== 0) {
     trx[0][curVersion] = {op: 'increment'};
     // TODO: reduce timeout when we can:
     try {
       let res = global.ArangoAgency.write([trx]);
-      if (typeof res !== 'object' || res.length !== 1 || res[0] === 0) {
+      if (typeof res !== 'object' || !res.hasOwnProperty("results") ||
+          typeof res.results !== 'object' || res.results.length !== 1 || 
+          res.results[0] === 0) {
         console.error('migrateAnyServer: could not send transaction for Current to agency, result:', res);
       }
     } catch (err) {
@@ -1643,8 +1670,7 @@ function handleChanges (plan, current) {
     }
   }
 
-  // The next generation will look like this:
-  // migrateAnyServer(plan, current)
+  migrateAnyServer(plan, current);
   // if (role === 'PRIMARY') {
   //   migratePrimary(plan, current);
   // } else {   // if (role == 'SECONDARY') {
@@ -1652,7 +1678,7 @@ function handleChanges (plan, current) {
   // }
 
   // The rest of this function will be removed when the above is activated.
-  handleDatabaseChanges(plan, current);
+  //handleDatabaseChanges(plan, current);
   var success;
   if (role === 'PRIMARY' || role === 'COORDINATOR') {
     // Note: This is only ever called for DBservers (primary and secondary),
