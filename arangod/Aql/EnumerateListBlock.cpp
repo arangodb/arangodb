@@ -98,7 +98,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
     AqlValue const& inVarReg = cur->getValueReference(_pos, _inVarRegId);
 
     if (!inVarReg.isArray()) {
-      throwArrayExpectedException();
+      throwArrayExpectedException(inVarReg);
     }
 
     size_t sizeInVar;
@@ -195,7 +195,7 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
     AqlValue const& inVarReg = cur->getValueReference(_pos, _inVarRegId);
     // get the size of the thing we are looping over
     if (!inVarReg.isArray()) {
-      throwArrayExpectedException();
+      throwArrayExpectedException(inVarReg);
     }
     
     size_t sizeInVar;
@@ -253,9 +253,12 @@ AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, bool& mustDes
   DEBUG_END_BLOCK();  
 }
 
-void EnumerateListBlock::throwArrayExpectedException() {
+void EnumerateListBlock::throwArrayExpectedException(AqlValue const& value) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_QUERY_ARRAY_EXPECTED,
+      std::string("collection or ") +
       TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
-          std::string(" as operand to FOR loop"));
+          std::string(" as operand to FOR loop; you provided a value of type '") +
+        value.getTypeString () +
+        std::string("'"));
 }

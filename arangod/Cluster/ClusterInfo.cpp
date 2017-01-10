@@ -935,6 +935,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
       }
 
       if (TRI_microtime() > endTime) {
+        
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
 
@@ -1012,6 +1013,14 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
       }
 
       if (TRI_microtime() > endTime) {
+        AgencyCommResult ag = ac.getValues("/");
+        if (ag.successful()) {
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+                                          << ag.slice().toJson();
+        } else {
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+        }
+
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
 

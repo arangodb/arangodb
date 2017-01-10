@@ -80,7 +80,7 @@ SocketTask::~SocketTask() {
 
   if (err) {
     LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to cancel _keepAliveTimer";
-  } 
+  }
 }
 
 void SocketTask::start() {
@@ -163,28 +163,26 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
     size_t written = 0;
 
     boost::system::error_code err;
-    do {
-      err.assign(boost::system::errc::success,
-                 boost::system::generic_category());
-      written = _peer->write(_writeBuffer, err);
-      if(_writeBufferStatistics){
-        _writeBufferStatistics->_sentBytes += written;
-      }
-      if (written == total) {
-        locker.unlock();
-        completedWriteBuffer();
-        return;
-      }
-    } while (err == boost::asio::error::would_block);
+    written = _peer->write(_writeBuffer, err);
 
-    if (err != boost::system::errc::success) {
+    if(_writeBufferStatistics){
+      _writeBufferStatistics->_sentBytes += written;
+    }
+
+    if (written == total) {
+      locker.unlock();
+      completedWriteBuffer();
+      return;
+    }
+
+    if (err != boost::system::errc::success && err!= boost::asio::error::would_block) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "SocketTask::addWriteBuffer (write_some) - write on stream "
           << " failed with: " << err.message();
       closeStream();
       return;
     }
-      
+
     boost::system::error_code ec;
     ec.assign(boost::system::errc::success,
               boost::system::generic_category());
