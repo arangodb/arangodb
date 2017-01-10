@@ -1373,8 +1373,8 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
   }
 
   TRI_ASSERT(result == nullptr);
-  LOG(WARN) << "unable to acquire writeable WAL logfile after "
-            << (MaxIterations * SleepTime) / 1000 << " ms";
+  LOG(ERR) << "unable to acquire writeable WAL logfile after "
+           << (MaxIterations * SleepTime) / 1000 << " ms";
 
   return TRI_ERROR_LOCK_TIMEOUT;
 }

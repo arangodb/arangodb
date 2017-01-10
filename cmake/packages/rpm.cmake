@@ -41,7 +41,6 @@ set(CPACK_TEMPORARY_DIRECTORY         "${PROJECT_BINARY_DIR}/_CPack_Packages/${C
 set(CPACK_TEMPORARY_PACKAGE_FILE_NAME "${CPACK_TEMPORARY_DIRECTORY}/${CPACK_PACKAGE_FILE_NAME}.rpm")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_X ${PROJECT_BINARY_DIR}/bin)
-include(cmake/dump_vars.cmake)
 include(arangosh/dbg.cmake)
 include(arangod/dbg.cmake)
 

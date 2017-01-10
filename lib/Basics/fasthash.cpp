@@ -47,7 +47,7 @@ uint64_t fasthash64_uint64(uint64_t value, uint64_t seed) {
 }
   
 uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
-#ifdef __arm__
+#ifndef TRI_UNALIGNED_ACCESS
   // byte-wise hashing to support platforms that don't permit
   // unaligned accesses of uint64_t values (which is the default
   // memory access strategy of fasthash64)

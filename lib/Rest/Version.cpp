@@ -114,6 +114,11 @@ void Version::initialize() {
   Values["server-version"] = getServerVersion();
   Values["sizeof int"] = arangodb::basics::StringUtils::itoa(sizeof(int));
   Values["sizeof void*"] = arangodb::basics::StringUtils::itoa(sizeof(void*));
+#ifdef TRI_UNALIGNED_ACCESS
+  Values["unaligned-access"] = "true";
+#else
+  Values["unaligned-access"] = "false";
+#endif
   Values["v8-version"] = getV8Version();
   Values["vpack-version"] = getVPackVersion();
   Values["zlib-version"] = getZLibVersion();

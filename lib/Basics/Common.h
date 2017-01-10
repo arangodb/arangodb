@@ -283,7 +283,7 @@ inline void ADB_WindowsExitFunction(int exitCode, void* data) {}
 template <typename T>
 struct TRI_AutoOutOfScope {
   explicit TRI_AutoOutOfScope(T& destructor) : m_destructor(destructor) {}
-  ~TRI_AutoOutOfScope() { m_destructor(); }
+  ~TRI_AutoOutOfScope() { try { m_destructor(); } catch (...) { } }
 
  private:
   T& m_destructor;

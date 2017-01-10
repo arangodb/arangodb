@@ -145,7 +145,10 @@ void MMFilesEngine::prepare() {
   // get base path from DatabaseServerFeature 
   auto databasePathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _basePath = databasePathFeature->directory();
-  _databasePath += databasePathFeature->subdirectoryName("databases") + TRI_DIR_SEPARATOR_CHAR;
+  _databasePath += databasePathFeature->subdirectoryName("databases");
+  if (_databasePath.empty() || _databasePath.back() != TRI_DIR_SEPARATOR_CHAR) {
+    _databasePath.push_back(TRI_DIR_SEPARATOR_CHAR);
+  }
   
   TRI_ASSERT(!_basePath.empty());
   TRI_ASSERT(!_databasePath.empty());

@@ -935,4 +935,26 @@ void Supervision::beginShutdown() {
   guard.broadcast();
 }
 
-Store const& Supervision::store() const { return _agent->readDB(); }
+
+void Supervision::missingPrototype() {
+
+  auto const& plannedDBs = _snapshot(planColPrefix).children();
+  auto available = Job::availableServers(_snapshot);
+  
+  // key: prototype, value: clone
+  //std::multimap<std::string, std::string> likeness;
+  
+  for (const auto& db_ : plannedDBs) { // Planned databases
+    auto const& db = *(db_.second);
+    
+    for (const auto& col_ : db.children()) { // Planned collections
+      auto const& col = *(col_.second);
+      
+      auto prototype = col("distributeShardsLike").slice().copyString();
+      if (prototype.empty()) {
+        continue;
+      }
+      
+    }
+  }
+}

@@ -38,6 +38,14 @@ var wait = require('internal').wait;
 var isEnterprise = require('internal').isEnterprise();
 var _ = require('lodash');
 
+const curDatabases = '/arango/Current/Databases/';
+const curCollections = '/arango/Current/Collections/';
+const curVersion = '/arango/Current/Version';
+const agencyOperations = {
+  'delete' : {'op' : 'delete'},
+  'increment' : {'op' : 'increment'}
+};
+
 var endpointToURL = function (endpoint) {
   if (endpoint.substr(0, 6) === 'ssl://') {
     return 'https://' + endpoint.substr(6);
@@ -301,11 +309,14 @@ function getLocalCollections () {
 // / @brief create databases if they exist in the plan but not locally
 // //////////////////////////////////////////////////////////////////////////////
 
-function createLocalDatabases (plannedDatabases, currentDatabases, writeLocked) {
+function createLocalDatabases (plannedDatabases, currentDatabases) {
   var ourselves = global.ArangoServerState.id();
   var createDatabaseAgency = function (payload) {
-    global.ArangoAgency.set('Current/Databases/' + payload.name + '/' + ourselves,
-      payload);
+    var envelope = {};
+    envelope[curDatabases + payload.name + '/' + ourselves] = 
+      { 'op': 'set', 'new': payload };
+    envelope[curVersion] = {"op":"increment"};
+    global.ArangoAgency.write([[envelope]]);
   };
 
   var db = require('internal').db;
@@ -339,15 +350,11 @@ function createLocalDatabases (plannedDatabases, currentDatabases, writeLocked) 
           payload.errorNum = err.errorNum;
           payload.errorMessage = err.errorMessage;
         }
-        writeLocked({ part: 'Current' },
-          createDatabaseAgency,
-          [ payload ]);
+        createDatabaseAgency(payload);
       } else if (typeof currentDatabases[name] !== 'object' || !currentDatabases[name].hasOwnProperty(ourselves)) {
         // mop: ok during cluster startup we have this buggy situation where a dbserver
         // has a database but has not yet announced it to the agency :S
-        writeLocked({ part: 'Current' },
-          createDatabaseAgency,
-          [ payload ]);
+        createDatabaseAgency(payload);
       }
     }
   }
@@ -357,12 +364,15 @@ function createLocalDatabases (plannedDatabases, currentDatabases, writeLocked) 
 // / @brief drop databases if they do exist locally but not in the plan
 // //////////////////////////////////////////////////////////////////////////////
 
-function dropLocalDatabases (plannedDatabases, writeLocked) {
+function dropLocalDatabases (plannedDatabases) {
   var ourselves = global.ArangoServerState.id();
 
   var dropDatabaseAgency = function (payload) {
     try {
-      global.ArangoAgency.remove('Current/Databases/' + payload.name + '/' + ourselves);
+      var envelope = {};
+      envelope[curDatabases + payload.name + '/' + ourselves] = {'op':'delete'};
+      envelope[curVersion] = {'op':'increment'};
+      global.ArangoAgency.write([[envelope]]);
     } catch (err) {
       // ignore errors
     }
@@ -399,9 +409,7 @@ function dropLocalDatabases (plannedDatabases, writeLocked) {
         }
         db._dropDatabase(name);
 
-        writeLocked({ part: 'Current' },
-          dropDatabaseAgency,
-          [ { name: name } ]);
+        dropDatabaseAgency({name: name});
       }
     }
   }
@@ -411,12 +419,15 @@ function dropLocalDatabases (plannedDatabases, writeLocked) {
 // / @brief clean up what's in Current/Databases for ourselves
 // //////////////////////////////////////////////////////////////////////////////
 
-function cleanupCurrentDatabases (currentDatabases, writeLocked) {
+function cleanupCurrentDatabases (currentDatabases) {
   var ourselves = global.ArangoServerState.id();
 
   var dropDatabaseAgency = function (payload) {
     try {
-      global.ArangoAgency.remove('Current/Databases/' + payload.name + '/' + ourselves);
+      var envelope = {};
+      envelope[curDatabases + payload.name + '/' + ourselves] = {'op':'delete'};
+      envelope[curVersion] = {'op':'increment'};
+      global.ArangoAgency.write([[envelope]]);
     } catch (err) {
       // ignore errors
     }
@@ -437,9 +448,7 @@ function cleanupCurrentDatabases (currentDatabases, writeLocked) {
           // we are entered for a database that we don't have locally
           console.debug("cleaning up entry for unknown database '%s'", name);
 
-          writeLocked({ part: 'Current' },
-            dropDatabaseAgency,
-            [ { name: name } ]);
+          dropDatabaseAgency({name: name});
         }
       }
     }
@@ -450,13 +459,13 @@ function cleanupCurrentDatabases (currentDatabases, writeLocked) {
 // / @brief handle database changes
 // //////////////////////////////////////////////////////////////////////////////
 
-function handleDatabaseChanges (plan, current, writeLocked) {
+function handleDatabaseChanges (plan, current) {
   var plannedDatabases = plan.Databases;
   var currentDatabases = current.Databases;
 
-  createLocalDatabases(plannedDatabases, currentDatabases, writeLocked);
-  dropLocalDatabases(plannedDatabases, writeLocked);
-  cleanupCurrentDatabases(currentDatabases, writeLocked);
+  createLocalDatabases(plannedDatabases, currentDatabases);
+  dropLocalDatabases(plannedDatabases);
+  cleanupCurrentDatabases(currentDatabases);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -464,24 +473,29 @@ function handleDatabaseChanges (plan, current, writeLocked) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function createLocalCollections (plannedCollections, planVersion,
-  currentCollections,
-  takeOverResponsibility, writeLocked) {
+  currentCollections, takeOverResponsibility) {
   var ourselves = global.ArangoServerState.id();
 
   var createCollectionAgency = function (database, shard, collInfo, error) {
-    var payload = { error: error.error,
+    
+    var payload = {
+      error: error.error,
       errorNum: error.errorNum,
       errorMessage: error.errorMessage,
       satellite: collInfo.replicationFactor === 0,
       indexes: collInfo.indexes,
       servers: [ ourselves ],
-    planVersion: planVersion };
-
+      planVersion: planVersion };
+    
     console.debug('creating Current/Collections/' + database + '/' +
                   collInfo.planId + '/' + shard);
-    global.ArangoAgency.set('Current/Collections/' + database + '/' +
-    collInfo.planId + '/' + shard,
-      payload);
+
+    var envelope = {};
+    envelope[curCollections  + database + '/' + collInfo.planId + '/' + shard] =
+      { 'op': 'set', 'new': payload };
+    envelope[curVersion] = {'op':'increment'};
+    var ret = global.ArangoAgency.write([[envelope]]);
+    
     console.debug('creating Current/Collections/' + database + '/' +
                   collInfo.planId + '/' + shard + ' done.');
   };
@@ -562,9 +576,7 @@ function createLocalCollections (plannedCollections, planVersion,
                       }
 
                       if (isLeader) {
-                        writeLocked({ part: 'Current' },
-                          createCollectionAgency,
-                          [ database, shard, collInfo, error ]);
+                        createCollectionAgency(database, shard, collInfo, error);
                         didWrite = true;
                       }
                     } else {
@@ -589,9 +601,7 @@ function createLocalCollections (plannedCollections, planVersion,
                           db._collection(shard).load();
                         }
                         if (isLeader) {
-                          writeLocked({ part: 'Current' },
-                            createCollectionAgency,
-                            [ database, shard, collInfo, error ]);
+                          createCollectionAgency(database, shard, collInfo, error);
                           didWrite = true;
                         }
                       }
@@ -620,9 +630,7 @@ function createLocalCollections (plannedCollections, planVersion,
                           errorMessage: err3.errorMessage };
                         }
                         if (isLeader) {
-                          writeLocked({ part: 'Current' },
-                            createCollectionAgency,
-                            [ database, shard, collInfo, error ]);
+                          createCollectionAgency(database, shard, collInfo, error);
                           didWrite = true;
                         }
                       }
@@ -631,9 +639,7 @@ function createLocalCollections (plannedCollections, planVersion,
                     if (error.error) {
                       if (takeOverResponsibility && !didWrite) {
                         if (isLeader) {
-                          writeLocked({ part: 'Current' },
-                            takeOver,
-                            [ database, shard, collInfo, error ]);
+                          takeOver(database, shard, collInfo, error);
                         }
                       }
                       continue; // No point to look for properties and
@@ -671,9 +677,7 @@ function createLocalCollections (plannedCollections, planVersion,
                           changed = true;
                         }
                         if (changed && isLeader) {
-                          writeLocked({ part: 'Current' },
-                            createCollectionAgency,
-                            [ database, shard, collInfo, error ]);
+                          createCollectionAgency(database, shard, collInfo, error);
                           didWrite = true;
                         }
                       }
@@ -711,18 +715,14 @@ function createLocalCollections (plannedCollections, planVersion,
                         }
                       }
                       if (changed2 && isLeader) {
-                        writeLocked({ part: 'Current' },
-                          createCollectionAgency,
-                          [ database, shard, collInfo, error ]);
+                        createCollectionAgency(database, shard, collInfo, error);
                         didWrite = true;
                       }
                     }
 
                     if ((takeOverResponsibility && !didWrite && isLeader) ||
                       (!didWrite && isLeader && !wasLeader)) {
-                      writeLocked({ part: 'Current' },
-                        takeOver,
-                        [ database, shard, collInfo, error ]);
+                      takeOver(database, shard, collInfo, error);
                     }
                   }
                 }
@@ -752,9 +752,10 @@ function createLocalCollections (plannedCollections, planVersion,
       }
       return cb(...args);
     };
-    writeLocked({ part: 'Current' }, migrate, [fakeLock]);
+    migrate(fakeLock);
+    //writeLocked({ part: 'Current' }, migrate, [fakeLock]);
   } else {
-    migrate(writeLocked);
+    migrate();
   }
 }
 
@@ -766,14 +767,17 @@ function leaderResign (database, collId, shardName, ourselves) {
     db._executeTransaction(
       { 'collections': { 'write': [shardName] },
         'action': function () {
-          var path = 'Current/Collections/' + database + '/' + collId + '/' +
+          var path = curCollections + database + '/' + collId + '/' +
             shardName + '/servers';
-          var servers = global.ArangoAgency.get(path).arango.Current
-            .Collections[database][collId][shardName].servers;
+          var servers = global.ArangoAgency.read([[path]])[0]
+              .arango.Current.Collections[database][collId][shardName].servers;
           if (servers[0] === ourselves) {
             servers[0] = '_' + ourselves;
-            global.ArangoAgency.set(path, servers);
-            global.ArangoAgency.increaseVersion('Current/Version');
+            
+            var envelope = {};
+            envelope[path] = {'op':'set', 'new':servers};
+            envelope[curVersion] = {'op':'increment'};
+            global.ArangoAgency.write([[envelope]]);
           }
       } });
   } catch (x) {
@@ -785,15 +789,18 @@ function leaderResign (database, collId, shardName, ourselves) {
 // / @brief drop collections if they exist locally but not in the plan
 // //////////////////////////////////////////////////////////////////////////////
 
-function dropLocalCollections (plannedCollections, currentCollections,
-  writeLocked) {
+function dropLocalCollections (plannedCollections, currentCollections) {
   var ourselves = global.ArangoServerState.id();
 
   var dropCollectionAgency = function (database, shardID, id) {
     try {
       console.debug('dropping Current/Collections/' + database + '/' +
                     id + '/' + shardID);
-      global.ArangoAgency.remove('Current/Collections/' + database + '/' + id + '/' + shardID);
+      var envelope = {};
+      envelope[curCollections + database + '/' + id + '/' + shardID] =
+        {'op':'delete'};
+      envelope[curVersion] = {'op':'increment'};
+      global.ArangoAgency.write([[envelope]]);
       console.debug('dropping Current/Collections/' + database + '/' +
                     id + '/' + shardID + ' done.');
     } catch (err) {
@@ -876,9 +883,7 @@ function dropLocalCollections (plannedCollections, currentCollections,
                   console.debug('cleaning out Current entry for shard %s in',
                     'agency for %s/%s', collection, database,
                     collections[collection].name);
-                  writeLocked({ part: 'Current' },
-                    dropCollectionAgency,
-                    [ database, collection, collections[collection].planId ]);
+                  dropCollectionAgency(database, collection, collections[collection].planId);
                 }
               }
             }
@@ -897,13 +902,16 @@ function dropLocalCollections (plannedCollections, currentCollections,
 // / @brief clean up what's in Current/Collections for ourselves
 // //////////////////////////////////////////////////////////////////////////////
 
-function cleanupCurrentCollections (plannedCollections, currentCollections,
-  writeLocked) {
+function cleanupCurrentCollections (plannedCollections, currentCollections) {
   var dropCollectionAgency = function (database, collection, shardID) {
     try {
       console.debug('cleaning Current/Collections/' + database + '/' +
                     collection + '/' + shardID);
-      global.ArangoAgency.remove('Current/Collections/' + database + '/' + collection + '/' + shardID);
+      var envelope = {};
+      envelope[curCollections + database + '/' + collection + '/' + shardID] =
+        {'op':'delete'};
+      envelope[curVersion] = {'op':'increment'};
+      global.ArangoAgency.write([[envelope]]);
       console.debug('cleaning Current/Collections/' + database + '/' +
                     collection + '/' + shardID + ' done.');
     } catch (err) {
@@ -937,9 +945,7 @@ function cleanupCurrentCollections (plannedCollections, currentCollections,
                   database,
                   collection);
 
-                writeLocked({ part: 'Current' },
-                  dropCollectionAgency,
-                  [ database, collection, shard ]);
+                dropCollectionAgency(database, collection, shard);
               }
             }
           }
@@ -1223,6 +1229,9 @@ function scheduleOneShardSynchronization (database, shard, planId, leader) {
 
 function synchronizeLocalFollowerCollections (plannedCollections,
   currentCollections) {
+  if (typeof currentCollections !== 'object') {
+    throw new Error('Current.Collections is not an object!');
+  }
   var ourselves = global.ArangoServerState.id();
 
   var db = require('internal').db;
@@ -1294,8 +1303,7 @@ function synchronizeLocalFollowerCollections (plannedCollections,
 // / @brief handle collection changes
 // //////////////////////////////////////////////////////////////////////////////
 
-function handleCollectionChanges (plan, current, takeOverResponsibility,
-  writeLocked) {
+function handleCollectionChanges (plan, current, takeOverResponsibility) {
   var plannedCollections = plan.Collections;
   var currentCollections = current.Collections;
 
@@ -1303,10 +1311,9 @@ function handleCollectionChanges (plan, current, takeOverResponsibility,
 
   try {
     createLocalCollections(plannedCollections, plan.Version, currentCollections,
-      takeOverResponsibility, writeLocked);
-    dropLocalCollections(plannedCollections, currentCollections, writeLocked);
-    cleanupCurrentCollections(plannedCollections, currentCollections,
-      writeLocked);
+      takeOverResponsibility);
+    dropLocalCollections(plannedCollections, currentCollections);
+    cleanupCurrentCollections(plannedCollections, currentCollections);
     if (!synchronizeLocalFollowerCollections(plannedCollections,
         currentCollections)) {
       // If not all needed jobs have been scheduled, then work is still
@@ -1407,7 +1414,7 @@ function primaryToSecondary () {
 // / @brief change handling trampoline function
 // //////////////////////////////////////////////////////////////////////////////
 
-function handleChanges (plan, current, writeLocked) {
+function handleChanges (plan, current) {
   var changed = false;
   var role = ArangoServerState.role();
   if (role === 'PRIMARY' || role === 'SECONDARY') {
@@ -1452,12 +1459,12 @@ function handleChanges (plan, current, writeLocked) {
     }
   }
 
-  handleDatabaseChanges(plan, current, writeLocked);
+  handleDatabaseChanges(plan, current);
   var success;
   if (role === 'PRIMARY' || role === 'COORDINATOR') {
     // Note: This is only ever called for DBservers (primary and secondary),
     // we keep the coordinator case here just in case...
-    success = handleCollectionChanges(plan, current, changed, writeLocked);
+    success = handleCollectionChanges(plan, current, changed);
   } else {
     success = setupReplication();
   }

@@ -1,10 +1,13 @@
-Module "queries"
-================
+Queries Module
+==============
+
+`const queries = require('@arangodb/aql/queries')`
 
 The query module provides the infrastructure for working with currently running AQL queries via arangosh.
 
+Properties
+----------
 
-### Properties
 `queries.properties()` Returns the servers current query tracking configuration; we change the slow query threshold to get better results:
 
     @startDocuBlockInline QUERY_01_properyOfQueries
@@ -15,8 +18,8 @@ The query module provides the infrastructure for working with currently running 
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock QUERY_01_properyOfQueries
 
-
-### Currently running queries
+Currently running queries
+-------------------------
 
 We [create a task](Tasks.md) that spawns queries, so we have nice output. Since this task
 uses resources, you may want to increase `period` (and not forget to remove it... afterwards):
@@ -44,7 +47,9 @@ uses resources, you may want to increase `period` (and not forget to remove it..
     @endDocuBlock QUERY_02_listQueries
 The function returns the currently running AQL queries as an array.
 
-### Slow queries
+Slow queries
+------------
+
 The function returns the last AQL queries that exceeded the slow query threshold as an array:
 
     @startDocuBlockInline QUERY_03_listSlowQueries
@@ -54,7 +59,9 @@ The function returns the last AQL queries that exceeded the slow query threshold
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock QUERY_03_listSlowQueries
 
-### Clear slow queries
+Clear slow queries
+------------------
+
 Clear the list of slow AQL queries:
 
     @startDocuBlockInline QUERY_04_clearSlowQueries
@@ -65,8 +72,9 @@ Clear the list of slow AQL queries:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock QUERY_04_clearSlowQueries
 
+Kill
+----
 
-### Kill
 Kill a running AQL query:
 
     @startDocuBlockInline QUERY_05_killQueries
@@ -80,7 +88,3 @@ Kill a running AQL query:
     queries.kill(runningQueries[0].id);
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock QUERY_05_killQueries
-
-
-
-

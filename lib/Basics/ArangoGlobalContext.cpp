@@ -28,16 +28,36 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
-#include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Rest/InitializeRest.h"
 
+#include <regex>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
-static void AbortHandler(int signum) {
+namespace {
+
+/// @brief quick test of regex functionality of the underlying stdlib
+static bool supportsStdRegex() {
+  try {
+    // compile a relatively simple regex... 
+    std::regex re("^[ \t]*([#;].*)?$", std::regex::nosubs | std::regex::ECMAScript);
+    // ...and test whether it matches a static string
+    std::string test(" # ArangoDB");
+    if (std::regex_match(test, re)) {
+      // compiler properly supports std::regex
+      return true;
+    }
+  } catch (...) {
+  }
+  // compiler does not support std::regex properly, though pretending to
+  return false;
+}
+
+static void abortHandler(int signum) {
   TRI_PrintBacktrace();
 #ifdef _WIN32
   exit(255 + signum);
@@ -108,6 +128,8 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
 }
 #endif
 
+}
+
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 
 ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
@@ -162,7 +184,7 @@ void ArangoGlobalContext::installHup() {
 #endif
 }
 
-void ArangoGlobalContext::installSegv() { signal(SIGSEGV, AbortHandler); }
+void ArangoGlobalContext::installSegv() { signal(SIGSEGV, abortHandler); }
 
 void ArangoGlobalContext::maskAllSignals() {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -182,7 +204,7 @@ void ArangoGlobalContext::unmaskStandardSignals() {
 
 void ArangoGlobalContext::runStartupChecks() {
   // test if this binary uses and stdlib that supports std::regex properly
-  if (!TRI_SupportsRegexDebugging()) {
+  if (!supportsStdRegex()) {
     LOG(FATAL) << "the required std::regex functionality required to run "
                << "ArangoDB is not provided by this build. please try "
                << "rebuilding ArangoDB in a build environment that properly "
@@ -276,7 +298,7 @@ void ArangoGlobalContext::createMiniDumpFilename() {
   miniDumpFilename = TRI_GetTempPath();
 
   miniDumpFilename +=
-      "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
+    "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
 #endif
 }
 

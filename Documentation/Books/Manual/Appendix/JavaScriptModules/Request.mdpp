@@ -1,9 +1,9 @@
-Module "request"
-================
+Request Module
+==============
+
+`const request = require('@arangodb/request')`
 
 The request module provides the functionality for making HTTP requests.
-
-`require('@arangodb/request')`
 
 Making HTTP requests
 --------------------

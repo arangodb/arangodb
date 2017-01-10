@@ -116,6 +116,9 @@ class Supervision : public arangodb::Thread {
 
  private:
 
+  /// @brief Check for inconsistencies in distributeShardsLike
+  void missingPrototype();
+
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
 
@@ -140,9 +143,6 @@ class Supervision : public arangodb::Thread {
 
   /// @brief Get unique ids from agency
   void getUniqueIds();
-
-  /// @brief Read db
-  Store const& store() const;
 
   /// @brief Perform sanity checking
   bool doChecks();

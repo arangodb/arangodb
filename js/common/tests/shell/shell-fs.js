@@ -714,7 +714,8 @@ function FileSystemSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_SYS_ERROR.code, err.errorNum);
+        assertTrue(err.errorNum === ERRORS.ERROR_SYS_ERROR.code ||
+                   err.errorNum === ERRORS.ERROR_FORBIDDEN.code);
       }
     },
 

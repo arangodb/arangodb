@@ -34,6 +34,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <array>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -67,7 +69,11 @@ bool AqlValue::isNone() const noexcept {
     return false;
   }
 
-  return slice().isNone();
+  try {
+    return slice().isNone();
+  } catch (...) {
+    return false;
+  }
 }
 
 /// @brief whether or not the value is a null value
@@ -77,8 +83,12 @@ bool AqlValue::isNull(bool emptyIsNull) const noexcept {
     return false;
   }
 
-  VPackSlice s(slice());
-  return (s.isNull() || (emptyIsNull && s.isNone()));
+  try {
+    VPackSlice s(slice());
+    return (s.isNull() || (emptyIsNull && s.isNone()));
+  } catch (...) {
+    return false;
+  }
 }
 
 /// @brief whether or not the value is a boolean value
@@ -87,7 +97,11 @@ bool AqlValue::isBoolean() const noexcept {
   if (t == DOCVEC || t == RANGE) {
     return false;
   }
-  return slice().isBoolean();
+  try {
+    return slice().isBoolean();
+  } catch (...) {
+    return false;
+  }
 }
 
 /// @brief whether or not the value is a number
@@ -96,7 +110,11 @@ bool AqlValue::isNumber() const noexcept {
   if (t == DOCVEC || t == RANGE) {
     return false;
   }
-  return slice().isNumber();
+  try {
+    return slice().isNumber();
+  } catch (...) {
+    return false;
+  }
 }
 
 /// @brief whether or not the value is a string
@@ -105,7 +123,11 @@ bool AqlValue::isString() const noexcept {
   if (t == DOCVEC || t == RANGE) {
     return false;
   }
-  return slice().isString();
+  try {
+    return slice().isString();
+  } catch (...) {
+    return false;
+  }
 }
 
 /// @brief whether or not the value is an object
@@ -114,7 +136,11 @@ bool AqlValue::isObject() const noexcept {
   if (t == RANGE || t == DOCVEC) {
     return false;
   }
-  return slice().isObject();
+  try {
+    return slice().isObject();
+  } catch (...) {
+    return false;
+  }
 }
 
 /// @brief whether or not the value is an array (note: this treats ranges
@@ -124,7 +150,40 @@ bool AqlValue::isArray() const noexcept {
   if (t == RANGE || t == DOCVEC) {
     return true;
   }
-  return slice().isArray();
+  try {
+    return slice().isArray();
+  } catch (...) {
+    return false;
+  }
+}
+
+std::array<std::string const, 8> AqlValue::typeStrings = { {
+  "none",
+  "null",
+  "bool",
+  "number",
+  "string",
+  "object",
+  "array",
+  "unknown"} };
+
+std::string const & AqlValue::getTypeString() const noexcept {
+  if(isNone()) {
+    return typeStrings[0];
+  } else if(isNull(true)) {
+     return typeStrings[1];
+  } else if(isBoolean()) {
+     return typeStrings[2];
+  } else if(isNumber()) {
+     return typeStrings[3];
+  } else if(isString()) {
+     return typeStrings[4];
+  } else if(isObject()) {
+     return typeStrings[5];
+  } else if(isArray()){
+     return typeStrings[6];
+  }
+  return typeStrings[7];
 }
 
 /// @brief get the (array) length (note: this treats ranges as arrays, too!)
