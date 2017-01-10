@@ -545,7 +545,7 @@ return 0; }"
   try_compile(HAS_PROPER_STATIC_JEMALLOC
     ${CMAKE_BINARY_DIR}
     ${TSTSRC}
-    LINK_LIBRARIES "jemalloc.a" "pthread" ${SYS_LIBS}
+    LINK_LIBRARIES "jemalloc.a" "pthread" ${SYS_LIBS} ${CMAKE_DL_LIBS}
     )
   if (USE_JEMALLOC AND NOT HAS_PROPER_STATIC_JEMALLOC)
     message(FATAL_ERROR "the static system jemalloc isn't suitable! Recompile with the current compiler or disable using `-DCMAKE_CXX_FLAGS=-no-pie -DCMAKE_C_FLAGS=-no-pie`")
