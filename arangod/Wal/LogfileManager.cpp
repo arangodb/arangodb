@@ -1710,6 +1710,16 @@ int LogfileManager::waitForCollector(Logfile::IdType logfileId,
     // try again
   }
 
+  {
+    // TODO: remove debug info here
+    LOG(ERR) << "going into lock timeout. having waited for logfile: " << logfileId << ", lastCollectedId: " << _lastCollectedId.load() << ", lastSealedId: " << _lastSealedId.load() << ", maxIterations: " << maxIterations << ", maxWaitTime: " << maxWaitTime;
+    READ_LOCKER(locker, _logfilesLock);
+    for (auto logfile : _logfiles) {
+      LOG(ERR) << "- logfile " << logfile.second->id() << ", filename '" << logfile.second->filename()
+               << "', status " << logfile.second->statusText();
+    }
+  }
+
   // waited for too long
   return TRI_ERROR_LOCK_TIMEOUT;
 }
@@ -2055,8 +2065,7 @@ int LogfileManager::inspectLogfiles() {
     Logfile* logfile = (*it).second;
 
     if (logfile != nullptr) {
-      std::string const logfileName = logfile->filename();
-      LOG(DEBUG) << "logfile " << logfile->id() << ", filename '" << logfileName
+      LOG(DEBUG) << "logfile " << logfile->id() << ", filename '" << logfile->filename()
                  << "', status " << logfile->statusText();
     }
   }
