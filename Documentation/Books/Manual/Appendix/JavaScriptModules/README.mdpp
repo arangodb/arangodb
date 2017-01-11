@@ -76,6 +76,8 @@ There are a large number of ArangoDB-specific modules using the `@arangodb` name
 
 * [@arangodb/crypto](Crypto.md) provides various cryptography functions including hashing algorithms.
 
+* [@arangodb/request](Request.md) provides the functionality for making synchronous HTTP/HTTPS requests.
+
 * [@arangodb/foxx](../../Foxx/README.md) is the namespace providing the various building blocks of the Foxx microservice framework.
 
 !SECTION Bundled NPM Modules
