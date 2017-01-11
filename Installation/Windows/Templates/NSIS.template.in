@@ -1363,7 +1363,8 @@ SectionEnd
 ; "Program Files" for AllUsers, "My Documents" for JustMe...
         
 var allPathOpts
-        
+var CMDINSTDIR
+
 Function .onInit
   ${GetParameters} $R0
   ClearErrors
@@ -1373,9 +1374,9 @@ Function .onInit
         
   ${GetParameters} $R0        
   ClearErrors
-  ${GetOptions} $R0 "/INSTDIR="     $INSTDIR
-  IfErrors 0 +2
-  StrCpy $INSTDIR ""
+  ${GetOptions} $R0 "/INSTDIR="     $CMDINSTDIR
+  IfErrors +2 0
+  StrCpy $INSTDIR "$CMDINSTDIR"
 
   ${GetParameters} $R0        
   ${GetOptions} $R0 "/DESKTOPICON=" $INSTALL_DESKTOP
