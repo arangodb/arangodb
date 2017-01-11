@@ -161,7 +161,6 @@ function MovingShardsSuite () {
       count = 100;
       while (--count > 0) {
         var obj = getCleanedOutServers();
-        console.warn(obj);
         if (obj.cleanedServers.indexOf(id) >= 0) {
           break;
         }
@@ -359,14 +358,16 @@ function MovingShardsSuite () {
 
     testShrinkNoReplication : function() {
       assertTrue(waitForSynchronousReplication("_system"));
+      var _dbservers = dbservers;
+      _dbservers.sort();
       shrinkCluster(4);
-      assertTrue(testServerEmpty("DBServer0005", true));
+      assertTrue(testServerEmpty(dbservers[4], true));
       assertTrue(waitForSupervision());
       shrinkCluster(3);
-      assertTrue(testServerEmpty("DBServer0004", true));
+      assertTrue(testServerEmpty(dbservers[3], true));
       assertTrue(waitForSupervision());
       shrinkCluster(2);
-      assertTrue(testServerEmpty("DBServer0003", true));
+      assertTrue(testServerEmpty(dbservers[2], true));
       assertTrue(waitForSupervision());
     },
     

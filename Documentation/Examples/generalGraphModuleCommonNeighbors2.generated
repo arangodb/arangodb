@@ -3,8 +3,8 @@ arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<s
 arangosh&gt; graph._commonNeighbors(
 ........&gt;   <span class="hljs-string">'germanCity/Hamburg'</span>,
 ........&gt;   {},
-........&gt;   {direction : <span class="hljs-string">'outbound'</span>, maxDepth : <span class="hljs-number">2</span>},
-........&gt; {direction : <span class="hljs-string">'outbound'</span>, maxDepth : <span class="hljs-number">2</span>});
+........&gt;   {<span class="hljs-attr">direction</span> : <span class="hljs-string">'outbound'</span>, <span class="hljs-attr">maxDepth</span> : <span class="hljs-number">2</span>},
+........&gt; {<span class="hljs-attr">direction</span> : <span class="hljs-string">'outbound'</span>, <span class="hljs-attr">maxDepth</span> : <span class="hljs-number">2</span>});
 [ 
   { 
     <span class="hljs-string">"left"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 

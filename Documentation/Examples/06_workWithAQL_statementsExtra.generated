@@ -2,9 +2,9 @@ arangosh&gt; db._query(<span class="hljs-string">`
 ........&gt;   FOR i IN 1..@count INSERT
 ........&gt;     { _key: CONCAT('anothertest', TO_STRING(i)) }
 ........&gt;     INTO mycollection`</span>,
-........&gt;  {count: <span class="hljs-number">100</span>},
+........&gt;  {<span class="hljs-attr">count</span>: <span class="hljs-number">100</span>},
 ........&gt;  {},
-........&gt;  {fullCount: <span class="hljs-literal">true</span>}
+........&gt;  {<span class="hljs-attr">fullCount</span>: <span class="hljs-literal">true</span>}
 ........&gt; ).getExtra();
 { 
   <span class="hljs-string">"stats"</span> : { 
@@ -13,7 +13,7 @@ arangosh&gt; db._query(<span class="hljs-string">`
     <span class="hljs-string">"scannedFull"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
-    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0019931793212890625</span> 
+    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0015411376953125</span> 
   }, 
   <span class="hljs-string">"warnings"</span> : [ ] 
 }
@@ -21,8 +21,8 @@ arangosh&gt; db._query({
 ........&gt;  <span class="hljs-string">"query"</span>: <span class="hljs-string">`FOR i IN 200..@count INSERT
 ........&gt;              { _key: CONCAT('anothertest', TO_STRING(i)) }
 ........&gt;              INTO mycollection`</span>,
-........&gt;  <span class="hljs-string">"bindVars"</span>: {count: <span class="hljs-number">300</span>},
-........&gt;  <span class="hljs-string">"options"</span>: { fullCount: <span class="hljs-literal">true</span>}
+........&gt;  <span class="hljs-string">"bindVars"</span>: {<span class="hljs-attr">count</span>: <span class="hljs-number">300</span>},
+........&gt;  <span class="hljs-string">"options"</span>: { <span class="hljs-attr">fullCount</span>: <span class="hljs-literal">true</span>}
 ........&gt; }).getExtra();
 { 
   <span class="hljs-string">"stats"</span> : { 
@@ -31,7 +31,7 @@ arangosh&gt; db._query({
     <span class="hljs-string">"scannedFull"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
-    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0018649101257324219</span> 
+    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0015499591827392578</span> 
   }, 
   <span class="hljs-string">"warnings"</span> : [ ] 
 }

@@ -7,21 +7,21 @@ arangosh&gt; arango.GET(<span class="hljs-string">"/echo"</span>)
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">14889</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">36164</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">51880</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"147747577998440"</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">37975</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"148412917676034"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
     }, 
     <span class="hljs-string">"headers"</span> : { 
       <span class="hljs-string">"authorization"</span> : <span class="hljs-string">"Basic cm9vdDo="</span>, 
-      <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span>, 
       <span class="hljs-string">"user-agent"</span> : <span class="hljs-string">"ArangoDB"</span>, 
-      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"accept-encoding"</span> : <span class="hljs-string">"deflate"</span> 
+      <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span>, 
+      <span class="hljs-string">"accept-encoding"</span> : <span class="hljs-string">"deflate"</span>, 
+      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span> 
     }, 
     <span class="hljs-string">"requestType"</span> : <span class="hljs-string">"GET"</span>, 
     <span class="hljs-string">"parameters"</span> : { 
@@ -36,5 +36,5 @@ arangosh&gt; arango.GET(<span class="hljs-string">"/echo"</span>)
   } 
 }
 arangosh&gt; db._query(<span class="hljs-string">"FOR route IN _routing FILTER route.url == '/echo' REMOVE route in _routing"</span>)
-[object ArangoQueryCursor, count: <span class="hljs-number">0</span>, hasMore: <span class="hljs-literal">false</span>]
+[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">0</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
 arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).reloadRouting()

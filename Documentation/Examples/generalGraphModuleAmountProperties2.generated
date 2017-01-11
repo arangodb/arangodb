@@ -1,7 +1,7 @@
 arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/graph-examples/example-graph.js"</span>);
 arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
-arangosh&gt; graph._countCommonProperties({}, {}, {vertex1CollectionRestriction : <span class="hljs-string">'germanCity'</span>,
-........&gt; vertex2CollectionRestriction : <span class="hljs-string">'germanCity'</span> ,ignoreProperties: <span class="hljs-string">'population'</span>});
+arangosh&gt; graph._countCommonProperties({}, {}, {<span class="hljs-attr">vertex1CollectionRestriction</span> : <span class="hljs-string">'germanCity'</span>,
+........&gt; vertex2CollectionRestriction : <span class="hljs-string">'germanCity'</span> ,<span class="hljs-attr">ignoreProperties</span>: <span class="hljs-string">'population'</span>});
 [ 
   { 
     <span class="hljs-string">"frenchCity/Lyon"</span> : <span class="hljs-number">2</span> 
