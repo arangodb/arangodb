@@ -1,7 +1,7 @@
 arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/graph-examples/example-graph.js"</span>);
 arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
-arangosh&gt; <span class="hljs-keyword">var</span> example = { isCapital: <span class="hljs-literal">true</span> };
-arangosh&gt; <span class="hljs-keyword">var</span> options = { includeData: <span class="hljs-literal">true</span> };
+arangosh&gt; <span class="hljs-keyword">var</span> example = { <span class="hljs-attr">isCapital</span>: <span class="hljs-literal">true</span> };
+arangosh&gt; <span class="hljs-keyword">var</span> options = { <span class="hljs-attr">includeData</span>: <span class="hljs-literal">true</span> };
 arangosh&gt; graph._countCommonNeighbors(example, example, options, options);
 [ 
   { 
