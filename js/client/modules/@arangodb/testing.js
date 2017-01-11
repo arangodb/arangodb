@@ -1368,7 +1368,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
       ++count;
 
-      if (count % 120 === 0) {
+      if (count % 180 === 0) {
         if (!checkArangoAlive(arangod, options)) {
           throw new Error('startup failed! bailing out!');
         }
