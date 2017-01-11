@@ -1,4 +1,4 @@
-arangosh&gt; db.geo.ensureIndex({ type: <span class="hljs-string">"geo"</span>, fields: [ <span class="hljs-string">"loc"</span> ] });
+arangosh&gt; db.geo.ensureIndex({ <span class="hljs-attr">type</span>: <span class="hljs-string">"geo"</span>, <span class="hljs-attr">fields</span>: [ <span class="hljs-string">"loc"</span> ] });
 { 
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"geo/214"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"geo1"</span>, 
@@ -24,21 +24,21 @@ arangosh&gt; db.geo.near(<span class="hljs-number">0</span>, <span class="hljs-n
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1271"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/1271"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U-_pQ0O--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UWx8HGq--A"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/0"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">0</span>, 
       <span class="hljs-number">0</span> 
-    ], 
-    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/0"</span> 
+    ] 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1160"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/1160"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U-_pQzu--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UWx8HGG---"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-10/0"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">-10</span>, 
       <span class="hljs-number">0</span> 
-    ], 
-    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-10/0"</span> 
+    ] 
   } 
 ]
