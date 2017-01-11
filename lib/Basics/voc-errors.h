@@ -368,6 +368,12 @@
 /// - 1481: @LIT{collection is out of sync}
 ///   Will be raised if a collection needed during query execution is out of
 ///   sync. This currently can only happen when using satellite collections
+/// - 1482: @LIT{could not create index in plan}
+///   Will be raised when a coordinator in a cluster cannot create an entry for
+///   a new index in the Plan hierarchy in the agency.
+/// - 1483: @LIT{could not drop index in plan}
+///   Will be raised when a coordinator in a cluster cannot remove an index
+///   from the Plan hierarchy in the agency.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -2172,6 +2178,28 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC                      (1481)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1482: ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN
+///
+/// could not create index in plan
+///
+/// Will be raised when a coordinator in a cluster cannot create an entry for a
+/// new index in the Plan hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN                  (1482)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1483: ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN
+///
+/// could not drop index in plan
+///
+/// Will be raised when a coordinator in a cluster cannot remove an index from
+/// the Plan hierarchy in the agency.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN                    (1483)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
