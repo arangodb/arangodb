@@ -315,7 +315,7 @@ bool BenchFeature::report(ClientFeature* client, std::vector<BenchRunResult> res
     return a.time < b.time;
   });
 
-  BenchRunResult output;
+  BenchRunResult output {0, 0, 0, 0};
   if (_runs > 1) {
     size_t size = results.size();
     std::cout << std::endl;
