@@ -1896,7 +1896,15 @@ void LogicalCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
   TRI_ASSERT(idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
              _indexes.empty());
 
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(idx->id()));
+  auto const id = idx->id();      
+  for (auto const& it : _indexes) {
+    if (it->id() == id) {
+      // already have this particular index. do not add it again
+      return;
+    }
+  }
+
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
   _indexes.emplace_back(idx);
 
@@ -1911,6 +1919,15 @@ void LogicalCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
 
 void LogicalCollection::addIndexCoordinator(
     std::shared_ptr<arangodb::Index> idx, bool distribute) {
+  
+  auto const id = idx->id();      
+  for (auto const& it : _indexes) {
+    if (it->id() == id) {
+      // already have this particular index. do not add it again
+      return;
+    }
+  }
+
   _indexes.emplace_back(idx);
   if (distribute) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

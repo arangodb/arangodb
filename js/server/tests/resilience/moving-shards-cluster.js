@@ -66,15 +66,15 @@ function MovingShardsSuite () {
     console.info("Waiting for synchronous replication to settle...");
     global.ArangoClusterInfo.flush();
     for (var i = 0; i < c.length; ++i) {
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(database,
-                                                             c[i].name());
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+        database, c[i].name());
       var shards = Object.keys(cinfo.shards);
       var replFactor = cinfo.shards[shards[0]].length;
       var count = 0;
       while (++count <= 120) {
         var ccinfo = shards.map(
-          s => global.ArangoClusterInfo.getCollectionInfoCurrent(database,
-                                                                 c[i].name(), s)
+          s => global.ArangoClusterInfo.getCollectionInfoCurrent(
+            database, c[i].name(), s)
         );
         let replicas = ccinfo.map(s => s.servers.length);
         if (_.every(replicas, x => x === replFactor)) {
@@ -96,13 +96,19 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function getCleanedOutServers() {
-    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+    var coordEndpoint =
+        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
-    
-    var res = request({ method: "GET",
-                        url: url + "/_admin/cluster/numberOfServers"});
+    try {
+      var res = request(
+        { method: "GET", url: url + "/_admin/cluster/numberOfServers" });
+    } catch (err) {
+      console.error(
+        "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
+      return [];
+    }
     var body = res.body;
     if (typeof body === "string") {
       body = JSON.parse(body);
@@ -179,14 +185,21 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function cleanOutServer(id) {
-    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+    var coordEndpoint =
+        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
     var body = {"server": id};
-    return request({ method: "POST",
-                   url: url + "/_admin/cluster/cleanOutServer",
-                   body: JSON.stringify(body) });
+    try {
+      return request({ method: "POST",
+                       url: url + "/_admin/cluster/cleanOutServer",
+                       body: JSON.stringify(body) });
+    } catch (err) {
+      console.error(
+        "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
+      return false;
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,14 +207,21 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function shrinkCluster(toNum) {
-    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+    var coordEndpoint =
+        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
     var body = {"numberOfDBServers":toNum};
-    return request({ method: "PUT",
-                     url: url + "/_admin/cluster/numberOfServers",
-                     body: JSON.stringify(body) });
+    try {
+      return request({ method: "PUT",
+                       url: url + "/_admin/cluster/numberOfServers",
+                       body: JSON.stringify(body) });
+    } catch (err) {
+      console.error(
+        "Exception for PUT /_admin/cluster/numberOfServers:", err.stack);
+      return false;
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,7 +229,8 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function resetCleanedOutServers() {
-    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+    var coordEndpoint =
+        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
@@ -217,13 +238,13 @@ function MovingShardsSuite () {
     var body = {"cleanedServers":[], "numberOfDBServers":numberOfDBServers};
     try {
       var res = request({ method: "PUT",
-                      url: url + "/_admin/cluster/numberOfServers",
-                      body: JSON.stringify(body) });
+                          url: url + "/_admin/cluster/numberOfServers",
+                          body: JSON.stringify(body) });
       return res;
     }
     catch (err) {
-      console.error("Exception for PUT /_admin/cluster/numberOfServers:",
-                    err.stack);
+      console.error(
+        "Exception for PUT /_admin/cluster/numberOfServers:", err.stack);
       return false;
     }
   }
@@ -233,14 +254,21 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function moveShard(database, collection, shard, fromServer, toServer) {
-    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+    var coordEndpoint =
+        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
     var body = {database, collection, shard, fromServer, toServer};
-    return request({ method: "POST",
-                   url: url + "/_admin/cluster/moveShard",
-                   body: JSON.stringify(body) });
+    try {
+      return request({ method: "POST",
+                       url: url + "/_admin/cluster/moveShard",
+                       body: JSON.stringify(body) });
+    } catch (err) {
+      console.error(
+        "Exception for PUT /_admin/cluster/numberOfServers:", err.stack);
+      return false;
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -277,16 +305,9 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function findServerNotOnList(list) {
-    var count = 0;
-    /*var str = "" + count;
-    var pad = "0000";
-    var ans = pad.substring(0, pad.length - str.length) + str;
-
-    var name = "DBServer" + ans;*/
-    
+    var count = 0;    
     while (list.indexOf(dbservers[count]) >= 0) {
       count += 1;
-
     }
     return dbservers[count];
   }
@@ -355,18 +376,18 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleaning out collection with one shard without replication
 ////////////////////////////////////////////////////////////////////////////////
-
+    
     testShrinkNoReplication : function() {
       assertTrue(waitForSynchronousReplication("_system"));
       var _dbservers = dbservers;
       _dbservers.sort();
-      shrinkCluster(4);
+      assertTrue(shrinkCluster(4));
       assertTrue(testServerEmpty(dbservers[4], true));
       assertTrue(waitForSupervision());
-      shrinkCluster(3);
+      assertTrue(shrinkCluster(3));
       assertTrue(testServerEmpty(dbservers[3], true));
       assertTrue(waitForSupervision());
-      shrinkCluster(2);
+      assertTrue(shrinkCluster(2));
       assertTrue(testServerEmpty(dbservers[2], true));
       assertTrue(waitForSupervision());
     },
@@ -383,7 +404,7 @@ function MovingShardsSuite () {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
-      moveShard("_system", c[0]._id, shard, fromServer, toServer);
+      assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer));
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
     },
@@ -400,7 +421,7 @@ function MovingShardsSuite () {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
-      moveShard("_system", c[0]._id, shard, fromServer, toServer);
+      assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer));
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
     },
@@ -418,7 +439,7 @@ function MovingShardsSuite () {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      moveShard("_system", c[1]._id, shard, fromServer, toServer);
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
     },
@@ -436,7 +457,7 @@ function MovingShardsSuite () {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      moveShard("_system", c[1]._id, shard, fromServer, toServer);
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
     },
@@ -454,7 +475,7 @@ function MovingShardsSuite () {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      moveShard("_system", c[1]._id, shard, fromServer, toServer);
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
     },
@@ -472,7 +493,7 @@ function MovingShardsSuite () {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      moveShard("_system", c[1]._id, shard, fromServer, toServer);
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
     },
@@ -485,7 +506,7 @@ function MovingShardsSuite () {
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[0].name());
       var toClean = servers[1];
-      cleanOutServer(toClean);
+      assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
       assertTrue(waitForSupervision());
     },
@@ -498,7 +519,7 @@ function MovingShardsSuite () {
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[0].name());
       var toClean = servers[0];
-      cleanOutServer(toClean);
+      assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
       assertTrue(waitForSupervision());
     },
@@ -512,7 +533,7 @@ function MovingShardsSuite () {
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[1].name());
       var toClean = servers[0];
-      cleanOutServer(toClean);
+      assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
       assertTrue(waitForSupervision());
     },
@@ -526,7 +547,7 @@ function MovingShardsSuite () {
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[1].name());
       var toClean = servers[0];
-      cleanOutServer(toClean);
+      assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
       assertTrue(waitForSupervision());
     },
@@ -540,7 +561,7 @@ function MovingShardsSuite () {
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[1].name());
       var toClean = servers[1];
-      cleanOutServer(toClean);
+      assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
       assertTrue(waitForSupervision());
     },
@@ -554,7 +575,7 @@ function MovingShardsSuite () {
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[1].name());
       var toClean = servers[0];
-      cleanOutServer(toClean);
+      assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
       assertTrue(waitForSupervision());
     },

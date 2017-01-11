@@ -473,7 +473,7 @@ void Slots::getActiveLogfileRegion(Logfile* logfile, char const*& begin,
   TRI_datafile_t* datafile = logfile->df();
 
   begin = datafile->_data;
-  end = begin + datafile->_currentSize;
+  end = begin + datafile->currentSize();
 }
 
 /// @brief get the current tick range of a logfile
