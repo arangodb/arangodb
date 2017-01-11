@@ -686,7 +686,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
       break;
     }
 
-    if (!doCompact && df->_maximalSize < smallDatafileSize() && i < n - 1) {
+    if (!doCompact && df->maximalSize() < smallDatafileSize() && i < n - 1) {
       // very small datafile and not the last one. let's compact it so it's
       // merged with others
       doCompact = true;
@@ -710,7 +710,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     } else if (dfi.sizeDead > 0 &&
                (((double)dfi.sizeDead /
                      ((double)dfi.sizeDead + (double)dfi.sizeAlive) >= deadShare()) ||
-                ((double)dfi.sizeDead / (double)df->_maximalSize >= deadShare()))) {
+                ((double)dfi.sizeDead / (double)df->maximalSize() >= deadShare()))) {
       // the size of dead objects is above some share
       doCompact = true;
       reason = ReasonDeadSizeShare;
@@ -741,7 +741,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     // size of the resulting file
     if (reason != ReasonOnlyDeletions) {
       if (!toCompact.empty() && 
-          totalSize + (uint64_t)df->_maximalSize >= maxSize &&
+          totalSize + (uint64_t)df->maximalSize() >= maxSize &&
           (toCompact.size() != 1 || reason != ReasonDatafileSmall)) {
         // found enough files to compact (in terms of cumulated size)
         // there's one exception to this: if we're merging multiple datafiles, 

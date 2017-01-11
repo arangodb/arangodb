@@ -1925,7 +1925,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
 
       // file is a journal
       if (filetype == "journal") {
-        if (datafile->_isSealed) {
+        if (datafile->isSealed()) {
           if (datafile->state() != TRI_DF_STATE_READ) {
             LOG_TOPIC(WARN, Logger::DATAFILES)
                 << "strange, journal '" << filename
@@ -1946,7 +1946,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
 
       // file is a datafile (or was a compaction file)
       else if (filetype == "datafile" || filetype == "compaction") {
-        if (!datafile->_isSealed) {
+        if (!datafile->isSealed()) {
           LOG_TOPIC(ERR, Logger::DATAFILES)
               << "datafile '" << filename
               << "' is not sealed, this should never happen";

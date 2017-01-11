@@ -77,7 +77,7 @@ Logfile* Logfile::openExisting(std::string const& filename, Logfile::IdType id,
 
   StatusType status = StatusType::OPEN;
 
-  if (df->_isSealed) {
+  if (df->isSealed()) {
     status = StatusType::SEALED;
   }
 
@@ -91,57 +91,8 @@ Logfile* Logfile::openExisting(std::string const& filename, Logfile::IdType id,
   return logfile;
 }
 
-/// @brief whether or not a logfile is empty
-int Logfile::judge(std::string const& filename) {
-  off_t filesize = basics::FileUtils::size(filename);
-
-  if (filesize == 0) {
-    // empty logfile
-    return TRI_ERROR_ARANGO_DATAFILE_EMPTY;
-  }
-
-  if (filesize < static_cast<off_t>(256 * sizeof(uint64_t))) {
-    // too small
-    return TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
-  }
-
-  int fd = TRI_OPEN(filename.c_str(), O_RDWR | TRI_O_CLOEXEC);
-
-  if (fd < 0) {
-    return TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
-  }
-
-  uint64_t buffer[256];
-
-  if (!TRI_ReadPointer(fd, &buffer, 256 * sizeof(uint64_t))) {
-    TRI_CLOSE(fd);
-    return TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
-  }
-
-  uint64_t* ptr = buffer;
-  uint64_t* end = buffer + 256;
-
-  while (ptr < end) {
-    if (*ptr != 0) {
-      TRI_CLOSE(fd);
-      return TRI_ERROR_NO_ERROR;
-    }
-    ++ptr;
-  }
-
-  TRI_CLOSE(fd);
-  return TRI_ERROR_ARANGO_DATAFILE_EMPTY;
-}
-
 /// @brief reserve space and update the current write position
 char* Logfile::reserve(size_t size) {
-  size = DatafileHelper::AlignedSize<size_t>(size);
-
-  char* result = _df->_next;
-
-  _df->_next += size;
-  _df->_currentSize += static_cast<TRI_voc_size_t>(size);
-
-  return result;
+  return _df->advanceWritePosition(DatafileHelper::AlignedSize<size_t>(size));
 }
 
