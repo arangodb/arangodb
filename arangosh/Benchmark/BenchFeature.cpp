@@ -358,11 +358,16 @@ bool BenchFeature::writeJunitReport(BenchRunResult const& result) {
     return false;
   }
 
+  // c++ shall die....not even bothered to provide proper alternatives
+  // to this C dirt
+
   std::time_t t = std::time(nullptr);
   std::tm tm = *std::localtime(&t);
+  
+  char date[255];
+  memset(date, 0, sizeof(date));
+  strftime(date, sizeof(date)-1, "%FT%T%z", &tm);
 
-  std::stringstream ss;
-  ss << std::put_time(&tm, "%FT%T%z");
   char host[255];
   memset(host, 0, sizeof(host));
   gethostname(host, sizeof(host)-1);
@@ -372,7 +377,7 @@ bool BenchFeature::writeJunitReport(BenchRunResult const& result) {
   try {
     outfile << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" << '\n'
       << "<testsuite name=\"arangobench\" tests=\"1\" skipped=\"0\" failures=\"0\" errors=\"0\" timestamp=\""
-      << std::put_time(&tm, "%FT%T%z") << "\" hostname=\""
+      << date << "\" hostname=\""
       << hostname << "\" time=\"" << std::fixed << result.time << "\">\n"
       << "<properties/>\n"
       << "<testcase name=\"" << testCase() << "\" classname=\"BenchTest\""
