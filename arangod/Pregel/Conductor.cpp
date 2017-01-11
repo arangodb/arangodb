@@ -499,7 +499,8 @@ int Conductor::_initializeWorkers(std::string const& suffix,
 }
 
 int Conductor::_finalizeWorkers() {
-  double now = TRI_microtime();
+  double compEnd = TRI_microtime();
+  
   bool storeResults = _state == ExecutionState::DONE;
   if (_masterContext) {
     _masterContext->postApplication();
@@ -525,16 +526,19 @@ int Conductor::_finalizeWorkers() {
   b.add("stats", VPackValue(VPackValueType::Object));
   _statistics.serializeValues(b);
   b.close();
-  b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-  _aggregators->serializeValues(b);
-  b.close();
+  if (_aggregators->size() > 0) {
+    b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+    _aggregators->serializeValues(b);
+    b.close();
+  }
   b.close();
 
   LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
   LOG(INFO) << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs
             << "s";
-  LOG(INFO) << "Computation Time: " << now - _computationStartTimeSecs << "s";
-  LOG(INFO) << "Total: " << totalRuntimeSecs() << "s";
+  LOG(INFO) << "Computation Time: " << compEnd - _computationStartTimeSecs << "s";
+  LOG(INFO) << "Storage Time: " << TRI_microtime() - compEnd << "s";
+  LOG(INFO) << "Overall: " << totalRuntimeSecs() << "s";
   LOG(INFO) << "Stats: " << b.toString();
   return res;
 }
