@@ -346,37 +346,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   void handleCommandGetIdForReadLockCollection();
 
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Send content of buffers to each shard and wait for results
-  //////////////////////////////////////////////////////////////////////////////
-
-  int sendBuffersToShards(
-      std::unordered_map<std::string,
-                         std::unique_ptr<arangodb::basics::StringBuffer>> const&
-          shardTab,
-      std::string const& dbName, std::string& errorMsg) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Insert a NON-REMOVE marker into the shardTab.
-  //////////////////////////////////////////////////////////////////////////////
-
-  int insertDocInBuffer(
-      arangodb::ClusterInfo* ci, std::string const& dbName, arangodb::LogicalCollection* col,
-      arangodb::velocypack::Slice doc,
-      std::unordered_map<std::string,
-                         std::unique_ptr<arangodb::basics::StringBuffer>> const&
-          shardTab,
-      char const* ptr, char const* pos, std::string& errorMsg) const;
-
-  /// @brief Prepare the ShardTable mapping a ShardID => StringBuffer
-
-  int prepareShardTable(
-      arangodb::ClusterInfo* ci, std::string const&, arangodb::LogicalCollection* col,
-      std::unordered_map<std::string,
-                         std::unique_ptr<arangodb::basics::StringBuffer>>&
-          shardTab) const;
-
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief minimum chunk size
