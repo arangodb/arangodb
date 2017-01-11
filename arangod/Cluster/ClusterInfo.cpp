@@ -1763,7 +1763,7 @@ int ClusterInfo::ensureIndexCoordinator(
   if (!result.successful()) {
     errorMsg += std::string(" ") + __FILE__ + ":" + std::to_string(__LINE__);
     resultBuilder = *resBuilder;
-    return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
+    return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN;
   }
 
   loadPlan();
@@ -1983,8 +1983,8 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   if (!result.successful()) {
     errorMsg += std::string(" ") + __FILE__ + ":" + std::to_string(__LINE__);
     events::DropIndex(collectionID, idString,
-                      TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
-    return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
+                      TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN);
+    return TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN;
   }
 
   // load our own cache:
