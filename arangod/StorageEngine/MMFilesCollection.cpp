@@ -825,7 +825,7 @@ bool MMFilesCollection::iterateDatafilesVector(std::vector<TRI_datafile_t*> cons
       return false;
     }
 
-    if (datafile->isPhysical() && datafile->_isSealed) {
+    if (datafile->isPhysical() && datafile->isSealed()) {
       datafile->randomAccess();
     }
   }
@@ -879,7 +879,7 @@ void MMFilesCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& 
   size_t sizeDatafiles = 0;
   builder->add("datafiles", VPackValue(VPackValueType::Object));
   for (auto const& it : _datafiles) {
-    sizeDatafiles += it->_initSize;
+    sizeDatafiles += it->initSize();
   }
 
   builder->add("count", VPackValue(_datafiles.size()));
@@ -888,7 +888,7 @@ void MMFilesCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& 
   
   size_t sizeJournals = 0;
   for (auto const& it : _journals) {
-    sizeJournals += it->_initSize;
+    sizeJournals += it->initSize();
   }
   builder->add("journals", VPackValue(VPackValueType::Object));
   builder->add("count", VPackValue(_journals.size()));
@@ -897,7 +897,7 @@ void MMFilesCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& 
   
   size_t sizeCompactors = 0;
   for (auto const& it : _compactors) {
-    sizeCompactors += it->_initSize;
+    sizeCompactors += it->initSize();
   }
   builder->add("compactors", VPackValue(VPackValueType::Object));
   builder->add("count", VPackValue(_compactors.size()));
@@ -970,11 +970,11 @@ bool MMFilesCollection::applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t
     CONDITIONAL_READ_LOCKER(readLocker, _filesLock, e._isJournal); 
     
     if (!e._isJournal) {
-      TRI_ASSERT(datafile->_isSealed);
+      TRI_ASSERT(datafile->isSealed());
     }
     
     char const* ptr = datafile->_data;
-    char const* end = ptr + datafile->_currentSize;
+    char const* end = ptr + datafile->currentSize();
 
     while (ptr < end) {
       auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);

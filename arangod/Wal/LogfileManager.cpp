@@ -2077,7 +2077,7 @@ int LogfileManager::inspectLogfiles() {
 
     TRI_ASSERT((*it).second == nullptr);
 
-    int res = Logfile::judge(filename);
+    int res = TRI_datafile_t::judge(filename);
 
     if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
       _recoverState->emptyLogfiles.push_back(filename);
