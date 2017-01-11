@@ -82,7 +82,6 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   void addWriteBuffer(basics::StringBuffer*, TRI_request_statistics_t*);
 
-  void completedWriteBuffer();
 
   void closeStream();
 
@@ -95,6 +94,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
   basics::StringBuffer _readBuffer;
 
  private:
+  bool completedWriteBuffer(); //returns next buffer to write or none
   Mutex _writeLock;
   basics::StringBuffer* _writeBuffer = nullptr;
   TRI_request_statistics_t* _writeBufferStatistics = nullptr;
