@@ -173,6 +173,10 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
     std::swap(_readCache, _writeCache);
     _config._localSuperstep = gss;
   }
+  
+  if (_workerContext && gss > 0) {
+    _workerContext->postGlobalSuperstep(gss-1);
+  }
 
   // responds with info which allows the conductor to decide whether
   // to start the next GSS or end the execution
@@ -244,7 +248,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
     _conductorAggregators->aggregateValues(aggValues);
   }
   // execute context
-  if (_workerContext != nullptr) {
+  if (_workerContext) {
     _workerContext->_vertexCount = data.get(Utils::vertexCount).getUInt();
     _workerContext->_edgeCount = data.get(Utils::edgeCount).getUInt();
     _workerContext->preGlobalSuperstep(gss);

@@ -502,12 +502,18 @@ void HeartbeatThread::runCoordinator() {
               failedServers.push_back(server.key.copyString());
             }
           }
+          // calling pregel code
           ClusterInfo::instance()->setFailedServers(failedServers);
           pregel::PregelFeature *prgl = pregel::PregelFeature::instance();
-          if (prgl) {
+          if (prgl && failedServers.size() > 0) {
             pregel::RecoveryManager* mngr = prgl->recoveryManager();
             if (mngr) {
-              mngr->updatedFailedServers();
+              try {
+                mngr->updatedFailedServers();
+              } catch (std::exception const& e) {
+                LOG_TOPIC(ERR, Logger::HEARTBEAT)
+                << "Got an exception in coordinator heartbeat: " << e.what();
+              }
             }
           }
         } else {
