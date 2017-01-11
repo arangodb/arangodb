@@ -331,12 +331,11 @@ bool BenchFeature::report(ClientFeature* client, std::vector<BenchRunResult> res
     std::cout << "=======================" << std::endl;
     size_t mid = (size_t) size / 2;
     if (size % 2 == 0) {
-      output = BenchRunResult({
-        (results[mid - 1].time + results[mid].time) / 2,
+      output.update((results[mid - 1].time + results[mid].time) / 2,
           (results[mid - 1].failures + results[mid].failures) / 2,
           (results[mid - 1].incomplete + results[mid].incomplete) / 2,
-          (results[mid - 1].requestTime + results[mid].requestTime) / 2,
-      });
+          (results[mid - 1].requestTime + results[mid].requestTime) / 2
+      );
     } else {
       output = results[mid];
     }

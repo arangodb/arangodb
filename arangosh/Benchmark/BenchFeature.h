@@ -34,6 +34,13 @@ struct BenchRunResult {
   size_t failures;
   size_t incomplete;
   double requestTime;
+
+  void update(double _time, size_t _failures, size_t _incomplete, double _requestTime) {
+    time = _time;
+    failures = _failures;
+    incomplete = _incomplete;
+    requestTime = _requestTime;
+  }
 };
 
 class BenchFeature final : public application_features::ApplicationFeature {
