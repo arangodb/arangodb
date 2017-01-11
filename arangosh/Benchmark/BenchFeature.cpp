@@ -383,12 +383,13 @@ bool BenchFeature::writeJunitReport(BenchRunResult const& result) {
       << "<testcase name=\"" << testCase() << "\" classname=\"BenchTest\""
       << " time=\"" << std::fixed << result.time << "\"/>\n"
       << "</testsuite>\n";
+    ok = true;
   } catch(...) {
     std::cerr << "Got an exception writing to junit report file " << _junitReportFile;
     ok = false;
   }
   outfile.close();
-  return true;
+  return ok;
 }
 
 void BenchFeature::printResult(BenchRunResult const& result) {
