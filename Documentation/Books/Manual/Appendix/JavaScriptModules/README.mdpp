@@ -62,7 +62,7 @@ The following Node.js modules are not available at all:
 `dgram`,
 `dns`,
 `domain`,
-`http`,
+`http` (but see `@arangodb/request` below),
 `https`,
 `os`,
 `sys`,
