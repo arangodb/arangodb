@@ -14,11 +14,12 @@ Execution plan:
   7   ReturnNode           1     - RETURN #8
 
 Indexes used:
- none
+ By   Type   Collection   Unique   Sparse   Selectivity   Fields               Ranges
+  2   edge   edges        false    false        85.00 %   [ `_from`, `_to` ]   base OUTBOUND
 
 Traversals on graphs:
- Id   Depth   Vertex collections   Edge collections   Filter conditions
-  2   1..3    circles              edges              
+ Id   Depth   Vertex collections   Edge collections   Options                                   Filter conditions
+  2   1..3    circles              edges              uniqueVertices: none, uniqueEdges: path   
 
 Optimization rules applied:
  Id   RuleName
@@ -42,11 +43,13 @@ Execution plan:
   6   ReturnNode           1     - RETURN #7
 
 Indexes used:
- none
+ By   Type   Collection   Unique   Sparse   Selectivity   Fields               Ranges
+  2   edge   edges        false    false        85.00 %   [ `_from`, `_to` ]   base OUTBOUND
+  2   edge   edges        false    false        85.00 %   [ `_from`, `_to` ]   level 0 OUTBOUND
 
 Traversals on graphs:
- Id   Depth   Vertex collections   Edge collections   Filter conditions
-  2   1..3    circles              edges              (p.`edges`[0].`label` == "right_foo")
+ Id   Depth   Vertex collections   Edge collections   Options                                   Filter conditions
+  2   1..3    circles              edges              uniqueVertices: none, uniqueEdges: path   (p.`edges`[0].`label` == "right_foo")
 
 Optimization rules applied:
  Id   RuleName

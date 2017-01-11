@@ -1,10 +1,10 @@
 arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/graph-examples/example-graph.js"</span>);
 arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"social"</span>);
-arangosh&gt; graph.male.save({name: <span class="hljs-string">"Kermit"</span>, _key: <span class="hljs-string">"kermit"</span>});
+arangosh&gt; graph.male.save({<span class="hljs-attr">name</span>: <span class="hljs-string">"Kermit"</span>, <span class="hljs-attr">_key</span>: <span class="hljs-string">"kermit"</span>});
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/kermit"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"kermit"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U-_q6_m--A"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UWy-zJi--_"</span> 
 }
 arangosh&gt; db._exists(<span class="hljs-string">"male/kermit"</span>)
 <span class="hljs-literal">true</span>
