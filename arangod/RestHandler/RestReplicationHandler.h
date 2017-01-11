@@ -216,7 +216,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   int processRestoreDataBatch(arangodb::Transaction&,
-                              CollectionNameResolver const&,
                               std::string const&, bool, bool,
                               std::string&);
 
@@ -224,7 +223,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of a collection TODO MOVE
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreData(CollectionNameResolver const&, TRI_voc_cid_t, bool,
+  int processRestoreData(std::string const&, bool,
                          bool, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -232,13 +231,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandRestoreData();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a restore command for a specific collection, coordinator
-  /// case
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandRestoreDataCoordinator();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief produce list of keys for a specific collection
@@ -370,7 +362,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   int insertDocInBuffer(
-      arangodb::ClusterInfo* ci, arangodb::LogicalCollection* col,
+      arangodb::ClusterInfo* ci, std::string const& dbName, arangodb::LogicalCollection* col,
       arangodb::velocypack::Slice doc,
       std::unordered_map<std::string,
                          std::unique_ptr<arangodb::basics::StringBuffer>> const&
@@ -379,8 +371,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   /// @brief Prepare the ShardTable mapping a ShardID => StringBuffer
 
-  void prepareShardTable(
-      arangodb::ClusterInfo* ci, arangodb::LogicalCollection* col,
+  int prepareShardTable(
+      arangodb::ClusterInfo* ci, std::string const&, arangodb::LogicalCollection* col,
       std::unordered_map<std::string,
                          std::unique_ptr<arangodb::basics::StringBuffer>>&
           shardTab) const;

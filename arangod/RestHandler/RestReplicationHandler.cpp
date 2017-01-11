@@ -185,12 +185,7 @@ RestStatus RestReplicationHandler::execute() {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
-
-      if (ServerState::instance()->isCoordinator()) {
-        handleCommandRestoreDataCoordinator();
-      } else {
-        handleCommandRestoreData();
-      }
+      handleCommandRestoreData();
     } else if (command == "sync") {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
@@ -2122,7 +2117,7 @@ static int restoreDataParser(char const* ptr, char const* pos,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::processRestoreDataBatch(
-    arangodb::Transaction& trx, CollectionNameResolver const& resolver,
+    arangodb::Transaction& trx,
     std::string const& collectionName, bool useRevision, bool force,
     std::string& errorMsg) {
   std::string const invalidMsg =
@@ -2334,10 +2329,11 @@ int RestReplicationHandler::processRestoreDataBatch(
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::processRestoreData(
-    CollectionNameResolver const& resolver, TRI_voc_cid_t cid, bool useRevision,
+    std::string const& colName, bool useRevision,
     bool force, std::string& errorMsg) {
+
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), cid,
+      StandaloneTransactionContext::Create(_vocbase), colName,
       TRI_TRANSACTION_WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_RECOVERY,
               false);  // to turn off waitForSync!
@@ -2351,7 +2347,7 @@ int RestReplicationHandler::processRestoreData(
     return res;
   }
 
-  res = processRestoreDataBatch(trx, resolver, trx.name(), useRevision, force,
+  res = processRestoreDataBatch(trx, colName, useRevision, force,
                                 errorMsg);
 
   res = trx.finish(res);
@@ -2364,23 +2360,11 @@ int RestReplicationHandler::processRestoreData(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandRestoreData() {
-  std::string const& value1 = _request->value("collection");
+  std::string const& colName = _request->value("collection");
 
-  if (value1.empty()) {
+  if (colName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter, not given");
-    return;
-  }
-
-  CollectionNameResolver resolver(_vocbase);
-
-  TRI_voc_cid_t cid = resolver.getCollectionIdLocal(value1);
-
-  if (cid == 0) {
-    std::string msg = "invalid collection parameter: '";
-    msg += value1;
-    msg += "', cid is 0";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
     return;
   }
 
@@ -2400,7 +2384,7 @@ void RestReplicationHandler::handleCommandRestoreData() {
 
   std::string errorMsg;
 
-  int res = processRestoreData(resolver, cid, recycleIds, force, errorMsg);
+  int res = processRestoreData(colName, recycleIds, force, errorMsg);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (errorMsg.empty()) {
@@ -2416,112 +2400,6 @@ void RestReplicationHandler::handleCommandRestoreData() {
     result.close();
     generateResult(rest::ResponseCode::OK, result.slice());
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief restores the data of a collection, coordinator case
-////////////////////////////////////////////////////////////////////////////////
-
-void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
-  std::string const& name = _request->value("collection");
-
-  if (name.empty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid collection parameter");
-    return;
-  }
-
-  std::string dbName = _vocbase->name();
-  std::string errorMsg;
-
-  // in a cluster, we only look up by name:
-  ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> col;
-  try {
-    col = ci->getCollection(dbName, name);
-  } catch (...) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    return;
-  }
-
-
-  std::unordered_map<std::string, std::unique_ptr<StringBuffer>> shardTab;
-  prepareShardTable(ci, col.get(), shardTab);
-
-  std::string const invalidMsg =
-      std::string("received invalid JSON data for collection ") + name;
-  VPackBuilder builder;
-
-  if (_request == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
-  }
-
-  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
-  if (httpRequest == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
-  }
-
-  std::string const& bodyStr = httpRequest->body();
-  char const* ptr = bodyStr.c_str();
-  char const* end = ptr + bodyStr.size();
-
-  int res = TRI_ERROR_NO_ERROR;
-
-  while (ptr < end) {
-    char const* pos = strchr(ptr, '\n');
-
-    if (pos == 0) {
-      pos = end;
-    }
-
-    if (pos - ptr > 1) {
-      // found something
-      //
-      std::string key;
-      VPackSlice doc;
-      TRI_replication_operation_e type = REPLICATION_INVALID;
-
-      res = restoreDataParser(ptr, pos, invalidMsg, false, errorMsg, key,
-                              builder, doc, type);
-      if (res != TRI_ERROR_NO_ERROR) {
-        break;
-      }
-
-      if (!doc.isNone() && type != REPLICATION_MARKER_REMOVE) {
-        res =
-            insertDocInBuffer(ci, col.get(), doc, shardTab, ptr, pos, errorMsg);
-      } else if (type == REPLICATION_MARKER_REMOVE) {
-        // A remove marker, this has to be appended to all!
-        for (auto& it2 : shardTab) {
-          it2.second->appendText(ptr, pos - ptr);
-          it2.second->appendText("\n");
-        }
-      } else {
-        // How very strange!
-        errorMsg = invalidMsg;
-
-        res = TRI_ERROR_HTTP_BAD_PARAMETER;
-        break;
-      }
-    }
-
-    ptr = pos + 1;
-  }
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    res = sendBuffersToShards(shardTab, dbName, errorMsg);
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, errorMsg);
-  }
-
-  VPackBuilder result;
-  result.openObject();
-  result.add("result", VPackValue(true));
-  result.close();
-  generateResult(rest::ResponseCode::OK, result.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3917,8 +3795,9 @@ int RestReplicationHandler::sendBuffersToShards(
 
 /// @brief Insert a NON-REMOVE marker into the shardTab.
 
+#ifndef USE_ENTERPRISE
 int RestReplicationHandler::insertDocInBuffer(
-    ClusterInfo* ci, LogicalCollection* col, VPackSlice doc,
+    ClusterInfo* ci, std::string const&, LogicalCollection* col, VPackSlice doc,
     std::unordered_map<std::string, std::unique_ptr<StringBuffer>> const&
         shardTab,
     char const* ptr, char const* pos, std::string& errorMsg) const {
@@ -3941,17 +3820,24 @@ int RestReplicationHandler::insertDocInBuffer(
   }
   return TRI_ERROR_NO_ERROR;
 }
+#endif
 
-void RestReplicationHandler::prepareShardTable(
-    ClusterInfo* ci, LogicalCollection* col,
+#ifndef USE_ENTERPRISE
+int RestReplicationHandler::prepareShardTable(
+    ClusterInfo* ci, std::stirng const&, LogicalCollection* col,
     std::unordered_map<std::string, std::unique_ptr<StringBuffer>>&
         shardTab) const {
   // We need to distribute the documents we get over the shards:
   auto shardIdsMap = col->shardIds();
+  LOG(ERR) << "We are having shards for " << col->name();
   for (auto const& p : *shardIdsMap) {
+    LOG(ERR) << p.first;
     shardTab.emplace(p.first, std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE));
   }
+  LOG(ERR) << "HSINIF";
+  return TRI_ERROR_NO_ERROR;
 }
+#endif
 
 
 
