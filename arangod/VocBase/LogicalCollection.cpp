@@ -1538,6 +1538,14 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
   // left before
 
   addIndex(idx);
+  {
+    VPackBuilder builder;
+    bool const doSync =
+        application_features::ApplicationServer::getFeature<DatabaseFeature>(
+            "Database")->forceSyncProperties();
+    toVelocyPack(builder, false);
+    update(builder.slice(), doSync);
+  }
   created = true;
   return idx;
 }
