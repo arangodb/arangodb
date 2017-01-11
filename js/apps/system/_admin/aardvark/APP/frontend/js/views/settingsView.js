@@ -73,6 +73,7 @@
 
     truncateCollection: function () {
       this.model.truncateCollection();
+      $('.modal-delete-confirmation').hide();
       window.modalView.hide();
     },
 

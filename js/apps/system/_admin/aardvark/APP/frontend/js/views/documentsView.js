@@ -607,9 +607,9 @@
       var key = $('.modal-body #new-edge-key-attr').last().val();
       var url;
 
-      var callback = function (error, data) {
+      var callback = function (error, data, msg) {
         if (error) {
-          arangoHelper.arangoError('Error', 'Could not create edge');
+          arangoHelper.arangoError('Error', msg.errorMessage);
         } else {
           window.modalView.hide();
           data = data._id.split('/');
@@ -636,9 +636,9 @@
       var key = $('.modal-body #new-document-key-attr').last().val();
       var url;
 
-      var callback = function (error, data) {
+      var callback = function (error, data, msg) {
         if (error) {
-          arangoHelper.arangoError('Error', 'Could not create document');
+          arangoHelper.arangoError('Error', msg.errorMessage);
         } else {
           window.modalView.hide();
           data = data.split('/');
