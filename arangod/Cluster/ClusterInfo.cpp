@@ -2637,3 +2637,13 @@ std::shared_ptr<VPackBuilder> ClusterInfo::getCurrent() {
   READ_LOCKER(readLocker, _currentProt.lock);
   return _current;
 }
+
+
+std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
+  READ_LOCKER(readLocker, _serversProt.lock);
+  std::unordered_map<std::string,std::string> ret;
+  for (const auto& i : _serverAliases) {
+    ret.emplace(i.second,i.first);
+  }
+  return ret;
+}
