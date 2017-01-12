@@ -70,6 +70,85 @@ var createBaseGraph = function () {
   edge.FE = ec.save(vertex.F, vertex.E, {})._id;
 };
 
+function nestedSuite () {
+  const gn = "UnitTestGraph";
+  var objects, tags, tagged;
+
+  return {
+
+    setUpAll: function() {
+      tags = db._create(gn + "tags");
+      objects = db._create(gn + "objects");
+      tagged = db._createEdgeCollection(gn + "tagged");
+
+      [ "airplane", "bicycle", "train", "car", "boat" ].forEach(function(_key) {
+        objects.insert({ _key });
+      });
+
+      [ "public", "private", "fast", "slow", "land", "air", "water" ].forEach(function(_key) {
+        tags.insert({ _key });
+      });
+
+      [
+        [ "air", "airplane" ],
+        [ "land", "car" ],
+        [ "land", "bicycle" ],
+        [ "land", "train" ],
+        [ "water", "boat" ],
+        [ "fast", "airplane" ],
+        [ "fast", "car" ],
+        [ "slow", "bicycle" ],
+        [ "fast", "train" ],
+        [ "slow", "boat" ],
+        [ "public", "airplane" ],
+        [ "private", "car" ],
+        [ "private", "bicycle" ],
+        [ "public", "train" ],
+        [ "public", "boat" ]
+      ].forEach(function(edge) {
+        tagged.insert({ _from: tags.name() + "/" + edge[0], _to: objects.name() + "/" + edge[1] });
+      });
+    },
+
+    tearDownAll: function () {
+      db._drop(gn + "tags");
+      db._drop(gn + "objects");
+      db._drop(gn + "tagged");
+    },
+
+    testNested: function() {
+      var query = "for vehicle in any @start1 @@tagged for type in any @start2 @@tagged filter vehicle._id == type._id return vehicle._key";
+      
+      var result = AQL_EXECUTE(query, { start1: tags.name() + "/land", start2: tags.name() + "/public", "@tagged": tagged.name() }).json;
+      assertEqual([ "train" ], result);
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/air", start2: tags.name() + "/fast", "@tagged": tagged.name() }).json;
+      assertEqual([ "airplane" ], result);
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/air", start2: tags.name() + "/slow", "@tagged": tagged.name() }).json;
+      assertEqual([ ], result);
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/land", start2: tags.name() + "/fast", "@tagged": tagged.name() }).json;
+      assertEqual([ "car", "train" ], result);
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/land", start2: tags.name() + "/private", "@tagged": tagged.name() }).json;
+      assertEqual([ "bicycle", "car" ], result.sort());
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/public", start2: tags.name() + "/slow", "@tagged": tagged.name() }).json;
+      assertEqual([ "boat" ], result);
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/public", start2: tags.name() + "/fast", "@tagged": tagged.name() }).json;
+      assertEqual([ "airplane", "train" ], result.sort());
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/public", start2: tags.name() + "/foo", "@tagged": tagged.name() }).json;
+      assertEqual([ ], result);
+      
+      result = AQL_EXECUTE(query, { start1: tags.name() + "/foo", start2: tags.name() + "/fast", "@tagged": tagged.name() }).json;
+      assertEqual([ ], result);
+    }
+  };
+}
+
 function namedGraphSuite () {
 
   /***********************************************************************
@@ -3214,6 +3293,7 @@ function optimizeNonVertexCentricIndexesSuite () {
   };
 };
 
+jsunity.run(nestedSuite);
 jsunity.run(namedGraphSuite);
 jsunity.run(multiCollectionGraphSuite);
 jsunity.run(multiEdgeCollectionGraphSuite);

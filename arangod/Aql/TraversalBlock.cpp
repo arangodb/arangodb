@@ -204,9 +204,9 @@ int TraversalBlock::shutdown(int errorCode) {
           30.0);
       if (res->status != CL_COMM_SENT) {
         // Note If there was an error on server side we do not have CL_COMM_SENT
-        std::string message("Could not destruct all traversal engines");
-        if (res->errorMessage.length() > 0) {
-          message += std::string(" : ") + res->errorMessage;
+        std::string message("Could not destroy all traversal engines");
+        if (!res->errorMessage.empty()) {
+          message += std::string(": ") + res->errorMessage;
         }
         LOG(ERR) << message;
       }
@@ -375,6 +375,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
     if (!morePaths(atMost)) {
       // This input does not have any more paths. maybe the next one has.
       // we can only return nullptr iff the buffer is empty.
+      _usedConstant = false; // must reset this variable because otherwise the traverser's start vertex may not be reset properly
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
         // returnBlock(cur);
@@ -424,6 +425,8 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
     // fetch more paths into our buffer
     if (!morePaths(atMost)) {
       // nothing more to read, re-initialize fetching of paths
+
+      _usedConstant = false; // must reset this variable because otherwise the traverser's start vertex may not be reset properly
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
         // returnBlock(cur);
