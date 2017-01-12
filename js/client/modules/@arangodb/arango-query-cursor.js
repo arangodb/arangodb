@@ -69,6 +69,7 @@ ArangoQueryCursor.prototype.toString = function () {
   const currentPos = this._pos;
   var isCaptureModeActive = internal.isCaptureMode();
   var rows = [], i = 0;
+  this._pos = this._printPos || currentPos;
   while (++i <= 10 && this.hasNext()) {
     rows.push(this.next());
   }
@@ -117,6 +118,7 @@ ArangoQueryCursor.prototype.toString = function () {
     internal.print(result);
     result = '';
   }
+  this._printPos = this._pos;
   this._pos = currentPos;
   return result;
 };
