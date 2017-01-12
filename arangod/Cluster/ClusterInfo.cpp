@@ -1541,11 +1541,6 @@ int ClusterInfo::ensureIndexCoordinator(
     std::shared_ptr<LogicalCollection> c =
         getCollection(databaseName, collectionID);
 
-    // Note that nobody is removing this collection in the plan, since
-    // we hold the write lock in the agency, therefore it does not matter
-    // that getCollection fetches the read lock and releases it before
-    // we get it again.
-    //
     READ_LOCKER(readLocker, _planProt.lock);
 
     if (c == nullptr) {
