@@ -43,20 +43,24 @@ The current implementation of ArangoDB does not allow changing the replicationFa
 
 ### Automatic failover
 
-Whenever the leader of a shard is failing and there is a query trying to access data of that shard the coordinator will continue trying to contact the leader until it timeouts. The internal cluster supervision will check cluster health every few seconds and will take action if there is no heartbeat from a server for 15 seconds. If the leader doesn't come back in time the supervision will reorganize the cluster by promoting for each shard a follower that is in sync with its leader to be the new leader. From then on the coordinators will contact the new leader.
+Whenever the leader of a shard is failing and there is a query trying to access data of that shard the coordinator will continue trying to contact the leader until it timeouts.
+The internal cluster supervision running on the agency will check cluster health every few seconds and will take action if there is no heartbeat from a server for 15 seconds.
+If the leader doesn't come back in time the supervision will reorganize the cluster by promoting for each shard a follower that is in sync with its leader to be the new leader.
+From then on the coordinators will contact the new leader.
 
 The process is best outlined using an example:
 
 1. The leader of a shard (lets name it DBServer001) is going down.
-2. A coordinator is asked to return a document of a shard DBServer001 is managing:
+2. A coordinator is asked to return a document:
 
     127.0.0.1:8530@_system> db.test.document("100069")
 
-3. The coordinator tries to contact the leader (DBServer001) and timeouts.
-4. The coordinator retries to contact the leader (DBServer001) and timeouts.
-5. The supervision detects outage of DBServer001.
+3. The coordinator determines which server is responsible for this document and finds DBServer001
+4. The coordinator tries to contact DBServer001 and timeouts because it is not reachable.
+5. After a short while the supervision (running in parallel on the agency) will see that heartbeats from DBServer001 are not coming in
 6. The supervision promotes one of the followers (say DBServer002) that is in sync to be leader and makes DBServer001 a follower.
-7. The coordinator retries to contact the leader (DBServer002) and returns the result:
+7. As the coordinator continues trying to fetch the document it will see that the leader changed to DBServer002
+8. The coordinator tries to contact the new leader (DBServer002) and returns the result:
 
     { 
         "_key" : "100069", 
@@ -64,8 +68,8 @@ The process is best outlined using an example:
         "_rev" : "513", 
         "replication" : "😎"
     }
-8. After a while the supervision declares DBServer001 to be completely dead.
-9. A new follower is determined from the pool of DBservers.
-10. The new follower syncs its data from the leader and order is restored.
+9. After a while the supervision declares DBServer001 to be completely dead.
+10. A new follower is determined from the pool of DBservers.
+11. The new follower syncs its data from the leader and order is restored.
 
 Please note that there may still be timeouts. Depending on when exactly the request has been done (in regard to the supervision) and depending on the time needed to reconfigure the cluster the coordinator might fail with a timeout error!
