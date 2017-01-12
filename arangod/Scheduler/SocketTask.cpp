@@ -163,30 +163,26 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
     boost::system::error_code err;
     err.clear();
 
-    bool moreWork = true;
-    while (!err && moreWork){
+    while (true){
       written = _peer->write(_writeBuffer, err);
       if(_writeBufferStatistics){
         _writeBufferStatistics->_sentBytes += written;
       }
-      if (written == total) {
-        moreWork = completedWriteBuffer();
-        if(_writeBuffer){
-          total = _writeBuffer->length();
-          written = 0;
-          if(_writeBufferStatistics){
-            _writeBufferStatistics->_writeStart = TRI_StatisticsTime();
-          }
-        }
-      } else {
+      if (err || written != total) {
         break; //unable to write everything at once
                //might be a lot of data
                //above code does not update the buffer positon
       }
-    }
 
-    if(!moreWork || _writeBuffer == nullptr){
-      return;
+      if(! completedWriteBuffer()){
+        return;
+      }
+
+      total = _writeBuffer->length();
+      written = 0;
+      if(_writeBufferStatistics){
+        _writeBufferStatistics->_writeStart = TRI_StatisticsTime();
+      }
     }
 
     // write could have blocked which is the only acceptable error
@@ -200,8 +196,6 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
 
     // so the code could have blocked at this point or not all data
     // was written in one go
-
-    err.clear(); //reset error state
 
     auto self = shared_from_this();
     //begin writing at offset (written)
