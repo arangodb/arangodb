@@ -1159,9 +1159,6 @@ void RestReplicationHandler::handleCommandInventory() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandClusterInventory() {
-  // TODO: This needs to be reworked, we ought to use the LogicalCollections
-  // data structures to produce the result rather than taking the plan from
-  // the agency.
   std::string const& dbName = _request->databaseName();
   bool found;
   bool includeSystem = true;
@@ -1172,51 +1169,23 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     includeSystem = StringUtils::boolean(value);
   }
 
-  AgencyComm _agency;
-  AgencyCommResult result;
+  ClusterInfo* ci = ClusterInfo::instance();
+  std::vector<std::shared_ptr<LogicalCollection>> cols = ci->getCollections(dbName);
 
-  std::string prefix("Plan/Collections/");
-  prefix.append(dbName);
-
-  result = _agency.getValues(prefix);
-  if (!result.successful()) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
-  } else {
-    VPackSlice colls = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Plan", "Collections", dbName}));
-
-    if (!colls.isObject()) {
-      generateError(rest::ResponseCode::SERVER_ERROR,
-                    TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
-    } else {
-      VPackBuilder resultBuilder;
-      {
-        VPackObjectBuilder b1(&resultBuilder);
-        resultBuilder.add(VPackValue("collections"));
-        {
-          VPackArrayBuilder b2(&resultBuilder);
-          for (auto const& p : VPackObjectIterator(colls)) {
-            VPackSlice const subResultSlice = p.value;
-            if (subResultSlice.isObject()) {
-              if (includeSystem ||
-                  !arangodb::basics::VelocyPackHelper::getBooleanValue(
-                      subResultSlice, "isSystem", true)) {
-                VPackObjectBuilder b3(&resultBuilder);
-                resultBuilder.add("indexes", subResultSlice.get("indexes"));
-                resultBuilder.add("parameters", subResultSlice);
-              }
-            }
-          }
-        }
-        TRI_voc_tick_t tick = TRI_CurrentTickServer();
-        auto tickString = std::to_string(tick);
-        resultBuilder.add("tick", VPackValue(tickString));
-        resultBuilder.add("state", VPackValue("unused"));
-      }
-      generateResult(rest::ResponseCode::OK, resultBuilder.slice());
-    }
+  VPackBuilder resultBuilder;
+  resultBuilder.openObject();
+  resultBuilder.add(VPackValue("collections"));
+  resultBuilder.openArray();
+  for (auto const& c : cols) {
+    c->toVelocyPackForClusterInventory(resultBuilder, includeSystem);
   }
+  resultBuilder.close(); // collections
+  TRI_voc_tick_t tick = TRI_CurrentTickServer();
+  auto tickString = std::to_string(tick);
+  resultBuilder.add("tick", VPackValue(tickString));
+  resultBuilder.add("state", VPackValue("unused"));
+  resultBuilder.close(); // base
+  generateResult(rest::ResponseCode::OK, resultBuilder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -266,6 +266,8 @@ class LogicalCollection {
   // SECTION: Serialisation
   void toVelocyPack(arangodb::velocypack::Builder&, bool withPath) const;
   virtual void toVelocyPackForAgency(arangodb::velocypack::Builder&);
+  virtual void toVelocyPackForClusterInventory(arangodb::velocypack::Builder&,
+                                               bool useSystem) const;
 
   /// @brief transform the information for this collection to velocypack
   ///        The builder has to be an opened Type::Object

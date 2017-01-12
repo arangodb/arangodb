@@ -1073,6 +1073,21 @@ void LogicalCollection::toVelocyPackForAgency(VPackBuilder& result) {
   result.close();  // Base Object
 }
 
+void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
+                                                        bool useSystem) const {
+  if (_isSystem && !useSystem) {
+    return;
+  }
+  result.openObject();
+  result.add(VPackValue("parameters"));
+  result.openObject();
+  toVelocyPackInObject(result);
+  result.close();
+  result.add(VPackValue("indexes"));
+  getIndexesVPack(result, false);
+  result.close(); // CollectionInfo
+}
+
 void LogicalCollection::toVelocyPack(VPackBuilder& result,
                                      bool withPath) const {
   result.openObject();
