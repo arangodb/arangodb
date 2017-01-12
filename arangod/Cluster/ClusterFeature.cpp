@@ -177,7 +177,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 }
 
-void ClusterFeature::reportRole(ServerState::RoleEnum role) {
+void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {
   std::string roleString(ServerState::roleToString(role));
   if (role == ServerState::ROLE_UNDEFINED) {
     roleString += ". Determining real role from agency";
