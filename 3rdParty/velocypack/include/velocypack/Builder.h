@@ -101,7 +101,10 @@ class Builder {
     if (_pos + len <= _size) {
       return;  // All OK, we can just increase tos->pos by len
     }
+
+#ifndef VELOCYPACK_64BIT
     checkOverflow(_pos + len);
+#endif
 
     _buffer->prealloc(len);
     _start = _buffer->data();
@@ -302,7 +305,7 @@ class Builder {
   }
 
   // Return a Slice of the result:
-  Slice slice() const {
+  inline Slice slice() const {
     if (isEmpty()) {
       return Slice();
     }
@@ -317,9 +320,9 @@ class Builder {
     return _pos;
   }
 
-  bool isEmpty() const noexcept { return _pos == 0; }
+  inline bool isEmpty() const noexcept { return _pos == 0; }
 
-  bool isClosed() const noexcept { return _stack.empty(); }
+  inline bool isClosed() const noexcept { return _stack.empty(); }
 
   bool isOpenArray() const noexcept {
     if (_stack.empty()) {
@@ -519,7 +522,7 @@ class Builder {
   }
 
   void addUTCDate(int64_t v) {
-    uint8_t vSize = sizeof(int64_t);  // is always 8
+    uint8_t const vSize = sizeof(int64_t);  // is always 8
     uint64_t x = toUInt64(v);
     reserveSpace(1 + vSize);
     _start[_pos++] = 0x1c;
@@ -527,7 +530,6 @@ class Builder {
   }
 
   uint8_t* addString(uint64_t strLen) {
-    uint8_t* target;
     if (strLen > 126) {
       // long string
       _start[_pos++] = 0xbf;
@@ -537,7 +539,7 @@ class Builder {
       // short string
       _start[_pos++] = static_cast<uint8_t>(0x40 + strLen);
     }
-    target = _start + _pos;
+    uint8_t* target = _start + _pos;
     _pos += strLen;
     return target;
   }
