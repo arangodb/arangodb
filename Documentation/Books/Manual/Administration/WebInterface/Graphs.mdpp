@@ -19,6 +19,7 @@ Graph Viewer
 
 Top Toolbar Functions:
 
+- Load full graph (Also nodes without connections will be drawn. Useful during graph modeling setup)
 - Take a graph screenshot
 - Start full screen mode
 - Open graph options menu
