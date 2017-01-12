@@ -1760,51 +1760,72 @@ function updateCurrentForCollections(localErrors, current) {
 // /////////////////////////////////////////////////////////////////////////////
 
 function syncReplicatedShardsWithLeaders(plan, current, localErrors) {
-  let plannedCollections = plan.Collections;
-  let currentCollections = current.Collections;
+  let plannedDatabases = plan.Collections;
+  let currentDatabases = current.Collections;
   let ourselves = global.ArangoServerState.id();
 
   let db = require('internal').db;
   db._useDatabase('_system');
 
   let localDatabases = getLocalDatabases();
-  let database;
-  let i;
 
   // Schedule sync tasks for shards which exist and we should be a follower:
-  for (database in plannedCollections) {
-    if (plannedCollections.hasOwnProperty(database)) {
-      if (localDatabases.hasOwnProperty(database) &&
-          currentCollections.hasOwnProperty(database)) {
+  Object.keys(plannedDatabases).forEach(databaseName => {
+    if (localDatabases.hasOwnProperty(databaseName)
+      && currentDatabases.hasOwnProperty(databaseName)) {
         // switch into other database
-        db._useDatabase(database);
+        db._useDatabase(databaseName);
 
         try {
           // iterate over collections of database
           let localCollections = getLocalCollections();
 
-          let collections = plannedCollections[database];
+          let plannedCollections = plannedDatabases[databaseName];
+          let currentCollections = currentDatabases[databaseName];
 
-          // diff the collections in Plan and Current:
-          Object.keys(collections).forEach(function (collection) {
-            let collInfo = collections[collection];
-            let shards = collInfo.shards;
-            let shard;
-
-            collInfo.planId = collInfo.id;
-
-            let curCollInfo = currentCollections[database][collection];
-            if (curCollInfo !== undefined) {
-              for (shard in shards) {
-                if (shards.hasOwnProperty(shard)) {
-                  if (shards[shard].indexOf(ourselves) > 0) {
-                    // found a shard we are responsible for as a follower
-                    // check that the shard exists locally and that the
-                    // leader is mentioned in Current:
-                    // TODO...
-                  }    
+          // find planned collections that need sync (not registered in current by the leader):
+          Object.keys(plannedCollections).forEach(collectionName => {
+            let plannedCollection = plannedCollections[collectionName];
+            let currentShards = currentCollections[collectionName];
+            // what should it bring
+            // collection.planId = collection.id;
+            if (currentShards !== undefined) {
+              let plannedShards = plannedCollection.shards;
+              Object.keys(plannedShards).forEach(shardName => {
+                // shard does not exist locally so nothing we can do at this point
+                if (!localCollections.hasOwnProperty(shardName)) {
+                  return;
                 }
-              }
+                // current stuff is created by the leader
+                // this one here will just bring followers in sync
+                // so just continue here
+                if (!currentShards.hasOwnProperty(shardName)) {
+                  return;
+                }
+                let currentServers = currentShards[shardName].servers;
+                let plannedServers = plannedShards[shardName];
+                if (!plannedServers) {
+                  console.error('Shard ' + shardName + ' does not have servers substructure in plan');
+                  return;
+                }
+                if (!currentServers) {
+                  console.error('Shard ' + shardName + ' does not have servers substructure in current');
+                  return;
+                }
+
+                // we are not planned to be a follower
+                if (plannedServers.indexOf(ourselves) <= 0) {
+                  return;
+                }
+                // if we are considered to be in sync there is nothing to do
+                if (currentServers.indexOf(ourselves) > 0) {
+                  return;
+                }
+
+                let leader = plannedServers[0];
+                scheduleOneShardSynchronization(
+                  databaseName, shardName, plannedCollection.id, leader);
+              });
             }
           });
         } finally {
@@ -1812,8 +1833,7 @@ function syncReplicatedShardsWithLeaders(plan, current, localErrors) {
           db._useDatabase('_system');
         }
       }
-    }
-  }
+  });
 }
 
 // /////////////////////////////////////////////////////////////////////////////
