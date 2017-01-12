@@ -2664,3 +2664,5 @@ exports.rebalanceShards = rebalanceShards;
 exports.moveShard = moveShard;
 exports.supervisionState = supervisionState;
 exports.waitForSyncRepl = waitForSyncRepl;
+
+exports.executePlanForDatabases = executePlanForDatabases;
