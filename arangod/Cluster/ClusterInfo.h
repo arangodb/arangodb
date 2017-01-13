@@ -25,7 +25,13 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_INFO_H
 #define ARANGOD_CLUSTER_CLUSTER_INFO_H 1
 
-#include "Agency/AgencyCallbackRegistry.h"
+#include "Basics/Common.h"
+
+#include <velocypack/Slice.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Agency/AgencyComm.h"
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
@@ -34,10 +40,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-
-#include <velocypack/Slice.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace velocypack {

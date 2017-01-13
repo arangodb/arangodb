@@ -27,7 +27,7 @@
 #include "Agency/RestAgencyPrivHandler.h"
 #include "Aql/RestAqlHandler.h"
 #include "Basics/StringUtils.h"
-#include "Agency/AgencyCallbackRegistry.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
