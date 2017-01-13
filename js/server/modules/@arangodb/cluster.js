@@ -1373,7 +1373,7 @@ function executePlanForCollections(plan) {
 
                   // found a shard we are responsible for
                   localErrors[shard] = { error: false, errorNum: 0,
-                                errorMessage: 'no error' };
+                                errorMessage: 'no error', indexes: {} };
 
                   let error = localErrors[shard];
 
@@ -1483,18 +1483,16 @@ function executePlanForCollections(plan) {
                           database,
                           shard,
                           JSON.stringify(index));
-
                         try {
                           arangodb.db._collection(shard).ensureIndex(index);
+
                         } catch (err5) {
-                          if (error.indexes === undefined) {
-                            error.indexes = [];
-                          }
-                          error.indexes.push({
+                          error.indexes[index.id] = {
+                            id: index.id,
                             error: true,
                             errorNum: err5.errorNum,
                             errorMessage: err5.errorMessage
-                          });
+                          };
                         }
                       }
                     }
@@ -1636,6 +1634,9 @@ function updateCurrentForCollections(localErrors, current) {
         payload.indexes[i].id = payload.indexes[i].id.slice(pos+1);
       }
     }
+    Object.keys(error.indexes).forEach(id => {
+      payload.indexes.push(error.indexes[id]);
+    });
     if (error !== undefined && error.error) {
       _.assign(payload, error);
     } else {
