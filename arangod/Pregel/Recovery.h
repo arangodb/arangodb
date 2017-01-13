@@ -46,7 +46,9 @@ class RecoveryManager {
   std::map<ShardID, ServerID> _primaryServers;
   std::map<ShardID, std::shared_ptr<AgencyCallback>> _agencyCallbacks;
 
-  void _monitorShard(CollectionID const& cid, ShardID const& shard);
+  void _monitorShard(DatabaseID const& database,
+                     CollectionID const& cid,
+                     ShardID const& shard);
   void _renewPrimaryServer(ShardID const& shard);
 
  public:

@@ -81,13 +81,14 @@ void RecoveryManager::monitorCollections(
         continue;
       }
       conductors.insert(listener);
-      _monitorShard(cid, shard);
+      _monitorShard(coll->dbName(), cid, shard);
     }
   }
 }
 
 /// Only call while holding _lock
-void RecoveryManager::_monitorShard(CollectionID const& cid,
+void RecoveryManager::_monitorShard(DatabaseID const& databaseName,
+                                    CollectionID const& cid,
                                     ShardID const& shard) {
   std::function<bool(VPackSlice const& result)> listener =
       [this, shard](VPackSlice const& result) {
@@ -120,13 +121,15 @@ void RecoveryManager::_monitorShard(CollectionID const& cid,
         return true;
       };
 
-  std::string path = "Plan/Collections/" + cid + "/shards/" + shard;
+  std::string path = "Plan/Collections/" + databaseName + "/" + cid
+                     + "/shards/" + shard;
 
   // first let's resolve the primary so we know if it has changed later
   // AgencyCommResult result = _agency.getValues(path);
   std::shared_ptr<std::vector<ServerID>> servers =
       ClusterInfo::instance()->getResponsibleServer(shard);
   if (servers->size() > 0) {
+    MUTEX_LOCKER(guard, _lock);
     _primaryServers[shard] = servers->at(0);
 
     auto call =
