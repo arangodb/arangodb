@@ -117,7 +117,7 @@ function nestedSuite () {
     },
 
     testNested: function() {
-      var query = "for vehicle in any @start1 @@tagged for type in any @start2 @@tagged filter vehicle._id == type._id return vehicle._key";
+      var query = "with " + objects.name() + ", " + tags.name() + " for vehicle in any @start1 @@tagged for type in any @start2 @@tagged filter vehicle._id == type._id return vehicle._key";
       
       var result = AQL_EXECUTE(query, { start1: tags.name() + "/land", start2: tags.name() + "/public", "@tagged": tagged.name() }).json;
       assertEqual([ "train" ], result);
