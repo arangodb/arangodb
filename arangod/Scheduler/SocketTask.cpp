@@ -26,6 +26,7 @@
 
 #include "SocketTask.h"
 
+#include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/socket-utils.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -50,8 +51,10 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
       _readBuffer(TRI_UNKNOWN_MEM_ZONE, READ_BLOCK_SIZE + 1, false),
       _peer(std::move(socket)),
       _keepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000)),
-      _useKeepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000) > 0),
       _keepAliveTimer(_peer->_ioService, _keepAliveTimeout),
+      _useKeepAliveTimer(keepAliveTimeout > 0.0),
+      _keepAliveTimerActive(false),
+      _closeRequested(false),
       _abandoned(false) {
   ConnectionStatisticsAgent::acquire();
   connectionStatisticsAgentSetStart();
@@ -71,7 +74,9 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
 
 SocketTask::~SocketTask() {
   boost::system::error_code err;
-  _keepAliveTimer.cancel(err);
+  if (_keepAliveTimerActive) {
+    _keepAliveTimer.cancel(err);
+  }
 
   if (err) {
     LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to cancel _keepAliveTimer";
@@ -122,54 +127,66 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
 
     delete buffer;
     if (stat) {
-      LOG_TOPIC(TRACE, Logger::REQUESTS)
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
           << "SocketTask::addWriteBuffer - Statistics release: "
           << stat->to_string();
       TRI_ReleaseRequestStatistics(stat);
     } else {
-      LOG_TOPIC(TRACE, Logger::REQUESTS) << "SocketTask::addWriteBuffer - "
-                                            "Statistics release: nullptr - "
-                                            "nothing to realease";
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+          << "SocketTask::addWriteBuffer - "
+             "Statistics release: nullptr - "
+             "nothing to release";
     }
 
     return;
   }
 
-  if (_writeBuffer != nullptr) {
-    _writeBuffers.push_back(buffer);
-    _writeBuffersStats.push_back(stat);
-    return;
+  MUTEX_LOCKER(locker, _writeLock);
+
+  //buffer and stats will be NULL when called form async handler
+  if (buffer) {
+    if (_writeBuffer != nullptr) {
+      _writeBuffers.push_back(buffer);
+      _writeBuffersStats.push_back(stat);
+      return;
+    }
+
+    _writeBuffer = buffer;
+    _writeBufferStatistics = stat;
   }
 
-  _writeBuffer = buffer;
-  _writeBufferStatistics = stat;  // threadsafe? why not pass to
-                                  // completedWriteBuffer does this work with
-                                  // async?
-
-  if(_writeBufferStatistics){
-    _writeBufferStatistics->_writeStart = TRI_StatisticsTime();
-  }
 
   if (_writeBuffer != nullptr) {
-    boost::system::error_code ec;
     size_t total = _writeBuffer->length();
     size_t written = 0;
 
     boost::system::error_code err;
-    do {
-      ec.assign(boost::system::errc::success,
-                boost::system::generic_category());
+    err.clear();
+
+    while (true){
       written = _peer->write(_writeBuffer, err);
       if(_writeBufferStatistics){
         _writeBufferStatistics->_sentBytes += written;
       }
-      if (written == total) {
-        completedWriteBuffer();
+      if (err || written != total) {
+        break; //unable to write everything at once
+               //might be a lot of data
+               //above code does not update the buffer positon
+      }
+
+      if(! completedWriteBuffer()){
         return;
       }
-    } while (err == boost::asio::error::would_block);
 
-    if (err != boost::system::errc::success) {
+      total = _writeBuffer->length();
+      written = 0;
+      if(_writeBufferStatistics){
+        _writeBufferStatistics->_writeStart = TRI_StatisticsTime();
+      }
+    }
+
+    // write could have blocked which is the only acceptable error
+    if (err && err != ::boost::asio::error::would_block) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "SocketTask::addWriteBuffer (write_some) - write on stream "
           << " failed with: " << err.message();
@@ -177,66 +194,77 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
       return;
     }
 
-    auto self = shared_from_this();
-    auto handler = [self, this](const boost::system::error_code& ec,
-                                std::size_t transferred) {
-      if(_writeBufferStatistics){
-        _writeBufferStatistics->_sentBytes += transferred;
-      }
-      if (ec) {
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-            << "SocketTask::addWriterBuffer(async_write) - write on stream "
-            << " failed with: " << ec.message();
-        closeStream();
-      } else {
-        completedWriteBuffer();
-      }
-    };
+    // so the code could have blocked at this point or not all data
+    // was written in one go
 
-    _peer->asyncWrite(
-        boost::asio::buffer(_writeBuffer->begin() + written, total - written),
-        handler);
+    auto self = shared_from_this();
+    //begin writing at offset (written)
+    _peer->asyncWrite(boost::asio::buffer(_writeBuffer->begin() + written, total - written)
+                     ,[self, this](const boost::system::error_code& ec
+                                  ,std::size_t transferred)
+                      {
+                        MUTEX_LOCKER(locker, _writeLock);
+
+                        if (_writeBufferStatistics){
+                          _writeBufferStatistics->_sentBytes += transferred;
+                        }
+
+                        if (ec) {
+                          LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+                              << "SocketTask::addWriterBuffer(async_write) - write on stream "
+                              << " failed with: " << ec.message();
+                          closeStream();
+                        } else {
+                          if (completedWriteBuffer()){
+                            //completedWriteBuffer already advanced _wirteBuffer and _wirteBufferStatistics
+                            locker.unlock(); // avoid recursive locking
+                            addWriteBuffer(nullptr, nullptr);
+                          }
+                        }
+                      }
+                     );
   }
 }
 
-void SocketTask::completedWriteBuffer() {
+bool SocketTask::completedWriteBuffer() {
   delete _writeBuffer;
   _writeBuffer = nullptr;
 
   if (_writeBufferStatistics != nullptr) {
     _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
 #ifdef DEBUG_STATISTICS
-        _writeBufferStatistics->trace_log();
+    LOG_TOPIC(TRACE, Logger::REQUESTS)
+      << "SocketTask::addWriteBuffer - Statistics release: "
+      << _writeBufferStatistics->to_string();
 #endif
     TRI_ReleaseRequestStatistics(_writeBufferStatistics);
     _writeBufferStatistics = nullptr;
   } else {
 #ifdef DEBUG_STATISTICS
     LOG_TOPIC(TRACE, Logger::REQUESTS) << "SocketTask::addWriteBuffer - "
-                                          "Statistics release: nullptr - "
-                                          "nothing to realease";
+      "Statistics release: nullptr - "
+      "nothing to release";
 #endif
   }
 
   if (_writeBuffers.empty()) {
     if (_closeRequested) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "SocketTask::"
-                                                 "completedWriteBuffer - close "
-                                                 "requested, closing stream";
+        "completedWriteBuffer - close "
+        "requested, closing stream";
 
       closeStream();
     }
 
-    return;
+    return false;
   }
 
-  StringBuffer* buffer = _writeBuffers.front();
+  _writeBuffer = _writeBuffers.front();
   _writeBuffers.pop_front();
 
-  TRI_request_statistics_t* statistics = _writeBuffersStats.front();
+  _writeBufferStatistics = _writeBuffersStats.front();
   _writeBuffersStats.pop_front();
-
-  addWriteBuffer(buffer, statistics);
+  return true;
 }
 
 void SocketTask::closeStream() {
@@ -275,6 +303,7 @@ void SocketTask::closeStream() {
 
   _closeRequested = false;
   _keepAliveTimer.cancel();
+  _keepAliveTimerActive = false;
 }
 
 // -----------------------------------------------------------------------------
@@ -286,7 +315,7 @@ void SocketTask::addToReadBuffer(char const* data, std::size_t len) {
 }
 
 void SocketTask::resetKeepAlive() {
-  if (_useKeepAliveTimeout) {
+  if (_useKeepAliveTimer) {
     boost::system::error_code err;
     _keepAliveTimer.expires_from_now(_keepAliveTimeout, err);
 
@@ -295,6 +324,7 @@ void SocketTask::resetKeepAlive() {
       return;
     }
 
+    _keepAliveTimerActive = true;
     auto self = shared_from_this();
 
     _keepAliveTimer.async_wait(
@@ -311,9 +341,10 @@ void SocketTask::resetKeepAlive() {
 }
 
 void SocketTask::cancelKeepAlive() {
-  if (_useKeepAliveTimeout) {
+  if (_useKeepAliveTimer && _keepAliveTimerActive) {
     boost::system::error_code err;
     _keepAliveTimer.cancel(err);
+    _keepAliveTimerActive = false;
   }
 }
 
@@ -329,6 +360,7 @@ bool SocketTask::reserveMemory() {
 
 bool SocketTask::trySyncRead() {
   boost::system::error_code err;
+
   if (_abandoned) {
     return false;
   }
@@ -477,6 +509,7 @@ void SocketTask::asyncReadSome() {
     _peer->asyncRead(boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
                      handler);
   }
+
 }
 
 void SocketTask::closeReceiveStream() {

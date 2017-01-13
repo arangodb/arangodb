@@ -22,13 +22,14 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_SOCKET_TASK2_H
-#define ARANGOD_SCHEDULER_SOCKET_TASK2_H 1
+#ifndef ARANGOD_SCHEDULER_SOCKET_TASK_H
+#define ARANGOD_SCHEDULER_SOCKET_TASK_H 1
 
 #include "Scheduler/Task.h"
 
 #include <boost/asio/ssl.hpp>
 
+#include "Basics/Mutex.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/asio-helper.h"
 #include "Scheduler/Socket.h"
@@ -81,7 +82,6 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   void addWriteBuffer(basics::StringBuffer*, TRI_request_statistics_t*);
 
-  void completedWriteBuffer();
 
   void closeStream();
 
@@ -93,18 +93,22 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   basics::StringBuffer _readBuffer;
 
+ private:
+  bool completedWriteBuffer(); //returns next buffer to write or none
+  Mutex _writeLock;
   basics::StringBuffer* _writeBuffer = nullptr;
   TRI_request_statistics_t* _writeBufferStatistics = nullptr;
 
   std::deque<basics::StringBuffer*> _writeBuffers;
   std::deque<TRI_request_statistics_t*> _writeBuffersStats;
 
+ protected:
   std::unique_ptr<Socket> _peer;
   boost::posix_time::milliseconds _keepAliveTimeout;
-  bool _useKeepAliveTimeout;
   boost::asio::deadline_timer _keepAliveTimer;
-
-  bool _closeRequested = false;
+  bool const _useKeepAliveTimer;
+  bool _keepAliveTimerActive;
+  bool _closeRequested;
   std::atomic_bool _abandoned;
 
  private:

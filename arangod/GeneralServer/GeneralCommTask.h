@@ -118,7 +118,7 @@ class GeneralCommTask : public SocketTask {
  protected:
   GeneralServer* const _server;
 
-  // protocol to use http, vpp
+  // protocol to use http, vst
   char const* _protocol = "unknown";
   rest::ProtocolVersion _protocolVersion = rest::ProtocolVersion::UNKNOWN;
 
@@ -126,9 +126,6 @@ class GeneralCommTask : public SocketTask {
   ::arangodb::Mutex _agentsMutex;
 
  private:
-  void handleTimeout() /* override final */ { /* _clientClosed = true; */
-  }
-
   bool handleRequest(std::shared_ptr<RestHandler>);
   void handleRequestDirectly(std::shared_ptr<RestHandler>);
   bool handleRequestAsync(std::shared_ptr<RestHandler>,

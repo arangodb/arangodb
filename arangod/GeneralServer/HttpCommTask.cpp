@@ -58,14 +58,15 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
       _allowMethodOverride(GeneralServerFeature::allowMethodOverride()),
       _denyCredentials(true),
       _newRequest(true),
-      _requestType(rest::RequestType::ILLEGAL),  // TODO(fc) remove
-      _fullUrl(),                                // TODO(fc) remove
-      _origin(),                                 // TODO(fc) remove
+      _requestType(rest::RequestType::ILLEGAL),
+      _fullUrl(),
+      _origin(),
       _sinceCompactification(0),
-      _originalBodyLength(0) {  // TODO(fc) remove
+      _originalBodyLength(0) {
   _protocol = "http";
-  connectionStatisticsAgentSetHttp();  // this agent is inherited form
-                                       // sockettask or task
+
+  connectionStatisticsAgentSetHttp();
+  
   auto agent = std::make_unique<RequestStatisticsAgent>(true);
   agent->acquire();
   MUTEX_LOCKER(lock, _agentsMutex);
@@ -167,7 +168,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
         << "\"";
   }
 
-  auto agent = getAgent(1);
+  auto agent = getAgent(1UL);
   double const totalTime = agent->elapsedSinceReadStart();
 
   // append write buffer and statistics
@@ -284,16 +285,22 @@ bool HttpCommTask::processRead(double startTime) {
     if (ptr < end) {
       _readPosition = ptr - _readBuffer.c_str() + 4;
 
+      char const* sptr = _readBuffer.c_str() + _startPosition;
+      size_t slen = _readPosition - _startPosition;
+
+      if (slen == 11 && memcmp(sptr, "VST/1.1", 7) == 0) {
+        LOG(WARN) << "got VelocyStream request on HTTP port";
+        return false;
+      }
+
       LOG(TRACE) << "HTTP READ FOR " << (void*)this << ": "
-                 << std::string(_readBuffer.c_str() + _startPosition,
-                                _readPosition - _startPosition);
+                 << std::string(sptr, slen);
 
       // check that we know, how to serve this request and update the connection
       // information, i. e. client and server addresses and ports and create a
       // request context for that request
-      _incompleteRequest.reset(new HttpRequest(
-          _connectionInfo, _readBuffer.c_str() + _startPosition,
-          _readPosition - _startPosition, _allowMethodOverride));
+      _incompleteRequest.reset(
+          new HttpRequest(_connectionInfo, sptr, slen, _allowMethodOverride));
 
       GeneralServerFeature::HANDLER_FACTORY->setRequestContext(
           _incompleteRequest.get());
@@ -409,8 +416,7 @@ bool HttpCommTask::processRead(double startTime) {
             l = 6;
           }
 
-          LOG(WARN) << "got corrupted HTTP request '"
-                    << std::string(_readBuffer.c_str() + _startPosition, l)
+          LOG(WARN) << "got corrupted HTTP request '" << std::string(sptr, l)
                     << "'";
 
           // bad request, method not allowed
@@ -522,7 +528,7 @@ bool HttpCommTask::processRead(double startTime) {
     LOG(DEBUG) << "no keep-alive, connection close requested by client";
     _closeRequested = true;
 
-  } else if (!_useKeepAliveTimeout) {
+  } else if (!_useKeepAliveTimer) {
     // if keepAliveTimeout was set to 0.0, we'll close even keep-alive
     // connections immediately
     LOG(DEBUG) << "keep-alive disabled by admin";

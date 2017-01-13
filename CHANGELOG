@@ -1,6 +1,8 @@
 v3.1.9 (XXXX-XX-XX)
 -------------------
 
+* fixed a race in the VelocyStream Commtask implementation
+
 * fixed issue #2256
 
 
