@@ -31,7 +31,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Agency/AgencyCallbackRegistry.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
