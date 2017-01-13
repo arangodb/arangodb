@@ -1372,9 +1372,10 @@ function executePlanForCollections(plan) {
                   let shouldBeLeader = shards[shard][0] === ourselves;
 
                   // found a shard we are responsible for
-
-                  let error = { error: false, errorNum: 0,
+                  localErrors[shard] = { error: false, errorNum: 0,
                                 errorMessage: 'no error' };
+
+                  let error = localErrors[shard];
 
                   if (!localCollections.hasOwnProperty(shard)) {
                     // must create this shard
@@ -1463,9 +1464,7 @@ function executePlanForCollections(plan) {
                       }
                     }
                   }
-
                   if (error.error) {
-                    localErrors[shard] = error;
                     continue; // No point to look for indices, if the 
                               // creation has not worked
                   }
@@ -1489,13 +1488,13 @@ function executePlanForCollections(plan) {
                           arangodb.db._collection(shard).ensureIndex(index);
                         } catch (err5) {
                           if (error.indexes === undefined) {
-                            error.indexes = {};
+                            error.indexes = [];
                           }
-                          error.indexes[index.id] = {
+                          error.indexes.push({
                             error: true,
                             errorNum: err5.errorNum,
                             errorMessage: err5.errorMessage
-                          };
+                          });
                         }
                       }
                     }
@@ -1529,10 +1528,6 @@ function executePlanForCollections(plan) {
                         }
                       }
                     }
-                  }
-
-                  if (error.indexes !== undefined) {
-                    localErrors[shard] = error;
                   }
                 }
               }
