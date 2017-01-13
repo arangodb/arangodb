@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #2257
+
 * upgraded Boost version to 1.62.0
 
 * added optional detail flag for db.<collection>.count()
