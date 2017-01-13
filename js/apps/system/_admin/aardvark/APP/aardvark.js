@@ -332,12 +332,18 @@ authRouter.get('/graph/:name', function (req, res) {
     ]
   };
 
-  // var traversal = require("@arangodb/graph/traversal");
-
   var graph = gm._graph(name);
 
   var verticesCollections = graph._vertexCollections();
-  var vertexName = verticesCollections[Math.floor(Math.random() * verticesCollections.length)].name();
+  if (!verticesCollections || verticesCollections.length === 0) {
+    res.throw('bad request', 'no vertex collections found for graph');
+  }
+  var vertexName;
+  try {
+    vertexName = verticesCollections[Math.floor(Math.random() * verticesCollections.length)].name();
+  } catch (err) {
+    res.throw('bad request', 'vertex collection of graph not found');
+  }
 
   var vertexCollections = [];
   _.each(graph._vertexCollections(), function (vertex) {
