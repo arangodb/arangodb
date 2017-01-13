@@ -32,31 +32,24 @@ namespace pregel {
 /// Portable read-only memory mapping (Windows and Linux)
 /** Filesize limited by size_t, usually 2^32 or 2^64 */
 class MemoryMapped {
- public:
-  /// tweak performance
-  enum CacheHint {
-    Normal,          ///< good overall performance
-    SequentialScan,  ///< read file only once with few seeks
-    RandomAccess     ///< jump around
-  };
-
-  /// how much should be mappend
-  enum MapRange {
-    WholeFile =
-        0  ///< everything ... be careful when file is larger than memory
-  };
-
-  /// do nothing, must use open()
-  MemoryMapped();
+protected:
   /// open file, mappedBytes = 0 maps the whole file
-  MemoryMapped(const std::string& filename, size_t mappedBytes = WholeFile,
-               CacheHint hint = Normal);
+  MemoryMapped(std::string const& filename, int fd, void* mmHandle, TRI_voc_size_t maximalSize,
+               TRI_voc_size_t currentsize, TRI_voc_fid_t fid, char* data);
+  
+ public:
+  
   /// close file (see close() )
   ~MemoryMapped();
 
   /// open file, mappedBytes = 0 maps the whole file
-  bool open(const std::string& filename, size_t mappedBytes = WholeFile,
-            CacheHint hint = Normal);
+  static TRI_datafile_t* openHelper(std::string const& filename, bool ignoreErrors);
+  
+  /// @brief return whether the datafile is a physical file (true) or an
+  /// anonymous mapped region (false)
+  inline bool isPhysical() const { return !_filename.empty(); }
+
+
   /// close file
   void close();
 
@@ -80,6 +73,11 @@ class MemoryMapped {
   /// of the page size
   bool remap(uint64_t offset, size_t mappedBytes);
 
+  TRI_voc_size_t initSize() const { return _initSize; }
+  TRI_voc_size_t maximalSize() const { return _maximalSize; }
+  TRI_voc_size_t currentSize() const { return _currentSize; }
+  TRI_voc_size_t footerSize() const { return _footerSize; }
+  
  private:
   /// don't copy object
   MemoryMapped(const MemoryMapped&);
@@ -102,7 +100,6 @@ class MemoryMapped {
   TRI_voc_size_t _maximalSize;  // maximal size of the datafile (adjusted
   // (=reduced) at runtime)
   TRI_voc_size_t _currentSize;  // current size of the datafile
-  TRI_voc_size_t _footerSize;   // size of the final footer
 
   char* _data;  // start of the data array
   char* _next;  // end of the current data

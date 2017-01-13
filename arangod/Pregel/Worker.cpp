@@ -274,7 +274,7 @@ void Worker<V, E, M>::_startProcessing() {
   size_t total = _graphStore->localVertexCount();
   size_t delta = total / pool->numThreads();
   size_t start = 0, end = delta;
-  if (total > 1000) {
+  if (delta >= 100 && total >= 100) {
     _runningThreads = total / delta;  // rounds-up unsigned integers
   } else {
     _runningThreads = 1;

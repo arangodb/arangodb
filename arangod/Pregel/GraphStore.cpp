@@ -370,6 +370,8 @@ void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
 
 template <typename V, typename E>
 void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
+  double start = TRI_microtime();
+  
   std::vector<std::string> readColls, writeColls;
   for (auto shard : state.localVertexShardIDs()) {
     writeColls.push_back(shard);
@@ -417,6 +419,8 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
+  
+  LOG(INFO) << "Storing data took " << (TRI_microtime() - start) << "s";
 }
 
 template class arangodb::pregel::GraphStore<int64_t, int64_t>;

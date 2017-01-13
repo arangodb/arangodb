@@ -57,10 +57,17 @@ PregelFeature::~PregelFeature() {
 
 PregelFeature* PregelFeature::instance() { return Instance; }
 
+static size_t _approxThreadNumber(){
+  const size_t procNum = TRI_numberProcessors();
+  if (procNum <= 1) return 1;
+  else if (procNum <= 16) return procNum / 2;
+  else return procNum;
+}
+
 void PregelFeature::start() {
   Instance = this;
 
-  const size_t threadNum = TRI_numberProcessors();
+  const size_t threadNum = _approxThreadNumber();
   _threadPool.reset(new basics::ThreadPool(threadNum, "Pregel"));
 
   ClusterFeature* cluster =

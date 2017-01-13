@@ -6,43 +6,24 @@
 
 #include "Pregel/MemoryMapped.h"
 
+
+#include "ApplicationFeatures/PageSizeFeature.h"
+#include "Basics/FileUtils.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
+#include "Basics/files.h"
+#include "Basics/memory-map.h"
+#include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
+
+#include <sstream>
+#include <iomanip>
+
 #include <cstdio>
 #include <stdexcept>
 
-// OS-specific
-#ifdef _MSC_VER
-// Windows
-#include <windows.h>
-#else
-// Linux
-// enable large file support on 32 bit systems
-#ifndef _LARGEFILE64_SOURCE
-#define _LARGEFILE64_SOURCE
-#endif
-#ifdef _FILE_OFFSET_BITS
-#undef _FILE_OFFSET_BITS
-#endif
-#define _FILE_OFFSET_BITS 64
-// and include needed headers
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#endif
-
-/// do nothing, must use open()
-MemoryMapped::MemoryMapped()
-    : _filename(),
-      _filesize(0),
-      _hint(Normal),
-      _mappedBytes(0),
-      _file(0),
-#ifdef _MSC_VER
-      _mappedFile(NULL),
-#endif
-      _mappedView(NULL) {
-}
+using namespace arangodb;
+using namespace arangodb::basics;
 
 /// open file, mappedBytes = 0 maps the whole file
 MemoryMapped::MemoryMapped(const std::string& filename, size_t mappedBytes,
