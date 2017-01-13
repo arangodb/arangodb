@@ -316,21 +316,40 @@ std::vector<bool> Store::apply(
       body.add("index", VPackValue(lastCommitIndex));
       auto ret = in.equal_range(url);
       
+      // mop: XXX not exactly sure what is supposed to happen here
+      // if there are multiple subobjects being updates at the same time
+      // e.g.
+      // /hans/wurst
+      //        /hans/wurst/peter: 1
+      // /hans/wurst
+      //        /hans/wurst/uschi: 2
+      // we are generating invalid json...not sure if this here is a
+      // valid fix...it is most likely broken :S
+      std::string currentKey;
       for (auto it = ret.first; it != ret.second; ++it) {
-        body.add(it->second->key, VPackValue(VPackValueType::Object));
+        if (currentKey != it->second->key) {
+          if (!currentKey.empty()) {
+            body.close();
+          }
+          body.add(it->second->key, VPackValue(VPackValueType::Object));
+          currentKey = it->second->key;
+        }
+        // mop: XXX maybe there are duplicates here as well?
+        // e.g. a key is set and deleted in the same transaction?
         body.add(it->second->modified, VPackValue(VPackValueType::Object));
         body.add("op", VPackValue(it->second->oper));
         body.close();
+      }
+      if (!currentKey.empty()) {
         body.close();
       }
-      
       body.close();
       
       std::string endpoint, path;
       if (endpointPathFromUrl(url, endpoint, path)) {
         auto headerFields =
           std::make_unique<std::unordered_map<std::string, std::string>>();
-
+        
         arangodb::ClusterComm::instance()->asyncRequest(
           "1", 1, endpoint, rest::RequestType::POST, path,
           std::make_shared<std::string>(body.toString()), headerFields,
