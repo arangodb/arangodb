@@ -70,6 +70,7 @@
 
     events: {
       'click #downloadPNG': 'downloadPNG',
+      'click #loadFullGraph': 'loadFullGraphModal',
       'click #reloadGraph': 'reloadGraph',
       'click #settingsMenu': 'toggleSettings',
       'click #toggleForce': 'toggleLayout',
@@ -100,6 +101,59 @@
         background: 'white',
         zoom: false
       });
+    },
+
+    loadFullGraphModal: function () {
+      var buttons = []; var tableContent = [];
+
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          'load-full-graph-a',
+          'Caution',
+          'Really load full graph? If no limit is set, your result set could be too big.')
+      );
+
+      buttons.push(
+        window.modalView.createSuccessButton('Load full graph', this.loadFullGraph.bind(this))
+      );
+
+      window.modalView.show(
+        'modalTable.ejs',
+        'Load full graph',
+        buttons,
+        tableContent
+      );
+    },
+
+    loadFullGraph: function () {
+      var self = this;
+      var ajaxData = {};
+
+      if (this.graphConfig) {
+        ajaxData = _.clone(this.graphConfig);
+
+        // remove not needed params
+        delete ajaxData.layout;
+        delete ajaxData.edgeType;
+        delete ajaxData.renderer;
+      }
+      ajaxData.mode = 'all';
+
+      $.ajax({
+        type: 'GET',
+        url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
+        contentType: 'application/json',
+        data: ajaxData,
+        success: function (data) {
+          self.killCurrentGraph();
+          self.renderGraph(data);
+        },
+        error: function (e) {
+          console.log(e);
+          arangoHelper.arangoError('Graph', 'Could not load full graph.');
+        }
+      });
+      window.modalView.hide();
     },
 
     resize: function () {

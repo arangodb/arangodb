@@ -147,6 +147,11 @@ class Slice {
   inline ValueType type() const noexcept {
     return SliceStaticData::TypeMap[head()];
   }
+  
+  // get the type for the slice
+  inline ValueType type(uint8_t h) const noexcept {
+    return SliceStaticData::TypeMap[h];
+  }
 
   char const* typeName() const { return valueTypeName(type()); }
 
@@ -682,19 +687,18 @@ class Slice {
 
   // get the total byte size for the slice, including the head byte
   ValueLength byteSize() const {
+    auto const h = head();
     // check if the type has a fixed length first
-    ValueLength l = SliceStaticData::FixedTypeLengths[head()];
+    ValueLength l = SliceStaticData::FixedTypeLengths[h];
     if (l != 0) {
       // return fixed length
       return l;
     }
 
     // types with dynamic lengths need special treatment:
-    switch (type()) {
+    switch (type(h)) {
       case ValueType::Array:
       case ValueType::Object: {
-        auto const h = head();
-
         if (h == 0x13 || h == 0x14) {
           // compact Array or Object
           return readVariableValueLength<false>(_start + 1);
@@ -709,8 +713,8 @@ class Slice {
         }
 
         VELOCYPACK_ASSERT(h > 0x00 && h <= 0x0e);
-        return readInteger<ValueLength>(_start + 1,
-                                        SliceStaticData::WidthMap[h]);
+        return readIntegerNonEmpty<ValueLength>(_start + 1,
+                                                SliceStaticData::WidthMap[h]);
       }
 
       case ValueType::External: {
@@ -722,11 +726,10 @@ class Slice {
       }
 
       case ValueType::Int: {
-        return static_cast<ValueLength>(1 + (head() - 0x1f));
+        return static_cast<ValueLength>(1 + (h - 0x1f));
       }
 
       case ValueType::String: {
-        auto const h = head();
         VELOCYPACK_ASSERT(h == 0xbf);
         if (h < 0xbf) {
           // we cannot get here, because the FixedTypeLengths lookup
@@ -741,26 +744,26 @@ class Slice {
       }
 
       case ValueType::Binary: {
-        auto const h = head();
+        VELOCYPACK_ASSERT(h >= 0xc0 && h <= 0xc7);
         return static_cast<ValueLength>(
             1 + h - 0xbf + readIntegerNonEmpty<ValueLength>(_start + 1, h - 0xbf));
       }
 
       case ValueType::BCD: {
-        auto const h = head();
         if (h <= 0xcf) {
           // positive BCD
+          VELOCYPACK_ASSERT(h >= 0xc8 && h < 0xcf);
           return static_cast<ValueLength>(
-              1 + h - 0xc7 + readInteger<ValueLength>(_start + 1, h - 0xc7));
+              1 + h - 0xc7 + readIntegerNonEmpty<ValueLength>(_start + 1, h - 0xc7));
         }
 
         // negative BCD
+        VELOCYPACK_ASSERT(h >= 0xd0 && h < 0xd7);
         return static_cast<ValueLength>(
-            1 + h - 0xcf + readInteger<ValueLength>(_start + 1, h - 0xcf));
+            1 + h - 0xcf + readIntegerNonEmpty<ValueLength>(_start + 1, h - 0xcf));
       }
 
       case ValueType::Custom: {
-        auto const h = head();
         VELOCYPACK_ASSERT(h >= 0xf4);
         switch (h) {
           case 0xf4: 

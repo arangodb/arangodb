@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #2257
+
 * upgraded Boost version to 1.62.0
 
 * added optional detail flag for db.<collection>.count()
@@ -51,14 +53,34 @@ edge attribute `label`.
 * process.stdout.isTTY now returns `true` in arangosh and when running arangod with the `--console` flag
 
 
-v3.1.8 (XXXX-XX-XX)
+v3.1.9 (XXXX-XX-XX)
 -------------------
+
+* fixed a race in the VelocyStream Commtask implementation
+
+* fixed issue #2256
+
+
+v3.1.8 (2017-01-09)
+-------------------
+
+* add Windows silent installer
+
+* add handling of debug symbols during Linux & windows release builds.
 
 * fixed issue #2181
 
 * fixed issue #2238
 
 * fixed issue #2234
+
+* agents announce new endpoints in inception phase to leader
+
+* agency leadership accepts updatet endpoints to given uuid
+
+* unified endpoints replace localhost with 127.0.0.1
+
+* fix several problems within an authenticated cluster
 
 
 v3.1.7 (2016-12-29)

@@ -30,7 +30,6 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
-#include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
@@ -54,7 +53,8 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
       _heartbeatThread(nullptr),
       _heartbeatInterval(0),
       _disableHeartbeat(false),
-      _agencyCallbackRegistry(nullptr) {
+      _agencyCallbackRegistry(nullptr),
+      _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Authentication");
@@ -162,6 +162,27 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     LOG(FATAL) << "system replication factor must be greater 0";
     FATAL_ERROR_EXIT();
   }
+
+  if (!_myRole.empty()) {
+    _requestedRole = ServerState::stringToRole(_myRole);
+
+    if (_requestedRole == ServerState::ROLE_SINGLE ||
+        _requestedRole == ServerState::ROLE_AGENT ||
+        _requestedRole == ServerState::ROLE_UNDEFINED
+        ) {
+      LOG(FATAL) << "Invalid role provided. Possible values: PRIMARY, "
+                    "SECONDARY, COORDINATOR";
+      FATAL_ERROR_EXIT();
+    }
+  }
+}
+
+void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {
+  std::string roleString(ServerState::roleToString(role));
+  if (role == ServerState::ROLE_UNDEFINED) {
+    roleString += ". Determining real role from agency";
+  }
+  LOG(INFO) << "Starting up with role " << roleString;
 }
 
 void ClusterFeature::prepare() {
@@ -219,7 +240,10 @@ void ClusterFeature::prepare() {
 
   // return if cluster is disabled
   if (!_enableCluster) {
+    reportRole(ServerState::instance()->getRole());
     return;
+  } else {
+    reportRole(_requestedRole);
   }
 
   ServerState::instance()->setClusterEnabled();
@@ -247,7 +271,6 @@ void ClusterFeature::prepare() {
 
   // disable error logging for a while
   ClusterComm::instance()->enableConnectionErrorLogging(false);
-
   // perform an initial connect to the agency
   if (!AgencyCommManager::MANAGER->start()) {
     LOG(FATAL) << "Could not connect to any agency endpoints ("
@@ -261,17 +284,8 @@ void ClusterFeature::prepare() {
     ServerState::instance()->setId(_myId);
   }
 
-  if (!_myRole.empty()) {
-    ServerState::RoleEnum role = ServerState::stringToRole(_myRole);
-
-    if (role == ServerState::ROLE_SINGLE ||
-        role == ServerState::ROLE_UNDEFINED) {
-      LOG(FATAL) << "Invalid role provided. Possible values: PRIMARY, "
-                    "SECONDARY, COORDINATOR";
-      FATAL_ERROR_EXIT();
-    }
-
-    if (!ServerState::instance()->registerWithRole(role, _myAddress)) {
+  if (_requestedRole != ServerState::RoleEnum::ROLE_UNDEFINED) {
+    if (!ServerState::instance()->registerWithRole(_requestedRole, _myAddress)) {
       LOG(FATAL) << "Couldn't register at agency.";
       FATAL_ERROR_EXIT();
     }

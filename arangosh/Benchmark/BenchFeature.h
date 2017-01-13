@@ -34,6 +34,13 @@ struct BenchRunResult {
   size_t failures;
   size_t incomplete;
   double requestTime;
+
+  void update(double _time, size_t _failures, size_t _incomplete, double _requestTime) {
+    time = _time;
+    failures = _failures;
+    incomplete = _incomplete;
+    requestTime = _requestTime;
+  }
 };
 
 class BenchFeature final : public application_features::ApplicationFeature {
@@ -59,11 +66,13 @@ class BenchFeature final : public application_features::ApplicationFeature {
   bool verbose() const { return _verbose; }
   bool quit() const { return _quiet; }
   uint64_t const& runs() const { return _runs; }
+  std::string const& junitReportFile() const { return _junitReportFile; }
 
  private:
   void status(std::string const& value);
-  void report(ClientFeature*, std::vector<BenchRunResult>);
+  bool report(ClientFeature*, std::vector<BenchRunResult>);
   void printResult(BenchRunResult const& result);
+  bool writeJunitReport(BenchRunResult const& result);
 
  private:
   bool _async;
@@ -79,6 +88,7 @@ class BenchFeature final : public application_features::ApplicationFeature {
   bool _verbose;
   bool _quiet;
   uint64_t _runs;
+  std::string _junitReportFile;
 
  private:
   int* _result;

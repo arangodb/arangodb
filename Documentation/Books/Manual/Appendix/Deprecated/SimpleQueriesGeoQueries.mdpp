@@ -1,6 +1,10 @@
 Geo Queries
 ===========
 
+{% hint 'warning' %}
+It is recommended to use AQL instead, see [Geo functions](../../../../AQL/Functions/Geo.html).
+{% endhint %}
+
 The ArangoDB allows to select documents based on geographic coordinates. In
 order for this to work, a geo-spatial index must be defined.  This index will
 use a very elaborate algorithm to lookup neighbors that is a magnitude faster

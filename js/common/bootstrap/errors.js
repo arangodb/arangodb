@@ -154,6 +154,8 @@
     "ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT" : { "code" : 1479, "message" : "An endpoint couldn't be found" },
     "ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID" : { "code" : 1480, "message" : "Invalid agency structure" },
     "ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC" : { "code" : 1481, "message" : "collection is out of sync" },
+    "ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN" : { "code" : 1482, "message" : "could not create index in plan" },
+    "ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN" : { "code" : 1483, "message" : "could not drop index in plan" },
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" },
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" },
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" },

@@ -27,7 +27,6 @@
 #include <limits>
 #include <stdexcept>
 
-#include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <boost/optional.hpp>
@@ -48,9 +47,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
-
-#include <velocypack/Validator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -292,7 +288,7 @@ bool VppCommTask::processRead(double startTime) {
       handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "VppCommTask: "
-          << std::string("VPack Validation failed!") + e.what();
+          << "VPack Validation failed: " << e.what();
       closeTask(rest::ResponseCode::BAD);
       return false;
     }
@@ -434,14 +430,14 @@ boost::optional<bool> VppCommTask::getMessageFromSingleChunk(
                       TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                       chunkHeader._messageID);
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
-                                            << "VPack Validation failed!"
+                                            << "VPack Validation failed: "
                                             << e.what();
     closeTask(rest::ResponseCode::BAD);
     return false;
   } catch (...) {
     handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
-                                            << "VPack Validation failed!";
+                                            << "VPack Validation failed";
     closeTask(rest::ResponseCode::BAD);
     return false;
   }
@@ -523,7 +519,7 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
                           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                           chunkHeader._messageID);
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
-                                                << "VPack Validation failed!"
+                                                << "VPack Validation failed: "
                                                 << e.what();
         closeTask(rest::ResponseCode::BAD);
         return false;

@@ -1015,7 +1015,8 @@ std::string TRI_datafile_t::getName() const {
 /// @brief close a datafile
 int TRI_datafile_t::close() {
   if (_state == TRI_DF_STATE_READ ||
-      _state == TRI_DF_STATE_WRITE) {
+      _state == TRI_DF_STATE_WRITE ||
+      _state == TRI_DF_STATE_OPEN_ERROR) {
     int res = TRI_UNMMFile(_data, _initSize, _fd, &_mmHandle);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1048,7 +1049,7 @@ int TRI_datafile_t::close() {
     LOG(TRACE) << "closing an already closed datafile '" << getName() << "'";
     return TRI_ERROR_NO_ERROR;
   } 
-
+        
   LOG(ERR) << "attempting to close datafile with an invalid state";
   
   return TRI_ERROR_ARANGO_ILLEGAL_STATE;
