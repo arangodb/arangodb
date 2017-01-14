@@ -129,7 +129,7 @@ void RecoveryManager::_monitorShard(DatabaseID const& databaseName,
   std::shared_ptr<std::vector<ServerID>> servers =
       ClusterInfo::instance()->getResponsibleServer(shard);
   if (servers->size() > 0) {
-    MUTEX_LOCKER(guard, _lock);
+    // _lock is already held
     _primaryServers[shard] = servers->at(0);
 
     auto call =
@@ -146,6 +146,8 @@ int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
     VPackSlice serversRegistered =
         result.slice()[0].get(std::vector<std::string>(
             {AgencyCommManager::path(), "Supervision", "Health"}));
+    
+    LOG(INFO) << "Server Status: " << serversRegistered.toJson();
 
     if (serversRegistered.isObject()) {
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
@@ -188,7 +190,7 @@ void RecoveryManager::updatedFailedServers() {
 
 // don't call while holding _lock
 void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
-  MUTEX_LOCKER(guard, _lock);
+  MUTEX_LOCKER(guard, _lock);// editing
 
   ClusterInfo* ci = ClusterInfo::instance();
   auto const& conductors = _listeners.find(shard);
@@ -206,6 +208,7 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
     if (servers) {
       ServerID const& nextPrimary = servers->front();
       if (currentPrimary->second != nextPrimary) {
+        
         _primaryServers[shard] = nextPrimary;
         for (Conductor* cc : conductors->second) {
           cc->startRecovery();
@@ -214,7 +217,7 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
         break;
       }
     }
-    usleep(250000);  // 250ms
+    usleep(100000);  // 100ms
     tries++;
   } while (tries < 2);
 }

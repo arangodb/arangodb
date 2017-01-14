@@ -41,7 +41,10 @@ struct PageRankAlgorithm : public SimpleAlgorithm<float, float, float> {
   MasterContext* masterContext(VPackSlice userParams) const override;
 
   GraphFormat<float, float>* inputFormat() override;
-  MessageFormat<float>* messageFormat() const override;
+  MessageFormat<float>* messageFormat() const override {
+    return new FloatMessageFormat();
+  }
+  
   MessageCombiner<float>* messageCombiner() const override;
   VertexComputation<float, float, float>* createComputation(
       WorkerConfig const*) const override;

@@ -334,27 +334,26 @@ void Conductor::startRecovery() {
   basics::ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this] {
     // let's wait for a final state in the cluster
-    for (int i = 0; i < 15; i++) {
+    for (int i = 0; i < 5; i++) {
       // on some systems usleep does not
       // like arguments greater than 1000000
       usleep(1000000);
     }
-    std::vector<ServerID> goodServers;
+    /*std::vector<ServerID> goodServers;
     int res = PregelFeature::instance()->recoveryManager()->filterGoodServers(
         _dbServers, goodServers);
     if (res != TRI_ERROR_NO_ERROR) {
       LOG(ERR) << "Recovery proceedings failed";
       cancel();
       return;
-    }
+    }*/
 
     VPackBuilder b;
     b.openObject();
     b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
     b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
     b.close();
-    _dbServers = goodServers;
-    _sendToAllDBServers(Utils::cancelGSSPath, b.slice());
+    _sendToAllDBServers(Utils::cancelGSSPath, b.slice());// will fail for some
 
     // Let's try recovery
     if (_algorithm->supportsCompensation()) {
@@ -452,10 +451,11 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
     b.add(Utils::asyncMode, VPackValue(_asyncMode));
     b.add(Utils::lazyLoading, VPackValue(_lazyLoading));
-    b.add(Utils::vertexShardsKey, VPackValue(VPackValueType::Object));
     if (additional.isObject()) {
       b.add(additional);
     }
+    
+    b.add(Utils::vertexShardsKey, VPackValue(VPackValueType::Object));
     for (auto const& pair : vertexShardMap) {
       b.add(pair.first, VPackValue(VPackValueType::Array));
       for (ShardID const& shard : pair.second) {

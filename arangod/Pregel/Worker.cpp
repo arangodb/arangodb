@@ -514,6 +514,12 @@ void Worker<V, E, M>::startRecovery(VPackSlice data) {
   MUTEX_LOCKER(guard, _commandMutex);
 
   _state = WorkerState::RECOVERING;
+  _writeCache->clear();
+  _readCache->clear();
+  if (_writeCacheNextGSS) {
+    _writeCacheNextGSS->clear();
+  }
+  
   VPackSlice method = data.get(Utils::recoveryMethodKey);
   if (method.compareString(Utils::compensate) == 0) {
     // hack to determine newly added vertices
@@ -522,7 +528,8 @@ void Worker<V, E, M>::startRecovery(VPackSlice data) {
     _graphStore->loadShards(nextState);
     _config = nextState;
     compensateStep(data);
-  } else if (method.compareString(Utils::rollback) == 0) {
+  } else {//if (method.compareString(Utils::rollback) == 0) {
+    LOG(INFO) << "Unsupported operation";
   }
 }
 

@@ -67,10 +67,6 @@ GraphFormat<float, float>* PageRankAlgorithm::inputFormat() {
   return new PageRankGraphFormat(_sourceField, _resultField);
 }
 
-MessageFormat<float>* PageRankAlgorithm::messageFormat() const {
-  return new FloatMessageFormat();
-}
-
 MessageCombiner<float>* PageRankAlgorithm::messageCombiner() const {
   return new FloatSumCombiner();
 }

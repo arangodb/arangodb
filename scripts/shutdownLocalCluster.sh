@@ -83,6 +83,11 @@ for p in `seq 8629 $PORTTOPDB` ; do
     testServerDown $p
 done
 
+# Currently the agency does not wait for all servers to shutdown
+# This causes a race condisiton where all servers wait to tell the agency
+# they are shutting down
+sleep 5
+
 echo Shutting down agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     port=$(( 4001 + $aid ))
