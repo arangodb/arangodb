@@ -194,10 +194,10 @@ function fetchKey(structure, ...path) {
   let current = structure;
   do {
     let key = path.shift();
-    if (!typeof current != 'object' || !current.hasOwnProperty(key)) {
+    if (typeof current !== 'object' || !current.hasOwnProperty(key)) {
       return undefined;
     }
-    current = structure[key];
+    current = current[key];
   } while (path.length > 0);
   return current;
 }
@@ -998,6 +998,7 @@ function updateCurrentForCollections(localErrors, current) {
     Object.keys(error.indexes).forEach(indexId => {
       payload.indexes.push(error.indexes[indexId]);
     });
+    
     payload.servers = [ourselves].concat(coll.getFollowers());
     return payload;
   }
@@ -1026,11 +1027,20 @@ function updateCurrentForCollections(localErrors, current) {
           if (shardInfo.isLeader) {
             let localCollectionInfo = assembleLocalCollectionInfo(shardInfo, localErrors[shard]);
 
-            let currentCollectionInfo = fetchKey(current, 'Current', 'Collections', database, shardInfo.planId, shard);
+            let currentCollectionInfo = fetchKey(current, 'Collections', database, shardInfo.planId, shard);
             if (!_.isEqual(localCollectionInfo, currentCollectionInfo)) {
               trx[0][curCollections + database + '/' + shardInfo.planId + '/' + shardInfo.name] = {
                 op: 'set',
                 new: localCollectionInfo,
+              };
+            }
+          } else {
+            let currentServers = fetchKey(current, 'Collections', database, shardInfo.planId, shard, 'servers');
+            // we were previously leader and we are done resigning. update current and let supervision handle the rest
+            if (Array.isArray(currentServers) && currentServers[0] === ourselves) {
+              trx[0][curCollections + database + '/' + shardInfo.planId + '/' + shardInfo.name + '/servers'] = {
+                op: 'set',
+                new: ['_' + ourselves].concat(db._collection(shardInfo.name).getFollowers()),
               };
             }
           }
