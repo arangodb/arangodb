@@ -639,33 +639,28 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/"]]),
                   [{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}]);
     },
-
+    
     testKeysBeginningWithSameString: function() {
       var res = accessAgency("write",[[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/bumms", "/bummsfallera"]]), [{bumms:"fallera", bummsfallera: "lalalala"}]);
-    }
-
-    /*
-      // Test babies
-     */
-
-    /*
+    },
+    
     testHiddenAgencyWrite: function() {
       var res = accessAgency("write",[[{".agency": {"op":"set","new":"fallera"}}]]);
-      assertEqual(res.statusCode, 400);
+      assertEqual(res.statusCode, 200);
     }, 
-
+    
     testHiddenAgencyWriteSlash: function() {
       var res = accessAgency("write",[[{"/.agency": {"op":"set","new":"fallera"}}]]);
-      assertEqual(res.statusCode, 400);
+      assertEqual(res.statusCode, 200);
     },
     
     testHiddenAgencyWriteDeep: function() {
       var res = accessAgency("write",[[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
-      assertEqual(res.statusCode, 400);
+      assertEqual(res.statusCode, 200);
     } 
-    */
+    
   };
 }
 
