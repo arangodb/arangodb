@@ -382,13 +382,13 @@ function MovingShardsSuite () {
       var _dbservers = dbservers;
       _dbservers.sort();
       assertTrue(shrinkCluster(4));
-      assertTrue(testServerEmpty(dbservers[4], true));
+      assertTrue(testServerEmpty(_dbservers[4], true));
       assertTrue(waitForSupervision());
       assertTrue(shrinkCluster(3));
-      assertTrue(testServerEmpty(dbservers[3], true));
+      assertTrue(testServerEmpty(_dbservers[3], true));
       assertTrue(waitForSupervision());
       assertTrue(shrinkCluster(2));
-      assertTrue(testServerEmpty(dbservers[2], true));
+      assertTrue(testServerEmpty(_dbservers[2], true));
       assertTrue(waitForSupervision());
     },
     
