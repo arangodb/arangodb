@@ -650,6 +650,8 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
 // Non-persistent write to non-persisted key-value store
 write_ret_t Agent::vacillant(query_t const& query) {
+  write_ret_t ret;
+  return ret;
 }
 
 

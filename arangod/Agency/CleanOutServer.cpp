@@ -304,7 +304,7 @@ bool CleanOutServer::scheduleMoveShards() {
         // Among those a random destination
         std::string toServer;
         if (servers.empty()) {
-          LOG_TOPIC(ERR, Logger::AGENCY)
+          LOG_TOPIC(DEBUG, Logger::AGENCY)
             << "No servers remain as target for MoveShard";
           return false;
         }
