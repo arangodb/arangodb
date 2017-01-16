@@ -187,8 +187,20 @@ function removeShardFollower (endpoint, database, shard) {
 }
 
 // /////////////////////////////////////////////////////////////////////////////
-// / @brief lookup for 4-dimensional nested dictionary data
+// / @brief 
 // /////////////////////////////////////////////////////////////////////////////
+
+function fetchKey(structure, ...path) {
+  let current = structure;
+  do {
+    let key = path.shift();
+    if (!typeof current != 'object' || !current.hasOwnProperty(key)) {
+      return undefined;
+    }
+    current = structure[key];
+  } while (path.length > 0);
+  return current;
+}
 
 function lookup4d (data, a, b, c) {
   if (!data.hasOwnProperty(a)) {
@@ -1346,139 +1358,138 @@ function executePlanForCollections(plan) {
   let i;
 
   // Create shards in Plan that are not there locally:
-  for (database in plannedCollections) {
-    if (plannedCollections.hasOwnProperty(database)) {
-      if (localDatabases.hasOwnProperty(database)) {
-        // switch into other database
-        db._useDatabase(database);
+  Object.keys(plannedCollections).forEach(database => {
+    if (localDatabases.hasOwnProperty(database)) {
+      // switch into other database
+      db._useDatabase(database);
 
-        try {
-          // iterate over collections of database
-          let localCollections = getLocalCollections();
+      try {
+        // iterate over collections of database
+        let localCollections = getLocalCollections();
 
-          let collections = plannedCollections[database];
+        let collections = plannedCollections[database];
 
-          // diff the collections
-          Object.keys(collections).forEach(function (collection) {
-            let collInfo = collections[collection];
-            let shards = collInfo.shards;
-            let shard;
+        // diff the collections
+        Object.keys(collections).forEach(function (collection) {
+          let collInfo = collections[collection];
+          let shards = collInfo.shards;
+          let shard;
 
-            collInfo.planId = collInfo.id;
+          collInfo.planId = collInfo.id;
 
-            for (shard in shards) {
-              if (shards.hasOwnProperty(shard)) {
-                if (shards[shard].indexOf(ourselves) >= 0) {
-                  let shouldBeLeader = shards[shard][0] === ourselves;
+          for (shard in shards) {
+            if (shards.hasOwnProperty(shard)) {
+              if (shards[shard].indexOf(ourselves) >= 0) {
+                let shouldBeLeader = shards[shard][0] === ourselves;
 
-                  // found a shard we are responsible for
-                  localErrors[shard] = { error: false, errorNum: 0,
-                                errorMessage: 'no error', indexes: {} };
+                // found a shard we are responsible for
+                localErrors[shard] = { error: false, errorNum: 0,
+                  errorMessage: 'no error', indexes: {} };
 
-                  let error = localErrors[shard];
+                let error = localErrors[shard];
 
-                  if (!localCollections.hasOwnProperty(shard)) {
-                    // must create this shard
-                    console.debug("creating local shard '%s/%s' for central '%s/%s'",
+                if (!localCollections.hasOwnProperty(shard)) {
+                  // must create this shard
+                  console.debug("creating local shard '%s/%s' for central '%s/%s'",
+                    database,
+                    shard,
+                    database,
+                    collInfo.planId);
+
+                  let save = {id: collInfo.id, name: collInfo.name};
+                  delete collInfo.id;     // must not
+                  delete collInfo.name; 
+                  try {
+                    if (collInfo.type === ArangoCollection.TYPE_EDGE) {
+                      db._createEdgeCollection(shard, collInfo);
+                    } else {
+                      db._create(shard, collInfo);
+                    }
+                  } catch (err2) {
+                    error = { error: true, errorNum: err2.errorNum,
+                      errorMessage: err2.errorMessage };
+                    console.error("creating local shard '%s/%s' for central '%s/%s' failed: %s",
                       database,
                       shard,
                       database,
-                      collInfo.planId);
+                      collInfo.planId,
+                      JSON.stringify(err2));
+                  }
+                  collInfo.id = save.id;
+                  collInfo.name = save.name;
+                  if (shouldBeLeader) {
+                    db._collection(shard).assumeLeadership();
+                  }
+                } else {
+                  // We adjust local leadership, note that the planned resignation
+                  // case is not handled here, since then ourselves does not appear
+                  // in shards[shard] but only "_" + ourselves.
+                  if (!shouldBeLeader && localCollections[shard].isLeader) {
+                    db._collection(shard).leaderResign();
+                  } else if (shouldBeLeader &&
+                    !localCollections[shard].isLeader) {
+                      db._collection(shard).assumeLeadership();
+                    }
 
-                    let save = {id: collInfo.id, name: collInfo.name};
-                    delete collInfo.id;     // must not
-                    delete collInfo.name; 
+                  // Now check whether the status is OK:
+                  if (localCollections[shard].status !== collInfo.status) {
+                    console.info("detected status change for local shard '%s/%s'",
+                      database,
+                      shard);
+
+                    if (collInfo.status === ArangoCollection.STATUS_UNLOADED) {
+                      console.info("unloading local shard '%s/%s'",
+                        database,
+                        shard);
+                      db._collection(shard).unload();
+                    } else if (collInfo.status === ArangoCollection.STATUS_LOADED) {
+                      console.info("loading local shard '%s/%s'",
+                        database,
+                        shard);
+                      db._collection(shard).load();
+                    }
+                  }
+
+                  // collection exists, now compare collection properties
+                  let properties = { };
+                  let cmp = [ 'journalSize', 'waitForSync', 'doCompact',
+                    'indexBuckets' ];
+                  for (i = 0; i < cmp.length; ++i) {
+                    let p = cmp[i];
+                    if (localCollections[shard][p] !== collInfo[p]) {
+                      // property change
+                      properties[p] = collInfo[p];
+                    }
+                  }
+
+                  if (Object.keys(properties).length > 0) {
+                    console.info("updating properties for local shard '%s/%s'",
+                      database,
+                      shard);
+
                     try {
-                      if (collInfo.type === ArangoCollection.TYPE_EDGE) {
-                        db._createEdgeCollection(shard, collInfo);
-                      } else {
-                        db._create(shard, collInfo);
-                      }
-                    } catch (err2) {
-                      error = { error: true, errorNum: err2.errorNum,
-                      errorMessage: err2.errorMessage };
-                      console.error("creating local shard '%s/%s' for central '%s/%s' failed: %s",
-                        database,
-                        shard,
-                        database,
-                        collInfo.planId,
-                        JSON.stringify(err2));
-                    }
-                    collInfo.id = save.id;
-                    collInfo.name = save.name;
-                    if (shouldBeLeader) {
-                      db._collection(shard).assumeLeadership();
-                    }
-                  } else {
-                    // We adjust local leadership, note that the planned resignation
-                    // case is not handled here, since then ourselves does not appear
-                    // in shards[shard] but only "_" + ourselves.
-                    if (!shouldBeLeader && localCollections[shard].isLeader) {
-                      db._collection(shard).leaderResign();
-                    } else if (shouldBeLeader &&
-                               !localCollections[shard].isLeader) {
-                      db._collection(shard).assumeLeadership();
-                    }
-
-                    // Now check whether the status is OK:
-                    if (localCollections[shard].status !== collInfo.status) {
-                      console.info("detected status change for local shard '%s/%s'",
-                        database,
-                        shard);
-
-                      if (collInfo.status === ArangoCollection.STATUS_UNLOADED) {
-                        console.info("unloading local shard '%s/%s'",
-                          database,
-                          shard);
-                        db._collection(shard).unload();
-                      } else if (collInfo.status === ArangoCollection.STATUS_LOADED) {
-                        console.info("loading local shard '%s/%s'",
-                          database,
-                          shard);
-                        db._collection(shard).load();
-                      }
-                    }
-
-                    // collection exists, now compare collection properties
-                    let properties = { };
-                    let cmp = [ 'journalSize', 'waitForSync', 'doCompact',
-                      'indexBuckets' ];
-                    for (i = 0; i < cmp.length; ++i) {
-                      let p = cmp[i];
-                      if (localCollections[shard][p] !== collInfo[p]) {
-                        // property change
-                        properties[p] = collInfo[p];
-                      }
-                    }
-
-                    if (Object.keys(properties).length > 0) {
-                      console.info("updating properties for local shard '%s/%s'",
-                        database,
-                        shard);
-
-                      try {
-                        db._collection(shard).properties(properties);
-                      } catch (err3) {
-                        error = { error: true, errorNum: err3.errorNum,
-                                  errorMessage: err3.errorMessage };
-                      }
+                      db._collection(shard).properties(properties);
+                    } catch (err3) {
+                      error = { error: true, errorNum: err3.errorNum,
+                        errorMessage: err3.errorMessage };
                     }
                   }
-                  if (error.error) {
-                    continue; // No point to look for indices, if the 
-                              // creation has not worked
-                  }
+                }
+                if (error.error) {
+                  continue; // No point to look for indices, if the 
+                  // creation has not worked
+                }
 
-                  let indexes = getIndexMap(shard);
-                  let idx;
-                  let index;
+                let indexes = getIndexMap(shard);
+                let idx;
+                let index;
 
-                  if (collInfo.hasOwnProperty('indexes')) {
-                    for (i = 0; i < collInfo.indexes.length; ++i) {
-                      index = collInfo.indexes[i];
+                if (collInfo.hasOwnProperty('indexes')) {
+                  for (i = 0; i < collInfo.indexes.length; ++i) {
+                    index = collInfo.indexes[i];
 
-                      if (index.type !== 'primary' && index.type !== 'edge' &&
-                        !indexes.hasOwnProperty(index.id)) {
+                    if (index.type !== 'primary' && index.type !== 'edge' &&
+                      !indexes.hasOwnProperty(index.id)) {
                         console.debug("creating index '%s/%s': %s",
                           database,
                           shard,
@@ -1495,34 +1506,33 @@ function executePlanForCollections(plan) {
                           };
                         }
                       }
-                    }
+                  }
 
-                    for (idx in indexes) {
-                      if (indexes.hasOwnProperty(idx)) {
-                        // found an index in the index map, check if it must be deleted
+                  for (idx in indexes) {
+                    if (indexes.hasOwnProperty(idx)) {
+                      // found an index in the index map, check if it must be deleted
 
-                        if (indexes[idx].type !== 'primary' && indexes[idx].type !== 'edge') {
-                          let found = false;
-                          for (i = 0; i < collInfo.indexes.length; ++i) {
-                            if (collInfo.indexes[i].id === idx) {
-                              found = true;
-                              break;
-                            }
+                      if (indexes[idx].type !== 'primary' && indexes[idx].type !== 'edge') {
+                        let found = false;
+                        for (i = 0; i < collInfo.indexes.length; ++i) {
+                          if (collInfo.indexes[i].id === idx) {
+                            found = true;
+                            break;
                           }
+                        }
 
-                          if (!found) {
-                            // found an index to delete locally
-                            index = indexes[idx];
+                        if (!found) {
+                          // found an index to delete locally
+                          index = indexes[idx];
 
-                            console.info("dropping index '%s/%s': %s",
-                              database,
-                              shard,
-                              JSON.stringify(index));
+                          console.info("dropping index '%s/%s': %s",
+                            database,
+                            shard,
+                            JSON.stringify(index));
 
-                            arangodb.db._collection(shard).dropIndex(index);
+                          arangodb.db._collection(shard).dropIndex(index);
 
-                            delete indexes[idx];
-                          }
+                          delete indexes[idx];
                         }
                       }
                     }
@@ -1530,14 +1540,16 @@ function executePlanForCollections(plan) {
                 }
               }
             }
-          });
-        } finally {
-          // always return to previous database
-          db._useDatabase('_system');
-        }
+          }
+        });
+      } catch(e) {
+        console.error("ERR", e, e.stack);
+      } finally {
+        // always return to previous database
+        db._useDatabase('_system');
       }
     }
-  }
+  });
 
   // Drop local shards that do no longer exist in Plan:
   let shardMap = getShardMap(plannedCollections);
@@ -1665,41 +1677,38 @@ function updateCurrentForCollections(localErrors, current) {
 
   // Go through local databases and collections and add stuff to Current
   // as needed:
-  for (database in localDatabases) {
-    if (localDatabases.hasOwnProperty(database)) {
-      if (currentCollections.hasOwnProperty(database)) {
-        let currentDBInfo = currentCollections[database];
-        // All local databases should be in Current by now, if not, we ignore
-        // it, this will happen later.
-        db._useDatabase(database);
+  Object.keys(localDatabases).forEach(database => {
+    // All local databases should be in Current by now, if not, we ignore
+    // it, this will happen later.
+    try {
+      db._useDatabase(database);
 
-        try {
-          // iterate over collections (i.e. shards) of database
-          let localCollections = getLocalCollections();
-          let shard;
-          for (shard in localCollections) {
-            if (localCollections.hasOwnProperty(shard)) {
-              let shardInfo = localCollections[shard];
-              if (shardInfo.isLeader) {
-                let localCollectionInfo = assembleLocalCollectionInfo(shardInfo, localErrors[shard]);
-                // our local state differs from what is in the agency! => update!
-                if (typeof currentDBInfo[shardInfo.planId] != 'object'
-                  || !_.isEqual(localCollectionInfo, currentDBInfo[shardInfo.planId][shard])) {
-                    trx[0][curCollections + database + '/' + shardInfo.planId + '/' + shardInfo.name] = {
-                      op: 'set',
-                      new: localCollectionInfo,
-                    };
-                  }
-              }
+      // iterate over collections (i.e. shards) of database
+      let localCollections = getLocalCollections();
+      let shard;
+      for (shard in localCollections) {
+        if (localCollections.hasOwnProperty(shard)) {
+          let shardInfo = localCollections[shard];
+          if (shardInfo.isLeader) {
+            let localCollectionInfo = assembleLocalCollectionInfo(shardInfo, localErrors[shard]);
+
+            let currentCollectionInfo = fetchKey(current, 'Current', 'Collections', database, shardInfo.planId, shard);
+            if (!_.isEqual(localCollectionInfo, currentCollectionInfo)) {
+              trx[0][curCollections + database + '/' + shardInfo.planId + '/' + shardInfo.name] = {
+                op: 'set',
+                new: localCollectionInfo,
+              };
             }
           }
-        } finally {
-          // always return to previous database
-          db._useDatabase('_system');
         }
       }
+    } catch (e) {
+      console.error('Got error while trying to sync current collections:', e, e.stack);
+    } finally {
+      // always return to previous database
+      db._useDatabase('_system');
     }
-  }
+  });
 
   // Go through all current databases and collections and remove stuff
   // if no longer present locally:
@@ -2015,7 +2024,7 @@ function migrateAnyServer(plan, current) {
       console.error('migrateAnyServer: caught exception when sending transaction for Current to agency:', err);
     }
   }
-} 
+}
 
 // /////////////////////////////////////////////////////////////////////////////
 // / @brief make sure that replication is set up for all databases
