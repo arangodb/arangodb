@@ -34,7 +34,7 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/PhysicalCollection.h"
 
-struct TRI_datafile_t;
+struct MMFilesDatafile;
 struct TRI_df_marker_t;
 
 namespace arangodb {
@@ -88,7 +88,7 @@ class MMFilesCollection final : public PhysicalCollection {
   };
 
   struct DatafileDescription {
-    TRI_datafile_t const* _data;
+    MMFilesDatafile const* _data;
     TRI_voc_tick_t _dataMin;
     TRI_voc_tick_t _dataMax;
     TRI_voc_tick_t _tickMax;
@@ -124,22 +124,22 @@ class MMFilesCollection final : public PhysicalCollection {
   int syncActiveJournal();
 
   int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
-                          char*& resultPosition, TRI_datafile_t*& resultDatafile);
+                          char*& resultPosition, MMFilesDatafile*& resultDatafile);
 
   /// @brief create compactor file
-  TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize);
+  MMFilesDatafile* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize);
   
   /// @brief close an existing compactor
-  int closeCompactor(TRI_datafile_t* datafile);
+  int closeCompactor(MMFilesDatafile* datafile);
 
   /// @brief replace a datafile with a compactor
-  int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor);
+  int replaceDatafileWithCompactor(MMFilesDatafile* datafile, MMFilesDatafile* compactor);
 
-  bool removeCompactor(TRI_datafile_t*);
-  bool removeDatafile(TRI_datafile_t*);
+  bool removeCompactor(MMFilesDatafile*);
+  bool removeDatafile(MMFilesDatafile*);
   
   /// @brief seal a datafile
-  int sealDatafile(TRI_datafile_t* datafile, bool isCompactor);
+  int sealDatafile(MMFilesDatafile* datafile, bool isCompactor);
 
   /// @brief increase dead stats for a datafile, if it exists
   void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) override {
@@ -163,12 +163,12 @@ class MMFilesCollection final : public PhysicalCollection {
 
  private:
   static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
-                                              TRI_datafile_t* datafile,
+                                              MMFilesDatafile* datafile,
                                               OpenIteratorState* state);
   static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
-                                              TRI_datafile_t* datafile,
+                                              MMFilesDatafile* datafile,
                                               OpenIteratorState* state);
-  static bool OpenIterator(TRI_df_marker_t const* marker, OpenIteratorState* data, TRI_datafile_t* datafile);
+  static bool OpenIterator(TRI_df_marker_t const* marker, OpenIteratorState* data, MMFilesDatafile* datafile);
 
   /// @brief create statistics for a datafile, using the stats provided
   void createStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) {
@@ -176,10 +176,10 @@ class MMFilesCollection final : public PhysicalCollection {
   }
   
   /// @brief iterates over a collection
-  bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
+  bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, MMFilesDatafile*)> const& cb);
   
   /// @brief creates a datafile
-  TRI_datafile_t* createDatafile(TRI_voc_fid_t fid,
+  MMFilesDatafile* createDatafile(TRI_voc_fid_t fid,
                                  TRI_voc_size_t journalSize, 
                                  bool isCompactor);
 
@@ -188,10 +188,10 @@ class MMFilesCollection final : public PhysicalCollection {
   std::vector<DatafileDescription> datafilesInRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax);
   
   /// @brief closes the datafiles passed in the vector
-  bool closeDatafiles(std::vector<TRI_datafile_t*> const& files);
+  bool closeDatafiles(std::vector<MMFilesDatafile*> const& files);
 
-  bool iterateDatafilesVector(std::vector<TRI_datafile_t*> const& files,
-                              std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
+  bool iterateDatafilesVector(std::vector<MMFilesDatafile*> const& files,
+                              std::function<bool(TRI_df_marker_t const*, MMFilesDatafile*)> const& cb);
 
   MMFilesDocumentPosition lookupRevision(TRI_voc_rid_t revisionId) const;
 
@@ -206,9 +206,9 @@ class MMFilesCollection final : public PhysicalCollection {
   mutable arangodb::Ditches _ditches;
 
   arangodb::basics::ReadWriteLock _filesLock;
-  std::vector<TRI_datafile_t*> _datafiles;   // all datafiles
-  std::vector<TRI_datafile_t*> _journals;    // all journals
-  std::vector<TRI_datafile_t*> _compactors;  // all compactor files
+  std::vector<MMFilesDatafile*> _datafiles;   // all datafiles
+  std::vector<MMFilesDatafile*> _journals;    // all journals
+  std::vector<MMFilesDatafile*> _compactors;  // all compactor files
   
   arangodb::basics::ReadWriteLock _compactionLock;
 

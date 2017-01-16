@@ -27,9 +27,7 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
-namespace wal {
-class Marker;
-}
+class MMFilesWalMarker;
 
 // a struct for keeping document modification operations in transactions
 struct OperationOptions {
@@ -39,7 +37,7 @@ struct OperationOptions {
         returnOld(false), returnNew(false), isRestore(false) {}
 
   // original marker, set by the recovery procedure only!
-  arangodb::wal::Marker* recoveryMarker;
+  MMFilesWalMarker* recoveryMarker;
 
   // wait until the operation has been synced
   bool waitForSync;

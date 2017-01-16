@@ -21,42 +21,43 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_WAL_SYNC_REGION_H
-#define ARANGOD_WAL_SYNC_REGION_H 1
+#ifndef ARANGOD_MMFILES_REMOVER_THREAD_H
+#define ARANGOD_MMFILES_REMOVER_THREAD_H 1
 
 #include "Basics/Common.h"
-#include "Wal/Logfile.h"
+#include "Basics/ConditionVariable.h"
+#include "Basics/Thread.h"
 
 namespace arangodb {
 namespace wal {
-
-struct SyncRegion {
-  SyncRegion()
-      : logfileId(0),
-        logfile(nullptr),
-        mem(nullptr),
-        size(0),
-        logfileStatus(Logfile::StatusType::UNKNOWN),
-        firstSlotIndex(0),
-        lastSlotIndex(0),
-        waitForSync(false),
-        checkMore(false),
-        canSeal(false) {}
-
-  ~SyncRegion() {}
-
-  Logfile::IdType logfileId;
-  Logfile* logfile;
-  char* mem;
-  uint32_t size;
-  Logfile::StatusType logfileStatus;
-  size_t firstSlotIndex;
-  size_t lastSlotIndex;
-  bool waitForSync;
-  bool checkMore;
-  bool canSeal;
-};
+class LogfileManager;
 }
+
+class MMFilesRemoverThread final : public Thread {
+  MMFilesRemoverThread(MMFilesRemoverThread const&) = delete;
+  MMFilesRemoverThread& operator=(MMFilesRemoverThread const&) = delete;
+
+ public:
+  explicit MMFilesRemoverThread(wal::LogfileManager*);
+  ~MMFilesRemoverThread() { shutdown(); }
+
+ public:
+  void beginShutdown() override final;
+
+ protected:
+  void run() override;
+
+ private:
+  /// @brief the logfile manager
+  wal::LogfileManager* _logfileManager;
+
+  /// @brief condition variable for the collector thread
+  basics::ConditionVariable _condition;
+
+  /// @brief wait interval for the collector thread when idle
+  static uint64_t const Interval;
+};
+
 }
 
 #endif

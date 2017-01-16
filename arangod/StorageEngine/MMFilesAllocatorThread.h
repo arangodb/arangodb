@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_WAL_ALLOCATOR_THREAD_H
-#define ARANGOD_WAL_ALLOCATOR_THREAD_H 1
+#ifndef ARANGOD_MMFILES_ALLOCATOR_THREAD_H
+#define ARANGOD_MMFILES_ALLOCATOR_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -33,16 +33,16 @@
 
 namespace arangodb {
 namespace wal {
-
 class LogfileManager;
+}
 
-class AllocatorThread final : public Thread {
-  AllocatorThread(AllocatorThread const&) = delete;
-  AllocatorThread& operator=(AllocatorThread const&) = delete;
+class MMFilesAllocatorThread final : public Thread {
+  MMFilesAllocatorThread(MMFilesAllocatorThread const&) = delete;
+  MMFilesAllocatorThread& operator=(MMFilesAllocatorThread const&) = delete;
 
  public:
-  explicit AllocatorThread(LogfileManager*);
-  ~AllocatorThread() { shutdown(); }
+  explicit MMFilesAllocatorThread(wal::LogfileManager*);
+  ~MMFilesAllocatorThread() { shutdown(); }
 
  public:
   void beginShutdown() override final;
@@ -76,7 +76,7 @@ class AllocatorThread final : public Thread {
 
  private:
   /// @brief the logfile manager
-  LogfileManager* _logfileManager;
+  wal::LogfileManager* _logfileManager;
 
   /// @brief condition variable for the allocator thread
   basics::ConditionVariable _condition;
@@ -99,7 +99,7 @@ class AllocatorThread final : public Thread {
   /// @brief wait interval for the allocator thread when idle
   static uint64_t const Interval;
 };
-}
+
 }
 
 #endif

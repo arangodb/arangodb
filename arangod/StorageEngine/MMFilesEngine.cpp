@@ -36,9 +36,9 @@
 #include "StorageEngine/MMFilesCleanupThread.h"
 #include "StorageEngine/MMFilesCompactorThread.h"
 #include "StorageEngine/MMFilesCollection.h"
-#include "VocBase/DatafileHelper.h"
+#include "StorageEngine/MMFilesDatafile.h"
+#include "StorageEngine/MMFilesDatafileHelper.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/datafile.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
@@ -87,13 +87,13 @@ static uint64_t getNumericFilenamePartFromDatabase(std::string const& filename) 
   return basics::StringUtils::uint64(pos + 1);
 }
 
-static uint64_t getNumericFilenamePartFromDatafile(TRI_datafile_t const* datafile) {
+static uint64_t getNumericFilenamePartFromDatafile(MMFilesDatafile const* datafile) {
   return getNumericFilenamePartFromDatafile(datafile->getName());
 }
 
 
 struct DatafileComparator {
-  bool operator()(TRI_datafile_t const* lhs, TRI_datafile_t const* rhs) const {
+  bool operator()(MMFilesDatafile const* lhs, MMFilesDatafile const* rhs) const {
     return getNumericFilenamePartFromDatafile(lhs) < getNumericFilenamePartFromDatafile(rhs);
   }
 };
@@ -1248,7 +1248,7 @@ bool MMFilesEngine::iterateFiles(std::vector<std::string> const& files) {
   /// it will check the ticks of all markers and update the internal tick
   /// counter accordingly. this is done so we'll not re-assign an already used
   /// tick value
-  auto cb = [this](TRI_df_marker_t const* marker, TRI_datafile_t* datafile) -> bool {
+  auto cb = [this](TRI_df_marker_t const* marker, MMFilesDatafile* datafile) -> bool {
     TRI_voc_tick_t markerTick = marker->getTick();
   
     if (markerTick > _maxTick) {
@@ -1260,7 +1260,7 @@ bool MMFilesEngine::iterateFiles(std::vector<std::string> const& files) {
   for (auto const& filename : files) {
     LOG(DEBUG) << "iterating over collection journal file '" << filename << "'";
 
-    std::unique_ptr<TRI_datafile_t> datafile(TRI_datafile_t::open(filename, true));
+    std::unique_ptr<MMFilesDatafile> datafile(MMFilesDatafile::open(filename, true));
 
     if (datafile != nullptr) {
       TRI_IterateDatafile(datafile.get(), cb);
@@ -1773,7 +1773,7 @@ int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
 }
 
 /// @brief: check the initial markers in a datafile
-bool MMFilesEngine::checkDatafileHeader(TRI_datafile_t* datafile, std::string const& filename) const {
+bool MMFilesEngine::checkDatafileHeader(MMFilesDatafile* datafile, std::string const& filename) const {
   TRI_ASSERT(datafile != nullptr);
 
   // check the document header
@@ -1781,7 +1781,7 @@ bool MMFilesEngine::checkDatafileHeader(TRI_datafile_t* datafile, std::string co
 
   // skip the datafile header
   ptr +=
-      DatafileHelper::AlignedSize<size_t>(sizeof(TRI_df_header_marker_t));
+      MMFilesDatafileHelper::AlignedSize<size_t>(sizeof(TRI_df_header_marker_t));
   TRI_col_header_marker_t const* cm =
       reinterpret_cast<TRI_col_header_marker_t const*>(ptr);
 
@@ -1800,11 +1800,11 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
   LOG_TOPIC(TRACE, Logger::DATAFILES) << "check collection directory '"
                                       << collection->path() << "'";
 
-  std::vector<TRI_datafile_t*> all;
-  std::vector<TRI_datafile_t*> compactors;
-  std::vector<TRI_datafile_t*> datafiles;
-  std::vector<TRI_datafile_t*> journals;
-  std::vector<TRI_datafile_t*> sealed;
+  std::vector<MMFilesDatafile*> all;
+  std::vector<MMFilesDatafile*> compactors;
+  std::vector<MMFilesDatafile*> datafiles;
+  std::vector<MMFilesDatafile*> journals;
+  std::vector<MMFilesDatafile*> sealed;
   bool stop = false;
   int result = TRI_ERROR_NO_ERROR;
 
@@ -1902,7 +1902,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
 
       TRI_set_errno(TRI_ERROR_NO_ERROR);
 
-      std::unique_ptr<TRI_datafile_t> df(TRI_datafile_t::open(filename, ignoreErrors));
+      std::unique_ptr<MMFilesDatafile> df(MMFilesDatafile::open(filename, ignoreErrors));
 
       if (df == nullptr) {
         LOG_TOPIC(ERR, Logger::DATAFILES) << "cannot open datafile '"
@@ -1915,7 +1915,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
       }
 
       all.emplace_back(df.get());
-      TRI_datafile_t* datafile = df.release();
+      MMFilesDatafile* datafile = df.release();
 
       if (!checkDatafileHeader(datafile, filename)) {
         result = TRI_ERROR_ARANGO_CORRUPTED_DATAFILE;
@@ -2019,8 +2019,8 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
 /// @brief transfer markers into a collection, actual work
 /// the collection must have been prepared to call this function
 int MMFilesEngine::transferMarkers(LogicalCollection* collection,
-                                   wal::CollectorCache* cache,
-                                   wal::OperationsType const& operations) {
+                                   MMFilesCollectorCache* cache,
+                                   MMFilesOperationsType const& operations) {
   int res = transferMarkersWorker(collection, cache, operations);
     
   TRI_IF_FAILURE("transferMarkersCrash") {
@@ -2043,8 +2043,8 @@ int MMFilesEngine::transferMarkers(LogicalCollection* collection,
 /// @brief transfer markers into a collection, actual work
 /// the collection must have been prepared to call this function
 int MMFilesEngine::transferMarkersWorker(LogicalCollection* collection,
-                                         wal::CollectorCache* cache,
-                                         wal::OperationsType const& operations) {
+                                         MMFilesCollectorCache* cache,
+                                         MMFilesOperationsType const& operations) {
   // used only for crash / recovery tests
   int numMarkers = 0;
 
@@ -2100,13 +2100,13 @@ int MMFilesEngine::transferMarkersWorker(LogicalCollection* collection,
 /// @brief get the next position for a marker of the specified size
 char* MMFilesEngine::nextFreeMarkerPosition(
     LogicalCollection* collection, TRI_voc_tick_t tick,
-    TRI_df_marker_type_t type, TRI_voc_size_t size, wal::CollectorCache* cache) {
+    TRI_df_marker_type_t type, TRI_voc_size_t size, MMFilesCollectorCache* cache) {
   
   // align the specified size
-  size = DatafileHelper::AlignedSize<TRI_voc_size_t>(size);
+  size = MMFilesDatafileHelper::AlignedSize<TRI_voc_size_t>(size);
 
   char* dst = nullptr; // will be modified by reserveJournalSpace()
-  TRI_datafile_t* datafile = nullptr; // will be modified by reserveJournalSpace()
+  MMFilesDatafile* datafile = nullptr; // will be modified by reserveJournalSpace()
   int res = static_cast<MMFilesCollection*>(collection->getPhysical())->reserveJournalSpace(tick, size, dst, datafile);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2148,7 +2148,7 @@ char* MMFilesEngine::nextFreeMarkerPosition(
   
   TRI_ASSERT(dst != nullptr);
   
-  DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(dst), type, size);
+  MMFilesDatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(dst), type, size);
 
   return dst;
 }
@@ -2157,11 +2157,11 @@ char* MMFilesEngine::nextFreeMarkerPosition(
 void MMFilesEngine::finishMarker(char const* walPosition,
                                  char* datafilePosition,
                                  LogicalCollection* collection,
-                                 TRI_voc_tick_t tick, wal::CollectorCache* cache) {
+                                 TRI_voc_tick_t tick, MMFilesCollectorCache* cache) {
   TRI_df_marker_t* marker =
       reinterpret_cast<TRI_df_marker_t*>(datafilePosition);
 
-  TRI_datafile_t* datafile = cache->lastDatafile;
+  MMFilesDatafile* datafile = cache->lastDatafile;
   TRI_ASSERT(datafile != nullptr);
 
   // update ticks
@@ -2170,7 +2170,7 @@ void MMFilesEngine::finishMarker(char const* walPosition,
   TRI_ASSERT(collection->maxTick() < tick);
   collection->maxTick(tick);
 
-  cache->operations->emplace_back(wal::CollectorOperation(
+  cache->operations->emplace_back(MMFilesCollectorOperation(
       datafilePosition, marker->getSize(), walPosition, cache->lastFid));
 }
 

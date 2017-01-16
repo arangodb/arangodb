@@ -47,6 +47,9 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/RevisionCacheFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/MMFilesDocumentOperation.h"
+#include "StorageEngine/MMFilesWalMarker.h"
+#include "StorageEngine/MMFilesWalSlots.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CollectionReadLocker.h"
@@ -62,10 +65,7 @@
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/transaction.h"
-#include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
-#include "Wal/Marker.h"
-#include "Wal/Slots.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -76,8 +76,8 @@ using Helper = arangodb::basics::VelocyPackHelper;
 
 /// forward
 int TRI_AddOperationTransaction(TRI_transaction_t*, TRI_voc_rid_t,
-                                arangodb::wal::DocumentOperation&,
-                                arangodb::wal::Marker const* marker, bool&);
+                                MMFilesDocumentOperation&,
+                                MMFilesWalMarker const* marker, bool&);
 
 /// @brief helper struct for filling indexes
 class IndexFiller {
@@ -1611,11 +1611,11 @@ int LogicalCollection::saveIndex(arangodb::Index* idx, bool writeMarker) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX,
+    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX,
                                            _vocbase->id(), cid(),
                                            builder->slice());
 
-    arangodb::wal::SlotInfoCopy slotInfo =
+    MMFilesWalSlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
 
@@ -1705,11 +1705,11 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
       markerBuilder.add("id", VPackValue(std::to_string(iid)));
       markerBuilder.close();
 
-      arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_INDEX,
+      MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_INDEX,
                                              _vocbase->id(), cid(),
                                              markerBuilder.slice());
 
-      arangodb::wal::SlotInfoCopy slotInfo =
+      MMFilesWalSlotInfoCopy slotInfo =
           arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                       false);
 
@@ -2063,11 +2063,11 @@ int LogicalCollection::insert(Transaction* trx, VPackSlice const slice,
   }
 
   // create marker
-  arangodb::wal::CrudMarker insertMarker(
+  MMFilesCrudMarker insertMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
       TRI_MarkerIdTransaction(trx->getInternals()), newSlice);
 
-  arangodb::wal::Marker const* marker;
+  MMFilesWalMarker const* marker;
   if (options.recoveryMarker == nullptr) {
     marker = &insertMarker;
   } else {
@@ -2080,7 +2080,7 @@ int LogicalCollection::insert(Transaction* trx, VPackSlice const slice,
     return TRI_ERROR_DEBUG;
   }
 
-  arangodb::wal::DocumentOperation operation(this,
+  MMFilesDocumentOperation operation(this,
                                              TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
   TRI_IF_FAILURE("InsertDocumentNoHeader") {
@@ -2260,11 +2260,11 @@ int LogicalCollection::update(Transaction* trx, VPackSlice const newSlice,
   }
 
   // create marker
-  arangodb::wal::CrudMarker updateMarker(
+  MMFilesCrudMarker updateMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
       TRI_MarkerIdTransaction(trx->getInternals()), builder->slice());
 
-  arangodb::wal::Marker const* marker;
+  MMFilesWalMarker const* marker;
   if (options.recoveryMarker == nullptr) {
     marker = &updateMarker;
   } else {
@@ -2273,7 +2273,7 @@ int LogicalCollection::update(Transaction* trx, VPackSlice const newSlice,
 
   VPackSlice const newDoc(marker->vpack());
 
-  arangodb::wal::DocumentOperation operation(this,
+  MMFilesDocumentOperation operation(this,
                                              TRI_VOC_DOCUMENT_OPERATION_UPDATE);
 
   try {
@@ -2417,11 +2417,11 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
   }
 
   // create marker
-  arangodb::wal::CrudMarker replaceMarker(
+  MMFilesCrudMarker replaceMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
       TRI_MarkerIdTransaction(trx->getInternals()), builder->slice());
 
-  arangodb::wal::Marker const* marker;
+  MMFilesWalMarker const* marker;
   if (options.recoveryMarker == nullptr) {
     marker = &replaceMarker;
   } else {
@@ -2430,7 +2430,7 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
 
   VPackSlice const newDoc(marker->vpack());
 
-  arangodb::wal::DocumentOperation operation(
+  MMFilesDocumentOperation operation(
       this, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
   try {
@@ -2506,11 +2506,11 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
   }
 
   // create marker
-  arangodb::wal::CrudMarker removeMarker(
+  MMFilesCrudMarker removeMarker(
       TRI_DF_MARKER_VPACK_REMOVE, TRI_MarkerIdTransaction(trx->getInternals()),
       builder->slice());
 
-  arangodb::wal::Marker const* marker;
+  MMFilesWalMarker const* marker;
   if (options.recoveryMarker == nullptr) {
     marker = &removeMarker;
   } else {
@@ -2530,7 +2530,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
   }
   TRI_ASSERT(!key.isNone());
 
-  arangodb::wal::DocumentOperation operation(this,
+  MMFilesDocumentOperation operation(this,
                                              TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
   bool const useDeadlockDetector =
@@ -2636,11 +2636,11 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
   }
 
   // create marker
-  arangodb::wal::CrudMarker removeMarker(
+  MMFilesCrudMarker removeMarker(
       TRI_DF_MARKER_VPACK_REMOVE, TRI_MarkerIdTransaction(trx->getInternals()),
       builder->slice());
 
-  arangodb::wal::Marker const* marker = &removeMarker;
+  MMFilesWalMarker const* marker = &removeMarker;
 
   TRI_IF_FAILURE("RemoveDocumentNoLock") {
     // test what happens if no lock can be acquired
@@ -2650,7 +2650,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
   VPackSlice key = Transaction::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(!key.isNone());
 
-  arangodb::wal::DocumentOperation operation(this,
+  MMFilesDocumentOperation operation(this,
                                              TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
   bool const useDeadlockDetector =
@@ -3269,8 +3269,8 @@ int LogicalCollection::checkRevision(Transaction* trx, TRI_voc_rid_t expected,
 int LogicalCollection::updateDocument(
     arangodb::Transaction* trx, TRI_voc_rid_t oldRevisionId,
     VPackSlice const& oldDoc, TRI_voc_rid_t newRevisionId,
-    VPackSlice const& newDoc, arangodb::wal::DocumentOperation& operation,
-    arangodb::wal::Marker const* marker, bool& waitForSync) {
+    VPackSlice const& newDoc, MMFilesDocumentOperation& operation,
+    MMFilesWalMarker const* marker, bool& waitForSync) {
   // remove old document from secondary indexes
   // (it will stay in the primary index as the key won't change)
   int res = deleteSecondaryIndexes(trx, oldRevisionId, oldDoc, false);
@@ -3319,8 +3319,8 @@ int LogicalCollection::updateDocument(
 /// the caller must make sure the write lock on the collection is held
 int LogicalCollection::insertDocument(
     arangodb::Transaction* trx, TRI_voc_rid_t revisionId, VPackSlice const& doc,
-    arangodb::wal::DocumentOperation& operation,
-    arangodb::wal::Marker const* marker, bool& waitForSync) {
+    MMFilesDocumentOperation& operation,
+    MMFilesWalMarker const* marker, bool& waitForSync) {
   // insert into primary index first
   int res = insertPrimaryIndex(trx, revisionId, doc);
 
@@ -3493,10 +3493,10 @@ int LogicalCollection::newObjectForInsert(
     // db server in cluster, note: the local collections _statistics,
     // _statisticsRaw and _statistics15 (which are the only system collections)
     // must not be treated as shards but as local collections
-    DatafileHelper::StoreNumber<uint64_t>(p, _planId, sizeof(uint64_t));
+    MMFilesDatafileHelper::StoreNumber<uint64_t>(p, _planId, sizeof(uint64_t));
   } else {
     // local server
-    DatafileHelper::StoreNumber<uint64_t>(p, _cid, sizeof(uint64_t));
+    MMFilesDatafileHelper::StoreNumber<uint64_t>(p, _cid, sizeof(uint64_t));
   }
 
   // _from and _to

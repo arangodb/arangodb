@@ -40,12 +40,13 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "Wal/AllocatorThread.h"
-#include "Wal/CollectorThread.h"
-#include "Wal/RecoverState.h"
-#include "Wal/RemoverThread.h"
-#include "Wal/Slots.h"
-#include "Wal/SynchronizerThread.h"
+#include "StorageEngine/MMFilesAllocatorThread.h"
+#include "StorageEngine/MMFilesCollectorThread.h"
+#include "StorageEngine/MMFilesRemoverThread.h"
+#include "StorageEngine/MMFilesWalMarker.h"
+#include "StorageEngine/MMFilesWalRecoverState.h"
+#include "StorageEngine/MMFilesWalSlots.h"
+#include "StorageEngine/MMFilesSynchronizerThread.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -295,8 +296,8 @@ void LogfileManager::start() {
   }
   
   // initialize some objects
-  _slots = new Slots(this, _numberOfSlots, 0);
-  _recoverState.reset(new RecoverState(_ignoreRecoveryErrors));
+  _slots = new MMFilesWalSlots(this, _numberOfSlots, 0);
+  _recoverState.reset(new MMFilesWalRecoverState(_ignoreRecoveryErrors));
 
   TRI_ASSERT(!_allowWrites);
 
@@ -368,7 +369,7 @@ bool LogfileManager::open() {
   }
 
   // now start allocator and synchronizer
-  int res = startAllocatorThread();
+  int res = startMMFilesAllocatorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(FATAL) << "could not start WAL allocator thread: "
@@ -376,7 +377,7 @@ bool LogfileManager::open() {
     return false;
   }
 
-  res = startSynchronizerThread();
+  res = startMMFilesSynchronizerThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(FATAL) << "could not start WAL synchronizer thread: "
@@ -413,7 +414,7 @@ bool LogfileManager::open() {
   // finished recovery
   _inRecovery = false;
 
-  res = startCollectorThread();
+  res = startMMFilesCollectorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(FATAL) << "could not start WAL collector thread: "
@@ -423,7 +424,7 @@ bool LogfileManager::open() {
 
   TRI_ASSERT(_collectorThread != nullptr);
 
-  res = startRemoverThread();
+  res = startMMFilesRemoverThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(FATAL) << "could not start WAL remover thread: " << TRI_errno_string(res);
@@ -473,7 +474,7 @@ void LogfileManager::unprepare() {
   // finalize allocator thread
   // this prevents creating new (empty) WAL logfile once we flush
   // the current logfile
-  stopAllocatorThread();
+  stopMMFilesAllocatorThread();
 
   if (_allocatorThread != nullptr) {
     LOG(TRACE) << "stopping allocator thread";
@@ -489,9 +490,9 @@ void LogfileManager::unprepare() {
 
   // stop other threads
   LOG(TRACE) << "sending shutdown request to WAL threads";
-  stopRemoverThread();
-  stopCollectorThread();
-  stopSynchronizerThread();
+  stopMMFilesRemoverThread();
+  stopMMFilesCollectorThread();
+  stopMMFilesSynchronizerThread();
 
   // physically destroy all threads
   if (_removerThread != nullptr) {
@@ -640,7 +641,7 @@ void LogfileManager::unregisterFailedTransactions(
 // whether or not it is currently allowed to create an additional
 /// logfile
 bool LogfileManager::logfileCreationAllowed(uint32_t size) {
-  if (size + DatafileHelper::JournalOverhead() > filesize()) {
+  if (size + MMFilesDatafileHelper::JournalOverhead() > filesize()) {
     // oversize entry. this is always allowed because otherwise everything would
     // lock
     return true;
@@ -700,45 +701,45 @@ void LogfileManager::signalSync(bool waitForSync) {
 }
 
 // allocate space in a logfile for later writing
-SlotInfo LogfileManager::allocate(uint32_t size) {
+MMFilesWalSlotInfo LogfileManager::allocate(uint32_t size) {
   TRI_ASSERT(size >= sizeof(TRI_df_marker_t));
 
   if (!_allowWrites) {
     // no writes allowed
-    return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
+    return MMFilesWalSlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
   }
 
   if (size > MaxEntrySize()) {
     // entry is too big
-    return SlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+    return MMFilesWalSlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
   }
 
   if (size > _filesize && !_allowOversizeEntries) {
     // entry is too big for a logfile
-    return SlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+    return MMFilesWalSlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
   }
 
   return _slots->nextUnused(size);
 }
 
 // allocate space in a logfile for later writing
-SlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId,
+MMFilesWalSlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId,
                                   TRI_voc_cid_t collectionId, uint32_t size) {
   TRI_ASSERT(size >= sizeof(TRI_df_marker_t));
 
   if (!_allowWrites) {
     // no writes allowed
-    return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
+    return MMFilesWalSlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
   }
 
   if (size > MaxEntrySize()) {
     // entry is too big
-    return SlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+    return MMFilesWalSlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
   }
 
   if (size > _filesize && !_allowOversizeEntries) {
     // entry is too big for a logfile
-    return SlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+    return MMFilesWalSlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
   }
 
   return _slots->nextUnused(databaseId, collectionId, size);
@@ -746,17 +747,17 @@ SlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId,
 
 // write data into the logfile, using database id and collection id
 // this is a convenience function that combines allocate, memcpy and finalize
-SlotInfoCopy LogfileManager::allocateAndWrite(TRI_voc_tick_t databaseId,
+MMFilesWalSlotInfoCopy LogfileManager::allocateAndWrite(TRI_voc_tick_t databaseId,
                                               TRI_voc_cid_t collectionId,
-                                              Marker const* marker,
+                                              MMFilesWalMarker const* marker,
                                               bool wakeUpSynchronizer,
                                               bool waitForSyncRequested,
                                               bool waitUntilSyncDone) {
   TRI_ASSERT(marker != nullptr);
-  SlotInfo slotInfo = allocate(databaseId, collectionId, marker->size());
+  MMFilesWalSlotInfo slotInfo = allocate(databaseId, collectionId, marker->size());
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-    return SlotInfoCopy(slotInfo.errorCode);
+    return MMFilesWalSlotInfoCopy(slotInfo.errorCode);
   }
   
   return writeSlot(slotInfo, marker, wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
@@ -764,15 +765,15 @@ SlotInfoCopy LogfileManager::allocateAndWrite(TRI_voc_tick_t databaseId,
 
 // write data into the logfile
 // this is a convenience function that combines allocate, memcpy and finalize
-SlotInfoCopy LogfileManager::allocateAndWrite(Marker const* marker,
+MMFilesWalSlotInfoCopy LogfileManager::allocateAndWrite(MMFilesWalMarker const* marker,
                                               bool wakeUpSynchronizer,
                                               bool waitForSyncRequested,
                                               bool waitUntilSyncDone) {
   TRI_ASSERT(marker != nullptr);
-  SlotInfo slotInfo = allocate(marker->size());
+  MMFilesWalSlotInfo slotInfo = allocate(marker->size());
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-    return SlotInfoCopy(slotInfo.errorCode);
+    return MMFilesWalSlotInfoCopy(slotInfo.errorCode);
   }
 
   return writeSlot(slotInfo, marker, wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
@@ -780,14 +781,14 @@ SlotInfoCopy LogfileManager::allocateAndWrite(Marker const* marker,
 
 // write marker into the logfile
 // this is a convenience function with less parameters
-SlotInfoCopy LogfileManager::allocateAndWrite(Marker const& marker, bool waitForSync) {
+MMFilesWalSlotInfoCopy LogfileManager::allocateAndWrite(MMFilesWalMarker const& marker, bool waitForSync) {
   return allocateAndWrite(&marker, true, waitForSync, waitForSync);
 }
 
 // memcpy the data into the WAL region and return the filled slot
 // to the WAL logfile manager
-SlotInfoCopy LogfileManager::writeSlot(SlotInfo& slotInfo,
-                                       Marker const* marker,
+MMFilesWalSlotInfoCopy LogfileManager::writeSlot(MMFilesWalSlotInfo& slotInfo,
+                                       MMFilesWalMarker const* marker,
                                        bool wakeUpSynchronizer,
                                        bool waitForSyncRequested,
                                        bool waitUntilSyncDone) {
@@ -801,7 +802,7 @@ SlotInfoCopy LogfileManager::writeSlot(SlotInfo& slotInfo,
 
     // we must copy the slotinfo because Slots::returnUsed() will set the
     // internals of slotInfo.slot to 0 again
-    SlotInfoCopy copy(slotInfo.slot);
+    MMFilesWalSlotInfoCopy copy(slotInfo.slot);
 
     _slots->returnUsed(slotInfo, wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
     return copy;
@@ -809,7 +810,7 @@ SlotInfoCopy LogfileManager::writeSlot(SlotInfo& slotInfo,
     // if we don't return the slot we'll run into serious problems later
     _slots->returnUsed(slotInfo, false, false, false);
 
-    return SlotInfoCopy(TRI_ERROR_INTERNAL);
+    return MMFilesWalSlotInfoCopy(TRI_ERROR_INTERNAL);
   }
 }
 
@@ -1305,7 +1306,7 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
                                         Logfile::StatusType& status,
                                         Logfile*& result) {
   static uint64_t const SleepTime = 10 * 1000;
-  static uint64_t const MaxIterations = 1500;
+  double const end = TRI_microtime() + 15.0;
   size_t iterations = 0;
 
   // always initialize the result
@@ -1316,7 +1317,7 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
     return TRI_ERROR_DEBUG;
   }
 
-  while (++iterations < MaxIterations) {
+  while (true) {
     {
       WRITE_LOCKER(writeLocker, _logfilesLock);
       auto it = _logfiles.begin();
@@ -1358,7 +1359,7 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
     }
 
     // signal & sleep outside the lock
-    if (iterations % 10 == 1) {
+    if (++iterations % 10 == 1) {
       _allocatorThread->signal(size);
     }
 
@@ -1370,11 +1371,15 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
       // some error occurred
       return res;
     }
+
+    if (TRI_microtime() > end) {
+      // timeout
+      break;
+    }
   }
 
   TRI_ASSERT(result == nullptr);
-  LOG(ERR) << "unable to acquire writeable WAL logfile after "
-           << (MaxIterations * SleepTime) / 1000 << " ms";
+  LOG(ERR) << "unable to acquire writeable WAL logfile after 15 s";
 
   return TRI_ERROR_LOCK_TIMEOUT;
 }
@@ -1904,8 +1909,8 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
 }
 
 // start the synchronizer thread
-int LogfileManager::startSynchronizerThread() {
-  _synchronizerThread = new SynchronizerThread(this, _syncInterval);
+int LogfileManager::startMMFilesSynchronizerThread() {
+  _synchronizerThread = new MMFilesSynchronizerThread(this, _syncInterval);
 
   if (!_synchronizerThread->start()) {
     delete _synchronizerThread;
@@ -1916,7 +1921,7 @@ int LogfileManager::startSynchronizerThread() {
 }
 
 // stop the synchronizer thread
-void LogfileManager::stopSynchronizerThread() {
+void LogfileManager::stopMMFilesSynchronizerThread() {
   if (_synchronizerThread != nullptr) {
     LOG(TRACE) << "stopping WAL synchronizer thread";
 
@@ -1925,8 +1930,8 @@ void LogfileManager::stopSynchronizerThread() {
 }
 
 // start the allocator thread
-int LogfileManager::startAllocatorThread() {
-  _allocatorThread = new AllocatorThread(this);
+int LogfileManager::startMMFilesAllocatorThread() {
+  _allocatorThread = new MMFilesAllocatorThread(this);
 
   if (!_allocatorThread->start()) {
     delete _allocatorThread;
@@ -1937,7 +1942,7 @@ int LogfileManager::startAllocatorThread() {
 }
 
 // stop the allocator thread
-void LogfileManager::stopAllocatorThread() {
+void LogfileManager::stopMMFilesAllocatorThread() {
   if (_allocatorThread != nullptr) {
     LOG(TRACE) << "stopping WAL allocator thread";
 
@@ -1946,8 +1951,8 @@ void LogfileManager::stopAllocatorThread() {
 }
 
 // start the collector thread
-int LogfileManager::startCollectorThread() {
-  _collectorThread = new CollectorThread(this);
+int LogfileManager::startMMFilesCollectorThread() {
+  _collectorThread = new MMFilesCollectorThread(this);
 
   if (!_collectorThread->start()) {
     delete _collectorThread;
@@ -1958,7 +1963,7 @@ int LogfileManager::startCollectorThread() {
 }
 
 // stop the collector thread
-void LogfileManager::stopCollectorThread() {
+void LogfileManager::stopMMFilesCollectorThread() {
   if (_collectorThread == nullptr) {
     return;
   }
@@ -2001,8 +2006,8 @@ void LogfileManager::stopCollectorThread() {
 }
 
 // start the remover thread
-int LogfileManager::startRemoverThread() {
-  _removerThread = new RemoverThread(this);
+int LogfileManager::startMMFilesRemoverThread() {
+  _removerThread = new MMFilesRemoverThread(this);
 
   if (!_removerThread->start()) {
     delete _removerThread;
@@ -2013,7 +2018,7 @@ int LogfileManager::startRemoverThread() {
 }
 
 // stop the remover thread
-void LogfileManager::stopRemoverThread() {
+void LogfileManager::stopMMFilesRemoverThread() {
   if (_removerThread != nullptr) {
     LOG(TRACE) << "stopping WAL remover thread";
 
@@ -2081,7 +2086,7 @@ int LogfileManager::inspectLogfiles() {
 
     TRI_ASSERT((*it).second == nullptr);
 
-    int res = TRI_datafile_t::judge(filename);
+    int res = MMFilesDatafile::judge(filename);
 
     if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
       _recoverState->emptyLogfiles.push_back(filename);
@@ -2117,11 +2122,11 @@ int LogfileManager::inspectLogfiles() {
     LOG(TRACE) << "inspecting logfile " << logfile->id() << " ("
                << logfile->statusText() << ")";
 
-    TRI_datafile_t* df = logfile->df();
+    MMFilesDatafile* df = logfile->df();
     df->sequentialAccess();
 
     // update the tick statistics
-    if (!TRI_IterateDatafile(df, &RecoverState::InitialScanMarker,
+    if (!TRI_IterateDatafile(df, &MMFilesWalRecoverState::InitialScanMarker,
                              static_cast<void*>(_recoverState.get()))) {
       std::string const logfileName = logfile->filename();
       LOG(WARN) << "WAL inspection failed when scanning logfile '"
@@ -2179,7 +2184,7 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
   uint32_t realsize;
   if (size > 0 && size > filesize()) {
     // create a logfile with the requested size
-    realsize = size + DatafileHelper::JournalOverhead();
+    realsize = size + MMFilesDatafileHelper::JournalOverhead();
   } else {
     // create a logfile with default size
     realsize = filesize();

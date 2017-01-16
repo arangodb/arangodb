@@ -30,7 +30,6 @@
 
 #include <velocypack/Builder.h>
 
-struct TRI_datafile_t;
 struct TRI_df_marker_t;
 
 namespace arangodb {

@@ -21,18 +21,18 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AllocatorThread.h"
+#include "MMFilesAllocatorThread.h"
 #include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Wal/LogfileManager.h"
 
-using namespace arangodb::wal;
+using namespace arangodb;
 
 /// @brief wait interval for the allocator thread when idle
-uint64_t const AllocatorThread::Interval = 500 * 1000;
+uint64_t const MMFilesAllocatorThread::Interval = 500 * 1000;
 
-AllocatorThread::AllocatorThread(LogfileManager* logfileManager)
+MMFilesAllocatorThread::MMFilesAllocatorThread(wal::LogfileManager* logfileManager)
     : Thread("WalAllocator"),
       _logfileManager(logfileManager),
       _condition(),
@@ -43,7 +43,7 @@ AllocatorThread::AllocatorThread(LogfileManager* logfileManager)
       _allocatorResult(TRI_ERROR_LOCKED) {}
 
 /// @brief wait for the collector result
-int AllocatorThread::waitForResult(uint64_t timeout) {
+int MMFilesAllocatorThread::waitForResult(uint64_t timeout) {
   CONDITION_LOCKER(guard, _allocatorResultCondition);
 
   if (_allocatorResult == TRI_ERROR_LOCKED) {
@@ -58,11 +58,14 @@ int AllocatorThread::waitForResult(uint64_t timeout) {
   if (res == TRI_ERROR_LOCKED) {
     res = TRI_ERROR_NO_ERROR;
   }
+
+  TRI_ASSERT(res != TRI_ERROR_LOCKED);
+
   return res;
 }
 
 /// @brief begin shutdown sequence
-void AllocatorThread::beginShutdown() {
+void MMFilesAllocatorThread::beginShutdown() {
   Thread::beginShutdown();
 
   CONDITION_LOCKER(guard, _condition);
@@ -70,7 +73,7 @@ void AllocatorThread::beginShutdown() {
 }
 
 /// @brief signal the creation of a new logfile
-void AllocatorThread::signal(uint32_t markerSize) {
+void MMFilesAllocatorThread::signal(uint32_t markerSize) {
   CONDITION_LOCKER(guard, _condition);
 
   if (_requestedSize == 0 || markerSize > _requestedSize) {
@@ -82,12 +85,12 @@ void AllocatorThread::signal(uint32_t markerSize) {
 }
 
 /// @brief creates a new reserve logfile
-int AllocatorThread::createReserveLogfile(uint32_t size) {
+int MMFilesAllocatorThread::createReserveLogfile(uint32_t size) {
   return _logfileManager->createReserveLogfile(size);
 }
 
 /// @brief main loop
-void AllocatorThread::run() {
+void MMFilesAllocatorThread::run() {
   while (!isStopping()) {
     uint32_t requestedSize = 0;
 

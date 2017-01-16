@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "StorageEngine/MMFilesDatafile.h"
 #include "StorageEngine/StorageEngine.h"
 
 #include <velocypack/Builder.h>
@@ -243,16 +244,16 @@ class MMFilesEngine final : public StorageEngine {
   int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) override;
   
   /// @brief transfer markers into a collection
-  int transferMarkers(LogicalCollection* collection, wal::CollectorCache*,
-                      wal::OperationsType const&) override;
+  int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
+                      MMFilesOperationsType const&) override;
 
  private:
   /// @brief: check the initial markers in a datafile
-  bool checkDatafileHeader(TRI_datafile_t* datafile, std::string const& filename) const;
+  bool checkDatafileHeader(MMFilesDatafile* datafile, std::string const& filename) const;
 
   /// @brief transfer markers into a collection, worker function
-  int transferMarkersWorker(LogicalCollection* collection, wal::CollectorCache*,
-                            wal::OperationsType const&);
+  int transferMarkersWorker(LogicalCollection* collection, MMFilesCollectorCache*,
+                            MMFilesOperationsType const&);
 
   /// @brief sync the active journal of a collection
   int syncJournalCollection(LogicalCollection* collection);
@@ -260,11 +261,11 @@ class MMFilesEngine final : public StorageEngine {
   /// @brief get the next free position for a new marker of the specified size
   char* nextFreeMarkerPosition(LogicalCollection* collection,
                                TRI_voc_tick_t, TRI_df_marker_type_t,
-                               TRI_voc_size_t, wal::CollectorCache*);
+                               TRI_voc_size_t, MMFilesCollectorCache*);
 
   /// @brief set the tick of a marker and calculate its CRC value
   void finishMarker(char const*, char*, LogicalCollection* collection,
-                    TRI_voc_tick_t, wal::CollectorCache*);
+                    TRI_voc_tick_t, MMFilesCollectorCache*);
 
   void verifyDirectories(); 
   std::vector<std::string> getDatabaseNames() const;
