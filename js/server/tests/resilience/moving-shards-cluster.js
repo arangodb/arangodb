@@ -116,6 +116,8 @@ function MovingShardsSuite () {
     return body;
   }
 
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test whether or not a server is clean
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,9 +131,11 @@ function MovingShardsSuite () {
     }
     var count;
     var ok;
+
     for (var i = fromCollNr; i <= toCollNr; ++i) {
       count = 100;
       ok = false;
+
       while (--count > 0) {
         wait(1.0);
         global.ArangoClusterInfo.flush();
@@ -139,8 +143,8 @@ function MovingShardsSuite () {
         console.info("Seeing servers:", i, c[i].name(), servers);
         if (servers.indexOf(id) === -1) {
           // Now check current as well:
-          var collInfo = global.ArangoClusterInfo.getCollectionInfo(
-            "_system", c[i].name());
+          var collInfo =
+              global.ArangoClusterInfo.getCollectionInfo("_system", c[i].name());
           var shards = collInfo.shards;
           var collInfoCurr = Object.keys(shards).map(s =>
             global.ArangoClusterInfo.getCollectionInfoCurrent(
@@ -160,6 +164,7 @@ function MovingShardsSuite () {
       if (!ok) {
         return false;
       }
+
     }
 
     if (checkList) {
@@ -379,7 +384,7 @@ function MovingShardsSuite () {
     
     testShrinkNoReplication : function() {
       assertTrue(waitForSynchronousReplication("_system"));
-      var _dbservers = dbservers;
+      var _dbservers = global.ArangoClusterInfo.getDBServers();
       _dbservers.sort();
       assertTrue(shrinkCluster(4));
       assertTrue(testServerEmpty(_dbservers[4], true));
@@ -388,7 +393,7 @@ function MovingShardsSuite () {
       assertTrue(testServerEmpty(_dbservers[3], true));
       assertTrue(waitForSupervision());
       assertTrue(shrinkCluster(2));
-      assertTrue(testServerEmpty(_dbservers[2], true));
+      testServerEmpty(_dbservers[2], true);
       assertTrue(waitForSupervision());
     },
     
