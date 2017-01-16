@@ -155,9 +155,10 @@ case "$1" in
         ;;
 
     debug)
+        BUILD_CONFIG=Debug
         CFLAGS="${CFLAGS} -O0"
         CXXFLAGS="${CXXFLAGS} -O0"
-        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} --enable-v8-debug"
+        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DV8_TARGET_ARCHS=Debug -DCMAKE_BUILD_TYPE=${BUILD_CONFIG}"
 
         echo "using debug compile configuration"
         shift
@@ -167,6 +168,7 @@ case "$1" in
         CFLAGS="${CFLAGS} -O3"
         CXXFLAGS="${CXXFLAGS} -O3"
         MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=on"
+        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_BUILD_TYPE=${BUILD_CONFIG}"
 
         echo "using maintainer mode"
         shift
@@ -477,7 +479,11 @@ if [ -z "${MSVC}" ]; then
         if [ ! -f ${OBJCOPY} ] ; then
             set +e
             OBJCOPY=`which objcopy`
+            
             set -e
+            if test -n "${OBJCOPY}" -a ! -x "${OBJCOPY}"; then
+                OBJCOPY=""
+            fi
         fi
         export OBJCOPY
     fi

@@ -28,7 +28,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
-#include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StaticStrings.h"
@@ -74,6 +73,8 @@ VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
 }
 
 VPackSlice VppRequest::payload(VPackOptions const* options) {
+  // message does not need to be validated here, as it was already
+  // validated before
   return _message.payload();
 }
 

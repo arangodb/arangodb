@@ -8,7 +8,7 @@ arangosh&gt; queries.properties();
   <span class="hljs-string">"slowQueryThreshold"</span> : <span class="hljs-number">10</span>, 
   <span class="hljs-string">"maxQueryStringLength"</span> : <span class="hljs-number">4096</span> 
 }
-arangosh&gt; queries.properties({slowQueryThreshold: <span class="hljs-number">1</span>});
+arangosh&gt; queries.properties({<span class="hljs-attr">slowQueryThreshold</span>: <span class="hljs-number">1</span>});
 { 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
   <span class="hljs-string">"enabled"</span> : <span class="hljs-literal">true</span>, 

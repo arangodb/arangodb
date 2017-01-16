@@ -1294,6 +1294,17 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
                                precondition);
   res = ac.sendTransactionWithFailover(trans);
 
+  if (!res.successful()) {
+    LOG(ERR) << "###################### WAS ERLAUBE? ####################";
+    AgencyCommResult ag = ac.getValues("");
+    if (ag.successful()) {
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+                                      << ag.slice().toJson();
+    } else {
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+    }
+  }
+
   // Update our own cache:
   loadPlan();
 
@@ -1747,7 +1758,7 @@ int ClusterInfo::ensureIndexCoordinator(
   if (!result.successful()) {
     errorMsg += std::string(" ") + __FILE__ + ":" + std::to_string(__LINE__);
     resultBuilder = *resBuilder;
-    return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
+    return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN;
   }
 
   loadPlan();
@@ -1967,8 +1978,8 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   if (!result.successful()) {
     errorMsg += std::string(" ") + __FILE__ + ":" + std::to_string(__LINE__);
     events::DropIndex(collectionID, idString,
-                      TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
-    return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
+                      TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN);
+    return TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN;
   }
 
   // load our own cache:
@@ -2620,4 +2631,14 @@ std::shared_ptr<VPackBuilder> ClusterInfo::getCurrent() {
   }
   READ_LOCKER(readLocker, _currentProt.lock);
   return _current;
+}
+
+
+std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
+  READ_LOCKER(readLocker, _serversProt.lock);
+  std::unordered_map<std::string,std::string> ret;
+  for (const auto& i : _serverAliases) {
+    ret.emplace(i.second,i.first);
+  }
+  return ret;
 }

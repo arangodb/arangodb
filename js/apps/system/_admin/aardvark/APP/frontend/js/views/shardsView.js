@@ -140,7 +140,7 @@
               'Destination',
               undefined,
               // this.users !== null ? this.users.whoAmI() : 'root',
-              'Please select the target databse server. The selected database ' +
+              'Please select the target database server. The selected database ' +
                 'server will be the new leader of the shard.',
                 array
             )

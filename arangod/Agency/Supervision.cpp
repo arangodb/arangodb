@@ -623,7 +623,15 @@ void Supervision::enforceReplication() {
     auto const& db = *(db_.second);
     for (const auto& col_ : db.children()) { // Planned collections
       auto const& col = *(col_.second);
-      auto replicationFactor = col("replicationFactor").slice().getUInt();
+      
+      size_t replicationFactor;
+      try {
+        replicationFactor = col("replicationFactor").slice().getUInt();
+      } catch (std::exception const& e) {
+        LOG_TOPIC(WARN, Logger::AGENCY)
+          << "no replicationFactor entry in " << col.toJson();
+        continue;
+      }
 
       // mop: satellites => distribute to every server
       if (replicationFactor == 0) {
@@ -942,7 +950,7 @@ void Supervision::missingPrototype() {
   auto available = Job::availableServers(_snapshot);
   
   // key: prototype, value: clone
-  std::multimap<std::string, std::string> likeness;
+  //std::multimap<std::string, std::string> likeness;
   
   for (const auto& db_ : plannedDBs) { // Planned databases
     auto const& db = *(db_.second);

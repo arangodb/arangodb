@@ -121,6 +121,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   void unprepare() override final;
 
  public:
+  void logStatus();
   // run the recovery procedure
   // this is called after the logfiles have been scanned completely and
   // recovery state has been build. additionally, all databases have been

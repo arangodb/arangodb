@@ -745,16 +745,24 @@ static void JS_GetCollectionInfoClusterInfo(
   result->Set(TRI_V8_ASCII_STRING("shardKeys"), shardKeys);
 
   auto shardMap = ci->shardIds();
+  auto serverAliases = ClusterInfo::instance()->getServerAliases();
   v8::Handle<v8::Object> shardIds = v8::Object::New(isolate);
+  v8::Handle<v8::Object> shardShorts = v8::Object::New(isolate);
   for (auto const& p : *shardMap) {
     v8::Handle<v8::Array> list = v8::Array::New(isolate, (int)p.second.size());
+    v8::Handle<v8::Array> shorts = v8::Array::New(isolate, (int)p.second.size());
     uint32_t pos = 0;
     for (auto const& s : p.second) {
+      try{
+        shorts->Set(pos, TRI_V8_STD_STRING(serverAliases.at(s)));
+      } catch (...) {}
       list->Set(pos++, TRI_V8_STD_STRING(s));
     }
     shardIds->Set(TRI_V8_STD_STRING(p.first), list);
+    shardShorts->Set(TRI_V8_STD_STRING(p.first), shorts);
   }
   result->Set(TRI_V8_ASCII_STRING("shards"), shardIds);
+  result->Set(TRI_V8_ASCII_STRING("shardShorts"), shardShorts);
   VPackBuilder tmp;
   ci->getIndexesVPack(tmp, false);
   v8::Handle<v8::Value> indexes = TRI_VPackToV8(isolate, tmp.slice());
@@ -816,11 +824,18 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
   auto servers = cic->servers(shardID);
   v8::Handle<v8::Array> list =
       v8::Array::New(isolate, static_cast<int>(servers.size()));
+  v8::Handle<v8::Array> shorts =
+      v8::Array::New(isolate, static_cast<int>(servers.size()));
+  auto serverAliases = ClusterInfo::instance()->getServerAliases();
   uint32_t pos = 0;
   for (auto const& s : servers) {
+    try {
+      shorts->Set(pos, TRI_V8_STD_STRING(serverAliases.at(s)));
+    } catch (...) {}
     list->Set(pos++, TRI_V8_STD_STRING(s));
   }
   result->Set(TRI_V8_ASCII_STRING("servers"), list);
+  result->Set(TRI_V8_ASCII_STRING("shorts"), shorts);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

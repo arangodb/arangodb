@@ -269,9 +269,9 @@
       model = JSON.stringify(model);
 
       if (this.type._from && this.type._to) {
-        var callbackE = function (error) {
+        var callbackE = function (error, data) {
           if (error) {
-            arangoHelper.arangoError('Error', 'Could not save edge.');
+            arangoHelper.arangoError('Error', data.responseJSON.errorMessage);
           } else {
             this.successConfirmation();
             this.disableSaveButton();
@@ -280,9 +280,9 @@
 
         this.collection.saveEdge(this.colid, this.docid, this.type._from, this.type._to, model, callbackE);
       } else {
-        var callback = function (error) {
+        var callback = function (error, data) {
           if (error) {
-            arangoHelper.arangoError('Error', 'Could not save document.');
+            arangoHelper.arangoError('Error', data.responseJSON.errorMessage);
           } else {
             this.successConfirmation();
             this.disableSaveButton();

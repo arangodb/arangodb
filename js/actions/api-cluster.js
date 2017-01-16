@@ -1180,23 +1180,32 @@ actions.defineHttp({
         '/_api/collection/' + shard.shard + '/count', '', {}, options);
       } catch (e) {
       }
+
       let leaderCount = null;
+
       if (leaderOP) {
         leaderR = ArangoClusterComm.wait(leaderOP);
         leaderBody = JSON.parse(leaderR.body);
         leaderCount = leaderBody.count;
       }
+
       let followerCount = null;
       if (followerOP) {
         followerR = ArangoClusterComm.wait(followerOP);
-        followerBody = JSON.parse(followerR.body);
-        followerCount = followerBody.count;
-      }
 
-      result.results[shard.collection].Plan[shard.shard].progress = {
-        total: leaderCount,
-        current: followerCount
-      };
+        if (followerR.status !== 'BACKEND_UNAVAILABLE') {
+          try {
+            followerBody = JSON.parse(followerR.body);
+            followerCount = followerBody.count;
+
+            result.results[shard.collection].Plan[shard.shard].progress = {
+              total: leaderCount,
+              current: followerCount
+            };
+          } catch (e) {
+          }
+        }
+      }
     });
 
     actions.resultOk(req, res, actions.HTTP_OK, result);

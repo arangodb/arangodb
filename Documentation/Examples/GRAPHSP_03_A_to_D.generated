@@ -6,18 +6,18 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR a IN circles FILTER a._key
   ], 
   [ 
     <span class="hljs-string">"B"</span>, 
-    <span class="hljs-string">"7465"</span> 
+    <span class="hljs-string">"7466"</span> 
   ], 
   [ 
     <span class="hljs-string">"C"</span>, 
-    <span class="hljs-string">"7469"</span> 
+    <span class="hljs-string">"7470"</span> 
   ], 
   [ 
     <span class="hljs-string">"D"</span>, 
-    <span class="hljs-string">"7472"</span> 
+    <span class="hljs-string">"7473"</span> 
   ] 
 ]
-[object ArangoQueryCursor, count: <span class="hljs-number">4</span>, hasMore: <span class="hljs-literal">false</span>]
+[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">4</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
 arangosh&gt; db._query(<span class="hljs-string">"FOR a IN circles FILTER a._key == 'A' FOR d IN circles FILTER d._key == 'D' FOR v, e IN OUTBOUND SHORTEST_PATH a TO d edges RETURN [v._key, e._key]"</span>);
 [ 
   [ 
@@ -26,15 +26,15 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR a IN circles FILTER a._key
   ], 
   [ 
     <span class="hljs-string">"B"</span>, 
-    <span class="hljs-string">"7465"</span> 
+    <span class="hljs-string">"7466"</span> 
   ], 
   [ 
     <span class="hljs-string">"C"</span>, 
-    <span class="hljs-string">"7469"</span> 
+    <span class="hljs-string">"7470"</span> 
   ], 
   [ 
     <span class="hljs-string">"D"</span>, 
-    <span class="hljs-string">"7472"</span> 
+    <span class="hljs-string">"7473"</span> 
   ] 
 ]
-[object ArangoQueryCursor, count: <span class="hljs-number">4</span>, hasMore: <span class="hljs-literal">false</span>]
+[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">4</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]

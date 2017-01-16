@@ -1,6 +1,10 @@
 Fulltext queries
 ================
 
+{% hint 'warning' %}
+It is recommended to use AQL instead, see [Fulltext functions](../../../../AQL/Functions/Fulltext.html).
+{% endhint %}
+
 ArangoDB allows to run queries on text contained in document attributes.  To use
 this, a [fulltext index](../../Glossary.md#fulltext-index) must be defined for the attribute of the collection that
 contains the text. Creating the index will parse the text in the specified

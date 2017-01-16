@@ -2425,9 +2425,9 @@ function shardDistribution () {
     for (var j = 0; j < shardNames.length; ++j) {
       collInfoCurrent[shardNames[j]] =
         global.ArangoClusterInfo.getCollectionInfoCurrent(
-          dbName, collName, shardNames[j]).servers;
+          dbName, collName, shardNames[j]).shorts;
     }
-    result[collName] = {Plan: format(collInfo.shards),
+    result[collName] = {Plan: format(collInfo.shardShorts),
     Current: format(collInfoCurrent)};
   }
 

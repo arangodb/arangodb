@@ -414,12 +414,8 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       headers["content-length"] = StringUtils::itoa(request->contentLength());
     } else if (rest::ContentType::VPACK == request->contentType()) {
       // the VPACK is passed as it is to to Javascript
-      // should we convert and validate here in a central place?
-      // should the work be done in javascript
       // FIXME not every VPack can be converted to JSON
       VPackSlice slice = request->payload();
-      VPackValidator validator;
-      validator.validate(slice.start(), slice.byteSize());
       std::string jsonString = slice.toJson();
 
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)

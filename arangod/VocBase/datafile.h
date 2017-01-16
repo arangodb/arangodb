@@ -197,6 +197,9 @@ struct TRI_datafile_t {
   /// @brief truncates a datafile and seals it, only called by arango-dfdd
   static int truncate(std::string const& path, TRI_voc_size_t position);
 
+  /// @brief whether or not a datafile is empty
+  static int judge(std::string const& filename);
+
   /// @brief creates either an anonymous or a physical datafile
   static TRI_datafile_t* create(std::string const& filename, TRI_voc_fid_t fid,
                                 TRI_voc_size_t maximalSize,
@@ -253,6 +256,17 @@ struct TRI_datafile_t {
   
   void setState(TRI_df_state_e state) { _state = state; }
   
+  bool isSealed() const { return _isSealed; }
+  
+  char* advanceWritePosition(size_t size) {
+    char* old = _next;
+
+    _next += size;
+    _currentSize += static_cast<TRI_voc_size_t>(size);
+
+    return old;
+  }
+  
  private:
   /// @brief returns information about the datafile
   DatafileScan scanHelper();
@@ -275,7 +289,7 @@ struct TRI_datafile_t {
   bool tryRepair();
 
   void printMarker(TRI_df_marker_t const* marker, TRI_voc_size_t size, char const* begin, char const* end) const;
-
+  
  private:
   std::string _filename;  // underlying filename
   TRI_voc_fid_t const _fid;  // datafile identifier
@@ -284,12 +298,17 @@ struct TRI_datafile_t {
 
   void* _mmHandle;  // underlying memory map object handle (windows only)
 
- public:
   TRI_voc_size_t const _initSize; // initial size of the datafile (constant)
   TRI_voc_size_t _maximalSize;    // maximal size of the datafile (may be adjusted/reduced at runtime)
   TRI_voc_size_t _currentSize;    // current size of the datafile
   TRI_voc_size_t _footerSize;     // size of the final footer
+  
+  bool _full;  // at least one request was rejected because there is not enough
+               // room
+  bool _isSealed;  // true, if footer has been written
+  bool _lockedInMemory;  // whether or not the datafile is locked in memory (mlock) 
 
+ public:
   char* _data;  // start of the data array
   char* _next;  // end of the current data
 
@@ -299,10 +318,6 @@ struct TRI_datafile_t {
   TRI_voc_tick_t _dataMax;  // maximum tick value of document/edge marker
 
   int _lastError;  // last (critical) error
-  bool _full;  // at least one request was rejected because there is not enough
-               // room
-  bool _isSealed;  // true, if footer has been written
-  bool _lockedInMemory;  // whether or not the datafile is locked in memory (mlock) 
   // .............................................................................
   // access to the following attributes must be protected by a _lock
   // .............................................................................

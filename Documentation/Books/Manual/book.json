@@ -4,7 +4,7 @@
   "author": "ArangoDB GmbH",
   "description": "Official manual for ArangoDB - the multi-model NoSQL database",
   "language": "en",
-  "plugins":["-search", "-lunr", "-sharing", "toggle-chapters", "addcssjs", "anchorjs", "piwik", "sitemap-general"],
+  "plugins":["-search", "-lunr", "-sharing", "toggle-chapters", "addcssjs", "anchorjs", "piwik", "sitemap-general", "callouts@git+https://github.com/Simran-B/gitbook-plugin-callouts.git"],
   "pdf": {
     "fontSize": 12,
     "toc": true,

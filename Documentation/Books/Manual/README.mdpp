@@ -3,8 +3,10 @@ ArangoDB VERSION_NUMBER Documentation
 
 Welcome to the ArangoDB documentation!
 
+{% hint 'info' %}
 New and eager to try out ArangoDB? Start right away with our beginner's guide:
 [Getting Started](GettingStarted/README.md)
+{% endhint %}
 
 The documentation is organized in four handbooks:
 

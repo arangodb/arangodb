@@ -23,6 +23,8 @@
 #include "BenchFeature.h"
 
 #include <iostream>
+#include <iomanip>
+#include <ctime>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
@@ -66,6 +68,8 @@ BenchFeature::BenchFeature(application_features::ApplicationServer* server,
       _progress(true),
       _verbose(false),
       _quiet(false),
+      _runs(1),
+      _junitReportFile(""),
       _result(result) {
   requiresElevatedPrivileges(false);
   setOptional(false);
@@ -128,6 +132,14 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "use a startup delay (necessary only when run in series)",
                      new BooleanParameter(&_delay));
 
+  options->addOption("--junit-report-file", "filename to write junit style report to",
+                     new StringParameter(&_junitReportFile));
+
+
+  options->addOption("--runs",
+                     "run test n times (and calculate statistics based on median)",
+                     new UInt64Parameter(&_runs));
+
   options->addOption("--progress", "show progress",
                      new BooleanParameter(&_progress));
 
@@ -169,14 +181,7 @@ void BenchFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  status("starting threads...");
 
-  BenchmarkCounter<unsigned long> operationsCounter(0,
-                                                    (unsigned long)_operations);
-  ConditionVariable startCondition;
-
-  std::vector<Endpoint*> endpoints;
-  std::vector<BenchmarkThread*> threads;
 
   double const stepSize = (double)_operations / (double)_concurreny;
   int64_t realStep = (int64_t)stepSize;
@@ -193,76 +198,110 @@ void BenchFeature::start() {
   // speed
   realStep += 10000;
 
-  // start client threads
-  for (uint64_t i = 0; i < _concurreny; ++i) {
-    Endpoint* endpoint = Endpoint::clientFactory(client->endpoint());
-    endpoints.push_back(endpoint);
+  std::vector<BenchmarkThread*> threads;
 
-    BenchmarkThread* thread = new BenchmarkThread(
-        benchmark.get(), &startCondition, &BenchFeature::updateStartCounter,
-        static_cast<int>(i), (unsigned long)_batchSize, &operationsCounter, client, _keepAlive,
-        _async, _verbose);
-
-    threads.push_back(thread);
-    thread->setOffset((size_t)(i * realStep));
-    thread->start();
-  }
-
-  // give all threads a chance to start so they will not miss the broadcast
-  while (getStartCounter() < (int)_concurreny) {
-    usleep(5000);
-  }
-
-  if (_delay) {
-    status("sleeping (startup delay)...");
-    sleep(10);
-  }
-
-  status("executing tests...");
-
-  double start = TRI_microtime();
-
-  // broadcast the start signal to all threads
-  {
-    CONDITION_LOCKER(guard, startCondition);
-    guard.broadcast();
-  }
-
-  size_t const stepValue = static_cast<size_t>(_operations / 20);
-  size_t nextReportValue = stepValue;
-
-  if (nextReportValue < 100) {
-    nextReportValue = 100;
-  }
-
-  while (true) {
-    size_t const numOperations = operationsCounter.getDone();
-
-    if (numOperations >= (size_t)_operations) {
-      break;
+  bool ok = true;
+  std::vector<BenchRunResult> results;
+  for (uint64_t j=0;j<_runs;j++) {
+    status("starting threads...");
+    BenchmarkCounter<unsigned long> operationsCounter(0,
+                                                    (unsigned long)_operations);
+    ConditionVariable startCondition;
+    // start client threads
+    _started = 0;
+    for (uint64_t i = 0; i < _concurreny; ++i) {
+      BenchmarkThread* thread = new BenchmarkThread(
+          benchmark.get(), &startCondition, &BenchFeature::updateStartCounter,
+          static_cast<int>(i), (unsigned long)_batchSize, &operationsCounter, client, _keepAlive,
+          _async, _verbose);
+      thread->setOffset((size_t)(i * realStep));
+      thread->start();
+      threads.push_back(thread);
     }
 
-    if (_progress && numOperations >= nextReportValue) {
-      LOG(INFO) << "number of operations: " << nextReportValue;
-      nextReportValue += stepValue;
+    // give all threads a chance to start so they will not miss the broadcast
+    while (getStartCounter() < (int)_concurreny) {
+      usleep(5000);
     }
 
-    usleep(10000);
+    if (_delay) {
+      status("sleeping (startup delay)...");
+      sleep(10);
+    }
+
+    status("executing tests...");
+    double start = TRI_microtime();
+
+    // broadcast the start signal to all threads
+    {
+      CONDITION_LOCKER(guard, startCondition);
+      guard.broadcast();
+    }
+
+    size_t const stepValue = static_cast<size_t>(_operations / 20);
+    size_t nextReportValue = stepValue;
+
+    if (nextReportValue < 100) {
+      nextReportValue = 100;
+    }
+
+    while (true) {
+      size_t const numOperations = operationsCounter.getDone();
+
+      if (numOperations >= (size_t)_operations) {
+        break;
+      }
+
+      if (_progress && numOperations >= nextReportValue) {
+        LOG(INFO) << "number of operations: " << nextReportValue;
+        nextReportValue += stepValue;
+      }
+
+      usleep(10000);
+    }
+
+    double time = TRI_microtime() - start;
+    double requestTime = 0.0;
+
+    for (size_t i = 0; i < static_cast<size_t>(_concurreny); ++i) {
+      requestTime += threads[i]->getTime();
+    }
+
+    if (operationsCounter.failures() > 0) {
+      ok = false;
+    }
+
+    results.push_back({
+        time,
+        operationsCounter.failures(),
+        operationsCounter.incompleteFailures(),
+        requestTime,
+        });
+    for (size_t i = 0; i < static_cast<size_t>(_concurreny); ++i) {
+      delete threads[i];
+    }
+    threads.clear();
+  }
+  std::cout << std::endl;
+
+  report(client, results);
+  if (!ok) {
+    std::cout << "At least one of the runs yielded some failures!" << std::endl;
+  }
+  benchmark->tearDown();
+
+  if (!ok) {
+    ret = EXIT_FAILURE;
   }
 
-  double time = TRI_microtime() - start;
-  double requestTime = 0.0;
+  *_result = ret;
+}
 
-  for (size_t i = 0; i < static_cast<size_t>(_concurreny); ++i) {
-    requestTime += threads[i]->getTime();
-  }
-
-  size_t failures = operationsCounter.failures();
-  size_t incomplete = operationsCounter.incompleteFailures();
-
+bool BenchFeature::report(ClientFeature* client, std::vector<BenchRunResult> results) {
   std::cout << std::endl;
 
   std::cout << "Total number of operations: " << _operations
+            << ", runs: " << _runs
             << ", keep alive: " << (_keepAlive ? "yes" : "no")
             << ", async: " << (_async ? "yes" : "no")
             << ", batch size: " << _batchSize
@@ -272,46 +311,114 @@ void BenchFeature::start() {
             << ", database: '" << client->databaseName() << "', collection: '"
             << _collection << "'" << std::endl;
 
+  std::sort(results.begin(), results.end(), [](BenchRunResult a, BenchRunResult b) {
+    return a.time < b.time;
+  });
+
+  BenchRunResult output {0, 0, 0, 0};
+  if (_runs > 1) {
+    size_t size = results.size();
+    std::cout << std::endl;
+    std::cout << "Printing fastest result" << std::endl;
+    std::cout << "=======================" << std::endl;
+    printResult(results[0]);
+
+    std::cout << "Printing slowest result" << std::endl;
+    std::cout << "=======================" << std::endl;
+    printResult(results[size - 1]);
+
+    std::cout << "Printing median result" << std::endl;
+    std::cout << "=======================" << std::endl;
+    size_t mid = (size_t) size / 2;
+    if (size % 2 == 0) {
+      output.update((results[mid - 1].time + results[mid].time) / 2,
+          (results[mid - 1].failures + results[mid].failures) / 2,
+          (results[mid - 1].incomplete + results[mid].incomplete) / 2,
+          (results[mid - 1].requestTime + results[mid].requestTime) / 2
+      );
+    } else {
+      output = results[mid];
+    }
+  } else if (_runs > 0) {
+    output = results[0];
+  }
+  printResult(output);
+  if (_junitReportFile.empty()) {
+    return true;
+  }
+
+  return writeJunitReport(output);
+}
+
+bool BenchFeature::writeJunitReport(BenchRunResult const& result) {
+  std::ofstream outfile (_junitReportFile,std::ofstream::binary);
+  if (!outfile.is_open()) {
+    std::cerr << "Could not open JUnit Report File: " << _junitReportFile << std::endl;
+    return false;
+  }
+
+  // c++ shall die....not even bothered to provide proper alternatives
+  // to this C dirt
+
+  std::time_t t = std::time(nullptr);
+  std::tm tm = *std::localtime(&t);
+  
+  char date[255];
+  memset(date, 0, sizeof(date));
+  strftime(date, sizeof(date)-1, "%FT%T%z", &tm);
+
+  char host[255];
+  memset(host, 0, sizeof(host));
+  gethostname(host, sizeof(host)-1);
+
+  std::string hostname(host);
+  bool ok = false;
+  try {
+    outfile << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" << '\n'
+      << "<testsuite name=\"arangobench\" tests=\"1\" skipped=\"0\" failures=\"0\" errors=\"0\" timestamp=\""
+      << date << "\" hostname=\""
+      << hostname << "\" time=\"" << std::fixed << result.time << "\">\n"
+      << "<properties/>\n"
+      << "<testcase name=\"" << testCase() << "\" classname=\"BenchTest\""
+      << " time=\"" << std::fixed << result.time << "\"/>\n"
+      << "</testsuite>\n";
+    ok = true;
+  } catch(...) {
+    std::cerr << "Got an exception writing to junit report file " << _junitReportFile;
+    ok = false;
+  }
+  outfile.close();
+  return ok;
+}
+
+void BenchFeature::printResult(BenchRunResult const& result) {
   std::cout << "Total request/response duration (sum of all threads): "
-            << std::fixed << requestTime << " s" << std::endl;
+            << std::fixed << result.requestTime << " s" << std::endl;
 
   std::cout << "Request/response duration (per thread): " << std::fixed
-            << (requestTime / (double)_concurreny) << " s" << std::endl;
+            << (result.requestTime / (double)_concurreny) << " s" << std::endl;
 
   std::cout << "Time needed per operation: " << std::fixed
-            << (time / _operations) << " s" << std::endl;
+            << (result.time / _operations) << " s" << std::endl;
 
   std::cout << "Time needed per operation per thread: " << std::fixed
-            << (time / (double)_operations * (double)_concurreny) << " s"
+            << (result.time / (double)_operations * (double)_concurreny) << " s"
             << std::endl;
 
   std::cout << "Operations per second rate: " << std::fixed
-            << ((double)_operations / time) << std::endl;
+            << ((double)_operations / result.time) << std::endl;
 
-  std::cout << "Elapsed time since start: " << std::fixed << time << " s"
+  std::cout << "Elapsed time since start: " << std::fixed << result.time << " s"
             << std::endl
             << std::endl;
 
-  if (failures > 0) {
-    LOG(WARN) << "WARNING: " << failures << " arangobench request(s) failed!";
+  if (result.failures > 0) {
+    LOG(WARN) << "WARNING: " << result.failures << " arangobench request(s) failed!";
   }
-  if (incomplete > 0) {
-    LOG(WARN) << "WARNING: " << incomplete
+  if (result.incomplete > 0) {
+    LOG(WARN) << "WARNING: " << result.incomplete
               << " arangobench requests with incomplete results!";
   }
-
-  benchmark->tearDown();
-
-  for (size_t i = 0; i < static_cast<size_t>(_concurreny); ++i) {
-    delete threads[i];
-    delete endpoints[i];
-  }
-
-  if (failures > 0) {
-    ret = EXIT_FAILURE;
-  }
-
-  *_result = ret;
 }
 
 void BenchFeature::unprepare() {

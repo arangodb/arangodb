@@ -1828,13 +1828,12 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
             << "found temporary file '" << filename
             << "', which is probably a left-over. deleting it";
         FileUtils::remove(filename);
-        continue;
       } else {
         LOG_TOPIC(DEBUG, Logger::DATAFILES)
             << "ignoring file '" << file
             << "' because it does not look like a datafile";
-        continue;
       }
+      continue;
     }
 
     // file is an index. indexes are handled elsewhere
@@ -1875,7 +1874,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
         }
 
         // reuse newName
-        filename = newName;
+        filename = std::move(newName);
       }
 
       TRI_set_errno(TRI_ERROR_NO_ERROR);
@@ -1896,7 +1895,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
       TRI_datafile_t* datafile = df.release();
 
       // check the document header
-      char const* ptr = datafile->_data;
+      char const* ptr = datafile->data();
 
       // skip the datafile header
       ptr +=
@@ -1925,7 +1924,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
 
       // file is a journal
       if (filetype == "journal") {
-        if (datafile->_isSealed) {
+        if (datafile->isSealed()) {
           if (datafile->state() != TRI_DF_STATE_READ) {
             LOG_TOPIC(WARN, Logger::DATAFILES)
                 << "strange, journal '" << filename
@@ -1946,7 +1945,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
 
       // file is a datafile (or was a compaction file)
       else if (filetype == "datafile" || filetype == "compaction") {
-        if (!datafile->_isSealed) {
+        if (!datafile->isSealed()) {
           LOG_TOPIC(ERR, Logger::DATAFILES)
               << "datafile '" << filename
               << "' is not sealed, this should never happen";
@@ -2002,7 +2001,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
   }
 
   // sort the datafiles
-  // this allows us to iterate them in the correct order
+  // this allows us to iterate them in the correct order later
   std::sort(datafiles.begin(), datafiles.end(), DatafileComparator());
   std::sort(journals.begin(), journals.end(), DatafileComparator());
   std::sort(compactors.begin(), compactors.end(), DatafileComparator());

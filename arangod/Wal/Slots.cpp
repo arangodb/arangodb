@@ -473,7 +473,7 @@ void Slots::getActiveLogfileRegion(Logfile* logfile, char const*& begin,
   TRI_datafile_t* datafile = logfile->df();
 
   begin = datafile->_data;
-  end = begin + datafile->_currentSize;
+  end = begin + datafile->currentSize();
 }
 
 /// @brief get the current tick range of a logfile
@@ -720,6 +720,8 @@ int Slots::newLogfile(uint32_t size, Logfile::StatusType& status) {
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_ASSERT(logfile != nullptr);
     _logfile = logfile;
+  } else if (res == TRI_ERROR_LOCK_TIMEOUT) {
+    _logfileManager->logStatus();
   }
 
   return res;

@@ -68,9 +68,6 @@ class Logfile {
   /// @brief open an existing logfile
   static Logfile* openExisting(std::string const&, Logfile::IdType, bool, bool);
 
-  /// @brief whether or not a logfile is empty
-  static int judge(std::string const&);
-
   int lockInMemory() {
     return _df->lockInMemory();
   }
