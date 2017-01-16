@@ -52,9 +52,16 @@ function agencyTestSuite () {
   function accessAgency(api, list) {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
-    var res = request({url: agencyServers[whoseTurn] + "/_api/agency/" + api, method: "POST",
-                       followRedirects: true, body: JSON.stringify(list),
-                       headers: {"Content-Type": "application/json"}});
+    var res;
+    while (true) {
+      res = request({url: agencyServers[whoseTurn] + "/_api/agency/" + api,
+                     method: "POST", followRedirects: true,
+                     body: JSON.stringify(list),
+                     headers: {"Content-Type": "application/json"}});
+      if(res.statusCode !== 503) {
+        break;
+      }
+    }
     res.bodyParsed = JSON.parse(res.body);
     return res;
   }
@@ -63,7 +70,7 @@ function agencyTestSuite () {
     var res;
     while (true) {
       res = accessAgency("read", list);
-      if(res.statusCode != 503) {
+      if(res.statusCode !== 503) {
         break;
       }
     }
@@ -75,7 +82,7 @@ function agencyTestSuite () {
     var res;
     while (true) {
       res = accessAgency("write", list);
-      if(res.statusCode != 503) {
+      if(res.statusCode !== 503) {
         break;
       }
     }
@@ -87,7 +94,7 @@ function agencyTestSuite () {
     var res;
     while (true) {
       res = accessAgency("transact", list);
-      if(res.statusCode != 503) {
+      if(res.statusCode !== 503) {
         break;
       }
     }
