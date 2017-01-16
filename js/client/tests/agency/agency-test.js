@@ -46,7 +46,7 @@ function agencyTestSuite () {
   var agencyServers = instanceInfo.arangods.map(arangod => {
     return arangod.url;
   });
-  var whoseTurn = 0;
+  var agencyLeader = agencyServers[0];
   var request = require("@arangodb/request");
 
   function accessAgency(api, list) {
@@ -54,12 +54,22 @@ function agencyTestSuite () {
     // response:
     var res;
     while (true) {
-      res = request({url: agencyServers[whoseTurn] + "/_api/agency/" + api,
-                     method: "POST", followRedirects: true,
+      res = request({url: agencyLeader + "/_api/agency/" + api,
+                     method: "POST", followRedirect: false,
                      body: JSON.stringify(list),
                      headers: {"Content-Type": "application/json"}});
-      if(res.statusCode !== 503) {
+      if(res.statusCode === 307) {
+        agencyLeader = res.headers.location;
+        var l = 0;
+        for (var i = 0; i < 3; ++i) {
+          l = agencyLeader.indexOf('/', l+1);
+        }
+        agencyLeader = agencyLeader.substring(0,l);
+        require('internal').print('Redirected to ' + agencyLeader);
+      } else if (res.statusCode !== 503) {
         break;
+      } else {
+        require('internal').print('Waiting for leader ... ');
       }
     }
     res.bodyParsed = JSON.parse(res.body);
@@ -67,37 +77,19 @@ function agencyTestSuite () {
   }
 
   function readAndCheck(list) {
-    var res;
-    while (true) {
-      res = accessAgency("read", list);
-      if(res.statusCode !== 503) {
-        break;
-      }
-    }
+    var res = accessAgency("read", list);
     assertEqual(res.statusCode, 200);
     return res.bodyParsed;
   }
 
   function writeAndCheck(list) {
-    var res;
-    while (true) {
-      res = accessAgency("write", list);
-      if(res.statusCode !== 503) {
-        break;
-      }
-    }
+    var res = accessAgency("write", list);
     assertEqual(res.statusCode, 200);
     return res.bodyParsed;
   }
 
   function transactAndCheck(list, code) {
-    var res;
-    while (true) {
-      res = accessAgency("transact", list);
-      if(res.statusCode !== 503) {
-        break;
-      }
-    }
+    var res = accessAgency("transact", list);
     assertEqual(res.statusCode, code);
     return res.bodyParsed;
   }
@@ -123,17 +115,7 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testStartup : function () {
-      while (true) {
-        var res = request({
-          url: agencyServers[whoseTurn] + "/_api/agency/config",
-          method: "GET"
-        });
-        res.bodyParsed = JSON.parse(res.body);
-        if (res.bodyParsed.leaderId !== "") {
-          break;
-        }
-        wait(0.1);
-      }
+      assertEqual(readAndCheck([["/"]]), [{}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
