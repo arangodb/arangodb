@@ -31,9 +31,7 @@ namespace arangodb {
 class LogicalCollection;
 class Transaction;
 
-namespace wal {
-
-struct DocumentOperation {
+struct MMFilesDocumentOperation {
   enum class StatusType : uint8_t {
     CREATED,
     INDEXED,
@@ -42,12 +40,12 @@ struct DocumentOperation {
     REVERTED
   };
   
-  DocumentOperation(LogicalCollection* collection,
+  MMFilesDocumentOperation(LogicalCollection* collection,
                     TRI_voc_document_operation_e type);
 
-  ~DocumentOperation();
+  ~MMFilesDocumentOperation();
 
-  DocumentOperation* swap();
+  MMFilesDocumentOperation* swap();
 
   void setRevisions(DocumentDescriptor const& oldRevision,
                     DocumentDescriptor const& newRevision);
@@ -87,7 +85,7 @@ struct DocumentOperation {
   TRI_voc_document_operation_e _type;
   StatusType _status;
 };
-}
+
 }
 
 #endif

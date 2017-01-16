@@ -28,24 +28,23 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "StorageEngine/MMFilesWalSlots.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Logfile.h"
-#include "Wal/Marker.h"
-#include "Wal/Slots.h"
 
 namespace arangodb {
+class MMFilesAllocatorThread;
+class MMFilesCollectorThread;
+class MMFilesRemoverThread;
+class MMFilesSynchronizerThread;
+class MMFilesWalMarker;
+struct MMFilesWalRecoverState;
+
 namespace options {
 class ProgramOptions;
 }
 
 namespace wal {
-
-class AllocatorThread;
-class CollectorThread;
-struct RecoverState;
-class RemoverThread;
-class Slot;
-class SynchronizerThread;
 
 struct LogfileRange {
   LogfileRange(Logfile::IdType id, std::string const& filename,
@@ -87,8 +86,8 @@ struct LogfileBarrier {
 };
 
 class LogfileManager final : public application_features::ApplicationFeature {
-  friend class AllocatorThread;
-  friend class CollectorThread;
+  friend class arangodb::MMFilesAllocatorThread;
+  friend class arangodb::MMFilesCollectorThread;
 
   LogfileManager(LogfileManager const&) = delete;
   LogfileManager& operator=(LogfileManager const&) = delete;
@@ -169,7 +168,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   inline bool isInShutdown() const { return (_shutdown != 0); }
 
   // return the slots manager
-  Slots* slots() { return _slots; }
+  MMFilesWalSlots* slots() { return _slots; }
 
   // whether or not oversize entries are allowed
   inline bool allowOversizeEntries() const { return _allowOversizeEntries; }
@@ -245,19 +244,19 @@ class LogfileManager final : public application_features::ApplicationFeature {
 
   // write data into the logfile, using database id and collection id
   /// this is a convenience function that combines allocate, memcpy and finalize
-  SlotInfoCopy allocateAndWrite(TRI_voc_tick_t databaseId, 
+  MMFilesWalSlotInfoCopy allocateAndWrite(TRI_voc_tick_t databaseId, 
                                 TRI_voc_cid_t collectionId, 
-                                Marker const*, bool wakeUpSynchronizer,
+                                MMFilesWalMarker const*, bool wakeUpSynchronizer,
                                 bool waitForSyncRequested, bool waitUntilSyncDone);
 
   // write data into the logfile
   /// this is a convenience function that combines allocate, memcpy and finalize
-  SlotInfoCopy allocateAndWrite(Marker const* marker, bool wakeUpSynchronizer, 
+  MMFilesWalSlotInfoCopy allocateAndWrite(MMFilesWalMarker const* marker, bool wakeUpSynchronizer, 
                                 bool waitForSyncRequested, bool waitUntilSyncDone);
 
   // write marker into the logfile
   // this is a convenience function with less parameters
-  SlotInfoCopy allocateAndWrite(Marker const& marker, bool waitForSync);
+  MMFilesWalSlotInfoCopy allocateAndWrite(MMFilesWalMarker const& marker, bool waitForSync);
 
   // wait for the collector queue to get cleared for the given
   /// collection
@@ -378,15 +377,15 @@ class LogfileManager final : public application_features::ApplicationFeature {
   size_t getBucket(TRI_voc_tid_t id) const { return std::hash<TRI_voc_cid_t>()(id) % numBuckets; }
   
   // reserve space in a logfile
-  SlotInfo allocate(uint32_t);
+  MMFilesWalSlotInfo allocate(uint32_t);
 
   // reserve space in a logfile
-  SlotInfo allocate(TRI_voc_tick_t, TRI_voc_cid_t, uint32_t);
+  MMFilesWalSlotInfo allocate(TRI_voc_tick_t, TRI_voc_cid_t, uint32_t);
 
   // memcpy the data into the WAL region and return the filled slot
   // to the WAL logfile manager
-  SlotInfoCopy writeSlot(SlotInfo& slotInfo,
-                         Marker const* marker,
+  MMFilesWalSlotInfoCopy writeSlot(MMFilesWalSlotInfo& slotInfo,
+                         MMFilesWalMarker const* marker,
                          bool wakeUpSynchronizer,
                          bool waitForSyncRequested,
                          bool waitUntilSyncDone);
@@ -407,28 +406,28 @@ class LogfileManager final : public application_features::ApplicationFeature {
   int writeShutdownInfo(bool);
 
   // start the synchronizer thread
-  int startSynchronizerThread();
+  int startMMFilesSynchronizerThread();
 
   // stop the synchronizer thread
-  void stopSynchronizerThread();
+  void stopMMFilesSynchronizerThread();
 
   // start the allocator thread
-  int startAllocatorThread();
+  int startMMFilesAllocatorThread();
 
   // stop the allocator thread
-  void stopAllocatorThread();
+  void stopMMFilesAllocatorThread();
 
   // start the collector thread
-  int startCollectorThread();
+  int startMMFilesCollectorThread();
 
   // stop the collector thread
-  void stopCollectorThread();
+  void stopMMFilesCollectorThread();
 
   // start the remover thread
-  int startRemoverThread();
+  int startMMFilesRemoverThread();
 
   // stop the remover thread
-  void stopRemoverThread();
+  void stopMMFilesRemoverThread();
 
   // check which logfiles are present in the log directory
   int inventory();
@@ -458,7 +457,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   std::string _databasePath;
 
   // state during recovery
-  std::unique_ptr<RecoverState> _recoverState;
+  std::unique_ptr<MMFilesWalRecoverState> _recoverState;
 
   bool _allowOversizeEntries = true;
   bool _useMLock = false;
@@ -491,19 +490,19 @@ class LogfileManager final : public application_features::ApplicationFeature {
   std::map<Logfile::IdType, Logfile*> _logfiles;
 
   // the slots manager
-  Slots* _slots;
+  MMFilesWalSlots* _slots;
 
   // the synchronizer thread
-  SynchronizerThread* _synchronizerThread;
+  MMFilesSynchronizerThread* _synchronizerThread;
 
   // the allocator thread
-  AllocatorThread* _allocatorThread;
+  MMFilesAllocatorThread* _allocatorThread;
 
   // the collector thread
-  CollectorThread* _collectorThread;
+  MMFilesCollectorThread* _collectorThread;
 
   // the logfile remover thread
-  RemoverThread* _removerThread;
+  MMFilesRemoverThread* _removerThread;
 
   // last opened logfile id. note: writing to this variable is protected
   /// by the _idLock

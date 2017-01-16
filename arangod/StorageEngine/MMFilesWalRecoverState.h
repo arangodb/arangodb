@@ -21,33 +21,31 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_WAL_RECOVER_STATE_H
-#define ARANGOD_WAL_RECOVER_STATE_H 1
+#ifndef ARANGOD_MMFILES_WAL_RECOVER_STATE_H
+#define ARANGOD_MMFILES_WAL_RECOVER_STATE_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/datafile.h"
+#include "StorageEngine/MMFilesDatafile.h"
+#include "StorageEngine/MMFilesWalMarker.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 #include "Wal/Logfile.h"
-#include "Wal/Marker.h"
 
 namespace arangodb {
 class DatabaseFeature;
 class SingleCollectionTransaction;
 
-namespace wal {
-
 /// @brief state that is built up when scanning a WAL logfile during recovery
-struct RecoverState {
-  RecoverState(RecoverState const&) = delete;
-  RecoverState& operator=(RecoverState const&) = delete;
+struct MMFilesWalRecoverState {
+  MMFilesWalRecoverState(MMFilesWalRecoverState const&) = delete;
+  MMFilesWalRecoverState& operator=(MMFilesWalRecoverState const&) = delete;
 
   /// @brief creates the recover state
-  explicit RecoverState(bool ignoreRecoveryErrors);
+  explicit MMFilesWalRecoverState(bool ignoreRecoveryErrors);
 
   /// @brief destroys the recover state
-  ~RecoverState();
+  ~MMFilesWalRecoverState();
   
   /// @brief checks if there will be a drop marker for the database or collection
   bool willBeDropped(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) const {
@@ -128,18 +126,18 @@ struct RecoverState {
   /// @brief executes a single operation inside a transaction
   int executeSingleOperation(
       TRI_voc_tick_t, TRI_voc_cid_t, TRI_df_marker_t const*, TRI_voc_fid_t,
-      std::function<int(SingleCollectionTransaction*, MarkerEnvelope*)>);
+      std::function<int(SingleCollectionTransaction*, MMFilesMarkerEnvelope*)>);
 
   /// @brief callback to handle one marker during recovery
   /// this function modifies indexes etc.
-  static bool ReplayMarker(TRI_df_marker_t const*, void*, TRI_datafile_t*);
+  static bool ReplayMarker(TRI_df_marker_t const*, void*, MMFilesDatafile*);
 
   /// @brief callback to handle one marker during recovery
   /// this function only builds up state and does not change any data
-  static bool InitialScanMarker(TRI_df_marker_t const*, void*, TRI_datafile_t*);
+  static bool InitialScanMarker(TRI_df_marker_t const*, void*, MMFilesDatafile*);
 
   /// @brief replay a single logfile
-  int replayLogfile(Logfile*, int);
+  int replayLogfile(wal::Logfile*, int);
 
   /// @brief replay all logfiles
   int replayLogfiles();
@@ -162,7 +160,7 @@ struct RecoverState {
   std::unordered_set<TRI_voc_tick_t> totalDroppedDatabases;
 
   TRI_voc_tick_t lastTick;
-  std::vector<Logfile*> logfilesToProcess;
+  std::vector<wal::Logfile*> logfilesToProcess;
   std::unordered_map<TRI_voc_cid_t, arangodb::LogicalCollection*> openedCollections;
   std::unordered_map<TRI_voc_tick_t, TRI_vocbase_t*> openedDatabases;
   std::vector<std::string> emptyLogfiles;
@@ -176,7 +174,7 @@ struct RecoverState {
   TRI_voc_cid_t lastCollectionId;
 
 };
-}
+
 }
 
 #endif

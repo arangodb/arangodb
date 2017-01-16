@@ -46,7 +46,7 @@
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/DatafileHelper.h"
+#include "StorageEngine/MMFilesDatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -729,7 +729,7 @@ std::string Transaction::makeIdFromCustom(CollectionNameResolver const* resolver
   TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
   TRI_ASSERT(key.isString());
 
-  uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
+  uint64_t cid = MMFilesDatafileHelper::ReadNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
   
   std::string resolved = resolver->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE

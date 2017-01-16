@@ -38,11 +38,6 @@ namespace velocypack {
 class Slice;
 }
 
-namespace wal {
-struct DocumentOperation;
-class Marker;
-}
-
 typedef std::string ServerID;      // ID of a server
 typedef std::string DatabaseID;    // ID/name of a database
 typedef std::string CollectionID;  // ID of a collection
@@ -56,6 +51,8 @@ class FollowerInfo;
 class Index;
 class KeyGenerator;
 class ManagedDocumentResult;
+struct MMFilesDocumentOperation;
+class MMFilesWalMarker;
 struct OperationOptions;
 class PhysicalCollection;
 class PrimaryIndex;
@@ -427,10 +424,10 @@ class LogicalCollection {
   int updateDocument(arangodb::Transaction*, 
                      TRI_voc_rid_t oldRevisionId, arangodb::velocypack::Slice const& oldDoc,
                      TRI_voc_rid_t newRevisionId, arangodb::velocypack::Slice const& newDoc,
-                     arangodb::wal::DocumentOperation&, arangodb::wal::Marker const*,
+                     MMFilesDocumentOperation&, MMFilesWalMarker const*,
                      bool& waitForSync);
   int insertDocument(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&,
-                     arangodb::wal::DocumentOperation&, arangodb::wal::Marker const*,
+                     MMFilesDocumentOperation&, MMFilesWalMarker const*,
                      bool& waitForSync);
 
   int insertPrimaryIndex(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);

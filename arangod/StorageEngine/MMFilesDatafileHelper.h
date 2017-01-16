@@ -21,14 +21,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_DATAFILE_HELPER_H
-#define ARANGOD_VOC_BASE_DATAFILE_HELPER_H 1
+#ifndef ARANGOD_STORAGE_ENGINE_MMFILES_DATAFILE_HELPER_H
+#define ARANGOD_STORAGE_ENGINE_MMFILES_DATAFILE_HELPER_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/datafile.h"
+#include "StorageEngine/MMFilesDatafile.h"
 
 namespace arangodb {
-namespace DatafileHelper {
+namespace MMFilesDatafileHelper {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bit mask for datafile ids (fids) that indicates whether a file is

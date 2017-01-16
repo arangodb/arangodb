@@ -21,23 +21,23 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RemoverThread.h"
+#include "MMFilesRemoverThread.h"
 
 #include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Wal/LogfileManager.h"
 
-using namespace arangodb::wal;
+using namespace arangodb;
 
 /// @brief wait interval for the remover thread when idle
-uint64_t const RemoverThread::Interval = 2000000;
+uint64_t const MMFilesRemoverThread::Interval = 2000000;
 
-RemoverThread::RemoverThread(LogfileManager* logfileManager)
+MMFilesRemoverThread::MMFilesRemoverThread(wal::LogfileManager* logfileManager)
     : Thread("WalRemover"), _logfileManager(logfileManager), _condition() {}
 
 /// @brief begin shutdown sequence
-void RemoverThread::beginShutdown() {
+void MMFilesRemoverThread::beginShutdown() {
   Thread::beginShutdown();
 
   CONDITION_LOCKER(guard, _condition);
@@ -45,7 +45,7 @@ void RemoverThread::beginShutdown() {
 }
 
 /// @brief main loop
-void RemoverThread::run() {
+void MMFilesRemoverThread::run() {
   int64_t iterations = 0;
 
   while (!isStopping()) {
