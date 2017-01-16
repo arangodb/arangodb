@@ -111,35 +111,6 @@ VertexComputation<float, float, float>* PageRankAlgorithm::createComputation(
   return new PRComputation(_threshold);
 }
 
-struct PRCompensation : public VertexCompensation<float, float, float> {
-  PRCompensation() {}
-  void compensate(bool inLostPartition) override {
-    const uint32_t* step = getAggregatedValue<uint32_t>("step");
-    if (step) {
-      if (*step == 0 && !inLostPartition) {
-        uint32_t c = 1;
-        aggregate("nonfailedCount", &c);
-        aggregate("totalrank", mutableVertexData());
-      } else if (*step == 1) {
-        float* data = mutableVertexData();
-        if (inLostPartition) {
-          *data = 1.0f / context()->vertexCount();
-        } else {
-          const float* scale = getAggregatedValue<float>("scale");
-          if (scale && *scale != 0) {
-            *data *= *scale;
-          }
-        }
-      }
-    }
-  }
-};
-
-VertexCompensation<float, float, float>* PageRankAlgorithm::createCompensation(
-    WorkerConfig const* config) const {
-  return new PRCompensation();
-}
-
 Aggregator* PageRankAlgorithm::aggregator(std::string const& name) const {
   if (name == "convergence") {
     return new FloatMaxAggregator(-1);
@@ -153,6 +124,33 @@ Aggregator* PageRankAlgorithm::aggregator(std::string const& name) const {
     return new ValueAggregator<float>(-1);
   }
   return nullptr;
+}
+
+struct PRCompensation : public VertexCompensation<float, float, float> {
+  PRCompensation() {}
+  void compensate(bool inLostPartition) override {
+    const uint32_t* step = getAggregatedValue<uint32_t>("step");
+    if (*step == 0 && !inLostPartition) {
+      uint32_t c = 1;
+      aggregate("nonfailedCount", &c);
+      aggregate("totalrank", mutableVertexData());
+    } else if (*step == 1) {
+      float* data = mutableVertexData();
+      if (inLostPartition) {
+        *data = 1.0f / context()->vertexCount();
+      } else {
+        const float* scale = getAggregatedValue<float>("scale");
+        if (scale && *scale != 0) {
+          *data *= *scale;
+        }
+      }
+    }
+  }
+};
+
+VertexCompensation<float, float, float>* PageRankAlgorithm::createCompensation(
+    WorkerConfig const* config) const {
+  return new PRCompensation();
 }
 
 struct PRMasterContext : public MasterContext {

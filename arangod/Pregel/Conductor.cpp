@@ -75,6 +75,7 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Algorithm not found");
   }
+  _masterContext.reset(_algorithm->masterContext(userConfig));
   _aggregators.reset(new AggregatorHandler(_algorithm.get()));
   // configure the async mode as optional
   VPackSlice async = _userParams.slice().get("async");
@@ -270,28 +271,30 @@ void Conductor::finishedRecovery(VPackSlice& data) {
     if (_masterContext) {
       proceed = proceed || _masterContext->postCompensation(_globalSuperstep);
     }
-    if (proceed) {
-      VPackBuilder b;
-      b.openObject();
-      b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-      b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-      if (_aggregators->size() > 0) {
-        b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-        _aggregators->serializeValues(b);
-        b.close();
-      }
-      b.close();
-
-      // reset values which are calculated during the superstep
-      _aggregators->resetValues();
-      // first allow all workers to run worker level operations
-      int res = _sendToAllDBServers(Utils::startRecoveryPath, b.slice());
-      if (res != TRI_ERROR_NO_ERROR) {
-        cancel();
-        LOG(INFO) << "Recovery failed";
-      }
-    } else {
+    if (!proceed) {
+      LOG(INFO) << "Recovery finished. Proceeding normally";
       _startGlobalStep();
+      return;
+    }
+    
+    VPackBuilder b;
+    b.openObject();
+    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+    b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+    if (_aggregators->size() > 0) {
+      b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+      _aggregators->serializeValues(b);
+      b.close();
+    }
+    b.close();
+
+    // reset values which are calculated during the superstep
+    _aggregators->resetValues();
+    // first allow all workers to run worker level operations
+    int res = _sendToAllDBServers(Utils::startRecoveryPath, b.slice());
+    if (res != TRI_ERROR_NO_ERROR) {
+      cancel();
+      LOG(INFO) << "Recovery failed";
     }
   } else {
     LOG(ERR) << "Recovery not supported";
@@ -419,22 +422,26 @@ int Conductor::_initializeWorkers(std::string const& suffix,
   std::map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
       edgeMap;
-  std::vector<ShardID> allShardIDs;
+  std::vector<ShardID> shardList;
 
   // resolve plan id's and shards on the servers
   for (auto& collection : _vertexCollections) {
     collectionPlanIdMap.emplace(collection->name(),
                                 collection->planId_as_string());
-    resolveShards(collection.get(), vertexMap, allShardIDs);
+    resolveShards(collection.get(), vertexMap, shardList);
   }
   for (auto& collection : _edgeCollections) {
     collectionPlanIdMap.emplace(collection->name(),
                                 collection->planId_as_string());
-    resolveShards(collection.get(), edgeMap, allShardIDs);
+    resolveShards(collection.get(), edgeMap, shardList);
   }
   _dbServers.clear();
   for (auto const& pair : vertexMap) {
     _dbServers.push_back(pair.first);
+  }
+  // do not reload all shard id's, this list is must stay in the same order
+  if (_allShards.size() == 0) {
+    _allShards = shardList;
   }
 
   std::string const path =
@@ -459,7 +466,9 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     b.add(Utils::asyncMode, VPackValue(_asyncMode));
     b.add(Utils::lazyLoading, VPackValue(_lazyLoading));
     if (additional.isObject()) {
-      b.add(additional);
+      for (auto const& pair : VPackObjectIterator(additional)) {
+        b.add(pair.key.copyString(), pair.value);
+      }
     }
     
     b.add(Utils::vertexShardsKey, VPackValue(VPackValueType::Object));
@@ -486,7 +495,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     }
     b.close();
     b.add(Utils::globalShardListKey, VPackValue(VPackValueType::Array));
-    for (std::string const& shard : allShardIDs) {
+    for (std::string const& shard : _allShards) {
       b.add(VPackValue(shard));
     }
     b.close();

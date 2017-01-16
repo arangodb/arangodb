@@ -117,9 +117,11 @@ template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
   LOG(INFO) << "Called ~Worker()";
   _state = WorkerState::DONE;
+  usleep(5000);//5ms wait for threads to die
   delete _readCache;
   delete _writeCache;
   delete _writeCacheNextGSS;
+  _writeCache = nullptr;
 }
 
 template <typename V, typename E, typename M>
@@ -287,7 +289,8 @@ void Worker<V, E, M>::_startProcessing() {
         return;
       }
       auto vertices = _graphStore->vertexIterator(start, end);
-      if (_processVertices(vertices)) {  // should work like a join operation
+      // should work like a join operation
+      if (_processVertices(vertices) && _state == WorkerState::COMPUTING) {
         _finishedProcessing();           // last thread turns the lights out
       }
     });
@@ -367,6 +370,9 @@ bool Worker<V, E, M>::_processVertices(
   }
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
+  if (!_writeCache) {// ~Worker was called
+    return false;
+  }
   if (vertexComputation->_nextPhase) {
     _requestedNextGSS = true;
     _nextGSSSendMessageCount += outCache->sendCountNextGSS();
@@ -511,13 +517,15 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice body) {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::startRecovery(VPackSlice data) {
-  MUTEX_LOCKER(guard, _commandMutex);
+  {// other methods might lock _commandMutex
+    MUTEX_LOCKER(guard, _commandMutex);
 
-  _state = WorkerState::RECOVERING;
-  _writeCache->clear();
-  _readCache->clear();
-  if (_writeCacheNextGSS) {
-    _writeCacheNextGSS->clear();
+    _state = WorkerState::RECOVERING;
+    _writeCache->clear();
+    _readCache->clear();
+    if (_writeCacheNextGSS) {
+      _writeCacheNextGSS->clear();
+    }
   }
   
   VPackSlice method = data.get(Utils::recoveryMethodKey);

@@ -128,6 +128,7 @@ void PregelFeature::cleanupAll() {
   }
   _conductors.clear();
   for (auto it : _workers) {
+    it.second->cancelGlobalStep(VPackSlice());
     delete (it.second);
   }
   _workers.clear();

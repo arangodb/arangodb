@@ -64,6 +64,7 @@ class Conductor {
   std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections;
   std::vector<std::shared_ptr<LogicalCollection>> _edgeCollections;
   std::vector<ServerID> _dbServers;
+  std::vector<ShardID> _allShards;// persistent shard list
 
   // initialized on startup
   std::unique_ptr<AggregatorHandler> _aggregators;
