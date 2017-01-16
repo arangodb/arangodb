@@ -650,80 +650,6 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a collection on the coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-std::unique_ptr<LogicalCollection> CreateCollectionCoordinator(LogicalCollection* parameters) {
-  std::string distributeShardsLike = parameters->distributeShardsLike();
-
-  std::vector<std::string> dbServers;
-
-  ClusterInfo* ci = ClusterInfo::instance();
-  if (!distributeShardsLike.empty()) {
-    CollectionNameResolver resolver(parameters->vocbase());
-    TRI_voc_cid_t otherCid =
-        resolver.getCollectionIdCluster(distributeShardsLike);
-    if (otherCid != 0) {
-      std::string otherCidString 
-          = arangodb::basics::StringUtils::itoa(otherCid);
-      try {
-        std::shared_ptr<LogicalCollection> collInfo =
-            ci->getCollection(parameters->dbName(), otherCidString);
-        auto shards = collInfo->shardIds();
-        auto shardList = ci->getShardList(otherCidString);
-        for (auto const& s : *shardList) {
-          auto it = shards->find(s);
-          if (it != shards->end()) {
-            for (auto const& s : it->second) {
-              dbServers.push_back(s);
-            }
-          }
-        }
-      } catch (...) {
-      }
-      parameters->distributeShardsLike(otherCidString);
-    }
-  }
-  
-  // If the list dbServers is still empty, it will be filled in
-  // distributeShards below.
-
-  // Now create the shards:
-  auto shards = std::make_shared<
-      std::unordered_map<std::string, std::vector<std::string>>>(
-      arangodb::distributeShards(parameters->numberOfShards(),
-                                 parameters->replicationFactor(), dbServers));
-  if (shards->empty() && !parameters->isSmart()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "no database servers found in cluster");
-  }
-  parameters->setShardMap(shards);
-
-  VPackBuilder velocy;
-  parameters->toVelocyPackForAgency(velocy);
-
-  std::string errorMsg;
-  int myerrno = ci->createCollectionCoordinator(
-      parameters->dbName(), parameters->cid_as_string(),
-      parameters->numberOfShards(), parameters->replicationFactor(), velocy.slice(), errorMsg, 240.0);
-
-  if (myerrno != TRI_ERROR_NO_ERROR) {
-    if (errorMsg.empty()) {
-      errorMsg = TRI_errno_string(myerrno);
-    }
-    THROW_ARANGO_EXCEPTION_MESSAGE(myerrno, errorMsg);
-  }
-  ci->loadPlan();
-
-  auto c = ci->getCollection(parameters->dbName(), parameters->cid_as_string());
-  // We never get a nullptr here because an exception is thrown if the
-  // collection does not exist. Also, the create collection should have
-  // failed before.
-  TRI_ASSERT(c != nullptr);
-  return c->clone();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionEnsureIndex
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1099,15 +1025,10 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   infoSlice = builder.slice();
 
   if (ServerState::instance()->isCoordinator()) {
-#ifndef USE_ENTERPRISE
-    auto parameters = std::make_unique<LogicalCollection>(vocbase, infoSlice, false);
-    TRI_V8_RETURN(
-        WrapCollection(isolate, CreateCollectionCoordinator(parameters.get()).release()));
-#else
-    TRI_V8_RETURN(
-        WrapCollection(isolate, CreateCollectionCoordinatorEnterprise(
-                                    collectionType, vocbase, infoSlice).release()));
-#endif
+    std::unique_ptr<LogicalCollection> col =
+        ClusterMethods::createCollectionOnCoordinator(collectionType, vocbase,
+                                                      infoSlice);
+    TRI_V8_RETURN(WrapCollection(isolate, col.release()));
   }
 
   try {
