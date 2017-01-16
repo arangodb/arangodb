@@ -60,19 +60,37 @@ function agencyTestSuite () {
   }
 
   function readAndCheck(list) {
-    var res = accessAgency("read", list);
+    var res;
+    while (true) {
+      res = accessAgency("read", list);
+      if(res.statusCode != 503) {
+        break;
+      }
+    }
     assertEqual(res.statusCode, 200);
     return res.bodyParsed;
   }
 
   function writeAndCheck(list) {
-    var res = accessAgency("write", list);
+    var res;
+    while (true) {
+      res = accessAgency("write", list);
+      if(res.statusCode != 503) {
+        break;
+      }
+    }
     assertEqual(res.statusCode, 200);
     return res.bodyParsed;
   }
 
   function transactAndCheck(list, code) {
-    var res = accessAgency("transact", list);
+    var res;
+    while (true) {
+      res = accessAgency("transact", list);
+      if(res.statusCode != 503) {
+        break;
+      }
+    }
     assertEqual(res.statusCode, code);
     return res.bodyParsed;
   }

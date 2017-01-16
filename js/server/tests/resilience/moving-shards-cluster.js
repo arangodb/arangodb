@@ -129,59 +129,60 @@ function MovingShardsSuite () {
     if (toCollNr === undefined) {
       toCollNr = c.length - 1;
     }
-    var count;
-    var ok;
-
-    for (var i = fromCollNr; i <= toCollNr; ++i) {
-      count = 100;
-      ok = false;
-
-      while (--count > 0) {
-        wait(1.0);
-        global.ArangoClusterInfo.flush();
-        var servers = findCollectionServers("_system", c[i].name());
-        console.info("Seeing servers:", i, c[i].name(), servers);
-        if (servers.indexOf(id) === -1) {
-          // Now check current as well:
-          var collInfo =
-              global.ArangoClusterInfo.getCollectionInfo("_system", c[i].name());
-          var shards = collInfo.shards;
-          var collInfoCurr = Object.keys(shards).map(s =>
-            global.ArangoClusterInfo.getCollectionInfoCurrent(
-              "_system", c[i].name(), s).servers);
-          var idxs = collInfoCurr.map(l => l.indexOf(id));
-          ok = true;
-          for (var j = 0; j < idxs.length; j++) {
-            if (idxs[j] !== -1) {
-              ok = false;
-            }
-          }
-          if (ok) {
-            break;
-          }
-        }
-      }
-      if (!ok) {
-        return false;
-      }
-
-    }
+    var count = 100;
+    var ok = false;
 
     if (checkList) {
+
       // Wait until the server appears in the list of cleanedOutServers:
       count = 100;
+
       while (--count > 0) {
         var obj = getCleanedOutServers();
         if (obj.cleanedServers.indexOf(id) >= 0) {
+          ok = true;
           break;
         }
         wait(1.0);
       }
-      if (count <= 0) {
-        ok = false;
-      }
-    }
 
+    } else {
+    
+      for (var i = fromCollNr; i <= toCollNr; ++i) {
+        
+        while (--count > 0) {
+          wait(1.0);
+          global.ArangoClusterInfo.flush();
+          var servers = findCollectionServers("_system", c[i].name());
+          console.info("Seeing servers:", i, c[i].name(), servers);
+          if (servers.indexOf(id) === -1) {
+            // Now check current as well:
+            var collInfo =
+                global.ArangoClusterInfo.getCollectionInfo("_system", c[i].name());
+            var shards = collInfo.shards;
+            var collInfoCurr =
+                Object.keys(shards).map(
+                  s => global.ArangoClusterInfo.getCollectionInfoCurrent(
+                    "_system", c[i].name(), s).servers);
+            var idxs = collInfoCurr.map(l => l.indexOf(id));
+            ok = true;
+            for (var j = 0; j < idxs.length; j++) {
+              if (idxs[j] !== -1) {
+                ok = false;
+              }
+            }
+            if (ok) {
+              break;
+            }
+          }
+        }
+        if (!ok) {
+          return false;
+        }
+        
+      }
+      
+    }
     return ok;
   }
 
@@ -393,7 +394,7 @@ function MovingShardsSuite () {
       assertTrue(testServerEmpty(_dbservers[3], true));
       assertTrue(waitForSupervision());
       assertTrue(shrinkCluster(2));
-      testServerEmpty(_dbservers[2], true);
+      assertTrue(testServerEmpty(_dbservers[2], true));
       assertTrue(waitForSupervision());
     },
     
