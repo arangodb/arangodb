@@ -56,7 +56,7 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
   requiresElevatedPrivileges(false);
   startsAfter("Cluster");
   startsAfter("Database");
-  startsAfter("Recovery");
+  startsAfter("MMFilesWalRecovery");
   startsAfter("Scheduler");
   startsAfter("Statistics");
   startsAfter("Upgrade");

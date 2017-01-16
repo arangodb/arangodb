@@ -230,8 +230,8 @@ class RocksDBEngine final : public StorageEngine {
   int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) override;
   
   /// @brief transfer markers into a collection
-  int transferMarkers(LogicalCollection* collection, wal::CollectorCache*,
-                      wal::OperationsType const&) override;
+  int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
+                      MMFilesOperationsType const&) override;
 
  private:
   void verifyDirectories(); 

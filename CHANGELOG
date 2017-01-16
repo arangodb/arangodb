@@ -1,6 +1,8 @@
 devel
 -----
 
+* turn on UTF-8 string validation for VelocyPack values received via VST connections
+
 * fixed issue #2257
 
 * upgraded Boost version to 1.62.0

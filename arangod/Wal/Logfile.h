@@ -26,10 +26,10 @@
 
 #include "Basics/Common.h"
 #include "Logger/Logger.h"
-#include "VocBase/datafile.h"
-#include "VocBase/DatafileHelper.h"
+#include "StorageEngine/MMFilesDatafile.h"
+#include "StorageEngine/MMFilesDatafileHelper.h"
+#include "StorageEngine/MMFilesWalMarker.h"
 #include "VocBase/voc-types.h"
-#include "Wal/Marker.h"
 
 namespace arangodb {
 namespace wal {
@@ -57,7 +57,7 @@ class Logfile {
 
  public:
   /// @brief create a logfile
-  Logfile(Logfile::IdType, TRI_datafile_t*, StatusType);
+  Logfile(Logfile::IdType, MMFilesDatafile*, StatusType);
 
   /// @brief destroy a logfile
   ~Logfile();
@@ -85,7 +85,7 @@ class Logfile {
   }
 
   /// @brief return the datafile pointer
-  inline TRI_datafile_t* df() const { return _df; }
+  inline MMFilesDatafile* df() const { return _df; }
   
   /// @brief return the pointer to the logfile contents
   inline char const* data() const { 
@@ -119,7 +119,7 @@ class Logfile {
     }
 
     return static_cast<uint64_t>(allocatedSize() - _df->currentSize() -
-                                 DatafileHelper::JournalOverhead());
+                                 MMFilesDatafileHelper::JournalOverhead());
   }
 
   /// @brief whether or not a marker of the specified size can be written into
@@ -244,7 +244,7 @@ class Logfile {
   std::atomic<int32_t> _users;
 
   /// @brief the datafile entry
-  TRI_datafile_t* _df;
+  MMFilesDatafile* _df;
 
   /// @brief logfile status
   StatusType _status;

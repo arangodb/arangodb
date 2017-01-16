@@ -26,13 +26,13 @@
 #include "Logger/Logger.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-#include "VocBase/DatafileHelper.h"
-#include "VocBase/ticks.h"
-#include "Wal/DocumentOperation.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesDatafileHelper.h"
+#include "StorageEngine/MMFilesDocumentOperation.h"
 #include "Utils/Transaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
+#include "VocBase/ticks.h"
+#include "Wal/LogfileManager.h"
 
 #include "Indexes/RocksDBFeature.h"
 
@@ -188,7 +188,7 @@ static void FreeOperations(arangodb::Transaction* activeTrx, TRI_transaction_t* 
       // revert all operations
       for (auto it = trxCollection->_operations->rbegin();
            it != trxCollection->_operations->rend(); ++it) {
-        arangodb::wal::DocumentOperation* op = (*it);
+        MMFilesDocumentOperation* op = (*it);
 
         try {
           op->revert(activeTrx);
@@ -201,7 +201,7 @@ static void FreeOperations(arangodb::Transaction* activeTrx, TRI_transaction_t* 
       // no rollback. simply delete all operations
       for (auto it = trxCollection->_operations->rbegin();
            it != trxCollection->_operations->rend(); ++it) {
-        arangodb::wal::DocumentOperation* op = (*it);
+        MMFilesDocumentOperation* op = (*it);
 
         //op->done(); // set to done so dtor of DocumentOperation won't fail 
         delete op;
@@ -551,7 +551,7 @@ static int WriteBeginMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, trx->_vocbase->id(), trx->_id);
+    MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, trx->_vocbase->id(), trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
     
     TRI_IF_FAILURE("TransactionWriteBeginMarkerThrow") { 
@@ -597,7 +597,7 @@ static int WriteAbortMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, trx->_vocbase->id(), trx->_id);
+    MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, trx->_vocbase->id(), trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
     
     TRI_IF_FAILURE("TransactionWriteAbortMarkerThrow") { 
@@ -637,7 +637,7 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, trx->_vocbase->id(), trx->_id);
+    MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, trx->_vocbase->id(), trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, trx->_waitForSync).errorCode;
     
     TRI_IF_FAILURE("TransactionWriteCommitMarkerSegfault") { 
@@ -939,8 +939,8 @@ bool TRI_IsContainedCollectionTransaction(TRI_transaction_t* trx,
 
 int TRI_AddOperationTransaction(TRI_transaction_t* trx,
                                 TRI_voc_rid_t revisionId,
-                                arangodb::wal::DocumentOperation& operation,
-                                arangodb::wal::Marker const* marker,
+                                MMFilesDocumentOperation& operation,
+                                MMFilesWalMarker const* marker,
                                 bool& waitForSync) {
   LogicalCollection* collection = operation.collection();
   bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
@@ -995,7 +995,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     //
     bool const wakeUpSynchronizer = isSingleOperationTransaction;
 
-    arangodb::wal::SlotInfoCopy slotInfo =
+    MMFilesWalSlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(
             trx->_vocbase->id(), collection->cid(), 
             marker, wakeUpSynchronizer,
@@ -1015,7 +1015,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     // this is an envelope marker that has been written to the logfiles before.
     // avoid writing it again!
     fid = marker->fid();
-    position = static_cast<wal::MarkerEnvelope const*>(marker)->mem();
+    position = static_cast<MMFilesMarkerEnvelope const*>(marker)->mem();
   }
 
   TRI_ASSERT(fid > 0);
@@ -1025,7 +1025,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
       operation.type() == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
       operation.type() == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
     // adjust the data position in the header
-    uint8_t const* vpack = reinterpret_cast<uint8_t const*>(position) + arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
+    uint8_t const* vpack = reinterpret_cast<uint8_t const*>(position) + arangodb::MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
     TRI_ASSERT(fid > 0);
     operation.setVPack(vpack);
     collection->updateRevision(revisionId, vpack, fid, true); // always in WAL
@@ -1053,7 +1053,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(
         trx, collection->cid(), TRI_TRANSACTION_WRITE);
     if (trxCollection->_operations == nullptr) {
-      trxCollection->_operations = new std::vector<arangodb::wal::DocumentOperation*>;
+      trxCollection->_operations = new std::vector<MMFilesDocumentOperation*>;
       trxCollection->_operations->reserve(16);
       trx->_hasOperations = true;
     } else {
@@ -1070,7 +1070,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); 
     }
 
-    std::unique_ptr<arangodb::wal::DocumentOperation> copy(operation.swap());
+    std::unique_ptr<MMFilesDocumentOperation> copy(operation.swap());
     
     // should not fail because we reserved enough room above 
     trxCollection->_operations->push_back(copy.get());

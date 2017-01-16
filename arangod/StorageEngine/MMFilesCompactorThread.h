@@ -29,7 +29,7 @@
 #include "Basics/Thread.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_datafile_t;
+struct MMFilesDatafile;
 struct TRI_df_marker_t;
 struct TRI_vocbase_t;
 
@@ -42,7 +42,7 @@ class MMFilesCompactorThread final : public Thread {
  private:
   /// @brief compaction instruction for a single datafile
   struct compaction_info_t {
-    TRI_datafile_t* _datafile;
+    MMFilesDatafile* _datafile;
     bool _keepDeletions;
   };
 
@@ -66,9 +66,9 @@ class MMFilesCompactorThread final : public Thread {
   void signal();
 
   /// @brief callback to drop a datafile
-  static void DropDatafileCallback(TRI_datafile_t* datafile, LogicalCollection* collection);
+  static void DropDatafileCallback(MMFilesDatafile* datafile, LogicalCollection* collection);
   /// @brief callback to rename a datafile
-  static void RenameDatafileCallback(TRI_datafile_t* datafile, TRI_datafile_t* compactor, LogicalCollection* collection);
+  static void RenameDatafileCallback(MMFilesDatafile* datafile, MMFilesDatafile* compactor, LogicalCollection* collection);
 
  protected:
   void run() override;
@@ -85,16 +85,16 @@ class MMFilesCompactorThread final : public Thread {
   /// @brief checks all datafiles of a collection
   bool compactCollection(LogicalCollection* collection, bool& wasBlocked);
 
-  int removeCompactor(LogicalCollection* collection, TRI_datafile_t* datafile);
+  int removeCompactor(LogicalCollection* collection, MMFilesDatafile* datafile);
 
   /// @brief remove an empty datafile
-  int removeDatafile(LogicalCollection* collection, TRI_datafile_t* datafile);
+  int removeDatafile(LogicalCollection* collection, MMFilesDatafile* datafile);
 
   /// @brief determine the number of documents in the collection
   uint64_t getNumberOfDocuments(LogicalCollection* collection);
 
   /// @brief write a copy of the marker into the datafile
-  int copyMarker(TRI_datafile_t* compactor, TRI_df_marker_t const* marker,
+  int copyMarker(MMFilesDatafile* compactor, TRI_df_marker_t const* marker,
                  TRI_df_marker_t** result);
 
   /// @brief wait time between compaction runs when idle

@@ -74,12 +74,12 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/MMFilesEngine.h"
+#include "StorageEngine/MMFilesWalRecoveryFeature.h"
 #include "StorageEngine/RocksDBEngine.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/IndexThreadFeature.h"
 #include "Wal/LogfileManager.h"
-#include "Wal/RecoveryFeature.h"
 
 #include "Indexes/RocksDBFeature.h"
 
@@ -92,7 +92,6 @@
 #endif
 
 using namespace arangodb;
-using namespace arangodb::wal;
 
 static int runServer(int argc, char** argv) {
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
@@ -141,7 +140,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new LockfileFeature(&server));
-  server.addFeature(new LogfileManager(&server));
+  server.addFeature(new wal::LogfileManager(&server));
   server.addFeature(new LoggerBufferFeature(&server));
   server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new NonceFeature(&server));
@@ -150,7 +149,6 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new QueryRegistryFeature(&server));
   server.addFeature(new TraverserEngineRegistryFeature(&server));
   server.addFeature(new RandomFeature(&server));
-  server.addFeature(new RecoveryFeature(&server));
   server.addFeature(new RevisionCacheFeature(&server));
   server.addFeature(new RocksDBFeature(&server));
   server.addFeature(new SchedulerFeature(&server));
@@ -185,6 +183,7 @@ static int runServer(int argc, char** argv) {
 
   // storage engines
   server.addFeature(new MMFilesEngine(&server));
+  server.addFeature(new MMFilesWalRecoveryFeature(&server));
   server.addFeature(new RocksDBEngine(&server));
 
   try {

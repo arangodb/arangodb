@@ -21,20 +21,18 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_WAL_SLOT_H
-#define ARANGOD_WAL_SLOT_H 1
+#ifndef ARANGOD_MMFILES_WAL_SLOT_H
+#define ARANGOD_MMFILES_WAL_SLOT_H 1
 
 #include "Basics/Common.h"
 #include "Wal/Logfile.h"
 
 namespace arangodb {
-namespace wal {
+class MMFilesWalSlots;
+class MMFilesWalMarker;
 
-class Marker;
-class Slots;
-
-class Slot {
-  friend class Slots;
+class MMFilesWalSlot {
+  friend class MMFilesWalSlots;
 
  public:
   /// @brief tick typedef
@@ -50,14 +48,14 @@ class Slot {
 
   /// @brief create a slot
  private:
-  Slot();
+  MMFilesWalSlot();
 
  public:
   /// @brief return the tick assigned to the slot
-  inline Slot::TickType tick() const { return _tick; }
+  inline MMFilesWalSlot::TickType tick() const { return _tick; }
 
   /// @brief return the logfile id assigned to the slot
-  inline Logfile::IdType logfileId() const { return _logfileId; }
+  inline wal::Logfile::IdType logfileId() const { return _logfileId; }
 
   /// @brief return the raw memory pointer assigned to the slot
   inline void* mem() const { return _mem; }
@@ -70,7 +68,7 @@ class Slot {
 
   /// @brief calculate the CRC and length values for the slot and
   /// store them in the marker
-  void finalize(Marker const*);
+  void finalize(MMFilesWalMarker const*);
   
   /// @brief calculate the CRC value for the source region (this will modify
   /// the source region) and copy the calculated marker data into the slot
@@ -98,17 +96,17 @@ class Slot {
   void setUnused();
 
   /// @brief mark as slot as used
-  void setUsed(void*, uint32_t, Logfile::IdType, Slot::TickType);
+  void setUsed(void*, uint32_t, wal::Logfile::IdType, MMFilesWalSlot::TickType);
 
   /// @brief mark as slot as returned
   void setReturned(bool waitForSync);
 
  private:
   /// @brief slot tick
-  Slot::TickType _tick;
+  MMFilesWalSlot::TickType _tick;
 
   /// @brief slot logfile id
-  Logfile::IdType _logfileId;
+  wal::Logfile::IdType _logfileId;
 
   /// @brief slot raw memory pointer
   void* _mem;
@@ -124,8 +122,7 @@ class Slot {
   StatusType _status; 
 };
 
-static_assert(sizeof(Slot) == 32, "invalid slot size");
-}
+static_assert(sizeof(MMFilesWalSlot) == 32, "invalid slot size");
 }
 
 #endif

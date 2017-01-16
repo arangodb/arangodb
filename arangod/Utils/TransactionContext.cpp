@@ -26,7 +26,7 @@
 #include "Basics/StringBuffer.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
-#include "VocBase/DatafileHelper.h"
+#include "StorageEngine/MMFilesDatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"

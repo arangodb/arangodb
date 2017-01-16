@@ -23,10 +23,10 @@
 
 #include "MMFilesDatafileStatistics.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "VocBase/datafile.h"
+#include "Logger/Logger.h"
+#include "StorageEngine/MMFilesDatafile.h"
 
 using namespace arangodb;
 
