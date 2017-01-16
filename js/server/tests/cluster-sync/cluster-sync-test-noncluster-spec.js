@@ -31,7 +31,8 @@ const cluster = require('@arangodb/cluster');
 const expect = require('chai').expect;
 
 describe('Cluster sync', function() {
-  describe('Plan to local', function() {
+  /*
+  describe('Databaseplan to local', function() {
     before(function() {
       require('@arangodb/sync-replication-debug').setup();
     });
@@ -44,8 +45,14 @@ describe('Cluster sync', function() {
       });
     });
     it('should create a planned database', function() {
-      let plan = { "Version": 1, "DBServers": { "": true }, "Databases": { "test": { "id": 1, "name": "test" } }, "Collections": { "test": { "10001": { "deleted": false, "doCompact": true, "id": "100001", "indexBuckets": 8, "indexes": [ { "fields": [ "_key" ], "id": "0", "sparse": false, "type": "primary", "unique": true } ], "isSystem": false, "isVolatile": false, "journalSize": 1048576, "keyOptions": { "allowUserKeys": true, "type": "traditional" }, "name": "test", "numberOfShards": 1, "replicationFactor": 2, "shardKeys": [ "_key" ], "shards": { "s100001": [ "hans", ""] }, "status": 3, "type": 2, "waitForSync": false } } } };
-      let current = {"Version": 1};
+      let plan = {
+        "Databases": {
+          "test": {
+            "id": 1,
+            "name": "test"
+          }
+        }
+      };
       let errors = cluster.executePlanForDatabases(plan);
       let databases = db._databases();
       console.error(databases);
@@ -69,7 +76,6 @@ describe('Cluster sync', function() {
       expect(databases).to.contain('test');
       expect(errors).to.be.empty;
     });
-
     it('should delete a database if it is not used anymore', function() {
       db._createDatabase('peng');
       let plan = {
@@ -81,15 +87,25 @@ describe('Cluster sync', function() {
       expect(databases).to.have.lengthOf(1);
       expect(databases).to.contain('_system');
     });
-/*
+  });
+  describe('Collection plan to local', function() {
+    let numSystemCollections;
+    before(function() {
+      require('@arangodb/sync-replication-debug').setup();
+      numSystemCollections = db._collections().length;
+    });
+
+    beforeEach(function() {
+      db._databases().forEach(database => {
+        if (database !== '_system') {
+          db._dropDatabase(database);
+        }
+        db._createDatabase('test');
+      });
+      db._useDatabase('test');
+    });
     it('should create and load a collection if it does not exist', function() {
       let plan = {
-        Databases: {
-          "test": {
-            "id": 1,
-            "name": "test"
-          }
-        },
         Collections: {
           test: {
             "100001": {
@@ -123,7 +139,7 @@ describe('Cluster sync', function() {
               ],
               "shards": {
                 "s100001": [
-                  "repl-sync-test",
+                  "",
                 ]
               },
               "status": 3,
@@ -133,10 +149,11 @@ describe('Cluster sync', function() {
           }
         }
       };
-      cluster.executePlan(plan);
+      cluster.executePlanForCollections(plan);
+      db._useDatabase('test');
       let collections = db._collections();
-      expect(collections).to.have.lengthOf(numSystemCollections + 1);
-      expect(collections).to.contain('100001');
+      console.error('was', collections.map(collection => collection.name()));
+      expect(collections.map(collection => collection.name())).to.contain('s100001');
       expect(db._collection('test').status()).to.be(ArangoCollection.STATUS_LOADED);
     });
     it('should create a collection if it does not exist (unloaded case)', function() {
@@ -540,6 +557,6 @@ describe('Cluster sync', function() {
         Databases: {},
       };
     });
-    */
   });
+  */
 });
