@@ -21,25 +21,25 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_WAL_COLLECTOR_CACHE_H
-#define ARANGOD_WAL_COLLECTOR_CACHE_H 1
+#ifndef ARANGOD_MMFILES_COLLECTOR_CACHE_H
+#define ARANGOD_MMFILES_COLLECTOR_CACHE_H 1
 
 #include "Basics/Common.h"
 #include "VocBase/DatafileStatisticsContainer.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_datafile_t;
+struct MMFilesDatafile;
 struct TRI_df_marker_t;
 
 namespace arangodb {
 
 namespace wal {
-
 class Logfile;
+}
 
-struct CollectorOperation {
-  CollectorOperation(char const* datafilePosition,
+struct MMFilesCollectorOperation {
+  MMFilesCollectorOperation(char const* datafilePosition,
                      TRI_voc_size_t datafileMarkerSize, char const* walPosition,
                      TRI_voc_fid_t datafileId)
       : datafilePosition(datafilePosition),
@@ -58,18 +58,18 @@ struct CollectorOperation {
   TRI_voc_fid_t datafileId;
 };
 
-struct CollectorCache {
-  CollectorCache(CollectorCache const&) = delete;
-  CollectorCache& operator=(CollectorCache const&) = delete;
+struct MMFilesCollectorCache {
+  MMFilesCollectorCache(MMFilesCollectorCache const&) = delete;
+  MMFilesCollectorCache& operator=(MMFilesCollectorCache const&) = delete;
 
-  CollectorCache(TRI_voc_cid_t collectionId, TRI_voc_tick_t databaseId,
-                 Logfile* logfile, int64_t totalOperationsCount,
+  MMFilesCollectorCache(TRI_voc_cid_t collectionId, TRI_voc_tick_t databaseId,
+                 wal::Logfile* logfile, int64_t totalOperationsCount,
                  size_t operationsSize)
       : collectionId(collectionId),
         databaseId(databaseId),
         logfile(logfile),
         totalOperationsCount(totalOperationsCount),
-        operations(new std::vector<CollectorOperation>()),
+        operations(new std::vector<MMFilesCollectorOperation>()),
         ditches(),
         dfi(),
         lastFid(0),
@@ -77,7 +77,7 @@ struct CollectorCache {
     operations->reserve(operationsSize);
   }
 
-  ~CollectorCache() {
+  ~MMFilesCollectorCache() {
     delete operations;
     freeDitches();
   }
@@ -123,13 +123,13 @@ struct CollectorCache {
   TRI_voc_tick_t const databaseId;
 
   /// @brief id of the WAL logfile
-  Logfile* logfile;
+  wal::Logfile* logfile;
 
   /// @brief total number of operations in this block
   int64_t const totalOperationsCount;
 
   /// @brief all collector operations of a collection
-  std::vector<CollectorOperation>* operations;
+  std::vector<MMFilesCollectorOperation>* operations;
 
   /// @brief ditches held by the operations
   std::vector<arangodb::DocumentDitch*> ditches;
@@ -141,17 +141,16 @@ struct CollectorCache {
   TRI_voc_fid_t lastFid;
 
   /// @brief last datafile written to
-  TRI_datafile_t* lastDatafile;
+  MMFilesDatafile* lastDatafile;
 };
   
 /// @brief typedef key => document marker
 typedef std::unordered_map<std::string, struct TRI_df_marker_t const*>
-    DocumentOperationsType;
+    MMFilesDocumentOperationsType;
 
 /// @brief typedef for structural operation (attributes, shapes) markers
-typedef std::vector<struct TRI_df_marker_t const*> OperationsType;
+typedef std::vector<struct TRI_df_marker_t const*> MMFilesOperationsType;
 
-}
 }
 
 #endif

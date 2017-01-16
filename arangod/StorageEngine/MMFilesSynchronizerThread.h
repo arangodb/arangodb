@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_WAL_SYNCHRONIZER_THREAD_H
-#define ARANGOD_WAL_SYNCHRONIZER_THREAD_H 1
+#ifndef ARANGOD_MMFILES_SYNCHRONIZER_THREAD_H
+#define ARANGOD_MMFILES_SYNCHRONIZER_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -31,18 +31,18 @@
 
 namespace arangodb {
 namespace wal {
-
 class LogfileManager;
+}
 
-class SynchronizerThread final : public Thread {
-  /// @brief SynchronizerThread
+class MMFilesSynchronizerThread final : public Thread {
+  /// @brief MMFilesSynchronizerThread
  private:
-  SynchronizerThread(SynchronizerThread const&) = delete;
-  SynchronizerThread& operator=(SynchronizerThread const&) = delete;
+  MMFilesSynchronizerThread(MMFilesSynchronizerThread const&) = delete;
+  MMFilesSynchronizerThread& operator=(MMFilesSynchronizerThread const&) = delete;
 
  public:
-  SynchronizerThread(LogfileManager*, uint64_t);
-  ~SynchronizerThread() { shutdown(); }
+  MMFilesSynchronizerThread(wal::LogfileManager*, uint64_t);
+  ~MMFilesSynchronizerThread() { shutdown(); }
 
  public:
   void beginShutdown() override final;
@@ -59,11 +59,11 @@ class SynchronizerThread final : public Thread {
   int doSync(bool&);
 
   /// @brief get a logfile descriptor (it caches the descriptor for performance)
-  int getLogfileDescriptor(Logfile::IdType);
+  int getLogfileDescriptor(wal::Logfile::IdType);
 
  private:
   /// @brief the logfile manager
-  LogfileManager* _logfileManager;
+  wal::LogfileManager* _logfileManager;
 
   /// @brief condition variable for the thread
   basics::ConditionVariable _condition;
@@ -73,7 +73,7 @@ class SynchronizerThread final : public Thread {
 
   /// @brief logfile descriptor cache
   struct {
-    Logfile::IdType id;
+    wal::Logfile::IdType id;
     int fd;
   } _logfileCache;
   
@@ -84,7 +84,7 @@ class SynchronizerThread final : public Thread {
   /// waiters that requested asynchronous writes
   std::atomic<uint64_t> _waiting;
 };
-}
+
 }
 
 #endif

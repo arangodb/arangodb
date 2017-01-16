@@ -21,24 +21,22 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Slots.h"
-
+#include "MMFilesWalSlots.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
-#include "VocBase/DatafileHelper.h"
-#include "VocBase/datafile.h"
+#include "StorageEngine/MMFilesDatafile.h"
+#include "StorageEngine/MMFilesDatafileHelper.h"
 #include "VocBase/ticks.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;
-using namespace arangodb::wal;
   
-static uint32_t const PrologueSize = DatafileHelper::AlignedSize<uint32_t>(sizeof(TRI_df_prologue_marker_t));
+static uint32_t const PrologueSize = MMFilesDatafileHelper::AlignedSize<uint32_t>(sizeof(TRI_df_prologue_marker_t));
 
 /// @brief create the slots
-Slots::Slots(LogfileManager* logfileManager, size_t numberOfSlots,
-             Slot::TickType tick)
+MMFilesWalSlots::MMFilesWalSlots(wal::LogfileManager* logfileManager, size_t numberOfSlots,
+             MMFilesWalSlot::TickType tick)
     : _logfileManager(logfileManager),
       _condition(),
       _lock(),
@@ -57,22 +55,22 @@ Slots::Slots(LogfileManager* logfileManager, size_t numberOfSlots,
       _lastDatabaseId(0),
       _lastCollectionId(0), 
       _shutdown(false) {
-  _slots = new Slot[numberOfSlots];
+  _slots = new MMFilesWalSlot[numberOfSlots];
 }
 
 /// @brief destroy the slots
-Slots::~Slots() { delete[] _slots; }
+MMFilesWalSlots::~MMFilesWalSlots() { delete[] _slots; }
 
 /// @brief sets a shutdown flag, disabling the request for new logfiles
-void Slots::shutdown() {
+void MMFilesWalSlots::shutdown() {
   MUTEX_LOCKER(mutexLocker, _lock);
   _shutdown = true;
 }
 
 /// @brief get the statistics of the slots
-void Slots::statistics(Slot::TickType& lastAssignedTick, 
-                       Slot::TickType& lastCommittedTick,
-                       Slot::TickType& lastCommittedDataTick,
+void MMFilesWalSlots::statistics(MMFilesWalSlot::TickType& lastAssignedTick, 
+                       MMFilesWalSlot::TickType& lastCommittedTick,
+                       MMFilesWalSlot::TickType& lastCommittedDataTick,
                        uint64_t& numEvents,
                        uint64_t& numEventsSync) {
   MUTEX_LOCKER(mutexLocker, _lock);
@@ -84,8 +82,8 @@ void Slots::statistics(Slot::TickType& lastAssignedTick,
 }
 
 /// @brief execute a flush operation
-int Slots::flush(bool waitForSync) {
-  Slot::TickType lastTick = 0;
+int MMFilesWalSlots::flush(bool waitForSync) {
+  MMFilesWalSlot::TickType lastTick = 0;
   bool worked;
 
   int res = closeLogfile(lastTick, worked);
@@ -117,22 +115,22 @@ int Slots::flush(bool waitForSync) {
 }
 
 /// @brief return the last committed tick
-Slot::TickType Slots::lastCommittedTick() {
+MMFilesWalSlot::TickType MMFilesWalSlots::lastCommittedTick() {
   MUTEX_LOCKER(mutexLocker, _lock);
   return _lastCommittedTick;
 }
 
 /// @brief return the next unused slot
-SlotInfo Slots::nextUnused(uint32_t size) {
+MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(uint32_t size) {
   return nextUnused(0, 0, size);
 }
 
 /// @brief return the next unused slot
-SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                            uint32_t size) {
 
   // we need to use the aligned size for writing
-  uint32_t alignedSize = DatafileHelper::AlignedSize<uint32_t>(size);
+  uint32_t alignedSize = MMFilesDatafileHelper::AlignedSize<uint32_t>(size);
   int iterations = 0;
   bool hasWaited = false;
   bool mustWritePrologue = false; 
@@ -143,7 +141,7 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
     {
       MUTEX_LOCKER(mutexLocker, _lock);
 
-      Slot* slot = &_slots[_handoutIndex];
+      MMFilesWalSlot* slot = &_slots[_handoutIndex];
       TRI_ASSERT(slot != nullptr);
 
       // check if next slot is free for writing
@@ -181,7 +179,7 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
             int res = writeFooter(slot);
 
             if (res != TRI_ERROR_NO_ERROR) {
-              return SlotInfo(res);
+              return MMFilesWalSlotInfo(res);
             }
          
             // new datafile. must write a prologue 
@@ -198,16 +196,16 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
           }
 
           TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
-            return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
+            return MMFilesWalSlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
           }
 
           // fetch the next free logfile (this may create a new one)
-          Logfile::StatusType status;
+          wal::Logfile::StatusType status;
           int res = newLogfile(alignedSize, status);
 
           if (res != TRI_ERROR_NO_ERROR) {
             if (res != TRI_ERROR_ARANGO_NO_JOURNAL) {
-              return SlotInfo(res);
+              return MMFilesWalSlotInfo(res);
             }
 
             usleep(10 * 1000);
@@ -215,12 +213,12 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
           } else {
             TRI_ASSERT(_logfile != nullptr);
 
-            if (status == Logfile::StatusType::EMPTY) {
+            if (status == wal::Logfile::StatusType::EMPTY) {
               // initialize the empty logfile by writing a header marker
               int res = writeHeader(slot);
 
               if (res != TRI_ERROR_NO_ERROR) {
-                return SlotInfo(res);
+                return MMFilesWalSlotInfo(res);
               }
             
               // new datafile. must write a prologue 
@@ -233,7 +231,7 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
               slot = &_slots[_handoutIndex];
               _logfileManager->setLogfileOpen(_logfile);
             } else {
-              TRI_ASSERT(status == Logfile::StatusType::OPEN);
+              TRI_ASSERT(status == wal::Logfile::StatusType::OPEN);
             }
           }
         }
@@ -244,7 +242,7 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
 
         if (mem == nullptr) {
           LOG(WARN) << "could not find free WAL slot"; 
-          return SlotInfo(TRI_ERROR_INTERNAL);
+          return MMFilesWalSlotInfo(TRI_ERROR_INTERNAL);
         }
 
         TRI_ASSERT(reinterpret_cast<uintptr_t>(mem) % 8 == 0);
@@ -256,7 +254,7 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
           int res = writePrologue(slot, mem, databaseId, collectionId);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            return SlotInfo(res);
+            return MMFilesWalSlotInfo(res);
           }
 
           // now return the slot
@@ -274,7 +272,7 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
         // only in this case we return a valid slot
         slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), handout());
 
-        return SlotInfo(slot);
+        return MMFilesWalSlotInfo(slot);
       }
     }
 
@@ -297,17 +295,17 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
     }
   }
 
-  return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
+  return MMFilesWalSlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
 }
 
 /// @brief return a used slot, allowing its synchronization
-void Slots::returnUsed(SlotInfo& slotInfo, bool wakeUpSynchronizer,
+void MMFilesWalSlots::returnUsed(MMFilesWalSlotInfo& slotInfo, bool wakeUpSynchronizer,
                        bool waitForSyncRequested, bool waitUntilSyncDone) {
   TRI_ASSERT(slotInfo.slot != nullptr);
   // waitUntilSyncDone does not make sense without waitForSyncRequested
   TRI_ASSERT(!waitUntilSyncDone || waitForSyncRequested);
 
-  Slot::TickType tick = slotInfo.slot->tick();
+  MMFilesWalSlot::TickType tick = slotInfo.slot->tick();
 
   TRI_ASSERT(tick > 0);
 
@@ -334,16 +332,16 @@ void Slots::returnUsed(SlotInfo& slotInfo, bool wakeUpSynchronizer,
 }
 
 /// @brief get the next synchronisable region
-SyncRegion Slots::getSyncRegion() {
+MMFilesWalSyncRegion MMFilesWalSlots::getSyncRegion() {
   bool sealRequested = false;
-  SyncRegion region;
+  MMFilesWalSyncRegion region;
 
   MUTEX_LOCKER(mutexLocker, _lock);
 
   size_t slotIndex = _recycleIndex;
 
   while (true) {
-    Slot const* slot = &_slots[slotIndex];
+    MMFilesWalSlot const* slot = &_slots[slotIndex];
     TRI_ASSERT(slot != nullptr);
 
     if (sealRequested && slot->isUnused()) {
@@ -365,7 +363,7 @@ SyncRegion Slots::getSyncRegion() {
 
     if (region.logfileId == 0) {
       // first member
-      Logfile::StatusType status;
+      wal::Logfile::StatusType status;
 
       region.logfileId = slot->logfileId();
       // the following call also updates status
@@ -377,7 +375,7 @@ SyncRegion Slots::getSyncRegion() {
       region.lastSlotIndex = slotIndex;
       region.waitForSync = slot->waitForSync();
 
-      if (status == Logfile::StatusType::SEAL_REQUESTED) {
+      if (status == wal::Logfile::StatusType::SEAL_REQUESTED) {
         sealRequested = true;
       }
     } else {
@@ -411,7 +409,7 @@ SyncRegion Slots::getSyncRegion() {
 }
 
 /// @brief return a region to the freelist
-void Slots::returnSyncRegion(SyncRegion const& region) {
+void MMFilesWalSlots::returnSyncRegion(MMFilesWalSyncRegion const& region) {
   TRI_ASSERT(region.logfileId != 0);
 
   size_t slotIndex = region.firstSlotIndex;
@@ -420,11 +418,11 @@ void Slots::returnSyncRegion(SyncRegion const& region) {
     MUTEX_LOCKER(mutexLocker, _lock);
 
     while (true) {
-      Slot* slot = &_slots[slotIndex];
+      MMFilesWalSlot* slot = &_slots[slotIndex];
       TRI_ASSERT(slot != nullptr);
 
       // note last tick
-      Slot::TickType tick = slot->tick();
+      MMFilesWalSlot::TickType tick = slot->tick();
       TRI_ASSERT(tick >= _lastCommittedTick);
       _lastCommittedTick = tick;
 
@@ -466,11 +464,11 @@ void Slots::returnSyncRegion(SyncRegion const& region) {
 
 /// @brief get the current open region of a logfile
 /// this uses the slots lock
-void Slots::getActiveLogfileRegion(Logfile* logfile, char const*& begin,
+void MMFilesWalSlots::getActiveLogfileRegion(wal::Logfile* logfile, char const*& begin,
                                    char const*& end) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
-  TRI_datafile_t* datafile = logfile->df();
+  MMFilesDatafile* datafile = logfile->df();
 
   begin = datafile->_data;
   end = begin + datafile->currentSize();
@@ -478,18 +476,18 @@ void Slots::getActiveLogfileRegion(Logfile* logfile, char const*& begin,
 
 /// @brief get the current tick range of a logfile
 /// this uses the slots lock
-void Slots::getActiveTickRange(Logfile* logfile, TRI_voc_tick_t& tickMin,
+void MMFilesWalSlots::getActiveTickRange(wal::Logfile* logfile, TRI_voc_tick_t& tickMin,
                                TRI_voc_tick_t& tickMax) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
-  TRI_datafile_t* datafile = logfile->df();
+  MMFilesDatafile* datafile = logfile->df();
 
   tickMin = datafile->_tickMin;
   tickMax = datafile->_tickMax;
 }
 
 /// @brief close a logfile
-int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
+int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, bool& worked) {
   int iterations = 0;
   bool hasWaited = false;
   worked = false;
@@ -500,7 +498,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
 
       lastCommittedTick = _lastCommittedTick;
 
-      Slot* slot = &_slots[_handoutIndex];
+      MMFilesWalSlot* slot = &_slots[_handoutIndex];
       TRI_ASSERT(slot != nullptr);
 
       if (slot->isUnused()) {
@@ -512,7 +510,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
         }
 
         if (_logfile != nullptr) {
-          if (_logfile->status() == Logfile::StatusType::EMPTY) {
+          if (_logfile->status() == wal::Logfile::StatusType::EMPTY) {
             // no need to seal a still-empty logfile
             return TRI_ERROR_NO_ERROR;
           }
@@ -545,7 +543,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
         // fetch the next free logfile (this may create a new one)
         // note: as we don't have a real marker to write the size does
         // not matter (we use a size of 1 as it must be > 0)
-        Logfile::StatusType status;
+        wal::Logfile::StatusType status;
         int res = newLogfile(1, status);
 
         if (res != TRI_ERROR_NO_ERROR) {
@@ -558,7 +556,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
         } else {
           TRI_ASSERT(_logfile != nullptr);
 
-          if (status == Logfile::StatusType::EMPTY) {
+          if (status == wal::Logfile::StatusType::EMPTY) {
             // initialize the empty logfile by writing a header marker
             res = writeHeader(slot);
 
@@ -570,7 +568,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
             _logfileManager->setLogfileOpen(_logfile);
             worked = true;
           } else {
-            TRI_ASSERT(status == Logfile::StatusType::OPEN);
+            TRI_ASSERT(status == wal::Logfile::StatusType::OPEN);
             worked = false;
           }
 
@@ -601,10 +599,10 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
 }
 
 /// @brief write a header marker
-int Slots::writeHeader(Slot* slot) {
+int MMFilesWalSlots::writeHeader(MMFilesWalSlot* slot) {
   TRI_ASSERT(_logfile != nullptr);
 
-  TRI_df_header_marker_t header = DatafileHelper::CreateHeaderMarker(
+  TRI_df_header_marker_t header = MMFilesDatafileHelper::CreateHeaderMarker(
     static_cast<TRI_voc_size_t>(_logfile->allocatedSize()), 
     static_cast<TRI_voc_fid_t>(_logfile->id())
   );
@@ -625,8 +623,8 @@ int Slots::writeHeader(Slot* slot) {
 }
 
 /// @brief write a prologue marker
-int Slots::writePrologue(Slot* slot, void* mem, TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
-  TRI_df_prologue_marker_t header = DatafileHelper::CreatePrologueMarker(databaseId, collectionId);
+int MMFilesWalSlots::writePrologue(MMFilesWalSlot* slot, void* mem, TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
+  TRI_df_prologue_marker_t header = MMFilesDatafileHelper::CreatePrologueMarker(databaseId, collectionId);
   size_t const size = header.base.getSize();
 
   TRI_ASSERT(size == PrologueSize);
@@ -641,10 +639,10 @@ int Slots::writePrologue(Slot* slot, void* mem, TRI_voc_tick_t databaseId, TRI_v
 }
 
 /// @brief write a footer marker
-int Slots::writeFooter(Slot* slot) {
+int MMFilesWalSlots::writeFooter(MMFilesWalSlot* slot) {
   TRI_ASSERT(_logfile != nullptr);
 
-  TRI_df_footer_marker_t footer = DatafileHelper::CreateFooterMarker();
+  TRI_df_footer_marker_t footer = MMFilesDatafileHelper::CreateFooterMarker();
   size_t const size = footer.base.getSize();
 
   auto* mem = static_cast<void*>(_logfile->reserve(size));
@@ -662,7 +660,7 @@ int Slots::writeFooter(Slot* slot) {
 }
 
 /// @brief handout a region and advance the handout index
-Slot::TickType Slots::handout() {
+MMFilesWalSlot::TickType MMFilesWalSlots::handout() {
   TRI_ASSERT(_freeSlots > 0);
   _freeSlots--;
 
@@ -671,13 +669,13 @@ Slot::TickType Slots::handout() {
     _handoutIndex = 0;
   }
 
-  _lastAssignedTick = static_cast<Slot::TickType>(TRI_NewTickServer());
+  _lastAssignedTick = static_cast<MMFilesWalSlot::TickType>(TRI_NewTickServer());
   return _lastAssignedTick;
 }
 
 /// @brief return the next slots that would be handed out, without 
 /// actually handing it out
-size_t Slots::nextHandoutIndex() const {
+size_t MMFilesWalSlots::nextHandoutIndex() const {
   size_t handoutIndex = _handoutIndex;
   if (++handoutIndex == _numberOfSlots) {
     handoutIndex = 0;
@@ -686,7 +684,7 @@ size_t Slots::nextHandoutIndex() const {
 }
 
 /// @brief wait until all data has been synced up to a certain marker
-bool Slots::waitForTick(Slot::TickType tick) {
+bool MMFilesWalSlots::waitForTick(MMFilesWalSlot::TickType tick) {
   static uint64_t const SleepTime = 10000;
   static int const MaxIterations = 30 * 1000 * 1000 / SleepTime;
   int iterations = 0;
@@ -706,15 +704,15 @@ bool Slots::waitForTick(Slot::TickType tick) {
 
 /// @brief request a new logfile which can satisfy a marker of the
 /// specified size
-int Slots::newLogfile(uint32_t size, Logfile::StatusType& status) {
+int MMFilesWalSlots::newLogfile(uint32_t size, wal::Logfile::StatusType& status) {
   TRI_ASSERT(size > 0);
 
   if (_shutdown) {
     return TRI_ERROR_REQUEST_CANCELED;
   }
 
-  status = Logfile::StatusType::UNKNOWN;
-  Logfile* logfile = nullptr;
+  status = wal::Logfile::StatusType::UNKNOWN;
+  wal::Logfile* logfile = nullptr;
   int res = _logfileManager->getWriteableLogfile(size, status, logfile);
 
   if (res == TRI_ERROR_NO_ERROR) {

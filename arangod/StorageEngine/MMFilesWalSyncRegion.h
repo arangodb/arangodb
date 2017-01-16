@@ -21,33 +21,41 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_WAL_RECOVERY_FEATURE_H
-#define ARANGOD_WAL_RECOVERY_FEATURE_H 1
+#ifndef ARANGOD_MMFILES_WAL_SYNC_REGION_H
+#define ARANGOD_MMFILES_WAL_SYNC_REGION_H 1
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Common.h"
+#include "Wal/Logfile.h"
 
 namespace arangodb {
-namespace options {
-class ProgramOptions;
-}
 
-namespace wal {
-struct RecoverState;
+struct MMFilesWalSyncRegion {
+  MMFilesWalSyncRegion()
+      : logfileId(0),
+        logfile(nullptr),
+        mem(nullptr),
+        size(0),
+        logfileStatus(wal::Logfile::StatusType::UNKNOWN),
+        firstSlotIndex(0),
+        lastSlotIndex(0),
+        waitForSync(false),
+        checkMore(false),
+        canSeal(false) {}
 
-class RecoveryFeature final : public application_features::ApplicationFeature {
+  ~MMFilesWalSyncRegion() {}
 
-  RecoveryFeature(RecoveryFeature const&) = delete;
-  RecoveryFeature& operator=(RecoveryFeature const&) = delete;
-
- public:
-  explicit RecoveryFeature(application_features::ApplicationServer* server);
-  ~RecoveryFeature() {}
-
- public:
-  void start() override final;
-
+  wal::Logfile::IdType logfileId;
+  wal::Logfile* logfile;
+  char* mem;
+  uint32_t size;
+  wal::Logfile::StatusType logfileStatus;
+  size_t firstSlotIndex;
+  size_t lastSlotIndex;
+  bool waitForSync;
+  bool checkMore;
+  bool canSeal;
 };
-}
+
 }
 
 #endif

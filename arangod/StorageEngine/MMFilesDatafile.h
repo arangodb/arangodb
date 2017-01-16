@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_DATAFILE_H
-#define ARANGOD_VOC_BASE_DATAFILE_H 1
+#ifndef ARANGOD_STORAGE_ENGINE_MMFILES_DATAFILE_H
+#define ARANGOD_STORAGE_ENGINE_MMFILES_DATAFILE_H 1
 
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"
@@ -179,10 +179,10 @@ struct DatafileScan {
 typedef uint32_t TRI_df_version_t;
 
 /// @brief datafile
-struct TRI_datafile_t {
-  TRI_datafile_t(std::string const& filename, int fd, void* mmHandle, TRI_voc_size_t maximalSize,
+struct MMFilesDatafile {
+  MMFilesDatafile(std::string const& filename, int fd, void* mmHandle, TRI_voc_size_t maximalSize,
                  TRI_voc_size_t currentsize, TRI_voc_fid_t fid, char* data);
-  ~TRI_datafile_t();
+  ~MMFilesDatafile();
 
   /// @brief return whether the datafile is a physical file (true) or an
   /// anonymous mapped region (false)
@@ -201,7 +201,7 @@ struct TRI_datafile_t {
   static int judge(std::string const& filename);
 
   /// @brief creates either an anonymous or a physical datafile
-  static TRI_datafile_t* create(std::string const& filename, TRI_voc_fid_t fid,
+  static MMFilesDatafile* create(std::string const& filename, TRI_voc_fid_t fid,
                                 TRI_voc_size_t maximalSize,
                                 bool withInitialMarkers);
 
@@ -221,7 +221,7 @@ struct TRI_datafile_t {
   static bool tryRepair(std::string const& path);
   
   /// @brief opens a datafile
-  static TRI_datafile_t* open(std::string const& filename, bool ignoreErrors);
+  static MMFilesDatafile* open(std::string const& filename, bool ignoreErrors);
 
   /// @brief writes a marker to the datafile
   /// this function will write the marker as-is, without any CRC or tick updates
@@ -280,7 +280,7 @@ struct TRI_datafile_t {
   bool fix(TRI_voc_size_t currentSize);
 
   /// @brief opens a datafile
-  static TRI_datafile_t* openHelper(std::string const& filename, bool ignoreErrors);
+  static MMFilesDatafile* openHelper(std::string const& filename, bool ignoreErrors);
 
   /// @brief create the initial datafile header marker
   int writeInitialHeaderMarker(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize);
@@ -493,19 +493,19 @@ bool TRI_IsValidMarkerDatafile(TRI_df_marker_t const*);
 /// @brief update tick values for a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UpdateTicksDatafile(TRI_datafile_t*, TRI_df_marker_t const*);
+void TRI_UpdateTicksDatafile(MMFilesDatafile*, TRI_df_marker_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a datafile
 /// also may set datafile's min/max tick values
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IterateDatafile(TRI_datafile_t*,
+bool TRI_IterateDatafile(MMFilesDatafile*,
                          bool (*iterator)(TRI_df_marker_t const*, void*,
-                                          TRI_datafile_t*),
+                                          MMFilesDatafile*),
                          void* data);
                              
-bool TRI_IterateDatafile(TRI_datafile_t*,
-                         std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
+bool TRI_IterateDatafile(MMFilesDatafile*,
+                         std::function<bool(TRI_df_marker_t const*, MMFilesDatafile*)> const& cb);
 
 #endif

@@ -429,8 +429,8 @@ int RocksDBEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
 /// @brief transfer markers into a collection, actual work
 /// the collection must have been prepared to call this function
 int RocksDBEngine::transferMarkers(LogicalCollection* collection,
-                                   wal::CollectorCache* cache,
-                                   wal::OperationsType const& operations) {
+                                   MMFilesCollectorCache* cache,
+                                   MMFilesOperationsType const& operations) {
   return TRI_ERROR_NO_ERROR;
 }
 

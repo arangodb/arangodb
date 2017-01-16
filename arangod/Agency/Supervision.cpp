@@ -692,12 +692,16 @@ void Supervision::enforceReplication() {
 
 // Shrink cluster if applicable, guarded by caller
 void Supervision::shrinkCluster() {
-  // Get servers from plan
-  std::vector<std::string> availServers;
-  Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
-  for (auto const& srv : dbservers) {
-    availServers.push_back(srv.first);
+
+  auto const& todo = _snapshot(toDoPrefix).children();
+  auto const& pending = _snapshot(pendingPrefix).children();
+
+  if (!todo.empty() || !pending.empty()) { // This is low priority
+    return;
   }
+  
+  // Get servers from plan
+  std::vector<std::string> availServers = Job::availableServers(_snapshot);
 
   size_t targetNumDBServers;
   try {
@@ -706,50 +710,6 @@ void Supervision::shrinkCluster() {
     LOG_TOPIC(TRACE, Logger::AGENCY)
         << "Targeted number of DB servers not set yet: " << e.what();
     return;
-  }
-
-  // If there are any cleanOutServer jobs todo or pending do nothing
-  Node::Children const& todos = _snapshot(toDoPrefix).children();
-  Node::Children const& pends = _snapshot(pendingPrefix).children();
-
-  for (auto const& job : todos) {
-    try {
-      if ((*job.second)("type").getString() == "cleanOutServer") {
-        return;
-      }
-      if ((*job.second)("type").getString() == "removeServer") {
-        return;
-      }
-    } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "Failed to get job type of job "
-                                      << job.first << ": " << e.what();
-      return;
-    }
-  }
-
-  for (auto const& job : pends) {
-    try {
-      if ((*job.second)("type").getString() == "cleanOutServer") {
-        return;
-      }
-      if ((*job.second)("type").getString() == "removeServer") {
-        return;
-      }
-    } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "Failed to get job type of job "
-                                      << job.first << ": " << e.what();
-      return;
-    }
-  }
-
-  // Remove cleaned from ist
-  if (_snapshot.exists("/Target/CleanedServers").size() == 2) {
-    for (auto const& srv :
-         VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
-      availServers.erase(std::remove(availServers.begin(), availServers.end(),
-                                     srv.copyString()),
-                         availServers.end());
-    }
   }
 
   // Only if number of servers in target is smaller than the available

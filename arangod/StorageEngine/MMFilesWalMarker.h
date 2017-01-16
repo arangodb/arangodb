@@ -21,30 +21,29 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_WAL_MARKER_H
-#define ARANGOD_WAL_MARKER_H 1
+#ifndef ARANGOD_STORAGE_ENGINE_MMFILES_WAL_MARKER_H
+#define ARANGOD_STORAGE_ENGINE_MMFILES_WAL_MARKER_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/datafile.h"
-#include "VocBase/DatafileHelper.h"
+#include "StorageEngine/MMFilesDatafile.h"
+#include "StorageEngine/MMFilesDatafileHelper.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-namespace wal {
 
 /// @brief abstract base class for all markers
-class Marker {
+class MMFilesWalMarker {
  private:
-  Marker& operator=(Marker const&) = delete;
-  Marker(Marker&&) = delete;
-  Marker(Marker const&) = delete;
+  MMFilesWalMarker& operator=(MMFilesWalMarker const&) = delete;
+  MMFilesWalMarker(MMFilesWalMarker&&) = delete;
+  MMFilesWalMarker(MMFilesWalMarker const&) = delete;
  protected:
-  Marker() = default;
+  MMFilesWalMarker() = default;
 
  public:
-  virtual ~Marker() {}
+  virtual ~MMFilesWalMarker() {}
  
   /// @brief returns the marker type 
   virtual TRI_df_marker_type_t type() const = 0;
@@ -71,9 +70,9 @@ class Marker {
 
 /// @brief an envelope that contains a pointer to an existing marker
 /// this type is used during recovery only, to represent existing markers
-class MarkerEnvelope : public Marker {
+class MMFilesMarkerEnvelope : public MMFilesWalMarker {
  public:
-  MarkerEnvelope(TRI_df_marker_t const* other, TRI_voc_fid_t fid) 
+  MMFilesMarkerEnvelope(TRI_df_marker_t const* other, TRI_voc_fid_t fid) 
       : _other(other),
         _fid(fid),
         _size(other->getSize()) {
@@ -82,7 +81,7 @@ class MarkerEnvelope : public Marker {
     TRI_ASSERT(_size >= sizeof(TRI_df_marker_t));
   }
 
-  ~MarkerEnvelope() = default;
+  ~MMFilesMarkerEnvelope() = default;
 
   /// @brief returns the marker type 
   TRI_df_marker_type_t type() const override final { 
@@ -95,7 +94,7 @@ class MarkerEnvelope : public Marker {
  
   /// @brief a pointer the beginning of the VPack payload
   uint8_t* vpack() const override final { 
-    return const_cast<uint8_t*>(reinterpret_cast<uint8_t const*>(_other) + DatafileHelper::VPackOffset(type())); 
+    return const_cast<uint8_t*>(reinterpret_cast<uint8_t const*>(_other) + MMFilesDatafileHelper::VPackOffset(type())); 
   }
 
   /// @brief a pointer to the beginning of the wrapped marker
@@ -122,16 +121,16 @@ class MarkerEnvelope : public Marker {
 
 /// @brief a marker type that is used when inserting new documents,
 /// updating/replacing or removing documents
-class CrudMarker : public Marker {
+class MMFilesCrudMarker : public MMFilesWalMarker {
  public:
-  CrudMarker(TRI_df_marker_type_t type, 
+  MMFilesCrudMarker(TRI_df_marker_type_t type, 
              TRI_voc_tid_t transactionId, 
              arangodb::velocypack::Slice const& data)
     : _transactionId(transactionId),
       _data(data),
       _type(type) {}
 
-  ~CrudMarker() = default;
+  ~MMFilesCrudMarker() = default;
 
   /// @brief returns the marker type 
   TRI_df_marker_type_t type() const override final { return _type; }
@@ -143,15 +142,15 @@ class CrudMarker : public Marker {
  
   /// @brief returns the marker size 
   uint32_t size() const override final { 
-    return static_cast<uint32_t>(DatafileHelper::VPackOffset(_type) + _data.byteSize());
+    return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) + _data.byteSize());
   }
 
   /// @brief store the marker in the memory region starting at mem
   void store(char* mem) const override final { 
     // store transaction id
-    DatafileHelper::StoreNumber<decltype(_transactionId)>(reinterpret_cast<uint8_t*>(mem) + DatafileHelper::TransactionIdOffset(_type), _transactionId, sizeof(decltype(_transactionId)));
+    MMFilesDatafileHelper::StoreNumber<decltype(_transactionId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::TransactionIdOffset(_type), _transactionId, sizeof(decltype(_transactionId)));
     // store VPack
-    memcpy(mem + DatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
+    memcpy(mem + MMFilesDatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
   }
   
   /// @brief a pointer the beginning of the VPack payload
@@ -164,9 +163,9 @@ class CrudMarker : public Marker {
 };
 
 /// @brief a marker used for database-related operations
-class DatabaseMarker : public Marker {
+class MMFilesDatabaseMarker : public MMFilesWalMarker {
  public:
-  DatabaseMarker(TRI_df_marker_type_t type, 
+  MMFilesDatabaseMarker(TRI_df_marker_type_t type, 
                  TRI_voc_tick_t databaseId, 
                  arangodb::velocypack::Slice const& data)
     : _databaseId(databaseId),
@@ -175,7 +174,7 @@ class DatabaseMarker : public Marker {
     TRI_ASSERT(databaseId > 0);
   }
 
-  ~DatabaseMarker() = default;
+  ~MMFilesDatabaseMarker() = default;
 
   /// @brief returns the marker type 
   TRI_df_marker_type_t type() const override final { return _type; }
@@ -187,15 +186,15 @@ class DatabaseMarker : public Marker {
   
   /// @brief returns the marker size 
   uint32_t size() const override final { 
-    return static_cast<uint32_t>(DatafileHelper::VPackOffset(_type) + _data.byteSize());
+    return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) + _data.byteSize());
   }
 
   /// @brief store the marker in the memory region starting at mem
   void store(char* mem) const override final { 
     // store database id
-    DatafileHelper::StoreNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + DatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
+    MMFilesDatafileHelper::StoreNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
     // store VPack
-    memcpy(mem + DatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
+    memcpy(mem + MMFilesDatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
   }
 
  private:
@@ -205,9 +204,9 @@ class DatabaseMarker : public Marker {
 };
 
 /// @brief a marker used for collection-related operations
-class CollectionMarker : public Marker {
+class MMFilesCollectionMarker : public MMFilesWalMarker {
  public:
-  CollectionMarker(TRI_df_marker_type_t type, 
+  MMFilesCollectionMarker(TRI_df_marker_type_t type, 
                    TRI_voc_tick_t databaseId, 
                    TRI_voc_cid_t collectionId, 
                    arangodb::velocypack::Slice const& data)
@@ -220,7 +219,7 @@ class CollectionMarker : public Marker {
     TRI_ASSERT(collectionId > 0);
   }
 
-  ~CollectionMarker() = default;
+  ~MMFilesCollectionMarker() = default;
 
   /// @brief returns the marker type 
   TRI_df_marker_type_t type() const override final { return _type; }
@@ -232,17 +231,17 @@ class CollectionMarker : public Marker {
   
   /// @brief returns the marker size 
   uint32_t size() const override final { 
-    return static_cast<uint32_t>(DatafileHelper::VPackOffset(_type) + _data.byteSize());
+    return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) + _data.byteSize());
   }
 
   /// @brief store the marker in the memory region starting at mem
   void store(char* mem) const override final { 
     // store database id
-    DatafileHelper::StoreNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + DatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
+    MMFilesDatafileHelper::StoreNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
     // store collection id
-    DatafileHelper::StoreNumber<decltype(_collectionId)>(reinterpret_cast<uint8_t*>(mem) + DatafileHelper::CollectionIdOffset(_type), _collectionId, sizeof(decltype(_collectionId)));
+    MMFilesDatafileHelper::StoreNumber<decltype(_collectionId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::CollectionIdOffset(_type), _collectionId, sizeof(decltype(_collectionId)));
     // store VPack
-    memcpy(mem + DatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
+    memcpy(mem + MMFilesDatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
   }
 
  private:
@@ -253,9 +252,9 @@ class CollectionMarker : public Marker {
 };
 
 /// @brief a marker used for transaction-related operations
-class TransactionMarker : public Marker {
+class MMFilesTransactionMarker : public MMFilesWalMarker {
  public:
-  TransactionMarker(TRI_df_marker_type_t type, 
+  MMFilesTransactionMarker(TRI_df_marker_type_t type, 
                     TRI_voc_tick_t databaseId, 
                     TRI_voc_tid_t transactionId)
     : _databaseId(databaseId),
@@ -265,7 +264,7 @@ class TransactionMarker : public Marker {
     TRI_ASSERT(transactionId > 0);
   }
 
-  ~TransactionMarker() = default;
+  ~MMFilesTransactionMarker() = default;
 
   /// @brief returns the marker type 
   TRI_df_marker_type_t type() const override final { return _type; }
@@ -278,15 +277,15 @@ class TransactionMarker : public Marker {
   /// @brief returns the marker size 
   uint32_t size() const override final {
     // these markers do not have any VPack payload 
-    return static_cast<uint32_t>(DatafileHelper::VPackOffset(_type));
+    return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type));
   }
 
   /// @brief store the marker in the memory region starting at mem
   void store(char* mem) const override final { 
     // store database id
-    DatafileHelper::StoreNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + DatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
+    MMFilesDatafileHelper::StoreNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
     // store transaction id
-    DatafileHelper::StoreNumber<decltype(_transactionId)>(reinterpret_cast<uint8_t*>(mem) + DatafileHelper::TransactionIdOffset(_type), _transactionId, sizeof(decltype(_transactionId)));
+    MMFilesDatafileHelper::StoreNumber<decltype(_transactionId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::TransactionIdOffset(_type), _transactionId, sizeof(decltype(_transactionId)));
   }
 
  private:
@@ -295,7 +294,6 @@ class TransactionMarker : public Marker {
   TRI_df_marker_type_t _type;
 };
 
-}
 }
 
 #endif

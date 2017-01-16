@@ -22,9 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ditch.h"
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
-#include "VocBase/datafile.h"
+#include "Logger/Logger.h"
+#include "StorageEngine/MMFilesDatafile.h"
 
 using namespace arangodb;
 
@@ -62,8 +62,8 @@ CompactionDitch::CompactionDitch(Ditches* ditches, char const* filename,
 CompactionDitch::~CompactionDitch() {}
 
 DropDatafileDitch::DropDatafileDitch(
-    Ditches* ditches, TRI_datafile_t* datafile, LogicalCollection* collection,
-    std::function<void(TRI_datafile_t*, LogicalCollection*)> const& callback, char const* filename,
+    Ditches* ditches, MMFilesDatafile* datafile, LogicalCollection* collection,
+    std::function<void(MMFilesDatafile*, LogicalCollection*)> const& callback, char const* filename,
     int line)
     : Ditch(ditches, filename, line),
       _datafile(datafile),
@@ -73,9 +73,9 @@ DropDatafileDitch::DropDatafileDitch(
 DropDatafileDitch::~DropDatafileDitch() { delete _datafile; }
 
 RenameDatafileDitch::RenameDatafileDitch(
-    Ditches* ditches, TRI_datafile_t* datafile, TRI_datafile_t* compactor,
+    Ditches* ditches, MMFilesDatafile* datafile, MMFilesDatafile* compactor,
     LogicalCollection* collection,
-    std::function<void(TRI_datafile_t*, TRI_datafile_t*, LogicalCollection*)> const& callback, char const* filename,
+    std::function<void(MMFilesDatafile*, MMFilesDatafile*, LogicalCollection*)> const& callback, char const* filename,
     int line)
     : Ditch(ditches, filename, line),
       _datafile(datafile),
@@ -341,8 +341,8 @@ CompactionDitch* Ditches::createCompactionDitch(char const* filename,
 
 /// @brief creates a new datafile deletion ditch
 DropDatafileDitch* Ditches::createDropDatafileDitch(
-    TRI_datafile_t* datafile, LogicalCollection* collection, 
-    std::function<void(TRI_datafile_t*, LogicalCollection*)> const& callback,
+    MMFilesDatafile* datafile, LogicalCollection* collection, 
+    std::function<void(MMFilesDatafile*, LogicalCollection*)> const& callback,
     char const* filename, int line) {
   try {
     auto ditch =
@@ -357,8 +357,8 @@ DropDatafileDitch* Ditches::createDropDatafileDitch(
 
 /// @brief creates a new datafile rename ditch
 RenameDatafileDitch* Ditches::createRenameDatafileDitch(
-    TRI_datafile_t* datafile, TRI_datafile_t* compactor, LogicalCollection* collection,
-    std::function<void(TRI_datafile_t*, TRI_datafile_t*, LogicalCollection*)> const& callback,
+    MMFilesDatafile* datafile, MMFilesDatafile* compactor, LogicalCollection* collection,
+    std::function<void(MMFilesDatafile*, MMFilesDatafile*, LogicalCollection*)> const& callback,
     char const* filename, int line) {
   try {
     auto ditch =

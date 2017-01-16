@@ -21,18 +21,18 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SynchronizerThread.h"
+#include "MMFilesSynchronizerThread.h"
 
-#include "Basics/memory-map.h"
-#include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
+#include "Basics/memory-map.h"
+#include "Logger/Logger.h"
+#include "StorageEngine/MMFilesWalSlots.h"
+#include "StorageEngine/MMFilesWalSyncRegion.h"
 #include "VocBase/ticks.h"
 #include "Wal/LogfileManager.h"
-#include "Wal/Slots.h"
-#include "Wal/SyncRegion.h"
 
-using namespace arangodb::wal;
+using namespace arangodb;
   
 /// @brief returns the bitmask for the synchronous waiters
 /// for use in _waiters only
@@ -45,7 +45,7 @@ static constexpr inline uint64_t syncWaitersMask() {
 /// for use in _waiters only
 static constexpr inline int asyncWaitersBits() { return 32; }
 
-SynchronizerThread::SynchronizerThread(LogfileManager* logfileManager,
+MMFilesSynchronizerThread::MMFilesSynchronizerThread(wal::LogfileManager* logfileManager,
                                        uint64_t syncInterval)
     : Thread("WalSynchronizer"),
       _logfileManager(logfileManager),
@@ -55,7 +55,7 @@ SynchronizerThread::SynchronizerThread(LogfileManager* logfileManager,
       _waiting(0) {}
 
 /// @brief begin shutdown sequence
-void SynchronizerThread::beginShutdown() {
+void MMFilesSynchronizerThread::beginShutdown() {
   Thread::beginShutdown();
 
   CONDITION_LOCKER(guard, _condition);
@@ -63,7 +63,7 @@ void SynchronizerThread::beginShutdown() {
 }
 
 /// @brief signal that we need a sync
-void SynchronizerThread::signalSync(bool waitForSync) {
+void MMFilesSynchronizerThread::signalSync(bool waitForSync) {
   if (waitForSync) {
     uint64_t previous = _waiting.fetch_add(1);
     if ((previous & syncWaitersMask()) == 0) {
@@ -78,7 +78,7 @@ void SynchronizerThread::signalSync(bool waitForSync) {
 }
 
 /// @brief main loop
-void SynchronizerThread::run() {
+void MMFilesSynchronizerThread::run() {
   // fetch initial value for waiting
   uint64_t waitingValue = _waiting;
   uint64_t waitingWithoutSync = waitingValue >> asyncWaitersBits();
@@ -140,12 +140,12 @@ void SynchronizerThread::run() {
 }
 
 /// @brief synchronize an unsynchronized region
-int SynchronizerThread::doSync(bool& checkMore) {
+int MMFilesSynchronizerThread::doSync(bool& checkMore) {
   checkMore = false;
 
   // get region to sync
-  SyncRegion region = _logfileManager->slots()->getSyncRegion();
-  Logfile::IdType const id = region.logfileId;
+  MMFilesWalSyncRegion region = _logfileManager->slots()->getSyncRegion();
+  wal::Logfile::IdType const id = region.logfileId;
 
   // an id of 0 means an empty region...
   if (id == 0) {
@@ -154,8 +154,8 @@ int SynchronizerThread::doSync(bool& checkMore) {
 
   // now perform the actual syncing
   auto status = region.logfileStatus;
-  TRI_ASSERT(status == Logfile::StatusType::OPEN ||
-             status == Logfile::StatusType::SEAL_REQUESTED);
+  TRI_ASSERT(status == wal::Logfile::StatusType::OPEN ||
+             status == wal::Logfile::StatusType::SEAL_REQUESTED);
 
   // get the logfile's file descriptor
   int fd = getLogfileDescriptor(region.logfileId);
@@ -175,7 +175,7 @@ int SynchronizerThread::doSync(bool& checkMore) {
 
   // all ok
 
-  if (status == Logfile::StatusType::SEAL_REQUESTED) {
+  if (status == wal::Logfile::StatusType::SEAL_REQUESTED) {
     // we might not yet be able to seal the logfile yet, for example in
     // the following situation when multi-threading:
     //
@@ -211,7 +211,7 @@ int SynchronizerThread::doSync(bool& checkMore) {
 }
 
 /// @brief get a logfile descriptor (it caches the descriptor for performance)
-int SynchronizerThread::getLogfileDescriptor(Logfile::IdType id) {
+int MMFilesSynchronizerThread::getLogfileDescriptor(wal::Logfile::IdType id) {
   if (id != _logfileCache.id || _logfileCache.id == 0) {
     _logfileCache.id = id;
     _logfileCache.fd = _logfileManager->getLogfileDescriptor(id);

@@ -26,10 +26,9 @@
 
 #include "Basics/Common.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "VocBase/datafile.h"
+#include "StorageEngine/MMFilesCollectorCache.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-#include "Wal/CollectorCache.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -235,8 +234,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) = 0;
 
   /// @brief transfer markers into a collection
-  virtual int transferMarkers(LogicalCollection* collection, wal::CollectorCache*,
-                              wal::OperationsType const&) = 0;
+  virtual int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
+                              MMFilesOperationsType const&) = 0;
   
  protected:
   arangodb::LogicalCollection* registerCollection(

@@ -86,6 +86,68 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
   }
 }
 
+RestStatus RestAgencyHandler::handleVacillant() {
+
+  // Must be a POST request
+  if (_request->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+  }
+
+  query_t query;
+  
+  // Need Array input
+  if (!query->slice().isArray()) {
+    Builder body;
+    body.openObject();
+    body.add(
+      "message", VPackValue("Expecting array of arrays as body for writes"));
+    body.close();
+    generateResult(rest::ResponseCode::BAD, body.slice());
+    return RestStatus::DONE;
+  }
+  
+  // Empty request array
+  if (query->slice().length() == 0) {
+    Builder body;
+    body.openObject();
+    body.add("message", VPackValue("Empty request."));
+    body.close();
+    generateResult(rest::ResponseCode::BAD, body.slice());
+    return RestStatus::DONE;
+  }
+  
+  // Leadership established?
+  auto s = std::chrono::system_clock::now();
+  std::chrono::duration<double> timeout(_agent->config().minPing());
+  while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
+    if ((std::chrono::system_clock::now() - s) > timeout) {
+      Builder body;
+      body.openObject();
+      body.add("message", VPackValue("No leader"));
+      body.close();
+      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
+      return RestStatus::DONE;
+    }
+    std::this_thread::sleep_for(duration_t(100));
+  }
+  
+  write_ret_t ret;
+  try {
+    ret = _agent->vacillant(query);
+  } catch (std::exception const& e) {
+    Builder body;
+    body.openObject();
+    body.add("message", VPackValue(e.what()));
+    body.close();
+    generateResult(rest::ResponseCode::BAD, body.slice());
+    return RestStatus::DONE;
+  }
+
+  return RestStatus::DONE;
+  
+}
+
 RestStatus RestAgencyHandler::handleStores() {
   if (_request->requestType() == rest::RequestType::GET) {
     Builder body;

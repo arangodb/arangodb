@@ -287,12 +287,22 @@ SET(ARANGOD_SOURCES
   Statistics/StatisticsFeature.cpp
   Statistics/statistics.cpp
   StorageEngine/EngineSelectorFeature.cpp
+  StorageEngine/MMFilesAllocatorThread.cpp
   StorageEngine/MMFilesCleanupThread.cpp
   StorageEngine/MMFilesCollection.cpp
+  StorageEngine/MMFilesCollectorThread.cpp
   StorageEngine/MMFilesCompactorThread.cpp
+  StorageEngine/MMFilesDatafile.cpp
   StorageEngine/MMFilesDatafileStatistics.cpp
+  StorageEngine/MMFilesDocumentOperation.cpp
   StorageEngine/MMFilesEngine.cpp
+  StorageEngine/MMFilesRemoverThread.cpp
   StorageEngine/MMFilesRevisionsCache.cpp
+  StorageEngine/MMFilesSynchronizerThread.cpp
+  StorageEngine/MMFilesWalRecoverState.cpp
+  StorageEngine/MMFilesWalRecoveryFeature.cpp
+  StorageEngine/MMFilesWalSlot.cpp
+  StorageEngine/MMFilesWalSlots.cpp
   StorageEngine/RocksDBEngine.cpp
   Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
@@ -341,7 +351,6 @@ SET(ARANGOD_SOURCES
   VocBase/SingleServerTraverser.cpp
   VocBase/Traverser.cpp
   VocBase/TraverserOptions.cpp
-  VocBase/datafile.cpp
   VocBase/modes.cpp
   VocBase/replication-applier.cpp
   VocBase/replication-common.cpp
@@ -349,17 +358,8 @@ SET(ARANGOD_SOURCES
   VocBase/ticks.cpp
   VocBase/transaction.cpp
   VocBase/vocbase.cpp
-  Wal/AllocatorThread.cpp
-  Wal/CollectorThread.cpp
-  Wal/DocumentOperation.cpp
   Wal/Logfile.cpp
   Wal/LogfileManager.cpp
-  Wal/RecoverState.cpp
-  Wal/RecoveryFeature.cpp
-  Wal/RemoverThread.cpp
-  Wal/Slot.cpp
-  Wal/Slots.cpp
-  Wal/SynchronizerThread.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 

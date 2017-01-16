@@ -143,9 +143,9 @@ int TRI_vocbase_t::writeDropCollectionMarker(TRI_voc_cid_t collectionId,
     builder.add("name", VPackValue(name));
     builder.close();
 
-    arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_COLLECTION, _id, collectionId, builder.slice());
+    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_COLLECTION, _id, collectionId, builder.slice());
 
-    arangodb::wal::SlotInfoCopy slotInfo =
+    MMFilesWalSlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -790,9 +790,9 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_COLLECTION, _id, cid, slice);
+    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_COLLECTION, _id, cid, slice);
 
-    arangodb::wal::SlotInfoCopy slotInfo =
+    MMFilesWalSlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -1001,9 +1001,9 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
       builder.add("name", VPackValue(newName));
       builder.close();
 
-      arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_RENAME_COLLECTION, _id, collection->cid(), builder.slice());
+      MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_RENAME_COLLECTION, _id, collection->cid(), builder.slice());
 
-      arangodb::wal::SlotInfoCopy slotInfo =
+      MMFilesWalSlotInfoCopy slotInfo =
           arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
       if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {

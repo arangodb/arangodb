@@ -1,6 +1,8 @@
 devel
 -----
 
+* turn on UTF-8 string validation for VelocyPack values received via VST connections
+
 * fixed issue #2257
 
 * upgraded Boost version to 1.62.0
@@ -55,6 +57,8 @@ edge attribute `label`.
 
 v3.1.9 (XXXX-XX-XX)
 -------------------
+
+* ui: fixed re-login issue within a non system db, when tab was closed
 
 * fixed a race in the VelocyStream Commtask implementation
 

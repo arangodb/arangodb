@@ -1429,8 +1429,8 @@ static void JS_PropertiesVocbaseCol(
         // now log the property changes
         res = TRI_ERROR_NO_ERROR;
 
-        arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, collection->vocbase()->id(), collection->cid(), infoBuilder.slice());
-        arangodb::wal::SlotInfoCopy slotInfo =
+        MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, collection->vocbase()->id(), collection->cid(), infoBuilder.slice());
+        MMFilesWalSlotInfoCopy slotInfo =
             arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
         if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -2490,7 +2490,7 @@ static void JS_TruncateDatafileVocbaseCol(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
 
-  int res = TRI_datafile_t::truncate(path, static_cast<TRI_voc_size_t>(size));
+  int res = MMFilesDatafile::truncate(path, static_cast<TRI_voc_size_t>(size));
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot truncate datafile");
@@ -2530,7 +2530,7 @@ static void JS_TryRepairDatafileVocbaseCol(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
 
-  bool result = TRI_datafile_t::tryRepair(path);
+  bool result = MMFilesDatafile::tryRepair(path);
 
   if (result) {
     TRI_V8_RETURN_TRUE();
@@ -3066,7 +3066,7 @@ static void JS_DatafileScanVocbaseCol(
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
     }
 
-    DatafileScan scan = TRI_datafile_t::scan(path);
+    DatafileScan scan = MMFilesDatafile::scan(path);
 
     // build result
     result = v8::Object::New(isolate);
