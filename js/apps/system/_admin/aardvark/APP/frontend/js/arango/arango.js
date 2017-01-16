@@ -48,8 +48,13 @@
       return localStorage.getItem('jwt');
     },
 
-    setCurrentJwt: function (jwt) {
+    getCurrentJwtUsername: function () {
+      return localStorage.getItem('jwtUser');
+    },
+
+    setCurrentJwt: function (jwt, username) {
       localStorage.setItem('jwt', jwt);
+      localStorage.setItem('jwtUser', username);
     },
 
     lastNotificationMessage: null,
