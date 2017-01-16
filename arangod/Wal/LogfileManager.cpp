@@ -871,6 +871,8 @@ int LogfileManager::flush(bool waitForSync, bool waitForCollector,
       // LOG(TRACE) << "entering waitForCollector with lastOpenLogfileId " << //
       // (unsigned long long) lastOpenLogfileId;
       res = this->waitForCollector(lastOpenLogfileId, maxWaitTime);
+      if (res == TRI_ERROR_LOCK_TIMEOUT) {
+      }
     } else if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
       // current logfile is empty and cannot be collected
       // we need to wait for the collector to collect the previously sealed
@@ -1305,7 +1307,6 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
   static uint64_t const SleepTime = 10 * 1000;
   static uint64_t const MaxIterations = 1500;
   size_t iterations = 0;
-  bool haveSignalled = false;
 
   // always initialize the result
   result = nullptr;
@@ -1357,9 +1358,8 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
     }
 
     // signal & sleep outside the lock
-    if (!haveSignalled) {
+    if (iterations % 10 == 1) {
       _allocatorThread->signal(size);
-      haveSignalled = true;
     }
 
     int res = _allocatorThread->waitForResult(SleepTime);
@@ -1710,18 +1710,22 @@ int LogfileManager::waitForCollector(Logfile::IdType logfileId,
     // try again
   }
 
-  {
-    // TODO: remove debug info here
-    LOG(ERR) << "going into lock timeout. having waited for logfile: " << logfileId << ", lastCollectedId: " << _lastCollectedId.load() << ", lastSealedId: " << _lastSealedId.load() << ", maxIterations: " << maxIterations << ", maxWaitTime: " << maxWaitTime;
-    READ_LOCKER(locker, _logfilesLock);
-    for (auto logfile : _logfiles) {
-      LOG(ERR) << "- logfile " << logfile.second->id() << ", filename '" << logfile.second->filename()
-               << "', status " << logfile.second->statusText();
-    }
-  }
+  // TODO: remove debug info here
+  LOG(ERR) << "going into lock timeout. having waited for logfile: " << logfileId << ", maxIterations: " << maxIterations << ", maxWaitTime: " << maxWaitTime;
+  logStatus();
 
   // waited for too long
   return TRI_ERROR_LOCK_TIMEOUT;
+}
+  
+void LogfileManager::logStatus() {
+  // TODO: remove debug info here
+  LOG(ERR) << "logfile manager status report: lastCollectedId: " << _lastCollectedId.load() << ", lastSealedId: " << _lastSealedId.load();
+  READ_LOCKER(locker, _logfilesLock);
+  for (auto logfile : _logfiles) {
+    LOG(ERR) << "- logfile " << logfile.second->id() << ", filename '" << logfile.second->filename()
+              << "', status " << logfile.second->statusText();
+  }
 }
 
 // run the recovery procedure
