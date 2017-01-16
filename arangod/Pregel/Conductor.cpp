@@ -187,11 +187,12 @@ bool Conductor::_startGlobalStep() {
 // ============ Conductor callbacks ===============
 void Conductor::finishedWorkerStartup(VPackSlice& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
+  _ensureUniqueResponse(data);
   if (_state != ExecutionState::RUNNING) {
     LOG(WARN) << "We are not in a state where we expect a response";
     return;
   }
-  _ensureUniqueResponse(data);
+  
   _totalVerticesCount += data.get(Utils::vertexCount).getUInt();
   _totalEdgesCount += data.get(Utils::edgeCount).getUInt();
   if (_respondedServers.size() != _dbServers.size()) {
@@ -255,49 +256,67 @@ void Conductor::finishedWorkerStep(VPackSlice& data) {
   }
 }
 
-void Conductor::finishedRecovery(VPackSlice& data) {
+void Conductor::finishedRecoveryStep(VPackSlice& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
+  _ensureUniqueResponse(data);
   if (_state != ExecutionState::RECOVERING) {
     LOG(WARN) << "We are not in a state where we expect a recovery response";
     return;
   }
-  _ensureUniqueResponse(data);
+  
+  // the recovery mechanism might be gathering state information
+  VPackSlice aggVals = data.get(Utils::aggregatorValuesKey);
+  if (aggVals.isObject()) {
+    _aggregators->aggregateValues(aggVals);
+  }
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
-
-  if (_algorithm->supportsCompensation()) {
-    bool proceed = false;
+  
+  // only compensations supported
+  bool proceed = false;
+  if (_masterContext) {
+    proceed = proceed || _masterContext->postCompensation(_globalSuperstep);
+  }
+  
+  int res = TRI_ERROR_NO_ERROR;
+  if (proceed) {
+    // reset values which are calculated during the superstep
+    _aggregators->resetValues();
     if (_masterContext) {
-      proceed = proceed || _masterContext->postCompensation(_globalSuperstep);
-    }
-    if (!proceed) {
-      LOG(INFO) << "Recovery finished. Proceeding normally";
-      _startGlobalStep();
-      return;
+      _masterContext->preCompensation(_globalSuperstep);
     }
     
     VPackBuilder b;
     b.openObject();
     b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-    b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
     if (_aggregators->size() > 0) {
       b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
       _aggregators->serializeValues(b);
       b.close();
     }
     b.close();
-
-    // reset values which are calculated during the superstep
-    _aggregators->resetValues();
     // first allow all workers to run worker level operations
-    int res = _sendToAllDBServers(Utils::startRecoveryPath, b.slice());
-    if (res != TRI_ERROR_NO_ERROR) {
-      cancel();
-      LOG(INFO) << "Recovery failed";
-    }
+    res = _sendToAllDBServers(Utils::continueRecoveryPath, b.slice());
+    
   } else {
-    LOG(ERR) << "Recovery not supported";
+    LOG(INFO) << "Recovery finished. Proceeding normally";
+    
+    // build the message, works for all cases
+    VPackBuilder b;
+    b.openObject();
+    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+    b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+    b.close();
+    res = _sendToAllDBServers(Utils::finalizeRecoveryPath, b.slice());
+    if (res == TRI_ERROR_NO_ERROR) {
+      _state = _state = ExecutionState::RUNNING;
+      _startGlobalStep();
+    }
+  }
+  if (res != TRI_ERROR_NO_ERROR) {
+    cancel();
+    LOG(INFO) << "Recovery failed";
   }
 }
 
@@ -368,7 +387,10 @@ void Conductor::startRecovery() {
     // Let's try recovery
     if (_algorithm->supportsCompensation()) {
       if (_masterContext) {
-        _masterContext->preCompensation(_globalSuperstep);
+        bool proceed = _masterContext->preCompensation(_globalSuperstep);
+        if (!proceed) {
+          cancel();
+        }
       }
 
       VPackBuilder b;
@@ -586,7 +608,7 @@ int Conductor::_sendToAllDBServers(std::string const& suffix,
   size_t nrDone = 0;
   size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
                                       LogTopic("Pregel Conductor"));
-  LOG(INFO) << "Send messages to " << nrDone << " servers";
+  LOG(INFO) << "Send " << suffix << " to " << nrDone << " servers";
   Utils::printResponses(requests);
 
   return nrGood == requests.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;

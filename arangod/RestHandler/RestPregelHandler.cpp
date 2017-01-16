@@ -123,8 +123,6 @@ RestStatus RestPregelHandler::execute() {
       Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
       if (exe) {
         exe->finishedWorkerStep(body);
-      } else {
-        LOG(ERR) << "Conductor not found: " << executionNumber;
       }
     } else if (suffix[0] == Utils::cancelGSSPath) {
       IWorker *exe = PregelFeature::instance()->worker(executionNumber);
@@ -148,12 +146,15 @@ RestStatus RestPregelHandler::execute() {
       if (w) {// we will need to create a worker in these cicumstances
         w->compensateStep(body);
       }
+    } else if (suffix[0] == Utils::finalizeRecoveryPath) {
+      IWorker *w = PregelFeature::instance()->worker(executionNumber);
+      if (w) {// we will need to create a worker in these cicumstances
+        w->finalizeRecovery(body);
+      }
     } else if (suffix[0] == Utils::finishedRecoveryPath) {
       Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
       if (exe) {
-        exe->finishedRecovery(body);
-      } else {
-        LOG(ERR) << "Conductor not found: " << executionNumber;
+        exe->finishedRecoveryStep(body);
       }
     }
     

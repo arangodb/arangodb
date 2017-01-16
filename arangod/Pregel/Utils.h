@@ -52,6 +52,7 @@ class Utils {
   static std::string const startRecoveryPath;
   static std::string const continueRecoveryPath;
   static std::string const finishedRecoveryPath;
+  static std::string const finalizeRecoveryPath;
 
   static std::string const executionNumberKey;
   static std::string const algorithmKey;

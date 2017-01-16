@@ -117,7 +117,7 @@ template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
   LOG(INFO) << "Called ~Worker()";
   _state = WorkerState::DONE;
-  usleep(5000);//5ms wait for threads to die
+  usleep(50000);//50ms wait for threads to die
   delete _readCache;
   delete _writeCache;
   delete _writeCacheNextGSS;
@@ -568,7 +568,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice data) {
     size_t i = 0;
     for (VertexEntry* vertexEntry : vertexIterator) {
       vCompensate->_vertexEntry = vertexEntry;
-      vCompensate->compensate(i < _preRecoveryTotal);
+      vCompensate->compensate(i > _preRecoveryTotal);
       i++;
       if (_state != WorkerState::RECOVERING) {
         LOG(INFO) << "Execution aborted prematurely.";
@@ -592,6 +592,26 @@ void Worker<V, E, M>::compensateStep(VPackSlice data) {
     _callConductor(Utils::finishedRecoveryPath, package.slice());
   });
 }
+
+template <typename V, typename E, typename M>
+void Worker<V, E, M>::finalizeRecovery(VPackSlice data) {
+  MUTEX_LOCKER(guard, _commandMutex);
+  if (_state != WorkerState::RECOVERING) {
+    LOG(INFO) << "Compensation aborted prematurely.";
+    return;
+  }
+  
+  _expectedGSS = data.get(Utils::globalSuperstepKey).getUInt();
+  _writeCache->clear();
+  _readCache->clear();
+  if (_writeCacheNextGSS) {
+    _writeCacheNextGSS->clear();
+  }
+  _superstepStats.resetTracking();
+  _state = WorkerState::IDLE;
+  LOG(INFO) << "Recovery finished";
+}
+
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string path, VPackSlice message) {

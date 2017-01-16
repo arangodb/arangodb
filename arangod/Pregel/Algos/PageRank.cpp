@@ -129,6 +129,7 @@ Aggregator* PageRankAlgorithm::aggregator(std::string const& name) const {
 struct PRCompensation : public VertexCompensation<float, float, float> {
   PRCompensation() {}
   void compensate(bool inLostPartition) override {
+    
     const uint32_t* step = getAggregatedValue<uint32_t>("step");
     if (*step == 0 && !inLostPartition) {
       uint32_t c = 1;
@@ -140,10 +141,12 @@ struct PRCompensation : public VertexCompensation<float, float, float> {
         *data = 1.0f / context()->vertexCount();
       } else {
         const float* scale = getAggregatedValue<float>("scale");
-        if (scale && *scale != 0) {
+        if (*scale != 0) {
           *data *= *scale;
         }
       }
+      
+      voteActive();
     }
   }
 };
@@ -161,28 +164,27 @@ struct PRMasterContext : public MasterContext {
     return true;
   }
 
-  int32_t recoveryStep = -1;
+  int32_t recoveryStep = 0;
 
   bool preCompensation(uint64_t gss) {
-    recoveryStep++;
     aggregate("step", &recoveryStep);
     return true;
   }
 
   bool postCompensation(uint64_t gss) {
     if (recoveryStep == 0) {
+      recoveryStep = 1;
+      
       const float* totalrank = getAggregatedValue<float>("totalrank");
       const uint32_t* nonfailedCount =
           getAggregatedValue<uint32_t>("nonfailedCount");
-      if (totalrank && *totalrank != 0 && nonfailedCount &&
-          *nonfailedCount != 0) {
+      if (*totalrank != 0 && *nonfailedCount != 0) {
         float scale =
             ((*nonfailedCount) * 1.0f) / (this->vertexCount() * (*totalrank));
         aggregate("scale", &scale);
         return true;
       }
     }
-    recoveryStep = -1;
     return false;
   }
 };

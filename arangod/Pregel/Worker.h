@@ -48,6 +48,7 @@ class IWorker {
   virtual void finalizeExecution(VPackSlice data) = 0;
   virtual void startRecovery(VPackSlice data) = 0;
   virtual void compensateStep(VPackSlice data) = 0;
+  virtual void finalizeRecovery(VPackSlice data) = 0;
 };
 
 template <typename V, typename E>
@@ -132,6 +133,7 @@ class Worker : public IWorker {
   void finalizeExecution(VPackSlice data) override;
   void startRecovery(VPackSlice data) override;
   void compensateStep(VPackSlice data) override;
+  void finalizeRecovery(VPackSlice data) override;
 };
 }
 }

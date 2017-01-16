@@ -47,6 +47,7 @@ std::string const Utils::finalizeExecutionPath = "finalizeExecution";
 std::string const Utils::startRecoveryPath = "startRecovery";
 std::string const Utils::continueRecoveryPath = "continueRecovery";
 std::string const Utils::finishedRecoveryPath = "finishedRecovery";
+std::string const Utils::finalizeRecoveryPath = "finalizeRecovery";
 
 std::string const Utils::executionNumberKey = "exn";
 std::string const Utils::collectionPlanIdMapKey = "collectionPlanIdMap";
