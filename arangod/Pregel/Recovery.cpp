@@ -141,6 +141,7 @@ void RecoveryManager::_monitorShard(DatabaseID const& databaseName,
 
 int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
                                        std::vector<ServerID>& goodServers) {
+  // TODO I could also use ClusterInfo::failedServers
   AgencyCommResult result = _agency.getValues("Supervision/Health");
   if (result.successful()) {
     VPackSlice serversRegistered =
@@ -156,7 +157,7 @@ int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
         if (slice.isObject() && slice.hasKey("Status")) {
           VPackSlice status = slice.get("Status");
           if (status.compareString(
-                  consensus::Supervision::HEALTH_STATUS_GOOD)) {
+                  consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
             ServerID name = serverId.copyString();
             if (std::find(servers.begin(), servers.end(), name) !=
                 servers.end()) {

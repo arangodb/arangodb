@@ -334,26 +334,33 @@ void Conductor::startRecovery() {
   basics::ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this] {
     // let's wait for a final state in the cluster
-    for (int i = 0; i < 5; i++) {
-      // on some systems usleep does not
-      // like arguments greater than 1000000
-      usleep(1000000);
+    // on some systems usleep does not
+    // like arguments greater than 1000000
+    usleep(1000000);
+    usleep(1000000);
+    if (_state != ExecutionState::RECOVERING) {
+      return;// seems like we are canceled
     }
-    /*std::vector<ServerID> goodServers;
+    
+    std::vector<ServerID> goodServers;
     int res = PregelFeature::instance()->recoveryManager()->filterGoodServers(
         _dbServers, goodServers);
     if (res != TRI_ERROR_NO_ERROR) {
       LOG(ERR) << "Recovery proceedings failed";
       cancel();
       return;
-    }*/
+    }
+    _dbServers = goodServers;
 
     VPackBuilder b;
     b.openObject();
     b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
     b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
     b.close();
-    _sendToAllDBServers(Utils::cancelGSSPath, b.slice());// will fail for some
+    _sendToAllDBServers(Utils::cancelGSSPath, b.slice());
+    if (_state != ExecutionState::RECOVERING) {
+      return;// seems like we are canceled
+    }
 
     // Let's try recovery
     if (_algorithm->supportsCompensation()) {
