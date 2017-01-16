@@ -1619,11 +1619,20 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   // now re-create the collection
-  // dig out number of shards, explicit attribute takes precedence:
+
+  // Build up new information that we need to merge with the given one
+  VPackBuilder toMerge;
+  toMerge.openObject();
+
+  // We always need a new id
+  TRI_voc_tick_t newIdTick = ci->uniqid(1);
+  std::string&& newId = StringUtils::itoa(newIdTick);
+  toMerge.add("id", VPackValue(newId));
+
+  // Number of shards. Will be overwritten if not existent
   VPackSlice const numberOfShardsSlice = parameters.get("numberOfShards");
-  if (numberOfShardsSlice.isInteger()) {
-    numberOfShards = numberOfShardsSlice.getNumericValue<uint64_t>();
-  } else {
+  if (!numberOfShardsSlice.isInteger()) {
+    // The information does not contain numberOfShards. Overwrite it.
     VPackSlice const shards = parameters.get("shards");
     if (shards.isObject()) {
       numberOfShards = static_cast<uint64_t>(shards.length());
@@ -1635,70 +1644,20 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
         numberOfShards = 1;
       }
     }
+    TRI_ASSERT(numberOfShards > 0);
+    toMerge.add("numberOfShards", VPackValue(numberOfShards));
   }
 
-  TRI_ASSERT(numberOfShards > 0);
-
+  // Replication Factor. Will be overwritten if not existent
   VPackSlice const replFactorSlice = parameters.get("replicationFactor");
-  if (replFactorSlice.isInteger()) {
-    replicationFactor =
-        replFactorSlice.getNumericValue<decltype(replicationFactor)>();
-  }
-  if (replicationFactor == 0) {
-    replicationFactor = 1;
-  }
-
-  TRI_voc_tick_t newIdTick = ci->uniqid(1);
-  VPackBuilder toMerge;
-  std::string&& newId = StringUtils::itoa(newIdTick);
-  toMerge.openObject();
-  toMerge.add("id", VPackValue(newId));
-
-  // shard keys
-  VPackSlice const shardKeys = parameters.get("shardKeys");
-  if (!shardKeys.isObject()) {
-    // set default shard key
-    toMerge.add("shardKeys", VPackValue(VPackValueType::Array));
-    toMerge.add(VPackValue(StaticStrings::KeyString));
-    toMerge.close();  // end of shardKeys
-  }
-
-  // shards
-  std::vector<std::string> dbServers;  // will be filled
-  std::unordered_map<std::string, std::vector<std::string>> shardDistribution =
-      arangodb::distributeShards(numberOfShards, replicationFactor, dbServers);
-  if (shardDistribution.empty()) {
-    errorMsg = "no database servers found in cluster";
-    return TRI_ERROR_INTERNAL;
-  }
-
-  toMerge.add(VPackValue("shards"));
-  {
-    VPackObjectBuilder guard(&toMerge);
-    for (auto const& p : shardDistribution) {
-      toMerge.add(VPackValue(p.first));
-      {
-        VPackArrayBuilder guard2(&toMerge);
-        for (std::string const& s : p.second) {
-          toMerge.add(VPackValue(s));
-        }
-      }
+  if (!replFactorSlice.isInteger()) {
+    if (replicationFactor == 0) {
+      replicationFactor = 1;
     }
+    TRI_ASSERT(replicationFactor > 0);
+    toMerge.add("replicationFactor", VPackValue(replicationFactor));
   }
-  toMerge.add("replicationFactor", VPackValue(replicationFactor));
-
-  // Now put in the primary and an edge index if needed:
-  toMerge.add("indexes", VPackValue(VPackValueType::Array));
-
-  // create a dummy primary index
-  {
-    arangodb::LogicalCollection* collection = nullptr;
-    std::unique_ptr<arangodb::PrimaryIndex> primaryIndex(
-        new arangodb::PrimaryIndex(collection));
-    toMerge.openObject();
-    primaryIndex->toVelocyPack(toMerge, false);
-    toMerge.close();
-  }
+  toMerge.close();  // TopLevel
 
   VPackSlice const type = parameters.get("type");
   TRI_col_type_e collectionType;
@@ -1709,31 +1668,21 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  if (collectionType == TRI_COL_TYPE_EDGE) {
-    // create a dummy edge index
-    std::unique_ptr<arangodb::EdgeIndex> edgeIndex(
-        new arangodb::EdgeIndex(newIdTick, nullptr));
-    toMerge.openObject();
-    edgeIndex->toVelocyPack(toMerge, false);
-    toMerge.close();
-  }
-
-  toMerge.close();  // indexes
-  toMerge.close();  // TopLevel
   VPackSlice const sliceToMerge = toMerge.slice();
-
   VPackBuilder mergedBuilder =
       VPackCollection::merge(parameters, sliceToMerge, false);
   VPackSlice const merged = mergedBuilder.slice();
-
-  int res = ci->createCollectionCoordinator(
-    dbName, newId, numberOfShards, replicationFactor,  merged, errorMsg, 0.0);
-  if (res != TRI_ERROR_NO_ERROR) {
-    errorMsg =
-        "unable to create collection: " + std::string(TRI_errno_string(res));
+  try {
+    auto col = ClusterMethods::createCollectionOnCoordinator(collectionType,
+                                                             _vocbase, merged);
+    TRI_ASSERT(col != nullptr);
+  } catch (basics::Exception const& e) {
+    // Error, report it.
+    errorMsg = e.message();
+    return e.code();
   }
-
-  return res;
+  // All other errors are thrown to the outside.
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
