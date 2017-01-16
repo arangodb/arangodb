@@ -720,6 +720,8 @@ int Slots::newLogfile(uint32_t size, Logfile::StatusType& status) {
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_ASSERT(logfile != nullptr);
     _logfile = logfile;
+  } else if (res == TRI_ERROR_LOCK_TIMEOUT) {
+    _logfileManager->logStatus();
   }
 
   return res;

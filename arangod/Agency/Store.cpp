@@ -154,22 +154,23 @@ std::vector<bool> Store::apply(query_t const& query, bool verbose) {
       for (auto const& i : VPackArrayIterator(query->slice())) {
         MUTEX_LOCKER(storeLocker, _storeLock);
         switch (i.length()) {
-          case 1:  // No precondition
+        case 1:  // No precondition
+          success.push_back(applies(i[0]));
+          break;
+        case 2: // precondition + uuid
+        case 3:
+          if (check(i[1])) {
             success.push_back(applies(i[0]));
-            break;
-          case 2:  // precondition
-            if (check(i[1])) {
-              success.push_back(applies(i[0]));
-            } else {  // precondition failed
-              LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
-              success.push_back(false);
-            }
-            break;
-          default:  // Wrong
-            LOG_TOPIC(ERR, Logger::AGENCY)
-                << "We can only handle log entry with or without precondition!";
+          } else {  // precondition failed
+            LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
             success.push_back(false);
-            break;
+          }
+          break;
+        default:  // Wrong
+          LOG_TOPIC(ERR, Logger::AGENCY)
+            << "We can only handle log entry with or without precondition!";
+          success.push_back(false);
+          break;
         }
       }
 

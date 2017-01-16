@@ -48,6 +48,7 @@ Agent::Agent(config_t const& config)
       _lastCommitIndex(0),
       _spearhead(this),
       _readDB(this),
+      _vacillant(this),
       _nextCompationAfter(_config.compactionStepSize()),
       _inception(std::make_unique<Inception>(this)),
       _activator(nullptr),
@@ -645,6 +646,14 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
   return trans_ret_t(true, id(), maxind, failed, ret);
 }
+
+
+// Non-persistent write to non-persisted key-value store
+write_ret_t Agent::vacillant(query_t const& query) {
+  write_ret_t ret;
+  return ret;
+}
+
 
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query) {

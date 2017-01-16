@@ -93,6 +93,9 @@ class Agent : public arangodb::Thread {
   /// @brief Load persistent state
   bool load();
 
+  /// @brief Unpersisted key-value-store
+  write_ret_t vacillant(query_t const&);
+
   /// @brief Attempt write
   write_ret_t write(query_t const&);
 
@@ -258,6 +261,9 @@ class Agent : public arangodb::Thread {
 
   /// @brief Committed (read) kv-store
   Store _readDB;
+
+  /// @brief Committed (read) kv-store
+  Store _vacillant;
 
   /// @brief Condition variable for appendEntries
   arangodb::basics::ConditionVariable _appendCV;
