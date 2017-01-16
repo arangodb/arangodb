@@ -1,6 +1,8 @@
 v3.1.9 (XXXX-XX-XX)
 -------------------
 
+* ui: fixed re-login issue within a non system db, when tab was closed
+
 * fixed a race in the VelocyStream Commtask implementation
 
 * fixed issue #2256
