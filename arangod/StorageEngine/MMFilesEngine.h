@@ -247,6 +247,9 @@ class MMFilesEngine final : public StorageEngine {
                       wal::OperationsType const&) override;
 
  private:
+  /// @brief: check the initial markers in a datafile
+  bool checkDatafileHeader(TRI_datafile_t* datafile, std::string const& filename) const;
+
   /// @brief transfer markers into a collection, worker function
   int transferMarkersWorker(LogicalCollection* collection, wal::CollectorCache*,
                             wal::OperationsType const&);

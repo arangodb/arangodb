@@ -1772,6 +1772,29 @@ int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
   return TRI_ERROR_NO_ERROR;
 }
 
+/// @brief: check the initial markers in a datafile
+bool MMFilesEngine::checkDatafileHeader(TRI_datafile_t* datafile, std::string const& filename) const {
+  TRI_ASSERT(datafile != nullptr);
+
+  // check the document header
+  char const* ptr = datafile->data();
+
+  // skip the datafile header
+  ptr +=
+      DatafileHelper::AlignedSize<size_t>(sizeof(TRI_df_header_marker_t));
+  TRI_col_header_marker_t const* cm =
+      reinterpret_cast<TRI_col_header_marker_t const*>(ptr);
+
+  if (cm->base.getType() != TRI_DF_MARKER_COL_HEADER) {
+    LOG(ERR) << "collection header mismatch in file '" << filename
+              << "', expected TRI_DF_MARKER_COL_HEADER, found "
+              << cm->base.getType();
+    return false;
+  }
+
+  return true;
+}
+
 /// @brief checks a collection
 int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) {
   LOG_TOPIC(TRACE, Logger::DATAFILES) << "check collection directory '"
@@ -1894,29 +1917,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
       all.emplace_back(df.get());
       TRI_datafile_t* datafile = df.release();
 
-      // check the document header
-      char const* ptr = datafile->data();
-
-      // skip the datafile header
-      ptr +=
-          DatafileHelper::AlignedSize<size_t>(sizeof(TRI_df_header_marker_t));
-      TRI_col_header_marker_t const* cm =
-          reinterpret_cast<TRI_col_header_marker_t const*>(ptr);
-
-      if (cm->base.getType() != TRI_DF_MARKER_COL_HEADER) {
-        LOG(ERR) << "collection header mismatch in file '" << filename
-                 << "', expected TRI_DF_MARKER_COL_HEADER, found "
-                 << cm->base.getType();
-        
-        result = TRI_ERROR_ARANGO_CORRUPTED_DATAFILE;
-        stop = true;
-        break;
-      }
-
-      if (cm->_cid != collection->cid()) {
-        LOG(ERR) << "collection identifier mismatch, expected "
-                 << collection->cid() << ", found " << cm->_cid;
-
+      if (!checkDatafileHeader(datafile, filename)) {
         result = TRI_ERROR_ARANGO_CORRUPTED_DATAFILE;
         stop = true;
         break;
@@ -1980,8 +1981,8 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
       } else {
         result = res;
         stop = true;
-        LOG(ERR) << "cannot rename sealed log-file to " << filename
-                 << ", this should not happen: " << TRI_errno_string(res);
+        LOG(ERR) << "cannot rename sealed journal to '" << filename
+                 << "', this should not happen: " << TRI_errno_string(res);
         break;
       }
     }
