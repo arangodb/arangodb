@@ -71,7 +71,7 @@ function MovingShardsSuite () {
       var shards = Object.keys(cinfo.shards);
       var replFactor = cinfo.shards[shards[0]].length;
       var count = 0;
-      while (++count <= 120) {
+      while (++count <= 180) {
         var ccinfo = shards.map(
           s => global.ArangoClusterInfo.getCollectionInfoCurrent(
             database, c[i].name(), s)
