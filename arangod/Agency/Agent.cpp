@@ -646,6 +646,12 @@ trans_ret_t Agent::transact(query_t const& queries) {
   return trans_ret_t(true, id(), maxind, failed, ret);
 }
 
+
+// Non-persistent write to non-persisted key-value store
+write_ret_t Agent::write(query_t const& query) {
+}
+
+
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query) {
   std::vector<bool> applied;
