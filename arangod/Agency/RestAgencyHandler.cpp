@@ -86,13 +86,15 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
   }
 }
 
-RestStatus RestAgencyHandler::handleVaccilant() {
+RestStatus RestAgencyHandler::handleVacillant() {
 
   // Must be a POST request
   if (_request->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
   }
 
+  query_t query;
+  
   // Need Array input
   if (!query->slice().isArray()) {
     Builder body;
@@ -134,12 +136,15 @@ RestStatus RestAgencyHandler::handleVaccilant() {
   try {
     ret = _agent->vacillant(query);
   } catch (std::exception const& e) {
+    Builder body;
     body.openObject();
     body.add("message", VPackValue(e.what()));
     body.close();
     generateResult(rest::ResponseCode::BAD, body.slice());
     return RestStatus::DONE;
   }
+
+  return RestStatus::DONE;
   
 }
 
