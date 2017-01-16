@@ -445,7 +445,7 @@ void ClusterInfo::loadPlan() {
           } else {
             vocbase = databaseFeature->lookupDatabase(databaseName);
           }
-          TRI_ASSERT(vocbase != nullptr);
+
           if (vocbase == nullptr) {
             // No database with this name found.
             // We have an invalid state here.
