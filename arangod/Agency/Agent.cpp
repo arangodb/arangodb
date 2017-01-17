@@ -236,7 +236,7 @@ void Agent::reportIn(std::string const& peerId, index_t index) {
         _lastCommitIndex = index;
 
         if (_lastCommitIndex >= _nextCompationAfter) {
-          _state.compact(_lastCommitIndex);
+          _state.compact(_lastCommitIndex-_config.compactionKeepSize());
           _nextCompationAfter += _config.compactionStepSize();
         }
 
