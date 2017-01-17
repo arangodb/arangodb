@@ -74,6 +74,7 @@
         if (usr !== null && usr !== 'undefined' && usr !== undefined) {
           // try if existent jwt is valid
           var errCallback = function () {
+            self.collection.logout();
             window.setTimeout(function () {
               $('#loginUsername').focus();
             }, 300);
