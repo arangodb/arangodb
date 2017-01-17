@@ -36,14 +36,16 @@ start() {
   ulimit -S -n 131072 || true
 
   if [ "$1" = "--upgrade" ];  then
-    $ARANGO_BIN --uid arangodb --gid arangodb $@
+    # remove unsupported option --upgrade but pass --database.auto-upgrade to arangod
+    shift 
+    $ARANGO_BIN --uid arangodb --gid arangodb --database.auto-upgrade true $@
     RETVAL=$?
   else
-    $ARANGO_BIN --uid arangodb --gid arangodb --log.foreground-tty false --database.check-version
+    $ARANGO_BIN --uid arangodb --gid arangodb --log.foreground-tty false --database.check-version true
     RETVAL=$?
 
     if test $RETVAL -eq 0;  then
-      $ARANGO_BIN --uid arangodb --gid arangodb --log.foreground-tty false --pid-file "$pidfile" --temp.path "/var/tmp/arangod" --supervisor $@
+      $ARANGO_BIN --uid arangodb --gid arangodb --log.foreground-tty false --pid-file "$pidfile" --temp.path "/var/tmp/arangod" --supervisor true $@
       RETVAL=$?
     else
       echo "database version check failed, maybe need to run 'upgrade'?"
