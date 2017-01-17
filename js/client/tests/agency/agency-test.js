@@ -51,8 +51,8 @@ function agencyTestSuite () {
         instanceInfo = JSON.parse(instanceInfoData);
         break;
       } catch (err) {
-        console.error('Failed to parse JSON: instanceinfo.json')
-        console.error(data);
+        console.error('Failed to parse JSON: instanceinfo.json');
+        console.error(instanceInfoData);
       }
     } 
     wait(1.0);
