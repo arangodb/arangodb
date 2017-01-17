@@ -82,7 +82,8 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
 PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
   size_t pos = documentID.find("/");
   if (pos == std::string::npos) {
-    return PregelID();
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not a valid document id");
   }
   CollectionID coll = documentID.substr(0, pos);
   std::string _key = documentID.substr(pos + 1);

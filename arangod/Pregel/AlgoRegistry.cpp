@@ -22,6 +22,7 @@
 
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algos/PageRank.h"
+#include "Pregel/Algos/RecoveringPageRank.h"
 #include "Pregel/Algos/SSSP.h"
 #include "Pregel/Algos/ShortestPath.h"
 #include "Pregel/Utils.h"
@@ -34,7 +35,9 @@ IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm,
   if (algorithm == "sssp") {
     return new algos::SSSPAlgorithm(userParams);
   } else if (algorithm == "pagerank") {
-    return new algos::PageRankAlgorithm(userParams);
+    return new algos::PageRank(userParams);
+  } else if (algorithm == "recoveringpagerank") {
+    return new algos::RecoveringPageRank(userParams);
   } else if (algorithm == "shortestpath") {
     return new algos::ShortestPathAlgorithm(userParams);
   } else {
@@ -50,20 +53,26 @@ IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase,
   return new Worker<V, E, M>(vocbase, algo, body);
 }
 
-IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
-  VPackSlice algorithm = body.get(Utils::algorithmKey);
-  if (!algorithm.isString()) {
+IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase,
+                                    VPackSlice body) {
+  VPackSlice algoSlice = body.get(Utils::algorithmKey);
+  if (!algoSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Supplied bad parameters to worker");
   }
 
   VPackSlice userParams = body.get(Utils::userParametersKey);
-  if (algorithm.compareString("SSSP") == 0) {
+  std::string algorithm = algoSlice.copyString();
+  std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(), ::tolower);
+  
+  if (algorithm == "sssp") {
     return createWorker(vocbase, new algos::SSSPAlgorithm(userParams), body);
-  } else if (algorithm.compareString("PageRank") == 0) {
-    return createWorker(vocbase, new algos::PageRankAlgorithm(userParams),
+  } else if (algorithm == "pagerank") {
+    return createWorker(vocbase, new algos::PageRank(userParams),
                         body);
-  } else if (algorithm.compareString("ShortestPath") == 0) {
+  } else if (algorithm == "recoveringpagerank") {
+    return createWorker(vocbase, new algos::RecoveringPageRank(userParams), body);
+  } else if (algorithm == "shortestpath") {
     return createWorker(vocbase, new algos::ShortestPathAlgorithm(userParams),
                         body);
   } else {

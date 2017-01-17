@@ -115,7 +115,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/rocksdb)
 ## LIBCUCKOO
 ################################################################################
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libcuckoo/)
+#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libcuckoo/)
 
 ################################################################################
 ## LINK_DIRECTORIES

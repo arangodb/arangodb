@@ -92,14 +92,14 @@ class WorkerConfig {
   inline std::vector<ShardID> const& localEdgeShardIDs() const {
     return _localEdgeShardIDs;
   };
-  inline uint16_t shardId(ShardID const& responsibleShard) const {
+  inline prgl_shard_t shardId(ShardID const& responsibleShard) const {
     auto it = std::find(_globalShardIDs.begin(), _globalShardIDs.end(),
                         responsibleShard);
     return it != _globalShardIDs.end() ? it - _globalShardIDs.begin()
-                                       : (uint16_t)-1;
+                                       : (prgl_shard_t)-1;
   }
   // index in globalShardIDs
-  inline bool isLocalVertexShard(size_t shardIndex) const {
+  inline bool isLocalVertexShard(prgl_shard_t shardIndex) const {
     // TODO cache this? prob small
     ShardID const& shard = _globalShardIDs[shardIndex];
     return std::find(_localVertexShardIDs.begin(), _localVertexShardIDs.end(),

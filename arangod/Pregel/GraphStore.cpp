@@ -89,24 +89,10 @@ void GraphStore<V, E>::loadShards(WorkerConfig const& state) {
 template <typename V, typename E>
 void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
                                     std::string const& documentID) {
-  std::string::size_type pos = documentID.find("/");
-  if (std::string::npos == pos) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
-  }
-  CollectionID collectionName = documentID.substr(0, pos);
-  std::string _key = documentID.substr(pos + 1);
-
-  auto collInfo = Utils::resolveCollection(config.database(), collectionName,
-                                           config.collectionPlanIdMap());
-  ShardID responsibleShard;
-  Utils::resolveShard(collInfo.get(), StaticStrings::KeyString, _key,
-                      responsibleShard);
-
-  std::vector<ShardID> const& shards = config.localVertexShardIDs();
-  auto const& it = std::find(shards.begin(), shards.end(), responsibleShard);
-  if (it != shards.end()) {
-    prgl_shard_t source = (prgl_shard_t)config.shardId(responsibleShard);
-    loadDocument(config, source, _key);
+  
+  PregelID _id = config.documentIdToPregel(documentID);
+  if (config.isLocalVertexShard(_id.shard)) {
+    loadDocument(config, _id.shard, _id.key);
   }
 }
 

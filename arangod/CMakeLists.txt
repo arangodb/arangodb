@@ -366,6 +366,7 @@ SET(ARANGOD_SOURCES
   Pregel/Algos/SSSP.cpp
   Pregel/Algos/ShortestPath.cpp
   Pregel/Algos/PageRank.cpp
+  Pregel/Algos/RecoveringPageRank.cpp
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp
   Pregel/IncomingCache.cpp
@@ -398,7 +399,6 @@ target_link_libraries(${BIN_ARANGOD}
   ${SYSTEM_LIBRARIES}
   boost_boost
   boost_system
-  libcuckoo
 )
 
 install(

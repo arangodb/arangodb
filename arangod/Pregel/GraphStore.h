@@ -43,7 +43,7 @@ template <typename V, typename E>
 struct GraphFormat;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief carry graph data for a worker job
+/// @brief carry graph data for a worker job. NOT THREAD SAFE ON DOCUMENT LOADS
 ////////////////////////////////////////////////////////////////////////////////
 template <typename V, typename E>
 class GraphStore {
@@ -79,11 +79,14 @@ class GraphStore {
   size_t localVertexCount() const { return _localVerticeCount; }
   size_t localEdgeCount() const { return _localEdgeCount; }
 
+  // ====================== NOT THREAD SAFE ===========================
   void loadShards(WorkerConfig const& state);
   void loadDocument(WorkerConfig const& config, std::string const& documentID);
   void loadDocument(WorkerConfig const& config, prgl_shard_t sourceShard,
                     std::string const& _key);
+  // ======================================================================
 
+  // only thread safe if your threads coordinate access to memory locations
   RangeIterator<VertexEntry> vertexIterator();
   RangeIterator<VertexEntry> vertexIterator(size_t start, size_t count);
   RangeIterator<Edge<E>> edgeIterator(VertexEntry const* entry);

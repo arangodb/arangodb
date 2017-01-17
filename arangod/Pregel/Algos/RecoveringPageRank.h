@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_PAGERANK_H
-#define ARANGODB_PREGEL_ALGOS_PAGERANK_H 1
+#ifndef ARANGODB_PREGEL_ALGOS_RECO_PAGERANK_H
+#define ARANGODB_PREGEL_ALGOS_RECO_PAGERANK_H 1
 
 #include <velocypack/Slice.h>
 #include "Pregel/Algorithm.h"
@@ -31,11 +31,14 @@ namespace pregel {
 namespace algos {
 
 /// PageRank
-struct PageRank : public SimpleAlgorithm<float, float, float> {
+struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
   float _threshold;
 
  public:
-  PageRank(arangodb::velocypack::Slice params);
+  RecoveringPageRank(arangodb::velocypack::Slice params);
+
+  bool supportsCompensation() const override { return true; }
+  MasterContext* masterContext(VPackSlice userParams) const override;
 
   GraphFormat<float, float>* inputFormat() override;
   MessageFormat<float>* messageFormat() const override {
@@ -44,6 +47,8 @@ struct PageRank : public SimpleAlgorithm<float, float, float> {
   
   MessageCombiner<float>* messageCombiner() const override;
   VertexComputation<float, float, float>* createComputation(
+      WorkerConfig const*) const override;
+  VertexCompensation<float, float, float>* createCompensation(
       WorkerConfig const*) const override;
   Aggregator* aggregator(std::string const& name) const override;
 };

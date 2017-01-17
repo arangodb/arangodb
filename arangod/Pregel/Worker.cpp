@@ -519,6 +519,12 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::startRecovery(VPackSlice data) {
   {// other methods might lock _commandMutex
     MUTEX_LOCKER(guard, _commandMutex);
+    VPackSlice method = data.get(Utils::recoveryMethodKey);
+    if (method.compareString(Utils::compensate) != 0) {
+      LOG(INFO) << "Unsupported operation";
+      return;
+    }
+    // else if (method.compareString(Utils::rollback) == 0)
 
     _state = WorkerState::RECOVERING;
     _writeCache->clear();
@@ -526,19 +532,15 @@ void Worker<V, E, M>::startRecovery(VPackSlice data) {
     if (_writeCacheNextGSS) {
       _writeCacheNextGSS->clear();
     }
-  }
-  
-  VPackSlice method = data.get(Utils::recoveryMethodKey);
-  if (method.compareString(Utils::compensate) == 0) {
+    
     // hack to determine newly added vertices
     _preRecoveryTotal = _graphStore->localVertexCount();
     WorkerConfig nextState(_config.database(), data);
     _graphStore->loadShards(nextState);
     _config = nextState;
-    compensateStep(data);
-  } else {//if (method.compareString(Utils::rollback) == 0) {
-    LOG(INFO) << "Unsupported operation";
   }
+  // will lock _commandMutex again
+  compensateStep(data);
 }
 
 template <typename V, typename E, typename M>

@@ -39,7 +39,14 @@ class MasterContext {
   uint64_t _edgeCount = 0;
   AggregatorHandler* _aggregators;
 
- protected:
+ public:
+  
+  MasterContext(VPackSlice params){};
+  
+  inline uint64_t vertexCount() const { return _vertexCount; }
+  
+  inline uint64_t edgeCount() const { return _edgeCount; }
+  
   template <typename T>
   inline void aggregate(std::string const& name, const T* valuePtr) {
     _aggregators->aggregate(name, valuePtr);
@@ -54,7 +61,7 @@ class MasterContext {
 
   /// @brief called before supersteps
   /// @return true to continue the computation
-  virtual bool preGlobalSuperstep(uint64_t gss) { return true; };
+  virtual void preGlobalSuperstep(uint64_t gss) {};
   /// @brief called after supersteps
   /// @return true to continue the computation
   virtual bool postGlobalSuperstep(uint64_t gss) { return true; };
@@ -66,12 +73,6 @@ class MasterContext {
   /// otherwise workers will be called again with the aggregated values
   virtual bool postCompensation(uint64_t gss) { return false; }
 
- public:
-  MasterContext(VPackSlice params){};
-
-  inline uint64_t vertexCount() const { return _vertexCount; }
-
-  inline uint64_t edgeCount() const { return _edgeCount; }
 };
 }
 }
