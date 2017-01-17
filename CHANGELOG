@@ -1,6 +1,8 @@
 v3.1.9 (XXXX-XX-XX)
 -------------------
 
+* macos CLI package: store databases and apps in the users home directory
+
 * ui: fixed re-login issue within a non system db, when tab was closed
 
 * fixed a race in the VelocyStream Commtask implementation
