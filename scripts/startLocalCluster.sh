@@ -146,7 +146,8 @@ if [ ! -z "$INTERACTIVE_MODE" ] ; then
 fi
 
 SFRE=5.0
-COMP=1000
+COMP=2000
+KEEP=0
 BASE=4001
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 
@@ -180,6 +181,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         -c none \
         --agency.activate true \
         --agency.compaction-step-size $COMP \
+        --agency.compaction-keep-size $KEEP \
         --agency.endpoint $TRANSPORT://localhost:$BASE \
         --agency.my-address $TRANSPORT://localhost:$port \
         --agency.pool-size $NRAGENTS \

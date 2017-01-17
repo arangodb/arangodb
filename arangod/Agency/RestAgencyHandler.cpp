@@ -86,7 +86,7 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
   }
 }
 
-RestStatus RestAgencyHandler::handleVacillant() {
+RestStatus RestAgencyHandler::handleTransient() {
 
   // Must be a POST request
   if (_request->requestType() != rest::RequestType::POST) {
@@ -134,7 +134,7 @@ RestStatus RestAgencyHandler::handleVacillant() {
   
   write_ret_t ret;
   try {
-    ret = _agent->vacillant(query);
+    ret = _agent->transient(query);
   } catch (std::exception const& e) {
     Builder body;
     body.openObject();
@@ -426,6 +426,70 @@ RestStatus RestAgencyHandler::handleTransact() {
 }
 
 
+inline RestStatus RestAgencyHandler::handleInquire() {
+
+  if (_request->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+  }
+  
+  arangodb::velocypack::Options options;
+  query_t query;
+
+  // Get query from body
+  try {
+    query = _request->toVelocyPackBuilderPtr(&options);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << e.what() << " " << __FILE__ << ":" << __LINE__;
+    generateError(rest::ResponseCode::BAD, 400);
+    return RestStatus::DONE;
+  }
+  
+  // Leadership established?
+  auto s = std::chrono::system_clock::now();  
+  std::chrono::duration<double> timeout(_agent->config().minPing());
+  while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
+    if ((std::chrono::system_clock::now() - s) > timeout) {
+      Builder body;
+      body.openObject();
+      body.add("message", VPackValue("No leader"));
+      body.close();
+      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
+      return RestStatus::DONE;
+    }
+    std::this_thread::sleep_for(duration_t(100));
+  }
+  
+  inquire_ret_t ret = _agent->inquire(query);
+  
+  if (ret.accepted) {  // I am leading
+
+      generateResult(rest::ResponseCode::OK, ret.result->slice());
+      
+  } else {  // Redirect to leader
+
+    if (_agent->leaderID() == NO_LEADER) {
+      Builder body;
+      body.openObject();
+      body.add("message", VPackValue("No leader"));
+      body.close();
+      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
+      return RestStatus::DONE;
+      
+    } else {
+      TRI_ASSERT(ret.redirect != _agent->id());
+      redirectRequest(ret.redirect);
+    }
+    
+    return RestStatus::DONE;
+     
+  }
+  
+  return RestStatus::DONE;
+  
+}
 
 inline RestStatus RestAgencyHandler::handleRead() {
   arangodb::velocypack::Options options;
@@ -524,6 +588,7 @@ RestStatus RestAgencyHandler::handleState() {
     body.add("index", VPackValue(i.index));
     body.add("term", VPackValue(i.term));
     body.add("query", VPackSlice(i.entry->data()));
+    body.add("clientId", VPackValue(i.clientId));
     body.close();
   }
   body.close();

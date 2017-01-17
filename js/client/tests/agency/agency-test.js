@@ -30,7 +30,20 @@
 
 var jsunity = require("jsunity");
 var wait = require("internal").wait;
-const instanceInfo = JSON.parse(require('fs').read('instanceinfo.json'));
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bogus UUIDs
+////////////////////////////////////////////////////////////////////////////////
+
+function guid() {
+  function s4() {
+    return Math.floor((1 + Math.random()) * 0x10000)
+      .toString(16)
+      .substring(1);
+  }
+  return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+    s4() + '-' + s4() + s4() + s4();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -39,9 +52,28 @@ const instanceInfo = JSON.parse(require('fs').read('instanceinfo.json'));
 function agencyTestSuite () {
   'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the agency servers
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the agency servers
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var count = 20;
+  while (true) {
+    if (require('fs').exists('instanceinfo.json')) {
+      var instanceInfoData = require('fs').read('instanceinfo.json');
+      var instanceInfo;
+      try {
+        instanceInfo = JSON.parse(instanceInfoData);
+        break;
+      } catch (err) {
+        console.error('Failed to parse JSON: instanceinfo.json');
+        console.error(instanceInfoData);
+      }
+    } 
+    wait(1.0);
+    if (--count <= 0) {
+      throw 'peng';
+    }
+  } 
 
   var agencyServers = instanceInfo.arangods.map(arangod => {
     return arangod.url;
@@ -119,33 +151,34 @@ function agencyTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Test nasty willful attempt to break
+/// @brief Test transact interface
 ////////////////////////////////////////////////////////////////////////////////
-    /*
-    TODO kaveh...fixup test
+
     testTransact : function () {
-      var res;
+
+      var cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
+          bodyParsed.results[0];
       assertEqual(readAndCheck([["/x"]]), [{}]);
+      var res = transactAndCheck([["/x"],[{"/x":12}]],200);
+      assertEqual(res, [{},++cur]);
       res = transactAndCheck([["/x"],[{"/x":12}]],200);
-      assertEqual(res, [{},2]);
-      res = transactAndCheck([["/x"],[{"/x":12}]],200);
-      assertEqual(res, [{x:12},3]);
+      assertEqual(res, [{x:12},++cur]);
       res = transactAndCheck([["/x"],[{"/x":12}],["/x"]],200);
-      assertEqual(res, [{x:12},4,{x:12}]);
+      assertEqual(res, [{x:12},++cur,{x:12}]);
       res = transactAndCheck([["/x"],[{"/x":12}],["/x"]],200);
-      assertEqual(res, [{x:12},5,{x:12}]);
+      assertEqual(res, [{x:12},++cur,{x:12}]);
       res = transactAndCheck([["/x"],[{"/x":{"op":"increment"}}],["/x"]],200);
-      assertEqual(res, [{x:12},6,{x:13}]);
+      assertEqual(res, [{x:12},++cur,{x:13}]);
       res = transactAndCheck(
         [["/x"],[{"/x":{"op":"increment"}}],["/x"],[{"/x":{"op":"increment"}}]],
         200);
-      assertEqual(res, [{x:13},7,{x:14},8]);
+      assertEqual(res, [{x:13},++cur,{x:14},++cur]);
       res = transactAndCheck(
         [[{"/x":{"op":"increment"}}],[{"/x":{"op":"increment"}}],["/x"]],200);
-      assertEqual(res, [9,10,{x:17}]);
+      assertEqual(res, [++cur,++cur,{x:17}]);
       writeAndCheck([[{"/":{"op":"delete"}}]]);
     },
-    */
+    
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test to write a single top level key
@@ -256,6 +289,15 @@ function agencyTestSuite () {
     },
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test clientIds
+////////////////////////////////////////////////////////////////////////////////
+
+    testClientIds : function () {
+      writeAndCheck([[{"a":12},{},guid()]]);
+    },
+
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test document/transaction assignment
 ////////////////////////////////////////////////////////////////////////////////
