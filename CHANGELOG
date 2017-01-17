@@ -58,6 +58,8 @@ edge attribute `label`.
 v3.1.9 (XXXX-XX-XX)
 -------------------
 
+* macos CLI package: store databases and apps in the users home directory
+
 * ui: fixed re-login issue within a non system db, when tab was closed
 
 * fixed a race in the VelocyStream Commtask implementation
@@ -73,6 +75,10 @@ v3.1.8 (2017-01-09)
 * add handling of debug symbols during Linux & windows release builds.
 
 * fixed issue #2181
+
+* fixed issue #2248: reduce V8 max old space size from 3 GB to 1 GB on 32 bit systems
+
+* upgraded Boost version to 1.62.0
 
 * fixed issue #2238
 
@@ -190,17 +196,17 @@ v3.1.1 (2016-11-15)
 * preserve last-used HLC value across server starts
 
 * allow more control over handling of pre-3.1 _rev values
-    
+
   this changes the server startup option `--database.check-30-revisions` from a boolean (true/false)
   parameter to a string parameter with the following possible values:
-    
+
   - "fail":
     will validate _rev values of 3.0 collections on collection loading and throw an exception when invalid _rev values are found.
     in this case collections with invalid _rev values are marked as corrupted and cannot be used in the ArangoDB 3.1 instance.
     the fix procedure for such collections is to export the collections from 3.0 database with arangodump and restore them in 3.1 with arangorestore.
     collections that do not contain invalid _rev values are marked as ok and will not be re-checked on following loads.
     collections that contain invalid _rev values will be re-checked on following loads.
-    
+
   - "true":
     will validate _rev values of 3.0 collections on collection loading and print a warning when invalid _rev values are found.
     in this case collections with invalid _rev values can be used in the ArangoDB 3.1 instance.
@@ -208,14 +214,14 @@ v3.1.1 (2016-11-15)
     the fix procedure for such collections is to export the collections from 3.0 database with arangodump and restore them in 3.1 with arangorestore.
     collections that do not contain invalid _rev values are marked as ok and will not be re-checked on following loads.
     collections that contain invalid _rev values will be re-checked on following loads.
-    
+
   - "false":
     will not validate _rev values on collection loading and not print warnings.
     no hint is given when invalid _rev values are found.
     subsequent operations on documents with invalid _rev values may silently fail or fail with explicit errors.
     this setting does not affect whether collections are re-checked later.
     collections will be re-checked on following loads if `--database.check-30-revisions` is later set to either `true` or `fail`.
-    
+
   The change also suppresses warnings that were printed when collections were restored using arangorestore, and the restore
   data contained invalid _rev values. Now these warnings are suppressed, and new HLC _rev values are generated for these documents
   as before.
@@ -226,7 +232,7 @@ v3.1.1 (2016-11-15)
   `INBOUND` or `OUTBOUND`)
 
 * changed behavior of toJSON() function when serializing an object before saving it in the database
-        
+
   if an object provides a toJSON() function, this function is still called for serializing it.
   the change is that the result of toJSON() is not stringified anymore, but saved as is. previous
   versions of ArangoDB called toJSON() and after that additionally stringified its result.
@@ -235,9 +241,9 @@ v3.1.1 (2016-11-15)
   bytes instead of a comma-separated string of the Buffer's byte contents.
 
 * allow creating unique indexes on more attributes than present in shardKeys
-    
+
   The following combinations of shardKeys and indexKeys are allowed/not allowed:
-    
+
   shardKeys     indexKeys
       a             a        ok
       a             b    not ok
@@ -267,6 +273,8 @@ v3.1.1 (2016-11-15)
 
 * fixed issue #2156
 
+* fixed CRC4 assembly linkage
+
 
 v3.1.0 (2016-10-29)
 -------------------
@@ -277,6 +285,26 @@ v3.1.0 (2016-10-29)
 * fixed issue #2110
 
 * added Auto-aptation of RAFT timings as calculations only
+
+
+v3.1.rc2 (2016-10-10)
+---------------------
+
+* second release candidate
+
+
+v3.1.rc1 (2016-09-30)
+---------------------
+
+* first release candidate
+
+
+v3.1.alpha2 (2016-09-01)
+------------------------
+
+* added module.context.createDocumentationRouter to replace module.context.apiDocumentation
+
+* bug in RAFT implementation of reads. dethroned leader still answered requests in isolation
 
 * ui: added new graph viewer
 
@@ -353,7 +381,7 @@ v3.1.0 (2016-10-29)
 
   The fix for #2070 now will enable this optimization so that the query can
   use an index on `doc.value` if available.
-  
+
 * changed behavior of AQL array comparison operators for empty arrays:
   * `ALL` and `ANY` now always return `false` when the left-hand operand is an
     empty array. The behavior for non-empty arrays does not change:
@@ -383,7 +411,7 @@ v3.1.0 (2016-10-29)
 
 * PATCH /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
   - changed default value for keepNull to true
-  
+
 * PATCH /_api/gharial/{graph-name}/edge/{collection-name}/{edge-key}
   - changed default value for keepNull to true
 
@@ -524,6 +552,9 @@ v3.0.10 (2016-09-26)
 
 * fixed issue #2070
 
+* fixed slow cluster starup issues. supervision will demonstrate more
+  patience with db servers
+
 
 v3.0.9 (2016-09-21)
 -------------------
@@ -576,6 +607,10 @@ v3.0.6 (2016-09-02)
   conditions that refer to variables set outside the traversal
 
 * properly return HTTP 503 in JS actions when backend is gone
+
+* supervision creates new key in agency for failed servers
+
+* new shards will not be allocated on failed or cleaned servers
 
 
 v3.0.5 (2016-08-18)
@@ -631,9 +666,17 @@ v3.0.4 (2016-08-01)
 
 * fixed issue #1949
 
+* fixed issue #1943
+
 * fixed segfault in V8, by backporting https://bugs.chromium.org/p/v8/issues/detail?id=5033
 
 * Foxx OAuth2 module now correctly passes the `access_token` to the OAuth2 server
+
+* fixed credentialed CORS requests properly respecting --http.trusted-origin
+
+* fixed a crash in V8Periodic task (forgotten lock)
+
+* fixed two bugs in synchronous replication (syncCollectionFinalize)
 
 
 v3.0.3 (2016-07-17)
@@ -643,7 +686,7 @@ v3.0.3 (2016-07-17)
 
 * fixed issue #1941
 
-* fixed array index batch insertion issues for hash indexes that caused problems when 
+* fixed array index batch insertion issues for hash indexes that caused problems when
   no elements remained for insertion
 
 * fixed AQL MERGE() function with External objects originating from traversals
@@ -657,13 +700,20 @@ v3.0.3 (2016-07-17)
 * improved performance of arangorestore in clusters with synchronous
   replication
 
+* Foxx tests and scripts in development mode should now always respect updated
+  files instead of loading stale modules
+
+* When disabling Foxx development mode the setup script is now re-run
+
+* Foxx manifests of installed services are now saved to disk with indentation
+
 
 v3.0.2 (2016-07-09)
 -------------------
 
 * fixed assertion failure in case multiple remove operations were used in the same query
 
-* fixed upsert behavior in case upsert was used in a loop with the same document example 
+* fixed upsert behavior in case upsert was used in a loop with the same document example
 
 * fixed issue #1930
 
@@ -680,10 +730,10 @@ v3.0.2 (2016-07-09)
 
 * honor presence of persistent index for sorting
 
-* make AQL query optimizer not skip "use-indexes-rule", even if enough 
+* make AQL query optimizer not skip "use-indexes-rule", even if enough
   plans have been created already
 
-* make AQL optimizer not skip "use-indexes-rule", even if enough execution plans 
+* make AQL optimizer not skip "use-indexes-rule", even if enough execution plans
   have been created already
 
 * fix double precision value loss in VelocyPack JSON parser
@@ -708,8 +758,11 @@ v3.0.2 (2016-07-09)
 * fix malloc_usable_size for darwin
 
 
-v3.0.1 (XXXX-XX-XX)
+v3.0.1 (2016-06-30)
 -------------------
+
+* fixed periodic jobs: there should be only one instance running - even if it
+  runs longer than the period
 
 * increase max. number of collections in AQL queries from 32 to 256
 
@@ -720,10 +773,10 @@ v3.0.1 (XXXX-XX-XX)
 
 * fixed issue #1914: fix unterminated buffer
 
-* don't remove lockfile if we are the same (now stale) pid    
+* don't remove lockfile if we are the same (now stale) pid
   fixes docker setups (our pid will always be 1)
 
-* do not use revision id comparisons in compaction for determining whether a 
+* do not use revision id comparisons in compaction for determining whether a
   revision is obsolete, but marker memory addresses
   this ensures revision ids don't matter when compacting documents
 
@@ -773,7 +826,7 @@ v3.0.0-rc3 (2016-06-19)
 * all bundled NPM modules have been upgraded to their latest versions
 
 
-v3.0.0-rc2 (2015-06-12)
+v3.0.0-rc2 (2016-06-12)
 -----------------------
 
 * added option `--server.max-packet-size` for client tools
@@ -784,14 +837,19 @@ v3.0.0-rc2 (2015-06-12)
 * fix handling of `--ssl.protocol` value 5 (TLS v1.2) in client tools, which
   claimed to support it but didn't
 
+* config file can use '@include' to include a different config file as base
 
-v3.0.0-rc1 (2015-06-10)
+
+v3.0.0-rc1 (2016-06-10)
 -----------------------
 
-* forward ported V8 Comparator bugfix for inline heuristics from 
+* the user management has changed: it now has users that are independent of
+  databases. A user can have one or more database assigned to the user.
+
+* forward ported V8 Comparator bugfix for inline heuristics from
   https://github.com/v8/v8/commit/5ff7901e24c2c6029114567de5a08ed0f1494c81
 
-* changed to-string conversion for AQL objects and arrays, used by the AQL 
+* changed to-string conversion for AQL objects and arrays, used by the AQL
   function `TO_STRING()` and implicit to-string casts in AQL
 
   - arrays are now converted into their JSON-stringify equivalents, e.g.
@@ -816,11 +874,11 @@ v3.0.0-rc1 (2015-06-10)
     - `{ "test" : "foobar" }` is converted to `{"test":"foobar"}`
 
     Previous versions of ArangoDB always converted objects into the string
-    `[object Object]`  
+    `[object Object]`
 
   This change affects also the AQL functions `CONCAT()` and `CONCAT_SEPARATOR()`
   which treated array values differently in previous versions. Previous versions
-  of ArangoDB automatically flattened array values on the first level of the array, 
+  of ArangoDB automatically flattened array values on the first level of the array,
   e.g. `CONCAT([1, 2, 3, [ 4, 5, 6 ]])` produced `1,2,3,4,5,6`. Now this will produce
   `[1,2,3,[4,5,6]]`. To flatten array members on the top level, you can now use
   the more explicit `CONCAT(FLATTEN([1, 2, 3, [4, 5, 6]], 1))`.
@@ -841,7 +899,7 @@ v3.0.0-rc1 (2015-06-10)
   Additionally the `db` object's `_listEndpoints()` function was renamed to just
   `_endpoints()`.
 
-* changed default value of `--server.authentication` from `false` to `true` in 
+* changed default value of `--server.authentication` from `false` to `true` in
   configuration files etc/relative/arangod.conf and etc/arangodb/arangod.conf.in.
   This means the server will be started with authentication enabled by default,
   requiring all client connections to provide authentication data when connecting
@@ -851,7 +909,7 @@ v3.0.0-rc1 (2015-06-10)
 
 * Changed result format for querying all collections via the API GET `/_api/collection`.
 
-  Previous versions of ArangoDB returned an object with an attribute named `collections` 
+  Previous versions of ArangoDB returned an object with an attribute named `collections`
   and an attribute named `names`. Both contained all available collections, but
   `collections` contained the collections as an array, and `names` contained the
   collections again, contained in an object in which the attribute names were the
@@ -937,10 +995,10 @@ v3.0.0-rc1 (2015-06-10)
 
 * added new endpoint "srv://" for DNS service records
 
-* The result order of the AQL functions VALUES and ATTRIBUTES has never been 
-  guaranteed and it only had the "correct" ordering by accident when iterating 
-  over objects that were not loaded from the database. This accidental behavior 
-  is now changed by introduction of VelocyPack. No ordering is guaranteed unless 
+* The result order of the AQL functions VALUES and ATTRIBUTES has never been
+  guaranteed and it only had the "correct" ordering by accident when iterating
+  over objects that were not loaded from the database. This accidental behavior
+  is now changed by introduction of VelocyPack. No ordering is guaranteed unless
   you specify the sort parameter.
 
 * removed configure option `--enable-logger`
@@ -1144,16 +1202,16 @@ v2.8.9 (2016-05-13)
 v2.8.8 (2016-04-19)
 -------------------
 
-* fixed issue #1805: Query: internal error (location: arangod/Aql/AqlValue.cpp:182). 
+* fixed issue #1805: Query: internal error (location: arangod/Aql/AqlValue.cpp:182).
   Please report this error to arangodb.com (while executing)
 
 * allow specifying collection name prefixes for `_from` and `_to` in arangoimp:
 
   To avoid specifying complete document ids (consisting of collection names and document
   keys) for *_from* and *_to* values when importing edges with arangoimp, there are now
-  the options *--from-collection-prefix* and *--to-collection-prefix*. 
+  the options *--from-collection-prefix* and *--to-collection-prefix*.
 
-  If specified, these values will be automatically prepended to each value in *_from* 
+  If specified, these values will be automatically prepended to each value in *_from*
   (or *_to* resp.). This allows specifying only document keys inside *_from* and/or *_to*.
 
   *Example*
@@ -1206,7 +1264,7 @@ v2.8.6 (2016-03-23)
   `#!arangosh --javascript.execute`:
 
       > cat /path/to/script.js
-      #!arangosh --javascript.execute 
+      #!arangosh --javascript.execute
       print("hello from script.js");
 
   If the script file is made executable
@@ -1219,8 +1277,8 @@ v2.8.6 (2016-03-23)
       hello from script.js
 
   This did not work in previous versions of ArangoDB, as the whole script contents
-  (including the shebang) were treated as JavaScript code. 
-  Now shebangs in script files will now be ignored for all files passed to arangosh's 
+  (including the shebang) were treated as JavaScript code.
+  Now shebangs in script files will now be ignored for all files passed to arangosh's
   `--javascript.execute` parameter.
 
   The alternative way of executing a JavaScript file with arangosh still works:
@@ -1240,7 +1298,7 @@ v2.8.6 (2016-03-23)
 * fixed issue #1783: SIGHUP should rotate the log
 
 
-v2.8.5 (2016-03-XX)
+v2.8.5 (2016-03-11)
 -------------------
 
 * Add OpenSSL handler for TLS V1.2 as sugested by kurtkincaid in #1771
@@ -1255,6 +1313,9 @@ v2.8.5 (2016-03-XX)
 * improve nullptr handling in logger.
 
 * added new endpoint "srv://" for DNS service records
+
+* `org/arangodb/request` no longer sets the content-type header to the
+  string "undefined" when no content-type header should be sent (issue #1776)
 
 
 v2.8.4 (2016-03-01)
@@ -1283,6 +1344,16 @@ v2.8.3 (2016-02-22)
 
 * Routing actions loaded from the database no longer throw exceptions when
   trying to load other modules using "require"
+
+* The `org/arangodb/request` response object now sets a property `json` to the
+  parsed JSON response body in addition to overwriting the `body` property when
+  the request was made using the `json` option.
+
+* Improved Windows stability
+
+* Fixed a bug in the interactive API documentation that would escape slashes
+  in document-handle fields. Document handles are now provided as separate
+  fields for collection name and document key.
 
 
 v2.8.2 (2016-02-09)
@@ -1523,9 +1594,12 @@ v2.8.0-beta7 (2016-01-06)
 * fixes for AQL optimizer and traversal
 
 * added `--create-collection-type` option to arangoimp
+ 
+  This allows specifying the type of the collection to be created when 
+  `--create-collection` is set to `true`. 
 
-  This allows specifying the type of the collection to be created when
-  `--create-collection` is set to `true`.
+* Foxx export cache should no longer break if a broken app is loaded in the
+  web admin interface.
 
 
 v2.8.0-beta2 (2015-12-16)
@@ -1597,6 +1671,8 @@ v2.8.0-beta2 (2015-12-16)
 
   - restored deprecated `type`, `jwt` and `sessionStorageApp` options
     in Controller#activateSessions
+
+* Fixed a deadlock problem in the cluster
 
 
 v2.8.0-beta1 (2015-12-06)
