@@ -121,6 +121,7 @@ v3.1.2 (2016-11-24)
 Now they state correctly how many documents were fetched from the index and how many
 have been filtered.
 
+* Prevent uniform shard distribution when replicationFactor == numServers
 
 v3.1.1 (2016-11-15)
 -------------------
@@ -427,6 +428,16 @@ v3.1.alpha2 (2016-09-01)
   inconsistencies in the BDD and TDD interfaces. This fixes the TDD interface
   as well as out-of-sequence problems when using the BDD before/after functions.
 
+* updated bundled JavaScript modules to latest versions; joi has been updated from 8.4 to 9.2
+  (see [joi 9.0.0 release notes](https://github.com/hapijs/joi/issues/920) for information on
+  breaking changes and new features)
+
+* fixed issue #2139
+
+* updated graphql-sync dependency to 0.6.2
+
+* fixed issue #2156
+
 
 v3.0.13 (XXXX-XX-XX)
 --------------------
@@ -482,6 +493,9 @@ v3.0.10 (2016-09-26)
 
 * fixed issue #2070
 
+* fixed slow cluster starup issues. supervision will demonstrate more
+  patience with db servers
+
 
 v3.0.9 (2016-09-21)
 -------------------
@@ -534,6 +548,10 @@ v3.0.6 (2016-09-02)
   conditions that refer to variables set outside the traversal
 
 * properly return HTTP 503 in JS actions when backend is gone
+
+* supervision creates new key in agency for failed servers
+
+* new shards will not be allocated on failed or cleaned servers
 
 
 v3.0.5 (2016-08-18)
@@ -589,9 +607,17 @@ v3.0.4 (2016-08-01)
 
 * fixed issue #1949
 
+* fixed issue #1943
+
 * fixed segfault in V8, by backporting https://bugs.chromium.org/p/v8/issues/detail?id=5033
 
 * Foxx OAuth2 module now correctly passes the `access_token` to the OAuth2 server
+
+* fixed credentialed CORS requests properly respecting --http.trusted-origin
+
+* fixed a crash in V8Periodic task (forgotten lock)
+
+* fixed two bugs in synchronous replication (syncCollectionFinalize)
 
 
 v3.0.3 (2016-07-17)
@@ -614,6 +640,13 @@ v3.0.3 (2016-07-17)
 
 * improved performance of arangorestore in clusters with synchronous
   replication
+
+* Foxx tests and scripts in development mode should now always respect updated
+  files instead of loading stale modules
+
+* When disabling Foxx development mode the setup script is now re-run
+
+* Foxx manifests of installed services are now saved to disk with indentation
 
 
 v3.0.2 (2016-07-09)
@@ -666,8 +699,11 @@ v3.0.2 (2016-07-09)
 * fix malloc_usable_size for darwin
 
 
-v3.0.1 (XXXX-XX-XX)
+v3.0.1 (2016-06-30)
 -------------------
+
+* fixed periodic jobs: there should be only one instance running - even if it
+  runs longer than the period
 
 * increase max. number of collections in AQL queries from 32 to 256
 
@@ -731,7 +767,7 @@ v3.0.0-rc3 (2016-06-19)
 * all bundled NPM modules have been upgraded to their latest versions
 
 
-v3.0.0-rc2 (2015-06-12)
+v3.0.0-rc2 (2016-06-12)
 -----------------------
 
 * added option `--server.max-packet-size` for client tools
@@ -742,9 +778,14 @@ v3.0.0-rc2 (2015-06-12)
 * fix handling of `--ssl.protocol` value 5 (TLS v1.2) in client tools, which
   claimed to support it but didn't
 
+* config file can use '@include' to include a different config file as base
 
-v3.0.0-rc1 (2015-06-10)
+
+v3.0.0-rc1 (2016-06-10)
 -----------------------
+
+* the user management has changed: it now has users that are independent of
+  databases. A user can have one or more database assigned to the user.
 
 * forward ported V8 Comparator bugfix for inline heuristics from
   https://github.com/v8/v8/commit/5ff7901e24c2c6029114567de5a08ed0f1494c81
@@ -1198,7 +1239,7 @@ v2.8.6 (2016-03-23)
 * fixed issue #1783: SIGHUP should rotate the log
 
 
-v2.8.5 (2016-03-XX)
+v2.8.5 (2016-03-11)
 -------------------
 
 * Add OpenSSL handler for TLS V1.2 as sugested by kurtkincaid in #1771
@@ -1213,6 +1254,9 @@ v2.8.5 (2016-03-XX)
 * improve nullptr handling in logger.
 
 * added new endpoint "srv://" for DNS service records
+
+* `org/arangodb/request` no longer sets the content-type header to the
+  string "undefined" when no content-type header should be sent (issue #1776)
 
 
 v2.8.4 (2016-03-01)
@@ -1241,6 +1285,16 @@ v2.8.3 (2016-02-22)
 
 * Routing actions loaded from the database no longer throw exceptions when
   trying to load other modules using "require"
+
+* The `org/arangodb/request` response object now sets a property `json` to the
+  parsed JSON response body in addition to overwriting the `body` property when
+  the request was made using the `json` option.
+
+* Improved Windows stability
+
+* Fixed a bug in the interactive API documentation that would escape slashes
+  in document-handle fields. Document handles are now provided as separate
+  fields for collection name and document key.
 
 
 v2.8.2 (2016-02-09)
@@ -1481,9 +1535,12 @@ v2.8.0-beta7 (2016-01-06)
 * fixes for AQL optimizer and traversal
 
 * added `--create-collection-type` option to arangoimp
+ 
+  This allows specifying the type of the collection to be created when 
+  `--create-collection` is set to `true`. 
 
-  This allows specifying the type of the collection to be created when
-  `--create-collection` is set to `true`.
+* Foxx export cache should no longer break if a broken app is loaded in the
+  web admin interface.
 
 
 v2.8.0-beta2 (2015-12-16)
@@ -1555,6 +1612,8 @@ v2.8.0-beta2 (2015-12-16)
 
   - restored deprecated `type`, `jwt` and `sessionStorageApp` options
     in Controller#activateSessions
+
+* Fixed a deadlock problem in the cluster
 
 
 v2.8.0-beta1 (2015-12-06)
