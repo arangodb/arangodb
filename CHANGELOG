@@ -134,7 +134,6 @@ v3.0.5 (2016-08-18)
 
 * Fixed bug in supervision take over after leadership change.
 
-
 v3.0.4 (2016-08-01)
 -------------------
 
@@ -187,7 +186,7 @@ v3.0.3 (2016-07-17)
 
 * fixed issue #1941
 
-* fixed array index batch insertion issues for hash indexes that caused problems when 
+* fixed array index batch insertion issues for hash indexes that caused problems when
   no elements remained for insertion
 
 * fixed AQL MERGE() function with External objects originating from traversals
@@ -214,11 +213,11 @@ v3.0.2 (2016-07-09)
 
 * fixed assertion failure in case multiple remove operations were used in the same query
 
-* fixed upsert behavior in case upsert was used in a loop with the same document example 
+* fixed upsert behavior in case upsert was used in a loop with the same document example
 
 * fixed issue #1930
 
-* don't expose local file paths in Foxx error messages
+* don't expose local file paths in Foxx error messages.
 
 * fixed issue #1929
 
@@ -231,10 +230,10 @@ v3.0.2 (2016-07-09)
 
 * honor presence of persistent index for sorting
 
-* make AQL query optimizer not skip "use-indexes-rule", even if enough 
+* make AQL query optimizer not skip "use-indexes-rule", even if enough
   plans have been created already
 
-* make AQL optimizer not skip "use-indexes-rule", even if enough execution plans 
+* make AQL optimizer not skip "use-indexes-rule", even if enough execution plans
   have been created already
 
 * fix double precision value loss in VelocyPack JSON parser
@@ -703,16 +702,16 @@ v2.8.9 (2016-05-13)
 v2.8.8 (2016-04-19)
 -------------------
 
-* fixed issue #1805: Query: internal error (location: arangod/Aql/AqlValue.cpp:182). 
+* fixed issue #1805: Query: internal error (location: arangod/Aql/AqlValue.cpp:182).
   Please report this error to arangodb.com (while executing)
 
 * allow specifying collection name prefixes for `_from` and `_to` in arangoimp:
 
   To avoid specifying complete document ids (consisting of collection names and document
   keys) for *_from* and *_to* values when importing edges with arangoimp, there are now
-  the options *--from-collection-prefix* and *--to-collection-prefix*. 
-  
-  If specified, these values will be automatically prepended to each value in *_from* 
+  the options *--from-collection-prefix* and *--to-collection-prefix*.
+
+  If specified, these values will be automatically prepended to each value in *_from*
   (or *_to* resp.). This allows specifying only document keys inside *_from* and/or *_to*.
 
   *Example*
@@ -765,7 +764,7 @@ v2.8.6 (2016-03-23)
   `#!arangosh --javascript.execute`:
 
       > cat /path/to/script.js
-      #!arangosh --javascript.execute 
+      #!arangosh --javascript.execute
       print("hello from script.js");
 
   If the script file is made executable
@@ -773,15 +772,15 @@ v2.8.6 (2016-03-23)
       > chmod a+x /path/to/script.js
 
   it can be invoked on the shell directly and use arangosh for its execution:
-      
+
       > /path/to/script.js
       hello from script.js
-  
+
   This did not work in previous versions of ArangoDB, as the whole script contents
-  (including the shebang) were treated as JavaScript code. 
-  Now shebangs in script files will now be ignored for all files passed to arangosh's 
+  (including the shebang) were treated as JavaScript code.
+  Now shebangs in script files will now be ignored for all files passed to arangosh's
   `--javascript.execute` parameter.
-  
+
   The alternative way of executing a JavaScript file with arangosh still works:
 
       > arangosh --javascript.execute /path/to/script.js
@@ -799,7 +798,7 @@ v2.8.6 (2016-03-23)
 * fixed issue #1783: SIGHUP should rotate the log
 
 
-v2.8.5 (2016-03-XX)
+v2.8.5 (2016-03-11)
 -------------------
 
 * Add OpenSSL handler for TLS V1.2 as sugested by kurtkincaid in #1771
@@ -814,6 +813,9 @@ v2.8.5 (2016-03-XX)
 * improve nullptr handling in logger.
 
 * added new endpoint "srv://" for DNS service records
+
+* `org/arangodb/request` no longer sets the content-type header to the
+  string "undefined" when no content-type header should be sent (issue #1776)
 
 
 v2.8.4 (2016-03-01)
@@ -842,6 +844,16 @@ v2.8.3 (2016-02-22)
 
 * Routing actions loaded from the database no longer throw exceptions when
   trying to load other modules using "require"
+
+* The `org/arangodb/request` response object now sets a property `json` to the
+  parsed JSON response body in addition to overwriting the `body` property when
+  the request was made using the `json` option.
+
+* Improved Windows stability
+
+* Fixed a bug in the interactive API documentation that would escape slashes
+  in document-handle fields. Document handles are now provided as separate
+  fields for collection name and document key.
 
 
 v2.8.2 (2016-02-09)
@@ -1082,9 +1094,12 @@ v2.8.0-beta7 (2016-01-06)
 * fixes for AQL optimizer and traversal
 
 * added `--create-collection-type` option to arangoimp
+ 
+  This allows specifying the type of the collection to be created when 
+  `--create-collection` is set to `true`. 
 
-  This allows specifying the type of the collection to be created when
-  `--create-collection` is set to `true`.
+* Foxx export cache should no longer break if a broken app is loaded in the
+  web admin interface.
 
 
 v2.8.0-beta2 (2015-12-16)
@@ -1156,6 +1171,8 @@ v2.8.0-beta2 (2015-12-16)
 
   - restored deprecated `type`, `jwt` and `sessionStorageApp` options
     in Controller#activateSessions
+
+* Fixed a deadlock problem in the cluster
 
 
 v2.8.0-beta1 (2015-12-06)
