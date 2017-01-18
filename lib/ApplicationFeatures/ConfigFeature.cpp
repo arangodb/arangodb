@@ -62,7 +62,7 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            new VectorParameter<StringParameter>(&_defines));
 
   options->addOption("--check-configuration",
-                     "check the configuration and exists",
+                     "check the configuration and exit",
                      new BooleanParameter(&_checkConfiguration));
 }
 

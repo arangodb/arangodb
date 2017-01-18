@@ -198,18 +198,6 @@ void CollectionRevisionsCache::insertRevision(TRI_voc_rid_t revisionId, Revision
   }
 }
 
-// insert from WAL
-void CollectionRevisionsCache::insertRevision(TRI_voc_rid_t revisionId, wal::Logfile* logfile, uint32_t offset, bool shouldLock) {
-  CONDITIONAL_WRITE_LOCKER(locker, _lock, shouldLock);
-
-  int res = _revisions.insert(nullptr, RevisionCacheEntry(revisionId, logfile, offset));
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    _revisions.removeByKey(nullptr, &revisionId);
-    _revisions.insert(nullptr, RevisionCacheEntry(revisionId, logfile, offset));
-  }
-}
-
 // remove a revision
 void CollectionRevisionsCache::removeRevision(TRI_voc_rid_t revisionId) {
   WRITE_LOCKER(locker, _lock);

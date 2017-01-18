@@ -638,7 +638,7 @@ void Supervision::enforceReplication() {
       size_t replicationFactor;
       try {
         replicationFactor = col("replicationFactor").slice().getUInt();
-      } catch (std::exception const& e) {
+      } catch (std::exception const&) {
         LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "no replicationFactor entry in " << col.toJson();
         continue;

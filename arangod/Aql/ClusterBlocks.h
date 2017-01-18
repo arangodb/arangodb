@@ -91,9 +91,8 @@ class GatherBlock : public ExecutionBlock {
   /// simple case only
   size_t _atDep = 0;
 
-  /// @brief pairs, consisting of variable and sort direction
-  /// (true = ascending | false = descending)
-  std::vector<std::pair<RegisterId, bool>> _sortRegisters;
+  /// @brief sort elements for this block
+  std::vector<SortElementBlock> _sortRegisters;
 
   /// @brief isSimple: the block is simple if we do not do merge sort . . .
   bool const _isSimple;
@@ -103,7 +102,7 @@ class GatherBlock : public ExecutionBlock {
    public:
     OurLessThan(arangodb::Transaction* trx,
                 std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
-                std::vector<std::pair<RegisterId, bool>>& sortRegisters) 
+                std::vector<SortElementBlock>& sortRegisters)
         : _trx(trx),
           _gatherBlockBuffer(gatherBlockBuffer),
           _sortRegisters(sortRegisters) {}
@@ -114,7 +113,7 @@ class GatherBlock : public ExecutionBlock {
    private:
     arangodb::Transaction* _trx;
     std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
-    std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
+    std::vector<SortElementBlock>& _sortRegisters;
   };
 };
 
