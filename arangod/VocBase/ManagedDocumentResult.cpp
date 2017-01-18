@@ -73,14 +73,14 @@ void ManagedDocumentResult::addExisting(ChunkProtector& protector, TRI_voc_rid_t
   _lastRevisionId = revisionId;
 }
 
-/*
-void ManagedDocumentResult::clear() {
-  if (_chunk != nullptr) {
-    _chunk->release();
-    _chunk = nullptr;
+void ManagedDocumentResult::clear(size_t threshold) {
+  if (_trx != nullptr) {
+    _trx->clearChunks(threshold);
   }
+  _vpack = nullptr;
+  _lastRevisionId = 0;
+  _chunkCache.clear();
 }
-*/
   
 ManagedDocumentResult& ManagedDocumentResult::operator=(ManagedDocumentResult const& other) {
   if (this != &other) {
