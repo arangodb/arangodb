@@ -219,6 +219,10 @@ void Logger::log(char const* function, char const* file, long int line,
     if (ArangoGlobalContext::CONTEXT != nullptr && ArangoGlobalContext::CONTEXT->useEventLog()) {
       TRI_LogWindowsEventlog(function, file, line, message);
     }
+
+    // additionally log these errors to the debug output window in MSVC so
+    // we can see them during development
+    OutputDebugString(message.c_str());
   }
 #endif
 
