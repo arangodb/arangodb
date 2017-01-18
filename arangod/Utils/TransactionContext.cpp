@@ -189,6 +189,17 @@ void TransactionContext::addChunk(RevisionCacheChunk* chunk) {
   // now need to keep track of it twice
   chunk->release();
 }
+
+// clear chunks if they use too much memory
+void TransactionContext::clearChunks(size_t threshold) {
+  MUTEX_LOCKER(locker, _chunksLock);
+  if (_chunks.size() > threshold) {
+    for (auto& chunk : _chunks) {
+      chunk->release();
+    }
+    _chunks.clear();
+  }
+}
   
 void TransactionContext::stealChunks(std::unordered_set<RevisionCacheChunk*>& target) {
   target.clear();

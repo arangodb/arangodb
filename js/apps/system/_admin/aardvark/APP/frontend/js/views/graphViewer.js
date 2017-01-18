@@ -277,8 +277,12 @@
 
     killCurrentGraph: function () {
       for (var i in this.currentGraph.renderers) {
-        this.currentGraph.renderers[i].clear();
-        this.currentGraph.kill(i);
+        try {
+          this.currentGraph.renderers[i].clear();
+          this.currentGraph.kill(i);
+        } catch (ignore) {
+          // no need to cleanup
+        }
       }
     },
 

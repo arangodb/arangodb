@@ -1112,7 +1112,9 @@ function processQuery (query, explain) {
       case 'ScatterNode':
         return keyword('SCATTER');
       case 'GatherNode':
-        return keyword('GATHER');
+        return keyword('GATHER') + ' ' + node.elements.map(function (node) {
+            return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
+          }).join(', ');
     }
 
     return 'unhandled node type (' + node.type + ')';
