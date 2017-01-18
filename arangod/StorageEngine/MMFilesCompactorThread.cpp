@@ -307,7 +307,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
     bool ok;
     {
       bool const useDeadlockDetector = false;
-      int res = collection->beginReadTimed(useDeadlockDetector, 86400ULL * 1000ULL * 1000ULL, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+      int res = collection->beginReadTimed(useDeadlockDetector, 86400.0);
 
       if (res != TRI_ERROR_NO_ERROR) {
         ok = false;
