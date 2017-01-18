@@ -223,7 +223,7 @@ start() {
        --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
        --cluster.my-role $ROLE \
        --log.file cluster/$PORT.log \
-       --log.level info \
+       --log.level $LOG_LEVEL \
        --server.statistics true \
        --server.threads 5 \
        --javascript.startup-directory ./js \
@@ -254,7 +254,7 @@ startTerminal() {
         --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
         --cluster.my-role $ROLE \
         --log.file cluster/$PORT.log \
-        --log.level info \
+        --log.level $LOG_LEVEL \
         --server.statistics true \
         --server.threads 5 \
         --javascript.startup-directory ./js \
@@ -283,7 +283,7 @@ startDebugger() {
       --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
       --cluster.my-role $ROLE \
       --log.file cluster/$PORT.log \
-      --log.level info \
+      --log.level $LOG_LEVEL \
       --server.statistics false \
       --server.threads 5 \
       --javascript.startup-directory ./js \
@@ -312,7 +312,7 @@ startRR() {
         --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
         --cluster.my-role $ROLE \
         --log.file cluster/$PORT.log \
-        --log.level info \
+        --log.level $LOG_LEVEL \
         --server.statistics true \
         --server.threads 5 \
         --javascript.startup-directory ./js \
