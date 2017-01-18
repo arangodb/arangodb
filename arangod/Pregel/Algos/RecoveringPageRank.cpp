@@ -70,7 +70,7 @@ struct RPRComputation : public VertexComputation<float, float, float> {
       *ptr = 0.15f / context()->vertexCount() + 0.85f * sum;
     }
     float diff = fabsf(copy - *ptr);
-    aggregate(kConvergence, &diff);
+    aggregate(kConvergence, diff);
     aggregate(kRank, ptr);
     // const float* val = getAggregatedValue<float>("convergence");
     // if (val) {  // if global convergence is available use it
@@ -116,7 +116,7 @@ struct RPRCompensation : public VertexCompensation<float, float, float> {
     const uint32_t* step = getAggregatedValue<uint32_t>(kStep);
     if (*step == 0 && !inLostPartition) {
       uint32_t c = 1;
-      aggregate(kNonFailedCount, &c);
+      aggregate(kNonFailedCount, c);
       aggregate(kRank, mutableVertexData());
     } else if (*step == 1) {
       float* data = mutableVertexData();
@@ -153,7 +153,7 @@ struct MyMasterContext : public MasterContext {
   }
 
   bool preCompensation(uint64_t gss) override {
-    aggregate(kStep, &recoveryStep);
+    aggregate(kStep, recoveryStep);
     return totalRank != 0;
   }
 
@@ -167,7 +167,7 @@ struct MyMasterContext : public MasterContext {
       if (*remainingRank != 0 && *nonfailedCount != 0) {
         float scale = totalRank * (*nonfailedCount);
         scale /= this->vertexCount() * (*remainingRank);
-        aggregate(kScale, &scale);
+        aggregate(kScale, scale);
         return true;
       }
     }

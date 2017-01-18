@@ -131,8 +131,9 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::IDLE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "Cannot prepare a gss when the worker is not idle");
+    LOG(ERR) << "Expected GSS " << _expectedGSS;
+    LOG(ERR) << "Cannot prepare a gss when the worker is not idle";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
   _state = WorkerState::PREPARING;  // stop any running step
   LOG(INFO) << "Prepare GSS: " << data.toJson();
@@ -167,7 +168,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
     std::swap(_readCache, _writeCacheNextGSS);
     _writeCache->clear();
     _requestedNextGSS = false;  // only relevant for async
-    _superstepStats.sendCount = _nextGSSSendMessageCount;
+    _messageStats.sendCount = _nextGSSSendMessageCount;
     _nextGSSSendMessageCount = 0;
   } else {
     TRI_ASSERT(_readCache->receivedMessageCount() == 0);
@@ -383,7 +384,7 @@ bool Worker<V, E, M>::_processVertices(
   // TODO ask how to implement message sending without waiting for a response
 
   LOG(INFO) << "Finished executing vertex programs.";
-  WorkerStats stats;
+  MessageStats stats;
   stats.sendCount = outCache->sendCount();
   stats.superstepRuntimeSecs = TRI_microtime() - start;
 
@@ -391,7 +392,7 @@ bool Worker<V, E, M>::_processVertices(
     MUTEX_LOCKER(guard, _threadMutex);
     // merge the thread local stats and aggregators
     _workerAggregators->aggregateValues(workerAggregator);
-    _superstepStats.accumulate(stats);
+    _messageStats.accumulate(stats);
     _activeCount += activeCount;
     _runningThreads--;
     return _runningThreads == 0;  // should work like a join operation
@@ -436,7 +437,7 @@ void Worker<V, E, M>::_finishedProcessing() {
                                  // _processVertices checks for it
     _expectedGSS = _config._globalSuperstep + 1;
     _config._localSuperstep++;
-    _superstepStats.receivedCount = _readCache->receivedMessageCount();
+    _messageStats.receivedCount = _readCache->receivedMessageCount();
     // load vertices which received messages for the next lss / gss
     _readCache->clear();  // no need to keep old messages around
 
@@ -446,13 +447,13 @@ void Worker<V, E, M>::_finishedProcessing() {
                 VPackValue(_config.executionNumber()));
     package.add(Utils::globalSuperstepKey,
                 VPackValue(_config.globalSuperstep()));
-    _superstepStats.serializeValues(package);
+    _messageStats.serializeValues(package);
     package.close();
 
     // reset message counts & stuff, after sending them to the conductor
     // don't reset the active count, because the conductor will ask about
     // it later
-    _superstepStats.resetTracking();
+    _messageStats.resetTracking();
     if (_config.asynchronousMode()) {
       _continueAsync();
     }
@@ -609,7 +610,7 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice data) {
   if (_writeCacheNextGSS) {
     _writeCacheNextGSS->clear();
   }
-  _superstepStats.resetTracking();
+  _messageStats.resetTracking();
   _state = WorkerState::IDLE;
   LOG(INFO) << "Recovery finished";
 }

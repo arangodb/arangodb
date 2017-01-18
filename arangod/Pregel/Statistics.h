@@ -31,16 +31,16 @@
 namespace arangodb {
 namespace pregel {
 
-struct WorkerStats {
+struct MessageStats {
   size_t sendCount = 0;
   size_t receivedCount = 0;
   double superstepRuntimeSecs = 0;
 
-  WorkerStats() {}
-  WorkerStats(VPackSlice statValues) { accumulate(statValues); }
-  WorkerStats(size_t s, size_t r) : sendCount(s), receivedCount(r) {}
+  MessageStats() {}
+  MessageStats(VPackSlice statValues) { accumulate(statValues); }
+  MessageStats(size_t s, size_t r) : sendCount(s), receivedCount(r) {}
 
-  void accumulate(WorkerStats const& other) {
+  void accumulate(MessageStats const& other) {
     sendCount += other.sendCount;
     receivedCount += other.receivedCount;
     superstepRuntimeSecs += other.superstepRuntimeSecs;
@@ -77,20 +77,26 @@ struct WorkerStats {
 };
 
 struct StatsManager {
-  void accumulate(VPackSlice data) {
+  
+  void accumulateActiveCounts(VPackSlice data) {
     VPackSlice sender = data.get(Utils::senderKey);
     if (sender.isString()) {
-      std::string server = sender.copyString();
-      _serverStats[server].accumulate(data);
       VPackSlice active = data.get(Utils::activeCountKey);
       if (active.isInteger()) {
-        _activeStats[server] += active.getUInt();
+        _activeStats[sender.copyString()] += active.getUInt();
       }
+    }
+  }
+  
+  void accumulateMessageStats(VPackSlice data) {
+    VPackSlice sender = data.get(Utils::senderKey);
+    if (sender.isString()) {
+      _serverStats[sender.copyString()].accumulate(data);
     }
   }
 
   void serializeValues(VPackBuilder& b) {
-    WorkerStats stats;
+    MessageStats stats;
     for (auto const& pair : _serverStats) {
       stats.accumulate(pair.second);
     }
@@ -131,7 +137,7 @@ struct StatsManager {
 
  private:
   std::map<std::string, uint64_t> _activeStats;
-  std::map<std::string, WorkerStats> _serverStats;
+  std::map<std::string, MessageStats> _serverStats;
 };
 }
 }

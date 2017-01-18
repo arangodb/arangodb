@@ -110,7 +110,7 @@ class Worker : public IWorker {
   /// if the worker has started sendng messages to the next GSS
   std::atomic<bool> _requestedNextGSS;
 
-  WorkerStats _superstepStats;
+  MessageStats _messageStats;
   uint64_t _activeCount = 0;
   size_t _runningThreads = 0;
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);

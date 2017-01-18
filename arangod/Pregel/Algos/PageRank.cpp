@@ -64,7 +64,7 @@ struct PRComputation : public VertexComputation<float, float, float> {
       *ptr = 0.15f / context()->vertexCount() + 0.85f * sum;
     }
     float diff = fabsf(copy - *ptr);
-    aggregate(kConvergence, &diff);
+    aggregate(kConvergence, diff);
     
     if (globalSuperstep() < 50 && diff > _limit) {
       RangeIterator<Edge<float>> edges = getEdges();

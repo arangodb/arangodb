@@ -54,7 +54,7 @@ struct ShortestPathComp : public VertexComputation<int64_t, int64_t, int64_t> {
       *state = current;  // update state
 
       if (this->pregelId() == _target) {
-        aggregate(spUpperPathBound, &current);
+        aggregate(spUpperPathBound, current);
         return;
       }
 

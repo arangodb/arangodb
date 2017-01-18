@@ -135,7 +135,7 @@ bool Conductor::_startGlobalStep() {
     if (aggVals.isObject()) {
       _aggregators->aggregateValues(aggVals);
     }
-    _statistics.accumulate(payload);
+    _statistics.accumulateActiveCounts(payload);
     _totalVerticesCount += payload.get(Utils::vertexCount).getUInt();
     _totalEdgesCount += payload.get(Utils::edgeCount).getUInt();
   }
@@ -231,7 +231,7 @@ void Conductor::finishedWorkerStep(VPackSlice& data) {
     return;
   }
 
-  _statistics.accumulate(data);
+  _statistics.accumulateMessageStats(data);
   if (!_asyncMode) {
     _ensureUniqueResponse(data);
     // wait for the last worker to respond
@@ -243,7 +243,8 @@ void Conductor::finishedWorkerStep(VPackSlice& data) {
     return;
   }
 
-  LOG(INFO) << "Finished gss " << _globalSuperstep;
+  LOG(INFO) << "Finished gss " << _globalSuperstep << " in "
+            << (TRI_microtime() - _computationStartTimeSecs) << "s";
   _globalSuperstep++;
 
   if (_state == ExecutionState::RUNNING) {
