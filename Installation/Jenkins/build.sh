@@ -522,7 +522,9 @@ echo "  MAKE: ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}"
 if test ${CLEAN_IT} -eq 1; then
     echo "found fundamental changes, rebuilding from scratch!"
     git clean -f -d -x
-    test -d ${BUILD_DIR} || rm -rf ${BUILD_DIR}
+    if test -d ${BUILD_DIR}; then
+        rm -rf ${BUILD_DIR}
+    fi
 fi
 
 SRC=`pwd`
