@@ -34,13 +34,24 @@ struct MessageCombiner {
   virtual void combine(M& firstValue, M const& secondValue) const = 0;
 };
 
-struct IntegerMinCombiner : public MessageCombiner<int64_t> {
-  IntegerMinCombiner() {}
-  void combine(int64_t& firstValue, int64_t const& secondValue) const override {
+template <typename M>
+struct MinCombiner : public MessageCombiner<M> {
+  static_assert(std::is_arithmetic<M>::value, "Message type must be numeric");
+  MinCombiner() {}
+  void combine(M& firstValue, M const& secondValue) const override {
     if (firstValue > secondValue) {
       firstValue = secondValue;
     }
   };
+};
+
+template <typename M>
+struct SumCombiner : public MessageCombiner<M> {
+  static_assert(std::is_arithmetic<M>::value, "Message type must be numeric");
+  SumCombiner() {}
+  void combine(M& firstValue, M const& secondValue) const {
+    firstValue += secondValue;
+  }
 };
 }
 }

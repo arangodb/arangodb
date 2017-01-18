@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ShoPath_H
-#define ARANGODB_PREGEL_ALGOS_ShoPath_H 1
+#ifndef ARANGODB_PREGEL_ALGOS_WCC_H
+#define ARANGODB_PREGEL_ALGOS_WCC_H 1
 
 #include "Pregel/Algorithm.h"
 
@@ -29,33 +29,30 @@ namespace arangodb {
 namespace pregel {
 namespace algos {
 
-struct SPGraphFormat;
-
-/// Single Source Shortest Path. Uses integer attribute 'value', the source
-/// should have
-/// the value == 0, all others -1 or an undefined value
-struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
-  SPGraphFormat* _format;  // weak pointer
-
+/// The idea behind the algorithm is very simple: propagate the smallest
+/// vertex id along the edges to all vertices of a connected component. The
+/// number of supersteps necessary is equal to the length of the maximum
+/// diameter of all components + 1
+struct ConnectedComponents : public SimpleAlgorithm<int64_t, int64_t, int64_t> {
  public:
-  ShortestPathAlgorithm(VPackSlice userParams);
+  ConnectedComponents(VPackSlice userParams) : SimpleAlgorithm("ConnectedComponents", userParams) {}
 
   bool supportsAsyncMode() const override { return false; }
-  bool supportsLazyLoading() const override { return true; }
+  bool supportsCompensation() const override { return true; }
 
-  GraphFormat<int64_t, int64_t>* inputFormat() override;
+  GraphFormat<int64_t, int64_t>* inputFormat() override {
+    return new NumberGraphFormat<int64_t, int64_t>(_sourceField, _resultField, INT64_MAX, 0);
+  }
   MessageFormat<int64_t>* messageFormat() const override {
     return new IntegerMessageFormat();
   }
-
   MessageCombiner<int64_t>* messageCombiner() const override {
     return new MinCombiner<int64_t>();
   }
-
   VertexComputation<int64_t, int64_t, int64_t>* createComputation(
-      WorkerConfig const* config) const override;
-  Aggregator* aggregator(std::string const& name) const override;
-  std::vector<std::string> initialActiveSet() override;
+      WorkerConfig const*) const override;
+  VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(
+      WorkerConfig const*) const override;
 };
 }
 }

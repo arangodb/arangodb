@@ -126,8 +126,9 @@ void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
   std::string documentId = _readTrx->extractIdString(opResult.slice());
   VertexEntry entry(sourceShard, _key);
   V vertexData;
-  size_t size = _graphFormat->copyVertexData(
-      entry, documentId, opResult.slice(), &vertexData, sizeof(V));
+  size_t size = _graphFormat->copyVertexData(entry, documentId,
+                                             opResult.slice(),
+                                             &vertexData, sizeof(V));
   if (size > 0) {
     entry._vertexDataOffset = _vertexData.size();
     _vertexData.push_back(vertexData);

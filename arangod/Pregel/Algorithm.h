@@ -30,7 +30,6 @@
 
 #include "Basics/Common.h"
 #include "GraphFormat.h"
-#include "MasterContext.h"
 #include "MessageCombiner.h"
 #include "MessageFormat.h"
 #include "WorkerContext.h"
@@ -46,6 +45,7 @@ class VertexCompensation;
 
 class Aggregator;
 class WorkerConfig;
+class MasterContext;
 
 struct IAlgorithm {
   virtual ~IAlgorithm() {}

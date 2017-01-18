@@ -22,7 +22,6 @@
 
 #include "PageRank.h"
 #include "Pregel/Aggregator.h"
-#include "Pregel/Combiners/FloatSumCombiner.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
 #include "Pregel/MasterContext.h"
@@ -46,31 +45,6 @@ PageRank::PageRank(arangodb::velocypack::Slice params)
     : SimpleAlgorithm("PageRank", params) {
   VPackSlice t = params.get("convergenceThreshold");
   _threshold = t.isNumber() ? t.getNumber<float>() : 0.000002f;
-}
-
-struct PageRankGraphFormat : public FloatGraphFormat {
-  PageRankGraphFormat(std::string const& s, std::string const& r)
-      : FloatGraphFormat(s, r, 0, 0) {}
-  size_t copyVertexData(VertexEntry const& vertex,
-                        std::string const& documentId,
-                        arangodb::velocypack::Slice document, void* targetPtr,
-                        size_t maxSize) override {
-    *((float*)targetPtr) = _vDefault;
-    return sizeof(float);
-  }
-
-  size_t copyEdgeData(arangodb::velocypack::Slice document, void* targetPtr,
-                      size_t maxSize) override {
-    return 0;
-  }
-};
-
-GraphFormat<float, float>* PageRank::inputFormat() {
-  return new PageRankGraphFormat(_sourceField, _resultField);
-}
-
-MessageCombiner<float>* PageRank::messageCombiner() const {
-  return new FloatSumCombiner();
 }
 
 struct PRComputation : public VertexComputation<float, float, float> {
@@ -110,8 +84,8 @@ VertexComputation<float, float, float>* PageRank::createComputation(
 }
 
 Aggregator* PageRank::aggregator(std::string const& name) const {
-  if (name == "convergence") {
-    return new FloatMaxAggregator(-1);
+  if (name == kConvergence) {
+    return new MaxAggregator<float>(-1.0f);
   }
   return nullptr;
 }

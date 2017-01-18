@@ -20,7 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SSSP.h"
+#include "ConnectedComponents.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
@@ -29,48 +29,31 @@
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
-struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
-  SSSPComputation() {}
+struct MyComputation : public VertexComputation<int64_t, int64_t, int64_t> {
+  MyComputation() {}
   void compute(MessageIterator<int64_t> const& messages) override {
-    int64_t tmp = vertexData();
+    
+    int64_t currentComponent = vertexData();
     for (const int64_t* msg : messages) {
-      if (*msg < tmp) {
-        tmp = *msg;
+      if (*msg < currentComponent) {
+        currentComponent = *msg;
       };
     }
-    int64_t* state = mutableVertexData();
-    if (tmp < *state || (tmp == 0 && localSuperstep() == 0)) {
-      *state = tmp;  // update state
-
-      RangeIterator<Edge<int64_t>> edges = getEdges();
-      for (Edge<int64_t>* edge : edges) {
-        int64_t val = *edge->data() + tmp;
-        sendMessage(edge, val);
-      }
+    
+    if (currentComponent != vertexData()) {
+      sendMessageToAllEdges(currentComponent);
     }
     voteHalt();
   }
 };
 
-GraphFormat<int64_t, int64_t>* SSSPAlgorithm::inputFormat() {
-  return new NumberGraphFormat<int64_t, int64_t> (_sourceField, _resultField, INT64_MAX, 1);
-}
-
-MessageFormat<int64_t>* SSSPAlgorithm::messageFormat() const {
-  return new IntegerMessageFormat();
-}
-
-MessageCombiner<int64_t>* SSSPAlgorithm::messageCombiner() const {
-  return new MinCombiner<int64_t>();
-}
-
-VertexComputation<int64_t, int64_t, int64_t>* SSSPAlgorithm::createComputation(
+VertexComputation<int64_t, int64_t, int64_t>* ConnectedComponents::createComputation(
     WorkerConfig const* config) const {
-  return new SSSPComputation();
+  return new MyComputation();
 }
 
-struct SSSPCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
-  SSSPCompensation() {}
+struct MyCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
+  MyCompensation() {}
   void compensate(bool inLostPartition) override {
     if (inLostPartition) {
       int64_t* data = mutableVertexData();
@@ -80,6 +63,6 @@ struct SSSPCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
 };
 
 VertexCompensation<int64_t, int64_t, int64_t>*
-SSSPAlgorithm::createCompensation(WorkerConfig const* config) const {
-  return new SSSPCompensation();
+ConnectedComponents::createCompensation(WorkerConfig const* config) const {
+  return new MyCompensation();
 }

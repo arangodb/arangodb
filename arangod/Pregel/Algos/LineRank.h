@@ -20,42 +20,40 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ShoPath_H
-#define ARANGODB_PREGEL_ALGOS_ShoPath_H 1
+#ifndef ARANGODB_PREGEL_ALGOS_LINERANK_H
+#define ARANGODB_PREGEL_ALGOS_LINERANK_H 1
 
+#include <velocypack/Slice.h>
 #include "Pregel/Algorithm.h"
 
 namespace arangodb {
 namespace pregel {
 namespace algos {
 
-struct SPGraphFormat;
-
-/// Single Source Shortest Path. Uses integer attribute 'value', the source
-/// should have
-/// the value == 0, all others -1 or an undefined value
-struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
-  SPGraphFormat* _format;  // weak pointer
+/// LineRank from "Centralities in Large Networks: Algorithms and Observations" 2011:
+/// Given a directed graph G, the LINERANK score of a node v ∈ G is computed by
+/// aggregating the stationary probabilities of its incident edges on the line graph L(G).
+/// Implementation based on
+/// github.com/JananiC/NetworkCentralities/blob/master/src/main/java/linerank/LineRank.java
+struct LineRank : public SimpleAlgorithm<float, float, float> {
 
  public:
-  ShortestPathAlgorithm(VPackSlice userParams);
+  LineRank(arangodb::velocypack::Slice params);
 
-  bool supportsAsyncMode() const override { return false; }
-  bool supportsLazyLoading() const override { return true; }
-
-  GraphFormat<int64_t, int64_t>* inputFormat() override;
-  MessageFormat<int64_t>* messageFormat() const override {
-    return new IntegerMessageFormat();
+  GraphFormat<float, float>* inputFormat() override {
+    return new VertexGraphFormat<float, float>(_resultField, -1.0);
   }
-
-  MessageCombiner<int64_t>* messageCombiner() const override {
-    return new MinCombiner<int64_t>();
+  MessageFormat<float>* messageFormat() const override {
+    return new FloatMessageFormat();
   }
-
-  VertexComputation<int64_t, int64_t, int64_t>* createComputation(
-      WorkerConfig const* config) const override;
+  
+  MessageCombiner<float>* messageCombiner() const override {
+    return new SumCombiner<float>();
+  }
+  
+  VertexComputation<float, float, float>* createComputation(
+      WorkerConfig const*) const override;
   Aggregator* aggregator(std::string const& name) const override;
-  std::vector<std::string> initialActiveSet() override;
 };
 }
 }

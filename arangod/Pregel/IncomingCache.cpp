@@ -239,9 +239,12 @@ void CombiningInCache<M>::forEach(
 }
 
 // template types to create
+template class arangodb::pregel::InCache<int32_t>;
 template class arangodb::pregel::InCache<int64_t>;
 template class arangodb::pregel::InCache<float>;
+template class arangodb::pregel::ArrayInCache<int32_t>;
 template class arangodb::pregel::ArrayInCache<int64_t>;
 template class arangodb::pregel::ArrayInCache<float>;
+template class arangodb::pregel::CombiningInCache<int32_t>;
 template class arangodb::pregel::CombiningInCache<int64_t>;
 template class arangodb::pregel::CombiningInCache<float>;

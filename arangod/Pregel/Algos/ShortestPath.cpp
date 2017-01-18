@@ -38,17 +38,19 @@ struct ShortestPathComp : public VertexComputation<int64_t, int64_t, int64_t> {
 
   ShortestPathComp(PregelID const& target) : _target(target) {}
   void compute(MessageIterator<int64_t> const& messages) override {
-    int64_t const* max = getAggregatedValue<int64_t>(spUpperPathBound);
     int64_t current = vertexData();
     for (const int64_t* msg : messages) {
       if (*msg < current) {
         current = *msg;
       };
     }
-
+    
+    // use global state to limit the computation of paths
     bool isSource = current == 0 && localSuperstep() == 0;
+    int64_t const* max = getAggregatedValue<int64_t>(spUpperPathBound);
+
     int64_t* state = mutableVertexData();
-    if ((current < *state && current < *max) || isSource) {
+    if (isSource || (current < *state && current < *max)) {
       *state = current;  // update state
 
       if (this->pregelId() == _target) {

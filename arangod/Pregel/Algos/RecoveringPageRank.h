@@ -40,12 +40,18 @@ struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
   bool supportsCompensation() const override { return true; }
   MasterContext* masterContext(VPackSlice userParams) const override;
 
-  GraphFormat<float, float>* inputFormat() override;
+  GraphFormat<float, float>* inputFormat() override {
+    return new VertexGraphFormat<float, float>(_resultField, 0);
+  }
+  
   MessageFormat<float>* messageFormat() const override {
     return new FloatMessageFormat();
   }
   
-  MessageCombiner<float>* messageCombiner() const override;
+  MessageCombiner<float>* messageCombiner() const override {
+    return new SumCombiner<float>();
+  }
+
   VertexComputation<float, float, float>* createComputation(
       WorkerConfig const*) const override;
   VertexCompensation<float, float, float>* createCompensation(

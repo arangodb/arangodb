@@ -59,8 +59,13 @@ class VertexContext {
   }
 
   template <typename T>
-  inline void aggregate(std::string const& name, const T* valuePtr) {
+  inline void aggregate(std::string const& name, T const* valuePtr) {
     _workerAggregators->aggregate(name, valuePtr);
+  }
+  
+  template <typename T>
+  inline void aggregate(std::string const& name, T const& valuePtr) {
+    _workerAggregators->aggregate(name, &valuePtr);
   }
 
   inline WorkerContext const* context() { return _context; }
@@ -100,6 +105,14 @@ class VertexComputation : public VertexContext<V, E, M> {
  public:
   void sendMessage(Edge<E> const* edge, M const& data) {
     _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
+  }
+  
+  // TODO optimize outgoing cache somehow
+  void sendMessageToAllEdges(M const& data) {
+    RangeIterator<Edge<E>> edges = this->getEdges();
+    for (Edge<E> const* edge : edges) {
+      _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
+    }
   }
 
   void enterNextPhase() {

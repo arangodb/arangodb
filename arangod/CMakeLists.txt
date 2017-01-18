@@ -367,6 +367,8 @@ SET(ARANGOD_SOURCES
   Pregel/Algos/ShortestPath.cpp
   Pregel/Algos/PageRank.cpp
   Pregel/Algos/RecoveringPageRank.cpp
+  Pregel/Algos/LineRank.cpp
+  Pregel/Algos/ConnectedComponents.cpp
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp
   Pregel/IncomingCache.cpp

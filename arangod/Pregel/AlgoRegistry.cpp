@@ -25,6 +25,8 @@
 #include "Pregel/Algos/RecoveringPageRank.h"
 #include "Pregel/Algos/SSSP.h"
 #include "Pregel/Algos/ShortestPath.h"
+#include "Pregel/Algos/LineRank.h"
+#include "Pregel/Algos/ConnectedComponents.h"
 #include "Pregel/Utils.h"
 
 using namespace arangodb;
@@ -40,6 +42,10 @@ IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm,
     return new algos::RecoveringPageRank(userParams);
   } else if (algorithm == "shortestpath") {
     return new algos::ShortestPathAlgorithm(userParams);
+  } else if (algorithm == "linerank") {
+    return new algos::LineRank(userParams);
+  } else if (algorithm == "connectedcomponents") {
+    return new algos::ConnectedComponents(userParams);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
@@ -75,6 +81,10 @@ IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase,
   } else if (algorithm == "shortestpath") {
     return createWorker(vocbase, new algos::ShortestPathAlgorithm(userParams),
                         body);
+  } else if (algorithm == "linerank") {
+    return createWorker(vocbase, new algos::LineRank(userParams), body);
+  }  else if (algorithm == "connectedcomponents") {
+    return createWorker(vocbase, new algos::ConnectedComponents(userParams), body);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");

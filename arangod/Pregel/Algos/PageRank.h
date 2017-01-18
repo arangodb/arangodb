@@ -37,12 +37,18 @@ struct PageRank : public SimpleAlgorithm<float, float, float> {
  public:
   PageRank(arangodb::velocypack::Slice params);
 
-  GraphFormat<float, float>* inputFormat() override;
+  GraphFormat<float, float>* inputFormat() override {
+    return new VertexGraphFormat<float, float>(_resultField, 0);
+  }
+  
   MessageFormat<float>* messageFormat() const override {
     return new FloatMessageFormat();
   }
   
-  MessageCombiner<float>* messageCombiner() const override;
+  MessageCombiner<float>* messageCombiner() const override {
+    return new SumCombiner<float>();
+  }
+  
   VertexComputation<float, float, float>* createComputation(
       WorkerConfig const*) const override;
   Aggregator* aggregator(std::string const& name) const override;

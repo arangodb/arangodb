@@ -27,7 +27,6 @@
 #include <velocypack/velocypack-aliases.h>
 #include "Basics/Common.h"
 #include "Pregel/AggregatorHandler.h"
-#include "Pregel/Utils.h"
 
 namespace arangodb {
 namespace pregel {

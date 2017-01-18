@@ -58,23 +58,19 @@ struct FloatMessageFormat : public MessageFormat<float> {
     arrayBuilder.add(VPackValue(val));
   }
 };
-
-/*
- template <typename M>
- struct NumberMessageFormat : public MessageFormat<M> {
- static_assert(std::is_arithmetic<M>::value, "Type must be numeric");
- NumberMessageFormat() {}
- bool unwrapValue(VPackSlice s, int64_t& value) const override {
- if (s.isNumber()) {
- value = s.getNumber<M>();
- return true;
- }
- return false;
- }
- void addValue(VPackBuilder& arrayBuilder, int64_t const& val) const override {
- arrayBuilder.add(VPackValue(val));
- }
- };*/
+  
+template <typename M>
+struct NumberMessageFormat : public MessageFormat<M> {
+  static_assert(std::is_arithmetic<M>::value, "Message type must be numeric");
+  NumberMessageFormat() {}
+  void unwrapValue(VPackSlice s, M& value) const override {
+    value = s.getNumber<M>();
+  }
+  void addValue(VPackBuilder& arrayBuilder, M const& val) const override {
+    arrayBuilder.add(VPackValue(val));
+  }
+};
+  
 }
 }
 #endif

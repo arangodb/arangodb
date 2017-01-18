@@ -43,7 +43,7 @@ class Aggregator {
   virtual ~Aggregator() {}
 
   /// @brief Value from superstep S-1 supplied by the conductor
-  virtual void aggregate(const void* valuePtr) = 0;
+  virtual void aggregate(void const* valuePtr) = 0;
   virtual void aggregate(VPackSlice slice) = 0;
 
   virtual void const* getValue() const = 0;
@@ -54,27 +54,27 @@ class Aggregator {
   bool isPermanent() { return _permanent; }
 };
 
-class FloatMaxAggregator : public Aggregator {
-  float _value, _initial;
-
- public:
-  FloatMaxAggregator(float init) : _value(init), _initial(init) {}
-
+template <typename T>
+class MaxAggregator : public Aggregator {
+  static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
+  T _value, _initial;
+  
+public:
+  MaxAggregator(T init, bool perm = false)
+  : Aggregator(perm), _value(init), _initial(init) {}
+  
   void aggregate(void const* valuePtr) override {
-    float other = *((float*)valuePtr);
+    T other = *((T*)valuePtr);
     if (other > _value) _value = other;
   };
   void aggregate(VPackSlice slice) override {
-    float f = slice.getNumber<float>();
+    T f = slice.getNumber<T>();
     aggregate(&f);
   }
-
+  
   void const* getValue() const override { return &_value; };
-  /*void setValue(VPackSlice slice) override {
-    _value = (float)slice.getDouble();
-  }*/
-  VPackValue vpackValue() override { return VPackValue((double)_value); };
-
+  VPackValue vpackValue() override { return VPackValue(_value); };
+  
   void reset() override { _value = _initial; }
 };
 
@@ -97,49 +97,41 @@ class MinAggregator : public Aggregator {
   }
 
   void const* getValue() const override { return &_value; };
-  /*void setValue(VPackSlice slice) override {
-   _value = (float)slice.getDouble();
-   }*/
   VPackValue vpackValue() override { return VPackValue(_value); };
 
+  void reset() override { _value = _initial; }
+};
+  
+template <typename T>
+class SumAggregator : public Aggregator {
+  static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
+  T _value, _initial;
+  
+public:
+  SumAggregator(T init, bool perm = false)
+      : Aggregator(perm), _value(init), _initial(init) {}
+  
+  void aggregate(void const* valuePtr) override { _value += *((T*)valuePtr); };
+  void aggregate(VPackSlice slice) override { _value += slice.getNumber<T>(); }
+  
+  void const* getValue() const override { return &_value; };
+  VPackValue vpackValue() override { return VPackValue(_value); };
+  
   void reset() override { _value = _initial; }
 };
 
 template <typename T>
 class ValueAggregator : public Aggregator {
-  static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
-
+  static_assert(std::is_fundamental<T>::value, "Type must be fundamental");
   T _value;
 
  public:
-  ValueAggregator(T val) : Aggregator(true), _value(val) {}
+  ValueAggregator(T val, bool perm = false) : Aggregator(perm), _value(val) {}
 
   void aggregate(void const* valuePtr) override { _value = *((T*)valuePtr); };
   void aggregate(VPackSlice slice) override { _value = slice.getNumber<T>(); }
 
   void const* getValue() const override { return &_value; };
-  /*void setValue(VPackSlice slice) override {
-   _value = (float)slice.getDouble();
-   }*/
-  VPackValue vpackValue() override { return VPackValue(_value); };
-};
-
-template <typename T>
-class SumAggregator : public Aggregator {
-  static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
-
-  T _value;
-
- public:
-  SumAggregator(T val) : Aggregator(true), _value(val) {}
-
-  void aggregate(void const* valuePtr) override { _value += *((T*)valuePtr); };
-  void aggregate(VPackSlice slice) override { _value += slice.getNumber<T>(); }
-
-  void const* getValue() const override { return &_value; };
-  /*void setValue(VPackSlice slice) override {
-   _value = (float)slice.getDouble();
-   }*/
   VPackValue vpackValue() override { return VPackValue(_value); };
 };
 }
