@@ -181,10 +181,12 @@ void FollowerInfo::remove(ServerID const& sid) {
   MUTEX_LOCKER(locker, _mutex);
 
   auto v = std::make_shared<std::vector<ServerID>>();
-  v->reserve(_followers->size() - 1);
-  for (auto const& i : *_followers) {
-    if (i != sid) {
-      v->push_back(i);
+  if (_followers->size() > 0) {
+    v->reserve(_followers->size() - 1);
+    for (auto const& i : *_followers) {
+      if (i != sid) {
+        v->push_back(i);
+      }
     }
   }
   _followers = v;  // will cast to std::vector<ServerID> const

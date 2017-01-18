@@ -3447,7 +3447,6 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
                   "did not find collection");
     return;
   }
-
   col->followers()->remove(followerId.copyString());
 
   VPackBuilder b;

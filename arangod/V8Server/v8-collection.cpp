@@ -978,7 +978,9 @@ static void JS_LeaderResign(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
-    trx.documentCollection()->followers()->clear();
+    // do not reset followers at this time...we are still the only source of truth
+    // to trust...
+    //trx.documentCollection()->followers()->clear();
     trx.documentCollection()->followers()->setLeader(false);
   }
 
