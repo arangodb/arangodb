@@ -755,15 +755,18 @@ function executePlanForCollections(plan) {
                     db._collection(shard).assumeLeadership();
                   }
                 } else {
-                  // We adjust local leadership, note that the planned resignation
-                  // case is not handled here, since then ourselves does not appear
-                  // in shards[shard] but only "_" + ourselves.
+                  // We adjust local leadership, note that the planned
+                  // resignation case is not handled here, since then
+                  // ourselves does not appear in shards[shard] but only
+                  // "_" + ourselves. See below under "Drop local shards"
+                  // to see the proper handling of this case. Place is marked
+                  // with *** in comments.
                   if (!shouldBeLeader && localCollections[shard].isLeader) {
                     db._collection(shard).leaderResign();
                   } else if (shouldBeLeader &&
-                    !localCollections[shard].isLeader) {
-                      db._collection(shard).assumeLeadership();
-                    }
+                             !localCollections[shard].isLeader) {
+                    db._collection(shard).assumeLeadership();
+                  }
 
                   // Now check whether the status is OK:
                   if (localCollections[shard].status !== collInfo.status) {
@@ -908,7 +911,7 @@ function executePlanForCollections(plan) {
             if (removeAll ||
                 !shardMap.hasOwnProperty(collection) ||
                 shardMap[collection].indexOf(ourselves) === -1) {
-              // May be we have been the leader and are asked to withdraw:
+              // May be we have been the leader and are asked to withdraw: ***
               if (shardMap.hasOwnProperty(collection) &&
                   shardMap[collection][0] === '_' + ourselves) {
                 if (collections[collection].isLeader) {
