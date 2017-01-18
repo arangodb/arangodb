@@ -45,8 +45,15 @@ void SortNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
     for (auto const& it : _elements) {
       VPackObjectBuilder obj(&nodes);
       nodes.add(VPackValue("inVariable"));
-      it.first->toVelocyPack(nodes);
-      nodes.add("ascending", VPackValue(it.second));
+      it.var->toVelocyPack(nodes);
+      nodes.add("ascending", VPackValue(it.ascending));
+      if (!it.attributePath.empty()) {
+        nodes.add(VPackValue("path"));
+        VPackArrayBuilder arr(&nodes);
+        for (auto const& a : it.attributePath) {
+          nodes.add(VPackValue(a));
+        }
+      }
     }
   }
   nodes.add("stable", VPackValue(_stable));
@@ -70,8 +77,8 @@ class SortNodeFindMyExpressions : public WalkerWorker<ExecutionNode> {
     auto vars = en->getVariablesSetHere();
     for (auto const& v : vars) {
       for (size_t n = 0; n < _elms.size(); n++) {
-        if (_elms[n].first->id == v->id) {
-          _myVars[n] = std::make_pair(en, _elms[n].second);
+        if (_elms[n].var->id == v->id) {
+          _myVars[n] = std::make_pair(en, _elms[n].ascending);
           _foundCalcNodes++;
           break;
         }
@@ -98,7 +105,7 @@ std::vector<std::pair<ExecutionNode*, bool>> SortNode::getCalcNodePairs() {
 /// simplification, and false otherwise
 bool SortNode::simplify(ExecutionPlan* plan) {
   for (auto it = _elements.begin(); it != _elements.end(); /* no hoisting */) {
-    auto variable = (*it).first;
+    auto variable = (*it).var;
 
     TRI_ASSERT(variable != nullptr);
     auto setter = _plan->getVarSetBy(variable->id);
@@ -135,7 +142,7 @@ SortInformation SortNode::getSortInformation(
 
   auto elements = getElements();
   for (auto it = elements.begin(); it != elements.end(); ++it) {
-    auto variable = (*it).first;
+    auto variable = (*it).var;
     TRI_ASSERT(variable != nullptr);
     auto setter = _plan->getVarSetBy(variable->id);
 
@@ -169,14 +176,14 @@ SortInformation SortNode::getSortInformation(
         return result;
       }
       result.criteria.emplace_back(
-          std::make_tuple(const_cast<ExecutionNode const*>(setter), std::string(buffer->c_str(), buffer->length()), (*it).second));
+          std::make_tuple(const_cast<ExecutionNode const*>(setter), std::string(buffer->c_str(), buffer->length()), (*it).ascending));
       buffer->reset();
     } else {
       // use variable only. note that we cannot use the variable's name as it is
       // not
       // necessarily unique in one query (yes, COLLECT, you are to blame!)
       result.criteria.emplace_back(
-          std::make_tuple(const_cast<ExecutionNode const*>(setter), std::to_string(variable->id), (*it).second));
+          std::make_tuple(const_cast<ExecutionNode const*>(setter), std::to_string(variable->id), (*it).ascending));
     }
   }
 

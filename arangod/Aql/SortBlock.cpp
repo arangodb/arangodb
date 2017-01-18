@@ -31,11 +31,11 @@ using namespace arangodb::aql;
 SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
     : ExecutionBlock(engine, en), _sortRegisters(), _stable(en->_stable), _mustFetchAll(true) {
   for (auto const& p : en->_elements) {
-    auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
+    auto it = en->getRegisterPlan()->varInfo.find(p.var->id);
     TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _sortRegisters.emplace_back(
-        std::make_pair(it->second.registerId, p.second));
+        std::make_pair(it->second.registerId, p.ascending));
   }
 }
 

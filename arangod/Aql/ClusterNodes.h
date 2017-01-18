@@ -333,7 +333,7 @@ class GatherNode : public ExecutionNode {
     v.reserve(_elements.size());
 
     for (auto const& p : _elements) {
-      v.emplace_back(p.first);
+      v.emplace_back(p.var);
     }
     return v;
   }
@@ -342,7 +342,7 @@ class GatherNode : public ExecutionNode {
   void getVariablesUsedHere(
       std::unordered_set<Variable const*>& vars) const override final {
     for (auto const& p : _elements) {
-      vars.emplace(p.first);
+      vars.emplace(p.var);
     }
   }
 
@@ -358,8 +358,8 @@ class GatherNode : public ExecutionNode {
   Collection const* collection() const { return _collection; }
 
  private:
-  /// @brief pairs, consisting of variable and sort direction
-  /// (true = ascending | false = descending)
+  /// @brief sort elements, variable, ascending flags and possible attribute
+  /// paths.
   SortElementVector _elements;
 
   /// @brief the underlying database

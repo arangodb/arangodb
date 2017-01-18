@@ -87,7 +87,7 @@ class SortNode : public ExecutionNode {
     v.reserve(_elements.size());
 
     for (auto& p : _elements) {
-      v.emplace_back(p.first);
+      v.emplace_back(p.var);
     }
     return v;
   }
@@ -96,7 +96,7 @@ class SortNode : public ExecutionNode {
   void getVariablesUsedHere(
       std::unordered_set<Variable const*>& vars) const override final {
     for (auto& p : _elements) {
-      vars.emplace(p.first);
+      vars.emplace(p.var);
     }
   }
 

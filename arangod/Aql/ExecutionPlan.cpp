@@ -910,7 +910,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
   auto list = node->getMember(0);
   TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
 
-  std::vector<std::pair<Variable const*, bool>> elements;
+  SortElementVector elements;
   std::vector<ExecutionNode*> temp;
 
   try {
@@ -958,13 +958,12 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
         // sort operand is a variable
         auto v = static_cast<Variable*>(expression->getData());
         TRI_ASSERT(v != nullptr);
-        elements.emplace_back(std::make_pair(v, isAscending));
+        elements.emplace_back(v, isAscending);
       } else {
         // sort operand is some misc expression
         auto calc = createTemporaryCalculation(expression, nullptr);
         temp.emplace_back(calc);
-        elements.emplace_back(
-            std::make_pair(getOutVariable(calc), isAscending));
+        elements.emplace_back(getOutVariable(calc), isAscending);
       }
     }
   } catch (...) {

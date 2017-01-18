@@ -58,11 +58,13 @@ GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     for (auto const& p : en->getElements()) {
       // We know that planRegisters has been run, so
       // getPlanNode()->_registerPlan is set up
-      auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
+      auto it = en->getRegisterPlan()->varInfo.find(p.var->id);
       TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
       TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-      _sortRegisters.emplace_back(
-          std::make_pair(it->second.registerId, p.second));
+      _sortRegisters.emplace_back(it->second.registerId, p.ascending);
+      if (!p.attributePath.empty()) {
+        _sortRegisters.back().attributePath = p.attributePath;
+      }
     }
   }
 }
@@ -441,17 +443,35 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
 
   size_t i = 0;
   for (auto const& reg : _sortRegisters) {
-    int cmp = AqlValue::Compare(
-        _trx,
-        _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.first),
-        _gatherBlockBuffer.at(b.first).front()->getValue(b.second, reg.first),
-        true);
+    // Fast path if there is no attributePath:
+    int cmp;
+    if (reg.attributePath.empty()) {
+      cmp = AqlValue::Compare(
+          _trx,
+          _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.reg),
+          _gatherBlockBuffer.at(b.first).front()->getValue(b.second, reg.reg),
+          true);
+    } else {
+      // Take attributePath into consideration:
+      AqlValue topA = _gatherBlockBuffer.at(a.first).front()->getValue(a.second,
+                                                                       reg.reg);
+      AqlValue topB = _gatherBlockBuffer.at(a.first).front()->getValue(b.second,
+                                                                       reg.reg);
+      bool mustDestroyA;
+      AqlValue aa = topA.get(_trx, reg.attributePath, mustDestroyA, false);
+      AqlValueGuard guardA(aa, mustDestroyA);
+      bool mustDestroyB;
+      AqlValue bb = topB.get(_trx, reg.attributePath, mustDestroyB, false);
+      AqlValueGuard guardB(bb, mustDestroyB);
+      cmp = AqlValue::Compare(_trx, aa, bb, true);
+    }
 
     if (cmp == -1) {
-      return reg.second;
+      return reg.ascending;
     } else if (cmp == 1) {
-      return !reg.second;
+      return !reg.ascending;
     }
+
     i++;
   }
 

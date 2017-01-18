@@ -47,9 +47,20 @@ class ExecutionPlan;
 struct Index;
 class RedundantCalculationsReplacer;
 
-/// @brief pairs, consisting of variable and sort direction
-/// (true = ascending | false = descending)
-typedef std::vector<std::pair<Variable const*, bool>> SortElementVector;
+/// @brief sort element, consisting of variable, sort direction, and a possible
+/// attribute path to dig into the document
+
+struct SortElement {
+  Variable const* var;
+  bool ascending;
+  std::vector<std::string> attributePath;
+
+  SortElement(Variable const* v, bool asc)
+    : var(v), ascending(asc) {
+  }
+};
+
+typedef std::vector<SortElement> SortElementVector;
 
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
 class ExecutionNode {

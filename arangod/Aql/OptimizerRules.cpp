@@ -717,7 +717,7 @@ void arangodb::aql::removeSortRandRule(Optimizer* opt, ExecutionPlan* plan,
       continue;
     }
 
-    auto const variable = elements[0].first;
+    auto const variable = elements[0].var;
     TRI_ASSERT(variable != nullptr);
 
     auto setter = plan->getVarSetBy(variable->id);
@@ -1030,9 +1030,9 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt, ExecutionPlan* plan,
 
       if (!collectNode->isDistinctCommand()) {
         // add the post-SORT
-        std::vector<std::pair<Variable const*, bool>> sortElements;
+        SortElementVector sortElements;
         for (auto const& v : newCollectNode->groupVariables()) {
-          sortElements.emplace_back(std::make_pair(v.first, true));
+          sortElements.emplace_back(v.first, true);
         }
 
         auto sortNode =
@@ -1071,9 +1071,9 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt, ExecutionPlan* plan,
 
     // insert a SortNode IN FRONT OF the CollectNode
     if (!groupVariables.empty()) {
-      std::vector<std::pair<Variable const*, bool>> sortElements;
+      SortElementVector sortElements;
       for (auto const& v : groupVariables) {
-        sortElements.emplace_back(std::make_pair(v.second, true));
+        sortElements.emplace_back(v.second, true);
       }
 
       auto sortNode = new SortNode(plan, plan->nextId(), sortElements, true);
@@ -1339,7 +1339,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
       case EN::SORT: {
         auto node = static_cast<SortNode*>(en);
         for (auto& variable : node->_elements) {
-          variable.first = Variable::replace(variable.first, _replacements);
+          variable.var = Variable::replace(variable.var, _replacements);
         }
         break;
       }
@@ -1978,7 +1978,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         }
         _sortNode = static_cast<SortNode*>(en);
         for (auto& it : _sortNode->getElements()) {
-          _sorts.emplace_back((it.first)->id, it.second);
+          _sorts.emplace_back((it.var)->id, it.ascending);
         }
         return false;
 
@@ -3918,4 +3918,3 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
   opt->addPlan(plan, rule, modified);
 }
-

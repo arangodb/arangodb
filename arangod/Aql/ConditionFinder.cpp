@@ -77,7 +77,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
       // register which variables are used in a SORT
       if (_sorts.empty()) {
         for (auto& it : static_cast<SortNode const*>(en)->getElements()) {
-          _sorts.emplace_back((it.first)->id, it.second);
+          _sorts.emplace_back((it.var)->id, it.ascending);
           TRI_IF_FAILURE("ConditionFinder::sortNode") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
