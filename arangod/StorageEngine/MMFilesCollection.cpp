@@ -253,8 +253,15 @@ bool MMFilesCollection::OpenIterator(TRI_df_marker_t const* marker, MMFilesColle
     if (tick > datafile->_dataMax) {
       datafile->_dataMax = tick;
     }
+    
+    if (++data->_operations % 1024 == 0) {
+      data->_mmdr.clear(256);
+    }
   } else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
     res = OpenIteratorHandleDeletionMarker(marker, datafile, data);
+    if (++data->_operations % 1024 == 0) {
+      data->_mmdr.clear(256);
+    }
   } else {
     if (type == TRI_DF_MARKER_HEADER) {
       // ensure there is a datafile info entry for each datafile of the

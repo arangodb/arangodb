@@ -39,6 +39,13 @@ struct ChunkCache {
 
   ChunkCache() : _chunksUsed(0), _chunksArray() {}
 
+  void clear() {
+    if (_chunksUsed > STATIC_ARRAY_SIZE) {
+      _chunksHash.clear();
+    }
+    _chunksUsed = 0;
+  }
+
   void add(RevisionCacheChunk* chunk) {
     if (_chunksUsed <= STATIC_ARRAY_SIZE) {
       if (_chunksUsed == STATIC_ARRAY_SIZE) {
@@ -110,7 +117,7 @@ class ManagedDocumentResult {
     _vpack = vpack;
   }
 
-  //void clear();
+  void clear(size_t threshold);
 
  private:
   Transaction* _trx;
