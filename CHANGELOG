@@ -1,7 +1,11 @@
 v3.1.9 (XXXX-XX-XX)
 -------------------
 
-* macos CLI package: store databases and apps in the users home directory
+* allow intermittent read-cache garbage collection during collection loads
+
+* more efficient collection locking in case the locks are contended
+
+* macos CLI package: store databases and apps in the user's home directory
 
 * ui: fixed re-login issue within a non system db, when tab was closed
 
