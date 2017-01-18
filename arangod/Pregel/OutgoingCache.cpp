@@ -86,7 +86,7 @@ void ArrayOutCache<M>::appendMessage(prgl_shard_t shard, std::string const& key,
 
 template <typename M>
 void ArrayOutCache<M>::flushMessages() {
-  LOG(INFO) << "Beginning to send messages to other machines";
+  //LOG(INFO) << "Beginning to send messages to other machines";
   uint64_t gss = this->_state->globalSuperstep();
   if (this->_sendToNextGSS) {
     gss += 1;
@@ -133,7 +133,7 @@ void ArrayOutCache<M>::flushMessages() {
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
 
-    LOG(INFO) << "Worker: Sending data to other Shard: " << shardId;
+    //LOG(INFO) << "Worker: Sending data to other Shard: " << shardId;
     //<< ". Message: " << package.toJson();
   }
   size_t nrDone = 0;
@@ -202,7 +202,7 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
 
 template <typename M>
 void CombiningOutCache<M>::flushMessages() {
-  LOG(INFO) << "Beginning to send messages to other machines";
+  //LOG(INFO) << "Beginning to send messages to other machines";
   uint64_t gss = this->_state->globalSuperstep();
   if (this->_sendToNextGSS) {
     gss += 1;
@@ -244,12 +244,12 @@ void CombiningOutCache<M>::flushMessages() {
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
 
-    LOG(INFO) << "Worker: Sending data to other Shard: " << shardId;
+    //LOG(INFO) << "Worker: Sending data to other Shard: " << shardId;
     //          << ". Message: " << package.toJson();
   }
   size_t nrDone = 0;
   ClusterComm::instance()->performRequests(requests, 180, nrDone,
-                                           LogTopic("Pregel message transfer"));
+                                           LogTopic("Pregel"));
   Utils::printResponses(requests);
   this->clear();
 }

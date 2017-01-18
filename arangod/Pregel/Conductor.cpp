@@ -322,8 +322,9 @@ void Conductor::finishedRecoveryStep(VPackSlice& data) {
 }
 
 void Conductor::cancel() {
-  if (_state == ExecutionState::RUNNING ||
-      _state == ExecutionState::RECOVERING) {
+  if (_state == ExecutionState::RUNNING
+      || _state == ExecutionState::RECOVERING
+      || _state == ExecutionState::IN_ERROR) {
     _state = ExecutionState::CANCELED;
 
     LOG(INFO) << "Telling workers to discard results";
@@ -345,10 +346,13 @@ void Conductor::cancel() {
 void Conductor::startRecovery() {
   MUTEX_LOCKER(guard, _callbackMutex);
   if (_state != ExecutionState::RUNNING && _state != ExecutionState::IN_ERROR) {
-    LOG(INFO) << "Execution is not recoverable";
+    return;// maybe we are already in recovery mode
+  } else if (_algorithm->supportsCompensation() == false) {
+    LOG(ERR) << "Execution is not recoverable";
+    cancel();
     return;
   }
-
+  
   // we lost a DBServer, we need to reconfigure all remainging servers
   // so they load the data for the lost machine
   _state = ExecutionState::RECOVERING;
@@ -386,35 +390,30 @@ void Conductor::startRecovery() {
     }
 
     // Let's try recovery
-    if (_algorithm->supportsCompensation()) {
-      if (_masterContext) {
-        bool proceed = _masterContext->preCompensation(_globalSuperstep);
-        if (!proceed) {
-          cancel();
-        }
-      }
-
-      VPackBuilder b;
-      b.openObject();
-      b.add(Utils::recoveryMethodKey, VPackValue(Utils::compensate));
-      if (_aggregators->size() > 0) {
-        b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-        _aggregators->serializeValues(b);
-        b.close();
-      }
-      b.close();
-      _aggregators->resetValues();
-
-      // initialize workers will reconfigure the workers and set the
-      // _dbServers list to the new primary DBServers
-      int res = _initializeWorkers(Utils::startRecoveryPath, b.slice());
-      if (res != TRI_ERROR_NO_ERROR) {
+    if (_masterContext) {
+      bool proceed = _masterContext->preCompensation(_globalSuperstep);
+      if (!proceed) {
         cancel();
-        LOG(ERR) << "Compensation failed";
       }
-    } else {
-      LOG(ERR) << "Recovery not supported";
+    }
+
+    b.clear();// start a new message
+    b.openObject();
+    b.add(Utils::recoveryMethodKey, VPackValue(Utils::compensate));
+    if (_aggregators->size() > 0) {
+      b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+      _aggregators->serializeValues(b);
+      b.close();
+    }
+    b.close();
+    _aggregators->resetValues();
+
+    // initialize workers will reconfigure the workers and set the
+    // _dbServers list to the new primary DBServers
+    res = _initializeWorkers(Utils::startRecoveryPath, b.slice());
+    if (res != TRI_ERROR_NO_ERROR) {
       cancel();
+      LOG(ERR) << "Compensation failed";
     }
   });
 }

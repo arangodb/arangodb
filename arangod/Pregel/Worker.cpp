@@ -80,6 +80,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this, vocbase] {
 
+    VPackBuilder package;
     {  // never modify the graph store without holding the mutex
       MUTEX_LOCKER(guard, _commandMutex);
       if (_config.lazyLoading()) {
@@ -95,17 +96,16 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
         _graphStore->loadShards(this->_config);
       }
       _state = WorkerState::IDLE;
+      
+      package.openObject();
+      package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+      package.add(Utils::executionNumberKey,
+                  VPackValue(_config.executionNumber()));
+      package.add(Utils::vertexCount,
+                  VPackValue(_graphStore->localVertexCount()));
+      package.add(Utils::edgeCount, VPackValue(_graphStore->localEdgeCount()));
+      package.close();
     }
-
-    VPackBuilder package;
-    package.openObject();
-    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
-    package.add(Utils::vertexCount,
-                VPackValue(_graphStore->localVertexCount()));
-    package.add(Utils::edgeCount, VPackValue(_graphStore->localEdgeCount()));
-    package.close();
     _callConductor(Utils::finishedStartupPath, package.slice());
   });
 }

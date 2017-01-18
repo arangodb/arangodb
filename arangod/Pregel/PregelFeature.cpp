@@ -42,8 +42,8 @@ PregelFeature::PregelFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Pregel") {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("Database");
   startsAfter("Logger");
+  startsAfter("Database");
   startsAfter("Endpoint");
   startsAfter("Cluster");
 }
@@ -61,7 +61,7 @@ static size_t _approxThreadNumber(){
   const size_t procNum = TRI_numberProcessors();
   if (procNum <= 1) return 1;
   else if (procNum <= 16) return procNum / 2;
-  else return procNum;
+  else return procNum;// use full performance on cluster
 }
 
 void PregelFeature::start() {
