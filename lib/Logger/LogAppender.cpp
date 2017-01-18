@@ -70,7 +70,7 @@ void LogAppender::addTtyAppender() { _ttyAppender.reset(new LogAppenderTty()); }
 
 std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
     std::string const& definition, std::string const& filter) {
-  std::vector<std::string> v = StringUtils::split(definition, '=');
+  std::vector<std::string> v = StringUtils::split(definition, '=', '\0');
   std::string topicName;
   std::string output;
   std::string contentFilter;
