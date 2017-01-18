@@ -461,14 +461,20 @@ inline RestStatus RestAgencyHandler::handleInquire() {
     std::this_thread::sleep_for(duration_t(100));
   }
   
-  inquire_ret_t ret = _agent->inquire(query);
+  inquire_ret_t ret;
+  try {
+    ret = _agent->inquire(query);
+  } catch (std::exception const& e) {
+    generateError(
+      rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
+  }
   
   if (ret.accepted) {  // I am leading
 
-      generateResult(rest::ResponseCode::OK, ret.result->slice());
-      
+    generateResult(rest::ResponseCode::OK, ret.result->slice());
+    
   } else {  // Redirect to leader
-
+    
     if (_agent->leaderID() == NO_LEADER) {
       Builder body;
       body.openObject();
@@ -613,6 +619,8 @@ RestStatus RestAgencyHandler::execute() {
         return handleWrite();
       } else if (suffixes[0] == "read") {
         return handleRead();
+      } else if (suffixes[0] == "inquire") {
+        return handleInquire();
       } else if (suffixes[0] == "transact") {
         return handleTransact();
       } else if (suffixes[0] == "config") {

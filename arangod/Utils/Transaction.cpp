@@ -3341,6 +3341,10 @@ void Transaction::addChunk(RevisionCacheChunk* chunk) {
   _transactionContext->addChunk(chunk);
 }
 
+void Transaction::clearChunks(size_t threshold) {
+  _transactionContext->clearChunks(threshold);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get list of indexes for a collection
 ////////////////////////////////////////////////////////////////////////////////

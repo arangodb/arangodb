@@ -675,6 +675,7 @@ class Transaction {
   virtual Transaction* clone() const;
   
   void addChunk(RevisionCacheChunk* chunk);
+  void clearChunks(size_t threshold);
 
  private:
   
