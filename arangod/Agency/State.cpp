@@ -135,7 +135,7 @@ std::vector<arangodb::consensus::index_t> State::log(
       std::shared_ptr<Buffer<uint8_t>> buf =
           std::make_shared<Buffer<uint8_t>>();
       buf->append((char const*)i[0].begin(), i[0].byteSize());
-      LOG(WARN) << i.length();
+
       if (i.length()==3) {
         clientId = i[2].copyString();
       }
@@ -145,8 +145,8 @@ std::vector<arangodb::consensus::index_t> State::log(
       _clientIdLookupTable.emplace(
         std::pair<std::string, arangodb::consensus::index_t>(clientId, idx[j]));
       persist(idx[j], term, i[0], clientId);               // log to disk
-      ++j;
     }
+    ++j;
   }
 
   return idx;
@@ -845,25 +845,34 @@ std::vector<log_t> State::inquire(query_t const& query) const {
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
   
   if (!query->slice().isArray()) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
-      << "Inquire interface handles [<clientIds>]. We got " << query->toJson();
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        210002,
+        std::string("Inquiry handles a list of string clientIds: [<clientId>] ")
+        + ". We got " + query->toJson());
     return result;
   }
-  
+
+  size_t pos = 0;
   for (auto const& i : VPackArrayIterator(query->slice())) {
 
     if (!i.isString()) {
-      LOG_TOPIC(WARN, Logger::AGENCY)
-        << "ClientIds must be strings. We got " << i.toJson();
-      continue;
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        210002, std::string("ClientIds must be strings. On position ")
+        + std::to_string(pos) + " we got " + i.toJson());
     }
-    
+
     auto ret = _clientIdLookupTable.equal_range(i.copyString());
     for (auto it = ret.first; it != ret.second; ++it) {
+      if (it->second < _log[0].index) {
+        continue;
+      }
       result.push_back(_log.at(it->second-_cur));
     }
+
+    pos++;
+    
   }
-  
+
   return result;
   
 }

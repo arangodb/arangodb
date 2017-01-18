@@ -59,6 +59,7 @@ class MMFilesCollection final : public PhysicalCollection {
     IndexLookupContext _context;
     uint64_t _deletions;
     uint64_t _documents;
+    uint64_t _operations;
     int64_t _initialCount;
     bool const _trackKeys;
 
@@ -74,6 +75,7 @@ class MMFilesCollection final : public PhysicalCollection {
           _context(trx, collection, &_mmdr, 1),
           _deletions(0),
           _documents(0),
+          _operations(0),
           _initialCount(-1),
           _trackKeys(collection->keyGenerator()->trackKeys()) {
       TRI_ASSERT(collection != nullptr);

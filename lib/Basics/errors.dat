@@ -395,6 +395,7 @@ ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM,20012,"Inform message must contain uint pa
 ERROR_AGENCY_INFORM_MUST_CONTAIN_ID,20013,"Inform message must contain string parameter 'id'","The inform message in the agency must contain a string parameter 'id'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE,20014,"Inform message must contain array 'active'","The inform message in the agency must contain an array 'active'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL,20015,"Inform message must contain object 'pool'","The inform message in the agency must contain an object 'pool'."
+ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING,20020,"Inquiry failed","Inquiry by clientId failed"
 
 ################################################################################
 ## Dispatcher errors
