@@ -294,7 +294,70 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testClientIds : function () {
-      writeAndCheck([[{"a":12},{},guid()]]);
+      var res;
+
+      var id0 = guid();
+      var query0 = {"a":12};
+      var pre0 = {};
+      writeAndCheck([[query0, pre0, id0]]);
+      res = accessAgency("inquire",[id0]).bodyParsed;
+      assertEqual(res.length, 1);
+      assertEqual(res[0].query, query0);
+
+      var query1 = {"a":13};
+      var pre1 = {"a":12}
+      writeAndCheck([[query1, pre1, id0]]);
+      res = accessAgency("inquire",[id0]).bodyParsed;
+      assertEqual(res.length, 2);
+      assertEqual(res[0].query, query0);
+      assertEqual(res[1].query, query1);
+
+      var query2 = {"a":13};
+      var pre2 = {"a":12}
+      var id2 = guid();
+      res = accessAgency("write",[[query1, pre1, id2]]);
+      assertEqual(res.statusCode,412);
+      res = accessAgency("inquire",[id2]).bodyParsed;
+      assertEqual(res.length, 0);
+
+      var id3 = guid();
+      res = accessAgency("write",[[query0, pre0, id3],[query1, pre1, id3]]);
+      assertEqual(res.statusCode,200);
+      res = accessAgency("inquire",[id3]).bodyParsed;
+      assertEqual(res.length, 2);
+      assertEqual(res[0].query, query0);
+      assertEqual(res[1].query, query1);
+      
+      var id4 = guid();
+      res = accessAgency("write",[[query0, pre0, id4],
+                                  [query1, pre1, id4],
+                                  [query2, pre2, id4]]);
+      assertEqual(res.statusCode,412);
+      res = accessAgency("inquire",[id4]).bodyParsed;
+      assertEqual(res.length, 2);
+      assertEqual(res[0].query, query0);
+      assertEqual(res[1].query, query1);
+      
+      var id5 = guid();
+      res = accessAgency("write",[[query0, pre0, id5],
+                                  [query2, pre2, id5],
+                                  [query1, pre1, id5]]);
+      assertEqual(res.statusCode,412);
+      res = accessAgency("inquire",[id5]).bodyParsed;
+      assertEqual(res.length, 2);
+      assertEqual(res[0].query, query0);
+      assertEqual(res[1].query, query1);
+      
+      var id6 = guid();
+      res = accessAgency("write",[[query2, pre2, id6],
+                                  [query0, pre0, id6],
+                                  [query1, pre1, id6]]);
+      assertEqual(res.statusCode,412);
+      res = accessAgency("inquire",[id6]).bodyParsed;
+      assertEqual(res.length, 2);
+      assertEqual(res[0].query, query0);
+      assertEqual(res[1].query, query1);
+      
     },
 
     

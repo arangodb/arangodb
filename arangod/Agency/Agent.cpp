@@ -682,7 +682,7 @@ inquire_ret_t Agent::inquire(query_t const& query) {
     }
   }
 
-  ret.result = builder;
+  ret = inquire_ret_t(true, id(), builder);
   return ret;
 }
 
