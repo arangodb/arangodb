@@ -109,6 +109,8 @@ std::vector<check_t> Supervision::checkDBServers() {
   Node::Children const serversRegistered =
       _snapshot(currentServersRegisteredPrefix).children();
 
+  bool reportPersistent;
+
   std::vector<std::string> todelete;
   for (auto const& machine : _snapshot(healthPrefix).children()) {
     if (machine.first.substr(0, 2) == "DB") {
@@ -135,9 +137,9 @@ std::vector<check_t> Supervision::checkDBServers() {
 
     try {  // Existing
       lastHeartbeatTime =
-          _transient(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
+        _transient(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
       lastHeartbeatAcked =
-          _transient(healthPrefix + serverID + "/LastHeartbeatAcked").toJson();
+        _transient(healthPrefix + serverID + "/LastHeartbeatAcked").toJson();
       lastStatus = _transient(healthPrefix + serverID + "/Status").toJson();
       if (lastHeartbeatTime != heartbeatTime) {  // Update
         good = true;
@@ -171,7 +173,10 @@ std::vector<check_t> Supervision::checkDBServers() {
     }
 
     if (good) {
-      
+
+      if (lastStatus != Supervision::HEALTH_STATUS_GOOD) {
+        reportPersistent = true;
+      }
       report->add(
         "LastHeartbeatAcked",
         VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -205,6 +210,7 @@ std::vector<check_t> Supervision::checkDBServers() {
       // for at least grace period
       if (t.count() > _gracePeriod && secondsSinceLeader > _gracePeriod) {
         if (lastStatus == "BAD") {
+          reportPersistent = true;
           report->add("Status", VPackValue("FAILED"));
           FailedServer fsj(_snapshot, _agent, std::to_string(_jobId++),
                            "supervision", _agencyPrefix, serverID);
@@ -222,6 +228,9 @@ std::vector<check_t> Supervision::checkDBServers() {
     
     if (!this->isStopping()) {
       _agent->transient(report);
+      if (reportPersistent) {
+        _agent->write(report);
+      }
     }
     
   }

@@ -1068,7 +1068,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
                       : timeout),
       url, builder.slice().toJson());
 
-  if (!result.successful()) {
+  if (!result.successful() && result.httpCode() != 412) {
     return result;
   }
 

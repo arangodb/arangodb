@@ -55,7 +55,7 @@ FailedServer::~FailedServer() {}
 
 bool FailedServer::start() {
   LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Start FailedServer job" + _jobId + " for server " + _server;
+      << "Start FailedServer job " + _jobId + " for server " + _server;
 
   // Copy todo to pending
   Builder todo, pending;
@@ -265,7 +265,8 @@ JOB_STATUS FailedServer::status() {
   }
 
   if (status == PENDING) {
-    auto const& serverHealth = _snapshot(healthPrefix + _server + "/Status").getString();
+    auto const& serverHealth =
+      _snapshot(healthPrefix + _server + "/Status").getString();
 
     // mop: ohhh...server is healthy again!
     bool serverHealthy = serverHealth == Supervision::HEALTH_STATUS_GOOD;
