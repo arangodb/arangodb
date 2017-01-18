@@ -67,7 +67,7 @@ static void addEmptyVPackObject(std::string const& name,
 }
 
 const std::vector<std::string> AgencyTransaction::TypeUrl(
-  { "/read", "/write", "/transact" });
+  { "/read", "/write", "/transact", "/transient" });
 
 
 // -----------------------------------------------------------------------------
@@ -223,6 +223,38 @@ void AgencyWriteTransaction::toVelocyPack(VPackBuilder& builder) const {
 }
 
 bool AgencyWriteTransaction::validate(AgencyCommResult const& result) const {
+  return (result.slice().isObject() &&
+          result.slice().hasKey("results") &&
+          result.slice().get("results").isArray());
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            AgencyTransientTransaction
+// -----------------------------------------------------------------------------
+
+std::string AgencyTransientTransaction::toJson() const {
+  VPackBuilder builder;
+  toVelocyPack(builder);
+  return builder.toJson();
+}
+
+void AgencyTransientTransaction::toVelocyPack(VPackBuilder& builder) const {
+  VPackArrayBuilder guard(&builder);
+  {
+    VPackObjectBuilder guard2(&builder);
+    for (AgencyOperation const& operation : operations) {
+      operation.toVelocyPack(builder);
+    }
+  }
+  if (preconditions.size() > 0) {
+    VPackObjectBuilder guard3(&builder);
+    for (AgencyPrecondition const& precondition : preconditions) {
+      precondition.toVelocyPack(builder);
+    }
+  }
+}
+
+bool AgencyTransientTransaction::validate(AgencyCommResult const& result) const {
   return (result.slice().isObject() &&
           result.slice().hasKey("results") &&
           result.slice().get("results").isArray());
@@ -690,7 +722,7 @@ AgencyCommResult AgencyComm::sendServerState(double ttl) {
   }
 
   AgencyCommResult result(
-      setValue("Sync/ServerStates/" + ServerState::instance()->getId(),
+      setTransient("Sync/ServerStates/" + ServerState::instance()->getId(),
                builder.slice(), ttl));
 
   return result;
@@ -739,6 +771,16 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
   AgencyOperation operation(key, AgencyValueOperationType::SET, slice);
   operation._ttl = static_cast<uint32_t>(ttl);
   AgencyWriteTransaction transaction(operation);
+
+  return sendTransactionWithFailover(transaction);
+}
+
+AgencyCommResult AgencyComm::setTransient(std::string const& key,
+                                      arangodb::velocypack::Slice const& slice,
+                                      double ttl) {
+  AgencyOperation operation(key, AgencyValueOperationType::SET, slice);
+  operation._ttl = static_cast<uint32_t>(ttl);
+  AgencyTransientTransaction transaction(operation);
 
   return sendTransactionWithFailover(transaction);
 }

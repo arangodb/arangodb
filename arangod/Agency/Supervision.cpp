@@ -51,6 +51,7 @@ Supervision::Supervision()
     : arangodb::Thread("Supervision"),
       _agent(nullptr),
       _snapshot("Supervision"),
+      _transient("Transient"),
       _frequency(5.),
       _gracePeriod(15.),
       _jobId(0),
@@ -121,8 +122,8 @@ std::vector<check_t> Supervision::checkDBServers() {
         heartbeatTime, heartbeatStatus, serverID;
 
     serverID = machine.first;
-    heartbeatTime = _snapshot(syncPrefix + serverID + "/time").toJson();
-    heartbeatStatus = _snapshot(syncPrefix + serverID + "/status").toJson();
+    heartbeatTime = _transient(syncPrefix + serverID + "/time").toJson();
+    heartbeatStatus = _transient(syncPrefix + serverID + "/status").toJson();
 
     todelete.erase(std::remove(todelete.begin(), todelete.end(), serverID),
                    todelete.end());
@@ -134,10 +135,10 @@ std::vector<check_t> Supervision::checkDBServers() {
 
     try {  // Existing
       lastHeartbeatTime =
-          _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
+          _transient(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
       lastHeartbeatAcked =
-          _snapshot(healthPrefix + serverID + "/LastHeartbeatAcked").toJson();
-      lastStatus = _snapshot(healthPrefix + serverID + "/Status").toJson();
+          _transient(healthPrefix + serverID + "/LastHeartbeatAcked").toJson();
+      lastStatus = _transient(healthPrefix + serverID + "/Status").toJson();
       if (lastHeartbeatTime != heartbeatTime) {  // Update
         good = true;
       }
@@ -220,7 +221,7 @@ std::vector<check_t> Supervision::checkDBServers() {
     report->close();
     
     if (!this->isStopping()) {
-      _agent->write(report);
+      _agent->transient(report);
     }
     
   }
@@ -273,8 +274,8 @@ std::vector<check_t> Supervision::checkCoordinators() {
         heartbeatTime, heartbeatStatus, serverID;
 
     serverID = machine.first;
-    heartbeatTime = _snapshot(syncPrefix + serverID + "/time").toJson();
-    heartbeatStatus = _snapshot(syncPrefix + serverID + "/status").toJson();
+    heartbeatTime = _transient(syncPrefix + serverID + "/time").toJson();
+    heartbeatStatus = _transient(syncPrefix + serverID + "/status").toJson();
 
     todelete.erase(std::remove(todelete.begin(), todelete.end(), serverID),
                    todelete.end());
@@ -286,8 +287,8 @@ std::vector<check_t> Supervision::checkCoordinators() {
 
     try {  // Existing
       lastHeartbeatTime =
-          _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
-      lastStatus = _snapshot(healthPrefix + serverID + "/Status").toJson();
+          _transient(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
+      lastStatus = _transient(healthPrefix + serverID + "/Status").toJson();
       if (lastHeartbeatTime != heartbeatTime) {  // Update
         good = true;
       }
@@ -348,7 +349,7 @@ std::vector<check_t> Supervision::checkCoordinators() {
     report->close();
     report->close();
     if (!this->isStopping()) {
-      _agent->write(report);
+      _agent->transient(report);
     }
   }
 
@@ -394,6 +395,7 @@ bool Supervision::updateSnapshot() {
   
   try {
     _snapshot = _agent->readDB().get(_agencyPrefix);
+    _transient = _agent->transient().get(_agencyPrefix);
   } catch (...) {}
   
   return true;

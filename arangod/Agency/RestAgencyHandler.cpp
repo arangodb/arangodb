@@ -93,8 +93,22 @@ RestStatus RestAgencyHandler::handleTransient() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
   }
 
+  // Convert to velocypack
+  arangodb::velocypack::Options options;
   query_t query;
-  
+  try {
+    query = _request->toVelocyPackBuilderPtr(&options);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << e.what() << " " << __FILE__ << ":" << __LINE__;
+    Builder body;
+    body.openObject();
+    body.add("message", VPackValue(e.what()));
+    body.close();
+    generateResult(rest::ResponseCode::BAD, body.slice());
+    return RestStatus::DONE;
+  }
+
   // Need Array input
   if (!query->slice().isArray()) {
     Builder body;
@@ -133,6 +147,7 @@ RestStatus RestAgencyHandler::handleTransient() {
   }
   
   write_ret_t ret;
+
   try {
     ret = _agent->transient(query);
   } catch (std::exception const& e) {
@@ -144,6 +159,32 @@ RestStatus RestAgencyHandler::handleTransient() {
     return RestStatus::DONE;
   }
 
+  // We're leading and handling the request
+  if (ret.accepted) {  
+
+    Builder body;
+    body.openObject();
+    body.add("results", VPackValue(VPackValueType::Array));
+    body.close();
+    body.close();
+
+    generateResult(rest::ResponseCode::OK, body.slice());
+    
+  } else {            // Redirect to leader
+    if (_agent->leaderID() == NO_LEADER) {
+      Builder body;
+      body.openObject();
+      body.add("message", VPackValue("No leader"));
+      body.close();
+      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
+      return RestStatus::DONE;
+    } else {
+      TRI_ASSERT(ret.redirect != _agent->id());
+      redirectRequest(ret.redirect);
+    }
+  }
+
   return RestStatus::DONE;
   
 }
@@ -151,14 +192,26 @@ RestStatus RestAgencyHandler::handleTransient() {
 RestStatus RestAgencyHandler::handleStores() {
   if (_request->requestType() == rest::RequestType::GET) {
     Builder body;
-    body.openObject();
-    body.add("spearhead", VPackValue(VPackValueType::Array));
-    _agent->spearhead().dumpToBuilder(body);
-    body.close();
-    body.add("read_db", VPackValue(VPackValueType::Array));
-    _agent->readDB().dumpToBuilder(body);
-    body.close();
-    body.close();
+    {
+      VPackObjectBuilder b(&body);
+      {
+        body.add(VPackValue("spearhead"));
+        { 
+          VPackArrayBuilder bb(&body);
+          _agent->spearhead().dumpToBuilder(body);
+        }
+        body.add(VPackValue("read_db"));
+        { 
+          VPackArrayBuilder bb(&body);
+          _agent->readDB().dumpToBuilder(body);
+        }
+        body.add(VPackValue("transient"));
+        { 
+          VPackArrayBuilder bb(&body);
+          _agent->transient().dumpToBuilder(body);
+        }
+      }
+    }
     generateResult(rest::ResponseCode::OK, body.slice());
   } else {
     generateError(rest::ResponseCode::BAD, 400);
@@ -467,6 +520,7 @@ inline RestStatus RestAgencyHandler::handleInquire() {
   } catch (std::exception const& e) {
     generateError(
       rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
+    return RestStatus::DONE;
   }
   
   if (ret.accepted) {  // I am leading
@@ -621,6 +675,8 @@ RestStatus RestAgencyHandler::execute() {
         return handleRead();
       } else if (suffixes[0] == "inquire") {
         return handleInquire();
+      } else if (suffixes[0] == "transient") {
+        return handleTransient();
       } else if (suffixes[0] == "transact") {
         return handleTransact();
       } else if (suffixes[0] == "config") {

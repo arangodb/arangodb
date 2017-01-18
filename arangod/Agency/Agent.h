@@ -167,6 +167,9 @@ class Agent : public arangodb::Thread {
   /// @brief Get spearhead store
   Store const& spearhead() const;
 
+  /// @brief Get transient store
+  Store const& transient() const;
+
   /// @brief Serve active agent interface
   bool serveActiveAgent();
 

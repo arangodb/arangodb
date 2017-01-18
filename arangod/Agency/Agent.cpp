@@ -652,9 +652,30 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
 // Non-persistent write to non-persisted key-value store
 write_ret_t Agent::transient(query_t const& query) {
-  write_ret_t ret;
+  std::vector<bool> applied;
+  std::vector<index_t> indices;
+
+  auto leader = _constituent.leaderID();
+  if (leader != id()) {
+    return write_ret_t(false, leader);
+  }
   
-  return ret;
+  // Apply to spearhead and get indices for log entries
+  {
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+    
+    // Only leader else redirect
+    if (challengeLeadership()) {
+      _constituent.candidate();
+      return write_ret_t(false, NO_LEADER);
+    }
+    
+    applied = _transient.apply(query);
+    
+  }
+
+  return write_ret_t(true, id());
+
 }
 
 
@@ -1116,6 +1137,9 @@ Store const& Agent::spearhead() const { return _spearhead; }
 
 /// Get readdb
 Store const& Agent::readDB() const { return _readDB; }
+
+/// Get transient
+Store const& Agent::transient() const { return _transient; }
 
 /// Rebuild from persisted state
 Agent& Agent::operator=(VPackSlice const& compaction) {
