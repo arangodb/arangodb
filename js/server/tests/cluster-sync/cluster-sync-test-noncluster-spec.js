@@ -1,4 +1,4 @@
-/* global describe, it, before, beforeEach */
+/* global describe, it, before, beforeEach, afterEach */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief JavaScript cluster functionality
@@ -400,7 +400,7 @@ describe('Cluster sync', function() {
     });
     it('should remove an additional index if instructed to do so', function() {
       db._create('s100001');
-      db._collection('s100001').ensureIndex({ type: "hash", fields: [ "name" ] })
+      db._collection('s100001').ensureIndex({ type: "hash", fields: [ "name" ] });
       let plan = {
         Databases: {
           "_system": {
@@ -457,7 +457,7 @@ describe('Cluster sync', function() {
       };
       cluster.executePlanForCollections(plan.Collections);
       db._useDatabase('test');
-      let indexes = db._collection('s100001').getIndexes()
+      let indexes = db._collection('s100001').getIndexes();
       expect(indexes).to.have.lengthOf(1);
     });
     it('should report an error when collection creation failed', function() {
