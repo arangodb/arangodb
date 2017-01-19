@@ -12,13 +12,21 @@ endif()
 # Global macros ----------------------------------------------------------------
 macro (generate_root_config name)
   FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb3/${name}.conf.in FileContent)
+  
   STRING(REPLACE "@PKGDATADIR@" "@ROOTDIR@/${CMAKE_INSTALL_DATAROOTDIR_ARANGO}"
-    FileContent "${FileContent}") 
-  STRING(REPLACE "@LOCALSTATEDIR@" "@ROOTDIR@/var"
     FileContent "${FileContent}")
-  STRING(REPLACE "@SBINDIR@" "@ROOTDIR@/bin"
+  if (DARWIN)
+    # var will be redirected to ~ for the macos bundle
+    STRING(REPLACE "@LOCALSTATEDIR@/" "@HOME@${INC_CPACK_ARANGO_STATE_DIR}/"
+      FileContent "${FileContent}")
+  else ()
+    STRING(REPLACE "@LOCALSTATEDIR@/" "@ROOTDIR@${CMAKE_INSTALL_LOCALSTATEDIR}/"
+      FileContent "${FileContent}")
+  endif ()
+  
+  STRING(REPLACE "@SBINDIR@" "@ROOTDIR@/${CMAKE_INSTALL_SBINDIR}"
     FileContent "${FileContent}")
-  STRING(REPLACE "@LIBEXECDIR@/arangodb3" "@ROOTDIR@/bin"
+  STRING(REPLACE "@LIBEXECDIR@/arangodb3" "@ROOTDIR@/${CMAKE_INSTALL_BINDIR}"
     FileContent "${FileContent}")
   STRING(REPLACE "@SYSCONFDIR@" "@ROOTDIR@/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}" 
     FileContent "${FileContent}")
@@ -35,6 +43,7 @@ macro (generate_root_config name)
     STRING(REGEX REPLACE "[\r\n]file =" "\n# file =" 
       FileContent "${FileContent}")
   endif ()
+    
   FILE(WRITE ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf "${FileContent}")
 endmacro ()
 
@@ -144,8 +153,7 @@ macro(to_native_path sourceVarName)
   if (MSVC)
     string(REGEX REPLACE "/" "\\\\\\\\" "myVar" "${${sourceVarName}}" )
   else()
-    set(myVar "${${sourceVarName}}")
+    string(REGEX REPLACE "//*" "/" "myVar" "${${sourceVarName}}" )
   endif()
-
   set("INC_${sourceVarName}" ${myVar})
 endmacro()

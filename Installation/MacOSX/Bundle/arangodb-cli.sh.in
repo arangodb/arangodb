@@ -2,7 +2,11 @@
 ROOTDIR="`(cd \`dirname $0\` && pwd)`"
 # create start script
 
-SCRIPTS="`( cd ${ROOTDIR}/@CMAKE_INSTALL_PREFIX@ && ls -1 {@CMAKE_INSTALL_BINDIR@,@CMAKE_INSTALL_SBINDIR@}/* )`"
+mkdir -p ${HOME}@INC_CPACK_ARANGO_DATA_DIR@
+mkdir -p ${HOME}@INC_CPACK_ARANGO_LOG_DIR@
+mkdir -p ${HOME}@INC_CPACK_ARANGODB_APPS_DIRECTORY@
+
+SCRIPTS="`( cd ${ROOTDIR}@CMAKE_INSTALL_PREFIX@ && ls -1 {@CMAKE_INSTALL_BINDIR@,@CMAKE_INSTALL_SBINDIR@}/* )`"
 
 for script in $SCRIPTS; do
   base="`basename $script`"
@@ -10,10 +14,10 @@ for script in $SCRIPTS; do
   (
     echo "#!/bin/bash"
     echo
-    echo "export ROOTDIR=\"${ROOTDIR}/@CMAKE_INSTALL_PREFIX@\""
+    echo "export ROOTDIR=\"${ROOTDIR}@CMAKE_INSTALL_PREFIX@\""
     echo
 
-    echo "exec \"\${ROOTDIR}/$script\" -c \"\${ROOTDIR}/@CMAKE_INSTALL_SYSCONFDIR_ARANGO@/${base}.conf\" \$*"
+    echo "exec \"\${ROOTDIR}/$script\" -c \"\${ROOTDIR}@CMAKE_INSTALL_SYSCONFDIR_ARANGO@/${base}.conf\" \$*"
   ) > ${ROOTDIR}/$base.$$
 
   chmod 755 ${ROOTDIR}/$base.$$
@@ -22,7 +26,7 @@ done
 
 # start the server
 
-PIDFILE="${ROOTDIR}/@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_LOCALSTATEDIR@/run/arangod.pid"
+PIDFILE="${ROOTDIR}@INC_CPACK_ARANGO_PID_DIR@/arangod.pid"
 
 if [ -f "${PIDFILE}" ];  then
 result=`
@@ -39,7 +43,8 @@ EOF
   fi
 fi
 
-test -d "${ROOTDIR}/@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_LOCALSTATEDIR@/run" || mkdir "${ROOTDIR}/@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_LOCALSTATEDIR@/run"
+
+test -d "${ROOTDIR}@INC_CPACK_ARANGO_PID_DIR@" || mkdir "${ROOTDIR}@INC_CPACK_ARANGO_PID_DIR@"
 ${ROOTDIR}/arangod --daemon --pid-file "${PIDFILE}"
 
 # create some information for the user
@@ -51,10 +56,10 @@ INFOFILE="/tmp/ArangoDB-CLI.info.$$"
   echo "ArangoDB server has been started"
   echo ""
   echo "The database directory is located at"
-  echo "   '${ROOTDIR}/@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_LOCALSTATEDIR@/lib/arangodb3'"
+  echo "   '${ROOTDIR}@INC_CPACK_ARANGO_DATA_DIR@'"
   echo ""
   echo "The log file is located at"
-  echo "   '${ROOTDIR}/@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_LOCALSTATEDIR@/log/arangodb3/arangod.log'"
+  echo "   '${ROOTDIR}@INC_CPACK_ARANGO_LOG_DIR@/arangod.log'"
   echo ""
   echo "You can access the server using a browser at 'http://127.0.0.1:8529/'"
   echo "or start the ArangoDB shell"
@@ -69,7 +74,7 @@ INFOFILE="/tmp/ArangoDB-CLI.info.$$"
 
 /usr/bin/osascript <<-EOF
 tell application "Terminal"
-  do script "clear && cat $INFOFILE && rm $INFOFILE && sleep 20 && exec tail -1 -f ${ROOTDIR}/@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_LOCALSTATEDIR@/log/arangodb3/arangod.log"
+  do script "clear && cat $INFOFILE && rm $INFOFILE && sleep 20 && exec tail -1 -f ${HOME}@INC_CPACK_ARANGO_LOG_DIR@/arangod.log"
   activate
 end tell
 EOF

@@ -77,12 +77,14 @@ inline static std::string stringify(arangodb::consensus::index_t index) {
 
 /// Persist one entry
 bool State::persist(arangodb::consensus::index_t index, term_t term,
-                    arangodb::velocypack::Slice const& entry) const {
+                    arangodb::velocypack::Slice const& entry,
+                    std::string const& clientId) const {
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
   body.add("_key", Value(stringify(index)));
   body.add("term", Value(term));
   body.add("request", entry);
+  body.add("clientId", Value(clientId));
   body.close();
   
   TRI_ASSERT(_vocbase != nullptr);
@@ -128,16 +130,23 @@ std::vector<arangodb::consensus::index_t> State::log(
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
   for (auto const& i : VPackArrayIterator(slice)) {
     TRI_ASSERT(i.isArray());
+    std::string clientId;
     if (good[j]) {
       std::shared_ptr<Buffer<uint8_t>> buf =
           std::make_shared<Buffer<uint8_t>>();
       buf->append((char const*)i[0].begin(), i[0].byteSize());
+
+      if (i.length()==3) {
+        clientId = i[2].copyString();
+      }
       TRI_ASSERT(!_log.empty()); // log must not ever be empty
       idx[j] = _log.back().index + 1;
-      _log.push_back(log_t(idx[j], term, buf));  // log to RAM
-      persist(idx[j], term, i[0]);               // log to disk
-      ++j;
+      _log.push_back(log_t(idx[j], term, buf, clientId));  // log to RAM
+      _clientIdLookupTable.emplace(
+        std::pair<std::string, arangodb::consensus::index_t>(clientId, idx[j]));
+      persist(idx[j], term, i[0], clientId);               // log to disk
     }
+    ++j;
   }
 
   return idx;
@@ -147,6 +156,7 @@ std::vector<arangodb::consensus::index_t> State::log(
 arangodb::consensus::index_t State::log(
   velocypack::Slice const& slice, term_t term) {
 
+  std::string clientId;
   arangodb::consensus::index_t idx = 0;
   auto buf = std::make_shared<Buffer<uint8_t>>();
   
@@ -154,8 +164,8 @@ arangodb::consensus::index_t State::log(
   buf->append((char const*)slice.begin(), slice.byteSize());
   TRI_ASSERT(!_log.empty()); // log must not ever be empty
   idx = _log.back().index + 1;
-  _log.push_back(log_t(idx, term, buf));  // log to RAM
-  persist(idx, term, slice);               // log to disk
+  _log.push_back(log_t(idx, term, buf, clientId));  // log to RAM
+  persist(idx, term, slice, clientId);               // log to disk
 
   return _log.back().index;
   
@@ -173,21 +183,28 @@ arangodb::consensus::index_t State::log(query_t const& transactions,
   TRI_ASSERT(nqs > ndups);
 
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
+  std::string clientId;
 
   for (size_t i = ndups; i < nqs; ++i) {
     VPackSlice slice = slices[i];
 
     try {
+
       auto idx = slice.get("index").getUInt();
       auto trm = slice.get("term").getUInt();
-      auto buf = std::make_shared<Buffer<uint8_t>>();
+      clientId = slice.get("clientId").copyString();
 
+      auto buf = std::make_shared<Buffer<uint8_t>>();
       buf->append((char const*)slice.get("query").begin(),
                   slice.get("query").byteSize());
       // to RAM
-      _log.push_back(log_t(idx, trm, buf));
+      _log.push_back(log_t(idx, trm, buf, clientId));
+      _clientIdLookupTable.emplace(
+        std::pair<std::string, arangodb::consensus::index_t>(clientId, idx));
+
       // to disk
-      persist(idx, trm, slice.get("query"));
+      persist(idx, trm, slice.get("query"), clientId);
+
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     }
@@ -409,7 +426,6 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
   _options.waitForSync = waitForSync;
   _options.silent = true;
 
-  
   if (loadPersisted()) {
     MUTEX_LOCKER(logLock, _logLock);
     if (_log.empty()) {
@@ -417,8 +433,9 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
           std::make_shared<Buffer<uint8_t>>();
       VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
       buf->append(value.startAs<char const>(), value.byteSize());
-      _log.push_back(log_t(arangodb::consensus::index_t(0), term_t(0), buf));
-      persist(0, 0, value);
+      _log.push_back(
+        log_t(arangodb::consensus::index_t(0), term_t(0), buf, std::string()));
+      persist(0, 0, value, std::string());
     }
     return true;
   }
@@ -587,16 +604,22 @@ bool State::loadRemaining() {
     if (result.isArray()) {
       
       _log.clear();
-      
+      std::string clientId;
       for (auto const& i : VPackArrayIterator(result)) {
+
         buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+
         auto ii = i.resolveExternals();
         auto req = ii.get("request");
         tmp->append(req.startAs<char const>(), req.byteSize());
+
+        clientId = req.hasKey("clientId") ?
+          req.get("clientId").copyString() : std::string();
+
         try {
           _log.push_back(
             log_t(std::stoi(ii.get(StaticStrings::KeyString).copyString()),
-                  static_cast<term_t>(ii.get("term").getUInt()), tmp));
+                  static_cast<term_t>(ii.get("term").getUInt()), tmp, clientId));
         } catch (std::exception const& e) {
           LOG_TOPIC(ERR, Logger::AGENCY)
             << "Failed to convert " +
@@ -815,3 +838,42 @@ query_t State::allLogs() const {
   return everything;
   
 }
+
+std::vector<log_t> State::inquire(query_t const& query) const {
+
+  std::vector<log_t> result;
+  MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
+  
+  if (!query->slice().isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        210002,
+        std::string("Inquiry handles a list of string clientIds: [<clientId>] ")
+        + ". We got " + query->toJson());
+    return result;
+  }
+
+  size_t pos = 0;
+  for (auto const& i : VPackArrayIterator(query->slice())) {
+
+    if (!i.isString()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        210002, std::string("ClientIds must be strings. On position ")
+        + std::to_string(pos) + " we got " + i.toJson());
+    }
+
+    auto ret = _clientIdLookupTable.equal_range(i.copyString());
+    for (auto it = ret.first; it != ret.second; ++it) {
+      if (it->second < _log[0].index) {
+        continue;
+      }
+      result.push_back(_log.at(it->second-_cur));
+    }
+
+    pos++;
+    
+  }
+
+  return result;
+  
+}
+

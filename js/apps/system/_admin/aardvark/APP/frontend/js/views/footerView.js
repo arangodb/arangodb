@@ -61,6 +61,9 @@
           $('.health-state').html('UNKNOWN');
           $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
 
+          // remove modals if visible
+          window.modalView.hide();
+
           // show offline overlay
           $('#offlinePlaceholder').show();
 

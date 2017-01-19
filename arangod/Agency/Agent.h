@@ -94,13 +94,16 @@ class Agent : public arangodb::Thread {
   bool load();
 
   /// @brief Unpersisted key-value-store
-  write_ret_t vacillant(query_t const&);
+  write_ret_t transient(query_t const&);
 
   /// @brief Attempt write
   write_ret_t write(query_t const&);
 
   /// @brief Read from agency
   read_ret_t read(query_t const&);
+
+  /// @brief Inquire success of logs given clientIds
+  inquire_ret_t inquire(query_t const&);
 
   /// @brief Attempt read/write transaction
   trans_ret_t transact(query_t const&);
@@ -163,6 +166,9 @@ class Agent : public arangodb::Thread {
 
   /// @brief Get spearhead store
   Store const& spearhead() const;
+
+  /// @brief Get transient store
+  Store const& transient() const;
 
   /// @brief Serve active agent interface
   bool serveActiveAgent();
@@ -263,7 +269,7 @@ class Agent : public arangodb::Thread {
   Store _readDB;
 
   /// @brief Committed (read) kv-store
-  Store _vacillant;
+  Store _transient;
 
   /// @brief Condition variable for appendEntries
   arangodb::basics::ConditionVariable _appendCV;

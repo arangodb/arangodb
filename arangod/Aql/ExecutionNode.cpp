@@ -113,6 +113,17 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
     bool ascending = it.get("ascending").getBoolean();
     Variable* v = varFromVPack(plan->getAst(), it, "inVariable");
     elements.emplace_back(v, ascending);
+    // Is there an attribute path?
+    VPackSlice path = it.get("paths");
+    if (path.isArray()) {
+      // Get a list of strings out and add to the path:
+      auto& element = elements.back();
+      for (auto const& it2 : VPackArrayIterator(it)) {
+        if (it2.isString()) {
+          element.attributePath.push_back(it2.copyString());
+        }
+      }
+    }
   }
 }
 

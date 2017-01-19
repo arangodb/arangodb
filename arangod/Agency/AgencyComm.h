@@ -366,6 +366,63 @@ public:
 };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                            AgencyTransientTransaction
+// -----------------------------------------------------------------------------
+
+struct AgencyTransientTransaction : public AgencyTransaction {
+
+public:
+
+  explicit AgencyTransientTransaction(AgencyOperation const& operation) {
+    operations.push_back(operation);
+  }
+
+  explicit AgencyTransientTransaction(
+      std::vector<AgencyOperation> const& _operations)
+      : operations(_operations) {}
+
+  AgencyTransientTransaction(AgencyOperation const& operation,
+                         AgencyPrecondition const& precondition) {
+    operations.push_back(operation);
+    preconditions.push_back(precondition);
+  }
+
+  AgencyTransientTransaction(std::vector<AgencyOperation> const& _operations,
+                         AgencyPrecondition const& precondition) {
+    for (auto const& op : _operations) {
+      operations.push_back(op);
+    }
+    preconditions.push_back(precondition);
+  }
+
+  AgencyTransientTransaction(std::vector<AgencyOperation> const& opers,
+                         std::vector<AgencyPrecondition> const& precs) {
+    for (auto const& op : opers) {
+      operations.push_back(op);
+    }
+    for (auto const& pre : precs) {
+      preconditions.push_back(pre);
+    }
+  }
+
+  AgencyTransientTransaction() = default;
+
+  void toVelocyPack(
+      arangodb::velocypack::Builder& builder) const override final;
+
+  std::string toJson() const override final;
+
+  inline std::string const& path() const override final {
+    return AgencyTransaction::TypeUrl[3];
+  }
+
+  virtual bool validate(AgencyCommResult const& result) const override final;
+
+  std::vector<AgencyPrecondition> preconditions;
+  std::vector<AgencyOperation> operations;
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                             AgencyReadTransaction
 // -----------------------------------------------------------------------------
 
@@ -497,6 +554,9 @@ class AgencyComm {
   AgencyCommResult setValue(std::string const&, std::string const&, double);
 
   AgencyCommResult setValue(std::string const&,
+                            arangodb::velocypack::Slice const&, double);
+
+  AgencyCommResult setTransient(std::string const&,
                             arangodb::velocypack::Slice const&, double);
 
   bool exists(std::string const&);

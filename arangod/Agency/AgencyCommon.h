@@ -84,22 +84,35 @@ struct trans_ret_t {
                                     failed(f), result(res) {}
 };
 
+struct inquire_ret_t {
+  bool accepted;         // Query accepted (i.e. we are leader)
+  std::string redirect;  // If not accepted redirect id
+  query_t result;
+  inquire_ret_t() : accepted(false), redirect("") {}
+  inquire_ret_t(bool a, std::string const& id) : accepted(a), redirect(id){}
+  inquire_ret_t(bool a, std::string const& id, query_t const& res) :
+    accepted(a), redirect(id), result(res) {}
+};
+
 struct log_t {
   index_t index;                        // Log index
   term_t term;                          // Log term
   buffer_t entry;                       // To log
+  std::string clientId;                 // Client ID
   std::chrono::milliseconds timestamp;  // Timestamp
 
-  log_t(index_t idx, term_t t, buffer_t const& e)
+  log_t(index_t idx, term_t t, buffer_t const& e,
+        std::string const& clientId = std::string())
       : index(idx),
         term(t),
         entry(e),
+        clientId(clientId),
         timestamp(std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch())) {}
 
   friend std::ostream& operator<<(std::ostream& o, log_t const& l) {
     o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson()
-      << " " << l.timestamp.count();
+      << " " << " " << l.clientId << " "<< l.timestamp.count();
     return o;
   }
 };

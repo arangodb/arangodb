@@ -51,6 +51,7 @@ Supervision::Supervision()
     : arangodb::Thread("Supervision"),
       _agent(nullptr),
       _snapshot("Supervision"),
+      _transient("Transient"),
       _frequency(5.),
       _gracePeriod(15.),
       _jobId(0),
@@ -108,6 +109,8 @@ std::vector<check_t> Supervision::checkDBServers() {
   Node::Children const serversRegistered =
       _snapshot(currentServersRegisteredPrefix).children();
 
+  bool reportPersistent;
+
   std::vector<std::string> todelete;
   for (auto const& machine : _snapshot(healthPrefix).children()) {
     if (machine.first.substr(0, 2) == "DB") {
@@ -121,8 +124,8 @@ std::vector<check_t> Supervision::checkDBServers() {
         heartbeatTime, heartbeatStatus, serverID;
 
     serverID = machine.first;
-    heartbeatTime = _snapshot(syncPrefix + serverID + "/time").toJson();
-    heartbeatStatus = _snapshot(syncPrefix + serverID + "/status").toJson();
+    heartbeatTime = _transient(syncPrefix + serverID + "/time").toJson();
+    heartbeatStatus = _transient(syncPrefix + serverID + "/status").toJson();
 
     todelete.erase(std::remove(todelete.begin(), todelete.end(), serverID),
                    todelete.end());
@@ -134,10 +137,10 @@ std::vector<check_t> Supervision::checkDBServers() {
 
     try {  // Existing
       lastHeartbeatTime =
-          _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
+        _transient(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
       lastHeartbeatAcked =
-          _snapshot(healthPrefix + serverID + "/LastHeartbeatAcked").toJson();
-      lastStatus = _snapshot(healthPrefix + serverID + "/Status").toJson();
+        _transient(healthPrefix + serverID + "/LastHeartbeatAcked").toJson();
+      lastStatus = _transient(healthPrefix + serverID + "/Status").toJson();
       if (lastHeartbeatTime != heartbeatTime) {  // Update
         good = true;
       }
@@ -170,7 +173,10 @@ std::vector<check_t> Supervision::checkDBServers() {
     }
 
     if (good) {
-      
+
+      if (lastStatus != Supervision::HEALTH_STATUS_GOOD) {
+        reportPersistent = true;
+      }
       report->add(
         "LastHeartbeatAcked",
         VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -204,6 +210,7 @@ std::vector<check_t> Supervision::checkDBServers() {
       // for at least grace period
       if (t.count() > _gracePeriod && secondsSinceLeader > _gracePeriod) {
         if (lastStatus == "BAD") {
+          reportPersistent = true;
           report->add("Status", VPackValue("FAILED"));
           FailedServer fsj(_snapshot, _agent, std::to_string(_jobId++),
                            "supervision", _agencyPrefix, serverID);
@@ -220,7 +227,10 @@ std::vector<check_t> Supervision::checkDBServers() {
     report->close();
     
     if (!this->isStopping()) {
-      _agent->write(report);
+      _agent->transient(report);
+      if (reportPersistent) {
+        _agent->write(report);
+      }
     }
     
   }
@@ -273,8 +283,8 @@ std::vector<check_t> Supervision::checkCoordinators() {
         heartbeatTime, heartbeatStatus, serverID;
 
     serverID = machine.first;
-    heartbeatTime = _snapshot(syncPrefix + serverID + "/time").toJson();
-    heartbeatStatus = _snapshot(syncPrefix + serverID + "/status").toJson();
+    heartbeatTime = _transient(syncPrefix + serverID + "/time").toJson();
+    heartbeatStatus = _transient(syncPrefix + serverID + "/status").toJson();
 
     todelete.erase(std::remove(todelete.begin(), todelete.end(), serverID),
                    todelete.end());
@@ -286,8 +296,8 @@ std::vector<check_t> Supervision::checkCoordinators() {
 
     try {  // Existing
       lastHeartbeatTime =
-          _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
-      lastStatus = _snapshot(healthPrefix + serverID + "/Status").toJson();
+          _transient(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
+      lastStatus = _transient(healthPrefix + serverID + "/Status").toJson();
       if (lastHeartbeatTime != heartbeatTime) {  // Update
         good = true;
       }
@@ -348,7 +358,7 @@ std::vector<check_t> Supervision::checkCoordinators() {
     report->close();
     report->close();
     if (!this->isStopping()) {
-      _agent->write(report);
+      _agent->transient(report);
     }
   }
 
@@ -394,6 +404,7 @@ bool Supervision::updateSnapshot() {
   
   try {
     _snapshot = _agent->readDB().get(_agencyPrefix);
+    _transient = _agent->transient().get(_agencyPrefix);
   } catch (...) {}
   
   return true;
@@ -627,7 +638,7 @@ void Supervision::enforceReplication() {
       size_t replicationFactor;
       try {
         replicationFactor = col("replicationFactor").slice().getUInt();
-      } catch (std::exception const& e) {
+      } catch (std::exception const&) {
         LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "no replicationFactor entry in " << col.toJson();
         continue;

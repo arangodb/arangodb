@@ -32,6 +32,7 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <map>
 
 struct TRI_vocbase_t;
 
@@ -77,6 +78,9 @@ class State {
   std::vector<log_t> get(
       index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
+  /// @brief Get log entries by client Id
+  std::vector<log_t> inquire(query_t const&) const;
+
   /// @brief Get complete logged commands by lower and upper bounds.
   ///        Default: [first, last]
   std::vector<VPackSlice> slices(
@@ -119,8 +123,8 @@ class State {
 
  private:
   /// @brief Save currentTerm, votedFor, log entries
-  bool persist(index_t index, term_t term,
-               arangodb::velocypack::Slice const& entry) const;
+  bool persist(index_t, term_t, arangodb::velocypack::Slice const&,
+               std::string const&) const;
 
   bool saveCompacted();
 
@@ -168,6 +172,7 @@ class State {
   std::string _endpoint;            /**< @brief persistence end point */
   bool _collectionsChecked;         /**< @brief Collections checked */
   bool _collectionsLoaded;
+  std::multimap<std::string,arangodb::consensus::index_t> _clientIdLookupTable;
 
   /// @brief Our query registry
   aql::QueryRegistry* _queryRegistry;

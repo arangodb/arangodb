@@ -117,7 +117,9 @@ LogAppenderFile::LogAppenderFile(std::string const& filename,
                           S_IRUSR | S_IWUSR | S_IRGRP);
 
       if (fd < 0) {
-        std::cerr << "cannot write to file '" << filename << "'" << std::endl;
+        TRI_ERRORBUF;
+        TRI_SYSTEM_ERROR();
+        std::cerr << "cannot write to file '" << filename << "': " << TRI_GET_ERRORBUF << std::endl;
 
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
       }

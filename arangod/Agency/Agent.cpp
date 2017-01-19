@@ -43,16 +43,16 @@ namespace consensus {
 
 /// Agent configuration
 Agent::Agent(config_t const& config)
-    : Thread("Agent"),
-      _config(config),
-      _lastCommitIndex(0),
-      _spearhead(this),
-      _readDB(this),
-      _vacillant(this),
-      _nextCompationAfter(_config.compactionStepSize()),
-      _inception(std::make_unique<Inception>(this)),
-      _activator(nullptr),
-      _ready(false) {
+  : Thread("Agent"),
+    _config(config),
+    _lastCommitIndex(0),
+    _spearhead(this),
+    _readDB(this),
+    _transient(this),
+    _nextCompationAfter(_config.compactionStepSize()),
+    _inception(std::make_unique<Inception>(this)),
+    _activator(nullptr),
+    _ready(false) {
   _state.configure(this);
   _constituent.configure(this);
 }
@@ -236,7 +236,7 @@ void Agent::reportIn(std::string const& peerId, index_t index) {
         _lastCommitIndex = index;
 
         if (_lastCommitIndex >= _nextCompationAfter) {
-          _state.compact(_lastCommitIndex);
+          _state.compact(_lastCommitIndex-_config.compactionKeepSize());
           _nextCompationAfter += _config.compactionStepSize();
         }
 
@@ -368,6 +368,7 @@ void Agent::sendAppendEntriesRPC() {
         builder.add("index", VPackValue(entry.index));
         builder.add("term", VPackValue(entry.term));
         builder.add("query", VPackSlice(entry.entry->data()));
+        builder.add("clientId", VPackValue(entry.clientId));
         builder.close();
         highest = entry.index;
       }
@@ -410,6 +411,7 @@ bool Agent::active() const {
   std::vector<std::string> active = _config.active();
   return (find(active.begin(), active.end(), id()) != active.end());
 }
+
 
 // Activate with everything I need to know
 query_t Agent::activate(query_t const& everything) {
@@ -649,8 +651,59 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
 
 // Non-persistent write to non-persisted key-value store
-write_ret_t Agent::vacillant(query_t const& query) {
-  write_ret_t ret;
+write_ret_t Agent::transient(query_t const& query) {
+  std::vector<bool> applied;
+  std::vector<index_t> indices;
+
+  auto leader = _constituent.leaderID();
+  if (leader != id()) {
+    return write_ret_t(false, leader);
+  }
+  
+  // Apply to spearhead and get indices for log entries
+  {
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+    
+    // Only leader else redirect
+    if (challengeLeadership()) {
+      _constituent.candidate();
+      return write_ret_t(false, NO_LEADER);
+    }
+    
+    applied = _transient.apply(query);
+    
+  }
+
+  return write_ret_t(true, id());
+
+}
+
+
+inquire_ret_t Agent::inquire(query_t const& query) {
+  inquire_ret_t ret;
+
+  auto leader = _constituent.leaderID();
+  if (leader != id()) {
+    return inquire_ret_t(false, leader);
+  }
+  
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+
+  auto si = _state.inquire(query);
+
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    VPackArrayBuilder b(builder.get());
+    for (auto const& i : si) {
+      VPackObjectBuilder bb(builder.get());
+      builder->add("index", VPackValue(i.index));
+      builder->add("term", VPackValue(i.term));
+      builder->add("query", VPackSlice(i.entry->data()));
+      builder->add("index", VPackValue(i.index));
+    }
+  }
+
+  ret = inquire_ret_t(true, id(), builder);
   return ret;
 }
 
@@ -1084,6 +1137,9 @@ Store const& Agent::spearhead() const { return _spearhead; }
 
 /// Get readdb
 Store const& Agent::readDB() const { return _readDB; }
+
+/// Get transient
+Store const& Agent::transient() const { return _transient; }
 
 /// Rebuild from persisted state
 Agent& Agent::operator=(VPackSlice const& compaction) {

@@ -74,9 +74,6 @@ class CollectionRevisionsCache {
   // insert from chunk
   void insertRevision(TRI_voc_rid_t revisionId, RevisionCacheChunk* chunk, uint32_t offset, uint32_t version, bool shouldLock);
   
-  // insert from WAL
-  void insertRevision(TRI_voc_rid_t revisionId, wal::Logfile* logfile, uint32_t offset, bool shouldLock);
-
   // remove a revision
   void removeRevision(TRI_voc_rid_t revisionId);
 
