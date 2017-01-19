@@ -27,11 +27,15 @@
 
 #include "Basics/Common.h"
 
+#include <list>
+
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <type_traits>
-
-#include <list>
 
 #include "Basics/Mutex.h"
 #include "Rest/HttpRequest.h"
@@ -280,13 +284,15 @@ public:
 struct AgencyGeneralTransaction : public AgencyTransaction {
 
   explicit AgencyGeneralTransaction(
-    std::pair<AgencyOperation,AgencyPrecondition> const& operation) {
+    std::pair<AgencyOperation,AgencyPrecondition> const& operation) :
+    transactionId(to_string(boost::uuids::random_generator()())) {
     operations.push_back(operation);
   }
   
   explicit AgencyGeneralTransaction(
-    std::vector<std::pair<AgencyOperation,AgencyPrecondition>> const& _operations)
-    : operations(_operations) {}
+    std::vector<std::pair<AgencyOperation,AgencyPrecondition>> const& _opers) :
+    operations(_opers),
+    transactionId(to_string(boost::uuids::random_generator()())) {}
   
   AgencyGeneralTransaction() = default;
   
@@ -304,7 +310,7 @@ struct AgencyGeneralTransaction : public AgencyTransaction {
   }
 
   virtual bool validate(AgencyCommResult const& result) const override final;
-  
+  std::string transactionId;
 
 };
 
@@ -315,23 +321,26 @@ struct AgencyGeneralTransaction : public AgencyTransaction {
 struct AgencyWriteTransaction : public AgencyTransaction {
 
 public:
-
-  explicit AgencyWriteTransaction(AgencyOperation const& operation) {
+  
+  explicit AgencyWriteTransaction(AgencyOperation const& operation) :
+    transactionId(to_string(boost::uuids::random_generator()())) {
     operations.push_back(operation);
   }
-
-  explicit AgencyWriteTransaction(
-      std::vector<AgencyOperation> const& _operations)
-      : operations(_operations) {}
-
+  
+  explicit AgencyWriteTransaction (std::vector<AgencyOperation> const& _opers) :
+    operations(_opers),
+    transactionId(to_string(boost::uuids::random_generator()())) {}
+  
   AgencyWriteTransaction(AgencyOperation const& operation,
-                         AgencyPrecondition const& precondition) {
+                         AgencyPrecondition const& precondition) :
+    transactionId(to_string(boost::uuids::random_generator()())) {
     operations.push_back(operation);
     preconditions.push_back(precondition);
   }
-
+  
   AgencyWriteTransaction(std::vector<AgencyOperation> const& _operations,
-                         AgencyPrecondition const& precondition) {
+                         AgencyPrecondition const& precondition) :
+    transactionId(to_string(boost::uuids::random_generator()())) {
     for (auto const& op : _operations) {
       operations.push_back(op);
     }
@@ -339,7 +348,8 @@ public:
   }
 
   AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
-                         std::vector<AgencyPrecondition> const& precs) {
+                         std::vector<AgencyPrecondition> const& precs) :
+    transactionId(to_string(boost::uuids::random_generator()())) {
     for (auto const& op : opers) {
       operations.push_back(op);
     }
@@ -357,6 +367,64 @@ public:
 
   inline std::string const& path() const override final {
     return AgencyTransaction::TypeUrl[1];
+  }
+
+  virtual bool validate(AgencyCommResult const& result) const override final;
+
+  std::vector<AgencyPrecondition> preconditions;
+  std::vector<AgencyOperation> operations;
+  std::string transactionId;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            AgencyTransientTransaction
+// -----------------------------------------------------------------------------
+
+struct AgencyTransientTransaction : public AgencyTransaction {
+
+public:
+
+  explicit AgencyTransientTransaction(AgencyOperation const& operation) {
+    operations.push_back(operation);
+  }
+
+  explicit AgencyTransientTransaction(
+      std::vector<AgencyOperation> const& _operations)
+      : operations(_operations) {}
+
+  AgencyTransientTransaction(AgencyOperation const& operation,
+                         AgencyPrecondition const& precondition) {
+    operations.push_back(operation);
+    preconditions.push_back(precondition);
+  }
+
+  AgencyTransientTransaction(std::vector<AgencyOperation> const& _operations,
+                         AgencyPrecondition const& precondition) {
+    for (auto const& op : _operations) {
+      operations.push_back(op);
+    }
+    preconditions.push_back(precondition);
+  }
+
+  AgencyTransientTransaction(std::vector<AgencyOperation> const& opers,
+                         std::vector<AgencyPrecondition> const& precs) {
+    for (auto const& op : opers) {
+      operations.push_back(op);
+    }
+    for (auto const& pre : precs) {
+      preconditions.push_back(pre);
+    }
+  }
+
+  AgencyTransientTransaction() = default;
+
+  void toVelocyPack(
+      arangodb::velocypack::Builder& builder) const override final;
+
+  std::string toJson() const override final;
+
+  inline std::string const& path() const override final {
+    return AgencyTransaction::TypeUrl[3];
   }
 
   virtual bool validate(AgencyCommResult const& result) const override final;
@@ -497,6 +565,9 @@ class AgencyComm {
   AgencyCommResult setValue(std::string const&, std::string const&, double);
 
   AgencyCommResult setValue(std::string const&,
+                            arangodb::velocypack::Slice const&, double);
+
+  AgencyCommResult setTransient(std::string const&,
                             arangodb::velocypack::Slice const&, double);
 
   bool exists(std::string const&);

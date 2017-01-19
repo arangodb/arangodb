@@ -94,7 +94,7 @@ class Agent : public arangodb::Thread {
   bool load();
 
   /// @brief Unpersisted key-value-store
-  write_ret_t transient(query_t const&);
+  trans_ret_t transient(query_t const&);
 
   /// @brief Attempt write
   write_ret_t write(query_t const&);
@@ -166,6 +166,9 @@ class Agent : public arangodb::Thread {
 
   /// @brief Get spearhead store
   Store const& spearhead() const;
+
+  /// @brief Get transient store
+  Store const& transient() const;
 
   /// @brief Serve active agent interface
   bool serveActiveAgent();

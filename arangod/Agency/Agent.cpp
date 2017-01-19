@@ -616,7 +616,9 @@ trans_ret_t Agent::transact(query_t const& queries) {
     for (const auto& query : VPackArrayIterator(qs)) {
       if (query[0].isObject()) {
         if(_spearhead.apply(query)) {
-          maxind = _state.log(query[0], term());
+          maxind = (query.length() == 3 && query[2].isString()) ?
+            _state.log(query[0], term(), query[2].copyString()) :
+            _state.log(query[0], term());
           ret->add(VPackValue(maxind));
         } else {
           ret->add(VPackValue(0));
@@ -651,10 +653,39 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
 
 // Non-persistent write to non-persisted key-value store
-write_ret_t Agent::transient(query_t const& query) {
-  write_ret_t ret;
+trans_ret_t Agent::transient(query_t const& query) {
+
+  auto ret = std::make_shared<arangodb::velocypack::Builder>();
+  auto leader = _constituent.leaderID();
+  if (leader != id()) {
+    return trans_ret_t(false, leader);
+  }
   
-  return ret;
+  // Apply to spearhead and get indices for log entries
+  {
+    VPackArrayBuilder b(ret.get());
+    
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+    
+    // Only leader else redirect
+    if (challengeLeadership()) {
+      _constituent.candidate();
+      return trans_ret_t(false, NO_LEADER);
+    }
+
+    // Read and writes
+    for (const auto& query_ : VPackArrayIterator(query->slice())) {
+      if (query_[0].isObject()) {
+        _transient.apply(query);
+      } else if (query_[0].isString()) {
+        _transient.read(query_, *ret);
+      }
+    }
+
+  }
+
+  return trans_ret_t(true, id(), 0, 0, ret);
+
 }
 
 
@@ -674,14 +705,17 @@ inquire_ret_t Agent::inquire(query_t const& query) {
   {
     VPackArrayBuilder b(builder.get());
     for (auto const& i : si) {
-      VPackObjectBuilder bb(builder.get());
-      builder->add("index", VPackValue(i.index));
-      builder->add("term", VPackValue(i.term));
-      builder->add("query", VPackSlice(i.entry->data()));
-      builder->add("index", VPackValue(i.index));
+      VPackArrayBuilder bb(builder.get());
+      for (auto const& j : i) {
+        VPackObjectBuilder bbb(builder.get());
+        builder->add("index", VPackValue(j.index));
+        builder->add("term", VPackValue(j.term));
+        builder->add("query", VPackSlice(j.entry->data()));
+        builder->add("index", VPackValue(j.index));
+      }
     }
   }
-
+  
   ret = inquire_ret_t(true, id(), builder);
   return ret;
 }
@@ -1116,6 +1150,9 @@ Store const& Agent::spearhead() const { return _spearhead; }
 
 /// Get readdb
 Store const& Agent::readDB() const { return _readDB; }
+
+/// Get transient
+Store const& Agent::transient() const { return _transient; }
 
 /// Rebuild from persisted state
 Agent& Agent::operator=(VPackSlice const& compaction) {

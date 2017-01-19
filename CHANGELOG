@@ -1,6 +1,8 @@
 devel
 -----
 
+* added --replication-factor, --number-of-shards and --wait-for-sync to arangobench
+
 * turn on UTF-8 string validation for VelocyPack values received via VST connections
 
 * fixed issue #2257

@@ -149,7 +149,7 @@ function AnySuite () {
 /// @brief check entropy of Math.random()
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCheckEntropyNative : function () {
+/*    testCheckEntropyNative : function () {
       var i, n, l;
 
       n = 100;
@@ -346,7 +346,7 @@ function AnySuite () {
       assertTrue(Math.abs(stats.variance - statsExp.variance)
                  < statsExp.varianceStddev * 3);
     }
-
+*/
   };
 }
 

@@ -154,9 +154,8 @@ std::vector<arangodb::consensus::index_t> State::log(
 
 /// Log transaction (leader)
 arangodb::consensus::index_t State::log(
-  velocypack::Slice const& slice, term_t term) {
+  velocypack::Slice const& slice, term_t term, std::string const& clientId) {
 
-  std::string clientId;
   arangodb::consensus::index_t idx = 0;
   auto buf = std::make_shared<Buffer<uint8_t>>();
   
@@ -165,6 +164,8 @@ arangodb::consensus::index_t State::log(
   TRI_ASSERT(!_log.empty()); // log must not ever be empty
   idx = _log.back().index + 1;
   _log.push_back(log_t(idx, term, buf, clientId));  // log to RAM
+  _clientIdLookupTable.emplace(
+    std::pair<std::string, arangodb::consensus::index_t>(clientId, idx));
   persist(idx, term, slice, clientId);               // log to disk
 
   return _log.back().index;
@@ -839,9 +840,9 @@ query_t State::allLogs() const {
   
 }
 
-std::vector<log_t> State::inquire(query_t const& query) const {
+std::vector<std::vector<log_t>> State::inquire(query_t const& query) const {
 
-  std::vector<log_t> result;
+  std::vector<std::vector<log_t>> result;
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
   
   if (!query->slice().isArray()) {
@@ -861,13 +862,15 @@ std::vector<log_t> State::inquire(query_t const& query) const {
         + std::to_string(pos) + " we got " + i.toJson());
     }
 
+    std::vector<log_t> transactions;
     auto ret = _clientIdLookupTable.equal_range(i.copyString());
     for (auto it = ret.first; it != ret.second; ++it) {
       if (it->second < _log[0].index) {
         continue;
       }
-      result.push_back(_log.at(it->second-_cur));
+      transactions.push_back(_log.at(it->second-_cur));
     }
+    result.push_back(transactions);
 
     pos++;
     
