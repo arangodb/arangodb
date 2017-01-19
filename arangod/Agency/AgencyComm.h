@@ -218,7 +218,9 @@ class AgencyOperation {
 class AgencyCommResult {
  public:
   AgencyCommResult();
-  AgencyCommResult(int code, std::string const& message);
+  AgencyCommResult(int code, std::string const& message,
+                   std::string const& transactionId = std::string());
+
   ~AgencyCommResult() = default;
 
  public:
@@ -229,6 +231,8 @@ class AgencyCommResult {
   int httpCode() const;
 
   int errorCode() const;
+
+  std::string clientId() const;
 
   std::string errorMessage() const;
 
@@ -256,6 +260,8 @@ class AgencyCommResult {
 
  private:
   std::shared_ptr<velocypack::Builder> _vpack;
+
+  std::string _clientId;
 };
 
 // -----------------------------------------------------------------------------
@@ -272,7 +278,8 @@ public:
   virtual std::string toJson() const = 0;
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
   virtual std::string const& path() const = 0;
-
+  virtual std::string getClientId() const = 0;
+  
   virtual bool validate(AgencyCommResult const& result) const = 0;
   
 };
@@ -285,14 +292,14 @@ struct AgencyGeneralTransaction : public AgencyTransaction {
 
   explicit AgencyGeneralTransaction(
     std::pair<AgencyOperation,AgencyPrecondition> const& operation) :
-    transactionId(to_string(boost::uuids::random_generator()())) {
+    clientId(to_string(boost::uuids::random_generator()())) {
     operations.push_back(operation);
   }
   
   explicit AgencyGeneralTransaction(
     std::vector<std::pair<AgencyOperation,AgencyPrecondition>> const& _opers) :
     operations(_opers),
-    transactionId(to_string(boost::uuids::random_generator()())) {}
+    clientId(to_string(boost::uuids::random_generator()())) {}
   
   AgencyGeneralTransaction() = default;
   
@@ -305,12 +312,16 @@ struct AgencyGeneralTransaction : public AgencyTransaction {
 
   void push_back(std::pair<AgencyOperation,AgencyPrecondition> const&);
 
-  inline std::string const& path() const override final {
+  inline virtual std::string const& path() const override final {
     return AgencyTransaction::TypeUrl[2];
   }
 
+  inline virtual std::string getClientId() const override final {
+    return clientId;
+  }
+  
   virtual bool validate(AgencyCommResult const& result) const override final;
-  std::string transactionId;
+  std::string clientId;
 
 };
 
@@ -323,24 +334,24 @@ struct AgencyWriteTransaction : public AgencyTransaction {
 public:
   
   explicit AgencyWriteTransaction(AgencyOperation const& operation) :
-    transactionId(to_string(boost::uuids::random_generator()())) {
+    clientId(to_string(boost::uuids::random_generator()())) {
     operations.push_back(operation);
   }
   
   explicit AgencyWriteTransaction (std::vector<AgencyOperation> const& _opers) :
     operations(_opers),
-    transactionId(to_string(boost::uuids::random_generator()())) {}
+    clientId(to_string(boost::uuids::random_generator()())) {}
   
   AgencyWriteTransaction(AgencyOperation const& operation,
                          AgencyPrecondition const& precondition) :
-    transactionId(to_string(boost::uuids::random_generator()())) {
+    clientId(to_string(boost::uuids::random_generator()())) {
     operations.push_back(operation);
     preconditions.push_back(precondition);
   }
   
   AgencyWriteTransaction(std::vector<AgencyOperation> const& _operations,
                          AgencyPrecondition const& precondition) :
-    transactionId(to_string(boost::uuids::random_generator()())) {
+    clientId(to_string(boost::uuids::random_generator()())) {
     for (auto const& op : _operations) {
       operations.push_back(op);
     }
@@ -349,7 +360,7 @@ public:
 
   AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
                          std::vector<AgencyPrecondition> const& precs) :
-    transactionId(to_string(boost::uuids::random_generator()())) {
+    clientId(to_string(boost::uuids::random_generator()())) {
     for (auto const& op : opers) {
       operations.push_back(op);
     }
@@ -365,15 +376,19 @@ public:
 
   std::string toJson() const override final;
 
-  inline std::string const& path() const override final {
+  inline virtual std::string const& path() const override final {
     return AgencyTransaction::TypeUrl[1];
   }
 
+  inline virtual std::string getClientId() const override final {
+    return clientId;
+  }
+  
   virtual bool validate(AgencyCommResult const& result) const override final;
 
   std::vector<AgencyPrecondition> preconditions;
   std::vector<AgencyOperation> operations;
-  std::string transactionId;
+  std::string clientId;
 };
 
 // -----------------------------------------------------------------------------
@@ -427,6 +442,10 @@ public:
     return AgencyTransaction::TypeUrl[3];
   }
 
+  inline virtual std::string getClientId() const override final {
+    return std::string();
+  }
+  
   virtual bool validate(AgencyCommResult const& result) const override final;
 
   std::vector<AgencyPrecondition> preconditions;
@@ -454,10 +473,14 @@ public:
 
   std::string toJson() const override final;
 
-  inline std::string const& path() const override final {
+  inline virtual std::string const& path() const override final {
     return AgencyTransaction::TypeUrl[0];
   }
 
+  inline virtual std::string getClientId() const override final {
+    return std::string();
+  }
+  
   virtual bool validate(AgencyCommResult const& result) const override final;
 
   std::vector<std::string> keys;
