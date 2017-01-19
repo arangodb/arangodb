@@ -1074,7 +1074,8 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
                       : timeout),
       url, builder.slice().toJson());
 
-  if (!result.successful() && result.httpCode() != 412) {
+  if (!result.successful() && result.httpCode() !=
+      (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
     return result;
   }
 
