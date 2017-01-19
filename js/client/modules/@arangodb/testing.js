@@ -34,6 +34,8 @@ const functionsDocumentation = {
   'authentication_parameters': 'authentication parameters tests',
   'boost': 'boost test suites',
   'config': 'checks the config file parsing',
+  'client_resilience': 'client resilience tests',
+  'cluster_sync': 'cluster sync tests',
   'dump': 'dump tests',
   'dump_authentication': 'dump tests with authentication',
   'dfdb': 'start test',
@@ -48,7 +50,6 @@ const functionsDocumentation = {
   'replication_static': 'replication static tests',
   'replication_sync': 'replication sync tests',
   'resilience': 'resilience tests',
-  'client_resilience': 'client resilience tests',
   'shell_client': 'shell client tests',
   'shell_replication': 'shell replication tests',
   'shell_server': 'shell server tests',
@@ -1807,6 +1808,7 @@ function findTests () {
   testsCases.resilience = doOnePath('js/server/tests/resilience');
 
   testsCases.client_resilience = doOnePath('js/client/tests/resilience');
+  testsCases.cluster_sync = doOnePath('js/server/tests/cluster-sync');
 
   testsCases.server = testsCases.common.concat(testsCases.server_only);
   testsCases.client = testsCases.common.concat(testsCases.client_only);
@@ -3550,6 +3552,28 @@ testFuncs.shell_server = function (options) {
   options.propagateInstanceInfo = true;
 
   return performTests(options, testsCases.server, 'shell_server', runThere);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: cluster_sync
+// //////////////////////////////////////////////////////////////////////////////
+
+testFuncs.cluster_sync = function (options) {
+  if (options.cluster) {
+    // may sound strange but these are actually pure logic tests
+    // and should not be executed on the cluster
+    return {
+      'cluster_sync': {
+        'status': true,
+        'message': 'skipped because of cluster',
+        'skipped': true
+      }
+    };
+  }
+  findTests();
+  options.propagateInstanceInfo = true;
+
+  return performTests(options, testsCases.cluster_sync, 'cluster_sync', runThere);
 };
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -157,7 +157,6 @@ function MovingShardsSuite () {
           wait(1.0);
           global.ArangoClusterInfo.flush();
           var servers = findCollectionServers("_system", c[i].name());
-          console.info("Seeing servers:", i, c[i].name(), servers);
           if (servers.indexOf(id) === -1) {
             // Now check current as well:
             var collInfo =

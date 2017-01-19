@@ -1075,9 +1075,9 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
 
   AgencyCommResult result = sendWithFailover(
       arangodb::rest::RequestType::POST,
-      (timeout == 0.0 ? AgencyCommManager::CONNECTION_OPTIONS._requestTimeout
-                      : timeout),
-      url, builder.slice().toJson());
+      (timeout == 0.0) ?
+       AgencyCommManager::CONNECTION_OPTIONS._requestTimeout : timeout,
+      url, builder.slice().toJson(), transaction.getClientId());
 
   if (!result.successful() && result.httpCode() !=
       (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
@@ -1290,7 +1290,8 @@ void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
 
 AgencyCommResult AgencyComm::sendWithFailover(
     arangodb::rest::RequestType method, double const timeout,
-    std::string const& initialUrl, std::string const& body) {
+    std::string const& initialUrl, std::string const& body,
+    std::string const& clientId) {
 
   std::string endpoint;
   std::unique_ptr<GeneralClientConnection> connection =
@@ -1331,7 +1332,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     ++tries;
 
     if (connection == nullptr) {
-      AgencyCommResult result(400, "No endpoints for agency found.");
+      AgencyCommResult result(400, "No endpoints for agency found.", clientId);
       LOG_TOPIC(ERR, Logger::AGENCYCOMM) << result._message;
       return result;
     }
@@ -1348,7 +1349,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     
     // try to send; if we fail completely, do not retry
     try {
-      result = send(connection.get(), method, conTimeout, url, body);
+      result = send(connection.get(), method, conTimeout, url, body, clientId);
     } catch (...) {
       AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
       endpoint.clear();
@@ -1408,7 +1409,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
 AgencyCommResult AgencyComm::send(
     arangodb::httpclient::GeneralClientConnection* connection,
     arangodb::rest::RequestType method, double timeout, std::string const& url,
-    std::string const& body) {
+    std::string const& body, std::string const& clientId) {
   TRI_ASSERT(connection != nullptr);
 
   if (method == arangodb::rest::RequestType::GET ||
@@ -1422,6 +1423,9 @@ AgencyCommResult AgencyComm::send(
   AgencyCommResult result;
   result._connected = false;
   result._statusCode = 0;
+  if (!clientId.empty()) {
+    result._clientId = clientId;
+  }
 
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
       << "sending " << arangodb::HttpRequest::translateMethod(method)
