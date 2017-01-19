@@ -810,7 +810,6 @@ void Agent::run() {
 
     } else {
       _appendCV.wait(1000000);
-      updateConfiguration();
     }
 
   }
@@ -910,9 +909,9 @@ void Agent::detectActiveAgentFailures() {
           system_clock::now() - lastAcked.at(id)).count();
         if (ds > 180.0) {
           std::string repl = _config.nextAgentInLine();
-          LOG_TOPIC(DEBUG, Logger::AGENCY) << "Active agent " << id << " has failed. << "
-                    << repl << " will be promoted to active agency membership";
-          // Guarded in ::
+          LOG_TOPIC(DEBUG, Logger::AGENCY)
+            << "Active agent " << id << " has failed. << " << repl
+            << " will be promoted to active agency membership";
           _activator = std::make_unique<AgentActivator>(this, id, repl);
           _activator->start();
           return;
@@ -920,13 +919,6 @@ void Agent::detectActiveAgentFailures() {
       }
     }
   }
-}
-
-
-void Agent::updateConfiguration() {
-
-  // First ask last know leader
-
 }
 
 

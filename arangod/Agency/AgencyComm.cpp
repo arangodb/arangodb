@@ -224,7 +224,7 @@ void AgencyWriteTransaction::toVelocyPack(VPackBuilder& builder) const {
     VPackObjectBuilder guard3(&builder);
   }
     
-  builder.add(VPackValue(transactionId)); // Transactions  
+  builder.add(VPackValue(clientId)); // Transactions  
 }
 
 bool AgencyWriteTransaction::validate(AgencyCommResult const& result) const {
@@ -283,7 +283,7 @@ void AgencyGeneralTransaction::toVelocyPack(VPackBuilder& builder) const {
     } else {
       std::get<0>(operation).toGeneralBuilder(builder);
       std::get<1>(operation).toGeneralBuilder(builder);
-      builder.add(VPackValue(transactionId));
+      builder.add(VPackValue(clientId));
     }
   }
 }
@@ -328,17 +328,22 @@ AgencyCommResult::AgencyCommResult()
       _body(),
       _values(),
       _statusCode(0),
-      _connected(false) {}
+      _connected(false),
+      _clientId("") {}
 
-AgencyCommResult::AgencyCommResult(int code, std::string const& message)
+AgencyCommResult::AgencyCommResult(
+  int code, std::string const& message, std::string const& clientId) 
     : _location(),
       _message(message),
       _body(),
       _values(),
       _statusCode(code),
-      _connected(false) {}
+      _connected(false),
+    _clientId(clientId) {}
 
 bool AgencyCommResult::connected() const { return _connected; }
+
+std::string AgencyCommResult::clientId() const { return _clientId; }
 
 int AgencyCommResult::httpCode() const { return _statusCode; }
 

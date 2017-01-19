@@ -223,9 +223,6 @@ class Agent : public arangodb::Thread {
   /// @brief persist agency configuration in RAFT
   void persistConfiguration(term_t t);
 
-  /// @brief Update my configuration as passive agent
-  void updateConfiguration();
-  
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
 
