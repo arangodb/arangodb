@@ -54,8 +54,6 @@ class Aggregator {
   bool isPermanent() { return _permanent; }
 };
   
-template<
-
 template <typename T>
 class MaxAggregator : public Aggregator {
   static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
