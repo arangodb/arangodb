@@ -272,7 +272,15 @@ function syncCollectionFinalize (database, collname, from, config) {
         coll.remove(entry.data._key);
       } catch (errx) {
         console.error('syncCollectionFinalize: remove', entry, JSON.stringify(errx));
-        throw errx;
+        if (errx.errorNum !== ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+          throw errx;
+        }
+        // We swallow the NOT FOUND error here. It is possible that
+        // a follower tries to synchronize to a leader with whom it
+        // is already in sync. In that case there could have been a
+        // synchronously replicated removal operation that has happened
+        // whilst we were resynchronizing the shard. In this case, the
+        // removal would have happened already.
       }
     } else if (entry.type === mType.REPLICATION_TRANSACTION_START) {
       transactions[entry.tid] = [];
