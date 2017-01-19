@@ -3595,7 +3595,7 @@ void LogicalCollection::mergeObjectsForUpdate(
   {
     VPackObjectIterator it(newValue, true);
     while (it.valid()) {
-      StringRef key(it.key());
+      std::string key = it.key().copyString();
       if (!key.empty() && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
            key == StaticStrings::RevString ||
@@ -3609,7 +3609,7 @@ void LogicalCollection::mergeObjectsForUpdate(
         }  // else do nothing
       } else {
         // regular attribute
-        newValues.emplace(std::string(key.data(), key.size()), it.value());
+        newValues.emplace(std::move(key), it.value());
       }
 
       it.next();

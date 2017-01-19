@@ -51,19 +51,13 @@ class ArrayIterator {
     reset();   
   }
 
-  ArrayIterator(ArrayIterator const& other)
+  ArrayIterator(ArrayIterator const& other) noexcept
       : _slice(other._slice),
         _size(other._size),
         _position(other._position),
         _current(other._current) {}
 
-  ArrayIterator& operator=(ArrayIterator const& other) {
-    _slice = other._slice;
-    _size = other._size;
-    _position = other._position;
-    _current = other._current;
-    return *this;
-  }
+  ArrayIterator& operator=(ArrayIterator const& other) = delete;
 
   // prefix ++
   ArrayIterator& operator++() {
@@ -94,18 +88,26 @@ class ArrayIterator {
     return _slice.at(_position);
   }
 
-  ArrayIterator begin() { return ArrayIterator(_slice); }
+  ArrayIterator begin() { 
+    auto it = ArrayIterator(*this);
+    it._position = 0;
+    return it;
+  }
 
-  ArrayIterator begin() const { return ArrayIterator(_slice); }
+  ArrayIterator begin() const { 
+    auto it = ArrayIterator(*this);
+    it._position = 0;
+    return it;
+  }
 
   ArrayIterator end() {
-    auto it = ArrayIterator(_slice);
+    auto it = ArrayIterator(*this);
     it._position = it._size;
     return it;
   }
 
   ArrayIterator end() const {
-    auto it = ArrayIterator(_slice);
+    auto it = ArrayIterator(*this);
     it._position = it._size;
     return it;
   }
@@ -165,7 +167,7 @@ class ArrayIterator {
 
  private:
   Slice _slice;
-  ValueLength _size;
+  ValueLength const _size;
   ValueLength _position;
   uint8_t const* _current;
 };
@@ -197,21 +199,14 @@ class ObjectIterator {
     }
   }
 
-  ObjectIterator(ObjectIterator const& other)
+  ObjectIterator(ObjectIterator const& other) noexcept
       : _slice(other._slice),
         _size(other._size),
         _position(other._position),
         _current(other._current),
         _allowRandomIteration(other._allowRandomIteration) {}
 
-  ObjectIterator& operator=(ObjectIterator const& other) {
-    _slice = other._slice;
-    _size = other._size;
-    _position = other._position;
-    _current = other._current;
-    _allowRandomIteration = other._allowRandomIteration;
-    return *this;
-  }
+  ObjectIterator& operator=(ObjectIterator const& other) = delete;
 
   // prefix ++
   ObjectIterator& operator++() {
@@ -246,18 +241,26 @@ class ObjectIterator {
     return ObjectPair(_slice.getNthKey(_position, true), _slice.getNthValue(_position));
   }
 
-  ObjectIterator begin() { return ObjectIterator(_slice, _allowRandomIteration); }
+  ObjectIterator begin() { 
+    auto it = ObjectIterator(*this);
+    it._position = 0;
+    return it;
+  }
 
-  ObjectIterator begin() const { return ObjectIterator(_slice, _allowRandomIteration); }
+  ObjectIterator begin() const { 
+    auto it = ObjectIterator(*this);
+    it._position = 0;
+    return it;
+  }
 
   ObjectIterator end() {
-    auto it = ObjectIterator(_slice, _allowRandomIteration);
+    auto it = ObjectIterator(*this);
     it._position = it._size;
     return it;
   }
 
   ObjectIterator end() const {
-    auto it = ObjectIterator(_slice, _allowRandomIteration);
+    auto it = ObjectIterator(*this);
     it._position = it._size;
     return it;
   }
@@ -300,10 +303,10 @@ class ObjectIterator {
 
  private:
   Slice _slice;
-  ValueLength _size;
+  ValueLength const _size;
   ValueLength _position;
   uint8_t const* _current;
-  bool _allowRandomIteration;
+  bool const _allowRandomIteration;
 };
 
 }  // namespace arangodb::velocypack
