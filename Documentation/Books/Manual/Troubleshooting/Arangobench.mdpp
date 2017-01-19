@@ -21,6 +21,14 @@ Startup options
 - *--collection*: Name of collection to use in test (only relevant for tests
   that invoke collections).
 
+- *--replication-factor*: In case of a cluster, the replication factor of the
+  created collections.
+
+- *--number-of-shards*: In case of a cluster, the number of shards of the
+  created collections.
+
+- *--wait-for-sync*: The value of *waitForSync* for created collections.
+
 - *--complexity*: Complexity value for test case (default: 1). Meaning depends
   on test case.
 

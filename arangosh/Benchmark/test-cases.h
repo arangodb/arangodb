@@ -49,9 +49,8 @@ struct VersionTest : public BenchmarkOperation {
     return _url;
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     return rest::RequestType::GET;
   }
 
@@ -85,18 +84,19 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
+      return std::string("/_api/document?collection=" +
+                         ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 4);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" +
+                         key);
     }
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
@@ -176,18 +176,19 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
+      return std::string("/_api/document?collection=" +
+                         ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 2);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" +
+                         key);
     }
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
@@ -253,18 +254,19 @@ struct ShapesTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
+      return std::string("/_api/document?collection=" +
+                         ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 3);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" +
+                         key);
     }
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
@@ -339,18 +341,19 @@ struct ShapesAppendTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
+      return std::string("/_api/document?collection=" +
+                         ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 2);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" +
+                         key);
     }
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
@@ -424,7 +427,8 @@ struct RandomShapesTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=") + ARANGOBENCH->collection();
+      return std::string("/_api/document?collection=") +
+             ARANGOBENCH->collection();
     } else {
       size_t keyId = (size_t)(globalCounter / 3);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
@@ -434,9 +438,8 @@ struct RandomShapesTest : public BenchmarkOperation {
     }
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
@@ -516,18 +519,19 @@ struct DocumentCrudTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 5;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
+      return std::string("/_api/document?collection=" +
+                         ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 5);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" +
+                         key);
     }
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     size_t const mod = globalCounter % 5;
 
     if (mod == 0) {
@@ -609,18 +613,19 @@ struct EdgeCrudTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
+      return std::string("/_api/document?collection=" +
+                         ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 4);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" +
+                         key);
     }
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
@@ -721,18 +726,19 @@ struct SkiplistTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
+      return std::string("/_api/document?collection=" +
+                         ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 4);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" +
+                         key);
     }
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
@@ -794,7 +800,8 @@ struct HashTest : public BenchmarkOperation {
   bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOBENCH->collection()) &&
            CreateCollection(client, ARANGOBENCH->collection(), 2) &&
-           CreateIndex(client, ARANGOBENCH->collection(), "hash", "[\"value\"]");
+           CreateIndex(client, ARANGOBENCH->collection(), "hash",
+                       "[\"value\"]");
   }
 
   void tearDown() override {}
@@ -804,18 +811,19 @@ struct HashTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
+      return std::string("/_api/document?collection=" +
+                         ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 4);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" +
+                         key);
     }
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
@@ -871,8 +879,8 @@ struct HashTest : public BenchmarkOperation {
 
 struct DocumentImportTest : public BenchmarkOperation {
   DocumentImportTest() : BenchmarkOperation(), _url(), _buffer(0) {
-    _url =
-        "/_api/import?collection=" + ARANGOBENCH->collection() + "&type=documents";
+    _url = "/_api/import?collection=" + ARANGOBENCH->collection() +
+           "&type=documents";
 
     uint64_t const n = ARANGOBENCH->complexity();
 
@@ -902,9 +910,8 @@ struct DocumentImportTest : public BenchmarkOperation {
     return _url;
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     return rest::RequestType::POST;
   }
 
@@ -962,9 +969,8 @@ struct DocumentCreationTest : public BenchmarkOperation {
     return _url;
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     return rest::RequestType::POST;
   }
 
@@ -999,9 +1005,8 @@ struct CollectionCreationTest : public BenchmarkOperation {
     return _url;
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     return rest::RequestType::POST;
   }
 
@@ -1059,9 +1064,8 @@ struct TransactionAqlTest : public BenchmarkOperation {
     return std::string("/_api/cursor");
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     return rest::RequestType::POST;
   }
 
@@ -1148,9 +1152,8 @@ struct TransactionCountTest : public BenchmarkOperation {
     return std::string("/_api/transaction");
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     return rest::RequestType::POST;
   }
 
@@ -1203,9 +1206,8 @@ struct TransactionDeadlockTest : public BenchmarkOperation {
     return std::string("/_api/transaction");
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     return rest::RequestType::POST;
   }
 
@@ -1272,9 +1274,8 @@ struct TransactionMultiTest : public BenchmarkOperation {
     return std::string("/_api/transaction");
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     return rest::RequestType::POST;
   }
 
@@ -1354,9 +1355,8 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
     return std::string("/_api/transaction");
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     return rest::RequestType::POST;
   }
 
@@ -1427,9 +1427,8 @@ struct AqlInsertTest : public BenchmarkOperation {
     return std::string("/_api/cursor");
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     return rest::RequestType::POST;
   }
 
@@ -1481,9 +1480,8 @@ struct AqlV8Test : public BenchmarkOperation {
     return std::string("/_api/cursor");
   }
 
-  rest::RequestType type(int const threadNumber,
-                                   size_t const threadCounter,
-                                   size_t const globalCounter) override {
+  rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                         size_t const globalCounter) override {
     return rest::RequestType::POST;
   }
 
@@ -1555,11 +1553,16 @@ static bool CreateCollection(SimpleHttpClient* client, std::string const& name,
   std::unordered_map<std::string, std::string> headerFields;
   SimpleHttpResult* result = nullptr;
 
-  std::string payload =
-      "{\"name\":\"" + name + "\",\"type\":" + StringUtils::itoa(type) + "}";
-  result =
-      client->request(rest::RequestType::POST, "/_api/collection",
-                      payload.c_str(), payload.size(), headerFields);
+  std::string payload = "{\"name\":\"" + name + "\",\"type\":" +
+                        StringUtils::itoa(type) + ",\"replicationFactor\":" +
+                        StringUtils::itoa(ARANGOBENCH->replicationFactor()) +
+                        ",\"numberOfShards\":" +
+                        StringUtils::itoa(ARANGOBENCH->numberOfShards()) +
+                        ",\"waitForSync\":" +
+                        (ARANGOBENCH->waitForSync() ? "true" : "false") + "}";
+
+  result = client->request(rest::RequestType::POST, "/_api/collection",
+                           payload.c_str(), payload.size(), headerFields);
 
   bool failed = true;
 
@@ -1586,9 +1589,9 @@ static bool CreateIndex(SimpleHttpClient* client, std::string const& name,
 
   std::string payload =
       "{\"type\":\"" + type + "\",\"fields\":" + fields + ",\"unique\":false}";
-  result = client->request(rest::RequestType::POST,
-                           "/_api/index?collection=" + name, payload.c_str(),
-                           payload.size(), headerFields);
+  result =
+      client->request(rest::RequestType::POST, "/_api/index?collection=" + name,
+                      payload.c_str(), payload.size(), headerFields);
 
   bool failed = true;
 

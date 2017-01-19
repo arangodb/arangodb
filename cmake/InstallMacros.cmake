@@ -20,7 +20,7 @@ macro (generate_root_config name)
     STRING(REPLACE "@LOCALSTATEDIR@/" "@HOME@${INC_CPACK_ARANGO_STATE_DIR}/"
       FileContent "${FileContent}")
   else ()
-    STRING(REPLACE "@LOCALSTATEDIR@/" "@ROOTDIR@${CPACK_LOCALSTATEDIR}/"
+    STRING(REPLACE "@LOCALSTATEDIR@/" "@ROOTDIR@${CMAKE_INSTALL_LOCALSTATEDIR}/"
       FileContent "${FileContent}")
   endif ()
   
