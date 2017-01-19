@@ -24,6 +24,11 @@
 
 #include "AgencyComm.h"
 
+#include <thread>
+#ifdef DEBUG_SYNC_REPLICATION
+#include <atomic>
+#endif
+
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
@@ -44,11 +49,6 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-
-#include <thread>
-#ifdef DEBUG_SYNC_REPLICATION
-#include <atomic>
-#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -209,17 +209,22 @@ std::string AgencyWriteTransaction::toJson() const {
 void AgencyWriteTransaction::toVelocyPack(VPackBuilder& builder) const {
   VPackArrayBuilder guard(&builder);
   {
-    VPackObjectBuilder guard2(&builder);
+    VPackObjectBuilder guard2(&builder);  // Writes
     for (AgencyOperation const& operation : operations) {
       operation.toVelocyPack(builder);
     }
   }
-  if (preconditions.size() > 0) {
-    VPackObjectBuilder guard3(&builder);
+  
+  if (preconditions.size() > 0) {         
+    VPackObjectBuilder guard3(&builder);  // Preconditions
     for (AgencyPrecondition const& precondition : preconditions) {
       precondition.toVelocyPack(builder);
     }
+  } else {
+    VPackObjectBuilder guard3(&builder);
   }
+    
+  builder.add(VPackValue(transactionId)); // Transactions  
 }
 
 bool AgencyWriteTransaction::validate(AgencyCommResult const& result) const {
@@ -278,6 +283,7 @@ void AgencyGeneralTransaction::toVelocyPack(VPackBuilder& builder) const {
     } else {
       std::get<0>(operation).toGeneralBuilder(builder);
       std::get<1>(operation).toGeneralBuilder(builder);
+      builder.add(VPackValue(transactionId));
     }
   }
 }
@@ -1283,8 +1289,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
   std::string endpoint;
   std::unique_ptr<GeneralClientConnection> connection =
     AgencyCommManager::MANAGER->acquire(endpoint);
-  
-  
+
   AgencyCommResult result;
   std::string url = initialUrl;
 

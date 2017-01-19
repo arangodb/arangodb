@@ -65,7 +65,9 @@ class State {
                            std::vector<bool> const& indices, term_t term);
 
   /// @brief Single log entry (leader)
-  arangodb::consensus::index_t log(velocypack::Slice const& slice, term_t term);
+  arangodb::consensus::index_t log(
+    velocypack::Slice const& slice, term_t term,
+    std::string const& clientId = std::string());
     
   /// @brief Log entries (followers)
   arangodb::consensus::index_t log(query_t const& queries, size_t ndups = 0);
@@ -79,7 +81,7 @@ class State {
       index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief Get log entries by client Id
-  std::vector<log_t> inquire(query_t const&) const;
+  std::vector<std::vector<log_t>> inquire(query_t const&) const;
 
   /// @brief Get complete logged commands by lower and upper bounds.
   ///        Default: [first, last]
@@ -182,6 +184,10 @@ class State {
 
   /// @brief Operation options
   OperationOptions _options;
+
+  /// @brief Empty log entry;
+  static log_t emptyLog;
+  
 };
 }
 }
