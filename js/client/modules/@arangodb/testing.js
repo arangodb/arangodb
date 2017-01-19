@@ -160,6 +160,7 @@ const optionsDefaults = {
   'loopSleepSec': 1,
   'loopSleepWhen': 1,
   'maxPort': 32768,
+  'mochaGrep': undefined,
   'onlyNightly': false,
   'password': '',
   'replication': false,
@@ -668,13 +669,13 @@ function makePathGeneric (path) {
 function runThere (options, instanceInfo, file) {
   try {
     let testCode;
-
+    let mochaGrep = options.mochaGrep ? ', ' + JSON.stringify(options.mochaGrep) : '';
     if (file.indexOf('-spec') === -1) {
       testCode = 'const runTest = require("jsunity").runTest; ' +
         'return runTest(' + JSON.stringify(file) + ', true);';
     } else {
       testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
-        'return runTest(' + JSON.stringify(file) + ', true);';
+        'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');';
     }
 
     if (options.propagateInstanceInfo) {

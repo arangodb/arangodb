@@ -53,7 +53,7 @@ exports.reporters = {
   default: DefaultReporter
 };
 
-exports.run = function runMochaTests (run, files, reporterName) {
+exports.run = function runMochaTests (run, files, reporterName, grep) {
   if (!Array.isArray(files)) {
     files = [files];
   }
@@ -85,6 +85,9 @@ exports.run = function runMochaTests (run, files, reporterName) {
       return this;
     }
   };
+  if (grep) {
+    mocha.grep(grep);
+  }
 
   // Clean up after chai.should(), etc
   var globals = Object.getOwnPropertyNames(global);
