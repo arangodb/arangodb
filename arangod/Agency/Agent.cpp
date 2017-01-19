@@ -653,7 +653,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
 
 // Non-persistent write to non-persisted key-value store
-trans_ret_t Agent::transient(query_t const& query) {
+trans_ret_t Agent::transient(query_t const& queries) {
 
   auto ret = std::make_shared<arangodb::velocypack::Builder>();
   auto leader = _constituent.leaderID();
@@ -674,7 +674,7 @@ trans_ret_t Agent::transient(query_t const& query) {
     }
 
     // Read and writes
-    for (const auto& query : VPackArrayIterator(query->slice())) {
+    for (const auto& query : VPackArrayIterator(queries->slice())) {
       if (query[0].isObject()) {
         _transient.apply(query);
       } else if (query[0].isString()) {
