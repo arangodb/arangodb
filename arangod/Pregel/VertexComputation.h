@@ -112,10 +112,9 @@ class VertexComputation : public VertexContext<V, E, M> {
 
   // only valid in async mode
   void enterNextPhase() {
-    if (!_nextPhase) {
+    if (!_nextPhase) {// buffer this operation
       _nextPhase = true;
-      _cache->flushMessages();
-      _cache->setNextPhase(true);
+      _cache->sendToNextGSS(true);
     }
   }
 

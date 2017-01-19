@@ -162,8 +162,8 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
   _config._globalSuperstep = gss;
   // write cache becomes the readable cache
   if (_config.asynchronousMode()) {
-    TRI_ASSERT(_readCache->receivedMessageCount() == 0);
-    TRI_ASSERT(_writeCache->receivedMessageCount() == 0);
+    TRI_ASSERT(_readCache->containedMessageCount() == 0);
+    TRI_ASSERT(_writeCache->containedMessageCount() == 0);
     WriteLocker<ReadWriteLock> guard(&_cacheRWLock);
     std::swap(_readCache, _writeCacheNextGSS);
     _writeCache->clear();
@@ -171,7 +171,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
     _messageStats.sendCount = _nextGSSSendMessageCount;
     _nextGSSSendMessageCount = 0;
   } else {
-    TRI_ASSERT(_readCache->receivedMessageCount() == 0);
+    TRI_ASSERT(_readCache->containedMessageCount() == 0);
     WriteLocker<ReadWriteLock> guard(&_cacheRWLock);
     std::swap(_readCache, _writeCache);
     _config._localSuperstep = gss;
@@ -405,14 +405,22 @@ void Worker<V, E, M>::_finishedProcessing() {
   VPackBuilder package;
   {  // only lock after there are no more processing threads
     MUTEX_LOCKER(guard, _commandMutex);
+    
+    // count all received messages
+    _messageStats.receivedCount = _readCache->containedMessageCount();
 
+    // lazy loading and async mode are a little tricky
+    // the correct halting requires us to accurately track the number
+    // of messages send or received, and to report them to the coordinator
     if (_config.lazyLoading()) {  // TODO how to improve this?
       // hack to determine newly added vertices
       size_t currentAVCount = _graphStore->localVertexCount();
       auto currentVertices = _graphStore->vertexIterator();
       for (VertexEntry* vertexEntry : currentVertices) {
+        // reduces the containedMessageCount
         _readCache->erase(vertexEntry->shard(), vertexEntry->key());
       }
+      
       _readCache->forEach(
           [this](prgl_shard_t shard, std::string const& key, M const&) {
             _graphStore->loadDocument(_config, shard, key);
@@ -424,6 +432,7 @@ void Worker<V, E, M>::_finishedProcessing() {
         if (_config.asynchronousMode()) {
           ReadLocker<ReadWriteLock> guard(&_cacheRWLock);
           _writeCache->mergeCache(_readCache);// compute in next superstep
+          _messageStats.sendCount += _readCache->containedMessageCount();
         } else {
           // TODO call _startProcessing ???
           _runningThreads = 1;
@@ -432,21 +441,13 @@ void Worker<V, E, M>::_finishedProcessing() {
         }
       }
     }
-
-    // ==================== Track statistics =================================
-    // the stats we want to keep should be final. At this point we can only be
-    // sure of the
-    // messages we have received in total from the last superstep, and the
-    // messages we have send in
-    // the current superstep. Other workers are likely not finished yet, and
-    // might still send stuff
-    _state = WorkerState::IDLE;  // only set the state here, because
-                                 // _processVertices checks for it
+    // no need to keep old messages around
+    _readCache->clear();
+    
+    // only set the state here, because _processVertices checks for it
+    _state = WorkerState::IDLE;
     _expectedGSS = _config._globalSuperstep + 1;
     _config._localSuperstep++;
-    _messageStats.receivedCount = _readCache->receivedMessageCount();
-    // load vertices which received messages for the next lss / gss
-    _readCache->clear();  // no need to keep old messages around
 
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
@@ -476,7 +477,9 @@ void Worker<V, E, M>::_finishedProcessing() {
 /// in async mode checks if there are messages to process
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_continueAsync() {
-  if (_state == WorkerState::IDLE && _writeCache->receivedMessageCount() > 0) {
+  if (_state == WorkerState::IDLE
+      && _writeCache->containedMessageCount() > 0) {
+    
     {  // swap these pointers atomically
       WriteLocker<ReadWriteLock> guard(&_cacheRWLock);
       std::swap(_readCache, _writeCache);
@@ -497,10 +500,10 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice body) {
   _state = WorkerState::DONE;
 
   VPackSlice store = body.get(Utils::storeResultsKey);
+  _graphStore->cleanupTransactions();
   if (store.isBool() && store.getBool() == true) {
     LOG(INFO) << "Storing results";
     // tell graphstore to remove read locks
-    _graphStore->cleanupTransactions();
     _graphStore->storeResults(_config);
   } else {
     LOG(WARN) << "Discarding results";

@@ -72,7 +72,12 @@ class OutCache {
   size_t sendCountNextGSS() const { return _sendCountNextGSS; }
   uint32_t batchSize() const { return _batchSize; }
   void setBatchSize(uint32_t bs) { _batchSize = bs; }
-  void sendToNextGSS(bool np) { _sendToNextGSS = np; }
+  void sendToNextGSS(bool np) {
+    if (np != _sendToNextGSS) {
+      flushMessages();
+      _sendToNextGSS = np;
+    }
+  }
 
   virtual void clear() = 0;
   virtual void appendMessage(prgl_shard_t shard, std::string const& key,

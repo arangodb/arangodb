@@ -45,13 +45,13 @@ template <typename M>
 class InCache {
  protected:
   mutable Mutex _writeLock;
-  size_t _receivedMessageCount = 0;
+  size_t _containedMessageCount = 0;
   MessageFormat<M> const* _format;
   // bool _enableLocking = false;
   // mutable std::vector<Mutex> _locks;
 
   InCache(MessageFormat<M> const* format)
-      : _receivedMessageCount(0), _format(format) {}
+      : _containedMessageCount(0), _format(format) {}
 
   virtual void _set(prgl_shard_t shard, std::string const& vertexId,
                     M const& data) = 0;
@@ -61,7 +61,7 @@ class InCache {
 
   MessageFormat<M> const* format() const { return _format; }
   void parseMessages(VPackSlice messages);
-  size_t receivedMessageCount() const { return _receivedMessageCount; }
+  size_t containedMessageCount() const { return _containedMessageCount; }
 
   /// @brief internal method to direclty set the messages for a vertex. Only
   /// valid with already combined messages

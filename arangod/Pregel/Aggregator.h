@@ -53,6 +53,8 @@ class Aggregator {
   virtual void reset(){};
   bool isPermanent() { return _permanent; }
 };
+  
+template<
 
 template <typename T>
 class MaxAggregator : public Aggregator {

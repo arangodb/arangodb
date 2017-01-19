@@ -82,7 +82,7 @@ void InCache<M>::setDirect(prgl_shard_t shard, std::string const& vertexId,
 template <typename M>
 void ArrayInCache<M>::_set(prgl_shard_t shard, std::string const& key,
                            M const& newValue) {
-  this->_receivedMessageCount++;
+  this->_containedMessageCount++;
   HMap& vertexMap = _shardMap[shard];
   vertexMap[key].push_back(newValue);
 }
@@ -92,7 +92,7 @@ void ArrayInCache<M>::mergeCache(InCache<M> const* otherCache) {
   MUTEX_LOCKER(guard, this->_writeLock);
 
   ArrayInCache<M>* other = (ArrayInCache<M>*)otherCache;
-  this->_receivedMessageCount += other->_receivedMessageCount;
+  this->_containedMessageCount += other->_containedMessageCount;
 
   // cannot call setDirect since it locks
   for (auto const& pair : other->_shardMap) {
@@ -124,7 +124,7 @@ MessageIterator<M> ArrayInCache<M>::getMessages(prgl_shard_t shard,
 template <typename M>
 void ArrayInCache<M>::clear() {
   MUTEX_LOCKER(guard, this->_writeLock);
-  this->_receivedMessageCount = 0;
+  this->_containedMessageCount = 0;
   _shardMap.clear();
 }
 
@@ -132,7 +132,12 @@ template <typename M>
 void ArrayInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
   MUTEX_LOCKER(guard, this->_writeLock);
   HMap& vertexMap(_shardMap[shard]);
-  vertexMap.erase(key);
+  
+  auto const& it = vertexMap.find(key);
+  if (it != vertexMap.end()) {
+    vertexMap.erase(it);
+    this->_containedMessageCount--;
+  }
 }
 
 template <typename M>
@@ -167,7 +172,7 @@ void CombiningInCache<M>::_set(prgl_shard_t shard, std::string const& key,
     }
   }*/
 
-  this->_receivedMessageCount++;
+  this->_containedMessageCount++;
   HMap& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {  // got a message for the same vertex
@@ -182,7 +187,7 @@ void CombiningInCache<M>::mergeCache(InCache<M> const* otherCache) {
   MUTEX_LOCKER(guard, this->_writeLock);
 
   CombiningInCache<M>* other = (CombiningInCache<M>*)otherCache;
-  this->_receivedMessageCount += other->_receivedMessageCount;
+  this->_containedMessageCount += other->_containedMessageCount;
 
   // cannot call setDirect since it locks
   for (auto const& pair : other->_shardMap) {
@@ -214,15 +219,20 @@ MessageIterator<M> CombiningInCache<M>::getMessages(prgl_shard_t shard,
 template <typename M>
 void CombiningInCache<M>::clear() {
   MUTEX_LOCKER(guard, this->_writeLock);
-  this->_receivedMessageCount = 0;
+  this->_containedMessageCount = 0;
   _shardMap.clear();
 }
 
 template <typename M>
 void CombiningInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
   MUTEX_LOCKER(guard, this->_writeLock);
+  
   HMap& vertexMap(_shardMap[shard]);
-  vertexMap.erase(key);
+  auto const& it = vertexMap.find(key);
+  if (it != vertexMap.end()) {
+    vertexMap.erase(it);
+    this->_containedMessageCount--;
+  }
 }
 
 template <typename M>
