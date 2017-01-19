@@ -110,6 +110,7 @@ class VertexComputation : public VertexContext<V, E, M> {
     }
   }
 
+  // only valid in async mode
   void enterNextPhase() {
     if (!_nextPhase) {
       _nextPhase = true;

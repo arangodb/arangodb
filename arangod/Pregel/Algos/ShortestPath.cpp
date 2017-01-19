@@ -54,7 +54,9 @@ struct ShortestPathComp : public VertexComputation<int64_t, int64_t, int64_t> {
       *state = current;  // update state
 
       if (this->pregelId() == _target) {
+        // TODO extend pregel to update certain aggregators during a GSS
         aggregate(spUpperPathBound, current);
+        enterNextPhase();
         return;
       }
 

@@ -49,7 +49,7 @@ class ArrayInCache;
 template <typename M>
 class OutCache {
  protected:
-  WorkerConfig const* _state;
+  WorkerConfig const* _config;
   MessageFormat<M> const* _format;
   InCache<M>* _localCache;
   InCache<M>* _localCacheNextGSS = nullptr;

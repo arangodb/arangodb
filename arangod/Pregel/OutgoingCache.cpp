@@ -38,18 +38,18 @@ using namespace arangodb::pregel;
 
 template <typename M>
 OutCache<M>::OutCache(WorkerConfig* state, InCache<M>* cache)
-    : _state(state), _format(cache->format()), _localCache(cache) {
-  _baseUrl = Utils::baseUrl(_state->database());
+    : _config(state), _format(cache->format()), _localCache(cache) {
+  _baseUrl = Utils::baseUrl(_config->database());
 }
 
 template <typename M>
 OutCache<M>::OutCache(WorkerConfig* state, InCache<M>* cache,
                       InCache<M>* nextGSS)
-    : _state(state),
+    : _config(state),
       _format(cache->format()),
       _localCache(cache),
       _localCacheNextGSS(nextGSS) {
-  _baseUrl = Utils::baseUrl(_state->database());
+  _baseUrl = Utils::baseUrl(_config->database());
 }
 
 // ================= ArrayOutCache ==================
@@ -68,7 +68,7 @@ void ArrayOutCache<M>::clear() {
 template <typename M>
 void ArrayOutCache<M>::appendMessage(prgl_shard_t shard, std::string const& key,
                                      M const& data) {
-  if (this->_state->isLocalVertexShard(shard)) {
+  if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {
       this->_localCacheNextGSS->setDirect(shard, key, data);
       this->_sendCountNextGSS++;
@@ -87,7 +87,7 @@ void ArrayOutCache<M>::appendMessage(prgl_shard_t shard, std::string const& key,
 template <typename M>
 void ArrayOutCache<M>::flushMessages() {
   //LOG(INFO) << "Beginning to send messages to other machines";
-  uint64_t gss = this->_state->globalSuperstep();
+  uint64_t gss = this->_config->globalSuperstep();
   if (this->_sendToNextGSS) {
     gss += 1;
   }
@@ -124,11 +124,11 @@ void ArrayOutCache<M>::flushMessages() {
     package.close();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey,
-                VPackValue(this->_state->executionNumber()));
+                VPackValue(this->_config->executionNumber()));
     package.add(Utils::globalSuperstepKey, VPackValue(gss));
     package.close();
     // add a request
-    ShardID const& shardId = this->_state->globalShardIDs()[shard];
+    ShardID const& shardId = this->_config->globalShardIDs()[shard];
     auto body = std::make_shared<std::string>(package.toJson());
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
@@ -177,7 +177,7 @@ template <typename M>
 void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
                                          std::string const& key,
                                          M const& data) {
-  if (this->_state->isLocalVertexShard(shard)) {
+  if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {
       this->_localCacheNextGSS->setDirect(shard, key, data);
       this->_sendCountNextGSS++;
@@ -203,8 +203,8 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
 template <typename M>
 void CombiningOutCache<M>::flushMessages() {
   //LOG(INFO) << "Beginning to send messages to other machines";
-  uint64_t gss = this->_state->globalSuperstep();
-  if (this->_sendToNextGSS) {
+  uint64_t gss = this->_config->globalSuperstep();
+  if (this->_sendToNextGSS && this->_config->asynchronousMode()) {
     gss += 1;
   }
   VPackOptions options = VPackOptions::Defaults;
@@ -235,11 +235,11 @@ void CombiningOutCache<M>::flushMessages() {
     package.close();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey,
-                VPackValue(this->_state->executionNumber()));
+                VPackValue(this->_config->executionNumber()));
     package.add(Utils::globalSuperstepKey, VPackValue(gss));
     package.close();
     // add a request
-    ShardID const& shardId = this->_state->globalShardIDs()[shard];
+    ShardID const& shardId = this->_config->globalShardIDs()[shard];
     auto body = std::make_shared<std::string>(package.toJson());
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
