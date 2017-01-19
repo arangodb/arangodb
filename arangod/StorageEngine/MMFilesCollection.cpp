@@ -1192,7 +1192,7 @@ void MMFilesCollection::removeRevision(TRI_voc_rid_t revisionId, bool updateStat
   TRI_ASSERT(revisionId != 0);
   if (updateStats) {
     MMFilesDocumentPosition const old = _revisionsCache.fetchAndRemove(revisionId);
-    if (old && !old.pointsToWal()) {
+    if (old && !old.pointsToWal() && old.fid() != 0) {
       TRI_ASSERT(old.dataptr() != nullptr);
       uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
       int64_t size = DatafileHelper::AlignedSize<int64_t>(arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());

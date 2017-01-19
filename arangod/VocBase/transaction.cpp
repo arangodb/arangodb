@@ -201,10 +201,7 @@ static void FreeOperations(arangodb::Transaction* activeTrx, TRI_transaction_t* 
       // no rollback. simply delete all operations
       for (auto it = trxCollection->_operations->rbegin();
            it != trxCollection->_operations->rend(); ++it) {
-        arangodb::wal::DocumentOperation* op = (*it);
-
-        //op->done(); // set to done so dtor of DocumentOperation won't fail 
-        delete op;
+        delete (*it);
       }
     }
 

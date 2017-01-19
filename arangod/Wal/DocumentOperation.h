@@ -73,10 +73,6 @@ struct DocumentOperation {
     _status = StatusType::HANDLED;
   }
   
-  void done() noexcept {
-    _status = StatusType::SWAPPED;
-  }
-
   void revert(arangodb::Transaction*);
 
  private:

@@ -2169,6 +2169,11 @@ int LogicalCollection::update(Transaction* trx, VPackSlice const newSlice,
   try {
     insertRevision(revisionId, marker->vpack(), 0, true);
     operation.setRevisions(DocumentDescriptor(oldRevisionId, oldDoc.begin()), DocumentDescriptor(revisionId, newDoc.begin()));
+    
+    if (oldRevisionId == revisionId) {
+      // update with same revision id => can happen if isRestore = true
+      result.clear(0);
+    }
 
     res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, newDoc, operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
@@ -2317,6 +2322,11 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
   try {
     insertRevision(revisionId, marker->vpack(), 0, true);
     operation.setRevisions(DocumentDescriptor(oldRevisionId, oldDoc.begin()), DocumentDescriptor(revisionId, newDoc.begin()));
+    
+    if (oldRevisionId == revisionId) {
+      // update with same revision id => can happen if isRestore = true
+      result.clear(0);
+    }
 
     res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, newDoc, operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
@@ -2330,6 +2340,10 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
   if (res != TRI_ERROR_NO_ERROR) {
     operation.revert(trx);
   } else {
+    if (oldRevisionId == revisionId) {
+      // update with same revision id => can happen if isRestore = true
+      result.clear(0);
+    }
     readRevision(trx, result, revisionId);
     
     if (options.waitForSync) {
@@ -2456,6 +2470,11 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
 
     operation.indexed();
 
+    try {
+      removeRevision(oldRevisionId, true);
+    } catch (...) {
+    }
+
     TRI_IF_FAILURE("RemoveDocumentNoOperation") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
 
     TRI_IF_FAILURE("RemoveDocumentNoOperationExcept") {
@@ -2543,6 +2562,11 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
     }
 
     operation.indexed();
+  
+    try {
+      removeRevision(oldRevisionId, true);
+    } catch (...) {
+    }
 
     TRI_IF_FAILURE("RemoveDocumentNoOperation") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
 
@@ -2582,16 +2606,11 @@ int LogicalCollection::rollbackOperation(arangodb::Transaction* trx,
     TRI_ASSERT(newRevisionId != 0);
     TRI_ASSERT(!newDoc.isNone());
 
+    removeRevisionCacheEntry(newRevisionId);
+
     // ignore any errors we're getting from this
     deletePrimaryIndex(trx, newRevisionId, newDoc);
     deleteSecondaryIndexes(trx, newRevisionId, newDoc, true);
-    
-    // remove new revision
-    try {
-      removeRevision(newRevisionId, false);
-    } catch (...) {
-      // TODO: decide whether we should rethrow here
-    }
   
     return TRI_ERROR_NO_ERROR;
   } 
@@ -2602,6 +2621,10 @@ int LogicalCollection::rollbackOperation(arangodb::Transaction* trx,
     TRI_ASSERT(!oldDoc.isNone());
     TRI_ASSERT(newRevisionId != 0);
     TRI_ASSERT(!newDoc.isNone());
+    
+    removeRevisionCacheEntry(oldRevisionId);
+    removeRevisionCacheEntry(newRevisionId);
+
     // remove the current values from the indexes
     deleteSecondaryIndexes(trx, newRevisionId, newDoc, true);
     // re-insert old state
@@ -2614,6 +2637,8 @@ int LogicalCollection::rollbackOperation(arangodb::Transaction* trx,
     TRI_ASSERT(!oldDoc.isNone());
     TRI_ASSERT(newRevisionId == 0);
     TRI_ASSERT(newDoc.isNone());
+    
+    removeRevisionCacheEntry(oldRevisionId);
 
     int res = insertPrimaryIndex(trx, oldRevisionId, oldDoc);
 
@@ -3135,8 +3160,6 @@ int LogicalCollection::updateDocument(
     // rollback
     deleteSecondaryIndexes(trx, newRevisionId, newDoc, true);
     insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
-    removeRevision(newRevisionId, false);
-
     return res;
   }
  
@@ -3148,6 +3171,16 @@ int LogicalCollection::updateDocument(
   }
   
   operation.indexed();
+   
+  if (oldRevisionId != newRevisionId) { 
+    try {
+      removeRevision(oldRevisionId, true);
+    } catch (...) {
+    }
+  } else {
+    // clear readcache entry for the revision
+    removeRevisionCacheEntry(oldRevisionId);
+  }
 
   TRI_IF_FAILURE("UpdateDocumentNoOperation") { return TRI_ERROR_DEBUG; }
   
@@ -3606,11 +3639,16 @@ bool LogicalCollection::updateRevisionConditional(TRI_voc_rid_t revisionId, TRI_
 
 void LogicalCollection::removeRevision(TRI_voc_rid_t revisionId, bool updateStats) {
   // clean up cache entry
-  TRI_ASSERT(_revisionsCache);
-  _revisionsCache->removeRevision(revisionId); 
+  removeRevisionCacheEntry(revisionId);
 
   // and remove from storage engine
   getPhysical()->removeRevision(revisionId, updateStats);
+}
+
+void LogicalCollection::removeRevisionCacheEntry(TRI_voc_rid_t revisionId) {
+  // clean up cache entry
+  TRI_ASSERT(_revisionsCache);
+  _revisionsCache->removeRevision(revisionId); 
 }
 
 /// @brief a method to skip certain documents in AQL write operations,
