@@ -417,12 +417,19 @@ void Worker<V, E, M>::_finishedProcessing() {
           [this](prgl_shard_t shard, std::string const& key, M const&) {
             _graphStore->loadDocument(_config, shard, key);
           });
-
+      
+      // only do this expensive merge operation if there are new vertices
       size_t total = _graphStore->localVertexCount();
       if (total > currentAVCount) {
-        _runningThreads = 1;
-        auto addedVertices = _graphStore->vertexIterator(currentAVCount, total);
-        _processVertices(addedVertices);
+        if (_config.asynchronousMode()) {
+          ReadLocker<ReadWriteLock> guard(&_cacheRWLock);
+          _writeCache->mergeCache(_readCache);// compute in next superstep
+        } else {
+          // TODO call _startProcessing ???
+          _runningThreads = 1;
+          auto addedVertices = _graphStore->vertexIterator(currentAVCount, total);
+          _processVertices(addedVertices);
+        }
       }
     }
 

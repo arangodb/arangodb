@@ -40,7 +40,7 @@ struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
  public:
   ShortestPathAlgorithm(VPackSlice userParams);
 
-  bool supportsAsyncMode() const override { return false; }
+  bool supportsAsyncMode() const override { return true; }
   bool supportsLazyLoading() const override { return true; }
 
   GraphFormat<int64_t, int64_t>* inputFormat() override;

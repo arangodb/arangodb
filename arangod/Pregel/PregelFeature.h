@@ -59,7 +59,12 @@ class PregelFeature final : public application_features::ApplicationFeature {
   void cleanupAll();
 
   basics::ThreadPool* threadPool() { return _threadPool.get(); }
-  RecoveryManager* recoveryManager() { return _recoveryManager.get(); }
+  RecoveryManager* recoveryManager() {
+    if (_recoveryManager) {
+      return _recoveryManager.get();
+    }
+    return nullptr;
+  }
 
  private:
   Mutex _mutex;

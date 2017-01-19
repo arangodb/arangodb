@@ -32,7 +32,7 @@
 
 using namespace arangodb::pregel;
 
-static PregelFeature* Instance;
+static PregelFeature* Instance = nullptr;
 
 uint64_t PregelFeature::createExecutionNumber() {
   return ClusterInfo::instance()->uniqid();
@@ -46,6 +46,8 @@ PregelFeature::PregelFeature(application_features::ApplicationServer* server)
   startsAfter("Database");
   startsAfter("Endpoint");
   startsAfter("Cluster");
+  startsAfter("Server");
+  startsAfter("V8Dealer");
 }
 
 PregelFeature::~PregelFeature() {
@@ -70,14 +72,18 @@ void PregelFeature::start() {
   const size_t threadNum = _approxThreadNumber();
   LOG(INFO) << "Pregel uses " << threadNum << " threads";
   _threadPool.reset(new basics::ThreadPool(threadNum, "Pregel"));
-
-  ClusterFeature* cluster =
-      application_features::ApplicationServer::getFeature<ClusterFeature>(
-          "Cluster");
-  if (cluster != nullptr) {
-    AgencyCallbackRegistry* registry = cluster->agencyCallbackRegistry();
-    if (registry != nullptr) {
-      _recoveryManager.reset(new RecoveryManager(registry));
+  
+  
+  
+  if (ServerState::instance()->isCoordinator()) {
+    ClusterFeature* cluster =
+    application_features::ApplicationServer::getFeature<ClusterFeature>(
+                                                                        "Cluster");
+    if (cluster != nullptr) {
+      AgencyCallbackRegistry* registry = cluster->agencyCallbackRegistry();
+      if (registry != nullptr) {
+        _recoveryManager.reset(new RecoveryManager(registry));
+      }
     }
   }
 }
@@ -130,6 +136,7 @@ void PregelFeature::cleanupAll() {
   _conductors.clear();
   for (auto it : _workers) {
     it.second->cancelGlobalStep(VPackSlice());
+    usleep(1000 * 25);
     delete (it.second);
   }
   _workers.clear();
