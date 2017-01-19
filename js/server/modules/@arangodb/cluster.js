@@ -642,7 +642,7 @@ function executePlanForCollections(plan) {
                 errorMessage: 'no error', indexes: {} };
 
               let error = localErrors[shard];
-
+              let collectionStatus;
               if (!localCollections.hasOwnProperty(shard)) {
                 // must create this shard
                 console.debug("creating local shard '%s/%s' for central '%s/%s'",
@@ -675,6 +675,7 @@ function executePlanForCollections(plan) {
                 if (shouldBeLeader) {
                   db._collection(shard).assumeLeadership();
                 }
+                collectionStatus = ArangoCollection.STATUS_LOADED;
               } else {
                 // We adjust local leadership, note that the planned resignation
                 // case is not handled here, since then ourselves does not appear
@@ -692,24 +693,7 @@ function executePlanForCollections(plan) {
                     db._collection(shard).assumeLeadership();
                 }
 
-                // Now check whether the status is OK:
-                if (localCollections[shard].status !== collInfo.status) {
-                  console.info("detected status change for local shard '%s/%s'",
-                    database,
-                    shard);
-
-                  if (collInfo.status === ArangoCollection.STATUS_UNLOADED) {
-                    console.info("unloading local shard '%s/%s'",
-                      database,
-                      shard);
-                    db._collection(shard).unload();
-                  } else if (collInfo.status === ArangoCollection.STATUS_LOADED) {
-                    console.info("loading local shard '%s/%s'",
-                      database,
-                      shard);
-                    db._collection(shard).load();
-                  }
-                }
+                collectionStatus = localCollections[shard].status
 
                 // collection exists, now compare collection properties
                 let properties = { };
@@ -739,6 +723,25 @@ function executePlanForCollections(plan) {
               if (error.error) {
                 return; // No point to look for indices, if the 
                 // creation has not worked
+              }
+
+              // Now check whether the status is OK:
+              if (collectionStatus !== collInfo.status) {
+                console.info("detected status change for local shard '%s/%s'",
+                  database,
+                  shard);
+
+                if (collInfo.status === ArangoCollection.STATUS_UNLOADED) {
+                  console.info("unloading local shard '%s/%s'",
+                    database,
+                    shard);
+                  db._collection(shard).unload();
+                } else if (collInfo.status === ArangoCollection.STATUS_LOADED) {
+                  console.info("loading local shard '%s/%s'",
+                    database,
+                    shard);
+                  db._collection(shard).load();
+                }
               }
 
               let indexes = getIndexMap(shard);
@@ -1951,3 +1954,4 @@ exports.supervisionState = supervisionState;
 exports.waitForSyncRepl = waitForSyncRepl;
 
 exports.executePlanForDatabases = executePlanForDatabases;
+exports.executePlanForCollections = executePlanForCollections;
