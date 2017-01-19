@@ -157,7 +157,6 @@ function MovingShardsSuite () {
           wait(1.0);
           global.ArangoClusterInfo.flush();
           var servers = findCollectionServers("_system", c[i].name());
-          console.info("Seeing servers:", i, c[i].name(), servers);
           if (servers.indexOf(id) === -1) {
             // Now check current as well:
             var collInfo =
@@ -385,7 +384,7 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleaning out collection with one shard without replication
 ////////////////////////////////////////////////////////////////////////////////
-    /*
+    
     testShrinkNoReplication : function() {
       assertTrue(waitForSynchronousReplication("_system"));
       var _dbservers = global.ArangoClusterInfo.getDBServers();
@@ -399,7 +398,7 @@ function MovingShardsSuite () {
       assertTrue(shrinkCluster(2));
       assertTrue(testServerEmpty(_dbservers[2], true));
       assertTrue(waitForSupervision());
-    },*/
+    },
     
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief moving away a shard from a follower
@@ -417,7 +416,7 @@ function MovingShardsSuite () {
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
     },
-  /*
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief moving away a shard from a leader
 ////////////////////////////////////////////////////////////////////////////////
@@ -596,7 +595,6 @@ function MovingShardsSuite () {
     testDummy : function () {
       assertEqual(12, 12);
     }
-    */
 
   };
 }
