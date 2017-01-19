@@ -693,7 +693,7 @@ function executePlanForCollections(plan) {
                     db._collection(shard).assumeLeadership();
                 }
 
-                collectionStatus = localCollections[shard].status
+                collectionStatus = localCollections[shard].status;
 
                 // collection exists, now compare collection properties
                 let properties = { };
