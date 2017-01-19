@@ -142,6 +142,13 @@ class Buffer {
     initWithNone();
   }
 
+  void resetTo(ValueLength position) {
+    if (position >= _alloc) { 
+      throw Exception(Exception::IndexOutOfBounds);
+    }
+    _pos = position;
+  }
+
   void clear() {
     reset();
     if (_buffer != _local) {
