@@ -29,9 +29,9 @@
 const db = require('internal').db;
 const cluster = require('@arangodb/cluster');
 const expect = require('chai').expect;
+const ArangoCollection = require('@arangodb/arango-collection').ArangoCollection;
 
 describe('Cluster sync', function() {
-  /*
   describe('Databaseplan to local', function() {
     before(function() {
       require('@arangodb/sync-replication-debug').setup();
@@ -53,9 +53,8 @@ describe('Cluster sync', function() {
           }
         }
       };
-      let errors = cluster.executePlanForDatabases(plan);
+      let errors = cluster.executePlanForDatabases(plan.Databases);
       let databases = db._databases();
-      console.error(databases);
       expect(databases).to.have.lengthOf(2);
       expect(databases).to.contain('test');
       expect(errors).to.be.empty;
@@ -70,7 +69,7 @@ describe('Cluster sync', function() {
         }
       };
       db._createDatabase('test');
-      let errors = cluster.executePlanForDatabases(plan);
+      let errors = cluster.executePlanForDatabases(plan.Databases);
       let databases = db._databases();
       expect(databases).to.have.lengthOf(2);
       expect(databases).to.contain('test');
@@ -82,7 +81,7 @@ describe('Cluster sync', function() {
         Databases: {
         }
       };
-      cluster.executePlanForDatabases(plan);
+      cluster.executePlanForDatabases(plan.Databases);
       let databases = db._databases();
       expect(databases).to.have.lengthOf(1);
       expect(databases).to.contain('_system');
@@ -92,7 +91,6 @@ describe('Cluster sync', function() {
     let numSystemCollections;
     before(function() {
       require('@arangodb/sync-replication-debug').setup();
-      numSystemCollections = db._collections().length;
     });
 
     beforeEach(function() {
@@ -100,9 +98,13 @@ describe('Cluster sync', function() {
         if (database !== '_system') {
           db._dropDatabase(database);
         }
-        db._createDatabase('test');
       });
+      db._createDatabase('test');
       db._useDatabase('test');
+      numSystemCollections = db._collections().length;
+    });
+    afterEach(function() {
+      db._useDatabase('_system');
     });
     it('should create and load a collection if it does not exist', function() {
       let plan = {
@@ -149,21 +151,14 @@ describe('Cluster sync', function() {
           }
         }
       };
-      cluster.executePlanForCollections(plan);
+      cluster.executePlanForCollections(plan.Collections);
       db._useDatabase('test');
       let collections = db._collections();
-      console.error('was', collections.map(collection => collection.name()));
       expect(collections.map(collection => collection.name())).to.contain('s100001');
-      expect(db._collection('test').status()).to.be(ArangoCollection.STATUS_LOADED);
+      expect(db._collection('s100001').status()).to.equal(ArangoCollection.STATUS_LOADED);
     });
     it('should create a collection if it does not exist (unloaded case)', function() {
       let plan = {
-        Databases: {
-          "test": {
-            "id": 1,
-            "name": "test"
-          }
-        },
         Collections: {
           test: {
             "100001": {
@@ -197,7 +192,7 @@ describe('Cluster sync', function() {
               ],
               "shards": {
                 "s100001": [
-                  "repl-sync-test",
+                  "",
                 ]
               },
               "status": 2,
@@ -207,39 +202,28 @@ describe('Cluster sync', function() {
           }
         }
       };
-      cluster.executePlan(plan);
+      cluster.executePlanForCollections(plan.Collections);
+      db._useDatabase('test');
       let collections = db._collections();
-      expect(collections).to.have.lengthOf(numSystemCollections + 1);
-      expect(collections).to.contain('100001');
-      expect(db._collection('test').status()).to.be(ArangoCollection.STATUS_LOADED);
+      expect(collections.map(collection => collection.name())).to.contain('s100001');
+      require('internal').wait(2);
+      expect(db._collection('s100001').status()).to.equal(ArangoCollection.STATUS_UNLOADED);
     });
     it('should delete a stale collection', function() {
-      db._createDatabase('test');
       db._create('s100001');
       let plan = {
-        Databases: {
-          "test": {
-            "id": 1,
-            "name": "test"
-          }
-        },
         Collections: {
           test: {
           }
         }
       };
-      cluster.executePlan(plan);
+      cluster.executePlanForCollections(plan.Collections);
+      db._useDatabase('test');
       let collections = db._collections();
       expect(collections).to.have.lengthOf(numSystemCollections);
     });
     it('should ignore a collection for which it is not responsible', function() {
       let plan = {
-        Databases: {
-          "test": {
-            "id": 1,
-            "name": "test"
-          }
-        },
         Collections: {
           test: {
             "100001": {
@@ -283,14 +267,12 @@ describe('Cluster sync', function() {
           }
         }
       };
-      cluster.executePlan(plan);
+      cluster.executePlanForCollections(plan.Collections);
+      db._useDatabase('test');
       let collections = db._collections();
       expect(collections).to.have.lengthOf(numSystemCollections);
-      expect(collections).to.contain('100001');
-      expect(db._collection('test').status()).to.be(ArangoCollection.STATUS_LOADED);
     });
     it('should delete a collection for which it lost responsibility', function() {
-      db._createDatabase('test');
       db._create('s100001');
       let plan = {
         Databases: {
@@ -332,7 +314,7 @@ describe('Cluster sync', function() {
               ],
               "shards": {
                 "s100001": [
-                  "swag", // this is a different server than we are
+                  "debug-follower", // this is a different server than we are
                 ]
               },
               "status": 2,
@@ -342,23 +324,17 @@ describe('Cluster sync', function() {
           }
         }
       };
-      cluster.executePlan(plan);
+      cluster.executePlanForCollections(plan.Collections);
+      db._useDatabase('test');
       let collections = db._collections();
       expect(collections).to.have.lengthOf(numSystemCollections);
-      expect(collections).to.contain('100001');
-      expect(db._collection('test').status()).to.be(ArangoCollection.STATUS_LOADED);
     });
     it('should create an additional index if instructed to do so', function() {
-      db._createDatabase('test');
       db._create('s100001');
       let plan = {
         Databases: {
-          "_system": {
-            "id": 1,
-            "name": "_system"
-          },
           "test": {
-            "id": 2,
+            "id": 1,
             "name": "test"
           }
         },
@@ -407,7 +383,7 @@ describe('Cluster sync', function() {
               ],
               "shards": {
                 "s100001": [
-                  "repl-sync-test",
+                  ""
                 ]
               },
               "status": 2,
@@ -417,12 +393,12 @@ describe('Cluster sync', function() {
           }
         }
       };
-      cluster.executePlan(plan);
-      let indexes = db._collection('100001').getIndexes()
+      cluster.executePlanForCollections(plan.Collections);
+      db._useDatabase('test');
+      let indexes = db._collection('s100001').getIndexes();
       expect(indexes).to.have.lengthOf(2);
     });
-    it('should create an additional index if instructed to do so', function() {
-      db._createDatabase('test');
+    it('should remove an additional index if instructed to do so', function() {
       db._create('s100001');
       db._collection('s100001').ensureIndex({ type: "hash", fields: [ "name" ] })
       let plan = {
@@ -469,7 +445,7 @@ describe('Cluster sync', function() {
               ],
               "shards": {
                 "s100001": [
-                  "repl-sync-test",
+                  "",
                 ]
               },
               "status": 2,
@@ -479,26 +455,16 @@ describe('Cluster sync', function() {
           }
         }
       };
-      cluster.executePlan(plan);
-      let indexes = db._collection('100001').getIndexes()
+      cluster.executePlanForCollections(plan.Collections);
+      db._useDatabase('test');
+      let indexes = db._collection('s100001').getIndexes()
       expect(indexes).to.have.lengthOf(1);
     });
     it('should report an error when collection creation failed', function() {
-      db._createDatabase('test');
       let plan = {
-        Databases: {
-          "_system": {
-            "id": 1,
-            "name": "_system"
-          },
-          "test": {
-            "id": 2,
-            "name": "test"
-          }
-        },
         Collections: {
           test: {
-            "Möter": {
+            "100001": {
               "deleted": false,
               "doCompact": true,
               "id": "100001",
@@ -528,8 +494,8 @@ describe('Cluster sync', function() {
                 "_key"
               ],
               "shards": {
-                "s100001": [
-                  "repl-sync-test",
+                "Möter": [
+                  "",
                 ]
               },
               "status": 2,
@@ -539,7 +505,7 @@ describe('Cluster sync', function() {
           }
         }
       };
-      let errors = cluster.executePlan(plan);
+      let errors = cluster.executePlanForCollections(plan.Collections);
       expect(errors).to.be.an('object');
       expect(errors).to.have.property('Möter');
     });
@@ -558,5 +524,4 @@ describe('Cluster sync', function() {
       };
     });
   });
-  */
 });
