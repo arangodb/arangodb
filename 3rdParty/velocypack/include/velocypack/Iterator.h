@@ -246,18 +246,18 @@ class ObjectIterator {
     return ObjectPair(_slice.getNthKey(_position, true), _slice.getNthValue(_position));
   }
 
-  ObjectIterator begin() { return ObjectIterator(_slice, _allowRandomIteration); }
+  ObjectIterator begin() { return ObjectIterator(*this); }
 
-  ObjectIterator begin() const { return ObjectIterator(_slice, _allowRandomIteration); }
+  ObjectIterator begin() const { return ObjectIterator(*this); }
 
   ObjectIterator end() {
-    auto it = ObjectIterator(_slice, _allowRandomIteration);
+    auto it = ObjectIterator(*this);
     it._position = it._size;
     return it;
   }
 
   ObjectIterator end() const {
-    auto it = ObjectIterator(_slice, _allowRandomIteration);
+    auto it = ObjectIterator(*this);
     it._position = it._size;
     return it;
   }
