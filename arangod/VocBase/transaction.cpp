@@ -193,7 +193,6 @@ static void FreeOperations(arangodb::Transaction* activeTrx, TRI_transaction_t* 
         try {
           op->revert(activeTrx);
         } catch (...) {
-          // TODO: decide whether we should rethrow here
         }
         delete op;
       }
@@ -201,10 +200,7 @@ static void FreeOperations(arangodb::Transaction* activeTrx, TRI_transaction_t* 
       // no rollback. simply delete all operations
       for (auto it = trxCollection->_operations->rbegin();
            it != trxCollection->_operations->rend(); ++it) {
-        MMFilesDocumentOperation* op = (*it);
-
-        //op->done(); // set to done so dtor of DocumentOperation won't fail 
-        delete op;
+        delete (*it);
       }
     }
 
