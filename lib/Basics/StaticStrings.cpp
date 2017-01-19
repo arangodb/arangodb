@@ -45,6 +45,16 @@ std::string const StaticStrings::RevString("_rev");
 std::string const StaticStrings::FromString("_from");
 std::string const StaticStrings::ToString("_to");
 
+// URL parameter names
+std::string const StaticStrings::IgnoreRevsString("ignoreRevs");
+std::string const StaticStrings::IsRestoreString("isRestore");
+std::string const StaticStrings::KeepNullString("keepNull");
+std::string const StaticStrings::MergeObjectsString("mergeObjects");
+std::string const StaticStrings::ReturnNewString("returnNew");
+std::string const StaticStrings::ReturnOldString("returnOld");
+std::string const StaticStrings::SilentString("silent");
+std::string const StaticStrings::WaitForSyncString("waitForSync");
+
 // database and collection names
 std::string const StaticStrings::SystemDatabase("_system");
 
