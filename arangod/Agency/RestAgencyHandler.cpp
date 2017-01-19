@@ -146,7 +146,7 @@ RestStatus RestAgencyHandler::handleTransient() {
     std::this_thread::sleep_for(duration_t(100));
   }
   
-  write_ret_t ret;
+  trans_ret_t ret;
 
   try {
     ret = _agent->transient(query);

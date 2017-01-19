@@ -24,6 +24,11 @@
 
 #include "AgencyComm.h"
 
+#include <thread>
+#ifdef DEBUG_SYNC_REPLICATION
+#include <atomic>
+#endif
+
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
@@ -44,11 +49,6 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-
-#include <thread>
-#ifdef DEBUG_SYNC_REPLICATION
-#include <atomic>
-#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -209,17 +209,22 @@ std::string AgencyWriteTransaction::toJson() const {
 void AgencyWriteTransaction::toVelocyPack(VPackBuilder& builder) const {
   VPackArrayBuilder guard(&builder);
   {
-    VPackObjectBuilder guard2(&builder);
+    VPackObjectBuilder guard2(&builder);  // Writes
     for (AgencyOperation const& operation : operations) {
       operation.toVelocyPack(builder);
     }
   }
-  if (preconditions.size() > 0) {
-    VPackObjectBuilder guard3(&builder);
+  
+  if (preconditions.size() > 0) {         
+    VPackObjectBuilder guard3(&builder);  // Preconditions
     for (AgencyPrecondition const& precondition : preconditions) {
       precondition.toVelocyPack(builder);
     }
+  } else {
+    VPackObjectBuilder guard3(&builder);
   }
+    
+  builder.add(VPackValue(clientId)); // Transactions  
 }
 
 bool AgencyWriteTransaction::validate(AgencyCommResult const& result) const {
@@ -278,6 +283,7 @@ void AgencyGeneralTransaction::toVelocyPack(VPackBuilder& builder) const {
     } else {
       std::get<0>(operation).toGeneralBuilder(builder);
       std::get<1>(operation).toGeneralBuilder(builder);
+      builder.add(VPackValue(clientId));
     }
   }
 }
@@ -322,17 +328,22 @@ AgencyCommResult::AgencyCommResult()
       _body(),
       _values(),
       _statusCode(0),
-      _connected(false) {}
+      _connected(false),
+      _clientId("") {}
 
-AgencyCommResult::AgencyCommResult(int code, std::string const& message)
+AgencyCommResult::AgencyCommResult(
+  int code, std::string const& message, std::string const& clientId) 
     : _location(),
       _message(message),
       _body(),
       _values(),
       _statusCode(code),
-      _connected(false) {}
+      _connected(false),
+    _clientId(clientId) {}
 
 bool AgencyCommResult::connected() const { return _connected; }
+
+std::string AgencyCommResult::clientId() const { return _clientId; }
 
 int AgencyCommResult::httpCode() const { return _statusCode; }
 
@@ -1064,11 +1075,12 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
 
   AgencyCommResult result = sendWithFailover(
       arangodb::rest::RequestType::POST,
-      (timeout == 0.0 ? AgencyCommManager::CONNECTION_OPTIONS._requestTimeout
-                      : timeout),
-      url, builder.slice().toJson());
+      (timeout == 0.0) ?
+       AgencyCommManager::CONNECTION_OPTIONS._requestTimeout : timeout,
+      url, builder.slice().toJson(), transaction.getClientId());
 
-  if (!result.successful() && result.httpCode() != 412) {
+  if (!result.successful() && result.httpCode() !=
+      (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
     return result;
   }
 
@@ -1278,13 +1290,13 @@ void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
 
 AgencyCommResult AgencyComm::sendWithFailover(
     arangodb::rest::RequestType method, double const timeout,
-    std::string const& initialUrl, std::string const& body) {
+    std::string const& initialUrl, std::string const& body,
+    std::string const& clientId) {
 
   std::string endpoint;
   std::unique_ptr<GeneralClientConnection> connection =
     AgencyCommManager::MANAGER->acquire(endpoint);
-  
-  
+
   AgencyCommResult result;
   std::string url = initialUrl;
 
@@ -1320,7 +1332,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     ++tries;
 
     if (connection == nullptr) {
-      AgencyCommResult result(400, "No endpoints for agency found.");
+      AgencyCommResult result(400, "No endpoints for agency found.", clientId);
       LOG_TOPIC(ERR, Logger::AGENCYCOMM) << result._message;
       return result;
     }
@@ -1337,7 +1349,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     
     // try to send; if we fail completely, do not retry
     try {
-      result = send(connection.get(), method, conTimeout, url, body);
+      result = send(connection.get(), method, conTimeout, url, body, clientId);
     } catch (...) {
       AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
       endpoint.clear();
@@ -1397,7 +1409,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
 AgencyCommResult AgencyComm::send(
     arangodb::httpclient::GeneralClientConnection* connection,
     arangodb::rest::RequestType method, double timeout, std::string const& url,
-    std::string const& body) {
+    std::string const& body, std::string const& clientId) {
   TRI_ASSERT(connection != nullptr);
 
   if (method == arangodb::rest::RequestType::GET ||
@@ -1411,6 +1423,9 @@ AgencyCommResult AgencyComm::send(
   AgencyCommResult result;
   result._connected = false;
   result._statusCode = 0;
+  if (!clientId.empty()) {
+    result._clientId = clientId;
+  }
 
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
       << "sending " << arangodb::HttpRequest::translateMethod(method)

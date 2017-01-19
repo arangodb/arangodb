@@ -94,7 +94,7 @@ class Agent : public arangodb::Thread {
   bool load();
 
   /// @brief Unpersisted key-value-store
-  write_ret_t transient(query_t const&);
+  trans_ret_t transient(query_t const&);
 
   /// @brief Attempt write
   write_ret_t write(query_t const&);
@@ -223,9 +223,6 @@ class Agent : public arangodb::Thread {
   /// @brief persist agency configuration in RAFT
   void persistConfiguration(term_t t);
 
-  /// @brief Update my configuration as passive agent
-  void updateConfiguration();
-  
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
 

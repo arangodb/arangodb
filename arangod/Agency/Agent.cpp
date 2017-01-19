@@ -616,7 +616,9 @@ trans_ret_t Agent::transact(query_t const& queries) {
     for (const auto& query : VPackArrayIterator(qs)) {
       if (query[0].isObject()) {
         if(_spearhead.apply(query)) {
-          maxind = _state.log(query[0], term());
+          maxind = (query.length() == 3 && query[2].isString()) ?
+            _state.log(query[0], term(), query[2].copyString()) :
+            _state.log(query[0], term());
           ret->add(VPackValue(maxind));
         } else {
           ret->add(VPackValue(0));
@@ -651,30 +653,38 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
 
 // Non-persistent write to non-persisted key-value store
-write_ret_t Agent::transient(query_t const& query) {
-  std::vector<bool> applied;
-  std::vector<index_t> indices;
+trans_ret_t Agent::transient(query_t const& queries) {
 
+  auto ret = std::make_shared<arangodb::velocypack::Builder>();
   auto leader = _constituent.leaderID();
   if (leader != id()) {
-    return write_ret_t(false, leader);
+    return trans_ret_t(false, leader);
   }
   
   // Apply to spearhead and get indices for log entries
   {
+    VPackArrayBuilder b(ret.get());
+    
     MUTEX_LOCKER(mutexLocker, _ioLock);
     
     // Only leader else redirect
     if (challengeLeadership()) {
       _constituent.candidate();
-      return write_ret_t(false, NO_LEADER);
+      return trans_ret_t(false, NO_LEADER);
     }
-    
-    applied = _transient.apply(query);
-    
+
+    // Read and writes
+    for (const auto& query : VPackArrayIterator(queries->slice())) {
+      if (query[0].isObject()) {
+        _transient.apply(query);
+      } else if (query[0].isString()) {
+        _transient.read(query, *ret);
+      }
+    }
+
   }
 
-  return write_ret_t(true, id());
+  return trans_ret_t(true, id(), 0, 0, ret);
 
 }
 
@@ -695,14 +705,17 @@ inquire_ret_t Agent::inquire(query_t const& query) {
   {
     VPackArrayBuilder b(builder.get());
     for (auto const& i : si) {
-      VPackObjectBuilder bb(builder.get());
-      builder->add("index", VPackValue(i.index));
-      builder->add("term", VPackValue(i.term));
-      builder->add("query", VPackSlice(i.entry->data()));
-      builder->add("index", VPackValue(i.index));
+      VPackArrayBuilder bb(builder.get());
+      for (auto const& j : i) {
+        VPackObjectBuilder bbb(builder.get());
+        builder->add("index", VPackValue(j.index));
+        builder->add("term", VPackValue(j.term));
+        builder->add("query", VPackSlice(j.entry->data()));
+        builder->add("index", VPackValue(j.index));
+      }
     }
   }
-
+  
   ret = inquire_ret_t(true, id(), builder);
   return ret;
 }
@@ -797,7 +810,6 @@ void Agent::run() {
 
     } else {
       _appendCV.wait(1000000);
-      updateConfiguration();
     }
 
   }
@@ -897,9 +909,9 @@ void Agent::detectActiveAgentFailures() {
           system_clock::now() - lastAcked.at(id)).count();
         if (ds > 180.0) {
           std::string repl = _config.nextAgentInLine();
-          LOG_TOPIC(DEBUG, Logger::AGENCY) << "Active agent " << id << " has failed. << "
-                    << repl << " will be promoted to active agency membership";
-          // Guarded in ::
+          LOG_TOPIC(DEBUG, Logger::AGENCY)
+            << "Active agent " << id << " has failed. << " << repl
+            << " will be promoted to active agency membership";
           _activator = std::make_unique<AgentActivator>(this, id, repl);
           _activator->start();
           return;
@@ -907,13 +919,6 @@ void Agent::detectActiveAgentFailures() {
       }
     }
   }
-}
-
-
-void Agent::updateConfiguration() {
-
-  // First ask last know leader
-
 }
 
 

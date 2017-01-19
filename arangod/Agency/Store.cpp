@@ -205,6 +205,7 @@ bool Store::apply(Slice const& query, bool verbose) {
       success = applies(query[0]);
       break;
     case 2:  // precondition
+    case 3:  // precondition + clientId
       if (check(query[1])) {
         success = applies(query[0]);
       } else {  // precondition failed

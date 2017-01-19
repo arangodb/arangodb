@@ -3593,7 +3593,7 @@ void LogicalCollection::mergeObjectsForUpdate(
 
   std::unordered_map<std::string, VPackSlice> newValues;
   {
-    VPackObjectIterator it(newValue, false);
+    VPackObjectIterator it(newValue, true);
     while (it.valid()) {
       std::string key = it.key().copyString();
       if (!key.empty() && key[0] == '_' &&
@@ -3647,7 +3647,7 @@ void LogicalCollection::mergeObjectsForUpdate(
 
   // add other attributes after the system attributes
   {
-    VPackObjectIterator it(oldValue, false);
+    VPackObjectIterator it(oldValue, true);
     while (it.valid()) {
       std::string key = it.key().copyString();
       // exclude system attributes in old value now
@@ -3690,15 +3690,15 @@ void LogicalCollection::mergeObjectsForUpdate(
   }
 
   // add remaining values that were only in new object
-  for (auto& it : newValues) {
-    auto& s = it.second;
+  for (auto const& it : newValues) {
+    VPackSlice const& s = it.second;
     if (s.isNone()) {
       continue;
     }
     if (!keepNull && s.isNull()) {
       continue;
     }
-    b.add(std::move(it.first), s);
+    b.add(it.first, s);
   }
 
   b.close();
