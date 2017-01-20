@@ -98,7 +98,7 @@ class Builder {
   void reserveSpace(ValueLength len) {
     // Reserves len bytes at pos of the current state (top of stack)
     // or throws an exception
-    if (_pos + len <= _size) {
+    if (_pos + len < _size) {
       return;  // All OK, we can just increase tos->pos by len
     }
 
@@ -496,8 +496,8 @@ class Builder {
 
   void addDouble(double v) {
     uint64_t dv;
-    memcpy(&dv, &v, sizeof(double));
     ValueLength vSize = sizeof(double);
+    memcpy(&dv, &v, vSize);
     reserveSpace(1 + vSize);
     _start[_pos++] = 0x1b;
     for (uint64_t x = dv; vSize > 0; vSize--) {
@@ -528,11 +528,10 @@ class Builder {
   }
 
   void addUTCDate(int64_t v) {
-    uint8_t const vSize = sizeof(int64_t);  // is always 8
-    uint64_t x = toUInt64(v);
+    constexpr uint8_t vSize = sizeof(int64_t);  // is always 8
     reserveSpace(1 + vSize);
     _start[_pos++] = 0x1c;
-    appendLength<8>(x);
+    appendLength<vSize>(toUInt64(v));
   }
 
   uint8_t* addString(uint64_t strLen) {

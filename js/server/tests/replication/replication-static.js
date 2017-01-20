@@ -153,8 +153,7 @@ function ReplicationSuite() {
       }
 
       if (compareTicks(slaveState.state.lastAppliedContinuousTick, syncResult.lastLogTick) >= 0 ||
-          compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) >= 0) { //||
-        //          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
+          compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) >= 0) {
         break;
       }
 
@@ -162,7 +161,7 @@ function ReplicationSuite() {
         console.log("waiting for slave to catch up");
         printed = true;
       }
-      internal.wait(5.0, false);
+      internal.wait(1.0, false);
     }
 
     db._flushCache();
