@@ -625,7 +625,7 @@ bool Node::applieOp(VPackSlice const& slice) {
     return handle<OBSERVE>(slice);
   } else if (oper == "unobserve") {  // "op":"unobserve"
     handle<UNOBSERVE>(slice);
-    if (_children.empty()) {
+    if (_children.empty() && _value.empty()) {
       if (_parent == nullptr) {  // root node
         _children.clear();
         _value.clear();

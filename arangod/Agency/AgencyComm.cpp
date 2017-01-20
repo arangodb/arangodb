@@ -1381,7 +1381,55 @@ AgencyCommResult AgencyComm::sendWithFailover(
       waitInterval = std::chrono::duration<double>(.25);
       continue;
     }
-    
+
+    // Precondition failed.
+    /*
+    if (result._statusCode == 412 && !clientId.empty()) {
+      VPackBuilder b;
+      {
+        VPackArrayBuilder ab(&b);
+        b.add(VPackValue(clientId));
+      }
+      
+      AgencyCommResult inq = send(
+        connection.get(), method, conTimeout, "/_api/agency/inquire",
+        b.toJson(), "");
+      LOG_TOPIC(INFO, Logger::AGENCYCOMM) << connection.get();
+      LOG_TOPIC(INFO, Logger::AGENCYCOMM) << url;
+      LOG_TOPIC(INFO, Logger::AGENCYCOMM) << b.toJson();
+      LOG_TOPIC(INFO, Logger::AGENCYCOMM) <<
+        "Got precondition failed inquiring about clientId " << clientId << ": ";
+      if (inq.successful()) {
+        
+        LOG_TOPIC(INFO, Logger::AGENCYCOMM) <<
+          inq.slice().toJson();
+        
+        auto const& slice = inq.slice();
+        if (slice.isArray() && slice.length() > 0) {
+          for (auto const& i : VPackArrayIterator(slice)) {
+            if (i.isArray() && i.length() > 0) {
+              for (auto const& j : VPackArrayIterator(i)) {
+                if (j.getUInt() == 0) {
+                  LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+                    << "failed: " << slice.toJson();
+                  return result;
+                }
+              }
+            }
+          }
+          LOG_TOPIC(INFO, Logger::AGENCYCOMM) << "succeeded: " << slice.toJson();
+          return inq;
+        } else {
+          return result;
+        }
+        return inq;
+      } else {
+        LOG_TOPIC(INFO, Logger::AGENCYCOMM) <<
+          "with error. Keep trying ...";
+        continue;
+      }
+    }
+    */
     // do not retry on client errors
     if (result._statusCode >= 400 && result._statusCode <= 499) {
       AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
@@ -1532,7 +1580,7 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
       builder.add(VPackValue("ServersRegistered"));
       {
         VPackObjectBuilder c(&builder);
-        builder.add("Version", VPackValue("1"));
+        builder.add("Version", VPackValue(1));
       }
       addEmptyVPackObject("Databases", builder);
     }
