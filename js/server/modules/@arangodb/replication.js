@@ -1,4 +1,4 @@
-/* global ArangoServerState, ERRORS */
+/* global ArangoServerState */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -29,6 +29,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require('internal');
+var ERRORS = internal.errors;
 var endpointToURL = require('@arangodb/cluster').endpointToURL;
 var request;
 if (ArangoServerState.role() === 'PRIMARY') {

@@ -602,8 +602,7 @@ function scheduleOneShardSynchronization (database, shard, planId, leader) {
 // / @brief executePlanForCollections
 // /////////////////////////////////////////////////////////////////////////////
 
-function executePlanForCollections(plan) {
-  let plannedCollections = plan.Collections;
+function executePlanForCollections(plannedCollections) {
   let ourselves = global.ArangoServerState.id();
   let localErrors = {};
 
@@ -623,7 +622,6 @@ function executePlanForCollections(plan) {
       try {
         // iterate over collections of database
         let localCollections = getLocalCollections();
-
         let collections = plannedCollections[database];
 
         // diff the collections
@@ -642,7 +640,7 @@ function executePlanForCollections(plan) {
                 errorMessage: 'no error', indexes: {} };
 
               let error = localErrors[shard];
-
+              let collectionStatus;
               if (!localCollections.hasOwnProperty(shard)) {
                 // must create this shard
                 console.debug("creating local shard '%s/%s' for central '%s/%s'",
@@ -675,6 +673,7 @@ function executePlanForCollections(plan) {
                 if (shouldBeLeader) {
                   db._collection(shard).assumeLeadership();
                 }
+                collectionStatus = ArangoCollection.STATUS_LOADED;
               } else {
                 // We adjust local leadership, note that the planned resignation
                 // case is not handled here, since then ourselves does not appear
@@ -692,24 +691,7 @@ function executePlanForCollections(plan) {
                     db._collection(shard).assumeLeadership();
                 }
 
-                // Now check whether the status is OK:
-                if (localCollections[shard].status !== collInfo.status) {
-                  console.info("detected status change for local shard '%s/%s'",
-                    database,
-                    shard);
-
-                  if (collInfo.status === ArangoCollection.STATUS_UNLOADED) {
-                    console.info("unloading local shard '%s/%s'",
-                      database,
-                      shard);
-                    db._collection(shard).unload();
-                  } else if (collInfo.status === ArangoCollection.STATUS_LOADED) {
-                    console.info("loading local shard '%s/%s'",
-                      database,
-                      shard);
-                    db._collection(shard).load();
-                  }
-                }
+                collectionStatus = localCollections[shard].status;
 
                 // collection exists, now compare collection properties
                 let properties = { };
@@ -739,6 +721,25 @@ function executePlanForCollections(plan) {
               if (error.error) {
                 return; // No point to look for indices, if the 
                 // creation has not worked
+              }
+
+              // Now check whether the status is OK:
+              if (collectionStatus !== collInfo.status) {
+                console.info("detected status change for local shard '%s/%s'",
+                  database,
+                  shard);
+
+                if (collInfo.status === ArangoCollection.STATUS_UNLOADED) {
+                  console.info("unloading local shard '%s/%s'",
+                    database,
+                    shard);
+                  db._collection(shard).unload();
+                } else if (collInfo.status === ArangoCollection.STATUS_LOADED) {
+                  console.info("loading local shard '%s/%s'",
+                    database,
+                    shard);
+                  db._collection(shard).load();
+                }
               }
 
               let indexes = getIndexMap(shard);
@@ -815,69 +816,64 @@ function executePlanForCollections(plan) {
   let shardMap = getShardMap(plannedCollections);
 
   // iterate over all databases
-  for (database in localDatabases) {
-    if (localDatabases.hasOwnProperty(database)) {
-      let removeAll = !plannedCollections.hasOwnProperty(database);
+  Object.keys(localDatabases).forEach(database => {
+    let removeAll = !plannedCollections.hasOwnProperty(database);
 
-      // switch into other database
-      db._useDatabase(database);
+    // switch into other database
+    db._useDatabase(database);
 
-      try {
-        // iterate over collections of database
-        let collections = getLocalCollections();
-        let collection;
+    try {
+      // iterate over collections of database
+      let collections = getLocalCollections();
 
-        for (collection in collections) {
-          if (collections.hasOwnProperty(collection)) {
-            // found a local collection
-            // check if it is in the plan and we are responsible for it
-            if (removeAll ||
-                !shardMap.hasOwnProperty(collection) ||
-                shardMap[collection].indexOf(ourselves) === -1) {
-              // May be we have been the leader and are asked to withdraw: ***
-              if (shardMap.hasOwnProperty(collection) &&
-                  shardMap[collection][0] === '_' + ourselves) {
-                if (collections[collection].isLeader) {
-                  organiseLeaderResign(database, collections[collection].planId,
-                    collection);
-                }
-              } else {
-                if (!collections[collection].isLeader) {
-                  // Remove us from the follower list, this is a best
-                  // effort: If an error occurs, this is no problem, since
-                  // the leader will soon notice that the shard here is
-                  // gone and will drop us automatically:
-                  console.debug("removing local shard '%s/%s' of '%s/%s' from follower list",
+      Object.keys(collections).forEach(collection => {
+        // found a local collection
+        // check if it is in the plan and we are responsible for it
+        if (removeAll ||
+            !shardMap.hasOwnProperty(collection) ||
+            shardMap[collection].indexOf(ourselves) === -1) {
+          // May be we have been the leader and are asked to withdraw: ***
+          if (shardMap.hasOwnProperty(collection) &&
+              shardMap[collection][0] === '_' + ourselves) {
+            if (collections[collection].isLeader) {
+              organiseLeaderResign(database, collections[collection].planId,
+                collection);
+            }
+          } else {
+            if (!collections[collection].isLeader) {
+              // Remove us from the follower list, this is a best
+              // effort: If an error occurs, this is no problem, since
+              // the leader will soon notice that the shard here is
+              // gone and will drop us automatically:
+              console.debug("removing local shard '%s/%s' of '%s/%s' from follower list",
+                            database, collection, database,
+                            collections[collection].planId);
+              let servers = shardMap[collection];
+              if (servers !== undefined) {
+                let endpoint = ArangoClusterInfo.getServerEndpoint(servers[0]);
+                try {
+                  removeShardFollower(endpoint, database, collection);
+                } catch (err) {
+                  console.debug("caught exception during removal of local shard '%s/%s' of '%s/%s' from follower list",
                                 database, collection, database,
-                                collections[collection].planId);
-                  let servers = shardMap[collection];
-                  if (servers !== undefined) {
-                    let endpoint = ArangoClusterInfo.getServerEndpoint(servers[0]);
-                    try {
-                      removeShardFollower(endpoint, database, collection);
-                    } catch (err) {
-                      console.debug("caught exception during removal of local shard '%s/%s' of '%s/%s' from follower list",
-                                    database, collection, database,
-                                    collections[collection].planId, err);
-                    }
-                  }
+                                collections[collection].planId, err);
                 }
-                console.info("dropping local shard '%s/%s' of '%s/%s",
-                  database,
-                  collection,
-                  database,
-                  collections[collection].planId);
-
-                db._drop(collection);
               }
             }
+            console.info("dropping local shard '%s/%s' of '%s/%s",
+              database,
+              collection,
+              database,
+              collections[collection].planId);
+
+            db._drop(collection);
           }
         }
-      } finally {
-        db._useDatabase('_system');
-      }
+      });
+    } finally {
+      db._useDatabase('_system');
     }
-  }
+  });
 
   return localErrors;
 }
@@ -1108,7 +1104,7 @@ function syncReplicatedShardsWithLeaders(plan, current, localErrors) {
 function migratePrimary(plan, current) {
   // will analyze local state and then issue db._create(),
   // db._drop() etc. to sync plan and local state for shards
-  let localErrors = executePlanForCollections(plan);
+  let localErrors = executePlanForCollections(plan.Collections);
 
   // diff current and local and prepare agency transactions or whatever
   // to update current. Will report the errors created locally to the agency
@@ -1144,8 +1140,7 @@ function migratePrimary(plan, current) {
 // / @brief executePlanForDatabases
 // /////////////////////////////////////////////////////////////////////////////
 
-function executePlanForDatabases(plan) {
-  let plannedDatabases = plan.Databases;
+function executePlanForDatabases(plannedDatabases) {
   let localErrors = {};
 
   let db = require('internal').db;
@@ -1277,7 +1272,7 @@ function updateCurrentForDatabases(localErrors, current) {
 function migrateAnyServer(plan, current) {
   // will analyze local state and then issue db._createDatabase(),
   // db._dropDatabase() etc. to sync plan and local state for databases
-  let localErrors = executePlanForDatabases(plan);
+  let localErrors = executePlanForDatabases(plan.Databases);
   // diff current and local and prepare agency transactions or whatever
   // to update current. will report the errors created locally to the agency
   let trx = updateCurrentForDatabases(localErrors, current);
@@ -1951,3 +1946,4 @@ exports.supervisionState = supervisionState;
 exports.waitForSyncRepl = waitForSyncRepl;
 
 exports.executePlanForDatabases = executePlanForDatabases;
+exports.executePlanForCollections = executePlanForCollections;

@@ -106,9 +106,15 @@ class Builder {
     checkOverflow(_pos + len);
 #endif
 
-    _buffer->prealloc(len);
-    _start = _buffer->data();
-    _size = _buffer->size();
+    // copy builder pointer into local variable
+    // this avoids accessing the shared pointer repeatedly, which has
+    // a small but non-negligible cost
+    Buffer<uint8_t>* buffer = _buffer.get();
+    VELOCYPACK_ASSERT(buffer != nullptr);
+
+    buffer->prealloc(len);
+    _start = buffer->data();
+    _size = buffer->size();
   }
 
   // Sort the indices by attribute name:

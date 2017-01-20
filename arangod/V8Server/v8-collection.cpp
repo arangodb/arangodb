@@ -1063,15 +1063,11 @@ static void JS_IsLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
 
-    auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
-
-    SingleCollectionTransaction trx(transactionContext, collectionName, 
-                                    TRI_TRANSACTION_READ);
-    int res = trx.begin();
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
+    auto realCollection = vocbase->lookupCollection(collectionName);
+    if (realCollection == nullptr) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
-    b = trx.documentCollection()->followers()->isLeader();
+    b = realCollection->followers()->isLeader();
   }
 
   if (b) {
