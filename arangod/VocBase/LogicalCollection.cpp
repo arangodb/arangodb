@@ -547,7 +547,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       for (const auto& i : VPackArrayIterator(avoidServersSlice)) {
         if (i.isString()) {
           _avoidServers.push_back(i.copyString());
-          LOG(WARN) << i.copyString();
         } else {
           LOG(ERR) << "avoidServers must be a vector of strings we got " <<
             avoidServersSlice.toJson() << ". discarding!" ;

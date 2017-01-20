@@ -685,6 +685,25 @@ std::unique_ptr<LogicalCollection> CreateCollectionCoordinator(
       }
       parameters->distributeShardsLike(otherCidString);
     }
+  } else if (!avoidServers.empty()) {
+    
+    auto const replicationFactor = parameters->replicationFactor();
+    dbServers = ci->getCurrentDBServers();
+    long left = dbServers.size() - avoidServers.size() - replicationFactor;
+
+    if (left >= 0) {
+      std::sort(avoidServers.begin(), avoidServers.end());
+      dbServers.erase(
+        remove_if(dbServers.begin(), dbServers.end(), [&](std::string x) {
+            return binary_search(avoidServers.begin(), avoidServers.end(), x);}),
+        dbServers.end());
+    }
+    
+    if ((long)dbServers.size() > replicationFactor) {
+      std::random_shuffle(dbServers.begin(), dbServers.end());
+      dbServers.erase(dbServers.begin()+replicationFactor, dbServers.end());
+    }
+    
   }
   
   // If the list dbServers is still empty, it will be filled in
