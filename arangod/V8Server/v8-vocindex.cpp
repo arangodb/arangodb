@@ -653,9 +653,11 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 /// @brief create a collection on the coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unique_ptr<LogicalCollection> CreateCollectionCoordinator(LogicalCollection* parameters) {
+std::unique_ptr<LogicalCollection> CreateCollectionCoordinator(
+  LogicalCollection* parameters) {
+  
   std::string distributeShardsLike = parameters->distributeShardsLike();
-
+  std::vector<std::string> avoidServers = parameters->avoidServers();
   std::vector<std::string> dbServers;
 
   ClusterInfo* ci = ClusterInfo::instance();
@@ -683,6 +685,25 @@ std::unique_ptr<LogicalCollection> CreateCollectionCoordinator(LogicalCollection
       }
       parameters->distributeShardsLike(otherCidString);
     }
+  } else if (!avoidServers.empty()) {
+    
+    auto const replicationFactor = parameters->replicationFactor();
+    dbServers = ci->getCurrentDBServers();
+    long left = dbServers.size() - avoidServers.size() - replicationFactor;
+
+    if (left >= 0) {
+      std::sort(avoidServers.begin(), avoidServers.end());
+      dbServers.erase(
+        remove_if(dbServers.begin(), dbServers.end(), [&](std::string x) {
+            return binary_search(avoidServers.begin(), avoidServers.end(), x);}),
+        dbServers.end());
+    }
+    
+    if ((long)dbServers.size() > replicationFactor) {
+      std::random_shuffle(dbServers.begin(), dbServers.end());
+      dbServers.erase(dbServers.begin()+replicationFactor, dbServers.end());
+    }
+    
   }
   
   // If the list dbServers is still empty, it will be filled in

@@ -52,8 +52,8 @@ Supervision::Supervision()
       _agent(nullptr),
       _snapshot("Supervision"),
       _transient("Transient"),
-      _frequency(5.),
-      _gracePeriod(15.),
+      _frequency(1.),
+      _gracePeriod(5.),
       _jobId(0),
       _jobIdMax(0),
       _selfShutdown(false) {}
@@ -110,8 +110,6 @@ std::vector<check_t> Supervision::checkDBServers() {
   Node::Children const serversRegistered =
       _snapshot(currentServersRegisteredPrefix).children();
 
-  bool reportPersistent = false;
-
   std::vector<std::string> todelete;
   for (auto const& machine : _snapshot(healthPrefix).children()) {
     if (machine.first.substr(0, 2) == "DB") {
@@ -121,6 +119,7 @@ std::vector<check_t> Supervision::checkDBServers() {
 
   for (auto const& machine : machinesPlanned) {
     bool good = false;
+    bool reportPersistent = false;
     std::string lastHeartbeatTime, lastHeartbeatAcked, lastStatus,
         heartbeatTime, heartbeatStatus, serverID;
 
@@ -257,8 +256,6 @@ std::vector<check_t> Supervision::checkDBServers() {
 // Check all coordinators, guarded above doChecks
 std::vector<check_t> Supervision::checkCoordinators() {
 
-  bool reportPersistent = false;
-
   std::vector<check_t> ret;
   Node::Children const& machinesPlanned =
       _snapshot(planCoordinatorsPrefix).children();
@@ -280,6 +277,7 @@ std::vector<check_t> Supervision::checkCoordinators() {
   }
 
   for (auto const& machine : machinesPlanned) {
+    bool reportPersistent = false;
     bool good = false;
     std::string lastHeartbeatTime, lastHeartbeatAcked, lastStatus,
         heartbeatTime, heartbeatStatus, serverID;
