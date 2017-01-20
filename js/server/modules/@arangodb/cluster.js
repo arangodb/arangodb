@@ -610,9 +610,6 @@ function executePlanForCollections(plannedCollections) {
   db._useDatabase('_system');
 
   let localDatabases = getLocalDatabases();
-  let database;
-  let i;
-
   // Create shards in Plan that are not there locally:
   Object.keys(plannedCollections).forEach(database => {
     if (localDatabases.hasOwnProperty(database)) {
@@ -628,7 +625,6 @@ function executePlanForCollections(plannedCollections) {
         Object.keys(collections).forEach(function (collection) {
           let collInfo = collections[collection];
           let shards = collInfo.shards;
-          let shard;
 
           collInfo.planId = collInfo.id;
           Object.keys(shards).forEach(shard => {
@@ -651,7 +647,7 @@ function executePlanForCollections(plannedCollections) {
 
                 let save = {id: collInfo.id, name: collInfo.name};
                 delete collInfo.id;     // must not
-                delete collInfo.name; 
+                delete collInfo.name;
                 try {
                   if (collInfo.type === ArangoCollection.TYPE_EDGE) {
                     db._createEdgeCollection(shard, collInfo);
@@ -694,16 +690,16 @@ function executePlanForCollections(plannedCollections) {
                 collectionStatus = localCollections[shard].status;
 
                 // collection exists, now compare collection properties
-                let properties = { };
                 let cmp = [ 'journalSize', 'waitForSync', 'doCompact',
                   'indexBuckets' ];
-                for (i = 0; i < cmp.length; ++i) {
-                  let p = cmp[i];
-                  if (localCollections[shard][p] !== collInfo[p]) {
+
+                let properties = cmp.reduce((obj, key) => {
+                  if (localCollections[shard][key] !== collInfo[key]) {
                     // property change
-                    properties[p] = collInfo[p];
+                    obj[key] = collInfo[key];
                   }
-                }
+                  return obj;
+                }, {});
 
                 if (Object.keys(properties).length > 0) {
                   console.info("updating properties for local shard '%s/%s'",
@@ -747,7 +743,7 @@ function executePlanForCollections(plannedCollections) {
               let index;
 
               if (collInfo.hasOwnProperty('indexes')) {
-                for (i = 0; i < collInfo.indexes.length; ++i) {
+                for (let i = 0; i < collInfo.indexes.length; ++i) {
                   index = collInfo.indexes[i];
 
                   if (index.type !== 'primary' && index.type !== 'edge' &&
@@ -776,7 +772,7 @@ function executePlanForCollections(plannedCollections) {
 
                     if (indexes[idx].type !== 'primary' && indexes[idx].type !== 'edge') {
                       let found = false;
-                      for (i = 0; i < collInfo.indexes.length; ++i) {
+                      for (let i = 0; i < collInfo.indexes.length; ++i) {
                         if (collInfo.indexes[i].id === idx) {
                           found = true;
                           break;
@@ -811,7 +807,6 @@ function executePlanForCollections(plannedCollections) {
       }
     }
   });
-
   // Drop local shards that do no longer exist in Plan:
   let shardMap = getShardMap(plannedCollections);
 
@@ -821,7 +816,6 @@ function executePlanForCollections(plannedCollections) {
 
     // switch into other database
     db._useDatabase(database);
-
     try {
       // iterate over collections of database
       let collections = getLocalCollections();
@@ -832,6 +826,7 @@ function executePlanForCollections(plannedCollections) {
         if (removeAll ||
             !shardMap.hasOwnProperty(collection) ||
             shardMap[collection].indexOf(ourselves) === -1) {
+
           // May be we have been the leader and are asked to withdraw: ***
           if (shardMap.hasOwnProperty(collection) &&
               shardMap[collection][0] === '_' + ourselves) {
@@ -1150,53 +1145,50 @@ function executePlanForDatabases(plannedDatabases) {
   let name;
 
   // check which databases need to be created locally:
-  for (name in plannedDatabases) {
-    if (plannedDatabases.hasOwnProperty(name)) {
-      if (!localDatabases.hasOwnProperty(name)) {
-        // must create database
+  Object.keys(plannedDatabases).forEach(name => {
+    if (!localDatabases.hasOwnProperty(name)) {
+      // must create database
 
-        // TODO: handle options and user information
+      // TODO: handle options and user information
 
-        console.debug("creating local database '%s'", name);
+      console.debug("creating local database '%s'", name);
 
-        try {
-          db._createDatabase(name);
-        } catch (err) {
-          localErrors[name] = { error: true, errorNum: err.errorNum,
-                                errorMessage: err.errorMessage, name: name };
-        }
+      try {
+        db._createDatabase(name);
+      } catch (err) {
+        localErrors[name] = { error: true, errorNum: err.errorNum,
+                              errorMessage: err.errorMessage, name: name };
       }
     }
-  }
-  
+  });
+
   // check which databases need to be deleted locally
   localDatabases = getLocalDatabases();
-  for (name in localDatabases) {
-    if (localDatabases.hasOwnProperty(name)) {
-      if (!plannedDatabases.hasOwnProperty(name) && name.substr(0, 1) !== '_') {
-        // must drop database
 
-        console.info("dropping local database '%s'", name);
+  Object.keys(localDatabases).forEach(name => {
+    if (!plannedDatabases.hasOwnProperty(name) && name.substr(0, 1) !== '_') {
+      // must drop database
 
-        // Do we have to stop a replication applier first?
-        if (ArangoServerState.role() === 'SECONDARY') {
-          try {
-            db._useDatabase(name);
-            var rep = require('@arangodb/replication');
-            var state = rep.applier.state();
-            if (state.state.running === true) {
-              console.info('stopping replication applier first');
-              rep.applier.stop();
-            }
-          }
-          finally {
-            db._useDatabase('_system');
+      console.info("dropping local database '%s'", name);
+
+      // Do we have to stop a replication applier first?
+      if (ArangoServerState.role() === 'SECONDARY') {
+        try {
+          db._useDatabase(name);
+          var rep = require('@arangodb/replication');
+          var state = rep.applier.state();
+          if (state.state.running === true) {
+            console.info('stopping replication applier first');
+            rep.applier.stop();
           }
         }
-        db._dropDatabase(name);
+        finally {
+          db._useDatabase('_system');
+        }
       }
+      db._dropDatabase(name);
     }
-  }
+  });
 
   return localErrors;
 }
