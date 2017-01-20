@@ -132,12 +132,14 @@ class Buffer {
   inline ValueLength size() const { return _pos; }
   inline ValueLength length() const { return _pos; }
   inline ValueLength byteSize() const { return _pos; }
+  
+  inline ValueLength capacity() const noexcept { return _alloc; }
 
   std::string toString() const {
     return std::string(reinterpret_cast<char const*>(_buffer), _pos);
   }
 
-  void reset() { 
+  void reset() noexcept { 
     _pos = 0;
     initWithNone();
   }
@@ -243,15 +245,16 @@ class Buffer {
   // reserve and zero fill
   void prealloc(ValueLength len) {
     reserve(len);
-    // memset(_buffer + _pos, 0, len);
+#ifdef VELOCYPACK_DEBUG
+    // poison memory
+    memset(_buffer + _pos, 0xa5, len);
+#endif
     _pos += len;
   }
 
  private:
   // initialize Buffer with a None value
-  inline void initWithNone() { _buffer[0] = '\x00'; }
-
-  inline ValueLength capacity() const { return _alloc; }
+  inline void initWithNone() noexcept { _buffer[0] = '\x00'; }
 
   T* _buffer;
   ValueLength _alloc;

@@ -64,15 +64,6 @@ function recoverySuite () {
 
     testIndexesAfterFlush: function () {
       var c = db._collection('UnitTestsRecovery'), idx;
-      // debugging information - to be removed
-      var fs = require("fs");
-      var print = require("internal").print;
-      var f = fs.listTree(c.path());
-      print(f);
-      for (var i = 1; i < f.length; ++i) {
-        print(f[i], fs.readFileSync(fs.join(c.path(), "parameter.json")));
-      }
-      print(fs.readFileSync(fs.join(c.path(), "parameter.json")));
 
       assertEqual(3, c.getIndexes().length);
       idx = c.getIndexes()[0];

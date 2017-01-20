@@ -1336,9 +1336,10 @@ function startInstanceCluster (instanceInfo, protocol, options,
   };
 
   options.agencyWaitForSync = false;
+  let usedPorts = [];
+  options.usedPorts = usedPorts;
   startInstanceAgency(instanceInfo, protocol, options, ...makeArgs('agency', 'agency', {}));
 
-  let usedPorts = [];
   let agencyEndpoint = instanceInfo.endpoint;
   let i;
   for (i = 0; i < options.dbServers; i++) {
@@ -1474,7 +1475,7 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
   }
   const wfs = options.agencyWaitForSync;
 
-  let usedPorts = [];
+  let usedPorts = options.usedPorts || [];
   for (let i = 0; i < N; i++) {
     let instanceArgs = _.clone(addArgs);
     instanceArgs['log.file'] = fs.join(rootDir, 'log' + String(i));
