@@ -206,7 +206,58 @@ describe('Cluster sync', function() {
       db._useDatabase('test');
       let collections = db._collections();
       expect(collections.map(collection => collection.name())).to.contain('s100001');
-      require('internal').wait(2);
+      expect(db._collection('s100001').status()).to.equal(ArangoCollection.STATUS_UNLOADED);
+    });
+    it('should unload a collection', function() {
+      db._create('s100001');
+      expect(db._collection('s100001').status()).to.equal(ArangoCollection.STATUS_LOADED);
+      let plan = {
+        Collections: {
+          test: {
+            "100001": {
+              "deleted": false,
+              "doCompact": true,
+              "id": "100001",
+              "indexBuckets": 8,
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ],
+              "isSystem": false,
+              "isVolatile": false,
+              "journalSize": 1048576,
+              "keyOptions": {
+                "allowUserKeys": true,
+                "type": "traditional"
+              },
+              "name": "test",
+              "numberOfShards": 1,
+              "replicationFactor": 2,
+              "shardKeys": [
+                "_key"
+              ],
+              "shards": {
+                "s100001": [
+                  "",
+                ]
+              },
+              "status": 2,
+              "type": 2,
+              "waitForSync": false
+            }
+          }
+        }
+      };
+      cluster.executePlanForCollections(plan.Collections);
+      db._useDatabase('test');
+      let collections = db._collections();
       expect(db._collection('s100001').status()).to.equal(ArangoCollection.STATUS_UNLOADED);
     });
     it('should delete a stale collection', function() {

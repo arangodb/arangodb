@@ -1150,53 +1150,50 @@ function executePlanForDatabases(plannedDatabases) {
   let name;
 
   // check which databases need to be created locally:
-  for (name in plannedDatabases) {
-    if (plannedDatabases.hasOwnProperty(name)) {
-      if (!localDatabases.hasOwnProperty(name)) {
-        // must create database
+  Object.keys(plannedDatabases).forEach(name => {
+    if (!localDatabases.hasOwnProperty(name)) {
+      // must create database
 
-        // TODO: handle options and user information
+      // TODO: handle options and user information
 
-        console.debug("creating local database '%s'", name);
+      console.debug("creating local database '%s'", name);
 
-        try {
-          db._createDatabase(name);
-        } catch (err) {
-          localErrors[name] = { error: true, errorNum: err.errorNum,
-                                errorMessage: err.errorMessage, name: name };
-        }
+      try {
+        db._createDatabase(name);
+      } catch (err) {
+        localErrors[name] = { error: true, errorNum: err.errorNum,
+                              errorMessage: err.errorMessage, name: name };
       }
     }
-  }
-  
+  });
+
   // check which databases need to be deleted locally
   localDatabases = getLocalDatabases();
-  for (name in localDatabases) {
-    if (localDatabases.hasOwnProperty(name)) {
-      if (!plannedDatabases.hasOwnProperty(name) && name.substr(0, 1) !== '_') {
-        // must drop database
 
-        console.info("dropping local database '%s'", name);
+  Object.keys(localDatabases).forEach(name => {
+    if (!plannedDatabases.hasOwnProperty(name) && name.substr(0, 1) !== '_') {
+      // must drop database
 
-        // Do we have to stop a replication applier first?
-        if (ArangoServerState.role() === 'SECONDARY') {
-          try {
-            db._useDatabase(name);
-            var rep = require('@arangodb/replication');
-            var state = rep.applier.state();
-            if (state.state.running === true) {
-              console.info('stopping replication applier first');
-              rep.applier.stop();
-            }
-          }
-          finally {
-            db._useDatabase('_system');
+      console.info("dropping local database '%s'", name);
+
+      // Do we have to stop a replication applier first?
+      if (ArangoServerState.role() === 'SECONDARY') {
+        try {
+          db._useDatabase(name);
+          var rep = require('@arangodb/replication');
+          var state = rep.applier.state();
+          if (state.state.running === true) {
+            console.info('stopping replication applier first');
+            rep.applier.stop();
           }
         }
-        db._dropDatabase(name);
+        finally {
+          db._useDatabase('_system');
+        }
       }
+      db._dropDatabase(name);
     }
-  }
+  });
 
   return localErrors;
 }
