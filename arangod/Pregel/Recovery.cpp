@@ -81,15 +81,24 @@ void RecoveryManager::monitorCollections(
         continue;
       }
       conductors.insert(listener);
-      _monitorShard(coll->dbName(), cid, shard);
+      //_monitorShard(coll->dbName(), cid, shard);
+      
+      std::shared_ptr<std::vector<ServerID>> servers =
+      ClusterInfo::instance()->getResponsibleServer(shard);
+      if (servers->size() > 0) {
+        // _lock is already held
+        _primaryServers[shard] = servers->at(0);
+      }
     }
   }
 }
 
+  /*
 /// Only call while holding _lock
 void RecoveryManager::_monitorShard(DatabaseID const& databaseName,
                                     CollectionID const& cid,
                                     ShardID const& shard) {
+  
   std::function<bool(VPackSlice const& result)> listener =
       [this, shard](VPackSlice const& result) {
         MUTEX_LOCKER(guard, _lock);  // we are editing _primaryServers
@@ -137,7 +146,7 @@ void RecoveryManager::_monitorShard(DatabaseID const& databaseName,
     _agencyCallbacks.emplace(shard, call);
     _agencyCallbackRegistry->registerCallback(call);
   }
-}
+}*/
 
 int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
                                        std::vector<ServerID>& goodServers) {
@@ -189,6 +198,9 @@ void RecoveryManager::updatedFailedServers() {
   }
 }
 
+// should try to figure out if the primary server for a shards has changed
+// it doesn't really matter if this is called multiple times, this should not
+// affect the outcome.
 // don't call while holding _lock
 void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
   MUTEX_LOCKER(guard, _lock);// editing
@@ -220,5 +232,5 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
     }
     usleep(100000);  // 100ms
     tries++;
-  } while (tries < 2);
+  } while (tries < 3);
 }

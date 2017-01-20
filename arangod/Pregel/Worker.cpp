@@ -451,28 +451,29 @@ void Worker<V, E, M>::_finishedProcessing() {
     package.add(Utils::globalSuperstepKey,
                 VPackValue(_config.globalSuperstep()));
     _messageStats.serializeValues(package);
-    package.close();
-
-    // reset message counts & stuff, after sending them to the conductor
-    // don't reset the active count, because the conductor will ask about
-    // it later
     _messageStats.resetTracking();
   }
-
-  // TODO ask how to implement message sending without waiting for a response
-  // call this without locking, to avoid a race condition. The conductor
-  // might immdediatly call us back
-  if (_config.asynchronousMode()) {// no answer expected
+  // serialize converging values only in async mode
+  bool waitForResponse = _config.asynchronousMode();
+  if (waitForResponse) {
+    waitForResponse = _workerAggregators->serializeValues(package, true);
+  }
+  package.close();
+  
+  if (waitForResponse) {// no answer expected
+    bool proceed = true;// if the conductor is unreachable or has send data (try to) proceed
     std::unique_ptr<ClusterCommResult> result = _callConductorWithResponse(Utils::finishedWorkerStepPath, package.slice());
     if (result->status == CL_COMM_RECEIVED) {
       VPackSlice data = result->answer->payload();
-      _conductorAggregators->parseValues(data);// just includes converging aggregators
+      proceed = _conductorAggregators->parseValues(data);
     }
-    
-    // hold the lock only for the coni
-    MUTEX_LOCKER(guard, _commandMutex);
-    _continueAsync();
+    if (proceed) {// if we didn't got an empty answer, the execution stopped
+      // hold the lock only for the continue call
+      MUTEX_LOCKER(guard, _commandMutex);
+      _continueAsync();
+    }
   } else {
+    package.close();
     _callConductor(Utils::finishedWorkerStepPath, package.slice());
   }
 }

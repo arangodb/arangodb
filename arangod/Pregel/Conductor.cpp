@@ -225,8 +225,9 @@ void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder &response) {
     return;
   }
 
-  // track message counts to decide when to halt or add global barriers
-  // in async mode.
+  // track message counts to decide when to halt or add global barriers.
+  // In normal mode this will wait for a response from each worker,
+  // in async mode this will wait until all messages were processed
   _statistics.accumulateMessageStats(data);
   if (_asyncMode == false) {// in async mode we wait for all responded
     _ensureUniqueResponse(data);
@@ -235,27 +236,34 @@ void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder &response) {
       return;
     }
   } else if (_statistics.clientCount() < _dbServers.size() ||  // no messages
-             !_statistics.allMessagesProcessed()) {  // haven't received msgs
-    
-    _aggregators->parseValues(data);
-    response.openObject();
-    _aggregators->serializeValues(response);
-    response.close();
+             !_statistics.allMessagesProcessed()) {  // haven't received msgs    
+    if (_aggregators->parseValues(data)) {
+      response.openObject();
+      _aggregators->serializeValues(response);
+      response.close();
+    }
     return;
   }
 
   LOG(INFO) << "Finished gss " << _globalSuperstep << " in "
             << (TRI_microtime() - _computationStartTimeSecs) << "s";
   _globalSuperstep++;
+  
+  // don't block the response for workers waiting on this callback
+  // this should allow workers to go into the IDLE state
+  basics::ThreadPool* pool = PregelFeature::instance()->threadPool();
+  pool->enqueue([this] {
+    MUTEX_LOCKER(guard, _callbackMutex);
 
-  if (_state == ExecutionState::RUNNING) {
-    _startGlobalStep();  // trigger next superstep
-  } else if (_state == ExecutionState::CANCELED) {
-    LOG(WARN) << "Execution was canceled, results will be discarded.";
-    _finalizeWorkers();// tells workers to store / discard results
-  } else {  // this prop shouldn't occur unless we are recovering or in error
-    LOG(WARN) << "No further action taken after receiving all responses";
-  }
+    if (_state == ExecutionState::RUNNING) {
+        _startGlobalStep();  // trigger next superstep
+    } else if (_state == ExecutionState::CANCELED) {
+      LOG(WARN) << "Execution was canceled, results will be discarded.";
+      _finalizeWorkers();// tells workers to store / discard results
+    } else {  // this prop shouldn't occur unless we are recovering or in error
+      LOG(WARN) << "No further action taken after receiving all responses";
+    }
+  });
 }
 
 void Conductor::finishedRecoveryStep(VPackSlice data) {

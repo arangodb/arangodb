@@ -97,7 +97,7 @@ struct MinAggregator : public NumberAggregator<T> {
     if (other < this->_value) this->_value = other;
   };
 };
-  
+
 template <typename T>
 struct SumAggregator : public NumberAggregator<T> {
   SumAggregator(T init, bool perm = false) : NumberAggregator<T>(init, perm, true) {}

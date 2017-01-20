@@ -25,7 +25,7 @@
 
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/vpack.h>
-#include "Agency/AgencyCallbackRegistry.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterInfo.h"
@@ -46,9 +46,9 @@ class RecoveryManager {
   std::map<ShardID, ServerID> _primaryServers;
   std::map<ShardID, std::shared_ptr<AgencyCallback>> _agencyCallbacks;
 
-  void _monitorShard(DatabaseID const& database,
-                     CollectionID const& cid,
-                     ShardID const& shard);
+  //void _monitorShard(DatabaseID const& database,
+  //                   CollectionID const& cid,
+  //                   ShardID const& shard);
   void _renewPrimaryServer(ShardID const& shard);
 
  public:

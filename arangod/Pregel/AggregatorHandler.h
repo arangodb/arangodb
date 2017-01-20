@@ -49,9 +49,14 @@ class AggregatorHandler {
   void aggregate(std::string const& name, const void* valuePtr);
   const void* getAggregatedValue(std::string const& name);
   void resetValues();
+  
   void aggregateValues(AggregatorHandler const& workerValues);
-  void parseValues(VPackSlice workerValues);
-  void serializeValues(VPackBuilder& b) const;
+  
+  /// return true if there are values in this Slice
+  bool parseValues(VPackSlice workerValues);
+  
+  /// return true if there values in this aggregator which were serialized
+  bool serializeValues(VPackBuilder& b, bool onlyConverging = false) const;
   size_t size() const;
 };
 }
