@@ -600,7 +600,7 @@
 /// - 2003: @LIT{could not read from server}
 ///   Will be raised when the client could not read data.
 /// - 2100: @LIT{Request aborted}
-///    "Request was aborted."
+///   Request was aborted.
 /// - 3000: @LIT{failed to parse manifest file}
 ///   The service manifest file is not well-formed JSON.
 /// - 3001: @LIT{manifest file is invalid}
@@ -3203,7 +3203,7 @@ void TRI_InitializeErrorMessages ();
 ///
 /// Request aborted
 ///
-///  "Request was aborted."
+/// Request was aborted.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_COMMUNICATOR_REQUEST_ABORTED                                  (2100)

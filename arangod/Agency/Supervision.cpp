@@ -52,8 +52,8 @@ Supervision::Supervision()
       _agent(nullptr),
       _snapshot("Supervision"),
       _transient("Transient"),
-      _frequency(5.),
-      _gracePeriod(15.),
+      _frequency(1.),
+      _gracePeriod(5.),
       _jobId(0),
       _jobIdMax(0),
       _selfShutdown(false) {}

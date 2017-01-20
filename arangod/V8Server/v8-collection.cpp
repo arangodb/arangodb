@@ -1390,15 +1390,7 @@ static void JS_PropertiesVocbaseCol(
       }
       result->Set(TRI_V8_ASCII_STRING("avoidServers"), avoidKeys);
     }
-    
-    CollectionNameResolver resolver(c->vocbase());
-    TRI_voc_cid_t cid =
-      static_cast<TRI_voc_cid_t>(
-        arangodb::basics::StringUtils::uint64(shardsLike));
-    result->Set(
-      TRI_V8_ASCII_STRING("distributeShardsLike"),
-      TRI_V8_STD_STRING(resolver.getCollectionNameCluster(cid)));
-    
+
     TRI_V8_RETURN(result);
   }
   
