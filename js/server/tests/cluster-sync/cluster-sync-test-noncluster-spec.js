@@ -208,56 +208,53 @@ describe('Cluster sync', function() {
       expect(collections.map(collection => collection.name())).to.contain('s100001');
       expect(db._collection('s100001').status()).to.equal(ArangoCollection.STATUS_UNLOADED);
     });
-    it('should unload a collection', function() {
+    it('should unload an existing collection', function() {
       db._create('s100001');
       expect(db._collection('s100001').status()).to.equal(ArangoCollection.STATUS_LOADED);
       let plan = {
-        Collections: {
-          test: {
-            "100001": {
-              "deleted": false,
-              "doCompact": true,
-              "id": "100001",
-              "indexBuckets": 8,
-              "indexes": [
-                {
-                  "fields": [
-                    "_key"
-                  ],
-                  "id": "0",
-                  "sparse": false,
-                  "type": "primary",
-                  "unique": true
-                }
-              ],
-              "isSystem": false,
-              "isVolatile": false,
-              "journalSize": 1048576,
-              "keyOptions": {
-                "allowUserKeys": true,
-                "type": "traditional"
-              },
-              "name": "test",
-              "numberOfShards": 1,
-              "replicationFactor": 2,
-              "shardKeys": [
-                "_key"
-              ],
-              "shards": {
-                "s100001": [
-                  "",
-                ]
-              },
-              "status": 2,
-              "type": 2,
-              "waitForSync": false
-            }
+        test: {
+          "100001": {
+            "deleted": false,
+            "doCompact": true,
+            "id": "100001",
+            "indexBuckets": 8,
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              }
+            ],
+            "isSystem": false,
+            "isVolatile": false,
+            "journalSize": 1048576,
+            "keyOptions": {
+              "allowUserKeys": true,
+              "type": "traditional"
+            },
+            "name": "test",
+            "numberOfShards": 1,
+            "replicationFactor": 2,
+            "shardKeys": [
+              "_key"
+            ],
+            "shards": {
+              "s100001": [
+                "",
+              ]
+            },
+            "status": 2,
+            "type": 2,
+            "waitForSync": false
           }
         }
       };
-      cluster.executePlanForCollections(plan.Collections);
+      cluster.executePlanForCollections(plan);
       db._useDatabase('test');
-      let collections = db._collections();
       expect(db._collection('s100001').status()).to.equal(ArangoCollection.STATUS_UNLOADED);
     });
     it('should delete a stale collection', function() {
@@ -311,7 +308,7 @@ describe('Cluster sync', function() {
                   "swag",
                 ]
               },
-              "status": 2,
+              "status": 3,
               "type": 2,
               "waitForSync": false
             }
@@ -326,12 +323,6 @@ describe('Cluster sync', function() {
     it('should delete a collection for which it lost responsibility', function() {
       db._create('s100001');
       let plan = {
-        Databases: {
-          "test": {
-            "id": 1,
-            "name": "test"
-          }
-        },
         Collections: {
           test: {
             "100001": {
@@ -383,12 +374,6 @@ describe('Cluster sync', function() {
     it('should create an additional index if instructed to do so', function() {
       db._create('s100001');
       let plan = {
-        Databases: {
-          "test": {
-            "id": 1,
-            "name": "test"
-          }
-        },
         Collections: {
           test: {
             "100001": {
@@ -559,6 +544,200 @@ describe('Cluster sync', function() {
       let errors = cluster.executePlanForCollections(plan.Collections);
       expect(errors).to.be.an('object');
       expect(errors).to.have.property('Möter');
+    });
+    it('should be leading a collection when ordered to be leader', function() {
+      let plan = {
+        test: {
+          "100001": {
+            "deleted": false,
+            "doCompact": true,
+            "id": "100001",
+            "indexBuckets": 8,
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              }
+            ],
+            "isSystem": false,
+            "isVolatile": false,
+            "journalSize": 1048576,
+            "keyOptions": {
+              "allowUserKeys": true,
+              "type": "traditional"
+            },
+            "name": "test",
+            "numberOfShards": 1,
+            "replicationFactor": 2,
+            "shardKeys": [
+              "_key"
+            ],
+            "shards": {
+              "s100001": [
+                "",
+              ]
+            },
+            "status": 3,
+            "type": 2,
+            "waitForSync": false
+          }
+        }
+      };
+      let errors = cluster.executePlanForCollections(plan);
+      db._useDatabase('test');
+      expect(db._collection('s100001').isLeader()).to.equal(true);
+    });
+    it('should be following a leader when ordered to be follower', function() {
+      let plan = {
+        test: {
+          "100001": {
+            "deleted": false,
+            "doCompact": true,
+            "id": "100001",
+            "indexBuckets": 8,
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              }
+            ],
+            "isSystem": false,
+            "isVolatile": false,
+            "journalSize": 1048576,
+            "keyOptions": {
+              "allowUserKeys": true,
+              "type": "traditional"
+            },
+            "name": "test",
+            "numberOfShards": 1,
+            "replicationFactor": 2,
+            "shardKeys": [
+              "_key"
+            ],
+            "shards": {
+              "s100001": [
+                "the leader-leader",
+                "",
+              ]
+            },
+            "status": 2,
+            "type": 2,
+            "waitForSync": false
+          }
+        }
+      };
+      let errors = cluster.executePlanForCollections(plan);
+      db._useDatabase('test');
+      expect(db._collection('s100001').isLeader()).to.equal(false);
+    });
+    it('should be able to switch from leader to follower', function() {
+      let plan = {
+        test: {
+          "100001": {
+            "deleted": false,
+            "doCompact": true,
+            "id": "100001",
+            "indexBuckets": 8,
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              }
+            ],
+            "isSystem": false,
+            "isVolatile": false,
+            "journalSize": 1048576,
+            "keyOptions": {
+              "allowUserKeys": true,
+              "type": "traditional"
+            },
+            "name": "test",
+            "numberOfShards": 1,
+            "replicationFactor": 2,
+            "shardKeys": [
+              "_key"
+            ],
+            "shards": {
+              "s100001": [
+                "",
+              ]
+            },
+            "status": 2,
+            "type": 2,
+            "waitForSync": false
+          }
+        }
+      };
+      let errors = cluster.executePlanForCollections(plan);
+      plan.test['100001'].shards['s100001'].unshift('der-hund');
+      cluster.executePlanForCollections(plan);
+      db._useDatabase('test');
+      expect(db._collection('s100001').isLeader()).to.equal(false);
+    });
+    it('should be able to switch from follower to leader', function() {
+      let plan = {
+        test: {
+          "100001": {
+            "deleted": false,
+            "doCompact": true,
+            "id": "100001",
+            "indexBuckets": 8,
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              }
+            ],
+            "isSystem": false,
+            "isVolatile": false,
+            "journalSize": 1048576,
+            "keyOptions": {
+              "allowUserKeys": true,
+              "type": "traditional"
+            },
+            "name": "test",
+            "numberOfShards": 1,
+            "replicationFactor": 2,
+            "shardKeys": [
+              "_key"
+            ],
+            "shards": {
+              "s100001": [
+                "old-leader",
+                "",
+              ]
+            },
+            "status": 2,
+            "type": 2,
+            "waitForSync": false
+          }
+        }
+      };
+      let errors = cluster.executePlanForCollections(plan);
+      plan.test['100001'].shards['s100001'] = [""];
+      cluster.executePlanForCollections(plan);
+      db._useDatabase('test');
+      expect(db._collection('s100001').isLeader()).to.equal(false);
     });
   });
   describe('Update current', function() {

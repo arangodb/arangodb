@@ -610,9 +610,6 @@ function executePlanForCollections(plannedCollections) {
   db._useDatabase('_system');
 
   let localDatabases = getLocalDatabases();
-  let database;
-  let i;
-
   // Create shards in Plan that are not there locally:
   Object.keys(plannedCollections).forEach(database => {
     if (localDatabases.hasOwnProperty(database)) {
@@ -628,7 +625,6 @@ function executePlanForCollections(plannedCollections) {
         Object.keys(collections).forEach(function (collection) {
           let collInfo = collections[collection];
           let shards = collInfo.shards;
-          let shard;
 
           collInfo.planId = collInfo.id;
           Object.keys(shards).forEach(shard => {
@@ -651,7 +647,7 @@ function executePlanForCollections(plannedCollections) {
 
                 let save = {id: collInfo.id, name: collInfo.name};
                 delete collInfo.id;     // must not
-                delete collInfo.name; 
+                delete collInfo.name;
                 try {
                   if (collInfo.type === ArangoCollection.TYPE_EDGE) {
                     db._createEdgeCollection(shard, collInfo);
@@ -687,23 +683,23 @@ function executePlanForCollections(plannedCollections) {
                 if (!shouldBeLeader && localCollections[shard].isLeader) {
                   db._collection(shard).leaderResign();
                 } else if (shouldBeLeader &&
-                  !localCollections[shard].isLeader) {
+                  !localCollections[shard].isLeader()) {
                     db._collection(shard).assumeLeadership();
                 }
 
                 collectionStatus = localCollections[shard].status;
 
                 // collection exists, now compare collection properties
-                let properties = { };
                 let cmp = [ 'journalSize', 'waitForSync', 'doCompact',
                   'indexBuckets' ];
-                for (i = 0; i < cmp.length; ++i) {
-                  let p = cmp[i];
-                  if (localCollections[shard][p] !== collInfo[p]) {
+
+                let properties = cmp.reduce((obj, key) => {
+                  if (localCollections[shard][key] !== collInfo[key]) {
                     // property change
-                    properties[p] = collInfo[p];
+                    obj[key] = collInfo[key];
                   }
-                }
+                  return obj;
+                }, {});
 
                 if (Object.keys(properties).length > 0) {
                   console.info("updating properties for local shard '%s/%s'",
@@ -747,7 +743,7 @@ function executePlanForCollections(plannedCollections) {
               let index;
 
               if (collInfo.hasOwnProperty('indexes')) {
-                for (i = 0; i < collInfo.indexes.length; ++i) {
+                for (let i = 0; i < collInfo.indexes.length; ++i) {
                   index = collInfo.indexes[i];
 
                   if (index.type !== 'primary' && index.type !== 'edge' &&
@@ -776,7 +772,7 @@ function executePlanForCollections(plannedCollections) {
 
                     if (indexes[idx].type !== 'primary' && indexes[idx].type !== 'edge') {
                       let found = false;
-                      for (i = 0; i < collInfo.indexes.length; ++i) {
+                      for (let i = 0; i < collInfo.indexes.length; ++i) {
                         if (collInfo.indexes[i].id === idx) {
                           found = true;
                           break;
@@ -811,7 +807,6 @@ function executePlanForCollections(plannedCollections) {
       }
     }
   });
-
   // Drop local shards that do no longer exist in Plan:
   let shardMap = getShardMap(plannedCollections);
 
@@ -821,7 +816,6 @@ function executePlanForCollections(plannedCollections) {
 
     // switch into other database
     db._useDatabase(database);
-
     try {
       // iterate over collections of database
       let collections = getLocalCollections();
@@ -832,6 +826,7 @@ function executePlanForCollections(plannedCollections) {
         if (removeAll ||
             !shardMap.hasOwnProperty(collection) ||
             shardMap[collection].indexOf(ourselves) === -1) {
+
           // May be we have been the leader and are asked to withdraw: ***
           if (shardMap.hasOwnProperty(collection) &&
               shardMap[collection][0] === '_' + ourselves) {
