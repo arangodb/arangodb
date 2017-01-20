@@ -360,7 +360,8 @@ Builder& Builder::close() {
   std::vector<ValueLength>& index = _index[_stack.size() - 1];
 
   if (index.empty()) {
-    return closeEmptyArrayOrObject(tos, isArray);
+    closeEmptyArrayOrObject(tos, isArray);
+    return *this;
   }
 
   // From now on index.size() > 0
@@ -377,7 +378,8 @@ Builder& Builder::close() {
   }
 
   if (isArray) {
-    return closeArray(tos, index);
+    closeArray(tos, index);
+    return *this;
   }
 
   // fix head byte in case a compact Array / Object was originally requested
@@ -569,7 +571,7 @@ uint8_t* Builder::set(Value const& item) {
       reserveSpace(1 + sizeof(double));
       _start[_pos++] = 0x1b;
       memcpy(&x, &v, sizeof(double));
-      appendLength<8>(x);
+      appendLength<sizeof(double)>(x);
       break;
     }
     case ValueType::External: {
