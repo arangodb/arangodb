@@ -683,7 +683,7 @@ function executePlanForCollections(plannedCollections) {
                 if (!shouldBeLeader && localCollections[shard].isLeader) {
                   db._collection(shard).leaderResign();
                 } else if (shouldBeLeader &&
-                  !localCollections[shard].isLeader()) {
+                  !localCollections[shard].isLeader) {
                     db._collection(shard).assumeLeadership();
                 }
 

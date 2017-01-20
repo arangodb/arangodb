@@ -737,7 +737,7 @@ describe('Cluster sync', function() {
       plan.test['100001'].shards['s100001'] = [""];
       cluster.executePlanForCollections(plan);
       db._useDatabase('test');
-      expect(db._collection('s100001').isLeader()).to.equal(false);
+      expect(db._collection('s100001').isLeader()).to.equal(true);
     });
   });
   describe('Update current', function() {
