@@ -64,6 +64,237 @@ var sortedKeys = function (col) {
   return keys;
 };
 
+function transactionRevisionsSuite () {
+  'use strict';
+  var cn = "UnitTestsTransaction";
+  var c = null;
+  
+  return {
+
+    setUp : function () {
+      internal.debugClearFailAt();
+      db._drop(cn);
+      c = db._create(cn);
+    },
+
+    tearDown : function () {
+      internal.debugClearFailAt();
+
+      if (c !== null) {
+        c.drop();
+      }
+
+      c = null;
+      internal.wait(0);
+    },
+    
+    testInsertUniqueFailing : function () {
+      var doc = c.insert({ _key: "test", value: 1 });
+      try {
+        db._executeTransaction({ 
+          collections: { write: c.name() }, 
+          action: function() {
+            c.insert({ _key: "test", value: 2 }); 
+          }
+        });
+        fail();
+      } catch (err) {
+      }
+
+      assertEqual(1, c.figures().revisions.count);
+      assertEqual(1, c.count());
+      assertEqual(1, c.toArray().length);
+      assertEqual(1, c.document("test").value);
+    },
+
+
+    
+    testInsertUniqueSingleFailing : function () {
+      var doc = c.insert({ _key: "test", value: 1 });
+      try {
+        c.insert({ _key: "test", value: 2 }); 
+        fail();
+      } catch (err) {
+      }
+
+      assertEqual(1, c.figures().revisions.count);
+      assertEqual(1, c.count());
+      assertEqual(1, c.toArray().length);
+      assertEqual(1, c.document("test").value);
+    },
+    
+    testInsertTransactionFailing : function () {
+      var doc = c.insert({ _key: "test", value: 1 });
+      try {
+        db._executeTransaction({ 
+          collections: { write: c.name() }, 
+          action: function() {
+            c.insert({ _key: "test2", value: 2 }); 
+            throw "foo";
+          }
+        });
+        fail();
+      } catch (err) {
+      }
+
+      assertEqual(1, c.toArray().length);
+      assertEqual(1, c.figures().revisions.count);
+      assertEqual(1, c.document("test").value);
+    },
+    
+    testRemoveTransactionFailing : function () {
+      var doc = c.insert({ _key: "test", value: 1 });
+      try {
+        db._executeTransaction({ 
+          collections: { write: c.name() }, 
+          action: function() {
+            c.remove("test");
+            throw "foo";
+          }
+        });
+        fail();
+      } catch (err) {
+      }
+
+      assertEqual(1, c.toArray().length);
+      assertEqual(1, c.figures().revisions.count);
+      assertEqual(1, c.document("test").value);
+    },
+ 
+    testRemoveInsertWithSameRev : function () {
+      var doc = c.insert({ _key: "test", value: 1 });
+      db._executeTransaction({ 
+        collections: { write: c.name() }, 
+        action: function() {
+          c.remove("test"); 
+          c.insert({ _key: "test", _rev: doc._rev, value: 2 }, { isRestore: true }); 
+        }
+      });
+
+      assertEqual(1, c.toArray().length);
+      assertEqual(1, c.figures().revisions.count);
+      assertEqual(2, c.document("test").value);
+    },
+    
+    testUpdateWithSameRev : function () {
+      var doc = c.insert({ _key: "test", value: 1 });
+      c.update("test", { _key: "test", _rev: doc._rev, value: 2 }, { isRestore: true }); 
+
+      assertEqual(1, c.toArray().length);
+      assertEqual(1, c.figures().revisions.count);
+      assertEqual(2, c.document("test").value);
+    },
+
+    testUpdateWithSameRevTransaction : function () {
+      var doc = c.insert({ _key: "test", value: 1 });
+      db._executeTransaction({ 
+        collections: { write: c.name() }, 
+        action: function() {
+          c.update("test", { _key: "test", _rev: doc._rev, value: 2 }, { isRestore: true }); 
+        }
+      });
+
+      assertEqual(1, c.toArray().length);
+      assertEqual(1, c.figures().revisions.count);
+      assertEqual(2, c.document("test").value);
+    },
+
+    testUpdateFailingWithSameRev : function () {
+      var doc = c.insert({ _key: "test", value: 1 });
+      try {
+        db._executeTransaction({ 
+          collections: { write: c.name() }, 
+          action: function() {
+            c.update("test", { _key: "test", _rev: doc._rev, value: 2 }, { isRestore: true });
+            throw "foo"; 
+          }
+        });
+        fail();
+      } catch (err) {
+      }
+
+      assertEqual(1, c.toArray().length);
+      assertEqual(1, c.figures().revisions.count);
+      assertEqual(1, c.document("test").value);
+    },
+    
+    testUpdateFailing : function () {
+      var doc = c.insert({ _key: "test", value: 1 });
+      try {
+        db._executeTransaction({ 
+          collections: { write: c.name() }, 
+          action: function() {
+            c.update({ _key: "test", value: 2 });
+            throw "foo"; 
+          }
+        });
+        fail();
+      } catch (err) {
+      }
+
+      assertEqual(1, c.toArray().length);
+      assertEqual(1, c.figures().revisions.count);
+      assertEqual(1, c.document("test").value);
+    },
+
+    testUpdateAndInsertFailing : function () {
+      var doc = c.insert({ _key: "test", value: 1 });
+      try {
+        db._executeTransaction({ 
+          collections: { write: c.name() }, 
+          action: function() {
+            c.update({ _key: "test", value: 2 });
+            c.insert({ _key: "test", value: 3 });
+            throw "foo"; 
+          }
+        });
+        fail();
+      } catch (err) {
+      }
+
+      assertEqual(1, c.toArray().length);
+      assertEqual(1, c.figures().revisions.count);
+      assertEqual(1, c.document("test").value);
+    },
+    
+    testRemoveAndInsert : function () {
+      var doc = c.insert({ _key: "test", value: 1 });
+      db._executeTransaction({ 
+        collections: { write: c.name() }, 
+        action: function() {
+          c.remove("test");
+          c.insert({ _key: "test", value: 2 });
+        }
+      });
+
+      assertEqual(1, c.toArray().length);
+      assertEqual(1, c.figures().revisions.count);
+      assertEqual(2, c.document("test").value);
+    },
+
+    testRemoveAndInsertFailing : function () {
+      var doc = c.insert({ _key: "test", value: 1 });
+      try {
+        db._executeTransaction({ 
+          collections: { write: c.name() }, 
+          action: function() {
+            c.remove("test");
+            c.insert({ _key: "test", value: 3 });
+            throw "foo"; 
+          }
+        });
+        fail();
+      } catch (err) {
+      }
+
+      assertEqual(1, c.toArray().length);
+      assertEqual(1, c.figures().revisions.count);
+      assertEqual(1, c.document("test").value);
+    }
+  
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -5157,6 +5388,9 @@ function transactionServerFailuresSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
+jsunity.run(transactionRevisionsSuite);
+jsunity.run(transactionRollbackSuite);
+
 // only run this test suite if server-side failures are enabled
 if (internal.debugCanUseFailAt()) {
   jsunity.run(transactionServerFailuresSuite);
@@ -5167,7 +5401,6 @@ jsunity.run(transactionCollectionsSuite);
 jsunity.run(transactionOperationsSuite);
 jsunity.run(transactionBarriersSuite);
 jsunity.run(transactionGraphSuite);
-jsunity.run(transactionRollbackSuite);
 jsunity.run(transactionCountSuite);
 jsunity.run(transactionCrossCollectionSuite);
 jsunity.run(transactionConstraintsSuite);

@@ -103,6 +103,8 @@ class MMFilesCollectorThread final : public Thread {
   /// @brief update a collection's datafile information
   int updateDatafileStatistics(LogicalCollection*, MMFilesCollectorCache*);
 
+  void broadcastCollectorResult(int res); 
+
  private:
   /// @brief the logfile manager
   wal::LogfileManager* _logfileManager;

@@ -34,8 +34,8 @@ const colors = require('internal').COLORS;
 
 const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
 
-module.exports = function (files, returnJson) {
-  const results = runTests(run, files, 'suite');
+module.exports = function (files, returnJson, grep) {
+  const results = runTests(run, files, 'suite', grep);
   print();
   logSuite(results);
   logStats(results.stats);

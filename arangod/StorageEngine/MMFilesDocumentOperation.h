@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_WAL_DOCUMENT_OPERATION_H
-#define ARANGOD_WAL_DOCUMENT_OPERATION_H 1
+#ifndef ARANGOD_MMFILES_DOCUMENT_OPERATION_H
+#define ARANGOD_MMFILES_DOCUMENT_OPERATION_H 1
 
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
@@ -71,10 +71,6 @@ struct MMFilesDocumentOperation {
     _status = StatusType::HANDLED;
   }
   
-  void done() noexcept {
-    _status = StatusType::SWAPPED;
-  }
-
   void revert(arangodb::Transaction*);
 
  private:

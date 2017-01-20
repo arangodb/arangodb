@@ -33,8 +33,12 @@ TRANSPORT="tcp"
 LOG_LEVEL="INFO"
 LOG_LEVEL_AGENCY=""
 LOG_LEVEL_CLUSTER=""
-XTERM="x-terminal-emulator"
-XTERMOPTIONS="--geometry=80x43"
+if [ -z "$XTERM" ] ; then
+    XTERM="x-terminal-emulator"
+fi
+if [ -z "$XTERMOPTIONS" ] ; then
+    XTERMOPTIONS="--geometry=80x43"
+fi
 SECONDARIES=0
 BUILD="build"
 JWT_SECRET=""
@@ -227,7 +231,7 @@ start() {
        --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
        --cluster.my-role $ROLE \
        --log.file cluster/$PORT.log \
-       --log.level info \
+       --log.level $LOG_LEVEL \
        --server.statistics true \
        --server.threads 5 \
        --javascript.startup-directory ./js \
@@ -250,7 +254,7 @@ startTerminal() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT
-    $XTERM $XTERMOPTIONS -e ${BUILD}/bin/arangod \
+    $XTERM $XTERMOPTIONS -e "${BUILD}/bin/arangod \
         -c none \
         --database.directory cluster/data$PORT \
         --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
@@ -258,7 +262,7 @@ startTerminal() {
         --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
         --cluster.my-role $ROLE \
         --log.file cluster/$PORT.log \
-        --log.level info \
+        --log.level $LOG_LEVEL \
         --server.statistics true \
         --server.threads 5 \
         --javascript.startup-directory ./js \
@@ -266,7 +270,7 @@ startTerminal() {
         --javascript.app-path ./js/apps \
         $AUTHENTICATION \
         $SSLKEYFILE \
-        --console &
+        --console" &
 }
 
 startDebugger() {
@@ -287,7 +291,7 @@ startDebugger() {
       --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
       --cluster.my-role $ROLE \
       --log.file cluster/$PORT.log \
-      --log.level info \
+      --log.level $LOG_LEVEL \
       --server.statistics false \
       --server.threads 5 \
       --javascript.startup-directory ./js \
@@ -295,7 +299,7 @@ startDebugger() {
       --javascript.app-path ./js/apps \
       $SSLKEYFILE \
       $AUTHENTICATION &
-      $XTERM $XTERMOPTIONS -e gdb ${BUILD}/bin/arangod -p $! &
+      $XTERM $XTERMOPTIONS -e "gdb ${BUILD}/bin/arangod -p $!" &
 }
 
 startRR() {
@@ -308,7 +312,7 @@ startRR() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT with rr tracer
-    $XTERM $XTERMOPTIONS -e rr ${BUILD}/bin/arangod \
+    $XTERM $XTERMOPTIONS -e "rr ${BUILD}/bin/arangod \
         -c none \
         --database.directory cluster/data$PORT \
         --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
@@ -316,7 +320,7 @@ startRR() {
         --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
         --cluster.my-role $ROLE \
         --log.file cluster/$PORT.log \
-        --log.level info \
+        --log.level $LOG_LEVEL \
         --server.statistics true \
         --server.threads 5 \
         --javascript.startup-directory ./js \
@@ -324,7 +328,7 @@ startRR() {
         --javascript.app-path ./js/apps \
         $AUTHENTICATION \
         $SSLKEYFILE \
-        --console &
+        --console" &
 }
 
 PORTTOPDB=`expr 8629 + $NRDBSERVERS - 1`

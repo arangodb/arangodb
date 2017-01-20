@@ -24,12 +24,12 @@
 
 #include <stdexcept>
 
-#include "Agency/AgencyCallbackRegistry.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/RestAgencyHandler.h"
 #include "Agency/RestAgencyPrivHandler.h"
 #include "Aql/RestAqlHandler.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"

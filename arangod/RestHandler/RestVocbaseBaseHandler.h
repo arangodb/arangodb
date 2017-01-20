@@ -264,7 +264,11 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief extracts a boolean parameter value
   //////////////////////////////////////////////////////////////////////////////
 
-  bool extractBooleanParameter(char const* name, bool def) const;
+  bool extractBooleanParameter(std::string const& name, bool def) const;
+  
+  bool extractBooleanParameter(char const* name, bool def) const {
+    return extractBooleanParameter(std::string(name), def);
+  }
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
