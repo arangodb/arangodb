@@ -142,6 +142,7 @@ function MovingShardsSuite () {
 
       while (--count > 0) {
         var obj = getCleanedOutServers();
+        console.error(obj);
         if (obj.cleanedServers.indexOf(id) >= 0) {
           ok = true;
           break;

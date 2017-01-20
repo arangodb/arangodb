@@ -1358,6 +1358,7 @@ static void JS_PropertiesVocbaseCol(
       shardKeys->Set((uint32_t)i, TRI_V8_STD_STRING(sks[i]));
     }
     result->Set(TRI_V8_ASCII_STRING("shardKeys"), shardKeys);
+
     result->Set(TRI_V8_ASCII_STRING("numberOfShards"),
                 v8::Number::New(isolate, c->numberOfShards()));
     auto keyOpts = info->keyOptions();
@@ -1377,12 +1378,34 @@ static void JS_PropertiesVocbaseCol(
     std::string shardsLike = c->distributeShardsLike();
     if (!shardsLike.empty()) {
       CollectionNameResolver resolver(c->vocbase());
-      TRI_voc_cid_t cid = static_cast<TRI_voc_cid_t>(arangodb::basics::StringUtils::uint64(shardsLike));
+      TRI_voc_cid_t cid =
+        static_cast<TRI_voc_cid_t>(
+          arangodb::basics::StringUtils::uint64(shardsLike));
       result->Set(
-          TRI_V8_ASCII_STRING("distributeShardsLike"),
-          TRI_V8_STD_STRING(resolver.getCollectionNameCluster(cid)));
+        TRI_V8_ASCII_STRING("distributeShardsLike"),
+        TRI_V8_STD_STRING(resolver.getCollectionNameCluster(cid)));
     }
-
+    
+    std::vector<std::string> const avoidServers = c->avoidServers();
+    for (const auto& i: avoidServers) {
+      LOG(WARN) << i;
+    }
+    if (!avoidServers.empty()) {
+      v8::Handle<v8::Array> avoidKeys = v8::Array::New(isolate);
+      for (size_t i = 0; i < avoidServers.size(); ++i) {
+        avoidKeys->Set((uint32_t)i, TRI_V8_STD_STRING(avoidServers[i]));
+      }
+      result->Set(TRI_V8_ASCII_STRING("avoidServers"), avoidKeys);
+    }
+    
+    CollectionNameResolver resolver(c->vocbase());
+    TRI_voc_cid_t cid =
+      static_cast<TRI_voc_cid_t>(
+        arangodb::basics::StringUtils::uint64(shardsLike));
+    result->Set(
+      TRI_V8_ASCII_STRING("distributeShardsLike"),
+      TRI_V8_STD_STRING(resolver.getCollectionNameCluster(cid)));
+    
     TRI_V8_RETURN(result);
   }
   

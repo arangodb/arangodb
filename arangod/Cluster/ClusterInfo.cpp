@@ -1054,6 +1054,24 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   std::string const name =
       arangodb::basics::VelocyPackHelper::getStringValue(json, "name", "");
 
+  std::vector<std::string> avoidServers;
+  if (json.hasKey("avoidServers")) {
+    VPackSlice tmp = json.get("avoidServers");
+    if (tmp.isArray()) {
+      for (const auto& i : VPackArrayIterator(tmp)) {
+        if (!i.isString()) {
+          LOG_TOPIC(ERR, Logger::CLUSTER)
+            << "avoidServers must be a vector of strings we got " <<
+            tmp.toJson() << ". discarding!" ;
+          avoidServers.clear();
+        } else {
+          avoidServers.push_back(i.copyString());
+          LOG(WARN) << i.copyString();
+        }
+      }
+    }
+  }
+  
   {
     // check if a collection with the same name is already planned
     loadPlan();
@@ -1086,6 +1104,14 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   auto dbServers = getCurrentDBServers();
+  if (dbServers.size() - avoidServers.size() >= replicationFactor) {
+    std::sort(avoidServers.begin(), avoidServers.end());
+    dbServers.erase(
+      remove_if(dbServers.begin(), dbServers.end(), [&](std::string x) {
+          return binary_search(avoidServers.begin(), avoidServers.end(), x);}),
+      dbServers.end());
+  }
+  
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
         if (result.isObject() && result.length() == (size_t)numberOfShards) {

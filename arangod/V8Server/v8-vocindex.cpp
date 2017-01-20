@@ -653,9 +653,11 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 /// @brief create a collection on the coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unique_ptr<LogicalCollection> CreateCollectionCoordinator(LogicalCollection* parameters) {
+std::unique_ptr<LogicalCollection> CreateCollectionCoordinator(
+  LogicalCollection* parameters) {
+  
   std::string distributeShardsLike = parameters->distributeShardsLike();
-
+  std::vector<std::string> avoidServers = parameters->avoidServers();
   std::vector<std::string> dbServers;
 
   ClusterInfo* ci = ClusterInfo::instance();

@@ -306,6 +306,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _type(other.type()),
       _name(other.name()),
       _distributeShardsLike(other.distributeShardsLike()),
+      _avoidServers(other.avoidServers()),
       _isSmart(other.isSmart()),
       _status(other.status()),
       _isLocal(false),
@@ -473,6 +474,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _replicationFactor = 0;
       _numberOfShards = 1;
       _distributeShardsLike = "";
+      _avoidServers.clear();
       isError = false;
     }
 #endif
@@ -538,6 +540,24 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       }
     }
   }
+
+  
+  if (info.hasKey("avoidServers")) {
+    auto avoidServersSlice = info.get("avoidServers");
+    if (avoidServersSlice.isArray()) {
+      for (const auto& i : VPackArrayIterator(avoidServersSlice)) {
+        if (i.isString()) {
+          _avoidServers.push_back(i.copyString());
+        } else {
+          LOG(ERR) << "avoidServers must be a vector of strings we got " <<
+            avoidServersSlice.toJson() << ". discarding!" ;
+          _avoidServers.clear();
+          break;
+        }
+      }
+    }
+  }
+  
 
   if (_indexes.empty()) {
     createInitialIndexes();
@@ -743,6 +763,14 @@ std::string const& LogicalCollection::distributeShardsLike() const {
 
 void LogicalCollection::distributeShardsLike(std::string const& cid) {
   _distributeShardsLike = cid;
+}
+
+std::vector<std::string> const& LogicalCollection::avoidServers() const {
+  return _avoidServers;
+}
+
+void LogicalCollection::avoidServers(std::vector<std::string> const& a) {
+  _avoidServers = a;
 }
 
 std::string LogicalCollection::dbName() const {
@@ -1111,6 +1139,13 @@ void LogicalCollection::toVelocyPackInObject(VPackBuilder& result) const {
   result.add("numberOfShards", VPackValue(_numberOfShards));
   if (!_distributeShardsLike.empty()) {
     result.add("distributeShardsLike", VPackValue(_distributeShardsLike));
+  }
+  if (!_avoidServers.empty()) {
+    result.add(VPackValue("avoidServers"));
+    VPackArrayBuilder b(&result);
+    for (auto const& i : _avoidServers) {
+      result.add(VPackValue(i));
+    }
   }
 
   if (_keyGenerator != nullptr) {
