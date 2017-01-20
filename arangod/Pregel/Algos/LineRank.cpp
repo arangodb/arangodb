@@ -98,7 +98,7 @@ VertexComputation<float, float, float>* LineRank::createComputation(
   return new MyComputation();
 }
 
-Aggregator* LineRank::aggregator(std::string const& name) const {
+IAggregator* LineRank::aggregator(std::string const& name) const {
   if (name == kMoreIterations) {
     return new ValueAggregator<bool>(false, false);// non perm
   }

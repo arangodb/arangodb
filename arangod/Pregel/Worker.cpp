@@ -50,6 +50,7 @@ template <typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
                         VPackSlice initConfig)
     : _config(vocbase->name(), initConfig), _algorithm(algo) {
+      
   VPackSlice userParams = initConfig.get(Utils::userParametersKey);
   _workerContext.reset(algo->workerContext(userParams));
   _messageFormat.reset(algo->messageFormat());
@@ -84,7 +85,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
     {  // never modify the graph store without holding the mutex
       MUTEX_LOCKER(guard, _commandMutex);
       if (_config.lazyLoading()) {
-        std::vector<std::string> activeSet = _algorithm->initialActiveSet();
+        std::set<std::string> activeSet = _algorithm->initialActiveSet();
         if (activeSet.size() == 0) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_INTERNAL, "There needs to be one active vertice");
@@ -188,9 +189,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
   response.add(Utils::activeCountKey, VPackValue(_activeCount));
   response.add(Utils::vertexCount, VPackValue(_graphStore->localVertexCount()));
   response.add(Utils::edgeCount, VPackValue(_graphStore->localEdgeCount()));
-  response.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
   _workerAggregators->serializeValues(response);
-  response.close();
   response.close();
 
   LOG(INFO) << "Worker sent prepare GSS response: " << response.toJson();
@@ -245,11 +244,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
 
   _workerAggregators->resetValues();
   _conductorAggregators->resetValues();
-  // parse aggregated values from conductor
-  VPackSlice aggValues = data.get(Utils::aggregatorValuesKey);
-  if (aggValues.isObject()) {
-    _conductorAggregators->aggregateValues(aggValues);
-  }
+  _conductorAggregators->parseValues(data);
   // execute context
   if (_workerContext) {
     _workerContext->_vertexCount = data.get(Utils::vertexCount).getUInt();
@@ -462,15 +457,24 @@ void Worker<V, E, M>::_finishedProcessing() {
     // don't reset the active count, because the conductor will ask about
     // it later
     _messageStats.resetTracking();
-    if (_config.asynchronousMode()) {
-      _continueAsync();
-    }
   }
 
   // TODO ask how to implement message sending without waiting for a response
   // call this without locking, to avoid a race condition. The conductor
   // might immdediatly call us back
-  _callConductor(Utils::finishedWorkerStepPath, package.slice());
+  if (_config.asynchronousMode()) {// no answer expected
+    std::unique_ptr<ClusterCommResult> result = _callConductorWithResponse(Utils::finishedWorkerStepPath, package.slice());
+    if (result->status == CL_COMM_RECEIVED) {
+      VPackSlice data = result->answer->payload();
+      _conductorAggregators->parseValues(data);// just includes converging aggregators
+    }
+    
+    // hold the lock only for the coni
+    MUTEX_LOCKER(guard, _commandMutex);
+    _continueAsync();
+  } else {
+    _callConductor(Utils::finishedWorkerStepPath, package.slice());
+  }
 }
 
 /// WARNING only call this while holding the _commandMutex
@@ -557,14 +561,11 @@ void Worker<V, E, M>::startRecovery(VPackSlice data) {
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::compensateStep(VPackSlice data) {
   MUTEX_LOCKER(guard, _commandMutex);
-
-  _conductorAggregators->resetValues();
-  VPackSlice aggValues = data.get(Utils::aggregatorValuesKey);
-  if (aggValues.isObject()) {
-    _conductorAggregators->aggregateValues(aggValues);
-  }
+  
   _workerAggregators->resetValues();
-
+  _conductorAggregators->resetValues();
+  _conductorAggregators->parseValues(data);
+  
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this] {
     if (_state != WorkerState::RECOVERING) {
@@ -595,12 +596,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice data) {
                 VPackValue(_config.executionNumber()));
     package.add(Utils::globalSuperstepKey,
                 VPackValue(_config.globalSuperstep()));
-    if (_workerAggregators->size() > 0) {  // add aggregators
-      package.add(Utils::aggregatorValuesKey,
-                  VPackValue(VPackValueType::Object));
-      _workerAggregators->serializeValues(package);
-      package.close();
-    }
+    _workerAggregators->serializeValues(package);
     package.close();
     _callConductor(Utils::finishedRecoveryPath, package.slice());
   });
@@ -625,22 +621,32 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice data) {
   LOG(INFO) << "Recovery finished";
 }
 
-
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::_callConductor(std::string path, VPackSlice message) {
+void Worker<V, E, M>::_callConductor(std::string const& path, VPackSlice message) {
   LOG(INFO) << "Calling the conductor";
 
   ClusterComm* cc = ClusterComm::instance();
   std::string baseUrl = Utils::baseUrl(_config.database());
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-  auto headers =
-      std::make_unique<std::unordered_map<std::string, std::string>>();
+  auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
   auto body = std::make_shared<std::string const>(message.toJson());
   cc->asyncRequest("", coordinatorTransactionID,
                    "server:" + _config.coordinatorId(), rest::RequestType::POST,
                    baseUrl + path, body, headers, nullptr,
-                   90.0,  // timeout + single request
-                   true);
+                   120.0,  // timeout
+                   true);// single request, no answer expected
+}
+
+template <typename V, typename E, typename M>
+std::unique_ptr<ClusterCommResult> Worker<V, E, M>::_callConductorWithResponse(std::string const& path, VPackSlice message) {
+  LOG(INFO) << "Calling the conductor";
+  ClusterComm* cc = ClusterComm::instance();
+  std::string baseUrl = Utils::baseUrl(_config.database());
+  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+  std::unordered_map<std::string, std::string> headers;
+  return cc->syncRequest("", coordinatorTransactionID,
+                          "server:" + _config.coordinatorId(), rest::RequestType::POST,
+                          baseUrl + path, message.toJson(), headers, 120.0);
 }
 
 // template types to create

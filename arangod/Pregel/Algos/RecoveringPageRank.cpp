@@ -94,7 +94,7 @@ VertexComputation<float, float, float>* RecoveringPageRank::createComputation(
   return new RPRComputation(_threshold);
 }
 
-Aggregator* RecoveringPageRank::aggregator(std::string const& name) const {
+IAggregator* RecoveringPageRank::aggregator(std::string const& name) const {
   if (name == kConvergence) {
     return new MaxAggregator<float>(-1);
   } else if (name == kNonFailedCount) {

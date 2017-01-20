@@ -123,8 +123,8 @@ ShortestPathAlgorithm::ShortestPathAlgorithm(VPackSlice userParams)
   _format = new SPGraphFormat(val1.copyString(), val2.copyString());
 }
 
-std::vector<std::string> ShortestPathAlgorithm::initialActiveSet() {
-  return std::vector<std::string>{_format->_sourceDocId};
+std::set<std::string> ShortestPathAlgorithm::initialActiveSet() {
+  return std::set<std::string>{_format->_sourceDocId};
 }
 
 GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() {
@@ -137,7 +137,7 @@ ShortestPathAlgorithm::createComputation(WorkerConfig const* _config) const {
   return new ShortestPathComp(target);
 }
 
-Aggregator* ShortestPathAlgorithm::aggregator(std::string const& name) const {
+IAggregator* ShortestPathAlgorithm::aggregator(std::string const& name) const {
   if (name == spUpperPathBound) {  // persistent min operator
     return new MinAggregator<int64_t>(INT64_MAX, true);
   }

@@ -56,7 +56,7 @@ struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
       WorkerConfig const*) const override;
   VertexCompensation<float, float, float>* createCompensation(
       WorkerConfig const*) const override;
-  Aggregator* aggregator(std::string const& name) const override;
+  IAggregator* aggregator(std::string const& name) const override;
 };
 }
 }

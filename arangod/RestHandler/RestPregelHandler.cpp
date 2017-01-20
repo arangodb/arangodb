@@ -122,7 +122,7 @@ RestStatus RestPregelHandler::execute() {
     } else if (suffix[0] == Utils::finishedWorkerStepPath) {
       Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
       if (exe) {
-        exe->finishedWorkerStep(body);
+        exe->finishedWorkerStep(body, result);
       }
     } else if (suffix[0] == Utils::cancelGSSPath) {
       IWorker *exe = PregelFeature::instance()->worker(executionNumber);

@@ -43,7 +43,7 @@ class VertexComputation;
 template <typename V, typename E, typename M>
 class VertexCompensation;
 
-class Aggregator;
+class IAggregator;
 class WorkerConfig;
 class MasterContext;
 
@@ -58,7 +58,7 @@ struct IAlgorithm {
 
   virtual bool supportsLazyLoading() const { return false; }
 
-  virtual Aggregator* aggregator(std::string const& name) const {
+  virtual IAggregator* aggregator(std::string const& name) const {
     return nullptr;
   }
 
@@ -91,8 +91,8 @@ struct Algorithm : IAlgorithm {
       WorkerConfig const*) const {
     return nullptr;
   }
-  virtual std::vector<std::string> initialActiveSet() {
-    return std::vector<std::string>();
+  virtual std::set<std::string> initialActiveSet() {
+    return std::set<std::string>();
   }
 
  protected:

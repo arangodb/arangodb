@@ -32,107 +32,86 @@
 
 namespace arangodb {
 namespace pregel {
+  
+typedef std::string AggregatorID;
 
-class Aggregator {
-  bool _permanent;
-  Aggregator(const Aggregator&) = delete;
-  Aggregator& operator=(const Aggregator&) = delete;
+class IAggregator {
+  IAggregator(const IAggregator&) = delete;
+  IAggregator& operator=(const IAggregator&) = delete;
 
  public:
-  Aggregator(bool perm = false) : _permanent(perm) {}
-  virtual ~Aggregator() {}
+  IAggregator() {}
+  virtual ~IAggregator() {}
 
   /// @brief Value from superstep S-1 supplied by the conductor
   virtual void aggregate(void const* valuePtr) = 0;
-  virtual void aggregate(VPackSlice slice) = 0;
 
   virtual void const* getValue() const = 0;
-  // virtual void setValue(VPackSlice slice) = 0;
-  virtual VPackValue vpackValue() = 0;
+  virtual VPackValue vpackValue() const = 0;
+  virtual void parse(VPackSlice slice) = 0;
 
-  virtual void reset(){};
-  bool isPermanent() { return _permanent; }
+
+  virtual void reset() = 0;
+  virtual bool isConverging() const = 0;
 };
   
-template <typename T>
-class MaxAggregator : public Aggregator {
+template<typename T>
+struct NumberAggregator : public IAggregator {
   static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
-  T _value, _initial;
   
-public:
-  MaxAggregator(T init, bool perm = false)
-  : Aggregator(perm), _value(init), _initial(init) {}
+  NumberAggregator(T init, bool perm = false, bool conv = false)
+  : _value(init), _initial(init), _converging(conv) {}
   
-  void aggregate(void const* valuePtr) override {
-    T other = *((T*)valuePtr);
-    if (other > _value) _value = other;
-  };
-  void aggregate(VPackSlice slice) override {
+  void const* getValue() const override { return &_value; };
+  VPackValue vpackValue() const override { return VPackValue(_value); };
+  void parse(VPackSlice slice) override {
     T f = slice.getNumber<T>();
-    aggregate(&f);
+    aggregate((void const*)(&f));
   }
   
-  void const* getValue() const override { return &_value; };
-  VPackValue vpackValue() override { return VPackValue(_value); };
+  void reset() override {
+    if (!_permanent) {_value = _initial; }
+  }
   
-  void reset() override { _value = _initial; }
-};
-
-template <typename T>
-class MinAggregator : public Aggregator {
-  static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
+  bool isConverging() const override { return _converging; }
+  
+protected:
   T _value, _initial;
-
- public:
-  MinAggregator(T init, bool perm = false)
-      : Aggregator(perm), _value(init), _initial(init) {}
-
+  bool _permanent, _converging;
+};
+  
+template <typename T>
+struct MaxAggregator : public NumberAggregator<T> {
+  MaxAggregator(T init, bool perm = false) : NumberAggregator<T>(init, perm, true) {}
   void aggregate(void const* valuePtr) override {
     T other = *((T*)valuePtr);
-    if (other < _value) _value = other;
+    if (other > this->_value) this->_value = other;
   };
-  void aggregate(VPackSlice slice) override {
-    T f = slice.getNumber<T>();
-    aggregate(&f);
-  }
-
-  void const* getValue() const override { return &_value; };
-  VPackValue vpackValue() override { return VPackValue(_value); };
-
-  void reset() override { _value = _initial; }
-};
-  
-template <typename T>
-class SumAggregator : public Aggregator {
-  static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
-  T _value, _initial;
-  
-public:
-  SumAggregator(T init, bool perm = false)
-      : Aggregator(perm), _value(init), _initial(init) {}
-  
-  void aggregate(void const* valuePtr) override { _value += *((T*)valuePtr); };
-  void aggregate(VPackSlice slice) override { _value += slice.getNumber<T>(); }
-  
-  void const* getValue() const override { return &_value; };
-  VPackValue vpackValue() override { return VPackValue(_value); };
-  
-  void reset() override { _value = _initial; }
 };
 
 template <typename T>
-class ValueAggregator : public Aggregator {
-  static_assert(std::is_fundamental<T>::value, "Type must be fundamental");
-  T _value;
+struct MinAggregator : public NumberAggregator<T> {
+  MinAggregator(T init, bool perm = false) : NumberAggregator<T>(init, perm, true) {}
+  void aggregate(void const* valuePtr) override {
+    T other = *((T*)valuePtr);
+    if (other < this->_value) this->_value = other;
+  };
+};
+  
+template <typename T>
+struct SumAggregator : public NumberAggregator<T> {
+  SumAggregator(T init, bool perm = false) : NumberAggregator<T>(init, perm, true) {}
+  
+  void aggregate(void const* valuePtr) override { this->_value += *((T*)valuePtr); };
+  void parse(VPackSlice slice) override { this->_value += slice.getNumber<T>(); }
+};
 
- public:
-  ValueAggregator(T val, bool perm = false) : Aggregator(perm), _value(val) {}
+template <typename T>
+struct ValueAggregator : public NumberAggregator<T> {
+  ValueAggregator(T val, bool perm = false) : NumberAggregator<T>(val, perm, true) {}
 
-  void aggregate(void const* valuePtr) override { _value = *((T*)valuePtr); };
-  void aggregate(VPackSlice slice) override { _value = slice.getNumber<T>(); }
-
-  void const* getValue() const override { return &_value; };
-  VPackValue vpackValue() override { return VPackValue(_value); };
+  void aggregate(void const* valuePtr) override { this->_value = *((T*)valuePtr); };
+  void parse(VPackSlice slice) override {this-> _value = slice.getNumber<T>(); }
 };
 }
 }

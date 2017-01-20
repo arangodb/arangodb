@@ -83,7 +83,7 @@ VertexComputation<float, float, float>* PageRank::createComputation(
   return new PRComputation(_threshold);
 }
 
-Aggregator* PageRank::aggregator(std::string const& name) const {
+IAggregator* PageRank::aggregator(std::string const& name) const {
   if (name == kConvergence) {
     return new MaxAggregator<float>(-1.0f);
   }

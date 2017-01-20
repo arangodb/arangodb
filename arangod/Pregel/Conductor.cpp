@@ -116,7 +116,6 @@ bool Conductor::_startGlobalStep() {
   // values as well as the count of active vertices
   std::vector<ClusterCommRequest> requests;
   int res = _sendToAllDBServers(Utils::prepareGSSPath, b.slice(), requests);
-
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
     LOG(INFO) << "Seems there is at least one worker out of order";
@@ -131,10 +130,7 @@ bool Conductor::_startGlobalStep() {
   _totalEdgesCount = 0;
   for (auto const& req : requests) {
     VPackSlice payload = req.result.answer->payload();
-    VPackSlice aggVals = payload.get(Utils::aggregatorValuesKey);
-    if (aggVals.isObject()) {
-      _aggregators->aggregateValues(aggVals);
-    }
+    _aggregators->parseValues(payload);
     _statistics.accumulateActiveCounts(payload);
     _totalVerticesCount += payload.get(Utils::vertexCount).getUInt();
     _totalEdgesCount += payload.get(Utils::edgeCount).getUInt();
@@ -165,11 +161,7 @@ bool Conductor::_startGlobalStep() {
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
   b.add(Utils::vertexCount, VPackValue(_totalVerticesCount));
   b.add(Utils::edgeCount, VPackValue(_totalEdgesCount));
-  if (_aggregators->size() > 0) {
-    b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-    _aggregators->serializeValues(b);
-    b.close();
-  }
+  _aggregators->serializeValues(b);
   b.close();
   LOG(INFO) << b.toString();
 
@@ -186,7 +178,7 @@ bool Conductor::_startGlobalStep() {
 }
 
 // ============ Conductor callbacks ===============
-void Conductor::finishedWorkerStartup(VPackSlice& data) {
+void Conductor::finishedWorkerStartup(VPackSlice data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
   if (_state != ExecutionState::RUNNING) {
@@ -219,7 +211,9 @@ void Conductor::finishedWorkerStartup(VPackSlice& data) {
   }
 }
 
-void Conductor::finishedWorkerStep(VPackSlice& data) {
+/// Will optionally send a response, to notify the worker of converging aggregator
+/// values which can be coninually updated (in async mode)
+void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder &response) {
   MUTEX_LOCKER(guard, _callbackMutex);
   // this method can be called multiple times in a superstep depending on
   // whether we are in the async mode
@@ -231,8 +225,10 @@ void Conductor::finishedWorkerStep(VPackSlice& data) {
     return;
   }
 
+  // track message counts to decide when to halt or add global barriers
+  // in async mode.
   _statistics.accumulateMessageStats(data);
-  if (!_asyncMode) {
+  if (_asyncMode == false) {// in async mode we wait for all responded
     _ensureUniqueResponse(data);
     // wait for the last worker to respond
     if (_respondedServers.size() != _dbServers.size()) {
@@ -240,6 +236,11 @@ void Conductor::finishedWorkerStep(VPackSlice& data) {
     }
   } else if (_statistics.clientCount() < _dbServers.size() ||  // no messages
              !_statistics.allMessagesProcessed()) {  // haven't received msgs
+    
+    _aggregators->parseValues(data);
+    response.openObject();
+    _aggregators->serializeValues(response);
+    response.close();
     return;
   }
 
@@ -251,14 +252,13 @@ void Conductor::finishedWorkerStep(VPackSlice& data) {
     _startGlobalStep();  // trigger next superstep
   } else if (_state == ExecutionState::CANCELED) {
     LOG(WARN) << "Execution was canceled, results will be discarded.";
-    // tells workers to store / discard results
-    _finalizeWorkers();
-  } else {  // this prop shouldn't occur,
+    _finalizeWorkers();// tells workers to store / discard results
+  } else {  // this prop shouldn't occur unless we are recovering or in error
     LOG(WARN) << "No further action taken after receiving all responses";
   }
 }
 
-void Conductor::finishedRecoveryStep(VPackSlice& data) {
+void Conductor::finishedRecoveryStep(VPackSlice data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
   if (_state != ExecutionState::RECOVERING) {
@@ -267,10 +267,7 @@ void Conductor::finishedRecoveryStep(VPackSlice& data) {
   }
   
   // the recovery mechanism might be gathering state information
-  VPackSlice aggVals = data.get(Utils::aggregatorValuesKey);
-  if (aggVals.isObject()) {
-    _aggregators->aggregateValues(aggVals);
-  }
+  _aggregators->parseValues(data);
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
@@ -292,11 +289,7 @@ void Conductor::finishedRecoveryStep(VPackSlice& data) {
     VPackBuilder b;
     b.openObject();
     b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-    if (_aggregators->size() > 0) {
-      b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-      _aggregators->serializeValues(b);
-      b.close();
-    }
+    _aggregators->serializeValues(b);
     b.close();
     // first allow all workers to run worker level operations
     res = _sendToAllDBServers(Utils::continueRecoveryPath, b.slice());
@@ -401,11 +394,7 @@ void Conductor::startRecovery() {
     b.clear();// start a new message
     b.openObject();
     b.add(Utils::recoveryMethodKey, VPackValue(Utils::compensate));
-    if (_aggregators->size() > 0) {
-      b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-      _aggregators->serializeValues(b);
-      b.close();
-    }
+    _aggregators->serializeValues(b);
     b.close();
     _aggregators->resetValues();
 
@@ -565,11 +554,7 @@ int Conductor::_finalizeWorkers() {
   b.add("stats", VPackValue(VPackValueType::Object));
   _statistics.serializeValues(b);
   b.close();
-  if (_aggregators->size() > 0) {
-    b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-    _aggregators->serializeValues(b);
-    b.close();
-  }
+  _aggregators->serializeValues(b);
   b.close();
 
   LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";

@@ -118,8 +118,10 @@ class Worker : public IWorker {
   bool _processVertices(RangeIterator<VertexEntry>& vertexIterator);
   void _finishedProcessing();
   void _continueAsync();
-  void _callConductor(std::string path, VPackSlice message);
-
+  void _callConductor(std::string const& path, VPackSlice message);
+  std::unique_ptr<ClusterCommResult> _callConductorWithResponse(std::string const& path,
+                                                                VPackSlice message);
+  
  public:
   Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algorithm,
          VPackSlice params);

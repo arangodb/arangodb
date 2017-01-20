@@ -23,23 +23,32 @@
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 
 AggregatorHandler::~AggregatorHandler() {
+  WRITE_LOCKER(guard, _lock);
   for (auto const& it : _values) {
     delete it.second;
   }
   _values.clear();
 }
 
-Aggregator* AggregatorHandler::_create(std::string const& name) {
-  auto it = _values.find(name);
-  if (it != _values.end()) {
-    return it->second;
-  } else {
-    std::unique_ptr<Aggregator> agg(_algorithm->aggregator(name));
+IAggregator* AggregatorHandler::_get(AggregatorID const& name) {
+  {
+    READ_LOCKER(guard, _lock);
+    auto it = _values.find(name);
+    if (it != _values.end()) {
+      return it->second;
+    }
+  }
+  // aggregator doesn't exists, create it
+  {
+    WRITE_LOCKER(guard, _lock);
+    std::unique_ptr<IAggregator> agg(_algorithm->aggregator(name));
     if (agg) {
       _values[name] = agg.get();
       return agg.release();
@@ -48,51 +57,60 @@ Aggregator* AggregatorHandler::_create(std::string const& name) {
   return nullptr;
 }
 
-void AggregatorHandler::aggregate(std::string const& name,
+void AggregatorHandler::aggregate(AggregatorID const& name,
                                   const void* valuePtr) {
-  Aggregator* agg = _create(name);
+  IAggregator* agg = _get(name);
   if (agg) {
     agg->aggregate(valuePtr);
   }
 }
 
-const void* AggregatorHandler::getAggregatedValue(std::string const& name) {
-  Aggregator* agg = _create(name);
+const void* AggregatorHandler::getAggregatedValue(AggregatorID const& name) {
+  IAggregator* agg = _get(name);
   return agg != nullptr ? agg->getValue() : nullptr;
 }
 
 void AggregatorHandler::resetValues() {
   for (auto& it : _values) {
-    if (!it.second->isPermanent()) {
       it.second->reset();
-    }
   }
 }
 
 void AggregatorHandler::aggregateValues(AggregatorHandler const& workerValues) {
   for (auto const& pair : workerValues._values) {
-    std::string const& name = pair.first;
-    Aggregator* agg = _create(name);
+    AggregatorID const& name = pair.first;
+    IAggregator* agg = _get(name);
     if (agg) {
       agg->aggregate(pair.second->getValue());
     }
   }
 }
 
-void AggregatorHandler::aggregateValues(VPackSlice workerValues) {
-  for (auto const& keyValue : VPackObjectIterator(workerValues)) {
-    std::string name = keyValue.key.copyString();
-    Aggregator* agg = _create(name);
-    if (agg) {
-      agg->aggregate(keyValue.value);
+void AggregatorHandler::parseValues(VPackSlice data) {
+  VPackSlice values = data.get(Utils::aggregatorValuesKey);
+  if (values.isObject()) {
+    for (auto const& keyValue : VPackObjectIterator(values)) {
+      AggregatorID name = keyValue.key.copyString();
+      IAggregator* agg = _get(name);
+      if (agg) {
+        agg->parse(keyValue.value);
+      }
     }
   }
 }
 
 void AggregatorHandler::serializeValues(VPackBuilder& b) const {
-  for (auto const& pair : _values) {
-    b.add(pair.first, pair.second->vpackValue());
+  READ_LOCKER(guard, _lock);
+  if (_values.size() > 0) {
+    b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+    for (auto const& pair : _values) {
+      b.add(pair.first, pair.second->vpackValue());
+    }
+    b.close();
   }
 }
 
-size_t AggregatorHandler::size() { return _values.size(); }
+size_t AggregatorHandler::size() const {
+  READ_LOCKER(guard, _lock);
+  return _values.size();
+}

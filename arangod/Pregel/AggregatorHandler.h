@@ -28,18 +28,21 @@
 #include <velocypack/velocypack-aliases.h>
 #include <functional>
 #include <map>
+#include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
 namespace pregel {
 
 struct IAlgorithm;
-class Aggregator;
+class IAggregator;
 
+/// Thread safe wrapper around handles
 class AggregatorHandler {
   const IAlgorithm* _algorithm;
-  std::map<std::string, Aggregator*> _values;
-  Aggregator* _create(std::string const& name);
-
+  std::map<std::string, IAggregator*> _values;
+  mutable basics::ReadWriteLock _lock;
+  
+  IAggregator* _get(std::string const& name);
  public:
   AggregatorHandler(const IAlgorithm* c) : _algorithm(c) {}
   ~AggregatorHandler();
@@ -47,9 +50,9 @@ class AggregatorHandler {
   const void* getAggregatedValue(std::string const& name);
   void resetValues();
   void aggregateValues(AggregatorHandler const& workerValues);
-  void aggregateValues(VPackSlice workerValues);
+  void parseValues(VPackSlice workerValues);
   void serializeValues(VPackBuilder& b) const;
-  size_t size();
+  size_t size() const;
 };
 }
 }

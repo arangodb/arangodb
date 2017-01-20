@@ -94,9 +94,9 @@ class Conductor {
   void _ensureUniqueResponse(VPackSlice body);
 
   // === REST callbacks ===
-  void finishedWorkerStartup(VPackSlice& data);
-  void finishedWorkerStep(VPackSlice& data);
-  void finishedRecoveryStep(VPackSlice& data);
+  void finishedWorkerStartup(VPackSlice data);
+  void finishedWorkerStep(VPackSlice data, VPackBuilder &response);
+  void finishedRecoveryStep(VPackSlice data);
 
  public:
   Conductor(
