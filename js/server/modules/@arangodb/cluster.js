@@ -1197,25 +1197,28 @@ function executePlanForDatabases(plannedDatabases) {
 // / @brief updateCurrentForDatabases
 // /////////////////////////////////////////////////////////////////////////////
 
-function updateCurrentForDatabases(localErrors, current) {
+function updateCurrentForDatabases(localErrors, currentDatabases) {
   let ourselves = global.ArangoServerState.id();
 
-  function makeAddDatabaseAgencyOperation(payload, trx) {
-    trx[0][curDatabases + payload.name + '/' + ourselves] = 
+  function makeAddDatabaseAgencyOperation(payload) {
+    let create = {};
+    create[curDatabases + payload.name + '/' + ourselves] =
       {op: 'set', new: payload};
+    return create;
   };
 
-  function makeDropDatabaseAgencyOperation(name, trx) {
-    trx[0][curDatabases + name + '/' + ourselves] = {'op':'delete'};
+  function makeDropDatabaseAgencyOperation(name) {
+    let drop = {};
+    drop[curDatabases + name + '/' + ourselves] = {'op':'delete'};
+    return drop;
   };
 
   let db = require('internal').db;
   db._useDatabase('_system');
 
   let localDatabases = getLocalDatabases();
-  let currentDatabases = current.Databases;
   let name;
-  let trx = [{}];   // Here we collect all write operations
+  let trx = {};   // Here we collect all write operations
 
   // Add entries that we have but that are not in Current:
   for (name in localDatabases) {
@@ -1223,13 +1226,13 @@ function updateCurrentForDatabases(localErrors, current) {
       if (!currentDatabases.hasOwnProperty(name) ||
           !currentDatabases[name].hasOwnProperty(ourselves)) {
         console.debug("adding entry in Current for database '%s'", name);
-        makeAddDatabaseAgencyOperation({error: false, errorNum: 0, name: name,
+        trx = Object.assign(trx, makeAddDatabaseAgencyOperation({error: false, errorNum: 0, name: name,
                                         id: localDatabases[name].id,
-                                        errorMessage: ""}, trx);
+                                        errorMessage: ""}));
       }
     }
   }
-        
+
   // Remove entries from current that no longer exist locally: 
   for (name in currentDatabases) {
     if (currentDatabases.hasOwnProperty(name) && name.substr(0, 1) !== '_') {
@@ -1239,7 +1242,7 @@ function updateCurrentForDatabases(localErrors, current) {
         if (currentDatabases[name].hasOwnProperty(ourselves)) {
           // we are entered for a database that we don't have locally
           console.debug("cleaning up entry for unknown database '%s'", name);
-          makeDropDatabaseAgencyOperation(name, trx);
+          trx = Object.assign(trx, makeDropDatabaseAgencyOperation(name));
         }
       }
     }
@@ -1247,12 +1250,10 @@ function updateCurrentForDatabases(localErrors, current) {
 
   // Finally, report any errors that might have been produced earlier when
   // we were trying to execute the Plan:
-  for (name in localErrors) {
-    if (localErrors.hasOwnProperty(name)) {
-      console.debug("reporting error to Current about database '%s'", name);
-      makeAddDatabaseAgencyOperation(localErrors[name], trx);
-    }
-  }
+  Object.keys(localErrors).forEach(name => {
+    console.debug("reporting error to Current about database '%s'", name);
+    trx = Object.assign(trx, makeAddDatabaseAgencyOperation(localErrors[name]));
+  });
 
   return trx;
 }
@@ -1268,7 +1269,8 @@ function migrateAnyServer(plan, current) {
   // diff current and local and prepare agency transactions or whatever
   // to update current. will report the errors created locally to the agency
   let trx = updateCurrentForDatabases(localErrors, current);
-  if (Object.keys(trx[0]).length !== 0) {
+  if (Object.keys(trx).length !== 0) {
+    trx = [trx];
     trx[0][curVersion] = {op: 'increment'};
     // TODO: reduce timeout when we can:
     try {
@@ -1939,3 +1941,5 @@ exports.waitForSyncRepl = waitForSyncRepl;
 
 exports.executePlanForDatabases = executePlanForDatabases;
 exports.executePlanForCollections = executePlanForCollections;
+exports.updateCurrentForDatabases = updateCurrentForDatabases;
+exports.updateCurrentForCollections = updateCurrentForCollections;

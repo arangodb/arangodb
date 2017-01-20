@@ -1348,6 +1348,7 @@ static void JS_EnableSyncReplicationDebug(
   }
 
   ServerState::instance()->setInitialized();
+  ServerState::instance()->setId("repltest");
   AgencyComm::syncReplDebug = true;
   TRI_V8_TRY_CATCH_END
 }
