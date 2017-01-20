@@ -49,7 +49,6 @@ function runSetup () {
     if (db._collection('UnitTestsRecovery').status() === ArangoCollection.STATUS_UNLOADED) {
       break;
     }
-    internal.print(db._collection('UnitTestsRecovery').status());
     internal.wait(0.5, true);
   }
 
