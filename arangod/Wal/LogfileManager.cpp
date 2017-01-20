@@ -869,10 +869,11 @@ int LogfileManager::flush(bool waitForSync, bool waitForCollector,
 
     if (res == TRI_ERROR_NO_ERROR) {
       // we need to wait for the collector...
-      // LOG(TRACE) << "entering waitForCollector with lastOpenLogfileId " << //
-      // (unsigned long long) lastOpenLogfileId;
+      // LOG(TRACE) << "entering waitForCollector with lastOpenLogfileId " << lastOpenLogfileId;
       res = this->waitForCollector(lastOpenLogfileId, maxWaitTime);
+
       if (res == TRI_ERROR_LOCK_TIMEOUT) {
+        LOG(ERR) << "got lock timeout when waiting for WAL flush. lastOpenLogfileId: " << lastOpenLogfileId;
       }
     } else if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
       // current logfile is empty and cannot be collected
@@ -881,6 +882,10 @@ int LogfileManager::flush(bool waitForSync, bool waitForCollector,
 
       if (lastSealedLogfileId > 0) {
         res = this->waitForCollector(lastSealedLogfileId, maxWaitTime);
+      
+        if (res == TRI_ERROR_LOCK_TIMEOUT) {
+          LOG(ERR) << "got lock timeout when waiting for WAL flush. lastSealedLogfileId: " << lastSealedLogfileId;
+        }
       }
     }
   }
@@ -1305,10 +1310,6 @@ Logfile* LogfileManager::getLogfile(Logfile::IdType id,
 int LogfileManager::getWriteableLogfile(uint32_t size,
                                         Logfile::StatusType& status,
                                         Logfile*& result) {
-  static uint64_t const SleepTime = 10 * 1000;
-  double const end = TRI_microtime() + 15.0;
-  size_t iterations = 0;
-
   // always initialize the result
   result = nullptr;
 
@@ -1316,6 +1317,9 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
     // intentionally don't return a logfile
     return TRI_ERROR_DEBUG;
   }
+  
+  size_t iterations = 0;
+  double const end = TRI_microtime() + 15.0;
 
   while (true) {
     {
@@ -1363,7 +1367,7 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
       _allocatorThread->signal(size);
     }
 
-    int res = _allocatorThread->waitForResult(SleepTime);
+    int res = _allocatorThread->waitForResult(15000);
 
     if (res != TRI_ERROR_LOCK_TIMEOUT && res != TRI_ERROR_NO_ERROR) {
       TRI_ASSERT(result == nullptr);
@@ -1680,43 +1684,42 @@ void LogfileManager::waitForCollector() {
 // wait until a specific logfile has been collected
 int LogfileManager::waitForCollector(Logfile::IdType logfileId,
                                      double maxWaitTime) {
-  static int64_t const SingleWaitPeriod = 50 * 1000;
-
-  int64_t maxIterations = INT64_MAX;  // wait forever
-  if (maxWaitTime > 0.0) {
-    // if specified, wait for a shorter period of time
-    maxIterations = static_cast<int64_t>(maxWaitTime * 1000000.0 /
-                                         (double)SingleWaitPeriod);
-    LOG(TRACE) << "will wait for max. " << maxWaitTime
-               << " seconds for collector to finish";
+  if (maxWaitTime <= 0.0) {
+    maxWaitTime = 24.0 * 3600.0; // wait "forever"
   }
 
   LOG(TRACE) << "waiting for collector thread to collect logfile " << logfileId;
 
   // wait for the collector thread to finish the collection
-  int64_t iterations = 0;
+  double const end = TRI_microtime() + maxWaitTime;
 
-  while (++iterations < maxIterations) {
+  while (true) {
     if (_lastCollectedId >= logfileId) {
       return TRI_ERROR_NO_ERROR;
     }
 
-    int res = _collectorThread->waitForResult(SingleWaitPeriod);
+    int res = _collectorThread->waitForResult(50 * 1000);
 
     // LOG(TRACE) << "still waiting for collector. logfileId: " << logfileId <<
-    // " lastCollected:
-    // " << // _lastCollectedId << ", result: " << res;
+    // " lastCollected: " << _lastCollectedId << ", result: " << res;
 
     if (res != TRI_ERROR_LOCK_TIMEOUT && res != TRI_ERROR_NO_ERROR) {
       // some error occurred
       return res;
     }
 
+    double const now = TRI_microtime();
+
+    if (now > end) {
+      break;
+    }
+
+    usleep(20000);
     // try again
   }
 
   // TODO: remove debug info here
-  LOG(ERR) << "going into lock timeout. having waited for logfile: " << logfileId << ", maxIterations: " << maxIterations << ", maxWaitTime: " << maxWaitTime;
+  LOG(ERR) << "going into lock timeout. having waited for logfile: " << logfileId << ", maxWaitTime: " << maxWaitTime;
   logStatus();
 
   // waited for too long
