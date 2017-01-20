@@ -1385,11 +1385,8 @@ static void JS_PropertiesVocbaseCol(
         TRI_V8_ASCII_STRING("distributeShardsLike"),
         TRI_V8_STD_STRING(resolver.getCollectionNameCluster(cid)));
     }
-    
+
     std::vector<std::string> const avoidServers = c->avoidServers();
-    for (const auto& i: avoidServers) {
-      LOG(WARN) << i;
-    }
     if (!avoidServers.empty()) {
       v8::Handle<v8::Array> avoidKeys = v8::Array::New(isolate);
       for (size_t i = 0; i < avoidServers.size(); ++i) {

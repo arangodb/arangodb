@@ -541,13 +541,13 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     }
   }
 
-  
   if (info.hasKey("avoidServers")) {
     auto avoidServersSlice = info.get("avoidServers");
     if (avoidServersSlice.isArray()) {
       for (const auto& i : VPackArrayIterator(avoidServersSlice)) {
         if (i.isString()) {
           _avoidServers.push_back(i.copyString());
+          LOG(WARN) << i.copyString();
         } else {
           LOG(ERR) << "avoidServers must be a vector of strings we got " <<
             avoidServersSlice.toJson() << ". discarding!" ;
@@ -557,7 +557,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       }
     }
   }
-  
 
   if (_indexes.empty()) {
     createInitialIndexes();
@@ -1140,6 +1139,7 @@ void LogicalCollection::toVelocyPackInObject(VPackBuilder& result) const {
   if (!_distributeShardsLike.empty()) {
     result.add("distributeShardsLike", VPackValue(_distributeShardsLike));
   }
+
   if (!_avoidServers.empty()) {
     result.add(VPackValue("avoidServers"));
     VPackArrayBuilder b(&result);
