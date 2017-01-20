@@ -346,7 +346,7 @@ SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised w
 ## Communicator errors
 ################################################################################
 
-COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted", "Request was aborted."
+COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted","Request was aborted."
 
 ################################################################################
 ## Foxx management errors
