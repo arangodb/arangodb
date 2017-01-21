@@ -25,8 +25,8 @@
 
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/vpack.h>
-#include "Cluster/AgencyCallbackRegistry.h"
-#include "Agency/AgencyComm.h"
+//#include "Cluster/AgencyCallbackRegistry.h"
+//#include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterInfo.h"
 
@@ -40,7 +40,7 @@ class Conductor;
 class RecoveryManager {
   Mutex _lock;
   AgencyComm _agency;
-  AgencyCallbackRegistry* _agencyCallbackRegistry;  // weak
+  //AgencyCallbackRegistry* _agencyCallbackRegistry;  // weak
 
   std::map<ShardID, std::set<Conductor*>> _listeners;
   std::map<ShardID, ServerID> _primaryServers;
@@ -52,7 +52,7 @@ class RecoveryManager {
   void _renewPrimaryServer(ShardID const& shard);
 
  public:
-  RecoveryManager(AgencyCallbackRegistry* registry);
+  RecoveryManager();//AgencyCallbackRegistry* registry
   ~RecoveryManager();
 
   void monitorCollections(

@@ -43,13 +43,22 @@ class AggregatorHandler {
   mutable basics::ReadWriteLock _lock;
   
   IAggregator* _get(std::string const& name);
- public:
-  AggregatorHandler(const IAlgorithm* c) : _algorithm(c) {}
+public:
+  AggregatorHandler(IAlgorithm const* c) : _algorithm(c) {}
   ~AggregatorHandler();
+  
+  void registerAggregator(std::string const& name, IAggregator *aggregator);
+  
+  /// aggregate this value
   void aggregate(std::string const& name, const void* valuePtr);
+  
+  /// get the pointer to an aggregator value
   const void* getAggregatedValue(std::string const& name);
+  
+  /// calls reset on every aggregator
   void resetValues();
   
+  /// aggregates all values from this aggregator
   void aggregateValues(AggregatorHandler const& workerValues);
   
   /// return true if there are values in this Slice

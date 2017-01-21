@@ -454,25 +454,22 @@ void Worker<V, E, M>::_finishedProcessing() {
     _messageStats.resetTracking();
   }
   // serialize converging values only in async mode
-  bool waitForResponse = _config.asynchronousMode();
-  if (waitForResponse) {
-    waitForResponse = _workerAggregators->serializeValues(package, true);
-  }
-  package.close();
-  
-  if (waitForResponse) {// no answer expected
-    bool proceed = true;// if the conductor is unreachable or has send data (try to) proceed
+  if (_config.asynchronousMode()) {
+    _workerAggregators->serializeValues(package, true);
+    package.close();
+    
+    bool proceed = true;
+    // if the conductor is unreachable or has send data (try to) proceed
     std::unique_ptr<ClusterCommResult> result = _callConductorWithResponse(Utils::finishedWorkerStepPath, package.slice());
     if (result->status == CL_COMM_RECEIVED) {
       VPackSlice data = result->answer->payload();
       proceed = _conductorAggregators->parseValues(data);
     }
-    if (proceed) {// if we didn't got an empty answer, the execution stopped
-      // hold the lock only for the continue call
+    if (proceed) {
       MUTEX_LOCKER(guard, _commandMutex);
       _continueAsync();
     }
-  } else {
+  } else {// no answer expected
     package.close();
     _callConductor(Utils::finishedWorkerStepPath, package.slice());
   }

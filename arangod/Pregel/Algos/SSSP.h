@@ -39,9 +39,18 @@ struct SSSPAlgorithm : public SimpleAlgorithm<int64_t, int64_t, int64_t> {
   bool supportsAsyncMode() const override { return true; }
   bool supportsCompensation() const override { return true; }
 
-  GraphFormat<int64_t, int64_t>* inputFormat() override;
-  MessageFormat<int64_t>* messageFormat() const override;
-  MessageCombiner<int64_t>* messageCombiner() const override;
+  GraphFormat<int64_t, int64_t>* inputFormat() override {
+    return new NumberGraphFormat<int64_t, int64_t> (_sourceField, _resultField, INT64_MAX, 1);
+  }
+  
+  MessageFormat<int64_t>* messageFormat() const override {
+    return new IntegerMessageFormat();
+  }
+  
+  MessageCombiner<int64_t>* messageCombiner() const override {
+    return new MinCombiner<int64_t>();
+  }
+  
   VertexComputation<int64_t, int64_t, int64_t>* createComputation(
       WorkerConfig const*) const override;
   VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(

@@ -2057,7 +2057,6 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   
   if (ServerState::instance()->isCoordinator()) {
-    LOG(INFO) << "Called as a controller";
     
     TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
     std::vector<std::shared_ptr<LogicalCollection>> vColls, eColls;

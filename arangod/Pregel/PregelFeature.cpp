@@ -73,18 +73,17 @@ void PregelFeature::start() {
   LOG(INFO) << "Pregel uses " << threadNum << " threads";
   _threadPool.reset(new basics::ThreadPool(threadNum, "Pregel"));
   
-  
-  
   if (ServerState::instance()->isCoordinator()) {
-    ClusterFeature* cluster =
-    application_features::ApplicationServer::getFeature<ClusterFeature>(
-                                                                        "Cluster");
-    if (cluster != nullptr) {
-      AgencyCallbackRegistry* registry = cluster->agencyCallbackRegistry();
-      if (registry != nullptr) {
-        _recoveryManager.reset(new RecoveryManager(registry));
-      }
-    }
+    _recoveryManager.reset(new RecoveryManager());
+//    ClusterFeature* cluster =
+//    application_features::ApplicationServer::getFeature<ClusterFeature>(
+//                                                                        "Cluster");
+//    if (cluster != nullptr) {
+//      AgencyCallbackRegistry* registry = cluster->agencyCallbackRegistry();
+//      if (registry != nullptr) {
+//        _recoveryManager.reset(new RecoveryManager(registry));
+//      }
+//    }
   }
 }
 

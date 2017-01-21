@@ -33,21 +33,34 @@ var API = '/_api/control_pregel';
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief creates a new pregel execution
 // //////////////////////////////////////////////////////////////////////////////
-var startExecution = function(algo, options) {
+var startExecution = function(algo, second, params) {
+  if (typeof algo !== 'string' || !second) {
+    throw "Invalid parameters, either {vertexCollections:['',..], edgeCollection: ''}" +
+          " or {graphName:'<graph>'} or graph name";
+  }  
   
-  var first = options && options.vertexCollections && options.vertexCollections instanceof Array
-  && options.edgeCollection && options.edgeCollections instanceof Array;
-  var second = options && typeof options.graphName === 'string';
-  var third = typeof options === 'string' && typeof algo === 'string';
-  
-  if (!first && !second && !third || typeof algo !== 'string') {
-    throw "Invalid parameters, either {vertexCollections:['',..], edgeCollection: ''} or {graphName:'<graph>'} or graph name";
-  } else if (second) {
-    options.algorithm = algo;
-  } else if (third) {
-    options = {graphName:options, algorithm:algo};
+  var message = {};
+  var first = second.vertexCollections && second.vertexCollections instanceof Array
+  && second.edgeCollections && second.edgeCollections instanceof Array;
+  if (first) {// !first && !second && !third || 
+    message.algorithm = algo;
+    message.vertexCollections = second.vertexCollections;
+    message.edgeCollections = second.edgeCollections;
+  } else if (typeof second === 'object' && typeof second.graphName === 'string') {
+    message.algorithm = algo;
+    message.graphName = second.graphName;
+  } else if (typeof second === 'string' && typeof algo === 'string') {
+    message.algorithm = algo;
+    message.graphName = second;
+  } else {
+    throw "Invalid parameters, either {vertexCollections:['',..], edgeCollection: ''}" +
+          " or {graphName:'<graph>'} or graph name";
   }
-  var requestResult = db._connection.POST(API, JSON.stringify(options));
+  if (params && typeof params === 'object') {
+    message.params = params;
+  } 
+
+  var requestResult = db._connection.POST(API, JSON.stringify(message));
   arangosh.checkRequestResult(requestResult);
   return requestResult;
 };

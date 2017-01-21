@@ -52,18 +52,6 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
   }
 };
 
-GraphFormat<int64_t, int64_t>* SSSPAlgorithm::inputFormat() {
-  return new NumberGraphFormat<int64_t, int64_t> (_sourceField, _resultField, INT64_MAX, 1);
-}
-
-MessageFormat<int64_t>* SSSPAlgorithm::messageFormat() const {
-  return new IntegerMessageFormat();
-}
-
-MessageCombiner<int64_t>* SSSPAlgorithm::messageCombiner() const {
-  return new MinCombiner<int64_t>();
-}
-
 VertexComputation<int64_t, int64_t, int64_t>* SSSPAlgorithm::createComputation(
     WorkerConfig const* config) const {
   return new SSSPComputation();

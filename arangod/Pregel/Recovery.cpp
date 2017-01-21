@@ -36,15 +36,15 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-RecoveryManager::RecoveryManager(AgencyCallbackRegistry* registry)
-    : _agencyCallbackRegistry(registry) {}
+RecoveryManager::RecoveryManager() {}//(AgencyCallbackRegistry* registry){}
+// : _agencyCallbackRegistry(registry)
 
 RecoveryManager::~RecoveryManager() {
-  for (auto const& call : _agencyCallbacks) {
-    _agencyCallbackRegistry->unregisterCallback(call.second);
-  }
+//  for (auto const& call : _agencyCallbacks) {
+//    _agencyCallbackRegistry->unregisterCallback(call.second);
+//  }
+//  _agencyCallbacks.clear();
   _listeners.clear();
-  _agencyCallbacks.clear();
 }
 
 void RecoveryManager::stopMonitoring(Conductor* listener) {
@@ -54,11 +54,11 @@ void RecoveryManager::stopMonitoring(Conductor* listener) {
     if (pair.second.find(listener) != pair.second.end()) {
       pair.second.erase(listener);
     }
-    if (pair.second.size() == 0) {
-      std::shared_ptr<AgencyCallback> callback = _agencyCallbacks[pair.first];
-      _agencyCallbackRegistry->unregisterCallback(callback);
-      _agencyCallbacks.erase(pair.first);
-    }
+//    if (pair.second.size() == 0) {
+//      std::shared_ptr<AgencyCallback> callback = _agencyCallbacks[pair.first];
+//      _agencyCallbackRegistry->unregisterCallback(callback);
+//      _agencyCallbacks.erase(pair.first);
+//    }
   }
 }
 
