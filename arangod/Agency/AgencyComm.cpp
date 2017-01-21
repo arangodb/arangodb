@@ -1392,7 +1392,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
       }
       
       LOG_TOPIC(INFO, Logger::AGENCYCOMM) <<
-        "Got precondition failed inquiring about clientId " << clientId << ": ";
+        "Got precondition failed! Inquiring about clientId " << clientId << ": ";
       
       AgencyCommResult inq = send(
         connection.get(), method, conTimeout, "/_api/agency/inquire",
@@ -1418,11 +1418,11 @@ AgencyCommResult AgencyComm::sendWithFailover(
           }
           if (success) {
             LOG_TOPIC(INFO, Logger::AGENCYCOMM)
-              << body << " succeeded: " << slice.toJson();
+              << body << " succeeded with " << slice.toJson();
             return inq;
           } else {
             LOG_TOPIC(INFO, Logger::AGENCYCOMM)
-              << body << " failed: " << slice.toJson();
+              << body << " failed with " << slice.toJson();
             return result;
           }
         } else {
