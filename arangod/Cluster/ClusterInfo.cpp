@@ -1758,9 +1758,23 @@ int ClusterInfo::ensureIndexCoordinator(
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
   if (!result.successful()) {
-    errorMsg += "ClientId: " + result._clientId;
-    errorMsg += std::string(" ") + __FILE__ + ":" + std::to_string(__LINE__);
-    resultBuilder = *resBuilder;
+    if (result.httpCode() ==
+        (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      AgencyCommResult ag = ac.getValues("/");
+      if (ag.successful()) {
+        LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+                                        << ag.slice().toJson();
+      } else {
+        LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+      }
+    } else {
+      errorMsg += " Failed to execute ";
+      errorMsg += trx.toJson();
+      errorMsg += "ClientId: " + result._clientId + " ";
+      errorMsg += " ResultCode: " + std::to_string(result.errorCode()) + " ";
+      errorMsg += std::string(__FILE__) + ":" + std::to_string(__LINE__);
+      resultBuilder = *resBuilder;
+    }
     return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN;
   }
 
@@ -1979,8 +1993,11 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
   if (!result.successful()) {
-    errorMsg += "ClientId: " + result._clientId;
-    errorMsg += std::string(" ") + __FILE__ + ":" + std::to_string(__LINE__);
+    errorMsg += " Failed to execute ";
+    errorMsg += trx.toJson();
+    errorMsg += " ClientId: " + result._clientId + " ";
+    errorMsg += " ResultCode: " + std::to_string(result.errorCode()) + " ";
+
     events::DropIndex(collectionID, idString,
                       TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN);
     return TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN;
