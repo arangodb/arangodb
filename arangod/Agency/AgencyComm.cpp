@@ -1383,7 +1383,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     }
 
     // Precondition failed.
-    /*
+
     if (result._statusCode == 412 && !clientId.empty()) {
       VPackBuilder b;
       {
@@ -1391,34 +1391,40 @@ AgencyCommResult AgencyComm::sendWithFailover(
         b.add(VPackValue(clientId));
       }
       
+      LOG_TOPIC(INFO, Logger::AGENCYCOMM) <<
+        "Got precondition failed inquiring about clientId " << clientId << ": ";
+      
       AgencyCommResult inq = send(
         connection.get(), method, conTimeout, "/_api/agency/inquire",
         b.toJson(), "");
-      LOG_TOPIC(INFO, Logger::AGENCYCOMM) << connection.get();
-      LOG_TOPIC(INFO, Logger::AGENCYCOMM) << url;
-      LOG_TOPIC(INFO, Logger::AGENCYCOMM) << b.toJson();
-      LOG_TOPIC(INFO, Logger::AGENCYCOMM) <<
-        "Got precondition failed inquiring about clientId " << clientId << ": ";
+      
       if (inq.successful()) {
-        
-        LOG_TOPIC(INFO, Logger::AGENCYCOMM) <<
-          inq.slice().toJson();
-        
-        auto const& slice = inq.slice();
+        auto bodyBuilder = VPackParser::fromJson(inq._body);
+        auto const& slice = bodyBuilder->slice();
+        bool success = false;
         if (slice.isArray() && slice.length() > 0) {
           for (auto const& i : VPackArrayIterator(slice)) {
             if (i.isArray() && i.length() > 0) {
               for (auto const& j : VPackArrayIterator(i)) {
                 if (j.getUInt() == 0) {
                   LOG_TOPIC(INFO, Logger::AGENCYCOMM)
-                    << "failed: " << slice.toJson();
+                    << body << " failed: " << slice.toJson();
                   return result;
+                } else {
+                  success = true;
                 }
               }
             }
           }
-          LOG_TOPIC(INFO, Logger::AGENCYCOMM) << "succeeded: " << slice.toJson();
-          return inq;
+          if (success) {
+            LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+              << body << " succeeded: " << slice.toJson();
+            return inq;
+          } else {
+            LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+              << body << " failed: " << slice.toJson();
+            return result;
+          }
         } else {
           return result;
         }
@@ -1426,10 +1432,11 @@ AgencyCommResult AgencyComm::sendWithFailover(
       } else {
         LOG_TOPIC(INFO, Logger::AGENCYCOMM) <<
           "with error. Keep trying ...";
-        continue;
+        return result;
       }
+      
     }
-    */
+    
     // do not retry on client errors
     if (result._statusCode >= 400 && result._statusCode <= 499) {
       AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
