@@ -27,23 +27,23 @@
 #include "Basics/Common.h"
 #include "V8/v8-globals.h"
 
-/// @brief converts an V8 object to a string
+// converts an V8 object to a string
 std::string TRI_ObjectToString(v8::Handle<v8::Value>);
 std::string TRI_ObjectToString(v8::Isolate* isolate, v8::Handle<v8::Value>);
 
-/// @brief converts an V8 object to an int64_t
+// converts an V8 object to an int64_t
 int64_t TRI_ObjectToInt64(v8::Handle<v8::Value> const);
 
-/// @brief converts an V8 object to a uint64_t
+// converts an V8 object to a uint64_t
 uint64_t TRI_ObjectToUInt64(v8::Handle<v8::Value> const, bool);
 
-/// @brief converts a V8 object to a double
+// converts a V8 object to a double
 double TRI_ObjectToDouble(v8::Handle<v8::Value> const);
 
-/// @brief converts a V8 object to a double with error handling
+// converts a V8 object to a double with error handling
 double TRI_ObjectToDouble(v8::Handle<v8::Value> const, bool& error);
 
-/// @brief converts a V8 object to a boolean
+// converts a V8 object to a boolean
 bool TRI_ObjectToBoolean(v8::Handle<v8::Value> const);
 
 #endif

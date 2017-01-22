@@ -66,6 +66,10 @@ class RestHandler : public RequestStatisticsAgent,
     return std::move(_response);
   }
 
+  std::shared_ptr<WorkContext> context() {
+    return _context;
+  }
+
  public:
   virtual char const* name() const = 0;
   virtual bool isDirect() const = 0;
@@ -92,6 +96,8 @@ class RestHandler : public RequestStatisticsAgent,
 
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
+
+  std::shared_ptr<WorkContext> _context;
 
  private:
   bool _needsOwnThread = false;

@@ -72,6 +72,7 @@ void WorkMonitor::freeWorkDescription(WorkDescription* desc) {
   if (_stopped.load()) {
     deleteWorkDescription(desc, true);
   } else {
+    desc->_context.reset();
     _freeableWorkDescription.push(desc);
   }
 }
@@ -281,6 +282,8 @@ WorkDescription* WorkMonitor::createWorkDescription(WorkType type) {
 }
 
 void WorkMonitor::deleteWorkDescription(WorkDescription* desc, bool stopped) {
+  desc->_context.reset();
+
   switch (desc->_type) {
     case WorkType::THREAD:
       desc->_data._thread._canceled.std::atomic<bool>::~atomic();

@@ -158,6 +158,8 @@ void WorkMonitor::pushHandler(std::shared_ptr<RestHandler> handler) {
   WorkDescription* desc = createWorkDescription(WorkType::HANDLER);
   TRI_ASSERT(desc->_type == WorkType::HANDLER);
 
+  desc->_context = handler->context();
+
   new (&desc->_data._handler._handler) std::shared_ptr<RestHandler>(handler);
   new (&desc->_data._handler._canceled) std::atomic<bool>(false);
 
