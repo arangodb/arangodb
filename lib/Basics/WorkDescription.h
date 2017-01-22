@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,14 +35,46 @@ namespace rest {
 class RestHandler;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          WorkType
+// -----------------------------------------------------------------------------
+
 enum class WorkType { THREAD, HANDLER, AQL_STRING, AQL_ID, CUSTOM };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       WorkContext
+// -----------------------------------------------------------------------------
+
+struct WorkContext {
+  WorkContext() {}
+  WorkContext(std::string const& user) : _user(user) {}
+  WorkContext(std::string const& user, std::string const& database)
+      : _user(user), _database(database) {}
+
+  std::string _user;
+  std::string _database;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   WorkDescription
+// -----------------------------------------------------------------------------
 
 struct WorkDescription {
   WorkDescription(WorkType type, WorkDescription* prev)
-      : _type(type), _id(0), _prev(prev) {}
+      : _type(type), _id(0), _prev(prev) {
+    if (prev != nullptr) {
+      _context = prev->_context;
+    }
+  }
+
+  WorkDescription(WorkType type, std::shared_ptr<WorkContext> context,
+                  WorkDescription* prev)
+      : _type(type), _id(0), _context(context), _prev(prev) {}
 
   WorkType _type;
   uint64_t _id;
+
+  std::shared_ptr<WorkContext> _context;
   std::atomic<WorkDescription*> _prev;
 
   union Data {
