@@ -60,7 +60,7 @@ class InCache {
   virtual ~InCache(){};
 
   MessageFormat<M> const* format() const { return _format; }
-  void parseMessages(VPackSlice messages);
+  void parseMessages(VPackSlice const& messages);
   size_t containedMessageCount() const { return _containedMessageCount; }
 
   /// @brief internal method to direclty set the messages for a vertex. Only

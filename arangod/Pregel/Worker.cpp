@@ -126,7 +126,7 @@ Worker<V, E, M>::~Worker() {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
+void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
                                         VPackBuilder& response) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
@@ -196,16 +196,15 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::receivedMessages(VPackSlice data) {
+void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
-  VPackSlice messageSlice = data.get(Utils::messagesKey);
   uint64_t gss = gssSlice.getUInt();
   if (gss == _config._globalSuperstep) {
     {  // make sure the pointer is not changed while
        // parsing messages
       ReadLocker<ReadWriteLock> guard(&_cacheRWLock);
       // handles locking for us
-      _writeCache->parseMessages(messageSlice);
+      _writeCache->parseMessages(data);
     }
 
     // Trigger the processing of vertices
@@ -216,7 +215,7 @@ void Worker<V, E, M>::receivedMessages(VPackSlice data) {
   } else if (_config.asynchronousMode() &&
              gss == _config._globalSuperstep + 1) {
     ReadLocker<ReadWriteLock> guard(&_cacheRWLock);
-    _writeCacheNextGSS->parseMessages(messageSlice);
+    _writeCacheNextGSS->parseMessages(data);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Superstep out of sync");
@@ -226,7 +225,7 @@ void Worker<V, E, M>::receivedMessages(VPackSlice data) {
 
 /// @brief Setup next superstep
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
+void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
@@ -257,7 +256,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::cancelGlobalStep(VPackSlice data) {
+void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
   _state = WorkerState::DONE;
 }
@@ -335,6 +334,7 @@ bool Worker<V, E, M>::_processVertices(
       outCache.reset(new ArrayOutCache<M>(&_config, inCache.get()));
     }
   }
+  outCache->setBatchSize(_messageBatchSize);
   if (_config.asynchronousMode()) {
     outCache->sendToNextGSS(_requestedNextGSS);
   }
@@ -451,7 +451,14 @@ void Worker<V, E, M>::_finishedProcessing() {
     package.add(Utils::globalSuperstepKey,
                 VPackValue(_config.globalSuperstep()));
     _messageStats.serializeValues(package);
+    
+    // adaptive message buffering
+    ThreadPool* pool = PregelFeature::instance()->threadPool();
+    double msgsPerSec = _messageStats.sendCount / _messageStats.superstepRuntimeSecs;
+    msgsPerSec /= pool->numThreads(); // per thread
+    _messageBatchSize = (uint32_t) fmax(0.06 * msgsPerSec, 250);// 60ms time window,
     _messageStats.resetTracking();
+    LOG(INFO) << "Batch size: " << _messageBatchSize;
   }
   // serialize converging values only in async mode
   if (_config.asynchronousMode()) {
@@ -495,7 +502,7 @@ void Worker<V, E, M>::_continueAsync() {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::finalizeExecution(VPackSlice body) {
+void Worker<V, E, M>::finalizeExecution(VPackSlice const& body) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
@@ -529,7 +536,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice body) {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::startRecovery(VPackSlice data) {
+void Worker<V, E, M>::startRecovery(VPackSlice const& data) {
   {// other methods might lock _commandMutex
     MUTEX_LOCKER(guard, _commandMutex);
     VPackSlice method = data.get(Utils::recoveryMethodKey);
@@ -557,7 +564,7 @@ void Worker<V, E, M>::startRecovery(VPackSlice data) {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::compensateStep(VPackSlice data) {
+void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
   
   _workerAggregators->resetValues();
@@ -601,7 +608,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice data) {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::finalizeRecovery(VPackSlice data) {
+void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::RECOVERING) {
     LOG(INFO) << "Compensation aborted prematurely.";
@@ -620,9 +627,9 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice data) {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::_callConductor(std::string const& path, VPackSlice message) {
-  LOG(INFO) << "Calling the conductor";
-
+void Worker<V, E, M>::_callConductor(std::string const& path,
+                                     VPackSlice const& message) {
+  
   ClusterComm* cc = ClusterComm::instance();
   std::string baseUrl = Utils::baseUrl(_config.database());
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
@@ -636,7 +643,9 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackSlice message
 }
 
 template <typename V, typename E, typename M>
-std::unique_ptr<ClusterCommResult> Worker<V, E, M>::_callConductorWithResponse(std::string const& path, VPackSlice message) {
+std::unique_ptr<ClusterCommResult>
+Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
+                                            VPackSlice const& message) {
   LOG(INFO) << "Calling the conductor";
   ClusterComm* cc = ClusterComm::instance();
   std::string baseUrl = Utils::baseUrl(_config.database());

@@ -242,11 +242,25 @@ void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
     THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up shard '%s'",
                                   vertexShard.c_str());
   }
-
   LogicalCollection* collection = cursor->collection();
+  
+  // reserve some space for our data
+  uint64_t number = collection->numberDocuments();
+  if (_index.capacity() < _index.size() + number) {
+    _index.reserve(_index.size() + number);
+  }
+  if (_graphFormat->estimatedVertexSize() > 0) {
+    if (_vertexData.capacity() < _vertexData.size() + number) {
+      _vertexData.reserve(_vertexData.size() + number);
+    }
+  }
+  // assuming more edges than nodes
+  if (_edges.capacity() < _edges.size() + number) {
+    _edges.reserve(_edges.size() + number);
+  }
+  
   std::vector<IndexLookupResult> result;
   result.reserve(1000);
-
   while (cursor->hasMore()) {
     cursor->getMoreMptr(result, 1000);
     for (auto const& element : result) {
@@ -283,7 +297,7 @@ void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
                                   ShardID const& edgeShard,
                                   VertexEntry& vertexEntry,
                                   std::string const& documentID) {
-  // Transaction* trx = readTransaction(shard);
+  
   traverser::EdgeCollectionInfo info(_readTrx, edgeShard, TRI_EDGE_OUT,
                                      StaticStrings::FromString, 0);
 
@@ -300,7 +314,7 @@ void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
   result.reserve(1000);
 
   while (cursor->hasMore()) {
-    if (vertexEntry._edgeCount == 0) {
+    if (vertexEntry._edgeCount == 0) {// initalize the start
       vertexEntry._edgeDataOffset = _edges.size();
     }
 

@@ -169,6 +169,8 @@ public:
   VertexGraphFormat(std::string const& result, V vertexNull)
   : _resultField(result), _vDefault(vertexNull) {}
   
+  virtual size_t estimatedEdgeSize() const override { return 0; };
+  
   size_t copyVertexData(VertexEntry const& vertex,
                         std::string const& documentId,
                         arangodb::velocypack::Slice document,

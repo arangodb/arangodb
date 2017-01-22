@@ -104,32 +104,32 @@ void ArrayOutCache<M>::flushMessages() {
       continue;
     }
 
-    VPackBuilder package;
-    package.openObject(&options);
-    package.add(Utils::messagesKey, VPackValue(VPackValueType::Array));
+    VPackBuilder data;
+    data.openObject(&options);
+    data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+    data.add(Utils::executionNumberKey,
+                VPackValue(this->_config->executionNumber()));
+    data.add(Utils::globalSuperstepKey, VPackValue(gss));
+    data.add(Utils::shardIdKey, VPackValue(shard));
+    data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
     for (auto const& vertexMessagePair : vertexMessageMap) {
-      package.add(VPackValue(shard));
-      package.add(VPackValue(vertexMessagePair.first));
-      package.add(VPackValue(VPackValueType::Array));
+      data.add(VPackValue(vertexMessagePair.first));// key
+      data.add(VPackValue(VPackValueType::Array, true));// message array
       for (M const& val : vertexMessagePair.second) {
-        this->_format->addValue(package, val);
+        this->_format->addValue(data, val);
         if (this->_sendToNextGSS) {
           this->_sendCountNextGSS++;
         } else {
           this->_sendCount++;
         }
       }
-      package.close();
+      data.close();
     }
-    package.close();
-    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(this->_config->executionNumber()));
-    package.add(Utils::globalSuperstepKey, VPackValue(gss));
-    package.close();
+    data.close();
+    data.close();
     // add a request
     ShardID const& shardId = this->_config->globalShardIDs()[shard];
-    auto body = std::make_shared<std::string>(package.toJson());
+    auto body = std::make_shared<std::string>(data.toJson());
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
 
@@ -195,6 +195,7 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
     }
 
     if (this->_containedMessages++ > this->_batchSize) {
+      LOG(INFO) << "Hit buffer limit";
       flushMessages();
     }
   }
@@ -219,28 +220,29 @@ void CombiningOutCache<M>::flushMessages() {
       continue;
     }
 
-    VPackBuilder package(&options);
-    package.openObject();
-    package.add(Utils::messagesKey, VPackValue(VPackValueType::Array));
+    VPackBuilder data(&options);
+    data.openObject();
+    data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+    data.add(Utils::executionNumberKey,
+                VPackValue(this->_config->executionNumber()));
+    data.add(Utils::globalSuperstepKey, VPackValue(gss));
+    data.add(Utils::shardIdKey, VPackValue(shard));
+    data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
     for (auto const& vertexMessagePair : vertexMessageMap) {
-      package.add(VPackValue(shard));
-      package.add(VPackValue(vertexMessagePair.first));
-      this->_format->addValue(package, vertexMessagePair.second);
+      data.add(VPackValue(vertexMessagePair.first));// key
+      this->_format->addValue(data, vertexMessagePair.second); // value
+      
       if (this->_sendToNextGSS) {
         this->_sendCountNextGSS++;
       } else {
         this->_sendCount++;
       }
     }
-    package.close();
-    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(this->_config->executionNumber()));
-    package.add(Utils::globalSuperstepKey, VPackValue(gss));
-    package.close();
+    data.close();
+    data.close();
     // add a request
     ShardID const& shardId = this->_config->globalShardIDs()[shard];
-    auto body = std::make_shared<std::string>(package.toJson());
+    auto body = std::make_shared<std::string>(data.toJson());
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
 

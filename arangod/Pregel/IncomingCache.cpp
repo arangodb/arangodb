@@ -37,14 +37,17 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 template <typename M>
-void InCache<M>::parseMessages(VPackSlice incomingMessages) {
-  prgl_shard_t shard = 0;
+void InCache<M>::parseMessages(VPackSlice const& incomingData) {
+  // every packet should contain one shard
+  VPackSlice shardSlice = incomingData.get(Utils::shardIdKey);
+  VPackSlice messages = incomingData.get(Utils::messagesKey);
+  
+  prgl_shard_t shard = (prgl_shard_t) shardSlice.getUInt();
   std::string key;
   VPackValueLength i = 0;
-  for (VPackSlice current : VPackArrayIterator(incomingMessages)) {
-    if (i % 3 == 0) {
-      shard = (prgl_shard_t)current.getUInt();
-    } else if (i % 3 == 1) {  // TODO support multiple recipients
+  
+  for (VPackSlice current : VPackArrayIterator(messages)) {
+    if (i % 2 == 0) {  // TODO support multiple recipients
       key = current.copyString();
     } else {
       MUTEX_LOCKER(guard, this->_writeLock);
@@ -63,7 +66,7 @@ void InCache<M>::parseMessages(VPackSlice incomingMessages) {
     i++;
   }
 
-  if (i % 3 != 0) {
+  if (i % 2 != 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "There must always be a multiple of 3 entries in messages");

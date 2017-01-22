@@ -41,14 +41,14 @@ namespace pregel {
 class IWorker {
  public:
   virtual ~IWorker(){};
-  virtual void prepareGlobalStep(VPackSlice data, VPackBuilder& response) = 0;
-  virtual void startGlobalStep(VPackSlice data) = 0;   // called by coordinator
-  virtual void cancelGlobalStep(VPackSlice data) = 0;  // called by coordinator
-  virtual void receivedMessages(VPackSlice data) = 0;
-  virtual void finalizeExecution(VPackSlice data) = 0;
-  virtual void startRecovery(VPackSlice data) = 0;
-  virtual void compensateStep(VPackSlice data) = 0;
-  virtual void finalizeRecovery(VPackSlice data) = 0;
+  virtual void prepareGlobalStep(VPackSlice const& data, VPackBuilder& response) = 0;
+  virtual void startGlobalStep(VPackSlice const& data) = 0;   // called by coordinator
+  virtual void cancelGlobalStep(VPackSlice const& data) = 0;  // called by coordinator
+  virtual void receivedMessages(VPackSlice const& data) = 0;
+  virtual void finalizeExecution(VPackSlice const& data) = 0;
+  virtual void startRecovery(VPackSlice const& data) = 0;
+  virtual void compensateStep(VPackSlice const& data) = 0;
+  virtual void finalizeRecovery(VPackSlice const& data) = 0;
 };
 
 template <typename V, typename E>
@@ -80,6 +80,7 @@ class Worker : public IWorker {
   WorkerState _state = WorkerState::DEFAULT;
   WorkerConfig _config;
   uint64_t _expectedGSS = 0;
+  uint32_t _messageBatchSize = 500;
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
   std::unique_ptr<WorkerContext> _workerContext;
   // locks modifying member vars
@@ -118,9 +119,9 @@ class Worker : public IWorker {
   bool _processVertices(RangeIterator<VertexEntry>& vertexIterator);
   void _finishedProcessing();
   void _continueAsync();
-  void _callConductor(std::string const& path, VPackSlice message);
+  void _callConductor(std::string const& path, VPackSlice const& message);
   std::unique_ptr<ClusterCommResult> _callConductorWithResponse(std::string const& path,
-                                                                VPackSlice message);
+                                                                VPackSlice const& message);
   
  public:
   Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algorithm,
@@ -128,14 +129,14 @@ class Worker : public IWorker {
   ~Worker();
 
   // ====== called by rest handler =====
-  void prepareGlobalStep(VPackSlice data, VPackBuilder& response) override;
-  void startGlobalStep(VPackSlice data) override;
-  void cancelGlobalStep(VPackSlice data) override;
-  void receivedMessages(VPackSlice data) override;
-  void finalizeExecution(VPackSlice data) override;
-  void startRecovery(VPackSlice data) override;
-  void compensateStep(VPackSlice data) override;
-  void finalizeRecovery(VPackSlice data) override;
+  void prepareGlobalStep(VPackSlice const& data, VPackBuilder& response) override;
+  void startGlobalStep(VPackSlice const& data) override;
+  void cancelGlobalStep(VPackSlice const& data) override;
+  void receivedMessages(VPackSlice const& data) override;
+  void finalizeExecution(VPackSlice const& data) override;
+  void startRecovery(VPackSlice const& data) override;
+  void compensateStep(VPackSlice const& data) override;
+  void finalizeRecovery(VPackSlice const& data) override;
 };
 }
 }
