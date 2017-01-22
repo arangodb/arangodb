@@ -313,7 +313,7 @@ void Conductor::finishedRecoveryStep(VPackSlice data) {
     b.close();
     res = _sendToAllDBServers(Utils::finalizeRecoveryPath, b.slice());
     if (res == TRI_ERROR_NO_ERROR) {
-      _state = _state = ExecutionState::RUNNING;
+      _state = ExecutionState::RUNNING;
       _startGlobalStep();
     }
   }
