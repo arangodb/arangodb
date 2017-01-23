@@ -74,7 +74,6 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/MMFilesEngine.h"
-#include "StorageEngine/MMFilesPersistentIndexFeature.h"
 #include "StorageEngine/MMFilesWalRecoveryFeature.h"
 #include "StorageEngine/RocksDBEngine.h"
 #include "V8Server/FoxxQueuesFeature.h"
@@ -82,6 +81,7 @@
 #include "VocBase/IndexThreadFeature.h"
 #include "Wal/LogfileManager.h"
 
+#include "Indexes/RocksDBFeature.h"
 
 #ifdef _WIN32
 #include "ApplicationFeatures/WindowsServiceFeature.h"

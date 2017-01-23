@@ -23,6 +23,7 @@
 
 #include "Traverser.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Indexes/EdgeIndex.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/KeyGenerator.h"

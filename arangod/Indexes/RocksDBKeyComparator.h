@@ -25,7 +25,7 @@
 #define ARANGOD_INDEXES_ROCKS_DB_KEY_COMPARATOR_H 1
 
 #include "Basics/Common.h"
-#include "StorageEngine/MMFilesPersistentIndex.h"
+#include "Indexes/RocksDBIndex.h"
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/slice.h>

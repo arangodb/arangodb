@@ -23,9 +23,9 @@
 
 #include "MMFilesDocumentOperation.h"
 #include "Indexes/IndexElement.h"
+#include "Indexes/PrimaryIndex.h"
 #include "Utils/Transaction.h"
 #include "StorageEngine/MMFilesDatafileHelper.h"
-#include "StorageEngine/MMFilesPrimaryIndex.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;

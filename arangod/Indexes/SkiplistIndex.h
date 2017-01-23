@@ -28,7 +28,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/SkipList.h"
 #include "Indexes/IndexIterator.h"
-#include "StorageEngine/MMFilesPathBasedIndex.h"
+#include "Indexes/PathBasedIndex.h"
 #include "Utils/Transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"

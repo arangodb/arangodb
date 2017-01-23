@@ -24,7 +24,7 @@
 #include "RestEdgesHandler.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterMethods.h"
-#include "StorageEngine/MMFilesEdgeIndex.h"
+#include "Indexes/EdgeIndex.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"

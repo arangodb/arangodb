@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFilesPathBasedIndex.h"
+#include "PathBasedIndex.h"
 #include "Aql/AstNode.h"
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/VelocyPackHelper.h"

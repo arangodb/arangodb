@@ -30,8 +30,9 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "FulltextIndex/fulltext-index.h"
+#include "Indexes/EdgeIndex.h"
 #include "Indexes/Index.h"
-#include "StorageEngine/MMFilesPersistentIndex.h"
+#include "Indexes/PrimaryIndex.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"
@@ -44,6 +45,8 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/modes.h"
 #include "VocBase/LogicalCollection.h"
+
+#include "Indexes/RocksDBIndex.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
