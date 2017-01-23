@@ -32,11 +32,11 @@ const expect = require('chai').expect;
 const ArangoCollection = require('@arangodb/arango-collection').ArangoCollection;
 
 describe('Cluster sync', function() {
-  describe('Databaseplan to local', function() {
-    before(function() {
-      require('@arangodb/sync-replication-debug').setup();
-    });
+  before(function() {
+    require('@arangodb/sync-replication-debug').setup();
+  });
 
+  describe('Databaseplan to local', function() {
     beforeEach(function() {
       db._databases().forEach(database => {
         if (database !== '_system') {
@@ -141,7 +141,7 @@ describe('Cluster sync', function() {
               ],
               "shards": {
                 "s100001": [
-                  "",
+                  "repltest",
                 ]
               },
               "status": 3,
@@ -192,7 +192,7 @@ describe('Cluster sync', function() {
               ],
               "shards": {
                 "s100001": [
-                  "",
+                  "repltest",
                 ]
               },
               "status": 2,
@@ -244,7 +244,7 @@ describe('Cluster sync', function() {
             ],
             "shards": {
               "s100001": [
-                "",
+                  "repltest",
               ]
             },
             "status": 2,
@@ -419,7 +419,7 @@ describe('Cluster sync', function() {
               ],
               "shards": {
                 "s100001": [
-                  ""
+                  "repltest",
                 ]
               },
               "status": 2,
@@ -481,7 +481,7 @@ describe('Cluster sync', function() {
               ],
               "shards": {
                 "s100001": [
-                  "",
+                  "repltest",
                 ]
               },
               "status": 2,
@@ -531,7 +531,7 @@ describe('Cluster sync', function() {
               ],
               "shards": {
                 "Möter": [
-                  "",
+                  "repltest",
                 ]
               },
               "status": 2,
@@ -579,7 +579,7 @@ describe('Cluster sync', function() {
             ],
             "shards": {
               "s100001": [
-                "",
+                  "repltest",
               ]
             },
             "status": 3,
@@ -627,7 +627,7 @@ describe('Cluster sync', function() {
             "shards": {
               "s100001": [
                 "the leader-leader",
-                "",
+                  "repltest",
               ]
             },
             "status": 2,
@@ -674,7 +674,7 @@ describe('Cluster sync', function() {
             ],
             "shards": {
               "s100001": [
-                "",
+                  "repltest",
               ]
             },
             "status": 2,
@@ -724,7 +724,7 @@ describe('Cluster sync', function() {
             "shards": {
               "s100001": [
                 "old-leader",
-                "",
+                  "repltest",
               ]
             },
             "status": 2,
@@ -734,7 +734,7 @@ describe('Cluster sync', function() {
         }
       };
       let errors = cluster.executePlanForCollections(plan);
-      plan.test['100001'].shards['s100001'] = [""];
+      plan.test['100001'].shards['s100001'] = ["repltest"];
       cluster.executePlanForCollections(plan);
       db._useDatabase('test');
       expect(db._collection('s100001').isLeader()).to.equal(true);
@@ -749,9 +749,109 @@ describe('Cluster sync', function() {
       });
     });
     it('should report a new database', function() {
-      let Current = {
-        Databases: {},
+      db._createDatabase('testi');
+      let current = {
+        _system: {
+          repltest: {
+            id: 1,
+            name: '_system',
+          },
+        }
       };
+      let result = cluster.updateCurrentForDatabases({}, current);
+      expect(result).to.have.property('/arango/Current/Databases/testi/repltest');
+      expect(result['/arango/Current/Databases/testi/repltest']).to.have.property('op', 'set');
+      expect(result['/arango/Current/Databases/testi/repltest']).to.have.deep.property('new.name', 'testi');
+    });
+    it('should not do anything if there is nothing to do', function() {
+      let current = {
+        _system: {
+          repltest: {
+            id: 1,
+            name: '_system',
+          },
+        }
+      };
+      let result = cluster.updateCurrentForDatabases({}, current);
+      expect(Object.keys(result)).to.have.lengthOf(0);
+    });
+    it('should remove a database from the agency if it is not present locally', function() {
+      let current = {
+        _system: {
+          repltest: {
+            id: 1,
+            name: '_system',
+          },
+        },
+        testi: {
+          repltest: {
+            id: 2,
+            name: 'testi',
+          }
+        }
+      };
+      let result = cluster.updateCurrentForDatabases({}, current);
+      expect(result).to.have.property('/arango/Current/Databases/testi/repltest');
+      expect(Object.keys(result)).to.have.lengthOf(1);
+      expect(result['/arango/Current/Databases/testi/repltest']).to.have.property('op', 'delete');
+    });
+    it('should not delete other server database entries when removing', function() {
+      let current = {
+        _system: {
+          repltest: {
+            id: 1,
+            name: '_system',
+          },
+        },
+        testi: {
+          repltest: {
+            id: 2,
+            name: 'testi',
+          },
+          testreplicant: {
+            id: 2,
+            name: 'testi',
+          }
+        }
+      };
+      let result = cluster.updateCurrentForDatabases({}, current);
+      expect(result).to.have.property('/arango/Current/Databases/testi/repltest');
+      expect(Object.keys(result)).to.have.lengthOf(1);
+    });
+    it('should report any errors during database creation', function() {
+      let current = {
+        _system: {
+          repltest: {
+            id: 1,
+            name: '_system',
+          },
+        },
+      };
+      let result = cluster.updateCurrentForDatabases({testi: {"error": true, name: "testi"}}, current);
+      expect(result).to.have.property('/arango/Current/Databases/testi/repltest');
+      expect(Object.keys(result)).to.have.lengthOf(1);
+      expect(result['/arango/Current/Databases/testi/repltest']).to.have.property('op', 'set');
+      expect(result['/arango/Current/Databases/testi/repltest']).to.have.deep.property('new.error', true);
+    });
+    it('should override any previous error if creation finally worked', function() {
+      let current = {
+        _system: {
+          repltest: {
+            id: 1,
+            name: '_system',
+          },
+          testi: {
+            error: 'gut',
+          }
+        },
+      };
+      db._createDatabase('testi');
+      let result = cluster.updateCurrentForDatabases({}, current);
+      expect(result).to.have.property('/arango/Current/Databases/testi/repltest');
+      expect(Object.keys(result)).to.have.lengthOf(1);
+      expect(result['/arango/Current/Databases/testi/repltest']).to.have.property('op', 'set');
+      expect(result['/arango/Current/Databases/testi/repltest']).to.have.deep.property('new.name', 'testi');
+      expect(result['/arango/Current/Databases/testi/repltest']).to.have.deep.property('new.error', false);
     });
   });
 });
