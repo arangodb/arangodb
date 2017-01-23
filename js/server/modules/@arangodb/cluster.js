@@ -1235,7 +1235,10 @@ function updateCurrentForDatabases(localErrors, currentDatabases) {
 
   // Remove entries from current that no longer exist locally: 
   for (name in currentDatabases) {
-    if (currentDatabases.hasOwnProperty(name) && name.substr(0, 1) !== '_') {
+    if (currentDatabases.hasOwnProperty(name)
+      && name.substr(0, 1) !== '_'
+      && localErrors[name] === undefined
+    ) {
       if (!localDatabases.hasOwnProperty(name)) {
         // we found a database we don't have locally
 
@@ -1268,7 +1271,7 @@ function migrateAnyServer(plan, current) {
   let localErrors = executePlanForDatabases(plan.Databases);
   // diff current and local and prepare agency transactions or whatever
   // to update current. will report the errors created locally to the agency
-  let trx = updateCurrentForDatabases(localErrors, current);
+  let trx = updateCurrentForDatabases(localErrors, current.Databases);
   if (Object.keys(trx).length !== 0) {
     trx = [trx];
     trx[0][curVersion] = {op: 'increment'};
