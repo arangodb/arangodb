@@ -24,6 +24,8 @@ v3.1.9 (XXXX-XX-XX)
 * fix a bug in the supervision that did not compare follower lists correctly
   (improves cluster stability)
 
+* fixed waitFor bug in agency. backported from devel.
+
 v3.1.8 (2017-01-09)
 -------------------
 
