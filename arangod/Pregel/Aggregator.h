@@ -51,7 +51,7 @@ class IAggregator {
   virtual void parse(VPackSlice slice) = 0;
 
 
-  virtual void reset() = 0;
+  virtual void reset(bool force) = 0;
   virtual bool isConverging() const = 0;
 };
   
@@ -69,8 +69,8 @@ struct NumberAggregator : public IAggregator {
     aggregate((void const*)(&f));
   }
   
-  void reset() override {
-    if (!_permanent) {_value = _initial; }
+  void reset(bool force) override {
+    if (!_permanent || force) {_value = _initial; }
   }
   
   bool isConverging() const override { return _converging; }

@@ -56,7 +56,7 @@ public:
   const void* getAggregatedValue(std::string const& name);
   
   /// calls reset on every aggregator
-  void resetValues();
+  void resetValues(bool force = false);
   
   /// aggregates all values from this aggregator
   void aggregateValues(AggregatorHandler const& workerValues);

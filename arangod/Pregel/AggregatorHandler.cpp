@@ -70,9 +70,9 @@ const void* AggregatorHandler::getAggregatedValue(AggregatorID const& name) {
   return agg != nullptr ? agg->getValue() : nullptr;
 }
 
-void AggregatorHandler::resetValues() {
+void AggregatorHandler::resetValues(bool force) {
   for (auto& it : _values) {
-      it.second->reset();
+      it.second->reset(force);
   }
 }
 

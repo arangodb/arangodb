@@ -138,7 +138,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
   _state = WorkerState::PREPARING;  // stop any running step
-  LOG(INFO) << "Prepare GSS: " << data.toJson();
+  LOG(INFO) << "Received prepare GSS: " << data.toJson();
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   if (!gssSlice.isInteger()) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
@@ -193,7 +193,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
   _workerAggregators->serializeValues(response);
   response.close();
 
-  LOG(INFO) << "Worker sent prepare GSS response: " << response.toJson();
+  LOG(INFO) << "Responded: " << response.toJson();
 }
 
 template <typename V, typename E, typename M>
@@ -242,8 +242,8 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Wrong GSS");
   }
 
-  _workerAggregators->resetValues();
-  _conductorAggregators->resetValues();
+  _workerAggregators->resetValues(true);
+  _conductorAggregators->resetValues(true);
   _conductorAggregators->parseValues(data);
   // execute context
   if (_workerContext) {
@@ -459,6 +459,7 @@ void Worker<V, E, M>::_finishedProcessing() {
     msgsPerSec /= pool->numThreads(); // per thread
     _messageBatchSize = (uint32_t) fmax(0.08 * msgsPerSec, 250);// 80ms time window,
     _messageStats.resetTracking();
+    
     LOG(INFO) << "Batch size: " << _messageBatchSize;
   }
   // serialize converging values only in async mode
@@ -480,6 +481,7 @@ void Worker<V, E, M>::_finishedProcessing() {
   } else {// no answer expected
     package.close();
     _callConductor(Utils::finishedWorkerStepPath, package.slice());
+    LOG(INFO) << "Finished GSS: " << package.toJson();
   }
 }
 

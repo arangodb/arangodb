@@ -68,6 +68,9 @@ static size_t _approxThreadNumber(){
 
 void PregelFeature::start() {
   Instance = this;
+  if (ServerState::instance()->isAgent()) {
+    return;
+  }
 
   const size_t threadNum = _approxThreadNumber();
   LOG(INFO) << "Pregel uses " << threadNum << " threads";
