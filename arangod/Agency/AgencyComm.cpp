@@ -625,7 +625,7 @@ std::string AgencyCommManager::redirect(
     _endpoints.end());
   
   LOG_TOPIC(WARN, Logger::AGENCYCOMM)
-    << "got an agency redirect from '" << endpoint
+    << "Got an agency redirect from '" << endpoint
     << "' to '" << specification << "'";
   
   _endpoints.push_front(specification);
@@ -1365,26 +1365,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     
     // break on a watch timeout (drop connection)
     if (result._statusCode == 0) {
-      AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
-      endpoint.clear();
-      connection = AgencyCommManager::MANAGER->acquire(endpoint);
-      continue;
-    }
-    
-    // sometimes the agency will return a 307 (temporary redirect)
-    // in this case we have to pick it up and use the new location returned
-    if (result._statusCode ==
-        (int)arangodb::rest::ResponseCode::TEMPORARY_REDIRECT) {
-      endpoint = AgencyCommManager::MANAGER->redirect(
-        std::move(connection), endpoint, result._location, url);
-      connection = AgencyCommManager::MANAGER->acquire(endpoint);
-      waitInterval = std::chrono::duration<double>(.25);
-      continue;
-    }
 
-    // Precondition failed.
-
-    if (result._statusCode == 412 && !clientId.empty()) {
       VPackBuilder b;
       {
         VPackArrayBuilder ab(&b);
@@ -1392,7 +1373,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
       }
       
       LOG_TOPIC(INFO, Logger::AGENCYCOMM) <<
-        "Got precondition failed! Inquiring about clientId " << clientId << ": ";
+        "Failed agency comm! Inquiring about clientId " << clientId << ": ";
       
       AgencyCommResult inq = send(
         connection.get(), method, conTimeout, "/_api/agency/inquire",
@@ -1439,9 +1420,24 @@ AgencyCommResult AgencyComm::sendWithFailover(
           "with error. Keep trying ...";
         return result;
       }
-      
+    
+      AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
+      endpoint.clear();
+      connection = AgencyCommManager::MANAGER->acquire(endpoint);
+      continue;
     }
     
+    // sometimes the agency will return a 307 (temporary redirect)
+    // in this case we have to pick it up and use the new location returned
+    if (result._statusCode ==
+        (int)arangodb::rest::ResponseCode::TEMPORARY_REDIRECT) {
+      endpoint = AgencyCommManager::MANAGER->redirect(
+        std::move(connection), endpoint, result._location, url);
+      connection = AgencyCommManager::MANAGER->acquire(endpoint);
+      waitInterval = std::chrono::duration<double>(.25);
+      continue;
+    }
+
     // do not retry on client errors
     if (result._statusCode >= 400 && result._statusCode <= 499) {
       AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
