@@ -825,7 +825,6 @@ function SynchronousReplicationSuite () {
         wait(5);
       }
       healLeader();
-      assertTrue(waitForSynchronousReplication("_system"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
