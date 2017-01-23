@@ -265,7 +265,7 @@ JOB_STATUS FailedFollower::status() {
     Node const& planned = _snapshot(planPath);
     Node const& current = _snapshot(curPath);
 
-    if (planned.slice() == current.slice()) {
+    if (compareServerLists(planned.slice(), current.slice())) {
 
       // Remove shard from /arango/Target/FailedServers/<server> array
       Builder del;
