@@ -24,12 +24,9 @@
 #include "fulltext-query.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
-#include "FulltextIndex/fulltext-index.h"
+#include "MMFiles/fulltext-index.h"
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a word for a fulltext search query
-////////////////////////////////////////////////////////////////////////////////
-
 static TRI_fulltext_query_operation_e ParseOperation(char c) {
   if (c == '|') {
     return TRI_FULLTEXT_OR;
@@ -41,11 +38,8 @@ static TRI_fulltext_query_operation_e ParseOperation(char c) {
   return TRI_FULLTEXT_AND;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a word for a fulltext search query
 /// this will create a copy of the word
-////////////////////////////////////////////////////////////////////////////////
-
 static char* NormalizeWord(char const* word, size_t wordLength) {
   // normalize string
   size_t outLength;
@@ -84,11 +78,8 @@ static char* NormalizeWord(char const* word, size_t wordLength) {
   return copy3;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a fulltext query
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_fulltext_query_t* TRI_CreateQueryFulltextIndex(size_t numWords,
+TRI_fulltext_query_t* TRI_CreateQueryMMFilesFulltextIndex(size_t numWords,
                                                    size_t maxResults) {
   TRI_fulltext_query_t* query = static_cast<TRI_fulltext_query_t*>(
       TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_query_t), false));
@@ -133,11 +124,8 @@ TRI_fulltext_query_t* TRI_CreateQueryFulltextIndex(size_t numWords,
   return query;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief free a fulltext query
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeQueryFulltextIndex(TRI_fulltext_query_t* query) {
+void TRI_FreeQueryMMFilesFulltextIndex(TRI_fulltext_query_t* query) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_operations);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_matches);
 
@@ -153,11 +141,8 @@ void TRI_FreeQueryFulltextIndex(TRI_fulltext_query_t* query) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, query);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a fulltext query from a query string
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ParseQueryFulltextIndex(TRI_fulltext_query_t* query,
+int TRI_ParseQueryMMFilesFulltextIndex(TRI_fulltext_query_t* query,
                                 char const* queryString,
                                 bool* isSubstringQuery) {
   char* ptr;
@@ -234,7 +219,7 @@ int TRI_ParseQueryFulltextIndex(TRI_fulltext_query_t* query,
 
     TRI_ASSERT(end >= start);
 
-    if (!TRI_SetQueryFulltextIndex(query, (size_t)i, start,
+    if (!TRI_SetQueryMMFilesFulltextIndex(query, (size_t)i, start,
                                    (size_t)(end - start), match, operation)) {
       // normalization failed
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -255,12 +240,9 @@ int TRI_ParseQueryFulltextIndex(TRI_fulltext_query_t* query,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief set a search word & option for a query
 /// the query will take ownership of the search word
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_SetQueryFulltextIndex(TRI_fulltext_query_t* query, size_t position,
+bool TRI_SetQueryMMFilesFulltextIndex(TRI_fulltext_query_t* query, size_t position,
                                char const* word, size_t wordLength,
                                TRI_fulltext_query_match_e match,
                                TRI_fulltext_query_operation_e operation) {

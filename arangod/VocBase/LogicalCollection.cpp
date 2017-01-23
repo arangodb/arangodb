@@ -254,7 +254,7 @@ static std::shared_ptr<Index> PrepareIndexFromSlice(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "cannot create primary index");
       }
-      newIdx.reset(new arangodb::PrimaryIndex(col));
+      newIdx.reset(new arangodb::MMFilesPrimaryIndex(col));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
@@ -263,28 +263,28 @@ static std::shared_ptr<Index> PrepareIndexFromSlice(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "cannot create edge index");
       }
-      newIdx.reset(new arangodb::EdgeIndex(iid, col));
+      newIdx.reset(new arangodb::MMFilesEdgeIndex(iid, col));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
     case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
-      newIdx.reset(new arangodb::GeoIndex(iid, col, info));
+      newIdx.reset(new arangodb::MMFilesGeoIndex(iid, col, info));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
-      newIdx.reset(new arangodb::HashIndex(iid, col, info));
+      newIdx.reset(new arangodb::MMFilesHashIndex(iid, col, info));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
-      newIdx.reset(new arangodb::SkiplistIndex(iid, col, info));
+      newIdx.reset(new arangodb::MMFilesSkiplistIndex(iid, col, info));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX: {
-      newIdx.reset(new arangodb::RocksDBIndex(iid, col, info));
+      newIdx.reset(new arangodb::PersistentIndex(iid, col, info));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
-      newIdx.reset(new arangodb::FulltextIndex(iid, col, info));
+      newIdx.reset(new arangodb::MMFilesFulltextIndex(iid, col, info));
       break;
     }
   }
@@ -889,7 +889,7 @@ LogicalCollection::getIndexes() const {
 // WARNING: Make sure that this LogicalCollection Instance
 // is somehow protected. If it goes out of all scopes
 // or it's indexes are freed the pointer returned will get invalidated.
-arangodb::PrimaryIndex* LogicalCollection::primaryIndex() const {
+arangodb::MMFilesPrimaryIndex* LogicalCollection::primaryIndex() const {
   TRI_ASSERT(!_indexes.empty());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -904,7 +904,7 @@ arangodb::PrimaryIndex* LogicalCollection::primaryIndex() const {
   TRI_ASSERT(_indexes[0]->type() ==
              Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   // the primary index must be the index at position #0
-  return static_cast<arangodb::PrimaryIndex*>(_indexes[0].get());
+  return static_cast<arangodb::MMFilesPrimaryIndex*>(_indexes[0].get());
 }
 
 void LogicalCollection::getIndexesVPack(VPackBuilder& result,
@@ -1778,12 +1778,12 @@ void LogicalCollection::createInitialIndexes() {
   }
 
   // create primary index
-  auto primaryIndex = std::make_shared<arangodb::PrimaryIndex>(this);
+  auto primaryIndex = std::make_shared<arangodb::MMFilesPrimaryIndex>(this);
   addIndex(primaryIndex);
 
   // create edges index
   if (_type == TRI_COL_TYPE_EDGE) {
-    auto edgeIndex = std::make_shared<arangodb::EdgeIndex>(1, this);
+    auto edgeIndex = std::make_shared<arangodb::MMFilesEdgeIndex>(1, this);
 
     addIndex(edgeIndex);
   }
@@ -2624,7 +2624,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    res = deletePrimaryIndex(trx, oldRevisionId, oldDoc);
+    res = deleteMMFilesPrimaryIndex(trx, oldRevisionId, oldDoc);
 
     if (res != TRI_ERROR_NO_ERROR) {
       insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
@@ -2726,7 +2726,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    res = deletePrimaryIndex(trx, oldRevisionId, oldDoc);
+    res = deleteMMFilesPrimaryIndex(trx, oldRevisionId, oldDoc);
 
     if (res != TRI_ERROR_NO_ERROR) {
       insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
@@ -2784,7 +2784,7 @@ int LogicalCollection::rollbackOperation(arangodb::Transaction* trx,
     removeRevisionCacheEntry(newRevisionId);
 
     // ignore any errors we're getting from this
-    deletePrimaryIndex(trx, newRevisionId, newDoc);
+    deleteMMFilesPrimaryIndex(trx, newRevisionId, newDoc);
     deleteSecondaryIndexes(trx, newRevisionId, newDoc, true);
     return TRI_ERROR_NO_ERROR;
   }
@@ -2814,7 +2814,7 @@ int LogicalCollection::rollbackOperation(arangodb::Transaction* trx,
     
     removeRevisionCacheEntry(oldRevisionId);
 
-    int res = insertPrimaryIndex(trx, oldRevisionId, oldDoc);
+    int res = insertMMFilesPrimaryIndex(trx, oldRevisionId, oldDoc);
 
     if (res == TRI_ERROR_NO_ERROR) {
       res = insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
@@ -2935,7 +2935,7 @@ int LogicalCollection::fillIndexBatch(arangodb::Transaction* trx,
     uint64_t total = 0;
 
     while (true) {
-      SimpleIndexElement element =
+      MMFilesSimpleIndexElement element =
           primaryIndex->lookupSequential(trx, position, total);
 
       if (!element) {
@@ -3006,7 +3006,7 @@ int LogicalCollection::fillIndexSequential(arangodb::Transaction* trx,
     ManagedDocumentResult result(trx);
 
     while (true) {
-      SimpleIndexElement element =
+      MMFilesSimpleIndexElement element =
           primaryIndex->lookupSequential(trx, position, total);
 
       if (!element) {
@@ -3306,7 +3306,7 @@ int LogicalCollection::lookupDocument(arangodb::Transaction* trx,
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
-  SimpleIndexElement element = primaryIndex()->lookupKey(trx, key, result);
+  MMFilesSimpleIndexElement element = primaryIndex()->lookupKey(trx, key, result);
   if (element) {
     readRevision(trx, result, element.revisionId());
     return TRI_ERROR_NO_ERROR;
@@ -3354,7 +3354,7 @@ int LogicalCollection::updateDocument(
   // update the index element (primary index only - other index have been
   // adjusted)
   VPackSlice keySlice(Transaction::extractKeyFromDocument(newDoc));
-  SimpleIndexElement* element = primaryIndex()->lookupKeyRef(trx, keySlice);
+  MMFilesSimpleIndexElement* element = primaryIndex()->lookupKeyRef(trx, keySlice);
   if (element != nullptr && element->revisionId() != 0) {
     element->updateRevisionId(
         newRevisionId,
@@ -3390,7 +3390,7 @@ int LogicalCollection::insertDocument(
     MMFilesDocumentOperation& operation,
     MMFilesWalMarker const* marker, bool& waitForSync) {
   // insert into primary index first
-  int res = insertPrimaryIndex(trx, revisionId, doc);
+  int res = insertMMFilesPrimaryIndex(trx, revisionId, doc);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // insert has failed
@@ -3402,7 +3402,7 @@ int LogicalCollection::insertDocument(
 
   if (res != TRI_ERROR_NO_ERROR) {
     deleteSecondaryIndexes(trx, revisionId, doc, true);
-    deletePrimaryIndex(trx, revisionId, doc);
+    deleteMMFilesPrimaryIndex(trx, revisionId, doc);
     return res;
   }
 
@@ -3419,20 +3419,20 @@ int LogicalCollection::insertDocument(
 }
 
 /// @brief creates a new entry in the primary index
-int LogicalCollection::insertPrimaryIndex(arangodb::Transaction* trx,
+int LogicalCollection::insertMMFilesPrimaryIndex(arangodb::Transaction* trx,
                                           TRI_voc_rid_t revisionId,
                                           VPackSlice const& doc) {
-  TRI_IF_FAILURE("InsertPrimaryIndex") { return TRI_ERROR_DEBUG; }
+  TRI_IF_FAILURE("InsertMMFilesPrimaryIndex") { return TRI_ERROR_DEBUG; }
 
   // insert into primary index
   return primaryIndex()->insertKey(trx, revisionId, doc);
 }
 
 /// @brief deletes an entry from the primary index
-int LogicalCollection::deletePrimaryIndex(arangodb::Transaction* trx,
+int LogicalCollection::deleteMMFilesPrimaryIndex(arangodb::Transaction* trx,
                                           TRI_voc_rid_t revisionId,
                                           VPackSlice const& doc) {
-  TRI_IF_FAILURE("DeletePrimaryIndex") { return TRI_ERROR_DEBUG; }
+  TRI_IF_FAILURE("DeleteMMFilesPrimaryIndex") { return TRI_ERROR_DEBUG; }
 
   return primaryIndex()->removeKey(trx, revisionId, doc);
 }

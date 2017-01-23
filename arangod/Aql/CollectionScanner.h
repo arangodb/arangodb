@@ -25,7 +25,7 @@
 #define ARANGOD_AQL_COLLECTION_SCANNER_H 1
 
 #include "Basics/Common.h"
-#include "Indexes/IndexElement.h"
+#include "Indexes/IndexIterator.h"
 
 namespace arangodb {
 class ManagedDocumentResult;

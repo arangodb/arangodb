@@ -40,7 +40,7 @@ class RocksDBKeyComparator : public rocksdb::Comparator {
   ~RocksDBKeyComparator() = default;
 
   static inline arangodb::velocypack::Slice extractKeySlice(rocksdb::Slice const& slice) {
-    return arangodb::velocypack::Slice(slice.data() + RocksDBIndex::keyPrefixSize());
+    return arangodb::velocypack::Slice(slice.data() + PersistentIndex::keyPrefixSize());
   }
   
   int Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const;

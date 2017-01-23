@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesDocumentOperation.h"
-#include "Indexes/IndexElement.h"
+#include "Indexes/IndexIterator.h"
 #include "Utils/Transaction.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
@@ -159,7 +159,7 @@ void MMFilesDocumentOperation::revert(arangodb::Transaction* trx) {
     }
    
     // let the primary index entry point to the correct document 
-    SimpleIndexElement* element = _collection->primaryIndex()->lookupKeyRef(trx, Transaction::extractKeyFromDocument(newDoc));
+    MMFilesSimpleIndexElement* element = _collection->primaryIndex()->lookupKeyRef(trx, Transaction::extractKeyFromDocument(newDoc));
     if (element != nullptr && element->revisionId() != 0) {
       VPackSlice keySlice(Transaction::extractKeyFromDocument(oldDoc));
       element->updateRevisionId(oldRevisionId, static_cast<uint32_t>(keySlice.begin() - oldDoc.begin()));

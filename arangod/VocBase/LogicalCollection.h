@@ -55,7 +55,7 @@ struct MMFilesDocumentOperation;
 class MMFilesWalMarker;
 struct OperationOptions;
 class PhysicalCollection;
-class PrimaryIndex;
+class MMFilesPrimaryIndex;
 class StringRef;
 class Transaction;
 
@@ -235,7 +235,7 @@ class LogicalCollection {
   // WARNING: Make sure that this LogicalCollection Instance
   // is somehow protected. If it goes out of all scopes
   // or it's indexes are freed the pointer returned will get invalidated.
-  arangodb::PrimaryIndex* primaryIndex() const;
+  arangodb::MMFilesPrimaryIndex* primaryIndex() const;
   void getIndexesVPack(arangodb::velocypack::Builder&, bool) const;
 
   // SECTION: Replication
@@ -433,9 +433,9 @@ class LogicalCollection {
                      MMFilesDocumentOperation&, MMFilesWalMarker const*,
                      bool& waitForSync);
 
-  int insertPrimaryIndex(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);
+  int insertMMFilesPrimaryIndex(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);
   
-  int deletePrimaryIndex(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);
+  int deleteMMFilesPrimaryIndex(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);
 
   int insertSecondaryIndexes(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&,
                              bool isRollback);

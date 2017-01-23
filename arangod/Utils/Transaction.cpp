@@ -79,7 +79,7 @@ std::vector<std::vector<std::string>> Transaction::IndexHandle::fieldNames() con
 /// @brief Only required by traversal should be removed ASAP
 //////////////////////////////////////////////////////////////////////////////
 
-bool Transaction::IndexHandle::isEdgeIndex() const {
+bool Transaction::IndexHandle::isMMFilesEdgeIndex() const {
   return _index->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX;
 }
 
@@ -1399,7 +1399,7 @@ Transaction::IndexHandle Transaction::edgeIndexHandle(std::string const& collect
 //////////////////////////////////////////////////////////////////////////////
 
 void Transaction::invokeOnAllElements(std::string const& collectionName,
-                                      std::function<bool(SimpleIndexElement const&)> callback) {
+                                      std::function<bool(MMFilesSimpleIndexElement const&)> callback) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
   if (ServerState::isCoordinator(_serverRole)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -2734,7 +2734,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
   TRI_voc_tick_t resultMarkerTick = 0;
   ManagedDocumentResult mmdr(this);
 
-  auto callback = [&](SimpleIndexElement const& element) {
+  auto callback = [&](MMFilesSimpleIndexElement const& element) {
     TRI_voc_rid_t revisionId = element.revisionId();
     if (collection->readRevision(this, mmdr, revisionId)) {
       uint8_t const* vpack = mmdr.vpack();
@@ -3138,7 +3138,7 @@ std::unique_ptr<OperationCursor> Transaction::indexScan(
       // We do not need an index either
       TRI_ASSERT(nullptr == indexId.getIndex());
 
-      arangodb::PrimaryIndex* idx = document->primaryIndex();
+      arangodb::MMFilesPrimaryIndex* idx = document->primaryIndex();
 
       if (idx == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -3155,7 +3155,7 @@ std::unique_ptr<OperationCursor> Transaction::indexScan(
       // We do not need an index either
       TRI_ASSERT(nullptr == indexId.getIndex());
 
-      arangodb::PrimaryIndex* idx = document->primaryIndex();
+      arangodb::MMFilesPrimaryIndex* idx = document->primaryIndex();
 
       if (idx == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(

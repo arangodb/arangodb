@@ -24,7 +24,7 @@
 #include "ShortestPathBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
-#include "Indexes/IndexElement.h"
+#include "Indexes/IndexIterator.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/Transaction.h"

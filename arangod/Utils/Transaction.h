@@ -28,7 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/IndexElement.h"
+#include "MMFiles/MMFilesIndexElement.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/transaction.h"
@@ -102,7 +102,7 @@ class Transaction {
     }
     std::vector<std::vector<std::string>> fieldNames() const;
 
-    bool isEdgeIndex() const;
+    bool isMMFilesEdgeIndex() const;
 
    public:
     std::shared_ptr<arangodb::Index> getIndex() const;
@@ -451,7 +451,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   void invokeOnAllElements(std::string const& collectionName,
-                           std::function<bool(SimpleIndexElement const&)>);
+                           std::function<bool(MMFilesSimpleIndexElement const&)>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return one  document from a collection, fast path

@@ -50,7 +50,6 @@
 
 #include "Basics/Common.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/IndexElement.h"
 #include "Indexes/IndexLookupContext.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
@@ -59,6 +58,24 @@ namespace arangodb {
 class Index;
 class LogicalCollection;
 class Transaction;
+
+class IndexLookupResult {
+ public:
+  constexpr IndexLookupResult() : _revisionId(0) {}
+  explicit IndexLookupResult(TRI_voc_rid_t revisionId) : _revisionId(revisionId) {}
+  IndexLookupResult(IndexLookupResult const& other) : _revisionId(other._revisionId) {}
+  IndexLookupResult& operator=(IndexLookupResult const& other) {
+    _revisionId = other._revisionId;
+    return *this;
+  }
+
+  inline operator bool() const { return _revisionId != 0; }
+
+  inline TRI_voc_rid_t revisionId() const { return _revisionId; }
+
+ private:
+  TRI_voc_rid_t _revisionId;
+};
 
 /// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself

@@ -25,8 +25,8 @@
 #define ARANGOD_MMFILES_FULLTEXT_INDEX_H 1
 
 #include "Basics/Common.h"
-#include "FulltextIndex/fulltext-common.h"
 #include "Indexes/Index.h"
+#include "MMFiles/fulltext-common.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -38,14 +38,14 @@ static_assert(sizeof(TRI_fulltext_doc_t) >= sizeof(TRI_voc_rid_t), "invalid size
 
 namespace arangodb {
 
-class FulltextIndex final : public Index {
+class MMFilesFulltextIndex final : public Index {
  public:
-  FulltextIndex() = delete;
+  MMFilesFulltextIndex() = delete;
 
-  FulltextIndex(TRI_idx_iid_t, LogicalCollection*,
+  MMFilesFulltextIndex(TRI_idx_iid_t, LogicalCollection*,
                 arangodb::velocypack::Slice const&);
 
-  ~FulltextIndex();
+  ~MMFilesFulltextIndex();
 
  public:
   IndexType type() const override {

@@ -25,7 +25,7 @@
 #define ARANGOD_SINGLE_SERVER_TRAVERSER_H 1
 
 #include "Aql/AqlValue.h"
-#include "Indexes/IndexElement.h"
+#include "Indexes/IndexIterator.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/Traverser.h"
 #include "VocBase/TraverserOptions.h"
@@ -33,7 +33,7 @@
 
 namespace arangodb {
 
-class EdgeIndex;
+class MMFilesEdgeIndex;
 class LogicalCollection;
 class ManagedDocumentResult;
 

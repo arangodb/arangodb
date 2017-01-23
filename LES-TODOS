@@ -6,10 +6,13 @@ done
     - 3 states: READ / WRITE / EXCLUSIVE for locks
 - index implementations => moved & renamed to StorageEngine
 - move engine files into MMFiles directory
+- split IndexElement
+- rename *IndexElement to MMFiles*
+- move fulltext & geoindex & skiplist helper code into MMFiles
+- rename "RocksDBIndex" to "PersistentIndex"
 
 in progress
 -----------
-- split IndexElement
 - Index API
   - Rename OperationCursor->getMoreMptr => getMoreTokens, "returns" std::vector<TOKEN>&
   - Delete OperationCursor->getMore. Replace by getMoreTokens

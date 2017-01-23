@@ -80,7 +80,7 @@ bool RestEdgesHandler::getEdgesForVertexList(
   Transaction::IndexHandle indexId = trx.edgeIndexHandle(collectionName);
 
   VPackBuilder searchValueBuilder;
-  EdgeIndex::buildSearchValueFromArray(direction, ids, searchValueBuilder);
+  MMFilesEdgeIndex::buildSearchValueFromArray(direction, ids, searchValueBuilder);
   VPackSlice search = searchValueBuilder.slice();
 
   std::unique_ptr<OperationCursor> cursor =
@@ -119,7 +119,7 @@ bool RestEdgesHandler::getEdgesForVertex(
   Transaction::IndexHandle indexId = trx.edgeIndexHandle(collectionName);
 
   VPackBuilder searchValueBuilder;
-  EdgeIndex::buildSearchValue(direction, id, searchValueBuilder);
+  MMFilesEdgeIndex::buildSearchValue(direction, id, searchValueBuilder);
   VPackSlice search = searchValueBuilder.slice();
 
   std::unique_ptr<OperationCursor> cursor =

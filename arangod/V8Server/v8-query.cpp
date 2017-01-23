@@ -381,7 +381,7 @@ static void JS_ChecksumCollection(
   uint64_t hash = 0;
         
   ManagedDocumentResult mmdr(&trx);
-  trx.invokeOnAllElements(col->name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](SimpleIndexElement const& element) {
+  trx.invokeOnAllElements(col->name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](MMFilesSimpleIndexElement const& element) {
     collection->readRevision(&trx, mmdr, element.revisionId());
     VPackSlice const slice(mmdr.vpack());
 

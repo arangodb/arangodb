@@ -184,11 +184,6 @@ SET(ARANGOD_SOURCES
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
   Cluster/v8-cluster.cpp
-  FulltextIndex/fulltext-handles.cpp
-  FulltextIndex/fulltext-index.cpp
-  FulltextIndex/fulltext-list.cpp
-  FulltextIndex/fulltext-query.cpp
-  FulltextIndex/fulltext-result.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
   GeneralServer/GeneralCommTask.cpp
@@ -201,12 +196,16 @@ SET(ARANGOD_SOURCES
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/RestStatus.cpp
   GeneralServer/VppCommTask.cpp
-  GeoIndex/GeoIndex.cpp
   Indexes/Index.cpp
-  Indexes/IndexElement.cpp
   Indexes/IndexIterator.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
+  MMFiles/fulltext-handles.cpp
+  MMFiles/fulltext-index.cpp
+  MMFiles/fulltext-list.cpp
+  MMFiles/fulltext-query.cpp
+  MMFiles/fulltext-result.cpp
+  MMFiles/geo-index.cpp
   MMFiles/MMFilesAllocatorThread.cpp
   MMFiles/MMFilesCleanupThread.cpp
   MMFiles/MMFilesCollection.cpp
@@ -217,6 +216,7 @@ SET(ARANGOD_SOURCES
   MMFiles/MMFilesDocumentOperation.cpp
   MMFiles/MMFilesEdgeIndex.cpp
   MMFiles/MMFilesEngine.cpp
+  MMFiles/MMFilesIndexElement.cpp
   MMFiles/MMFilesLogfileManager.cpp
   MMFiles/MMFilesFulltextIndex.cpp
   MMFiles/MMFilesGeoIndex.cpp

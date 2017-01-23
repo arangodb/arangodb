@@ -277,7 +277,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
         // check if the document is still active
         auto primaryIndex = collection->primaryIndex();
         TRI_df_marker_t const* markerPtr = nullptr;
-        SimpleIndexElement element = primaryIndex->lookupKey(context._trx, keySlice);
+        MMFilesSimpleIndexElement element = primaryIndex->lookupKey(context._trx, keySlice);
         if (element) {
           MMFilesDocumentPosition const old = static_cast<MMFilesCollection*>(collection->getPhysical())->lookupRevision(element.revisionId());
           markerPtr = reinterpret_cast<TRI_df_marker_t const*>(static_cast<uint8_t const*>(old.dataptr()) - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
@@ -366,7 +366,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       // check if the document is still active
       auto primaryIndex = collection->primaryIndex();
       TRI_df_marker_t const* markerPtr = nullptr;
-      SimpleIndexElement element = primaryIndex->lookupKey(context->_trx, keySlice);
+      MMFilesSimpleIndexElement element = primaryIndex->lookupKey(context->_trx, keySlice);
       if (element) {
         MMFilesDocumentPosition const old = static_cast<MMFilesCollection*>(collection->getPhysical())->lookupRevision(element.revisionId());
         markerPtr = reinterpret_cast<TRI_df_marker_t const*>(static_cast<uint8_t const*>(old.dataptr()) - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));

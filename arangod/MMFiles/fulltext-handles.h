@@ -26,13 +26,9 @@
 
 #include "fulltext-common.h"
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef for a fulltext handle entry
-////////////////////////////////////////////////////////////////////////////////
-
 typedef uint32_t TRI_fulltext_handle_t;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief a slot containing _numUsed handles and has some statistics about
 /// itself
 ///
@@ -72,8 +68,6 @@ typedef uint32_t TRI_fulltext_handle_t;
 /// pointer).
 /// This is only true for documents that are created on the same memory page
 /// but this should be the common case to optimize for.
-////////////////////////////////////////////////////////////////////////////////
-
 typedef struct TRI_fulltext_handle_slot_s {
   uint32_t _numUsed;               // number of handles used in slot
   uint32_t _numDeleted;            // number of deleted handles in slot
@@ -83,10 +77,7 @@ typedef struct TRI_fulltext_handle_slot_s {
   uint8_t* _deleted;               // deleted flags for the slots
 } TRI_fulltext_handle_slot_t;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef for a fulltext handles instance
-////////////////////////////////////////////////////////////////////////////////
-
 typedef struct TRI_fulltext_handles_s {
   TRI_fulltext_handle_t _next;          // next handle to use
   uint32_t _numSlots;                   // current number of slots
@@ -97,82 +88,46 @@ typedef struct TRI_fulltext_handles_s {
                                 // handles to new handles during compaction
 } TRI_fulltext_handles_t;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a handles instance
-////////////////////////////////////////////////////////////////////////////////
+TRI_fulltext_handles_t* TRI_CreateHandlesMMFilesFulltextIndex(const uint32_t);
 
-TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex(const uint32_t);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief free a handles instance
-////////////////////////////////////////////////////////////////////////////////
+void TRI_FreeHandlesMMFilesFulltextIndex(TRI_fulltext_handles_t*);
 
-void TRI_FreeHandlesFulltextIndex(TRI_fulltext_handles_t*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get number of documents (including deleted)
-////////////////////////////////////////////////////////////////////////////////
+uint32_t TRI_NumHandlesHandleMMFilesFulltextIndex(TRI_fulltext_handles_t* const);
 
-uint32_t TRI_NumHandlesHandleFulltextIndex(TRI_fulltext_handles_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get number of deleted documents
-////////////////////////////////////////////////////////////////////////////////
+uint32_t TRI_NumDeletedHandleMMFilesFulltextIndex(TRI_fulltext_handles_t* const);
 
-uint32_t TRI_NumDeletedHandleFulltextIndex(TRI_fulltext_handles_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get handle list fill grade
-////////////////////////////////////////////////////////////////////////////////
+double TRI_DeletionGradeHandleMMFilesFulltextIndex(TRI_fulltext_handles_t* const);
 
-double TRI_DeletionGradeHandleFulltextIndex(TRI_fulltext_handles_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the handle list should be compacted
-////////////////////////////////////////////////////////////////////////////////
+bool TRI_ShouldCompactHandleMMFilesFulltextIndex(TRI_fulltext_handles_t* const);
 
-bool TRI_ShouldCompactHandleFulltextIndex(TRI_fulltext_handles_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compact the handle list
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_fulltext_handles_t* TRI_CompactHandleFulltextIndex(
+TRI_fulltext_handles_t* TRI_CompactHandleMMFilesFulltextIndex(
     TRI_fulltext_handles_t* const);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a document and return a handle for it
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_fulltext_handle_t TRI_InsertHandleFulltextIndex(
+TRI_fulltext_handle_t TRI_InsertHandleMMFilesFulltextIndex(
     TRI_fulltext_handles_t* const, const TRI_fulltext_doc_t);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief mark a document as deleted in the handle list
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_DeleteDocumentHandleFulltextIndex(TRI_fulltext_handles_t* const,
+bool TRI_DeleteDocumentHandleMMFilesFulltextIndex(TRI_fulltext_handles_t* const,
                                            const TRI_fulltext_doc_t);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the document id for a handle
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_fulltext_doc_t TRI_GetDocumentFulltextIndex(
+TRI_fulltext_doc_t TRI_GetDocumentMMFilesFulltextIndex(
     const TRI_fulltext_handles_t* const, const TRI_fulltext_handle_t);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief dump all handles
-////////////////////////////////////////////////////////////////////////////////
-
 #if TRI_FULLTEXT_DEBUG
-void TRI_DumpHandleFulltextIndex(TRI_fulltext_handles_t* const);
+void TRI_DumpHandleMMFilesFulltextIndex(TRI_fulltext_handles_t* const);
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the memory usage for the handles
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_MemoryHandleFulltextIndex(const TRI_fulltext_handles_t* const);
+size_t TRI_MemoryHandleMMFilesFulltextIndex(const TRI_fulltext_handles_t* const);
 
 #endif

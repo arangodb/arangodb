@@ -81,11 +81,11 @@ static size_t sortWeight(arangodb::aql::AstNode const* node) {
 // lists: lexicographically and within each slot according to these rules.
 // ...........................................................................
   
-RocksDBIterator::RocksDBIterator(LogicalCollection* collection,
+PersistentIndexIterator::PersistentIndexIterator(LogicalCollection* collection,
                                  arangodb::Transaction* trx, 
                                  ManagedDocumentResult* mmdr,
-                                 arangodb::RocksDBIndex const* index,
-                                 arangodb::PrimaryIndex* primaryIndex,
+                                 arangodb::PersistentIndex const* index,
+                                 arangodb::MMFilesPrimaryIndex* primaryIndex,
                                  rocksdb::OptimisticTransactionDB* db,
                                  bool reverse, 
                                  VPackSlice const& left,
@@ -97,17 +97,17 @@ RocksDBIterator::RocksDBIterator(LogicalCollection* collection,
       _probe(false) {
   
   TRI_idx_iid_t const id = index->id();
-  std::string const prefix = RocksDBIndex::buildPrefix(
+  std::string const prefix = PersistentIndex::buildPrefix(
       trx->vocbase()->id(), _primaryIndex->collection()->cid(), id);
-  TRI_ASSERT(prefix.size() == RocksDBIndex::keyPrefixSize());
+  TRI_ASSERT(prefix.size() == PersistentIndex::keyPrefixSize());
 
   _leftEndpoint.reset(new arangodb::velocypack::Buffer<char>());
-  _leftEndpoint->reserve(RocksDBIndex::keyPrefixSize() + left.byteSize());
+  _leftEndpoint->reserve(PersistentIndex::keyPrefixSize() + left.byteSize());
   _leftEndpoint->append(prefix.c_str(), prefix.size());
   _leftEndpoint->append(left.startAs<char const>(), left.byteSize());
   
   _rightEndpoint.reset(new arangodb::velocypack::Buffer<char>());
-  _rightEndpoint->reserve(RocksDBIndex::keyPrefixSize() + right.byteSize());
+  _rightEndpoint->reserve(PersistentIndex::keyPrefixSize() + right.byteSize());
   _rightEndpoint->append(prefix.c_str(), prefix.size());
   _rightEndpoint->append(right.startAs<char const>(), right.byteSize());
 
@@ -124,7 +124,7 @@ RocksDBIterator::RocksDBIterator(LogicalCollection* collection,
 }
 
 /// @brief Reset the cursor
-void RocksDBIterator::reset() {
+void PersistentIndexIterator::reset() {
   if (_reverse) {
     _probe = true;
     _cursor->Seek(rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
@@ -137,7 +137,7 @@ void RocksDBIterator::reset() {
 }
 
 /// @brief Get the next element in the index
-IndexLookupResult RocksDBIterator::next() {
+IndexLookupResult PersistentIndexIterator::next() {
   auto comparator = RocksDBFeature::instance()->comparator();
     
   while (true) {
@@ -147,10 +147,10 @@ IndexLookupResult RocksDBIterator::next() {
     }
   
     rocksdb::Slice key = _cursor->key();
-    // LOG(TRACE) << "cursor key: " << VPackSlice(key.data() + RocksDBIndex::keyPrefixSize()).toJson();
+    // LOG(TRACE) << "cursor key: " << VPackSlice(key.data() + PersistentIndex::keyPrefixSize()).toJson();
   
     int res = comparator->Compare(key, rocksdb::Slice(_leftEndpoint->data(), _leftEndpoint->size()));
-    // LOG(TRACE) << "comparing: " << VPackSlice(key.data() + RocksDBIndex::keyPrefixSize()).toJson() << " with " << VPackSlice((char const*) _leftEndpoint->data() + RocksDBIndex::keyPrefixSize()).toJson() << " - res: " << res;
+    // LOG(TRACE) << "comparing: " << VPackSlice(key.data() + PersistentIndex::keyPrefixSize()).toJson() << " with " << VPackSlice((char const*) _leftEndpoint->data() + PersistentIndex::keyPrefixSize()).toJson() << " - res: " << res;
 
     if (res < 0) {
       if (_reverse) {
@@ -162,7 +162,7 @@ IndexLookupResult RocksDBIterator::next() {
     } 
   
     res = comparator->Compare(key, rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
-    // LOG(TRACE) << "comparing: " << VPackSlice(key.data() + RocksDBIndex::keyPrefixSize()).toJson() << " with " << VPackSlice((char const*) _rightEndpoint->data() + RocksDBIndex::keyPrefixSize()).toJson() << " - res: " << res;
+    // LOG(TRACE) << "comparing: " << VPackSlice(key.data() + PersistentIndex::keyPrefixSize()).toJson() << " with " << VPackSlice((char const*) _rightEndpoint->data() + PersistentIndex::keyPrefixSize()).toJson() << " - res: " << res;
    
     IndexLookupResult doc;
      
@@ -177,7 +177,7 @@ IndexLookupResult RocksDBIterator::next() {
       // LOG(TRACE) << "looking up document with primary key: " << keySlice[n - 1].toJson();
 
       // use primary index to lookup the document
-      SimpleIndexElement element = _primaryIndex->lookupKey(_trx, keySlice[n - 1]);
+      MMFilesSimpleIndexElement element = _primaryIndex->lookupKey(_trx, keySlice[n - 1]);
       if (element) {
         doc = IndexLookupResult(element.revisionId());
       }
@@ -204,21 +204,21 @@ IndexLookupResult RocksDBIterator::next() {
 }
 
 /// @brief create the index
-RocksDBIndex::RocksDBIndex(TRI_idx_iid_t iid,
+PersistentIndex::PersistentIndex(TRI_idx_iid_t iid,
                            arangodb::LogicalCollection* collection,
                            arangodb::velocypack::Slice const& info)
-    : PathBasedIndex(iid, collection, info, 0, true),
+    : MMFilesPathBasedIndex(iid, collection, info, 0, true),
       _db(RocksDBFeature::instance()->db()) {}
 
 /// @brief destroy the index
-RocksDBIndex::~RocksDBIndex() {}
+PersistentIndex::~PersistentIndex() {}
 
-size_t RocksDBIndex::memory() const {
+size_t PersistentIndex::memory() const {
   return 0; // TODO
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBIndex::toVelocyPack(VPackBuilder& builder,
+void PersistentIndex::toVelocyPack(VPackBuilder& builder,
                                 bool withFigures) const {
   Index::toVelocyPack(builder, withFigures);
   builder.add("unique", VPackValue(_unique));
@@ -226,16 +226,16 @@ void RocksDBIndex::toVelocyPack(VPackBuilder& builder,
 }
 
 /// @brief return a VelocyPack representation of the index figures
-void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
+void PersistentIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("memory", VPackValue(memory()));
 }
 
 /// @brief inserts a document into the index
-int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+int PersistentIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
                          VPackSlice const& doc, bool isRollback) {
   auto comparator = RocksDBFeature::instance()->comparator();
-  std::vector<SkiplistIndexElement*> elements;
+  std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
@@ -389,9 +389,9 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
 }
 
 /// @brief removes a document from the index
-int RocksDBIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+int PersistentIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
                          VPackSlice const& doc, bool isRollback) {
-  std::vector<SkiplistIndexElement*> elements;
+  std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
@@ -455,21 +455,21 @@ int RocksDBIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
   return res;
 }
 
-int RocksDBIndex::unload() {
+int PersistentIndex::unload() {
   // nothing to do
   return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief called when the index is dropped
-int RocksDBIndex::drop() {
+int PersistentIndex::drop() {
   return RocksDBFeature::instance()->dropIndex(_collection->vocbase()->id(),
                                                _collection->cid(), _iid);
 }
 
 /// @brief attempts to locate an entry in the index
 /// Warning: who ever calls this function is responsible for destroying
-/// the RocksDBIterator* results
-RocksDBIterator* RocksDBIndex::lookup(arangodb::Transaction* trx,
+/// the PersistentIndexIterator* results
+PersistentIndexIterator* PersistentIndex::lookup(arangodb::Transaction* trx,
                                       ManagedDocumentResult* mmdr,
                                       VPackSlice const searchValues,
                                       bool reverse) const {
@@ -567,10 +567,10 @@ RocksDBIterator* RocksDBIndex::lookup(arangodb::Transaction* trx,
   // _collection at least as long as trx is running.
   // Same for the iterator
   auto idx = _collection->primaryIndex();
-  return new RocksDBIterator(_collection, trx, mmdr, this, idx, _db, reverse, leftBorder, rightBorder);
+  return new PersistentIndexIterator(_collection, trx, mmdr, this, idx, _db, reverse, leftBorder, rightBorder);
 }
 
-bool RocksDBIndex::accessFitsIndex(
+bool PersistentIndex::accessFitsIndex(
     arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
     arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
@@ -657,7 +657,7 @@ bool RocksDBIndex::accessFitsIndex(
       } else {
         (*it).second.emplace_back(op);
       }
-      TRI_IF_FAILURE("RocksDBIndex::accessFitsIndex") {
+      TRI_IF_FAILURE("PersistentIndex::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
@@ -668,7 +668,7 @@ bool RocksDBIndex::accessFitsIndex(
   return false;
 }
 
-void RocksDBIndex::matchAttributes(
+void PersistentIndex::matchAttributes(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
@@ -710,7 +710,7 @@ void RocksDBIndex::matchAttributes(
   }
 }
 
-bool RocksDBIndex::supportsFilterCondition(
+bool PersistentIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
@@ -810,7 +810,7 @@ bool RocksDBIndex::supportsFilterCondition(
   return false;
 }
 
-bool RocksDBIndex::supportsSortCondition(
+bool PersistentIndex::supportsSortCondition(
     arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     double& estimatedCost, size_t& coveredAttributes) const {
@@ -856,7 +856,7 @@ bool RocksDBIndex::supportsSortCondition(
   return false;
 }
 
-IndexIterator* RocksDBIndex::iteratorForCondition(
+IndexIterator* PersistentIndex::iteratorForCondition(
     arangodb::Transaction* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
@@ -868,7 +868,7 @@ IndexIterator* RocksDBIndex::iteratorForCondition(
     // We only use this index for sort. Empty searchValue
     VPackArrayBuilder guard(&searchValues);
 
-    TRI_IF_FAILURE("RocksDBIndex::noSortIterator") {
+    TRI_IF_FAILURE("PersistentIndex::noSortIterator") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   } else {
@@ -929,14 +929,14 @@ IndexIterator* RocksDBIndex::iteratorForCondition(
       if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
         searchValues.openObject();
         searchValues.add(VPackValue(StaticStrings::IndexEq));
-        TRI_IF_FAILURE("RocksDBIndex::permutationEQ") {
+        TRI_IF_FAILURE("PersistentIndex::permutationEQ") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
       } else if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
         if (isAttributeExpanded(usedFields)) {
           searchValues.openObject();
           searchValues.add(VPackValue(StaticStrings::IndexEq));
-          TRI_IF_FAILURE("RocksDBIndex::permutationArrayIN") {
+          TRI_IF_FAILURE("PersistentIndex::permutationArrayIN") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
         } else {
@@ -1008,7 +1008,7 @@ IndexIterator* RocksDBIndex::iteratorForCondition(
   }
   searchValues.close();
 
-  TRI_IF_FAILURE("RocksDBIndex::noIterator") {
+  TRI_IF_FAILURE("PersistentIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -1048,7 +1048,7 @@ IndexIterator* RocksDBIndex::iteratorForCondition(
 }
 
 /// @brief specializes the condition for use with the index
-arangodb::aql::AstNode* RocksDBIndex::specializeCondition(
+arangodb::aql::AstNode* PersistentIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
@@ -1110,7 +1110,7 @@ arangodb::aql::AstNode* RocksDBIndex::specializeCondition(
   return node;
 }
 
-bool RocksDBIndex::isDuplicateOperator(
+bool PersistentIndex::isDuplicateOperator(
     arangodb::aql::AstNode const* node,
     std::unordered_set<int> const& operatorsFound) const {
   auto type = node->type;

@@ -28,7 +28,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexNode.h"
-#include "Indexes/IndexElement.h"
+#include "Indexes/IndexIterator.h"
 
 namespace arangodb {
 class ManagedDocumentResult;

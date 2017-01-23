@@ -21,41 +21,39 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SKIP_LIST_H
-#define ARANGODB_BASICS_SKIP_LIST_H 1
+#ifndef ARANGOD_MMFILES_SKIP_LIST_H
+#define ARANGOD_MMFILES_SKIP_LIST_H 1
 
 #include "Basics/Common.h"
+#include "Random/RandomGenerator.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "Random/RandomGenerator.h"
 
 // We will probably never see more than 2^48 documents in a skip list
 #define TRI_SKIPLIST_MAX_HEIGHT 48
 
 namespace arangodb {
-namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a skiplist node
 ////////////////////////////////////////////////////////////////////////////////
 
 template <class Key, class Element>
-class SkipList;
+class MMFilesSkiplist;
 
 template <class Key, class Element>
-class SkipListNode {
-  friend class SkipList<Key, Element>;
-  SkipListNode<Key, Element>** _next;
-  SkipListNode<Key, Element>* _prev;
+class MMFilesSkiplistNode {
+  friend class MMFilesSkiplist<Key, Element>;
+  MMFilesSkiplistNode<Key, Element>** _next;
+  MMFilesSkiplistNode<Key, Element>* _prev;
   Element* _doc;
   int _height;
 
  public:
-  SkipListNode<Key, Element>(int height, char* ptr)
-      : _next(reinterpret_cast<SkipListNode<Key, Element>**>(
-            ptr + sizeof(SkipListNode<Key, Element>))),
+  MMFilesSkiplistNode<Key, Element>(int height, char* ptr)
+      : _next(reinterpret_cast<MMFilesSkiplistNode<Key, Element>**>(
+            ptr + sizeof(MMFilesSkiplistNode<Key, Element>))),
         _prev(nullptr),
         _doc(nullptr),
         _height(height) {
@@ -66,7 +64,7 @@ class SkipListNode {
 
   Element* document() const { return _doc; }
 
-  SkipListNode<Key, Element>* nextNode() const {
+  MMFilesSkiplistNode<Key, Element>* nextNode() const {
     if (_height == 0) {
       // _next[0] is uninitialized
       return nullptr;
@@ -76,15 +74,15 @@ class SkipListNode {
 
   // Note that the prevNode of the first data node is the artificial
   // _start node not containing data. This is contrary to the prevNode
-  // method of the SkipList class, which returns nullptr in that case.
-  SkipListNode<Key, Element>* prevNode() const { return _prev; }
+  // method of the MMFilesSkiplist class, which returns nullptr in that case.
+  MMFilesSkiplistNode<Key, Element>* prevNode() const { return _prev; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief two possibilities for comparison, see below
 ////////////////////////////////////////////////////////////////////////////////
 
-enum SkipListCmpType { SKIPLIST_CMP_PREORDER, SKIPLIST_CMP_TOTORDER };
+enum MMFilesSkiplistCmpType { SKIPLIST_CMP_PREORDER, SKIPLIST_CMP_TOTORDER };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a skiplist
@@ -94,8 +92,8 @@ enum SkipListCmpType { SKIPLIST_CMP_PREORDER, SKIPLIST_CMP_TOTORDER };
 ////////////////////////////////////////////////////////////////////////////////
 
 template <class Key, class Element>
-class SkipList {
-  typedef SkipListNode<Key, Element> Node;
+class MMFilesSkiplist {
+  typedef MMFilesSkiplistNode<Key, Element> Node;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -115,7 +113,7 @@ class SkipList {
   /// to the key and the third is a pointer to an element.
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef std::function<int(void*, Element const*, Element const*, SkipListCmpType)>
+  typedef std::function<int(void*, Element const*, Element const*, MMFilesSkiplistCmpType)>
       CmpElmElmFuncType;
   typedef std::function<int(void*, Key const*, Element const*)> CmpKeyElmFuncType;
 
@@ -147,7 +145,7 @@ class SkipList {
   /// otherwise.
   //////////////////////////////////////////////////////////////////////////////
 
-  SkipList(CmpElmElmFuncType cmp_elm_elm, CmpKeyElmFuncType cmp_key_elm,
+  MMFilesSkiplist(CmpElmElmFuncType cmp_elm_elm, CmpKeyElmFuncType cmp_key_elm,
            FreeElementFuncType freefunc, bool unique, bool isArray)
       : _cmp_elm_elm(cmp_elm_elm),
         _cmp_key_elm(cmp_key_elm),
@@ -156,7 +154,7 @@ class SkipList {
         _nrUsed(0),
         _isArray(isArray) {
     // Set the initial memory
-    _memoryUsed = sizeof(SkipList);
+    _memoryUsed = sizeof(MMFilesSkiplist);
 
     _start = allocNode(TRI_SKIPLIST_MAX_HEIGHT);
     // Note that this can throw
@@ -171,7 +169,7 @@ class SkipList {
   /// @brief frees a skiplist and all its documents
   //////////////////////////////////////////////////////////////////////////////
 
-  ~SkipList() {
+  ~MMFilesSkiplist() {
     try {
       truncate(false);
     } catch (...) {
@@ -194,7 +192,7 @@ class SkipList {
     }
     freeNode(_start);
     
-    _memoryUsed = sizeof(SkipList);
+    _memoryUsed = sizeof(MMFilesSkiplist);
     _nrUsed = 0;
 
     if (createStartNode) {
@@ -502,7 +500,7 @@ class SkipList {
 
  private:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief allocate a new SkipListNode of a certain height. If height is 0,
+  /// @brief allocate a new MMFilesSkiplistNode of a certain height. If height is 0,
   /// then a random height is taken.
   //////////////////////////////////////////////////////////////////////////////
 
@@ -568,7 +566,7 @@ class SkipList {
 
   int lookupLess(void* userData,
                  Element const* doc, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                 Node** next, SkipListCmpType cmptype) const {
+                 Node** next, MMFilesSkiplistCmpType cmptype) const {
     int lev;
     int cmp = 0;  // just in case to avoid undefined values
 
@@ -609,7 +607,7 @@ class SkipList {
 
   int lookupLessOrEq(void* userData,
                      Element const* doc, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                     Node** next, SkipListCmpType cmptype) const {
+                     Node** next, MMFilesSkiplistCmpType cmptype) const {
     int lev;
     int cmp = 0;  // just in case to avoid undefined values
 
@@ -720,9 +718,8 @@ class SkipList {
     }
   }
 
-};  // class SkipList
+};  // class MMFilesSkiplist
 
-}  // namespace arangodb::basics
 }  // namespace arangodb
 
 #endif

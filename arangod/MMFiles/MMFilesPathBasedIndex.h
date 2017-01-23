@@ -36,7 +36,7 @@ enum AstNodeType : uint32_t;
 
 class FixedSizeAllocator;
 
-class PathBasedIndex : public Index {
+class MMFilesPathBasedIndex : public Index {
  protected:
   struct PermutationState {
     PermutationState(arangodb::aql::AstNodeType type,
@@ -60,12 +60,12 @@ class PathBasedIndex : public Index {
   };
 
  public:
-  PathBasedIndex() = delete;
+  MMFilesPathBasedIndex() = delete;
 
-  PathBasedIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
+  MMFilesPathBasedIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
                  arangodb::velocypack::Slice const&, size_t baseSize, bool allowPartialIndex);
 
-  ~PathBasedIndex();
+  ~MMFilesPathBasedIndex();
 
  public:
 

@@ -54,7 +54,7 @@ static RocksDBFeature* Instance = nullptr;
 
 RocksDBFeature::RocksDBFeature(
     application_features::ApplicationServer* server)
-    : application_features::ApplicationFeature(server, "RocksDBIndex"),
+    : application_features::ApplicationFeature(server, "PersistentIndex"),
       _db(nullptr), _comparator(nullptr), _path(), _active(true),
       _writeBufferSize(0), _maxWriteBufferNumber(2), 
       _delayedWriteRate(2 * 1024 * 1024), _minWriteBufferNumberToMerge(1),
@@ -222,7 +222,7 @@ void RocksDBFeature::start() {
   
   // TODO: using the prefix extractor will lead to the comparator being
   // called with just the key prefix (which the comparator currently cannot handle)
-  // _options.prefix_extractor.reset(rocksdb::NewFixedPrefixTransform(RocksDBIndex::minimalPrefixSize()));
+  // _options.prefix_extractor.reset(rocksdb::NewFixedPrefixTransform(PersistentIndex::minimalPrefixSize()));
   // _options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(tableOptions));
   
   _options.create_if_missing = true;
@@ -311,7 +311,7 @@ int RocksDBFeature::dropDatabase(TRI_voc_tick_t databaseId) {
     return TRI_ERROR_INTERNAL;
   }
   // LOG(TRACE) << "dropping RocksDB database: " << databaseId;
-  return Instance->dropPrefix(RocksDBIndex::buildPrefix(databaseId));
+  return Instance->dropPrefix(PersistentIndex::buildPrefix(databaseId));
 }
 
 int RocksDBFeature::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
@@ -319,7 +319,7 @@ int RocksDBFeature::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t coll
     return TRI_ERROR_INTERNAL;
   }
   // LOG(TRACE) << "dropping RocksDB database: " << databaseId << ", collection: " << collectionId;
-  return Instance->dropPrefix(RocksDBIndex::buildPrefix(databaseId, collectionId));
+  return Instance->dropPrefix(PersistentIndex::buildPrefix(databaseId, collectionId));
 }
 
 int RocksDBFeature::dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId) {
@@ -327,7 +327,7 @@ int RocksDBFeature::dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectio
     return TRI_ERROR_INTERNAL;
   }
   // LOG(TRACE) << "dropping RocksDB database: " << databaseId << ", collection: " << collectionId << ", index: " << indexId;
-  return Instance->dropPrefix(RocksDBIndex::buildPrefix(databaseId, collectionId, indexId));
+  return Instance->dropPrefix(PersistentIndex::buildPrefix(databaseId, collectionId, indexId));
 }
 
 int RocksDBFeature::dropPrefix(std::string const& prefix) {
@@ -349,7 +349,7 @@ int RocksDBFeature::dropPrefix(std::string const& prefix) {
     l.reserve(prefix.size() + builder.slice().byteSize());
     l.append(prefix);
     // extend the prefix to at least 24 bytes
-    while (l.size() < RocksDBIndex::keyPrefixSize()) {
+    while (l.size() < PersistentIndex::keyPrefixSize()) {
       uint64_t value = 0;
       l.append(reinterpret_cast<char const*>(&value), sizeof(uint64_t));
     }
@@ -364,7 +364,7 @@ int RocksDBFeature::dropPrefix(std::string const& prefix) {
     u.reserve(prefix.size() + builder.slice().byteSize());
     u.append(prefix);
     // extend the prefix to at least 24 bytes
-    while (u.size() < RocksDBIndex::keyPrefixSize()) {
+    while (u.size() < PersistentIndex::keyPrefixSize()) {
       uint64_t value = UINT64_MAX;
       u.append(reinterpret_cast<char const*>(&value), sizeof(uint64_t));
     }
@@ -381,7 +381,7 @@ int RocksDBFeature::dropPrefix(std::string const& prefix) {
       }
     }
     
-    LOG(TRACE) << "dropping RocksDB range: " << VPackSlice(l.c_str() + RocksDBIndex::keyPrefixSize()).toJson() << " - " << VPackSlice(u.c_str() + RocksDBIndex::keyPrefixSize()).toJson();
+    LOG(TRACE) << "dropping RocksDB range: " << VPackSlice(l.c_str() + PersistentIndex::keyPrefixSize()).toJson() << " - " << VPackSlice(u.c_str() + PersistentIndex::keyPrefixSize()).toJson();
 #endif
 
     // delete files in range lower..upper

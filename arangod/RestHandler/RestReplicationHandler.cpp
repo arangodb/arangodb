@@ -1724,8 +1724,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
   // create a dummy primary index
   {
     arangodb::LogicalCollection* collection = nullptr;
-    std::unique_ptr<arangodb::PrimaryIndex> primaryIndex(
-        new arangodb::PrimaryIndex(collection));
+    std::unique_ptr<arangodb::MMFilesPrimaryIndex> primaryIndex(
+        new arangodb::MMFilesPrimaryIndex(collection));
     toMerge.openObject();
     primaryIndex->toVelocyPack(toMerge, false);
     toMerge.close();
@@ -1742,8 +1742,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
   if (collectionType == TRI_COL_TYPE_EDGE) {
     // create a dummy edge index
-    std::unique_ptr<arangodb::EdgeIndex> edgeIndex(
-        new arangodb::EdgeIndex(newIdTick, nullptr));
+    std::unique_ptr<arangodb::MMFilesEdgeIndex> edgeIndex(
+        new arangodb::MMFilesEdgeIndex(newIdTick, nullptr));
     toMerge.openObject();
     edgeIndex->toVelocyPack(toMerge, false);
     toMerge.close();
