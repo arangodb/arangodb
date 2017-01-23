@@ -28,4 +28,4 @@ to do
 - DDL API
 - index API
 - add new serialization RW lock to LogicalCollection. all DML ops must acquire it in read mode, the explicit lock command must acquire it in write mode.
-
+- remove ReadCache
