@@ -58,6 +58,10 @@ struct SortElement {
   SortElement(Variable const* v, bool asc)
     : var(v), ascending(asc) {
   }
+
+  SortElement(Variable const* v, bool asc, std::vector<std::string> const& path)
+    : var(v), ascending(asc), attributePath(path) {
+  }
 };
 
 typedef std::vector<SortElement> SortElementVector;

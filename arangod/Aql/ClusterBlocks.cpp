@@ -455,7 +455,7 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
       // Take attributePath into consideration:
       AqlValue topA = _gatherBlockBuffer.at(a.first).front()->getValue(a.second,
                                                                        reg.reg);
-      AqlValue topB = _gatherBlockBuffer.at(a.first).front()->getValue(b.second,
+      AqlValue topB = _gatherBlockBuffer.at(b.first).front()->getValue(b.second,
                                                                        reg.reg);
       bool mustDestroyA;
       AqlValue aa = topA.get(_trx, reg.attributePath, mustDestroyA, false);

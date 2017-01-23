@@ -2329,12 +2329,33 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, ExecutionPlan* plan,
       TRI_vocbase_t* vocbase = nullptr;
       Collection const* collection = nullptr;
 
+      SortElementVector elements;
+
       if (nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
         vocbase = static_cast<EnumerateCollectionNode*>(node)->vocbase();
         collection = static_cast<EnumerateCollectionNode*>(node)->collection();
       } else if (nodeType == ExecutionNode::INDEX) {
-        vocbase = static_cast<IndexNode*>(node)->vocbase();
-        collection = static_cast<IndexNode*>(node)->collection();
+        auto idxNode = static_cast<IndexNode*>(node);
+        vocbase = idxNode->vocbase();
+        collection = idxNode->collection();
+        auto outVars = idxNode->getVariablesSetHere();
+        TRI_ASSERT(outVars.size() == 1);
+        Variable const* sortVariable = outVars[0];
+        bool isSortReverse = idxNode->reverse();
+        auto allIndexes = idxNode->getIndexes();
+        TRI_ASSERT(!allIndexes.empty());
+
+        // Using Index for sort only works if all indexes are equal.
+        auto first = allIndexes[0].getIndex();
+        for (auto const& path : first->fieldNames()) {
+          elements.emplace_back(sortVariable, !isSortReverse, path);
+        }
+        for (auto const& it : allIndexes) {
+          if (first != it.getIndex()) {
+            elements.clear();
+            break;
+          }
+        }
       } else if (nodeType == ExecutionNode::INSERT ||
                  nodeType == ExecutionNode::UPDATE ||
                  nodeType == ExecutionNode::REPLACE ||
@@ -2380,11 +2401,14 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, ExecutionPlan* plan,
       remoteNode->addDependency(node);
 
       // insert a gather node
-      ExecutionNode* gatherNode =
+      GatherNode* gatherNode =
           new GatherNode(plan, plan->nextId(), vocbase, collection);
       plan->registerNode(gatherNode);
       TRI_ASSERT(remoteNode);
       gatherNode->addDependency(remoteNode);
+      if (!elements.empty()) {
+        gatherNode->setElements(elements);
+      }
 
       // and now link the gather node with the rest of the plan
       if (parents.size() == 1) {
