@@ -44,6 +44,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Cluster/ClusterInfo.h"
+#include "Indexes/Index.h"
 #include "Utils/Transaction.h"
 #include "VocBase/TraverserOptions.h"
 
