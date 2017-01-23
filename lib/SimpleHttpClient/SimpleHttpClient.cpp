@@ -247,6 +247,8 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
   double endTime = TRI_microtime() + _requestTimeout;
   double remainingTime = _requestTimeout;
 
+  bool haveSentRequest = false;
+
   while (_state < FINISHED && remainingTime > 0.0) {
     // Note that this loop can either be left by timeout or because
     // a connect did not work (which sets the _state to DEAD). In all
@@ -285,6 +287,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
           if (_written == _writeBuffer.length()) {
             _state = IN_READ_HEADER;
+            haveSentRequest = true;
           }
         }
 
@@ -400,7 +403,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
   }
 
   // set result type in getResult()
-  SimpleHttpResult* result = getResult();
+  SimpleHttpResult* result = getResult(haveSentRequest);
 
   _result = nullptr;
 
@@ -463,7 +466,8 @@ void SimpleHttpClient::setUserNamePassword(std::string const& prefix,
 /// @brief return the result
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleHttpResult* SimpleHttpClient::getResult() {
+SimpleHttpResult* SimpleHttpClient::getResult(bool haveSentRequest) {
+  _result->setHaveSentRequestFully(haveSentRequest);
   switch (_state) {
     case IN_WRITE:
       _result->setResultType(SimpleHttpResult::WRITE_ERROR);
