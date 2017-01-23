@@ -158,11 +158,11 @@ SkiplistLookupBuilder::SkiplistLookupBuilder(
       value->toVelocyPackValue(*(_upperBuilder.get()));
     }
 
-    TRI_IF_FAILURE("MMFilesSkiplistIndex::permutationEQ") {
+    TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    TRI_IF_FAILURE("MMFilesSkiplistIndex::permutationArrayIN") {
+    TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -234,11 +234,11 @@ SkiplistLookupBuilder::SkiplistLookupBuilder(
       value->toVelocyPackValue(*(_lowerBuilder.get()));
     }
 
-    TRI_IF_FAILURE("MMFilesSkiplistIndex::permutationEQ") {
+    TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    TRI_IF_FAILURE("MMFilesSkiplistIndex::permutationArrayIN") {
+    TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     _lowerBuilder->close();
@@ -298,7 +298,7 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
         for (auto const& it : VPackArrayIterator(tmp->slice())) {
           unique_set.emplace(it);
         }
-        TRI_IF_FAILURE("MMFilesSkiplistIndex::permutationIN") {
+        TRI_IF_FAILURE("SkiplistIndex::permutationIN") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         _inPositions.emplace_back(i, 0, unique_set.size());
@@ -1023,7 +1023,7 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
       } else {
         (*it).second.emplace_back(op);
       }
-      TRI_IF_FAILURE("MMFilesSkiplistIndex::accessFitsIndex") {
+      TRI_IF_FAILURE("SkiplistIndex::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
@@ -1156,7 +1156,7 @@ bool MMFilesSkiplistIndex::accessFitsIndex(
       // mark ith attribute as being covered
       found[i].emplace_back(op);
 
-      TRI_IF_FAILURE("MMFilesSkiplistIndex::accessFitsIndex") {
+      TRI_IF_FAILURE("SkiplistIndex::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
@@ -1265,12 +1265,12 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
       return new EmptyIndexIterator(_collection, trx, mmdr, this);
     }
   } else {
-    TRI_IF_FAILURE("MMFilesSkiplistIndex::noSortIterator") {
+    TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
 
-  TRI_IF_FAILURE("MMFilesSkiplistIndex::noIterator") {
+  TRI_IF_FAILURE("SkiplistIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

@@ -767,7 +767,7 @@ IndexIterator* MMFilesEdgeIndex::createEqIterator(
   keys->openArray();
 
   handleValNode(keys.get(), valNode);
-  TRI_IF_FAILURE("MMFilesEdgeIndex::noIterator") {
+  TRI_IF_FAILURE("EdgeIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
@@ -793,12 +793,12 @@ IndexIterator* MMFilesEdgeIndex::createInIterator(
   size_t const n = valNode->numMembers();
   for (size_t i = 0; i < n; ++i) {
     handleValNode(keys.get(), valNode->getMemberUnchecked(i));
-    TRI_IF_FAILURE("MMFilesEdgeIndex::iteratorValNodes") {
+    TRI_IF_FAILURE("EdgeIndex::iteratorValNodes") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
 
-  TRI_IF_FAILURE("MMFilesEdgeIndex::noIterator") {
+  TRI_IF_FAILURE("EdgeIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
@@ -820,7 +820,7 @@ void MMFilesEdgeIndex::handleValNode(VPackBuilder* keys,
   keys->add(StaticStrings::IndexEq, VPackValuePair(valNode->getStringValue(), valNode->getStringLength(), VPackValueType::String));
   keys->close();
   
-  TRI_IF_FAILURE("MMFilesEdgeIndex::collectKeys") {
+  TRI_IF_FAILURE("EdgeIndex::collectKeys") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 }

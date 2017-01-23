@@ -3422,7 +3422,7 @@ int LogicalCollection::insertDocument(
 int LogicalCollection::insertMMFilesPrimaryIndex(arangodb::Transaction* trx,
                                           TRI_voc_rid_t revisionId,
                                           VPackSlice const& doc) {
-  TRI_IF_FAILURE("InsertMMFilesPrimaryIndex") { return TRI_ERROR_DEBUG; }
+  TRI_IF_FAILURE("InsertPrimaryIndex") { return TRI_ERROR_DEBUG; }
 
   // insert into primary index
   return primaryIndex()->insertKey(trx, revisionId, doc);
@@ -3432,7 +3432,7 @@ int LogicalCollection::insertMMFilesPrimaryIndex(arangodb::Transaction* trx,
 int LogicalCollection::deleteMMFilesPrimaryIndex(arangodb::Transaction* trx,
                                           TRI_voc_rid_t revisionId,
                                           VPackSlice const& doc) {
-  TRI_IF_FAILURE("DeleteMMFilesPrimaryIndex") { return TRI_ERROR_DEBUG; }
+  TRI_IF_FAILURE("DeletePrimaryIndex") { return TRI_ERROR_DEBUG; }
 
   return primaryIndex()->removeKey(trx, revisionId, doc);
 }

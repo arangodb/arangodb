@@ -74,12 +74,12 @@ LookupBuilder::LookupBuilder(
       if (arangodb::basics::AttributeName::isIdentical(
               fields[j], paramPair.second, true)) {
         if (TRI_AttributeNamesHaveExpansion(fields[j])) {
-          TRI_IF_FAILURE("MMFilesHashIndex::permutationArrayIN") {
+          TRI_IF_FAILURE("HashIndex::permutationArrayIN") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
           _mappingFieldCondition.emplace(j, valNode);
         } else {
-          TRI_IF_FAILURE("MMFilesHashIndex::permutationEQ") {
+          TRI_IF_FAILURE("HashIndex::permutationEQ") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
           arangodb::aql::AstNodeType type = comp->type;
@@ -750,7 +750,7 @@ int MMFilesHashIndex::insertUnique(arangodb::Transaction* trx, TRI_voc_rid_t rev
 
   auto work =
       [this, &context](MMFilesHashIndexElement* element, bool) -> int {
-        TRI_IF_FAILURE("InsertMMFilesHashIndex") { return TRI_ERROR_DEBUG; }
+        TRI_IF_FAILURE("InsertHashIndex") { return TRI_ERROR_DEBUG; }
         return _uniqueArray->_hashArray->insert(&context, element);
       };
 
@@ -834,7 +834,7 @@ int MMFilesHashIndex::insertMulti(arangodb::Transaction* trx, TRI_voc_rid_t revi
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
 
   auto work = [this, &context](MMFilesHashIndexElement*& element, bool) {
-    TRI_IF_FAILURE("InsertMMFilesHashIndex") {
+    TRI_IF_FAILURE("InsertHashIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -919,7 +919,7 @@ int MMFilesHashIndex::batchInsertMulti(arangodb::Transaction* trx,
 int MMFilesHashIndex::removeUniqueElement(arangodb::Transaction* trx,
                                    MMFilesHashIndexElement* element,
                                    bool isRollback) {
-  TRI_IF_FAILURE("RemoveMMFilesHashIndex") { return TRI_ERROR_DEBUG; }
+  TRI_IF_FAILURE("RemoveHashIndex") { return TRI_ERROR_DEBUG; }
   ManagedDocumentResult result(trx); 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
   MMFilesHashIndexElement* old = _uniqueArray->_hashArray->remove(&context, element);
@@ -939,7 +939,7 @@ int MMFilesHashIndex::removeUniqueElement(arangodb::Transaction* trx,
 int MMFilesHashIndex::removeMultiElement(arangodb::Transaction* trx,
                                   MMFilesHashIndexElement* element,
                                   bool isRollback) {
-  TRI_IF_FAILURE("RemoveMMFilesHashIndex") { return TRI_ERROR_DEBUG; }
+  TRI_IF_FAILURE("RemoveHashIndex") { return TRI_ERROR_DEBUG; }
   ManagedDocumentResult result(trx); 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
   MMFilesHashIndexElement* old = _multiArray->_hashArray->remove(&context, element);
@@ -973,7 +973,7 @@ IndexIterator* MMFilesHashIndex::iteratorForCondition(
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool) const {
-  TRI_IF_FAILURE("MMFilesHashIndex::noIterator")  {
+  TRI_IF_FAILURE("HashIndex::noIterator")  {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   return new MMFilesHashIndexIterator(_collection, trx, mmdr, this, node, reference);
