@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "StorageEngine/MMFilesCollectorCache.h"
+#include "MMFiles/MMFilesCollectorCache.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 

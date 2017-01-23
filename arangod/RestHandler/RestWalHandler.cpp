@@ -25,7 +25,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "StorageEngine/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;

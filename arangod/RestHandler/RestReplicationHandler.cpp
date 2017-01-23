@@ -40,8 +40,8 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/MMFilesEdgeIndex.h"
-#include "StorageEngine/MMFilesPrimaryIndex.h"
+#include "MMFiles/MMFilesEdgeIndex.h"
+#include "MMFiles/MMFilesPrimaryIndex.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeys.h"
@@ -53,7 +53,7 @@
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
 #include "VocBase/ticks.h"
-#include "StorageEngine/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>

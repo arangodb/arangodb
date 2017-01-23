@@ -29,13 +29,13 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "StorageEngine/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesDatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/RevisionCacheChunk.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "StorageEngine/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

@@ -59,7 +59,7 @@
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 #include "VocBase/transaction.h"
-#include "StorageEngine/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

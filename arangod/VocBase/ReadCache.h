@@ -30,7 +30,7 @@
 #include "VocBase/RevisionCacheChunk.h"
 #include "VocBase/RevisionCacheChunkAllocator.h"
 #include "VocBase/voc-types.h"
-#include "StorageEngine/MMFilesWalLogfile.h"
+#include "MMFiles/MMFilesWalLogfile.h"
 
 namespace arangodb {
 

@@ -27,7 +27,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
-#include "StorageEngine/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "V8/v8-globals.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"

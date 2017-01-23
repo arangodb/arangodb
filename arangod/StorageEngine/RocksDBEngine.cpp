@@ -35,10 +35,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "StorageEngine/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 
-#include "StorageEngine/MMFilesPersistentIndexFeature.h"
-#include "StorageEngine/MMFilesPersistentIndex.h"
+#include "MMFiles/MMFilesPersistentIndexFeature.h"
+#include "MMFiles/MMFilesPersistentIndex.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>

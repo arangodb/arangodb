@@ -31,7 +31,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "Indexes/Index.h"
-#include "StorageEngine/MMFilesPersistentIndex.h"
+#include "MMFiles/MMFilesPersistentIndex.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"

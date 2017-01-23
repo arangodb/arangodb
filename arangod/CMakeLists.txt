@@ -55,11 +55,6 @@ if (MSVC)
   )
 endif ()
   
-set(ROCKSDB_FILES
-  StorageEngine/MMFilesPersistentIndexFeature.cpp
-  StorageEngine/MMFilesPersistentIndex.cpp
-  StorageEngine/MMFilesPersistentIndexKeyComparator.cpp
-)
 
 if (USE_ENTERPRISE)
   set(ENTERPRISE_FILES "")
@@ -71,7 +66,6 @@ endif ()
 
 SET(ARANGOD_SOURCES
   ${ProductVersionFiles}
-  ${ROCKSDB_FILES}
   ${ENTERPRISE_FILES}
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
@@ -213,6 +207,34 @@ SET(ARANGOD_SOURCES
   Indexes/IndexIterator.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
+  MMFiles/MMFilesAllocatorThread.cpp
+  MMFiles/MMFilesCleanupThread.cpp
+  MMFiles/MMFilesCollection.cpp
+  MMFiles/MMFilesCollectorThread.cpp
+  MMFiles/MMFilesCompactorThread.cpp
+  MMFiles/MMFilesDatafile.cpp
+  MMFiles/MMFilesDatafileStatistics.cpp
+  MMFiles/MMFilesDocumentOperation.cpp
+  MMFiles/MMFilesEdgeIndex.cpp
+  MMFiles/MMFilesEngine.cpp
+  MMFiles/MMFilesLogfileManager.cpp
+  MMFiles/MMFilesFulltextIndex.cpp
+  MMFiles/MMFilesGeoIndex.cpp
+  MMFiles/MMFilesHashIndex.cpp
+  MMFiles/MMFilesPathBasedIndex.cpp
+  MMFiles/MMFilesPersistentIndexFeature.cpp
+  MMFiles/MMFilesPersistentIndex.cpp
+  MMFiles/MMFilesPersistentIndexKeyComparator.cpp
+  MMFiles/MMFilesPrimaryIndex.cpp
+  MMFiles/MMFilesRemoverThread.cpp
+  MMFiles/MMFilesRevisionsCache.cpp
+  MMFiles/MMFilesSkiplistIndex.cpp
+  MMFiles/MMFilesSynchronizerThread.cpp
+  MMFiles/MMFilesWalLogfile.cpp
+  MMFiles/MMFilesWalRecoverState.cpp
+  MMFiles/MMFilesWalRecoveryFeature.cpp
+  MMFiles/MMFilesWalSlot.cpp
+  MMFiles/MMFilesWalSlots.cpp
   Replication/ContinuousSyncer.cpp
   Replication/InitialSyncer.cpp
   Replication/Syncer.cpp
@@ -281,31 +303,6 @@ SET(ARANGOD_SOURCES
   Statistics/StatisticsFeature.cpp
   Statistics/statistics.cpp
   StorageEngine/EngineSelectorFeature.cpp
-  StorageEngine/MMFilesAllocatorThread.cpp
-  StorageEngine/MMFilesCleanupThread.cpp
-  StorageEngine/MMFilesCollection.cpp
-  StorageEngine/MMFilesCollectorThread.cpp
-  StorageEngine/MMFilesCompactorThread.cpp
-  StorageEngine/MMFilesDatafile.cpp
-  StorageEngine/MMFilesDatafileStatistics.cpp
-  StorageEngine/MMFilesDocumentOperation.cpp
-  StorageEngine/MMFilesEdgeIndex.cpp
-  StorageEngine/MMFilesEngine.cpp
-  StorageEngine/MMFilesLogfileManager.cpp
-  StorageEngine/MMFilesFulltextIndex.cpp
-  StorageEngine/MMFilesGeoIndex.cpp
-  StorageEngine/MMFilesHashIndex.cpp
-  StorageEngine/MMFilesPathBasedIndex.cpp
-  StorageEngine/MMFilesPrimaryIndex.cpp
-  StorageEngine/MMFilesRemoverThread.cpp
-  StorageEngine/MMFilesRevisionsCache.cpp
-  StorageEngine/MMFilesSkiplistIndex.cpp
-  StorageEngine/MMFilesSynchronizerThread.cpp
-  StorageEngine/MMFilesWalLogfile.cpp
-  StorageEngine/MMFilesWalRecoverState.cpp
-  StorageEngine/MMFilesWalRecoveryFeature.cpp
-  StorageEngine/MMFilesWalSlot.cpp
-  StorageEngine/MMFilesWalSlots.cpp
   StorageEngine/RocksDBEngine.cpp
   Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp

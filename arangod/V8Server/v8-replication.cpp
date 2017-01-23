@@ -34,7 +34,7 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/replication-dump.h"
-#include "StorageEngine/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>

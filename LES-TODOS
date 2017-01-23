@@ -4,20 +4,23 @@ done
 - factor out transactions from LogfileManager
 - concept "collection locks"
     - 3 states: READ / WRITE / EXCLUSIVE for locks
+- move index files into directory
+- rename index classes
+- move engine files into MMFiles directory
 
 in progress
 -----------
-
-- move files into directory: now in progress for indexes
-- rename classes: now in progress for indexes
+- split IndexElement
 
 to do
 -----
+- OperationCursor: delete getMore, rename getMoreMptr to getMoreTokens
+- create AqlValue type for document ids
 - move engine-specific parts of transaction.cpp into engine
+- transaction API
 - check for illegal includes
 - fix includes during API conversion
 - DML API
-- transaction API
 - DDL API
 - index API
 - add new serialization RW lock to LogicalCollection. all DML ops must acquire it in read mode, the explicit lock command must acquire it in write mode.

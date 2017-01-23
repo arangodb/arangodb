@@ -27,15 +27,15 @@
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
-#include "StorageEngine/MMFilesDatafile.h"
-#include "StorageEngine/MMFilesDatafileHelper.h"
-#include "StorageEngine/MMFilesLogfileManager.h"
-#include "StorageEngine/MMFilesWalMarker.h"
+#include "MMFiles/MMFilesDatafile.h"
+#include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesWalMarker.h"
 #include "VocBase/CompactionLocker.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
-#include "StorageEngine/MMFilesWalLogfile.h"
+#include "MMFiles/MMFilesWalLogfile.h"
 
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>

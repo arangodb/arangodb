@@ -38,7 +38,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/MMFilesEngine.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -53,7 +53,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
-#include "StorageEngine/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HexDump.h>

@@ -30,7 +30,7 @@
 #include "Utils/CollectionExport.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "StorageEngine/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>

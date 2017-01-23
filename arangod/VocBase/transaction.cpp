@@ -26,14 +26,14 @@
 #include "Logger/Logger.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-#include "StorageEngine/MMFilesDatafileHelper.h"
-#include "StorageEngine/MMFilesDocumentOperation.h"
-#include "StorageEngine/MMFilesPersistentIndexFeature.h"
+#include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesDocumentOperation.h"
+#include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "Utils/Transaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 #include "VocBase/ticks.h"
-#include "StorageEngine/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 
 
 #include <rocksdb/db.h>

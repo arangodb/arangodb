@@ -22,7 +22,7 @@
 
 #include "EdgeCollectionInfo.h"
 #include "Cluster/ClusterMethods.h"
-#include "StorageEngine/MMFilesEdgeIndex.h"
+#include "MMFiles/MMFilesEdgeIndex.h"
 #include "Utils/OperationCursor.h"
 
 using namespace arangodb::traverser;
