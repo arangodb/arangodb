@@ -57,11 +57,11 @@ struct PRComputation : public VertexComputation<double, float, double> {
     if (globalSuperstep() == 0 && *ptr == 0) {
       *ptr = 1.0f / context()->vertexCount();
     } else if (globalSuperstep() > 0) {
-      double sum = 0;
+      double sum = 0.0;
       for (const double* msg : messages) {
         sum += *msg;
       }
-      *ptr = 0.15f / context()->vertexCount() + 0.85f * sum;
+      *ptr = 0.15 / context()->vertexCount() + 0.85 * sum;
     }
     double diff = fabs(copy - *ptr);
     aggregate(kConvergence, diff);

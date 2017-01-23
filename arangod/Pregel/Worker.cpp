@@ -457,7 +457,7 @@ void Worker<V, E, M>::_finishedProcessing() {
     ThreadPool* pool = PregelFeature::instance()->threadPool();
     double msgsPerSec = _messageStats.sendCount / _messageStats.superstepRuntimeSecs;
     msgsPerSec /= pool->numThreads(); // per thread
-    _messageBatchSize = (uint32_t) fmax(0.06 * msgsPerSec, 250);// 60ms time window,
+    _messageBatchSize = (uint32_t) fmax(0.08 * msgsPerSec, 250);// 80ms time window,
     _messageStats.resetTracking();
     LOG(INFO) << "Batch size: " << _messageBatchSize;
   }

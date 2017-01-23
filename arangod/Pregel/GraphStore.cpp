@@ -400,7 +400,6 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
     TransactionBuilderLeaser b(&writeTrx);
     
     prgl_shard_t shardID = it->shard();
-    
     b->openArray();
     size_t buffer = 1000;
     while (it != _index.end() && buffer > 0) {
