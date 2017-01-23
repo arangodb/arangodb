@@ -139,6 +139,7 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
   auto cursor = _readBuffer.begin() + _processReadVariables._readBufferOffset;
 
   std::memcpy(&header._chunkLength, cursor, sizeof(header._chunkLength));
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunkLength: " << header._chunkLength;
   cursor += sizeof(header._chunkLength);
 
   uint32_t chunkX;
@@ -146,9 +147,12 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
   cursor += sizeof(chunkX);
 
   header._isFirst = chunkX & 0x1;
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "is first: " << header._isFirst;
   header._chunk = chunkX >> 1;
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunk: " << header._chunk;
 
   std::memcpy(&header._messageID, cursor, sizeof(header._messageID));
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "message id: " << header._messageID;
   cursor += sizeof(header._messageID);
 
   // extract total len of message

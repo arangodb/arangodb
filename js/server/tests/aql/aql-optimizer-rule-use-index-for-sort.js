@@ -112,7 +112,7 @@ function optimizerRuleTestSuite() {
       var loopto = 10;
 
       internal.db._drop(colName);
-      skiplist = internal.db._create(colName);
+      skiplist = internal.db._create(colName, {numberOfShards: 1});
       var i, j;
       for (j = 1; j <= loopto; ++j) {
         for (i = 1; i <= loopto; ++i) {
@@ -127,7 +127,7 @@ function optimizerRuleTestSuite() {
       skiplist.ensureIndex({ type: "hash", fields: [ "c" ], unique: false });
 
       internal.db._drop(colNameOther);
-      skiplist2 = internal.db._create(colNameOther);
+      skiplist2 = internal.db._create(colNameOther, {numberOfShards: 1});
       for (j = 1; j <= loopto; ++j) {
         for (i = 1; i <= loopto; ++i) {
           skiplist2.save({ "f" : i, "g": j , "h": j, "i": i, "j": i, "joinme" : "aoeu " + j});

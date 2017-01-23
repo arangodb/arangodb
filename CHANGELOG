@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed wrong sorting order in cluster, if an index was used to sort with many
+shards.
+
 * added --replication-factor, --number-of-shards and --wait-for-sync to arangobench
 
 * turn on UTF-8 string validation for VelocyPack values received via VST connections
