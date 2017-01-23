@@ -4,12 +4,14 @@ done
 - factor out transactions from LogfileManager
 - concept "collection locks"
     - 3 states: READ / WRITE / EXCLUSIVE for locks
+- index implementations => moved & renamed to StorageEngine
 
 in progress
 -----------
 
-- move files into directory: now in progress for indexes
-- rename classes: now in progress for indexes
+- Index API
+  - Rename OperationCursor->getMoreMptr => getMoreTokens, "returns" std::vector<TOKEN>&
+  - Delete OperationCursor->getMore. Replace by getMoreTokens
 
 to do
 -----
