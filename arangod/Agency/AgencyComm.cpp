@@ -1406,12 +1406,17 @@ AgencyCommResult AgencyComm::sendWithFailover(
           for (auto const& i : VPackArrayIterator(slice)) {
             if (i.isArray() && i.length() > 0) {
               for (auto const& j : VPackArrayIterator(i)) {
-                if (j.getUInt() == 0) {
-                  LOG_TOPIC(INFO, Logger::AGENCYCOMM)
-                    << body << " failed: " << slice.toJson();
-                  return result;
-                } else {
-                  success = true;
+                if (j.isUInt()) {
+                  if (j.getUInt() == 0) {
+                    LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+                      << body << " failed: " << slice.toJson();
+                    return result;
+                  } else {
+                    LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+                      << body << " failed with " << slice.toJson();
+                  } else {
+                    success = true;
+                  }
                 }
               }
             }
