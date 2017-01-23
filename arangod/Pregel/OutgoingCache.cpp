@@ -20,10 +20,11 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OutgoingCache.h"
-#include "IncomingCache.h"
-#include "Utils.h"
-#include "WorkerConfig.h"
+#include "Pregel/OutgoingCache.h"
+#include "Pregel/IncomingCache.h"
+#include "Pregel/Utils.h"
+#include "Pregel/WorkerConfig.h"
+//#include "Pregel/AdditionalFormats.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -257,9 +258,12 @@ void CombiningOutCache<M>::flushMessages() {
 }
 
 // template types to create
+//template class arangodb::pregel::OutCache<SenderValue<int64_t>>;
 template class arangodb::pregel::OutCache<int64_t>;
 template class arangodb::pregel::OutCache<float>;
+//template class arangodb::pregel::ArrayOutCache<SenderValue<int64_t>>;
 template class arangodb::pregel::ArrayOutCache<int64_t>;
 template class arangodb::pregel::ArrayOutCache<float>;
+//template class arangodb::pregel::CombiningOutCache<SenderValue<int64_t>>;
 template class arangodb::pregel::CombiningOutCache<int64_t>;
 template class arangodb::pregel::CombiningOutCache<float>;

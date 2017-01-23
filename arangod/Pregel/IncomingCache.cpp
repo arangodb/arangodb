@@ -20,8 +20,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IncomingCache.h"
-#include "Utils.h"
+#include "Pregel/IncomingCache.h"
+#include "Pregel/Utils.h"
+//#include "Pregel/AdditionalFormats.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -252,12 +253,12 @@ void CombiningInCache<M>::forEach(
 }
 
 // template types to create
-template class arangodb::pregel::InCache<int32_t>;
+//template class arangodb::pregel::InCache<SenderValue<int64_t>>;
 template class arangodb::pregel::InCache<int64_t>;
 template class arangodb::pregel::InCache<float>;
-template class arangodb::pregel::ArrayInCache<int32_t>;
+//template class arangodb::pregel::ArrayInCache<SenderValue<int64_t>>;
 template class arangodb::pregel::ArrayInCache<int64_t>;
 template class arangodb::pregel::ArrayInCache<float>;
-template class arangodb::pregel::CombiningInCache<int32_t>;
+//template class arangodb::pregel::CombiningInCache<SenderValue<int64_t>>;
 template class arangodb::pregel::CombiningInCache<int64_t>;
 template class arangodb::pregel::CombiningInCache<float>;

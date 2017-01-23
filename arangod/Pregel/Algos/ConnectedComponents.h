@@ -33,6 +33,7 @@ namespace algos {
 /// vertex id along the edges to all vertices of a connected component. The
 /// number of supersteps necessary is equal to the length of the maximum
 /// diameter of all components + 1
+/// doesn't necessarily leads to a correct result on unidirected graphs
 struct ConnectedComponents : public SimpleAlgorithm<int64_t, int64_t, int64_t> {
  public:
   ConnectedComponents(VPackSlice userParams) : SimpleAlgorithm("ConnectedComponents", userParams) {}
