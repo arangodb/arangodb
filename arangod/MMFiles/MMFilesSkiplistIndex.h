@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_SKIPLIST_INDEX_H
-#define ARANGOD_INDEXES_SKIPLIST_INDEX_H 1
+#ifndef ARANGOD_MMFILES_SKIPLIST_INDEX_H
+#define ARANGOD_MMFILES_SKIPLIST_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"

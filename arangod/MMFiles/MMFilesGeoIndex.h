@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_GEO_INDEX_H
-#define ARANGOD_INDEXES_GEO_INDEX_H 1
+#ifndef ARANGOD_MMFILES_GEO_INDEX_H
+#define ARANGOD_MMFILES_GEO_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "GeoIndex/GeoIndex.h"

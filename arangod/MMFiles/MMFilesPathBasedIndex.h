@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_PATH_BASED_INDEX_H
-#define ARANGOD_INDEXES_PATH_BASED_INDEX_H 1
+#ifndef ARANGOD_MMFILES_PATH_BASED_INDEX_H
+#define ARANGOD_MMFILES_PATH_BASED_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
