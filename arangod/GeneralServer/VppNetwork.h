@@ -52,7 +52,7 @@ inline std::size_t validateAndCount(char const* vpStart,
     do {
       validator.validate(vpStart, std::distance(vpStart, vpEnd),
                          /*isSubPart =*/true);
-      
+
       // get offset to next
       VPackSlice tmp(vpStart);
       vpStart += tmp.byteSize();
@@ -116,6 +116,7 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   auto buffer =
       std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, chunkLength, false);
 
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunkLength: " << chunkLength;
   appendToBuffer(buffer.get(), chunkLength);
   appendToBuffer(buffer.get(), chunk);
   appendToBuffer(buffer.get(), id);
@@ -126,6 +127,9 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
 
   // append data in slices
   for (auto const& slice : slices) {
+    try{
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << slice.toJson() << " , " << slice.byteSize();
+    } catch(...){}
     buffer->appendText(slice.startAs<char>(), slice.byteSize());
   }
 
@@ -318,6 +322,9 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
 
     // fill buffer
     for (auto const& slice : slices) {
+      try{
+        LOG_TOPIC(TRACE, Logger::COMMUNICATION) << slice.toJson() << " , " << slice.byteSize();
+      } catch(...){}
       vppPayload->appendText(slice.startAs<char>(), slice.byteSize());
     }
 
