@@ -40,7 +40,7 @@ struct LineRank : public SimpleAlgorithm<float, float, float> {
  public:
   LineRank(arangodb::velocypack::Slice params);
 
-  GraphFormat<float, float>* inputFormat() override {
+  GraphFormat* inputFormat() const override {
     return new VertexGraphFormat<float, float>(_resultField, -1.0);
   }
   MessageFormat<float>* messageFormat() const override {

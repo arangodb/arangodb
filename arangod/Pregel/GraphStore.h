@@ -39,7 +39,6 @@ class LogicalCollection;
 namespace pregel {
 
 class WorkerConfig;
-template <typename V, typename E>
 struct GraphFormat;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +47,7 @@ struct GraphFormat;
 template <typename V, typename E>
 class GraphStore {
   VocbaseGuard _vocbaseGuard;
-  const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
+  const std::unique_ptr<GraphFormat> _graphFormat;
   Transaction* _readTrx = nullptr;  // temporary transaction
 
   // int _indexFd, _vertexFd, _edgeFd;
@@ -73,7 +72,7 @@ class GraphStore {
   bool _destroyed = false;
 
  public:
-  GraphStore(TRI_vocbase_t* vocbase, GraphFormat<V, E>* graphFormat);
+  GraphStore(TRI_vocbase_t* vocbase, GraphFormat* graphFormat);
   ~GraphStore();
 
   size_t localVertexCount() const { return _localVerticeCount; }

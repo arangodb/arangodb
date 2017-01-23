@@ -43,7 +43,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 template <typename V, typename E>
-GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, GraphFormat<V, E>* graphFormat)
+GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, GraphFormat* graphFormat)
     : _vocbaseGuard(vb), _graphFormat(graphFormat) {}
 
 template <typename V, typename E>
@@ -243,9 +243,10 @@ void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
                                   vertexShard.c_str());
   }
   LogicalCollection* collection = cursor->collection();
+  uint64_t number = collection->numberDocuments();
+  _graphFormat->willLoadVertices(number);
   
   // reserve some space for our data
-  uint64_t number = collection->numberDocuments();
   if (_index.capacity() < _index.size() + number) {
     _index.reserve(_index.size() + number);
   }

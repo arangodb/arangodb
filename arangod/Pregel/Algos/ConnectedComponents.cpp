@@ -25,6 +25,8 @@
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
@@ -52,13 +54,44 @@ VertexComputation<int64_t, int64_t, int64_t>* ConnectedComponents::createComputa
   return new MyComputation();
 }
 
+struct MyGraphFormat : public VertexGraphFormat<int64_t, int64_t> {
+  uint64_t vertexIdRange = 0;
+  
+  MyGraphFormat(std::string const& result)
+  : VertexGraphFormat<int64_t, int64_t>(result, 0) {}
+  
+  void willLoadVertices(uint64_t count) override {
+    // if we aren't running in a cluster it doesn't matter
+    if (arangodb::ServerState::instance()->isRunningInCluster()) {
+      arangodb::ClusterInfo *ci = arangodb::ClusterInfo::instance();
+      if (ci) {
+        vertexIdRange = ci->uniqid(count);
+      }
+    }
+  }
+  
+  size_t copyVertexData(VertexEntry const& vertex,
+                        std::string const& documentId,
+                        arangodb::velocypack::Slice document,
+                        void* targetPtr, size_t maxSize) override {
+    *((int64_t*)targetPtr) = vertexIdRange++;
+    return sizeof(int64_t);
+  }
+};
+
+GraphFormat* ConnectedComponents::inputFormat() const {
+  return new MyGraphFormat(_resultField);
+}
+
 struct MyCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
   MyCompensation() {}
   void compensate(bool inLostPartition) override {
-    if (inLostPartition) {
+    // actually don't do anything, graph format will reinitalize lost vertices
+    
+    /*if (inLostPartition) {
       int64_t* data = mutableVertexData();
       *data = INT64_MAX;
-    }
+    }*/
   }
 };
 

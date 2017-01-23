@@ -35,11 +35,13 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace pregel {
 
-template <typename V, typename E>
 struct GraphFormat {
-  virtual size_t estimatedVertexSize() const { return sizeof(V); };
-  virtual size_t estimatedEdgeSize() const { return sizeof(E); };
-  virtual void willLoadVertices(size_t count) {}
+  virtual size_t estimatedVertexSize() const = 0;
+  virtual size_t estimatedEdgeSize() const = 0;
+  
+  /// will load count number of vertex document, immidiately afterwards
+  /// This must not be called again before not all docs were loaded
+  virtual void willLoadVertices(uint64_t count) {}
 
   virtual size_t copyVertexData(VertexEntry const& vertex,
                                 std::string const& documentId,
@@ -55,7 +57,7 @@ struct GraphFormat {
 };
 
 template <typename V, typename E>
-class NumberGraphFormat : public GraphFormat<V, E> {
+class NumberGraphFormat : public GraphFormat {
   static_assert(std::is_arithmetic<V>::value, "Vertex type must be numeric");
   static_assert(std::is_arithmetic<E>::value, "Edge type must be numeric");
 
@@ -71,6 +73,9 @@ public:
   _resultField(result),
   _vDefault(vertexNull),
   _eDefault(edgeNull) {}
+  
+  size_t estimatedVertexSize() const override { return sizeof(V); };
+  size_t estimatedEdgeSize() const override { return sizeof(E); };
 
   size_t copyVertexData(VertexEntry const& vertex,
                         std::string const& documentId,
@@ -118,7 +123,7 @@ public:
 };
 
 template <typename V, typename E>
-class InitGraphFormat : public GraphFormat<V, E> {
+class InitGraphFormat : public GraphFormat {
   protected:
     const std::string _resultField;
     const V _vDefault;
@@ -126,31 +131,34 @@ class InitGraphFormat : public GraphFormat<V, E> {
     
   public:
   
+  size_t estimatedVertexSize() const override { return sizeof(V); };
+  size_t estimatedEdgeSize() const override { return sizeof(E); };
+  
   InitGraphFormat(std::string const& result, V vertexNull, E edgeNull)
   : _resultField(result), _vDefault(vertexNull), _eDefault(edgeNull) {}
   
-  size_t copyVertexData(VertexEntry const& vertex,
-                        std::string const& documentId,
+  virtual size_t copyVertexData(VertexEntry const& vertex,
+                                std::string const& documentId,
                         arangodb::velocypack::Slice document,
                         void* targetPtr, size_t maxSize) override {
     *((V*)targetPtr) = _vDefault;
     return sizeof(V);
   }
   
-  size_t copyEdgeData(arangodb::velocypack::Slice document, void* targetPtr,
+  virtual size_t copyEdgeData(arangodb::velocypack::Slice document, void* targetPtr,
                       size_t maxSize) override {
     *((E*)targetPtr) = _eDefault;
     return sizeof(E);
   }
   
-  bool buildVertexDocument(arangodb::velocypack::Builder& b,
+  virtual bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            const void* ptr,
                            size_t size) override {
     b.add(_resultField, VPackValue(*((V*)ptr)));
     return true;
   }
   
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const void* ptr,
+  virtual bool buildEdgeDocument(arangodb::velocypack::Builder& b, const void* ptr,
                          size_t size) override {
     b.add(_resultField, VPackValue(*((E*)ptr)));
     return true;
@@ -159,7 +167,7 @@ class InitGraphFormat : public GraphFormat<V, E> {
   
   
 template <typename V, typename E>
-class VertexGraphFormat : public GraphFormat<V, E> {
+class VertexGraphFormat : public GraphFormat {
 protected:
   const std::string _resultField;
   const V _vDefault;
@@ -169,7 +177,8 @@ public:
   VertexGraphFormat(std::string const& result, V vertexNull)
   : _resultField(result), _vDefault(vertexNull) {}
   
-  virtual size_t estimatedEdgeSize() const override { return 0; };
+  size_t estimatedVertexSize() const override { return sizeof(V); };
+  size_t estimatedEdgeSize() const override { return 0; };
   
   size_t copyVertexData(VertexEntry const& vertex,
                         std::string const& documentId,

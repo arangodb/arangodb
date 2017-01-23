@@ -39,7 +39,7 @@ struct SSSPAlgorithm : public SimpleAlgorithm<int64_t, int64_t, int64_t> {
   bool supportsAsyncMode() const override { return true; }
   bool supportsCompensation() const override { return true; }
 
-  GraphFormat<int64_t, int64_t>* inputFormat() override {
+  GraphFormat* inputFormat() const override {
     return new NumberGraphFormat<int64_t, int64_t> (_sourceField, _resultField, INT64_MAX, 1);
   }
   

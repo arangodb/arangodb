@@ -75,12 +75,13 @@ struct ShortestPathComp : public VertexComputation<int64_t, int64_t, int64_t> {
 };
 
 struct arangodb::pregel::algos::SPGraphFormat
-    : public GraphFormat<int64_t, int64_t> {
+    : public InitGraphFormat<int64_t, int64_t> {
   std::string _sourceDocId, _targetDocId;
 
  public:
   SPGraphFormat(std::string const& source, std::string const& target)
-      : _sourceDocId(source), _targetDocId(target) {}
+      : InitGraphFormat<int64_t, int64_t>("length", 0, 1),
+        _sourceDocId(source), _targetDocId(target) {}
 
   size_t copyVertexData(VertexEntry const& vertex,
                         std::string const& documentId,
@@ -89,23 +90,7 @@ struct arangodb::pregel::algos::SPGraphFormat
     *((int64_t*)targetPtr) = documentId == _sourceDocId ? 0 : INT64_MAX;
     return sizeof(int64_t);
   }
-
-  size_t copyEdgeData(arangodb::velocypack::Slice document, void* targetPtr,
-                      size_t maxSize) override {
-    *((int64_t*)targetPtr) = 1;
-    return sizeof(int64_t);
-  }
-
-  bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           const void* targetPtr, size_t size) override {
-    int64_t* val = (int64_t*)targetPtr;
-    if (*val != INT64_MAX) {
-      b.add("length", VPackValue(*val));
-      return true;
-    }
-    return false;
-  }
-
+      
   bool buildEdgeDocument(arangodb::velocypack::Builder& b,
                          const void* targetPtr, size_t size) override {
     return false;
@@ -127,7 +112,7 @@ std::set<std::string> ShortestPathAlgorithm::initialActiveSet() {
   return std::set<std::string>{_format->_sourceDocId};
 }
 
-GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() {
+GraphFormat* ShortestPathAlgorithm::inputFormat() const {
   return _format;
 }
 
