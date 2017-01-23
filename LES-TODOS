@@ -4,17 +4,18 @@ done
 - factor out transactions from LogfileManager
 - concept "collection locks"
     - 3 states: READ / WRITE / EXCLUSIVE for locks
-- move index files into directory
-- rename index classes
+- index implementations => moved & renamed to StorageEngine
 - move engine files into MMFiles directory
 
 in progress
 -----------
 - split IndexElement
+- Index API
+  - Rename OperationCursor->getMoreMptr => getMoreTokens, "returns" std::vector<TOKEN>&
+  - Delete OperationCursor->getMore. Replace by getMoreTokens
 
 to do
 -----
-- OperationCursor: delete getMore, rename getMoreMptr to getMoreTokens
 - create AqlValue type for document ids
 - move engine-specific parts of transaction.cpp into engine
 - transaction API
