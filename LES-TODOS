@@ -25,4 +25,10 @@ to do
 - DDL API
 - index API
 - add new serialization RW lock to LogicalCollection. all DML ops must acquire it in read mode, the explicit lock command must acquire it in write mode.
+- StorageEngineAPI readDocument requires 2 functions:
+  - void readDocument(TOKEN id, VPackBuilder& result)  => Collects the document and inserts it asis into result. Does NOT clear result.
+  - void readDocument(TOKEN id, std::vector<std::string> const& attributePath, VPackBuilder& result) => Collects the document and writes only the value at the given attributePath (e.g. `a.b.c`) into result. Does NOT clear result.
 
+- Indexes always return std::vector<TOKEN>
+- AqlValue needs a (lazy evaluated) type TOKEN that handles collection ID and TOKEN inplace.
+  - slice() => looksup the value in the Database
