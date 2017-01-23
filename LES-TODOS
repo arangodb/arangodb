@@ -1,10 +1,20 @@
-create new branch
-move files into directory
-rename classes
-check for illegal includes
-fix includes during API conversion
-concept "collection locks"
-DML API
-transaction API
-DDL API
-index API
+done
+----
+- create new branch
+
+in progress
+-----------
+
+- move files into directory: done for WAL subdirectory, now in progress for indexes
+- rename classes: done for WAL subdirectory, now in progress for indexes
+
+to do
+-----
+- check for illegal includes
+- fix includes during API conversion
+- concept "collection locks"
+- DML API
+- transaction API
+- DDL API
+- index API
+- factor out transactions from LogfileManager
