@@ -21,13 +21,13 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_GEO_INDEX_H
-#define ARANGOD_INDEXES_GEO_INDEX_H 1
+#ifndef ARANGOD_MMFILES_GEO_INDEX_H
+#define ARANGOD_MMFILES_GEO_INDEX_H 1
 
 #include "Basics/Common.h"
-#include "GeoIndex/GeoIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "MMFiles/geo-index.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -38,19 +38,19 @@
 static_assert(sizeof(GeoCoordinate::data) >= sizeof(TRI_voc_rid_t), "invalid size of GeoCoordinate.data");
 
 namespace arangodb {
-class GeoIndex;
+class MMFilesGeoIndex;
 
-class GeoIndexIterator final : public IndexIterator {
+class MMFilesGeoIndexIterator final : public IndexIterator {
  public:
 
-/// @brief Construct an GeoIndexIterator based on Ast Conditions
-  GeoIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, 
+/// @brief Construct an MMFilesGeoIndexIterator based on Ast Conditions
+  MMFilesGeoIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, 
                    ManagedDocumentResult* mmdr,
-                   GeoIndex const* index,
+                   MMFilesGeoIndex const* index,
                    arangodb::aql::AstNode const*,
                    arangodb::aql::Variable const*);
 
-  ~GeoIndexIterator() {
+  ~MMFilesGeoIndexIterator() {
     replaceCursor(nullptr);
   }
 
@@ -67,7 +67,7 @@ class GeoIndexIterator final : public IndexIterator {
   void createCursor(double lat, double lon);
   void evaluateCondition(); //called in constructor
 
-  GeoIndex const* _index;
+  MMFilesGeoIndex const* _index;
   ::GeoCursor* _cursor;
   ::GeoCoordinate _coor;
   arangodb::aql::AstNode const* _condition;
@@ -79,15 +79,15 @@ class GeoIndexIterator final : public IndexIterator {
   double _radius;
 };
 
-class GeoIndex final : public Index {
-friend class GeoIndexIterator;
+class MMFilesGeoIndex final : public Index {
+friend class MMFilesGeoIndexIterator;
  public:
-  GeoIndex() = delete;
+  MMFilesGeoIndex() = delete;
 
-  GeoIndex(TRI_idx_iid_t, LogicalCollection*,
+  MMFilesGeoIndex(TRI_idx_iid_t, LogicalCollection*,
             arangodb::velocypack::Slice const&);
 
-  ~GeoIndex();
+  ~MMFilesGeoIndex();
 
  public:
   /// @brief geo index variants

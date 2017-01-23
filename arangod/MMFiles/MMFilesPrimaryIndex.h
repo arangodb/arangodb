@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_PRIMARY_INDEX_H
-#define ARANGOD_INDEXES_PRIMARY_INDEX_H 1
+#ifndef ARANGOD_MMFILES_PRIMARY_INDEX_H
+#define ARANGOD_MMFILES_PRIMARY_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "Basics/AssocUnique.h"
@@ -37,20 +37,20 @@
 
 namespace arangodb {
 
-class PrimaryIndex;
+class MMFilesPrimaryIndex;
 class Transaction;
   
-typedef arangodb::basics::AssocUnique<uint8_t, SimpleIndexElement> PrimaryIndexImpl;
+typedef arangodb::basics::AssocUnique<uint8_t, MMFilesSimpleIndexElement> MMFilesPrimaryIndexImpl;
 
-class PrimaryIndexIterator final : public IndexIterator {
+class MMFilesPrimaryIndexIterator final : public IndexIterator {
  public:
-  PrimaryIndexIterator(LogicalCollection* collection,
+  MMFilesPrimaryIndexIterator(LogicalCollection* collection,
                        arangodb::Transaction* trx, 
                        ManagedDocumentResult* mmdr,
-                       PrimaryIndex const* index,
+                       MMFilesPrimaryIndex const* index,
                        std::unique_ptr<VPackBuilder>& keys);
 
-  ~PrimaryIndexIterator();
+  ~MMFilesPrimaryIndexIterator();
     
   char const* typeName() const override { return "primary-index-iterator"; }
 
@@ -59,7 +59,7 @@ class PrimaryIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  PrimaryIndex const* _index;
+  MMFilesPrimaryIndex const* _index;
   std::unique_ptr<VPackBuilder> _keys;
   arangodb::velocypack::ArrayIterator _iterator;
 };
@@ -69,8 +69,8 @@ class AllIndexIterator final : public IndexIterator {
   AllIndexIterator(LogicalCollection* collection,
                    arangodb::Transaction* trx, 
                    ManagedDocumentResult* mmdr,
-                   PrimaryIndex const* index,
-                   PrimaryIndexImpl const* indexImpl,
+                   MMFilesPrimaryIndex const* index,
+                   MMFilesPrimaryIndexImpl const* indexImpl,
                    bool reverse);
 
   ~AllIndexIterator() {}
@@ -84,7 +84,7 @@ class AllIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  PrimaryIndexImpl const* _index;
+  MMFilesPrimaryIndexImpl const* _index;
   arangodb::basics::BucketPosition _position;
   bool const _reverse;
   uint64_t _total;
@@ -94,8 +94,8 @@ class AnyIndexIterator final : public IndexIterator {
  public:
   AnyIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, 
                    ManagedDocumentResult* mmdr,
-                   PrimaryIndex const* index,
-                   PrimaryIndexImpl const* indexImpl);
+                   MMFilesPrimaryIndex const* index,
+                   MMFilesPrimaryIndexImpl const* indexImpl);
 
   ~AnyIndexIterator() {}
   
@@ -106,22 +106,22 @@ class AnyIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  PrimaryIndexImpl const* _index;
+  MMFilesPrimaryIndexImpl const* _index;
   arangodb::basics::BucketPosition _initial;
   arangodb::basics::BucketPosition _position;
   uint64_t _step;
   uint64_t _total;
 };
 
-class PrimaryIndex final : public Index {
-  friend class PrimaryIndexIterator;
+class MMFilesPrimaryIndex final : public Index {
+  friend class MMFilesPrimaryIndexIterator;
 
  public:
-  PrimaryIndex() = delete;
+  MMFilesPrimaryIndex() = delete;
 
-  explicit PrimaryIndex(arangodb::LogicalCollection*);
+  explicit MMFilesPrimaryIndex(arangodb::LogicalCollection*);
 
-  ~PrimaryIndex();
+  ~MMFilesPrimaryIndex();
 
  public:
   IndexType type() const override {
@@ -151,17 +151,17 @@ class PrimaryIndex final : public Index {
 
   int unload() override;
 
-  SimpleIndexElement lookupKey(arangodb::Transaction*, VPackSlice const&) const;
-  SimpleIndexElement lookupKey(arangodb::Transaction*, VPackSlice const&, ManagedDocumentResult&) const;
-  SimpleIndexElement* lookupKeyRef(arangodb::Transaction*, VPackSlice const&) const;
-  SimpleIndexElement* lookupKeyRef(arangodb::Transaction*, VPackSlice const&, ManagedDocumentResult&) const;
+  MMFilesSimpleIndexElement lookupKey(arangodb::Transaction*, VPackSlice const&) const;
+  MMFilesSimpleIndexElement lookupKey(arangodb::Transaction*, VPackSlice const&, ManagedDocumentResult&) const;
+  MMFilesSimpleIndexElement* lookupKeyRef(arangodb::Transaction*, VPackSlice const&) const;
+  MMFilesSimpleIndexElement* lookupKeyRef(arangodb::Transaction*, VPackSlice const&, ManagedDocumentResult&) const;
 
   /// @brief a method to iterate over all elements in the index in
   ///        a sequential order.
   ///        Returns nullptr if all documents have been returned.
   ///        Convention: position === 0 indicates a new start.
   ///        DEPRECATED
-  SimpleIndexElement lookupSequential(arangodb::Transaction*,
+  MMFilesSimpleIndexElement lookupSequential(arangodb::Transaction*,
                                       arangodb::basics::BucketPosition& position,
                                       uint64_t& total);
 
@@ -179,7 +179,7 @@ class PrimaryIndex final : public Index {
   ///        Returns nullptr if all documents have been returned.
   ///        Convention: position === UINT64_MAX indicates a new start.
   ///        DEPRECATED
-  SimpleIndexElement lookupSequentialReverse(
+  MMFilesSimpleIndexElement lookupSequentialReverse(
       arangodb::Transaction*, arangodb::basics::BucketPosition& position);
 
   int insertKey(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);
@@ -190,8 +190,8 @@ class PrimaryIndex final : public Index {
 
   int resize(arangodb::Transaction*, size_t);
 
-  void invokeOnAllElements(std::function<bool(SimpleIndexElement const&)>);
-  void invokeOnAllElementsForRemoval(std::function<bool(SimpleIndexElement&)>);
+  void invokeOnAllElements(std::function<bool(MMFilesSimpleIndexElement const&)>);
+  void invokeOnAllElementsForRemoval(std::function<bool(MMFilesSimpleIndexElement&)>);
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
@@ -233,11 +233,11 @@ class PrimaryIndex final : public Index {
                      arangodb::aql::AstNode const* valNode,
                      bool isId) const; 
 
-  SimpleIndexElement buildKeyElement(TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&) const;
+  MMFilesSimpleIndexElement buildKeyElement(TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&) const;
 
  private:
   /// @brief the actual index
-  PrimaryIndexImpl* _primaryIndex;
+  MMFilesPrimaryIndexImpl* _primaryIndex;
 };
 }
 

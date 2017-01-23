@@ -565,7 +565,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
     bool wasAdjusted = false;
-    SimpleIndexElement element = collection->primaryIndex()->lookupKey(&trx, keySlice);
+    MMFilesSimpleIndexElement element = collection->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (element &&
         element.revisionId() == revisionId) { 
@@ -596,7 +596,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     TRI_voc_rid_t revisionId = 0;
     Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
-    SimpleIndexElement found = collection->primaryIndex()->lookupKey(&trx, keySlice);
+    MMFilesSimpleIndexElement found = collection->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (found && 
         found.revisionId() > revisionId) {

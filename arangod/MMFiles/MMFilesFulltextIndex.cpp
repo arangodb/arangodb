@@ -25,8 +25,8 @@
 #include "Basics/StringRef.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
-#include "FulltextIndex/fulltext-index.h"
 #include "Logger/Logger.h"
+#include "MMFiles/fulltext-index.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Iterator.h>
@@ -60,7 +60,7 @@ static void ExtractWords(std::vector<std::string>& words,
   }
 }
 
-FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
+MMFilesFulltextIndex::MMFilesFulltextIndex(TRI_idx_iid_t iid,
                              arangodb::LogicalCollection* collection,
                              VPackSlice const& info)
     : Index(iid, collection, info),
@@ -102,19 +102,19 @@ FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
 
 
 
-FulltextIndex::~FulltextIndex() {
+MMFilesFulltextIndex::~MMFilesFulltextIndex() {
   if (_fulltextIndex != nullptr) {
     LOG(TRACE) << "destroying fulltext index";
     TRI_FreeFtsIndex(_fulltextIndex);
   }
 }
 
-size_t FulltextIndex::memory() const {
-  return TRI_MemoryFulltextIndex(_fulltextIndex);
+size_t MMFilesFulltextIndex::memory() const {
+  return TRI_MemoryMMFilesFulltextIndex(_fulltextIndex);
 }
 
 /// @brief return a VelocyPack representation of the index
-void FulltextIndex::toVelocyPack(VPackBuilder& builder,
+void MMFilesFulltextIndex::toVelocyPack(VPackBuilder& builder,
                                  bool withFigures) const {
   Index::toVelocyPack(builder, withFigures);
   builder.add("unique", VPackValue(false));
@@ -123,7 +123,7 @@ void FulltextIndex::toVelocyPack(VPackBuilder& builder,
 }
 
 /// @brief Test if this index matches the definition
-bool FulltextIndex::matchesDefinition(VPackSlice const& info) const {
+bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice typeSlice = info.get("type");
@@ -198,7 +198,7 @@ bool FulltextIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-int FulltextIndex::insert(arangodb::Transaction*, TRI_voc_rid_t revisionId,
+int MMFilesFulltextIndex::insert(arangodb::Transaction*, TRI_voc_rid_t revisionId,
                           VPackSlice const& doc, bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
 
@@ -211,7 +211,7 @@ int FulltextIndex::insert(arangodb::Transaction*, TRI_voc_rid_t revisionId,
   }
 
   // TODO: use status codes
-  if (!TRI_InsertWordsFulltextIndex(
+  if (!TRI_InsertWordsMMFilesFulltextIndex(
           _fulltextIndex, fromRevision(revisionId), words)) {
     LOG(ERR) << "adding document to fulltext index failed";
     res = TRI_ERROR_INTERNAL;
@@ -219,25 +219,25 @@ int FulltextIndex::insert(arangodb::Transaction*, TRI_voc_rid_t revisionId,
   return res;
 }
 
-int FulltextIndex::remove(arangodb::Transaction*, TRI_voc_rid_t revisionId,
+int MMFilesFulltextIndex::remove(arangodb::Transaction*, TRI_voc_rid_t revisionId,
                           VPackSlice const& doc, bool isRollback) {
-  TRI_DeleteDocumentFulltextIndex(_fulltextIndex, fromRevision(revisionId));
+  TRI_DeleteDocumentMMFilesFulltextIndex(_fulltextIndex, fromRevision(revisionId));
 
   return TRI_ERROR_NO_ERROR;
 }
 
-int FulltextIndex::unload() {
-  TRI_TruncateFulltextIndex(_fulltextIndex);
+int MMFilesFulltextIndex::unload() {
+  TRI_TruncateMMFilesFulltextIndex(_fulltextIndex);
   return TRI_ERROR_NO_ERROR;
 }
 
-int FulltextIndex::cleanup() {
+int MMFilesFulltextIndex::cleanup() {
   LOG(TRACE) << "fulltext cleanup called";
 
   int res = TRI_ERROR_NO_ERROR;
 
   // check whether we should do a cleanup at all
-  if (!TRI_CompactFulltextIndex(_fulltextIndex)) {
+  if (!TRI_CompactMMFilesFulltextIndex(_fulltextIndex)) {
     res = TRI_ERROR_INTERNAL;
   }
 
@@ -246,7 +246,7 @@ int FulltextIndex::cleanup() {
 
 /// @brief callback function called by the fulltext index to determine the
 /// words to index for a specific document
-std::vector<std::string> FulltextIndex::wordlist(VPackSlice const& doc) {
+std::vector<std::string> MMFilesFulltextIndex::wordlist(VPackSlice const& doc) {
   std::vector<std::string> words;
   try {
     VPackSlice const value = doc.get(_attr);

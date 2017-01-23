@@ -1307,6 +1307,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
   double conTimeout = 1.0;
   
   int tries = 0;
+  int lastStatusCode = 0;
   while (true) {  // will be left by timeout eventually
 
     // Raise waits to a maximum 10 seconds
@@ -1316,7 +1317,9 @@ AgencyCommResult AgencyComm::sendWithFailover(
     if (std::chrono::steady_clock::now() < timeOut) {
       if (tries > 0) {
         std::this_thread::sleep_for(waitUntil-std::chrono::steady_clock::now());
-        if (waitInterval.count() < 5.0) { 
+        if (waitInterval.count() == 0.0) {
+          waitInterval = std::chrono::duration<double>(0.25);
+        } else if (waitInterval.count() < 5.0) { 
           waitInterval *= 1.5;
         }
       }
@@ -1330,7 +1333,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     }
     
     ++tries;
-
+    
     if (connection == nullptr) {
       AgencyCommResult result(400, "No endpoints for agency found.", clientId);
       LOG_TOPIC(ERR, Logger::AGENCYCOMM) << result._message;
@@ -1356,6 +1359,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
       connection = AgencyCommManager::MANAGER->acquire(endpoint);
       continue;
     }
+
+    lastStatusCode = result._statusCode;
     
     // got a result, we are done
     if (result.successful()) {
@@ -1364,7 +1369,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
     }
     
     // break on a watch timeout (drop connection)
-    if (result._statusCode == 0) {
+    if (!clientId.empty() &&
+        (result._statusCode == 0 || result._statusCode == 503)) {
 
       VPackBuilder b;
       {
@@ -1373,7 +1379,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
       }
       
       LOG_TOPIC(INFO, Logger::AGENCYCOMM) <<
-        "Failed agency comm! Inquiring about clientId " << clientId << ": ";
+        "Failed agency comm (" << result._statusCode << ")! " <<
+        "Inquiring about clientId " << clientId << ".";
       
       AgencyCommResult inq = send(
         connection.get(), method, conTimeout, "/_api/agency/inquire",
@@ -1381,34 +1388,34 @@ AgencyCommResult AgencyComm::sendWithFailover(
       
       if (inq.successful()) {
         auto bodyBuilder = VPackParser::fromJson(inq._body);
-        auto const& slice = bodyBuilder->slice();
+        auto const& outer = bodyBuilder->slice();
         bool success = false;
-        if (slice.isArray() && slice.length() > 0) {
-          for (auto const& i : VPackArrayIterator(slice)) {
-            if (i.isArray() && i.length() > 0) {
-              for (auto const& j : VPackArrayIterator(i)) {
-                if (j.isUInt()) {
-                  if (j.getUInt() == 0) {
+        if (outer.isArray() && outer.length() > 0) {
+          for (auto const& inner : VPackArrayIterator(outer)) {
+            if (inner.isArray() && inner.length() > 0) {
+              for (auto const& i : VPackArrayIterator(inner)) {
+                if (i.isUInt()) {
+                  if (i.getUInt() == 0) {
                     LOG_TOPIC(INFO, Logger::AGENCYCOMM)
-                      << body << " failed: " << slice.toJson();
+                      << body << " failed: " << outer.toJson();
                     return result;
                   } else {
                     success = true;
                   }
                 } else {
                   LOG_TOPIC(INFO, Logger::AGENCYCOMM)
-                    << body << " failed with " << slice.toJson();
+                    << body << " failed with " << outer.toJson();
                 }
               }
             }
           }
           if (success) {
             LOG_TOPIC(INFO, Logger::AGENCYCOMM)
-              << body << " succeeded with " << slice.toJson();
+              << body << " succeeded (" << outer.toJson() << ")";
             return inq;
           } else {
             LOG_TOPIC(INFO, Logger::AGENCYCOMM)
-              << body << " failed with " << slice.toJson();
+              << body << " failed (" << outer.toJson() << ")";
             return result;
           }
         } else {
@@ -1417,8 +1424,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
         return inq;
       } else {
         LOG_TOPIC(INFO, Logger::AGENCYCOMM) <<
-          "with error. Keep trying ...";
-        return result;
+          "Inquiry failed (" << inq._statusCode << "). Keep trying ...";
+        continue;
       }
     
       AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
@@ -1434,7 +1441,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
       endpoint = AgencyCommManager::MANAGER->redirect(
         std::move(connection), endpoint, result._location, url);
       connection = AgencyCommManager::MANAGER->acquire(endpoint);
-      waitInterval = std::chrono::duration<double>(.25);
+      waitInterval = std::chrono::duration<double>(0.0);
       continue;
     }
 

@@ -78,7 +78,7 @@ static size_t sortWeight(arangodb::aql::AstNode const* node) {
 /// @brief compares a key with an element, version with proper types
 static int CompareKeyElement(void* userData, 
                              VPackSlice const* left,
-                             SkiplistIndexElement const* right,
+                             MMFilesSkiplistIndexElement const* right,
                              size_t rightPosition) {
   IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
   TRI_ASSERT(nullptr != left);
@@ -89,9 +89,9 @@ static int CompareKeyElement(void* userData,
 
 /// @brief compares elements, version with proper types
 static int CompareElementElement(void* userData, 
-                                 SkiplistIndexElement const* left,
+                                 MMFilesSkiplistIndexElement const* left,
                                  size_t leftPosition,
-                                 SkiplistIndexElement const* right,
+                                 MMFilesSkiplistIndexElement const* right,
                                  size_t rightPosition) {
   IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
   TRI_ASSERT(nullptr != left);
@@ -499,9 +499,9 @@ void SkiplistInLookupBuilder::buildSearchValues() {
   }
 }
   
-SkiplistIterator::SkiplistIterator(LogicalCollection* collection, arangodb::Transaction* trx,
+MMFilesSkiplistIterator::MMFilesSkiplistIterator(LogicalCollection* collection, arangodb::Transaction* trx,
                                    ManagedDocumentResult* mmdr,
-                                   arangodb::SkiplistIndex const* index,
+                                   arangodb::MMFilesSkiplistIndex const* index,
                                    bool reverse, Node* left, Node* right)
     : IndexIterator(collection, trx, mmdr, index),
       _reverse(reverse),
@@ -511,7 +511,7 @@ SkiplistIterator::SkiplistIterator(LogicalCollection* collection, arangodb::Tran
 }
 
 /// @brief Reset the cursor
-void SkiplistIterator::reset() {
+void MMFilesSkiplistIterator::reset() {
   if (_reverse) {
     _cursor = _rightEndPoint;
   } else {
@@ -520,7 +520,7 @@ void SkiplistIterator::reset() {
 }
 
 /// @brief Get the next element in the skiplist
-IndexLookupResult SkiplistIterator::next() {
+IndexLookupResult MMFilesSkiplistIterator::next() {
   if (_cursor == nullptr) {
     // We are exhausted already, sorry
     return IndexLookupResult();
@@ -544,12 +544,12 @@ IndexLookupResult SkiplistIterator::next() {
   return IndexLookupResult(tmp->document()->revisionId());
 }
   
-SkiplistIterator2::SkiplistIterator2(LogicalCollection* collection, arangodb::Transaction* trx,
+MMFilesSkiplistIterator2::MMFilesSkiplistIterator2(LogicalCollection* collection, arangodb::Transaction* trx,
     ManagedDocumentResult* mmdr,
-    arangodb::SkiplistIndex const* index,
+    arangodb::MMFilesSkiplistIndex const* index,
     TRI_Skiplist const* skiplist, size_t numPaths,
-    std::function<int(void*, SkiplistIndexElement const*, SkiplistIndexElement const*,
-                      arangodb::basics::SkipListCmpType)> const& CmpElmElm,
+    std::function<int(void*, MMFilesSkiplistIndexElement const*, MMFilesSkiplistIndexElement const*,
+                      MMFilesSkiplistCmpType)> const& CmpElmElm,
     bool reverse, BaseSkiplistLookupBuilder* builder)
     : IndexIterator(collection, trx, mmdr, index),
       _skiplistIndex(skiplist),
@@ -567,7 +567,7 @@ SkiplistIterator2::SkiplistIterator2(LogicalCollection* collection, arangodb::Tr
 
 /// @brief Checks if the interval is valid. It is declared invalid if
 ///        one border is nullptr or the right is lower than left.
-bool SkiplistIterator2::intervalValid(void* userData, Node* left, Node* right) const {
+bool MMFilesSkiplistIterator2::intervalValid(void* userData, Node* left, Node* right) const {
   if (left == nullptr) {
     return false;
   }
@@ -579,14 +579,14 @@ bool SkiplistIterator2::intervalValid(void* userData, Node* left, Node* right) c
     return true;
   }
   if (_CmpElmElm(userData, left->document(), right->document(),
-                 arangodb::basics::SKIPLIST_CMP_TOTORDER) > 0) {
+                 arangodb::SKIPLIST_CMP_TOTORDER) > 0) {
     return false;
   }
   return true;
 }
 
 /// @brief Reset the cursor
-void SkiplistIterator2::reset() {
+void MMFilesSkiplistIterator2::reset() {
   // If _intervals is empty at this point
   // the cursor does not contain any
   // document at all. Reset is pointless
@@ -602,7 +602,7 @@ void SkiplistIterator2::reset() {
 }
 
 /// @brief Get the next element in the skiplist
-IndexLookupResult SkiplistIterator2::next() {
+IndexLookupResult MMFilesSkiplistIterator2::next() {
   if (_cursor == nullptr) {
     // We are exhausted already, sorry
     return IndexLookupResult();
@@ -628,7 +628,7 @@ IndexLookupResult SkiplistIterator2::next() {
   return IndexLookupResult(tmp->document()->revisionId());
 }
 
-void SkiplistIterator2::forwardCursor() {
+void MMFilesSkiplistIterator2::forwardCursor() {
   _currentInterval++;
   if (_currentInterval < _intervals.size()) {
     auto const& interval = _intervals[_currentInterval];
@@ -645,7 +645,7 @@ void SkiplistIterator2::forwardCursor() {
   }
 }
 
-void SkiplistIterator2::initNextInterval() {
+void MMFilesSkiplistIterator2::initNextInterval() {
   // We will always point the cursor to the resulting interval if any.
   // We do not take responsibility for the Nodes!
   Node* rightBorder = nullptr;
@@ -713,27 +713,27 @@ void SkiplistIterator2::initNextInterval() {
 }
 
 /// @brief create the skiplist index
-SkiplistIndex::SkiplistIndex(TRI_idx_iid_t iid,
+MMFilesSkiplistIndex::MMFilesSkiplistIndex(TRI_idx_iid_t iid,
                              arangodb::LogicalCollection* collection,
                              VPackSlice const& info)
-    : PathBasedIndex(iid, collection, info, sizeof(TRI_voc_rid_t), true),
+    : MMFilesPathBasedIndex(iid, collection, info, sizeof(TRI_voc_rid_t), true),
       CmpElmElm(this),
       CmpKeyElm(this),
       _skiplistIndex(nullptr) {
   _skiplistIndex =
-      new TRI_Skiplist(CmpElmElm, CmpKeyElm, [this](SkiplistIndexElement* element) { _allocator->deallocate(element); }, _unique, _useExpansion);
+      new TRI_Skiplist(CmpElmElm, CmpKeyElm, [this](MMFilesSkiplistIndexElement* element) { _allocator->deallocate(element); }, _unique, _useExpansion);
 }
 
 /// @brief destroy the skiplist index
-SkiplistIndex::~SkiplistIndex() { delete _skiplistIndex; }
+MMFilesSkiplistIndex::~MMFilesSkiplistIndex() { delete _skiplistIndex; }
 
-size_t SkiplistIndex::memory() const {
+size_t MMFilesSkiplistIndex::memory() const {
   return _skiplistIndex->memoryUsage() +
-         static_cast<size_t>(_skiplistIndex->getNrUsed()) * SkiplistIndexElement::baseMemoryUsage(_paths.size());
+         static_cast<size_t>(_skiplistIndex->getNrUsed()) * MMFilesSkiplistIndexElement::baseMemoryUsage(_paths.size());
 }
 
 /// @brief return a VelocyPack representation of the index
-void SkiplistIndex::toVelocyPack(VPackBuilder& builder,
+void MMFilesSkiplistIndex::toVelocyPack(VPackBuilder& builder,
                                  bool withFigures) const {
   Index::toVelocyPack(builder, withFigures);
   builder.add("unique", VPackValue(_unique));
@@ -741,20 +741,20 @@ void SkiplistIndex::toVelocyPack(VPackBuilder& builder,
 }
 
 /// @brief return a VelocyPack representation of the index figures
-void SkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
+void MMFilesSkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("memory", VPackValue(memory()));
   _skiplistIndex->appendToVelocyPack(builder);
 }
 
 /// @brief inserts a document into a skiplist index
-int SkiplistIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId, 
+int MMFilesSkiplistIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId, 
                           VPackSlice const& doc, bool isRollback) {
-  std::vector<SkiplistIndexElement*> elements;
+  std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
-    res = fillElement<SkiplistIndexElement>(elements, revisionId, doc);
+    res = fillElement<MMFilesSkiplistIndexElement>(elements, revisionId, doc);
   } catch (...) {
     res = TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -799,13 +799,13 @@ int SkiplistIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
 }
 
 /// @brief removes a document from a skiplist index
-int SkiplistIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+int MMFilesSkiplistIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
                           VPackSlice const& doc, bool isRollback) {
-  std::vector<SkiplistIndexElement*> elements;
+  std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
-    res = fillElement<SkiplistIndexElement>(elements, revisionId, doc);
+    res = fillElement<MMFilesSkiplistIndexElement>(elements, revisionId, doc);
   } catch (...) {
     res = TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -840,14 +840,14 @@ int SkiplistIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
   return res;
 }
 
-int SkiplistIndex::unload() {
+int MMFilesSkiplistIndex::unload() {
   _skiplistIndex->truncate(true);
   return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief Checks if the interval is valid. It is declared invalid if
 ///        one border is nullptr or the right is lower than left.
-bool SkiplistIndex::intervalValid(void* userData, Node* left, Node* right) const {
+bool MMFilesSkiplistIndex::intervalValid(void* userData, Node* left, Node* right) const {
   if (left == nullptr) {
     return false;
   }
@@ -859,15 +859,15 @@ bool SkiplistIndex::intervalValid(void* userData, Node* left, Node* right) const
     return true;
   }
   if (CmpElmElm(userData, left->document(), right->document(),
-                arangodb::basics::SKIPLIST_CMP_TOTORDER) > 0) {
+                arangodb::SKIPLIST_CMP_TOTORDER) > 0) {
     return false;
   }
   return true;
 }
 
 /// @brief compares a key with an element in a skip list, generic callback
-int SkiplistIndex::KeyElementComparator::operator()(void* userData,
-    VPackSlice const* leftKey, SkiplistIndexElement const* rightElement) const {
+int MMFilesSkiplistIndex::KeyElementComparator::operator()(void* userData,
+    VPackSlice const* leftKey, MMFilesSkiplistIndexElement const* rightElement) const {
   TRI_ASSERT(nullptr != leftKey);
   TRI_ASSERT(nullptr != rightElement);
 
@@ -888,11 +888,11 @@ int SkiplistIndex::KeyElementComparator::operator()(void* userData,
 }
 
 /// @brief compares two elements in a skip list, this is the generic callback
-int SkiplistIndex::ElementElementComparator::operator()(
+int MMFilesSkiplistIndex::ElementElementComparator::operator()(
     void* userData,
-    SkiplistIndexElement const* leftElement,
-    SkiplistIndexElement const* rightElement,
-    arangodb::basics::SkipListCmpType cmptype) const {
+    MMFilesSkiplistIndexElement const* leftElement,
+    MMFilesSkiplistIndexElement const* rightElement,
+    MMFilesSkiplistCmpType cmptype) const {
   TRI_ASSERT(nullptr != leftElement);
   TRI_ASSERT(nullptr != rightElement);
 
@@ -922,7 +922,7 @@ int SkiplistIndex::ElementElementComparator::operator()(
   // otherwise.
   // ...........................................................................
 
-  if (arangodb::basics::SKIPLIST_CMP_PREORDER == cmptype) {
+  if (arangodb::SKIPLIST_CMP_PREORDER == cmptype) {
     return 0;
   }
     
@@ -936,7 +936,7 @@ int SkiplistIndex::ElementElementComparator::operator()(
   return 0;
 }
 
-bool SkiplistIndex::accessFitsIndex(
+bool MMFilesSkiplistIndex::accessFitsIndex(
     arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
     arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
@@ -1034,7 +1034,7 @@ bool SkiplistIndex::accessFitsIndex(
   return false;
 }
 
-void SkiplistIndex::matchAttributes(
+void MMFilesSkiplistIndex::matchAttributes(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
@@ -1076,7 +1076,7 @@ void SkiplistIndex::matchAttributes(
   }
 }
 
-bool SkiplistIndex::accessFitsIndex(
+bool MMFilesSkiplistIndex::accessFitsIndex(
     arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
     arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
     std::vector<std::vector<arangodb::aql::AstNode const*>>& found,
@@ -1167,7 +1167,7 @@ bool SkiplistIndex::accessFitsIndex(
   return false;
 }
 
-bool SkiplistIndex::findMatchingConditions(
+bool MMFilesSkiplistIndex::findMatchingConditions(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     std::vector<std::vector<arangodb::aql::AstNode const*>>& mapping,
@@ -1250,7 +1250,7 @@ bool SkiplistIndex::findMatchingConditions(
   return true;
 }
 
-IndexIterator* SkiplistIndex::iteratorForCondition(
+IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
     arangodb::Transaction* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
@@ -1277,16 +1277,16 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
   if (usesIn) {
     auto builder = std::make_unique<SkiplistInLookupBuilder>(
         trx, mapping, reference, reverse);
-    return new SkiplistIterator2(_collection, trx, mmdr, this, _skiplistIndex, numPaths(), CmpElmElm, reverse,
+    return new MMFilesSkiplistIterator2(_collection, trx, mmdr, this, _skiplistIndex, numPaths(), CmpElmElm, reverse,
                                  builder.release());
   }
   auto builder =
       std::make_unique<SkiplistLookupBuilder>(trx, mapping, reference, reverse);
-  return new SkiplistIterator2(_collection, trx, mmdr, this, _skiplistIndex, numPaths(), CmpElmElm, reverse,
+  return new MMFilesSkiplistIterator2(_collection, trx, mmdr, this, _skiplistIndex, numPaths(), CmpElmElm, reverse,
                                builder.release());
 }
 
-bool SkiplistIndex::supportsFilterCondition(
+bool MMFilesSkiplistIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
@@ -1386,7 +1386,7 @@ bool SkiplistIndex::supportsFilterCondition(
   return false;
 }
 
-bool SkiplistIndex::supportsSortCondition(
+bool MMFilesSkiplistIndex::supportsSortCondition(
     arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     double& estimatedCost, size_t& coveredAttributes) const {
@@ -1421,7 +1421,7 @@ bool SkiplistIndex::supportsSortCondition(
 }
 
 /// @brief specializes the condition for use with the index
-arangodb::aql::AstNode* SkiplistIndex::specializeCondition(
+arangodb::aql::AstNode* MMFilesSkiplistIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
@@ -1483,7 +1483,7 @@ arangodb::aql::AstNode* SkiplistIndex::specializeCondition(
   return node;
 }
 
-bool SkiplistIndex::isDuplicateOperator(
+bool MMFilesSkiplistIndex::isDuplicateOperator(
     arangodb::aql::AstNode const* node,
     std::unordered_set<int> const& operatorsFound) const {
   auto type = node->type;

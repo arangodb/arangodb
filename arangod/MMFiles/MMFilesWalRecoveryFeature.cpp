@@ -41,7 +41,7 @@ MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(ApplicationServer* server)
   requiresElevatedPrivileges(false);
   startsAfter("Database"); 
   startsAfter("MMFilesLogfileManager");
-  startsAfter("RocksDBIndex");
+  startsAfter("PersistentIndex");
 }
 
 /// @brief run the recovery procedure

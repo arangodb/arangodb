@@ -39,7 +39,7 @@ struct TRI_df_marker_t;
 
 namespace arangodb {
 class LogicalCollection;
-class PrimaryIndex;
+class MMFilesPrimaryIndex;
 
 class MMFilesCollection final : public PhysicalCollection {
  friend class MMFilesCompactorThread;
@@ -49,7 +49,7 @@ class MMFilesCollection final : public PhysicalCollection {
   /// @brief state during opening of a collection
   struct OpenIteratorState {
     LogicalCollection* _collection;
-    arangodb::PrimaryIndex* _primaryIndex;
+    arangodb::MMFilesPrimaryIndex* _primaryIndex;
     TRI_voc_tid_t _tid;
     TRI_voc_fid_t _fid;
     std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer*> _stats;

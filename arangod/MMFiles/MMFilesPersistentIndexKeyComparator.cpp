@@ -37,7 +37,7 @@ int RocksDBKeyComparator::Compare(rocksdb::Slice const& lhs, rocksdb::Slice cons
   TRI_ASSERT(rhs.size() > 8);
 
   // compare by index id first
-  int res = memcmp(lhs.data(), rhs.data(), RocksDBIndex::keyPrefixSize());
+  int res = memcmp(lhs.data(), rhs.data(), PersistentIndex::keyPrefixSize());
 
   if (res != 0) {
     return res;

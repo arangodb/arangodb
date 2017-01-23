@@ -113,7 +113,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     _vpack.reserve(limit);
 
     ManagedDocumentResult mmdr(&trx);
-    trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr](SimpleIndexElement const& element) {
+    trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr](MMFilesSimpleIndexElement const& element) {
       if (limit == 0) {
         return false;
       }

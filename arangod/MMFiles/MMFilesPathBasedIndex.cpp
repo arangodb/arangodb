@@ -26,6 +26,7 @@
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesIndexElement.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -36,7 +37,7 @@ using namespace arangodb;
 static std::vector<arangodb::basics::AttributeName> const KeyAttribute
      {arangodb::basics::AttributeName("_key", false)};
 
-arangodb::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
+arangodb::aql::AstNode const* MMFilesPathBasedIndex::PermutationState::getValue()
     const {
   if (type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     TRI_ASSERT(current == 0);
@@ -52,7 +53,7 @@ arangodb::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
 }
 
 /// @brief create the index
-PathBasedIndex::PathBasedIndex(TRI_idx_iid_t iid,
+MMFilesPathBasedIndex::MMFilesPathBasedIndex(TRI_idx_iid_t iid,
                                arangodb::LogicalCollection* collection,
                                VPackSlice const& info, size_t baseSize, bool allowPartialIndex)
     : Index(iid, collection, info),
@@ -71,18 +72,18 @@ PathBasedIndex::PathBasedIndex(TRI_idx_iid_t iid,
     }
   }
   
-  _allocator.reset(new FixedSizeAllocator(baseSize + sizeof(IndexElementValue) * numPaths()));
+  _allocator.reset(new FixedSizeAllocator(baseSize + sizeof(MMFilesIndexElementValue) * numPaths()));
 }
 
 /// @brief destroy the index
-PathBasedIndex::~PathBasedIndex() {
+MMFilesPathBasedIndex::~MMFilesPathBasedIndex() {
   _allocator->deallocateAll();
 }
 
 /// @brief whether or not the index is implicitly unique
 /// this can be the case if the index is not declared as unique, but contains a 
 /// unique attribute such as _key
-bool PathBasedIndex::implicitlyUnique() const {
+bool MMFilesPathBasedIndex::implicitlyUnique() const {
   if (_unique) {
     // a unique index is always unique
     return true;
@@ -107,7 +108,7 @@ bool PathBasedIndex::implicitlyUnique() const {
 
 /// @brief helper function to insert a document into any index type
 template<typename T>
-int PathBasedIndex::fillElement(std::vector<T*>& elements,
+int MMFilesPathBasedIndex::fillElement(std::vector<T*>& elements,
                                 TRI_voc_rid_t revisionId,
                                 VPackSlice const& doc) {
   if (doc.isNone()) {
@@ -193,7 +194,7 @@ int PathBasedIndex::fillElement(std::vector<T*>& elements,
 }
 
 /// @brief helper function to create the sole index value insert
-std::vector<std::pair<VPackSlice, uint32_t>> PathBasedIndex::buildIndexValue(
+std::vector<std::pair<VPackSlice, uint32_t>> MMFilesPathBasedIndex::buildIndexValue(
     VPackSlice const documentSlice) {
   size_t const n = _paths.size();
 
@@ -220,7 +221,7 @@ std::vector<std::pair<VPackSlice, uint32_t>> PathBasedIndex::buildIndexValue(
 }
 
 /// @brief helper function to create a set of index combinations to insert
-void PathBasedIndex::buildIndexValues(
+void MMFilesPathBasedIndex::buildIndexValues(
     VPackSlice const document, size_t level,
     std::vector<std::vector<std::pair<VPackSlice, uint32_t>>>& toInsert,
     std::vector<std::pair<VPackSlice, uint32_t>>& sliceStack) {
@@ -336,7 +337,7 @@ void PathBasedIndex::buildIndexValues(
 }
 
 /// @brief helper function to transform AttributeNames into strings.
-void PathBasedIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
+void MMFilesPathBasedIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
                                std::vector<int>& expanding) {
   paths.clear();
   expanding.clear();
@@ -358,7 +359,7 @@ void PathBasedIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
 
 // template instanciations for fillElement
 template
-int PathBasedIndex::fillElement(std::vector<HashIndexElement*>& elements, TRI_voc_rid_t revisionId, VPackSlice const& doc);
+int MMFilesPathBasedIndex::fillElement(std::vector<MMFilesHashIndexElement*>& elements, TRI_voc_rid_t revisionId, VPackSlice const& doc);
 
 template
-int PathBasedIndex::fillElement(std::vector<SkiplistIndexElement*>& elements, TRI_voc_rid_t revisionId, VPackSlice const& doc);
+int MMFilesPathBasedIndex::fillElement(std::vector<MMFilesSkiplistIndexElement*>& elements, TRI_voc_rid_t revisionId, VPackSlice const& doc);

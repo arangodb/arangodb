@@ -25,7 +25,6 @@
 #define ARANGOD_INDEXES_INDEX_LOOKUP_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "Indexes/IndexElement.h"
 #include "Logger/Logger.h"
 #include "Utils/Transaction.h"
 #include "VocBase/LogicalCollection.h"

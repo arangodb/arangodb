@@ -6,13 +6,16 @@ done
     - 3 states: READ / WRITE / EXCLUSIVE for locks
 - index implementations => moved & renamed to StorageEngine
 - move engine files into MMFiles directory
+- split IndexElement
+- rename *IndexElement to MMFiles*
+- move fulltext & geoindex & skiplist helper code into MMFiles
+- rename "RocksDBIndex" to "PersistentIndex"
+- Delete OperationCursor->getMore. Replace by getMoreTokens
 
 in progress
 -----------
-- split IndexElement
 - Index API
   - Rename OperationCursor->getMoreMptr => getMoreTokens, "returns" std::vector<TOKEN>&
-  - Delete OperationCursor->getMore. Replace by getMoreTokens
 
 to do
 -----
@@ -32,3 +35,5 @@ to do
 - Indexes always return std::vector<TOKEN>
 - AqlValue needs a (lazy evaluated) type TOKEN that handles collection ID and TOKEN inplace.
   - slice() => looksup the value in the Database
+
+- remove ReadCache

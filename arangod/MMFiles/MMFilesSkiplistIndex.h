@@ -21,14 +21,15 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_SKIPLIST_INDEX_H
-#define ARANGOD_INDEXES_SKIPLIST_INDEX_H 1
+#ifndef ARANGOD_MMFILES_SKIPLIST_INDEX_H
+#define ARANGOD_MMFILES_SKIPLIST_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
-#include "Basics/SkipList.h"
 #include "Indexes/IndexIterator.h"
+#include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPathBasedIndex.h"
+#include "MMFiles/MMFilesSkiplist.h"
 #include "Utils/Transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -41,7 +42,7 @@ class SortCondition;
 struct Variable;
 }
 
-class SkiplistIndex;
+class MMFilesSkiplistIndex;
 class Transaction;
 
 
@@ -161,18 +162,17 @@ class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
 /// @brief Iterator structure for skip list. We require a start and stop node
 ///
 /// Intervals are open in the sense that both end points are not members
-/// of the interval. This means that one has to use SkipList::nextNode
+/// of the interval. This means that one has to use MMFilesSkiplist::nextNode
 /// on the start node to get the first element and that the stop node
 /// can be NULL. Note that it is ensured that all intervals in an iterator
 /// are non-empty.
-class SkiplistIterator final : public IndexIterator {
+class MMFilesSkiplistIterator final : public IndexIterator {
  private:
-  friend class SkiplistIndex;
+  friend class MMFilesSkiplistIndex;
 
  private:
   // Shorthand for the skiplist node
-  typedef arangodb::basics::SkipListNode<VPackSlice,
-                                         SkiplistIndexElement> Node;
+  typedef MMFilesSkiplistNode<VPackSlice, MMFilesSkiplistIndexElement> Node;
 
  private:
   bool _reverse;
@@ -182,9 +182,9 @@ class SkiplistIterator final : public IndexIterator {
   Node* _rightEndPoint;  // Interval right border, first excluded element
 
  public:
-  SkiplistIterator(LogicalCollection* collection, arangodb::Transaction* trx,
+  MMFilesSkiplistIterator(LogicalCollection* collection, arangodb::Transaction* trx,
                    ManagedDocumentResult* mmdr,
-                   arangodb::SkiplistIndex const* index,
+                   arangodb::MMFilesSkiplistIndex const* index,
                    bool reverse, Node* left, Node* right);
 
   // always holds the last node returned, initially equal to
@@ -205,18 +205,16 @@ class SkiplistIterator final : public IndexIterator {
 /// @brief Iterator structure for skip list. We require a start and stop node
 ///
 /// Intervals are open in the sense that both end points are not members
-/// of the interval. This means that one has to use SkipList::nextNode
+/// of the interval. This means that one has to use MMFilesSkiplist::nextNode
 /// on the start node to get the first element and that the stop node
 /// can be NULL. Note that it is ensured that all intervals in an iterator
 /// are non-empty.
-class SkiplistIterator2 final : public IndexIterator {
+class MMFilesSkiplistIterator2 final : public IndexIterator {
  private:
   // Shorthand for the skiplist node
-  typedef arangodb::basics::SkipListNode<VPackSlice,
-                                         SkiplistIndexElement> Node;
+  typedef MMFilesSkiplistNode<VPackSlice, MMFilesSkiplistIndexElement> Node;
 
-  typedef arangodb::basics::SkipList<VPackSlice,
-                                     SkiplistIndexElement> TRI_Skiplist;
+  typedef MMFilesSkiplist<VPackSlice, MMFilesSkiplistIndexElement> TRI_Skiplist;
 
  private:
 
@@ -233,19 +231,19 @@ class SkiplistIterator2 final : public IndexIterator {
 
   BaseSkiplistLookupBuilder* _builder;
 
-  std::function<int(void*, SkiplistIndexElement const*, SkiplistIndexElement const*,
-                      arangodb::basics::SkipListCmpType)> _CmpElmElm;
+  std::function<int(void*, MMFilesSkiplistIndexElement const*, MMFilesSkiplistIndexElement const*,
+                    MMFilesSkiplistCmpType)> _CmpElmElm;
 
  public:
-  SkiplistIterator2(LogicalCollection* collection, arangodb::Transaction* trx,
+  MMFilesSkiplistIterator2(LogicalCollection* collection, arangodb::Transaction* trx,
       ManagedDocumentResult* mmdr,
-      arangodb::SkiplistIndex const* index,
+      arangodb::MMFilesSkiplistIndex const* index,
       TRI_Skiplist const* skiplist, size_t numPaths,
-      std::function<int(void*, SkiplistIndexElement const*, SkiplistIndexElement const*,
-                        arangodb::basics::SkipListCmpType)> const& CmpElmElm,
+      std::function<int(void*, MMFilesSkiplistIndexElement const*, MMFilesSkiplistIndexElement const*,
+                        MMFilesSkiplistCmpType)> const& CmpElmElm,
       bool reverse, BaseSkiplistLookupBuilder* builder);
 
-  ~SkiplistIterator2() {
+  ~MMFilesSkiplistIterator2() {
     delete _builder;
   }
 
@@ -282,43 +280,42 @@ class SkiplistIterator2 final : public IndexIterator {
   bool intervalValid(void*, Node*, Node*) const;
 };
 
-class SkiplistIndex final : public PathBasedIndex {
+class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
   struct KeyElementComparator {
     int operator()(void* userData, VPackSlice const* leftKey,
-                   SkiplistIndexElement const* rightElement) const;
+                   MMFilesSkiplistIndexElement const* rightElement) const;
 
-    explicit KeyElementComparator(SkiplistIndex* idx) { _idx = idx; }
+    explicit KeyElementComparator(MMFilesSkiplistIndex* idx) { _idx = idx; }
 
    private:
-    SkiplistIndex* _idx;
+    MMFilesSkiplistIndex* _idx;
   };
 
   struct ElementElementComparator {
     int operator()(void* userData, 
-                   SkiplistIndexElement const* leftElement,
-                   SkiplistIndexElement const* rightElement,
-                   arangodb::basics::SkipListCmpType cmptype) const;
+                   MMFilesSkiplistIndexElement const* leftElement,
+                   MMFilesSkiplistIndexElement const* rightElement,
+                   MMFilesSkiplistCmpType cmptype) const;
 
-    explicit ElementElementComparator(SkiplistIndex* idx) { _idx = idx; }
+    explicit ElementElementComparator(MMFilesSkiplistIndex* idx) { _idx = idx; }
 
    private:
-    SkiplistIndex* _idx;
+    MMFilesSkiplistIndex* _idx;
   };
 
-  friend class SkiplistIterator;
+  friend class MMFilesSkiplistIterator;
   friend struct KeyElementComparator;
   friend struct ElementElementComparator;
 
-  typedef arangodb::basics::SkipList<VPackSlice,
-                                     SkiplistIndexElement> TRI_Skiplist;
+  typedef MMFilesSkiplist<VPackSlice, MMFilesSkiplistIndexElement> TRI_Skiplist;
 
  public:
-  SkiplistIndex() = delete;
+  MMFilesSkiplistIndex() = delete;
 
-  SkiplistIndex(TRI_idx_iid_t, LogicalCollection*,
+  MMFilesSkiplistIndex(TRI_idx_iid_t, LogicalCollection*,
                 arangodb::velocypack::Slice const&);
 
-  ~SkiplistIndex();
+  ~MMFilesSkiplistIndex();
 
  public:
   IndexType type() const override {
@@ -392,8 +389,7 @@ class SkiplistIndex final : public PathBasedIndex {
   /// @brief Checks if the interval is valid. It is declared invalid if
   ///        one border is nullptr or the right is lower than left.
   // Shorthand for the skiplist node
-  typedef arangodb::basics::SkipListNode<VPackSlice,
-                                         SkiplistIndexElement> Node;
+  typedef MMFilesSkiplistNode<VPackSlice, MMFilesSkiplistIndexElement> Node;
 
   bool intervalValid(void*, Node* left, Node* right) const;
 

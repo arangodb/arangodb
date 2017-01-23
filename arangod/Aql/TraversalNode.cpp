@@ -1004,7 +1004,7 @@ void TraversalNode::prepareOptions() {
     // it is used in. Such that the traverser can update the respective string value
     // in-place
     // TODO This place can be optimized.
-    if (info.idxHandles[0].isEdgeIndex()) {
+    if (info.idxHandles[0].isMMFilesEdgeIndex()) {
       // Special case for edge index....
       // It serves two attributes, but can only be asked for one of them...
       info.conditionNeedUpdate = true;
@@ -1070,7 +1070,7 @@ void TraversalNode::prepareOptions() {
       // it is used in. Such that the traverser can update the respective string value
       // in-place
       // TODO This place can be optimized.
-      if (info.idxHandles[0].isEdgeIndex()) {
+      if (info.idxHandles[0].isMMFilesEdgeIndex()) {
         // Special case for edge index....
         // It serves two attributes, but can only be asked for one of them...
         info.conditionNeedUpdate = true;

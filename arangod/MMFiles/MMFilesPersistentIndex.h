@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_ROCKSDB_INDEX_H
-#define ARANGOD_INDEXES_ROCKSDB_INDEX_H 1
+#ifndef ARANGOD_MMFILES_PERSISTENT_INDEX_H
+#define ARANGOD_MMFILES_PERSISTENT_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
@@ -49,26 +49,26 @@ struct Variable;
 }
 
 class LogicalCollection;
-class PrimaryIndex;
-class RocksDBIndex;
+class MMFilesPrimaryIndex;
+class PersistentIndex;
 class Transaction;
 
 /// @brief Iterator structure for RocksDB. We require a start and stop node
-class RocksDBIterator final : public IndexIterator {
+class PersistentIndexIterator final : public IndexIterator {
  private:
-  friend class RocksDBIndex;
+  friend class PersistentIndex;
 
  public:
-  RocksDBIterator(LogicalCollection* collection, Transaction* trx, 
+  PersistentIndexIterator(LogicalCollection* collection, Transaction* trx, 
                   ManagedDocumentResult* mmdr,
-                  arangodb::RocksDBIndex const* index,
-                  arangodb::PrimaryIndex* primaryIndex,
+                  arangodb::PersistentIndex const* index,
+                  arangodb::MMFilesPrimaryIndex* primaryIndex,
                   rocksdb::OptimisticTransactionDB* db,
                   bool reverse, 
                   arangodb::velocypack::Slice const& left,
                   arangodb::velocypack::Slice const& right);
 
-  ~RocksDBIterator() = default;
+  ~PersistentIndexIterator() = default;
 
  public:
   
@@ -81,7 +81,7 @@ class RocksDBIterator final : public IndexIterator {
   void reset() override;
  
  private:
-  arangodb::PrimaryIndex* _primaryIndex;
+  arangodb::MMFilesPrimaryIndex* _primaryIndex;
   rocksdb::OptimisticTransactionDB* _db;
   std::unique_ptr<rocksdb::Iterator> _cursor;
   std::unique_ptr<arangodb::velocypack::Buffer<char>> _leftEndpoint;   // Interval left border
@@ -90,16 +90,16 @@ class RocksDBIterator final : public IndexIterator {
   bool _probe;
 };
 
-class RocksDBIndex final : public PathBasedIndex {
-  friend class RocksDBIterator;
+class PersistentIndex final : public MMFilesPathBasedIndex {
+  friend class PersistentIndexIterator;
 
  public:
-  RocksDBIndex() = delete;
+  PersistentIndex() = delete;
 
-  RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
+  PersistentIndex(TRI_idx_iid_t, LogicalCollection*,
                arangodb::velocypack::Slice const&);
 
-  ~RocksDBIndex();
+  ~PersistentIndex();
 
  public:
   IndexType type() const override {
@@ -161,8 +161,8 @@ class RocksDBIndex final : public PathBasedIndex {
   /// @brief attempts to locate an entry in the index
   ///
   /// Warning: who ever calls this function is responsible for destroying
-  /// the velocypack::Slice and the RocksDBIterator* results
-  RocksDBIterator* lookup(arangodb::Transaction*, 
+  /// the velocypack::Slice and the PersistentIndexIterator* results
+  PersistentIndexIterator* lookup(arangodb::Transaction*, 
                           ManagedDocumentResult* mmdr,
                           arangodb::velocypack::Slice const,
                           bool reverse) const;

@@ -1081,7 +1081,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 
     uint64_t iterations = 0;
     ManagedDocumentResult mmdr(&trx);
-    trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations, &idx](SimpleIndexElement const& element) {
+    trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations, &idx](MMFilesSimpleIndexElement const& element) {
       if (idx->collection()->readRevision(&trx, mmdr, element.revisionId())) {
         markers.emplace_back(mmdr.vpack());
         
@@ -1480,7 +1480,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
           }
         }
 
-        SimpleIndexElement element = idx->lookupKey(&trx, keySlice);
+        MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
 
         if (!element) {
           // key not found locally
@@ -1603,7 +1603,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
           }
 
-          SimpleIndexElement element = idx->lookupKey(&trx, keySlice);
+          MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
 
           if (!element) {
             // INSERT

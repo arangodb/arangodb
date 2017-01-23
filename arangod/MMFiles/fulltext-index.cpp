@@ -26,16 +26,12 @@
 #include "Basics/locks.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
+#include "MMFiles/fulltext-handles.h"
+#include "MMFiles/fulltext-list.h"
+#include "MMFiles/fulltext-query.h"
+#include "MMFiles/fulltext-result.h"
 
-#include "FulltextIndex/fulltext-handles.h"
-#include "FulltextIndex/fulltext-list.h"
-#include "FulltextIndex/fulltext-query.h"
-#include "FulltextIndex/fulltext-result.h"
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief use padding for pointers in binary data
-////////////////////////////////////////////////////////////////////////////////
-
 #ifndef TRI_UNALIGNED_ACCESS
 // must properly align memory on some architectures to prevent
 // unaligned memory accesses
@@ -44,27 +40,17 @@
 #undef FULLTEXT_PADDING
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum length of an indexed word in bytes
 /// a UTF-8 character can contain up to 4 bytes
-////////////////////////////////////////////////////////////////////////////////
-
 #define MAX_WORD_BYTES ((TRI_FULLTEXT_MAX_WORD_LENGTH)*4)
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the type of characters indexed. should be one byte long
-////////////////////////////////////////////////////////////////////////////////
-
 typedef uint8_t node_char_t;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef for follower nodes. this is just void because for the
 /// compiler it is a sequence of binary data with no internal structure
-////////////////////////////////////////////////////////////////////////////////
-
 typedef void followers_t;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief a node in the fulltext index
 ///
 /// the _followers property is a pointer to dynamic memory. If it is NULL, then
@@ -93,17 +79,12 @@ typedef void followers_t;
 /// properties directly, but instead always the special functions provided in
 /// fulltext-list.c must be used. These provide access to the individual values
 /// at relatively low cost
-////////////////////////////////////////////////////////////////////////////////
-
 typedef struct node_s {
   followers_t* _followers;
   TRI_fulltext_list_t* _handles;
 } node_t;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual fulltext index
-////////////////////////////////////////////////////////////////////////////////
-
 typedef struct {
   node_t* _root;  // root node of the index
 
@@ -137,10 +118,7 @@ static void FreeNode(index__t* const, node_t*);
 
 static size_t MemorySubNodeList(uint32_t);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief print some indentation
-////////////////////////////////////////////////////////////////////////////////
-
 #if TRI_FULLTEXT_DEBUG
 void Indent(uint32_t level) {
   uint32_t i;
@@ -151,10 +129,7 @@ void Indent(uint32_t level) {
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the contents of a node
-////////////////////////////////////////////////////////////////////////////////
-
 #if TRI_FULLTEXT_DEBUG
 void DumpNode(const node_t* const node, uint32_t level) {
   uint32_t numFollowers;
@@ -163,7 +138,7 @@ void DumpNode(const node_t* const node, uint32_t level) {
 
   numFollowers = NodeNumFollowers(node);
   if (node->_handles != nullptr) {
-    numHandles = TRI_NumEntriesListFulltextIndex(node->_handles);
+    numHandles = TRI_NumEntriesListMMFilesFulltextIndex(node->_handles);
   } else {
     numHandles = 0;
   }
@@ -200,20 +175,17 @@ void DumpNode(const node_t* const node, uint32_t level) {
       Indent(20 - level);
     }
     printf("(");
-    TRI_DumpListFulltextIndex(node->_handles);
+    TRI_DumpListMMFilesFulltextIndex(node->_handles);
 
     printf(")\n");
   }
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the padding to be applied when allocating memory for the
 /// sub-node list. the padding is done between the (uint8_t) keys and the
 /// (node_t*) pointers. padding can be used to align the pointers to some
 /// "good" boundary
-////////////////////////////////////////////////////////////////////////////////
-
 static inline size_t Padding(uint32_t numEntries) {
 #ifdef FULLTEXT_PADDING
   size_t const PAD = 8;
@@ -233,10 +205,7 @@ static inline size_t Padding(uint32_t numEntries) {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief re-allocate memory for the index and update memory usage statistics
-////////////////////////////////////////////////////////////////////////////////
-
 static inline void* ReallocateMemory(index__t* const idx, void* old,
                                      size_t const newSize,
                                      size_t const oldSize) {
@@ -256,10 +225,7 @@ static inline void* ReallocateMemory(index__t* const idx, void* old,
   return data;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief allocate memory for the index and update memory usage statistics
-////////////////////////////////////////////////////////////////////////////////
-
 static inline void* AllocateMemory(index__t* const idx, size_t const size) {
   void* data;
 
@@ -274,10 +240,7 @@ static inline void* AllocateMemory(index__t* const idx, size_t const size) {
   return data;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief free memory and update memory usage statistics
-////////////////////////////////////////////////////////////////////////////////
-
 static inline void FreeMemory(index__t* const idx, void* data,
                               size_t const size) {
 #if TRI_FULLTEXT_DEBUG
@@ -289,11 +252,8 @@ static inline void FreeMemory(index__t* const idx, void* data,
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adjust the number of followers for a node
 /// note: if the value is set to 0, this might free the sub-nodes list
-////////////////////////////////////////////////////////////////////////////////
-
 static inline void SetNodeNumFollowers(index__t* const idx, node_t* const node,
                                        uint32_t value) {
 #if TRI_FULLTEXT_DEBUG
@@ -319,10 +279,7 @@ static inline void SetNodeNumFollowers(index__t* const idx, node_t* const node,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the number of used sub-nodes in a sub node list
-////////////////////////////////////////////////////////////////////////////////
-
 static inline uint32_t NodeNumFollowers(node_t const* node) {
 #if TRI_FULLTEXT_DEBUG
   TRI_ASSERT(node != nullptr);
@@ -336,11 +293,8 @@ static inline uint32_t NodeNumFollowers(node_t const* node) {
   return (uint32_t) * (++head);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the number of allocated (not necessarily used) sub-nodes in a
 /// sub node list
-////////////////////////////////////////////////////////////////////////////////
-
 static uint32_t NodeNumAllocated(const node_t* const node) {
   uint8_t* head;
 
@@ -356,10 +310,7 @@ static uint32_t NodeNumAllocated(const node_t* const node) {
   return (uint32_t)*head;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize a sub-node list with length information
-////////////////////////////////////////////////////////////////////////////////
-
 static void InitializeSubNodeList(void* data, uint32_t numAllocated,
                                   uint32_t numFollowers) {
   uint8_t* head = (uint8_t*)data;
@@ -368,11 +319,8 @@ static void InitializeSubNodeList(void* data, uint32_t numAllocated,
   *head = (uint8_t)numFollowers;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get a pointer to the start of the keys in a sub-node list
 /// the caller must make sure the node actually has sub-nodes
-////////////////////////////////////////////////////////////////////////////////
-
 static inline node_char_t* FollowersKeys(void* data) {
   uint8_t* head = (uint8_t*)data;
 
@@ -383,11 +331,8 @@ static inline node_char_t* FollowersKeys(void* data) {
   return (node_char_t*)(head + 2);  // numAllocated + numEntries
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get a pointer to the start of the keys in a sub-node list
 /// the caller must make sure the node actually has sub-nodes
-////////////////////////////////////////////////////////////////////////////////
-
 static inline node_char_t* NodeFollowersKeys(const node_t* const node) {
 #if TRI_FULLTEXT_DEBUG
   TRI_ASSERT(node->_followers != nullptr);
@@ -396,11 +341,8 @@ static inline node_char_t* NodeFollowersKeys(const node_t* const node) {
   return FollowersKeys(node->_followers);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get a pointer to the start of the node-list in a sub-node list
 /// the caller must make sure the node actually has sub-nodes
-////////////////////////////////////////////////////////////////////////////////
-
 static inline node_t** FollowersNodes(void* data) {
   uint8_t* head = (uint8_t*)data;
   uint8_t numAllocated = *head;
@@ -409,11 +351,8 @@ static inline node_t** FollowersNodes(void* data) {
   return reinterpret_cast<node_t**>(keys + numAllocated + Padding(numAllocated));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get a pointer to the start of the node-list in a sub-node list
 /// the caller must make sure the node actually has sub-nodes
-////////////////////////////////////////////////////////////////////////////////
-
 static inline node_t** NodeFollowersNodes(const node_t* const node) {
 #if TRI_FULLTEXT_DEBUG
   TRI_ASSERT(node != nullptr);
@@ -423,11 +362,8 @@ static inline node_t** NodeFollowersNodes(const node_t* const node) {
   return FollowersNodes(node->_followers);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get a pointer to the start of the node-list in a sub-node list
 /// the caller must make sure the node actually has sub-nodes
-////////////////////////////////////////////////////////////////////////////////
-
 static inline node_t** FollowersNodesPos(void* data, uint32_t numAllocated) {
   uint8_t* head = (uint8_t*)data;
   uint8_t* keys = (uint8_t*)(head + 2);  // numAllocated + numEntries
@@ -435,11 +371,8 @@ static inline node_t** FollowersNodesPos(void* data, uint32_t numAllocated) {
   return reinterpret_cast<node_t**>(keys + numAllocated + Padding(numAllocated));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the memory required to store a sub-node list of the
 /// specific length
-////////////////////////////////////////////////////////////////////////////////
-
 static size_t MemorySubNodeList(uint32_t numEntries) {
   return sizeof(uint8_t) +  // numAllocated
          sizeof(uint8_t) +  // numEntries
@@ -448,11 +381,8 @@ static size_t MemorySubNodeList(uint32_t numEntries) {
          Padding(numEntries);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check the current list of sub-nodes for a node and increase its
 /// size if it is too small to hold another node
-////////////////////////////////////////////////////////////////////////////////
-
 static bool ExtendSubNodeList(index__t* const idx, node_t* const node,
                               uint32_t numFollowers, uint32_t numAllocated) {
   size_t nextSize;
@@ -515,10 +445,7 @@ static bool ExtendSubNodeList(index__t* const idx, node_t* const node,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new, empty node
-////////////////////////////////////////////////////////////////////////////////
-
 static node_t* CreateNode(index__t* const idx) {
   node_t* node = static_cast<node_t*>(AllocateMemory(idx, sizeof(node_t)));
 
@@ -537,10 +464,7 @@ static node_t* CreateNode(index__t* const idx) {
   return node;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief free a node's follower nodes
-////////////////////////////////////////////////////////////////////////////////
-
 static void FreeFollowers(index__t* const idx, node_t* node) {
   uint32_t numFollowers;
   uint32_t numAllocated;
@@ -574,10 +498,7 @@ static void FreeFollowers(index__t* const idx, node_t* node) {
   node->_followers = nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief free a node in the index
-////////////////////////////////////////////////////////////////////////////////
-
 static void FreeNode(index__t* const idx, node_t* node) {
   if (node == nullptr) {
     return;
@@ -585,8 +506,8 @@ static void FreeNode(index__t* const idx, node_t* node) {
 
   if (node->_handles != nullptr) {
     // free handles
-    idx->_memoryAllocated -= TRI_MemoryListFulltextIndex(node->_handles);
-    TRI_FreeListFulltextIndex(node->_handles);
+    idx->_memoryAllocated -= TRI_MemoryListMMFilesFulltextIndex(node->_handles);
+    TRI_FreeListMMFilesFulltextIndex(node->_handles);
   }
 
   // free followers
@@ -602,11 +523,8 @@ static void FreeNode(index__t* const idx, node_t* node) {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief recursively cleanup nodes (used during compaction)
 /// the map contains a rewrite-map of document handles
-////////////////////////////////////////////////////////////////////////////////
-
 static bool CleanupNodes(index__t* idx, node_t* node, void* map) {
   bool isActive;
 
@@ -676,15 +594,15 @@ static bool CleanupNodes(index__t* idx, node_t* node, void* map) {
   if (node->_handles != nullptr) {
     uint32_t remain;
 
-    remain = TRI_RewriteListFulltextIndex(node->_handles, map);
+    remain = TRI_RewriteListMMFilesFulltextIndex(node->_handles, map);
     if (remain > 0) {
       // there are still handles left in the rewritten handles list
       // we must keep this node
       isActive = true;
     } else {
       // no handles left, we can delete the node's handle list
-      idx->_memoryAllocated -= TRI_MemoryListFulltextIndex(node->_handles);
-      TRI_FreeListFulltextIndex(node->_handles);
+      idx->_memoryAllocated -= TRI_MemoryListMMFilesFulltextIndex(node->_handles);
+      TRI_FreeListMMFilesFulltextIndex(node->_handles);
       node->_handles = nullptr;
     }
   }
@@ -692,11 +610,8 @@ static bool CleanupNodes(index__t* idx, node_t* node, void* map) {
   return isActive;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find a sub-node of a node with only one sub-node
 /// the caller must make sure the node actually has exactly one sub-node!
-////////////////////////////////////////////////////////////////////////////////
-
 static inline node_t* FindDirectSubNodeSingle(const node_t* const node,
                                               const node_char_t c) {
   node_char_t* followerKeys;
@@ -717,14 +632,11 @@ static inline node_t* FindDirectSubNodeSingle(const node_t* const node,
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find a sub-node of a node using a linear search
 /// this will compare the node's follower characters with the character passed
 /// followers are sorted so it will stop at the first character that is higher
 /// than the character passed
 /// the caller must make sure the node actually has sub-nodes!
-////////////////////////////////////////////////////////////////////////////////
-
 static inline node_t* FindDirectSubNodeLinear(const node_t* const node,
                                               const node_char_t c) {
   node_char_t* followerKeys;
@@ -758,11 +670,8 @@ static inline node_t* FindDirectSubNodeLinear(const node_t* const node,
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find a sub-node of a node using a binary search
 /// the caller must ensure the node actually has sub-nodes!
-////////////////////////////////////////////////////////////////////////////////
-
 static node_t* FindDirectSubNodeBinary(const node_t* const node,
                                        const node_char_t c) {
   node_char_t* followerKeys;
@@ -815,10 +724,7 @@ static node_t* FindDirectSubNodeBinary(const node_t* const node,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find a node's sub-node, identified by its start character
-////////////////////////////////////////////////////////////////////////////////
-
 static inline node_t* FindDirectSubNode(const node_t* const node,
                                         const node_char_t c) {
   uint32_t numFollowers;
@@ -840,10 +746,7 @@ static inline node_t* FindDirectSubNode(const node_t* const node,
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find a node by its key, starting from the index root
-////////////////////////////////////////////////////////////////////////////////
-
 static node_t* FindNode(const index__t* idx, char const* const key,
                         size_t const keyLength) {
   node_t* node;
@@ -866,18 +769,12 @@ static node_t* FindNode(const index__t* idx, char const* const key,
   return node;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a list with the handles of a node
-////////////////////////////////////////////////////////////////////////////////
-
 static TRI_fulltext_list_t* GetDirectNodeHandles(const node_t* const node) {
-  return TRI_CloneListFulltextIndex(node->_handles);
+  return TRI_CloneListMMFilesFulltextIndex(node->_handles);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief recursively merge node and sub-node handles into the result list
-////////////////////////////////////////////////////////////////////////////////
-
 static TRI_fulltext_list_t* MergeSubNodeHandles(const node_t* const node,
                                                 TRI_fulltext_list_t* list) {
   node_t** followerNodes;
@@ -905,7 +802,7 @@ static TRI_fulltext_list_t* MergeSubNodeHandles(const node_t* const node,
     if (follower->_handles != nullptr) {
       // OR-merge the follower node's documents with what we already have found
       list =
-          TRI_UnioniseListFulltextIndex(list, GetDirectNodeHandles(follower));
+          TRI_UnioniseListMMFilesFulltextIndex(list, GetDirectNodeHandles(follower));
       if (list == nullptr) {
         return nullptr;
       }
@@ -921,11 +818,8 @@ static TRI_fulltext_list_t* MergeSubNodeHandles(const node_t* const node,
   return list;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief recursively create a result list with the handles of a node and
 /// all of its sub-nodes
-////////////////////////////////////////////////////////////////////////////////
-
 static inline TRI_fulltext_list_t* GetSubNodeHandles(const node_t* const node) {
   TRI_fulltext_list_t* list;
 
@@ -933,12 +827,9 @@ static inline TRI_fulltext_list_t* GetSubNodeHandles(const node_t* const node) {
   return MergeSubNodeHandles(node, list);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a new sub-node underneath an existing node
 /// the caller must make sure that the node already has memory allocated for
 /// the _followers property
-////////////////////////////////////////////////////////////////////////////////
-
 static node_t* InsertSubNode(index__t* const idx, node_t* const node,
                              uint32_t position, const node_char_t key) {
   node_t** followerNodes;
@@ -985,11 +876,8 @@ static node_t* InsertSubNode(index__t* const idx, node_t* const node,
   return subNode;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// ensure that a specific sub-node (with a specific key) is there
 /// if it is not there, it will be created by this function
-////////////////////////////////////////////////////////////////////////////////
-
 static node_t* EnsureSubNode(index__t* const idx, node_t* node,
                              const node_char_t c) {
   uint32_t numFollowers;
@@ -1058,10 +946,7 @@ static node_t* EnsureSubNode(index__t* const idx, node_t* node,
   return InsertSubNode(idx, node, i, c);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// insert a handle for a node
-////////////////////////////////////////////////////////////////////////////////
-
 static bool InsertHandle(index__t* const idx, node_t* const node,
                          const TRI_fulltext_handle_t handle) {
   TRI_fulltext_list_t* list;
@@ -1078,10 +963,10 @@ static bool InsertHandle(index__t* const idx, node_t* const node,
 
   if (node->_handles == nullptr) {
     // node does not yet have any handles. now allocate a new chunk of handles
-    node->_handles = TRI_CreateListFulltextIndex(idx->_initialNodeHandles);
+    node->_handles = TRI_CreateListMMFilesFulltextIndex(idx->_initialNodeHandles);
 
     if (node->_handles != nullptr) {
-      idx->_memoryAllocated += TRI_MemoryListFulltextIndex(node->_handles);
+      idx->_memoryAllocated += TRI_MemoryListMMFilesFulltextIndex(node->_handles);
     }
   }
 
@@ -1091,10 +976,10 @@ static bool InsertHandle(index__t* const idx, node_t* const node,
   }
 
   oldList = node->_handles;
-  oldAlloc = TRI_MemoryListFulltextIndex(oldList);
+  oldAlloc = TRI_MemoryListMMFilesFulltextIndex(oldList);
 
   // adding to the list might change the list pointer!
-  list = TRI_InsertListFulltextIndex(node->_handles, handle);
+  list = TRI_InsertListMMFilesFulltextIndex(node->_handles, handle);
   if (list == nullptr) {
     // out of memory
     return false;
@@ -1103,18 +988,15 @@ static bool InsertHandle(index__t* const idx, node_t* const node,
   if (list != oldList) {
     // the insert might have changed the pointer
     node->_handles = list;
-    idx->_memoryAllocated += TRI_MemoryListFulltextIndex(list);
+    idx->_memoryAllocated += TRI_MemoryListMMFilesFulltextIndex(list);
     idx->_memoryAllocated -= oldAlloc;
   }
 
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// turn a handle list into a proper document list result
 /// this will also exclude all deleted documents
-////////////////////////////////////////////////////////////////////////////////
-
 static TRI_fulltext_result_t* MakeListResult(index__t* const idx,
                                              TRI_fulltext_list_t* list,
                                              size_t maxResults) {
@@ -1130,27 +1012,27 @@ static TRI_fulltext_result_t* MakeListResult(index__t* const idx,
 
   // we have a list of handles
   // now turn the handles into documents and exclude deleted ones on the fly
-  numResults = TRI_NumEntriesListFulltextIndex(list);
+  numResults = TRI_NumEntriesListMMFilesFulltextIndex(list);
   originalNumResults = numResults;
   if (static_cast<size_t>(numResults) > maxResults && maxResults > 0) {
     // cap the number of results
     numResults = static_cast<uint32_t>(maxResults);
   }
-  result = TRI_CreateResultFulltextIndex(numResults);
+  result = TRI_CreateResultMMFilesFulltextIndex(numResults);
   if (result == nullptr) {
-    TRI_FreeListFulltextIndex(list);
+    TRI_FreeListMMFilesFulltextIndex(list);
     return nullptr;
   }
 
   pos = 0;
-  listEntries = TRI_StartListFulltextIndex(list);
+  listEntries = TRI_StartListMMFilesFulltextIndex(list);
 
   for (i = 0; i < originalNumResults; ++i) {
     TRI_fulltext_handle_t handle;
     TRI_fulltext_doc_t doc;
 
     handle = listEntries[i];
-    doc = TRI_GetDocumentFulltextIndex(idx->_handles, handle);
+    doc = TRI_GetDocumentMMFilesFulltextIndex(idx->_handles, handle);
 
     if (doc == 0) {
       // deleted document
@@ -1166,15 +1048,12 @@ static TRI_fulltext_result_t* MakeListResult(index__t* const idx,
   result->_numDocuments = pos;
 
   // don't need the list anymore
-  TRI_FreeListFulltextIndex(list);
+  TRI_FreeListMMFilesFulltextIndex(list);
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find all documents from the index that match the key
-////////////////////////////////////////////////////////////////////////////////
-
 #if 0
 TRI_fulltext_result_t* FindDocuments (index__t* const idx,
                                       char const* const key,
@@ -1186,7 +1065,7 @@ TRI_fulltext_result_t* FindDocuments (index__t* const idx,
   node = FindNode(idx, key, keyLength);
   if (node == nullptr) {
     // not found, create empty result
-    return TRI_CreateResultFulltextIndex(0);
+    return TRI_CreateResultMMFilesFulltextIndex(0);
   }
 
   if (recursive) {
@@ -1202,10 +1081,7 @@ TRI_fulltext_result_t* FindDocuments (index__t* const idx,
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the common prefix length of two words
-////////////////////////////////////////////////////////////////////////////////
-
 static inline size_t CommonPrefixLength(std::string const& left,
                                         std::string const& right) {
   char const* lhs = left.c_str();
@@ -1218,10 +1094,7 @@ static inline size_t CommonPrefixLength(std::string const& left,
   return length;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the fulltext index
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_fts_index_t* TRI_CreateFtsIndex(uint32_t handleChunkSize,
                                     uint32_t nodeChunkSize,
                                     uint32_t initialNodeHandles) {
@@ -1253,7 +1126,7 @@ TRI_fts_index_t* TRI_CreateFtsIndex(uint32_t handleChunkSize,
   }
 
   // create an instance for managing document handles
-  idx->_handles = TRI_CreateHandlesFulltextIndex(handleChunkSize);
+  idx->_handles = TRI_CreateHandlesMMFilesFulltextIndex(handleChunkSize);
   if (idx->_handles == nullptr) {
     // out of memory
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_root);
@@ -1271,10 +1144,7 @@ TRI_fts_index_t* TRI_CreateFtsIndex(uint32_t handleChunkSize,
   return (TRI_fts_index_t*)idx;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief free the fulltext index
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_FreeFtsIndex(TRI_fts_index_t* ftx) {
   index__t* idx = (index__t*)ftx;
 
@@ -1282,7 +1152,7 @@ void TRI_FreeFtsIndex(TRI_fts_index_t* ftx) {
   FreeNode(idx, idx->_root);
 
   // free handles
-  TRI_FreeHandlesFulltextIndex(idx->_handles);
+  TRI_FreeHandlesMMFilesFulltextIndex(idx->_handles);
   idx->_handles = nullptr;
   idx->_memoryAllocated -= sizeof(TRI_fulltext_handles_t);
 
@@ -1300,14 +1170,14 @@ void TRI_FreeFtsIndex(TRI_fts_index_t* ftx) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
 }
 
-void TRI_TruncateFulltextIndex(TRI_fts_index_t* ftx) {
+void TRI_TruncateMMFilesFulltextIndex(TRI_fts_index_t* ftx) {
   index__t* idx = (index__t*)ftx;
 
   // free root node (this will recursively free all other nodes)
   FreeNode(idx, idx->_root);
   
   // free handles
-  TRI_FreeHandlesFulltextIndex(idx->_handles);
+  TRI_FreeHandlesMMFilesFulltextIndex(idx->_handles);
   idx->_handles = nullptr;
   
   idx->_memoryAllocated = sizeof(index__t);
@@ -1326,7 +1196,7 @@ void TRI_TruncateFulltextIndex(TRI_fts_index_t* ftx) {
   }
 
   // create an instance for managing document handles
-  idx->_handles = TRI_CreateHandlesFulltextIndex(2048);
+  idx->_handles = TRI_CreateHandlesMMFilesFulltextIndex(2048);
   if (idx->_handles == nullptr) {
     // out of memory
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_root);
@@ -1339,20 +1209,16 @@ void TRI_TruncateFulltextIndex(TRI_fts_index_t* ftx) {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document from the index
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DeleteDocumentFulltextIndex(TRI_fts_index_t* const ftx,
+void TRI_DeleteDocumentMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
                                      const TRI_fulltext_doc_t document) {
   index__t* idx = (index__t*)ftx;
 
   TRI_WriteLockReadWriteLock(&idx->_lock);
-  TRI_DeleteDocumentHandleFulltextIndex(idx->_handles, document);
+  TRI_DeleteDocumentHandleMMFilesFulltextIndex(idx->_handles, document);
   TRI_WriteUnlockReadWriteLock(&idx->_lock);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a list of words into the index
 /// calling this function requires a wordlist that has word with the correct
 /// lengths. especially, words in the wordlist must not be longer than
@@ -1362,9 +1228,7 @@ void TRI_DeleteDocumentFulltextIndex(TRI_fts_index_t* const ftx,
 /// - filter out duplicates on insertion
 /// - save redundant lookups of prefix nodes for adjacent words with shared
 ///   prefixes
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
+bool TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
                                   const TRI_fulltext_doc_t document,
                                   std::vector<std::string>& wordlist) {
   index__t* idx;
@@ -1392,7 +1256,7 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
   TRI_WriteLockReadWriteLock(&idx->_lock);
 
   // get a new handle for the document
-  handle = TRI_InsertHandleFulltextIndex(idx->_handles, document);
+  handle = TRI_InsertHandleMMFilesFulltextIndex(idx->_handles, document);
   if (handle == 0) {
     TRI_WriteUnlockReadWriteLock(&idx->_lock);
     return false;
@@ -1475,7 +1339,7 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
 
     if (!InsertHandle(idx, node, handle)) {
       // document was added at least once, mark it as deleted
-      TRI_DeleteDocumentHandleFulltextIndex(idx->_handles, document);
+      TRI_DeleteDocumentHandleMMFilesFulltextIndex(idx->_handles, document);
       TRI_WriteUnlockReadWriteLock(&idx->_lock);
       return false;
     }
@@ -1490,36 +1354,27 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find all documents that contain a word (exact match)
-////////////////////////////////////////////////////////////////////////////////
-
 #if 0
-TRI_fulltext_result_t* TRI_FindExactFulltextIndex (TRI_fts_index_t* const ftx,
+TRI_fulltext_result_t* TRI_FindExactMMFilesFulltextIndex (TRI_fts_index_t* const ftx,
                                                    char const* const key,
                                                    size_t const keyLength) {
   return FindDocuments((index__t*) ftx, key, keyLength, false);
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find all documents that contain a word (exact match)
-////////////////////////////////////////////////////////////////////////////////
-
 #if 0
-TRI_fulltext_result_t* TRI_FindPrefixFulltextIndex (TRI_fts_index_t* const ftx,
+TRI_fulltext_result_t* TRI_FindPrefixMMFilesFulltextIndex (TRI_fts_index_t* const ftx,
                                                     char const* key,
                                                     size_t const keyLength) {
   return FindDocuments((index__t*) ftx, key, keyLength, true);
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a query on the fulltext index
 /// note: this will free the query
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_fulltext_result_t* TRI_QueryFulltextIndex(TRI_fts_index_t* const ftx,
+TRI_fulltext_result_t* TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
                                               TRI_fulltext_query_t* query) {
   index__t* idx;
   TRI_fulltext_list_t* result;
@@ -1531,8 +1386,8 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex(TRI_fts_index_t* const ftx,
 
   if (query->_numWords == 0) {
     // query is empty
-    TRI_FreeQueryFulltextIndex(query);
-    return TRI_CreateResultFulltextIndex(0);
+    TRI_FreeQueryMMFilesFulltextIndex(query);
+    return TRI_CreateResultMMFilesFulltextIndex(0);
   }
 
   auto maxResults = query->_maxResults;
@@ -1563,7 +1418,7 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex(TRI_fts_index_t* const ftx,
     LOG(DEBUG) << "searching for word: '" << word << "'";
 
     if ((operation == TRI_FULLTEXT_AND || operation == TRI_FULLTEXT_EXCLUDE) &&
-        i > 0 && TRI_NumEntriesListFulltextIndex(result) == 0) {
+        i > 0 && TRI_NumEntriesListMMFilesFulltextIndex(result) == 0) {
       // current result set is empty so logical AND or EXCLUDE will not have any
       // result either
       continue;
@@ -1580,21 +1435,21 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex(TRI_fts_index_t* const ftx,
         list = GetSubNodeHandles(node);
       } else {
         LOG(WARN) << "invalid matching option for fulltext index query";
-        list = TRI_CreateListFulltextIndex(0);
+        list = TRI_CreateListMMFilesFulltextIndex(0);
       }
     } else {
-      list = TRI_CreateListFulltextIndex(0);
+      list = TRI_CreateListMMFilesFulltextIndex(0);
     }
 
     if (operation == TRI_FULLTEXT_AND) {
       // perform a logical AND of current and previous result (if any)
-      result = TRI_IntersectListFulltextIndex(result, list);
+      result = TRI_IntersectListMMFilesFulltextIndex(result, list);
     } else if (operation == TRI_FULLTEXT_OR) {
       // perform a logical OR of current and previous result (if any)
-      result = TRI_UnioniseListFulltextIndex(result, list);
+      result = TRI_UnioniseListMMFilesFulltextIndex(result, list);
     } else if (operation == TRI_FULLTEXT_EXCLUDE) {
       // perform a logical exclusion of current from previous result (if any)
-      result = TRI_ExcludeListFulltextIndex(result, list);
+      result = TRI_ExcludeListMMFilesFulltextIndex(result, list);
     }
 
     if (result == nullptr) {
@@ -1603,12 +1458,12 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex(TRI_fts_index_t* const ftx,
     }
   }
 
-  TRI_FreeQueryFulltextIndex(query);
+  TRI_FreeQueryMMFilesFulltextIndex(query);
 
   if (result == nullptr) {
     // if we haven't found anything...
     TRI_ReadUnlockReadWriteLock(&idx->_lock);
-    return TRI_CreateResultFulltextIndex(0);
+    return TRI_CreateResultMMFilesFulltextIndex(0);
   }
 
   // now convert the handle list into a result (this will also filter out
@@ -1619,29 +1474,23 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex(TRI_fts_index_t* const ftx,
   return r;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief dump index tree
-////////////////////////////////////////////////////////////////////////////////
-
 #if TRI_FULLTEXT_DEBUG
 void TRI_DumpTreeFtsIndex(const TRI_fts_index_t* const ftx) {
   index__t* idx = (index__t*)ftx;
 
-  TRI_DumpHandleFulltextIndex(idx->_handles);
+  TRI_DumpHandleMMFilesFulltextIndex(idx->_handles);
   DumpNode(idx->_root, 0);
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief dump index statistics
-////////////////////////////////////////////////////////////////////////////////
-
 #if TRI_FULLTEXT_DEBUG
 void TRI_DumpStatsFtsIndex(const TRI_fts_index_t* const ftx) {
   index__t* idx = (index__t*)ftx;
   TRI_fulltext_stats_t stats;
 
-  stats = TRI_StatsFulltextIndex(idx);
+  stats = TRI_StatsMMFilesFulltextIndex(idx);
   printf("memoryTotal     %llu\n", (unsigned long long)stats._memoryTotal);
 #if TRI_FULLTEXT_DEBUG
   printf("memoryOwn       %llu\n", (unsigned long long)stats._memoryOwn);
@@ -1662,11 +1511,8 @@ void TRI_DumpStatsFtsIndex(const TRI_fts_index_t* const ftx) {
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return stats about the index
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_fulltext_stats_t TRI_StatsFulltextIndex(const TRI_fts_index_t* const ftx) {
+TRI_fulltext_stats_t TRI_StatsMMFilesFulltextIndex(const TRI_fts_index_t* const ftx) {
   index__t* idx;
   TRI_fulltext_stats_t stats;
 
@@ -1674,7 +1520,7 @@ TRI_fulltext_stats_t TRI_StatsFulltextIndex(const TRI_fts_index_t* const ftx) {
 
   TRI_ReadLockReadWriteLock(&idx->_lock);
 
-  stats._memoryTotal = TRI_MemoryFulltextIndex(idx);
+  stats._memoryTotal = TRI_MemoryMMFilesFulltextIndex(idx);
 #if TRI_FULLTEXT_DEBUG
   stats._memoryOwn = idx->_memoryAllocated;
   stats._memoryBase = idx->_memoryBase;
@@ -1686,12 +1532,12 @@ TRI_fulltext_stats_t TRI_StatsFulltextIndex(const TRI_fts_index_t* const ftx) {
 #endif
 
   if (idx->_handles != nullptr) {
-    stats._memoryHandles = TRI_MemoryHandleFulltextIndex(idx->_handles);
-    stats._numDocuments = TRI_NumHandlesHandleFulltextIndex(idx->_handles);
-    stats._numDeleted = TRI_NumDeletedHandleFulltextIndex(idx->_handles);
+    stats._memoryHandles = TRI_MemoryHandleMMFilesFulltextIndex(idx->_handles);
+    stats._numDocuments = TRI_NumHandlesHandleMMFilesFulltextIndex(idx->_handles);
+    stats._numDeleted = TRI_NumDeletedHandleMMFilesFulltextIndex(idx->_handles);
     stats._handleDeletionGrade =
-        TRI_DeletionGradeHandleFulltextIndex(idx->_handles);
-    stats._shouldCompact = TRI_ShouldCompactHandleFulltextIndex(idx->_handles);
+        TRI_DeletionGradeHandleMMFilesFulltextIndex(idx->_handles);
+    stats._shouldCompact = TRI_ShouldCompactHandleMMFilesFulltextIndex(idx->_handles);
   } else {
     stats._memoryHandles = 0;
     stats._numDocuments = 0;
@@ -1705,26 +1551,20 @@ TRI_fulltext_stats_t TRI_StatsFulltextIndex(const TRI_fts_index_t* const ftx) {
   return stats;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the total memory used by the index
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_MemoryFulltextIndex(const TRI_fts_index_t* const ftx) {
+size_t TRI_MemoryMMFilesFulltextIndex(const TRI_fts_index_t* const ftx) {
   index__t* idx = (index__t*)ftx;
 
   if (idx->_handles != nullptr) {
-    return idx->_memoryAllocated + TRI_MemoryHandleFulltextIndex(idx->_handles);
+    return idx->_memoryAllocated + TRI_MemoryHandleMMFilesFulltextIndex(idx->_handles);
   }
 
   return idx->_memoryAllocated;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compact the fulltext index
 /// note: the caller must hold a lock on the index before called this
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CompactFulltextIndex(TRI_fts_index_t* const ftx) {
+bool TRI_CompactMMFilesFulltextIndex(TRI_fts_index_t* const ftx) {
   index__t* idx;
   TRI_fulltext_handles_t* clone;
 
@@ -1736,7 +1576,7 @@ bool TRI_CompactFulltextIndex(TRI_fts_index_t* const ftx) {
     return true;
   }
 
-  if (!TRI_ShouldCompactHandleFulltextIndex(idx->_handles)) {
+  if (!TRI_ShouldCompactHandleMMFilesFulltextIndex(idx->_handles)) {
     // not enough cleanup work to do
     TRI_WriteUnlockReadWriteLock(&idx->_lock);
     return true;
@@ -1746,7 +1586,7 @@ bool TRI_CompactFulltextIndex(TRI_fts_index_t* const ftx) {
   // re-align the handle numbers consecutively, starting at 1.
   // this will also populate the _map property, which can be used to clean up
   // handles of existing nodes
-  clone = TRI_CompactHandleFulltextIndex(idx->_handles);
+  clone = TRI_CompactHandleMMFilesFulltextIndex(idx->_handles);
   if (clone == nullptr) {
     TRI_WriteUnlockReadWriteLock(&idx->_lock);
     return false;
@@ -1755,7 +1595,7 @@ bool TRI_CompactFulltextIndex(TRI_fts_index_t* const ftx) {
   CleanupNodes(idx, idx->_root, clone->_map);
 
   // delete the original handle list
-  TRI_FreeHandlesFulltextIndex(idx->_handles);
+  TRI_FreeHandlesMMFilesFulltextIndex(idx->_handles);
 
   // free the rewrite map
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, clone->_map);
