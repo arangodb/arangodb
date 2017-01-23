@@ -625,7 +625,7 @@ std::string AgencyCommManager::redirect(
     _endpoints.end());
   
   LOG_TOPIC(WARN, Logger::AGENCYCOMM)
-    << "got an agency redirect from '" << endpoint
+    << "Got an agency redirect from '" << endpoint
     << "' to '" << specification << "'";
   
   _endpoints.push_front(specification);
