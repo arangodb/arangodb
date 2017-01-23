@@ -660,5 +660,6 @@ Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
 // template types to create
 template class arangodb::pregel::Worker<int64_t, int64_t, int64_t>;
 template class arangodb::pregel::Worker<float, float, float>;
+template class arangodb::pregel::Worker<double, float, double>;
 // complex types
 //template class arangodb::pregel::Worker<int64_t, int64_t, SenderValue<int64_t>>;

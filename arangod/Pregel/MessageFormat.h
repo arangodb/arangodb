@@ -50,6 +50,16 @@ struct IntegerMessageFormat : public MessageFormat<int64_t> {
     arrayBuilder.add(VPackValue(val));
   }
 };
+  
+struct DoubleMessageFormat : public MessageFormat<double> {
+  DoubleMessageFormat() {}
+  void unwrapValue(VPackSlice s, double& value) const override {
+    value = s.getDouble();
+  }
+  void addValue(VPackBuilder& arrayBuilder, double const& val) const override {
+    arrayBuilder.add(VPackValue(val));
+  }
+};
 
 struct FloatMessageFormat : public MessageFormat<float> {
   FloatMessageFormat() {}

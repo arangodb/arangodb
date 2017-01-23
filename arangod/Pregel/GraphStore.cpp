@@ -393,28 +393,39 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-
   OperationOptions options;
-  for (VertexEntry const& vertexEntry : _index) {
-    if (_destroyed) {
-      break;
-    }
-
-    ShardID const& shard = state.globalShardIDs()[vertexEntry.shard()];
-    void* data = mutableVertexData(&vertexEntry);
-
-    VPackBuilder b;
-    b.openObject();
-    b.add(StaticStrings::KeyString, VPackValue(vertexEntry.key()));
-    bool store = _graphFormat->buildVertexDocument(b, data, sizeof(V));
-    b.close();
-
-    if (store) {
-      OperationResult result = writeTrx.update(shard, b.slice(), options);
-      if (result.code != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(result.code);
+  
+  auto it = _index.begin();
+  while (it != _index.end()) {
+    TransactionBuilderLeaser b(&writeTrx);
+    
+    prgl_shard_t shardID = it->shard();
+    
+    b->openArray();
+    size_t buffer = 1000;
+    while (it != _index.end() && buffer > 0) {
+      if (it->shard() != shardID) {
+        break;
       }
+      
+      void* data = _vertexData.data() + it->_vertexDataOffset;
+      b->openObject();
+      b->add(StaticStrings::KeyString, VPackValue(it->key()));
+      //bool store =
+      _graphFormat->buildVertexDocument(*(b.get()), data, sizeof(V));
+      b->close();
+      
+      ++it;
+      buffer--;
     }
+    b->close();
+    
+    ShardID const& shard = state.globalShardIDs()[shardID];
+    OperationResult result = writeTrx.update(shard, b->slice(), options);
+    if (result.code != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(result.code);
+    }
+    
     // TODO loop over edges
   }
   res = writeTrx.finish(res);
@@ -427,3 +438,6 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
 
 template class arangodb::pregel::GraphStore<int64_t, int64_t>;
 template class arangodb::pregel::GraphStore<float, float>;
+template class arangodb::pregel::GraphStore<double, float>;
+template class arangodb::pregel::GraphStore<double, double>;
+
