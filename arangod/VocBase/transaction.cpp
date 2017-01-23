@@ -28,13 +28,13 @@
 #include "Basics/StaticStrings.h"
 #include "StorageEngine/MMFilesDatafileHelper.h"
 #include "StorageEngine/MMFilesDocumentOperation.h"
+#include "StorageEngine/MMFilesPersistentIndexFeature.h"
 #include "Utils/Transaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 #include "VocBase/ticks.h"
 #include "Wal/LogfileManager.h"
 
-#include "Indexes/RocksDBFeature.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>

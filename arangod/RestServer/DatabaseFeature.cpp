@@ -42,6 +42,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/MMFilesPersistentIndex.h"
 #include "StorageEngine/MMFilesWalMarker.h"
 #include "StorageEngine/MMFilesWalSlots.h"
 #include "StorageEngine/StorageEngine.h"
@@ -55,8 +56,6 @@
 #include "VocBase/replication-applier.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
-
-#include "Indexes/RocksDBIndex.h"
 
 #include <velocypack/velocypack-aliases.h>
 

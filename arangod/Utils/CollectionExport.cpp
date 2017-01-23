@@ -23,7 +23,7 @@
 
 #include "CollectionExport.h"
 #include "Basics/WriteLocker.h"
-#include "Indexes/PrimaryIndex.h"
+#include "StorageEngine/MMFilesPrimaryIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"

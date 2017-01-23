@@ -27,8 +27,8 @@
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
 #include "Indexes/IndexIterator.h"
-#include "Indexes/PathBasedIndex.h"
-#include "Indexes/RocksDBFeature.h"
+#include "StorageEngine/MMFilesPersistentIndexFeature.h"
+#include "StorageEngine/MMFilesPathBasedIndex.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 

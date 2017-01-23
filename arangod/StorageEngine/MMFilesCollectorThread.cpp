@@ -30,8 +30,9 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/PrimaryIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/MMFilesPrimaryIndex.h"
+#include "StorageEngine/MMFilesPersistentIndex.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
@@ -43,7 +44,6 @@
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
-#include "Indexes/RocksDBIndex.h"
 
 using namespace arangodb;
 

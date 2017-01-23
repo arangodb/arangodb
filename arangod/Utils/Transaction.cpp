@@ -36,10 +36,6 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/EdgeIndex.h"
-#include "Indexes/HashIndex.h"
-#include "Indexes/PrimaryIndex.h"
-#include "Indexes/SkiplistIndex.h"
 #include "Logger/Logger.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
@@ -47,6 +43,11 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/TransactionContext.h"
 #include "StorageEngine/MMFilesDatafileHelper.h"
+#include "StorageEngine/MMFilesEdgeIndex.h"
+#include "StorageEngine/MMFilesHashIndex.h"
+#include "StorageEngine/MMFilesPrimaryIndex.h"
+#include "StorageEngine/MMFilesPersistentIndex.h"
+#include "StorageEngine/MMFilesSkiplistIndex.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -54,7 +55,6 @@
 #include "VocBase/ticks.h"
 #include "Wal/LogfileManager.h"
 
-#include "Indexes/RocksDBIndex.h"
 
 #include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
