@@ -104,11 +104,13 @@ RestStatus RestAgencyHandler::handleStores() {
   return RestStatus::DONE;
 }
 
+
 RestStatus RestAgencyHandler::handleWrite() {
+
   arangodb::velocypack::Options options;  // TODO: User not wait.
   if (_request->requestType() == rest::RequestType::POST) {
     query_t query;
-
+    
     try {
       query = _request->toVelocyPackBuilderPtr(&options);
     } catch (std::exception const& e) {
@@ -121,7 +123,7 @@ RestStatus RestAgencyHandler::handleWrite() {
       generateResult(rest::ResponseCode::BAD, body.slice());
       return RestStatus::DONE;
     }
-
+    
     if (!query->slice().isArray()) {
       Builder body;
       body.openObject();
@@ -131,7 +133,7 @@ RestStatus RestAgencyHandler::handleWrite() {
       generateResult(rest::ResponseCode::BAD, body.slice());
       return RestStatus::DONE;
     }
-
+    
     if (query->slice().length() == 0) {
       Builder body;
       body.openObject();
@@ -140,7 +142,7 @@ RestStatus RestAgencyHandler::handleWrite() {
       generateResult(rest::ResponseCode::BAD, body.slice());
       return RestStatus::DONE;
     }
-
+    
     auto s = std::chrono::system_clock::now();  // Leadership established?
     std::chrono::duration<double> timeout(_agent->config().minPing());
     while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
@@ -155,9 +157,9 @@ RestStatus RestAgencyHandler::handleWrite() {
       }
       std::this_thread::sleep_for(duration_t(100));
     }
-
+    
     write_ret_t ret;
-
+    
     try {
       ret = _agent->write(query);
     } catch (std::exception const& e) {
@@ -170,18 +172,20 @@ RestStatus RestAgencyHandler::handleWrite() {
       generateResult(rest::ResponseCode::BAD, body.slice());
       return RestStatus::DONE;
     }
-
-    if (ret.accepted) {  // We're leading and handling the request
+    
+    if (ret.accepted) {  
+      
       bool found;
       std::string call_mode = _request->header("x-arangodb-agency-mode", found);
       if (!found) {
         call_mode = "waitForCommitted";
       }
-
+      
       size_t errors = 0;
       Builder body;
       body.openObject();
-
+      Agent::raft_commit_t result = Agent::raft_commit_t::OK;
+      
       if (call_mode != "noWait") {
         // Note success/error
         body.add("results", VPackValue(VPackValueType::Array));
@@ -192,31 +196,39 @@ RestStatus RestAgencyHandler::handleWrite() {
           }
         }
         body.close();
-
+        
         // Wait for commit of highest except if it is 0?
         if (!ret.indices.empty() && call_mode == "waitForCommitted") {
           arangodb::consensus::index_t max_index = 0;
           try {
             max_index =
-                *std::max_element(ret.indices.begin(), ret.indices.end());
+              *std::max_element(ret.indices.begin(), ret.indices.end());
           } catch (std::exception const& e) {
-            LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__
-                                            << ":" << __LINE__;
+            LOG_TOPIC(WARN, Logger::AGENCY)
+              << e.what() << " " << __FILE__ << ":" << __LINE__;
           }
-
+          
           if (max_index > 0) {
-            _agent->waitFor(max_index);
+            result = _agent->waitFor(max_index);
           }
+          
         }
       }
-
+      
       body.close();
-
-      if (errors > 0) {  // Some/all requests failed
-        generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
-      } else {  // All good
-        generateResult(rest::ResponseCode::OK, body.slice());
+      
+      if (result == Agent::raft_commit_t::UNKNOWN) {
+        generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+      } else if (result == Agent::raft_commit_t::TIMEOUT) {
+        generateResult(rest::ResponseCode::REQUEST_TIMEOUT, body.slice());
+      } else {
+        if (errors > 0) { // Some/all requests failed
+          generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
+        } else {          // All good
+          generateResult(rest::ResponseCode::OK, body.slice());
+        }
       }
+      
     } else {  // Redirect to leader
       if (_agent->leaderID() == NO_LEADER) {
         Builder body;

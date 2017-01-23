@@ -158,9 +158,10 @@ void Agent::startConstituent() {
 }
 
 // Waits here for confirmation of log's commits up to index. Timeout in seconds.
-bool Agent::waitFor(index_t index, double timeout) {
+Agent::raft_commit_t Agent::waitFor(index_t index, double timeout) {
+
   if (size() == 1) {  // single host agency
-    return true;
+    return Agent::raft_commit_t::OK;
   }
 
   // Get condition variable to notice commits
@@ -172,24 +173,33 @@ bool Agent::waitFor(index_t index, double timeout) {
     {
       MUTEX_LOCKER(lockIndex, _ioLock);
       if (_lastCommitIndex >= index) {
-        return true;
+        return Agent::raft_commit_t::OK;
       }
     }
 
     // timeout
     if (!_waitForCV.wait(static_cast<uint64_t>(1.0e6 * timeout))) {
-      return false;
-    }
+      if (leading()) {
+        MUTEX_LOCKER(lockIndex, _ioLock);
+        return (_lastCommitIndex >= index) ?
+          Agent::raft_commit_t::OK : Agent::raft_commit_t::TIMEOUT;
+      } else {
+        return Agent::raft_commit_t::UNKNOWN;
+      }
+    } 
 
     // shutting down
     if (this->isStopping()) {
-      return false;
+      return Agent::raft_commit_t::UNKNOWN;
     }
   }
 
   // We should never get here
   TRI_ASSERT(false);
+
+  return Agent::raft_commit_t::UNKNOWN;
 }
+
 
 //  AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn(std::string const& id, index_t index) {
