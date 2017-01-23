@@ -1,6 +1,10 @@
 v3.1.9 (XXXX-XX-XX)
 -------------------
 
+* prevent duplicate keys in JSON when doing transactions
+
+* prevent trying to parse agency results as JSON when HTTP is not ok
+
 * allow intermittent read-cache garbage collection during collection loads
 
 * more efficient collection locking in case the locks are contended
