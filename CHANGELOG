@@ -13,6 +13,7 @@ v3.1.9 (XXXX-XX-XX)
 
 * fixed issue #2256
 
+* avoid reporting in-sync follower twice (improves cluster stability)
 
 v3.1.8 (2017-01-09)
 -------------------
