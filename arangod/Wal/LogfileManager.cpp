@@ -624,7 +624,7 @@ void LogfileManager::unregisterFailedTransactions(
   WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    READ_LOCKER(locker, _transactions[bucket]._lock);
+    WRITE_LOCKER(locker, _transactions[bucket]._lock);
 
     std::for_each(failedTransactions.begin(), failedTransactions.end(),
                 [&](TRI_voc_tid_t id) { _transactions[bucket]._failedTransactions.erase(id); });
