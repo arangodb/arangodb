@@ -56,9 +56,9 @@ if (MSVC)
 endif ()
   
 set(ROCKSDB_FILES
-  Indexes/RocksDBFeature.cpp
-  Indexes/RocksDBIndex.cpp
-  Indexes/RocksDBKeyComparator.cpp
+  StorageEngine/MMFilesPersistentIndexFeature.cpp
+  StorageEngine/MMFilesPersistentIndex.cpp
+  StorageEngine/MMFilesPersistentIndexKeyComparator.cpp
 )
 
 if (USE_ENTERPRISE)
@@ -208,17 +208,10 @@ SET(ARANGOD_SOURCES
   GeneralServer/RestStatus.cpp
   GeneralServer/VppCommTask.cpp
   GeoIndex/GeoIndex.cpp
-  Indexes/EdgeIndex.cpp
-  Indexes/FulltextIndex.cpp
-  Indexes/GeoIndex.cpp
-  Indexes/HashIndex.cpp
   Indexes/Index.cpp
   Indexes/IndexElement.cpp
   Indexes/IndexIterator.cpp
-  Indexes/PathBasedIndex.cpp
-  Indexes/PrimaryIndex.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
-  Indexes/SkiplistIndex.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   Replication/ContinuousSyncer.cpp
   Replication/InitialSyncer.cpp
@@ -296,10 +289,17 @@ SET(ARANGOD_SOURCES
   StorageEngine/MMFilesDatafile.cpp
   StorageEngine/MMFilesDatafileStatistics.cpp
   StorageEngine/MMFilesDocumentOperation.cpp
+  StorageEngine/MMFilesEdgeIndex.cpp
   StorageEngine/MMFilesEngine.cpp
   StorageEngine/MMFilesLogfileManager.cpp
+  StorageEngine/MMFilesFulltextIndex.cpp
+  StorageEngine/MMFilesGeoIndex.cpp
+  StorageEngine/MMFilesHashIndex.cpp
+  StorageEngine/MMFilesPathBasedIndex.cpp
+  StorageEngine/MMFilesPrimaryIndex.cpp
   StorageEngine/MMFilesRemoverThread.cpp
   StorageEngine/MMFilesRevisionsCache.cpp
+  StorageEngine/MMFilesSkiplistIndex.cpp
   StorageEngine/MMFilesSynchronizerThread.cpp
   StorageEngine/MMFilesWalLogfile.cpp
   StorageEngine/MMFilesWalRecoverState.cpp

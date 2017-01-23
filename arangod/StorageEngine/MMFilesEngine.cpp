@@ -38,13 +38,12 @@
 #include "StorageEngine/MMFilesCollection.h"
 #include "StorageEngine/MMFilesDatafile.h"
 #include "StorageEngine/MMFilesDatafileHelper.h"
+#include "StorageEngine/MMFilesPersistentIndex.h"
+#include "StorageEngine/MMFilesPersistentIndexFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "StorageEngine/MMFilesLogfileManager.h"
-
-#include "Indexes/RocksDBFeature.h"
-#include "Indexes/RocksDBIndex.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>

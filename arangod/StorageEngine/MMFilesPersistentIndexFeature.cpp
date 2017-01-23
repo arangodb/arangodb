@@ -21,15 +21,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBFeature.h"
+#include "MMFilesPersistentIndexFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/tri-strings.h"
-#include "Indexes/RocksDBKeyComparator.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "StorageEngine/MMFilesPersistentIndexKeyComparator.h"
   
 #include <rocksdb/db.h>
 #include <rocksdb/convenience.h>

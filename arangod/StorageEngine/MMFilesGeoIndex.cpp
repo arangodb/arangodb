@@ -21,14 +21,13 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GeoIndex.h"
+#include "MMFilesGeoIndex.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/GeoIndex.h"
 #include "Logger/Logger.h"
 #include "VocBase/transaction.h"
 
