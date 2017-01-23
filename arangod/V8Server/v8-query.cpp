@@ -189,7 +189,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("ALL(<skip>, <limit>)");
   }
 
-  arangodb::LogicalCollection const* collection =
+  arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
                                                    TRI_GetVocBaseColType());
 
@@ -254,11 +254,21 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackOptions resultOptions = VPackOptions::Defaults;
   resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler().get();
 
-  auto batch = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
-  opCursor->getMore(batch);
+  std::vector<IndexLookupResult> batch;
+  opCursor->getMoreMptr(batch);
   // We only need this one call, limit == batchsize
+  ManagedDocumentResult mmdr(&trx);
+  VPackBuilder resultBuilder;
+  resultBuilder.openArray();
+  for (auto const& it : batch) {
+    TRI_voc_rid_t revisionId = it.revisionId();
+    if (collection->readRevision(&trx, mmdr, revisionId)) {
+      resultBuilder.add(VPackSlice(mmdr.vpack()));
+    }
+  }
+  resultBuilder.close();
 
-  VPackSlice docs = batch->slice();
+  VPackSlice docs = resultBuilder.slice();
   TRI_ASSERT(docs.isArray());
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);

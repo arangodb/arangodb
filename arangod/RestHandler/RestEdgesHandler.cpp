@@ -90,22 +90,21 @@ bool RestEdgesHandler::getEdgesForVertexList(
     THROW_ARANGO_EXCEPTION(cursor->code);
   }
 
-  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  std::vector<IndexLookupResult> batch;
+  ManagedDocumentResult mmdr(&trx);
+  auto collection = trx.documentCollection();
   while (cursor->hasMore()) {
-    cursor->getMore(opRes);
-    if (opRes->failed()) {
-      THROW_ARANGO_EXCEPTION(opRes->code);
-    }
-    VPackSlice edges = opRes->slice();
-    TRI_ASSERT(edges.isArray());
+    cursor->getMoreMptr(batch);
+    scannedIndex += batch.size();
 
-    // generate result
-    scannedIndex += static_cast<size_t>(edges.length());
-
-    for (auto const& edge : VPackArrayIterator(edges)) {
-      result.add(edge);
+    for (auto const& it : batch) {
+      TRI_voc_rid_t revisionId = it.revisionId();
+      if (collection->readRevision(&trx, mmdr, revisionId)) {
+        result.add(VPackSlice(mmdr.vpack()));
+      }
     }
   }
+  result.close();
 
   return true;
 }
@@ -129,20 +128,18 @@ bool RestEdgesHandler::getEdgesForVertex(
     THROW_ARANGO_EXCEPTION(cursor->code);
   }
 
-  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  std::vector<IndexLookupResult> batch;
+  ManagedDocumentResult mmdr(&trx);
+  auto collection = trx.documentCollection();
   while (cursor->hasMore()) {
-    cursor->getMore(opRes);
-    if (opRes->failed()) {
-      THROW_ARANGO_EXCEPTION(opRes->code);
-    }
-    VPackSlice edges = opRes->slice();
-    TRI_ASSERT(edges.isArray());
+    cursor->getMoreMptr(batch);
+    scannedIndex += batch.size();
 
-    // generate result
-    scannedIndex += static_cast<size_t>(edges.length());
-
-    for (auto const& edge : VPackArrayIterator(edges)) {
-      result.add(edge);
+    for (auto const& it : batch) {
+      TRI_voc_rid_t revisionId = it.revisionId();
+      if (collection->readRevision(&trx, mmdr, revisionId)) {
+        result.add(VPackSlice(mmdr.vpack()));
+      }
     }
   }
 

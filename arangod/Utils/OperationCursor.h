@@ -102,26 +102,6 @@ struct OperationCursor {
   void reset();
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements.
-///        Defaults to _batchSize
-///        Check hasMore()==true before using this
-///        NOTE: This will throw on OUT_OF_MEMORY
-//////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<OperationResult> getMore(uint64_t batchSize = UINT64_MAX,
-                                           bool useExternals = true);
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements.
-///        Defaults to _batchSize
-///        Check hasMore()==true before using this
-///        NOTE: This will throw on OUT_OF_MEMORY
-//////////////////////////////////////////////////////////////////////////////
-
-  void getMore(std::shared_ptr<OperationResult>&, uint64_t batchSize = UINT64_MAX,
-               bool useExternals = true);
-
-//////////////////////////////////////////////////////////////////////////////
 /// @brief Get next batchSize many elements. mptr variant
 ///        Defaults to _batchSize
 ///        Check hasMore()==true before using this
