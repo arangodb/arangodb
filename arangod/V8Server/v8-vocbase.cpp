@@ -209,6 +209,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool isValid = true;
   std::vector<std::string> readCollections;
   std::vector<std::string> writeCollections;
+  std::vector<std::string> exclusiveCollections;
 
   bool allowImplicitCollections = true;
   if (collections->Has(TRI_V8_ASCII_STRING("allowImplicit"))) {
@@ -257,6 +258,29 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     } else if (collections->Get(TRI_V8_ASCII_STRING("write"))->IsString()) {
       writeCollections.emplace_back(
           TRI_ObjectToString(collections->Get(TRI_V8_ASCII_STRING("write"))));
+    } else {
+      isValid = false;
+    }
+  }
+  
+  // collections.exclusive
+  if (collections->Has(TRI_V8_ASCII_STRING("exclusive"))) {
+    if (collections->Get(TRI_V8_ASCII_STRING("exclusive"))->IsArray()) {
+      v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(
+          collections->Get(TRI_V8_ASCII_STRING("exclusive")));
+
+      for (uint32_t i = 0; i < names->Length(); ++i) {
+        v8::Handle<v8::Value> collection = names->Get(i);
+        if (!collection->IsString()) {
+          isValid = false;
+          break;
+        }
+
+        exclusiveCollections.emplace_back(TRI_ObjectToString(collection));
+      }
+    } else if (collections->Get(TRI_V8_ASCII_STRING("exclusive"))->IsString()) {
+      exclusiveCollections.emplace_back(
+          TRI_ObjectToString(collections->Get(TRI_V8_ASCII_STRING("exclusive"))));
     } else {
       isValid = false;
     }
@@ -342,7 +366,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
       std::make_shared<V8TransactionContext>(vocbase, embed);
 
   // start actual transaction
-  ExplicitTransaction trx(transactionContext, readCollections, writeCollections,
+  ExplicitTransaction trx(transactionContext, readCollections, writeCollections, exclusiveCollections,
                           lockTimeout, waitForSync, allowImplicitCollections);
 
   int res = trx.begin();

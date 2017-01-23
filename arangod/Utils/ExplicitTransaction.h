@@ -33,7 +33,7 @@
 
 namespace arangodb {
 
-class ExplicitTransaction : public Transaction {
+class ExplicitTransaction final : public Transaction {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
@@ -42,6 +42,7 @@ class ExplicitTransaction : public Transaction {
   ExplicitTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
                       std::vector<std::string> const& readCollections,
                       std::vector<std::string> const& writeCollections,
+                      std::vector<std::string> const& exclusiveCollections,
                       double lockTimeout, bool waitForSync,
                       bool allowImplicitCollections)
       : Transaction(transactionContext) {
@@ -53,6 +54,10 @@ class ExplicitTransaction : public Transaction {
 
     if (waitForSync) {
       this->setWaitForSync();
+    }
+    
+    for (auto const& it : exclusiveCollections) {
+      this->addCollection(it, TRI_TRANSACTION_EXCLUSIVE);
     }
 
     for (auto const& it : writeCollections) {

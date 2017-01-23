@@ -11,6 +11,7 @@ in progress
 
 to do
 -----
+- move engine-specific parts of transaction.cpp into engine
 - check for illegal includes
 - fix includes during API conversion
 - concept "collection locks"
@@ -18,3 +19,5 @@ to do
 - transaction API
 - DDL API
 - index API
+- add new serialization RW lock to LogicalCollection. all DML ops must acquire it in read mode, the explicit lock command must acquire it in write mode.
+

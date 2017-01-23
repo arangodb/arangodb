@@ -34,7 +34,7 @@
 
 namespace arangodb {
 
-class AqlTransaction : public Transaction {
+class AqlTransaction final : public Transaction {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction and add all collections from the query
