@@ -2,6 +2,8 @@ done
 ----
 - create new branch
 - factor out transactions from LogfileManager
+- concept "collection locks"
+    - 3 states: READ / WRITE / EXCLUSIVE for locks
 
 in progress
 -----------
@@ -14,7 +16,6 @@ to do
 - move engine-specific parts of transaction.cpp into engine
 - check for illegal includes
 - fix includes during API conversion
-- concept "collection locks"
 - DML API
 - transaction API
 - DDL API
