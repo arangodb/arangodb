@@ -1414,12 +1414,13 @@ AgencyCommResult AgencyComm::sendWithFailover(
                   } else {
                     LOG_TOPIC(INFO, Logger::AGENCYCOMM)
                       << body << " failed with " << slice.toJson();
-                  } else {
-                    success = true;
                   }
+                } else {
+                  success = true;
                 }
               }
             }
+            
           }
           if (success) {
             LOG_TOPIC(INFO, Logger::AGENCYCOMM)
