@@ -1,4 +1,4 @@
-v3.1.9 (XXXX-XX-XX)
+v3.1.9 (2017-01-23)
 -------------------
 
 * prevent duplicate keys in JSON when doing transactions

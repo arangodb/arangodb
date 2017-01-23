@@ -5,4 +5,4 @@ content-type: application/x-arango-dump; charset=utf-8
 x-arango-replication-lastincluded: 10402
 x-arango-replication-checkmore: false
 
-"{\"tick\":\"10396\",\"type\":2300,\"data\":{\"_id\":\"testCollection/123456\",\"_key\":\"123456\",\"_rev\":\"_UWOMxLy---\",\"b\":1,\"c\":false,\"d\":\"additional value\"}}\n{\"tick\":\"10400\",\"type\":2302,\"data\":{\"_key\":\"foobar\",\"_rev\":\"_UWOMxL2---\"}}\n{\"tick\":\"10402\",\"type\":2302,\"data\":{\"_key\":\"abcdef\",\"_rev\":\"_UWOMxL2--_\"}}\n"
+"{\"tick\":\"10396\",\"type\":2300,\"data\":{\"_id\":\"testCollection/123456\",\"_key\":\"123456\",\"_rev\":\"_Uau352K--_\",\"b\":1,\"c\":false,\"d\":\"additional value\"}}\n{\"tick\":\"10400\",\"type\":2302,\"data\":{\"_key\":\"foobar\",\"_rev\":\"_Uau352O--_\"}}\n{\"tick\":\"10402\",\"type\":2302,\"data\":{\"_key\":\"abcdef\",\"_rev\":\"_Uau352S---\"}}\n"

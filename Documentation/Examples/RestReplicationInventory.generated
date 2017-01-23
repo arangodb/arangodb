@@ -379,7 +379,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
     <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"10431"</span>, 
     <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"10435"</span>, 
     <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">3803</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-01-09T16:28:20Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-01-23T16:48:05Z"</span> 
   }, 
   <span class="hljs-string">"tick"</span> : <span class="hljs-string">"10435"</span> 
 }

@@ -1,2 +1,2 @@
-shell> curl --header 'If-None-Match: "_UWOMocC---"' --dump - http://localhost:8529/_api/document/products/9904
+shell> curl --header 'If-None-Match: "_Uau3xHC---"' --dump - http://localhost:8529/_api/document/products/9904
 

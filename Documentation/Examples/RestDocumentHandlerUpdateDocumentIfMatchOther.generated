@@ -1,10 +1,10 @@
-shell> curl -X PUT --header 'If-Match: "_UWOMosu--_"' --data-binary @- --dump - http://localhost:8529/_api/document/products/9921 &lt;&lt;EOF
+shell> curl -X PUT --header 'If-Match: "_Uau3xX2--_"' --data-binary @- --dump - http://localhost:8529/_api/document/products/9921 &lt;&lt;EOF
 {"other":"content"}
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">412</span> Precondition Failed
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_UWOMosu---"</span>
+etag: <span class="hljs-string">"_Uau3xX2---"</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
@@ -13,5 +13,5 @@ etag: <span class="hljs-string">"_UWOMosu---"</span>
   <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"precondition failed"</span>, 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9921"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9921"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UWOMosu---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Uau3xX2---"</span> 
 }
