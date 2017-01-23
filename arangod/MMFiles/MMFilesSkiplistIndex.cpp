@@ -499,7 +499,7 @@ void SkiplistInLookupBuilder::buildSearchValues() {
   }
 }
   
-SkiplistIterator::SkiplistIterator(LogicalCollection* collection, arangodb::Transaction* trx,
+MMFilesSkiplistIterator::MMFilesSkiplistIterator(LogicalCollection* collection, arangodb::Transaction* trx,
                                    ManagedDocumentResult* mmdr,
                                    arangodb::MMFilesSkiplistIndex const* index,
                                    bool reverse, Node* left, Node* right)
@@ -511,7 +511,7 @@ SkiplistIterator::SkiplistIterator(LogicalCollection* collection, arangodb::Tran
 }
 
 /// @brief Reset the cursor
-void SkiplistIterator::reset() {
+void MMFilesSkiplistIterator::reset() {
   if (_reverse) {
     _cursor = _rightEndPoint;
   } else {
@@ -520,7 +520,7 @@ void SkiplistIterator::reset() {
 }
 
 /// @brief Get the next element in the skiplist
-IndexLookupResult SkiplistIterator::next() {
+IndexLookupResult MMFilesSkiplistIterator::next() {
   if (_cursor == nullptr) {
     // We are exhausted already, sorry
     return IndexLookupResult();
@@ -544,7 +544,7 @@ IndexLookupResult SkiplistIterator::next() {
   return IndexLookupResult(tmp->document()->revisionId());
 }
   
-SkiplistIterator2::SkiplistIterator2(LogicalCollection* collection, arangodb::Transaction* trx,
+MMFilesSkiplistIterator2::MMFilesSkiplistIterator2(LogicalCollection* collection, arangodb::Transaction* trx,
     ManagedDocumentResult* mmdr,
     arangodb::MMFilesSkiplistIndex const* index,
     TRI_Skiplist const* skiplist, size_t numPaths,
@@ -567,7 +567,7 @@ SkiplistIterator2::SkiplistIterator2(LogicalCollection* collection, arangodb::Tr
 
 /// @brief Checks if the interval is valid. It is declared invalid if
 ///        one border is nullptr or the right is lower than left.
-bool SkiplistIterator2::intervalValid(void* userData, Node* left, Node* right) const {
+bool MMFilesSkiplistIterator2::intervalValid(void* userData, Node* left, Node* right) const {
   if (left == nullptr) {
     return false;
   }
@@ -586,7 +586,7 @@ bool SkiplistIterator2::intervalValid(void* userData, Node* left, Node* right) c
 }
 
 /// @brief Reset the cursor
-void SkiplistIterator2::reset() {
+void MMFilesSkiplistIterator2::reset() {
   // If _intervals is empty at this point
   // the cursor does not contain any
   // document at all. Reset is pointless
@@ -602,7 +602,7 @@ void SkiplistIterator2::reset() {
 }
 
 /// @brief Get the next element in the skiplist
-IndexLookupResult SkiplistIterator2::next() {
+IndexLookupResult MMFilesSkiplistIterator2::next() {
   if (_cursor == nullptr) {
     // We are exhausted already, sorry
     return IndexLookupResult();
@@ -628,7 +628,7 @@ IndexLookupResult SkiplistIterator2::next() {
   return IndexLookupResult(tmp->document()->revisionId());
 }
 
-void SkiplistIterator2::forwardCursor() {
+void MMFilesSkiplistIterator2::forwardCursor() {
   _currentInterval++;
   if (_currentInterval < _intervals.size()) {
     auto const& interval = _intervals[_currentInterval];
@@ -645,7 +645,7 @@ void SkiplistIterator2::forwardCursor() {
   }
 }
 
-void SkiplistIterator2::initNextInterval() {
+void MMFilesSkiplistIterator2::initNextInterval() {
   // We will always point the cursor to the resulting interval if any.
   // We do not take responsibility for the Nodes!
   Node* rightBorder = nullptr;
@@ -1277,12 +1277,12 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
   if (usesIn) {
     auto builder = std::make_unique<SkiplistInLookupBuilder>(
         trx, mapping, reference, reverse);
-    return new SkiplistIterator2(_collection, trx, mmdr, this, _skiplistIndex, numPaths(), CmpElmElm, reverse,
+    return new MMFilesSkiplistIterator2(_collection, trx, mmdr, this, _skiplistIndex, numPaths(), CmpElmElm, reverse,
                                  builder.release());
   }
   auto builder =
       std::make_unique<SkiplistLookupBuilder>(trx, mapping, reference, reverse);
-  return new SkiplistIterator2(_collection, trx, mmdr, this, _skiplistIndex, numPaths(), CmpElmElm, reverse,
+  return new MMFilesSkiplistIterator2(_collection, trx, mmdr, this, _skiplistIndex, numPaths(), CmpElmElm, reverse,
                                builder.release());
 }
 

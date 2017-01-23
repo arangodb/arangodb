@@ -166,7 +166,7 @@ class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
 /// on the start node to get the first element and that the stop node
 /// can be NULL. Note that it is ensured that all intervals in an iterator
 /// are non-empty.
-class SkiplistIterator final : public IndexIterator {
+class MMFilesSkiplistIterator final : public IndexIterator {
  private:
   friend class MMFilesSkiplistIndex;
 
@@ -182,7 +182,7 @@ class SkiplistIterator final : public IndexIterator {
   Node* _rightEndPoint;  // Interval right border, first excluded element
 
  public:
-  SkiplistIterator(LogicalCollection* collection, arangodb::Transaction* trx,
+  MMFilesSkiplistIterator(LogicalCollection* collection, arangodb::Transaction* trx,
                    ManagedDocumentResult* mmdr,
                    arangodb::MMFilesSkiplistIndex const* index,
                    bool reverse, Node* left, Node* right);
@@ -209,7 +209,7 @@ class SkiplistIterator final : public IndexIterator {
 /// on the start node to get the first element and that the stop node
 /// can be NULL. Note that it is ensured that all intervals in an iterator
 /// are non-empty.
-class SkiplistIterator2 final : public IndexIterator {
+class MMFilesSkiplistIterator2 final : public IndexIterator {
  private:
   // Shorthand for the skiplist node
   typedef MMFilesSkiplistNode<VPackSlice, MMFilesSkiplistIndexElement> Node;
@@ -235,7 +235,7 @@ class SkiplistIterator2 final : public IndexIterator {
                     MMFilesSkiplistCmpType)> _CmpElmElm;
 
  public:
-  SkiplistIterator2(LogicalCollection* collection, arangodb::Transaction* trx,
+  MMFilesSkiplistIterator2(LogicalCollection* collection, arangodb::Transaction* trx,
       ManagedDocumentResult* mmdr,
       arangodb::MMFilesSkiplistIndex const* index,
       TRI_Skiplist const* skiplist, size_t numPaths,
@@ -243,7 +243,7 @@ class SkiplistIterator2 final : public IndexIterator {
                         MMFilesSkiplistCmpType)> const& CmpElmElm,
       bool reverse, BaseSkiplistLookupBuilder* builder);
 
-  ~SkiplistIterator2() {
+  ~MMFilesSkiplistIterator2() {
     delete _builder;
   }
 
@@ -303,7 +303,7 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
     MMFilesSkiplistIndex* _idx;
   };
 
-  friend class SkiplistIterator;
+  friend class MMFilesSkiplistIterator;
   friend struct KeyElementComparator;
   friend struct ElementElementComparator;
 
