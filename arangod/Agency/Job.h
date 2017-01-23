@@ -37,6 +37,12 @@
 namespace arangodb {
 namespace consensus {
 
+// This is intended for lists of servers with the first being the leader
+// and all others followers. Both arguments must be arrays. Returns true, 
+// if the first items in both slice are equal and if both arrays contain
+// the same set of strings.
+bool compareServerLists(Slice plan, Slice current);
+
 enum JOB_STATUS { TODO, PENDING, FINISHED, FAILED, NOTFOUND };
 const std::vector<std::string> pos({"/Target/ToDo/", "/Target/Pending/",
                                     "/Target/Finished/", "/Target/Failed/"});

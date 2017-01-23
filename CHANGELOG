@@ -17,6 +17,9 @@ v3.1.9 (XXXX-XX-XX)
 
 * make syncCollectionFinalize more resilient (improves cluster stability)
 
+* fix a bug in the supervision that did not compare follower lists correctly
+  (improves cluster stability)
+
 v3.1.8 (2017-01-09)
 -------------------
 

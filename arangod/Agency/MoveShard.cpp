@@ -147,7 +147,7 @@ bool MoveShard::start() {
     }
   }
   
-  // Are we ditributeShardsLiked by others?
+  // Are we distributeShardsLiked by others?
   // Invoke moveShard here with others
   auto collections = _snapshot(planColPrefix + _database).children();
   std::vector<std::string> colsLikeMe;
@@ -366,16 +366,7 @@ JOB_STATUS MoveShard::status() {
       Slice current = _snapshot(curPath).slice();
       Slice plan = _snapshot(planPath).slice();
 
-      std::vector<std::string> planv, currv;
-      for (auto const& srv : VPackArrayIterator(plan)) {
-        planv.push_back(srv.copyString());
-      }
-      std::sort(planv.begin(), planv.end());
-      for (auto const& srv : VPackArrayIterator(current)) {
-        currv.push_back(srv.copyString());
-      }
-      std::sort(currv.begin(), currv.end());
-      if (currv == planv) {
+      if (compareServerLists(plan, current)) {
         if (current[0].copyString() ==
             std::string("_") + _from) {  // Retired leader
           
