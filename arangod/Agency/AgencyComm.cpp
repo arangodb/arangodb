@@ -1013,6 +1013,10 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
                       : timeout),
       url, builder.slice().toJson());
 
+  if (!result.successful()) {
+    return result;
+  }
+
   try {
     result.setVPack(VPackParser::fromJson(result.bodyRef()));
 
