@@ -85,6 +85,7 @@ function SynchronousReplicationSuite () {
       wait(0.5);
       global.ArangoClusterInfo.flush();
     }
+    console.error(global.ArangoAgency.read([["/"]]));
     return false;
   }
 
