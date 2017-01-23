@@ -35,7 +35,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 #include "Indexes/RocksDBFeature.h"
 #include "Indexes/RocksDBIndex.h"

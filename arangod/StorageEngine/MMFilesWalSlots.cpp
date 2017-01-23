@@ -28,14 +28,14 @@
 #include "StorageEngine/MMFilesDatafile.h"
 #include "StorageEngine/MMFilesDatafileHelper.h"
 #include "VocBase/ticks.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 using namespace arangodb;
   
 static uint32_t const PrologueSize = MMFilesDatafileHelper::AlignedSize<uint32_t>(sizeof(TRI_df_prologue_marker_t));
 
 /// @brief create the slots
-MMFilesWalSlots::MMFilesWalSlots(wal::LogfileManager* logfileManager, size_t numberOfSlots,
+MMFilesWalSlots::MMFilesWalSlots(MMFilesLogfileManager* logfileManager, size_t numberOfSlots,
              MMFilesWalSlot::TickType tick)
     : _logfileManager(logfileManager),
       _condition(),

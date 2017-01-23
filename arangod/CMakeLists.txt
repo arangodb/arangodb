@@ -296,6 +296,7 @@ SET(ARANGOD_SOURCES
   StorageEngine/MMFilesDatafileStatistics.cpp
   StorageEngine/MMFilesDocumentOperation.cpp
   StorageEngine/MMFilesEngine.cpp
+  StorageEngine/MMFilesLogfileManager.cpp
   StorageEngine/MMFilesRemoverThread.cpp
   StorageEngine/MMFilesRevisionsCache.cpp
   StorageEngine/MMFilesSynchronizerThread.cpp
@@ -359,7 +360,6 @@ SET(ARANGOD_SOURCES
   VocBase/transaction.cpp
   VocBase/vocbase.cpp
   Wal/Logfile.cpp
-  Wal/LogfileManager.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 

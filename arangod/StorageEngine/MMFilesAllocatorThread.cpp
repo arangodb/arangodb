@@ -25,14 +25,14 @@
 #include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 using namespace arangodb;
 
 /// @brief wait interval for the allocator thread when idle
 uint64_t const MMFilesAllocatorThread::Interval = 500 * 1000;
 
-MMFilesAllocatorThread::MMFilesAllocatorThread(wal::LogfileManager* logfileManager)
+MMFilesAllocatorThread::MMFilesAllocatorThread(MMFilesLogfileManager* logfileManager)
     : Thread("WalAllocator"),
       _logfileManager(logfileManager),
       _condition(),

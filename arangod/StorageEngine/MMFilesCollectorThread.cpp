@@ -41,7 +41,7 @@
 #include "StorageEngine/MMFilesDatafileHelper.h"
 #include "VocBase/LogicalCollection.h"
 #include "Wal/Logfile.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 #include "Indexes/RocksDBIndex.h"
 
@@ -225,7 +225,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
 uint64_t const MMFilesCollectorThread::Interval = 1000000;
 
 /// @brief create the collector thread
-MMFilesCollectorThread::MMFilesCollectorThread(wal::LogfileManager* logfileManager)
+MMFilesCollectorThread::MMFilesCollectorThread(MMFilesLogfileManager* logfileManager)
     : Thread("WalCollector"),
       _logfileManager(logfileManager),
       _condition(),

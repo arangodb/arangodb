@@ -74,12 +74,12 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/MMFilesEngine.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 #include "StorageEngine/MMFilesWalRecoveryFeature.h"
 #include "StorageEngine/RocksDBEngine.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/IndexThreadFeature.h"
-#include "Wal/LogfileManager.h"
 
 #include "Indexes/RocksDBFeature.h"
 
@@ -140,7 +140,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new LockfileFeature(&server));
-  server.addFeature(new wal::LogfileManager(&server));
+  server.addFeature(new MMFilesLogfileManager(&server));
   server.addFeature(new LoggerBufferFeature(&server));
   server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new NonceFeature(&server));

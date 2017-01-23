@@ -27,7 +27,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -40,7 +40,7 @@ MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(ApplicationServer* server)
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Database"); 
-  startsAfter("LogfileManager");
+  startsAfter("MMFilesLogfileManager");
   startsAfter("RocksDBIndex");
 }
 
@@ -49,7 +49,7 @@ MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(ApplicationServer* server)
 /// recovery state has been build. additionally, all databases have been
 /// opened already so we can use collections
 void MMFilesWalRecoveryFeature::start() {
-  wal::LogfileManager* logfileManager = ApplicationServer::getFeature<wal::LogfileManager>("LogfileManager");
+  MMFilesLogfileManager* logfileManager = ApplicationServer::getFeature<MMFilesLogfileManager>("MMFilesLogfileManager");
 
   TRI_ASSERT(!logfileManager->allowWrites());
 
@@ -61,7 +61,7 @@ void MMFilesWalRecoveryFeature::start() {
   }
 
   if (!logfileManager->open()) {
-    // if we got here, the LogfileManager has already logged a fatal error and we can simply abort
+    // if we got here, the MMFilesLogfileManager has already logged a fatal error and we can simply abort
     FATAL_ERROR_EXIT();
   }
 }

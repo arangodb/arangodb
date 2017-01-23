@@ -30,9 +30,7 @@
 #include "Wal/Logfile.h"
 
 namespace arangodb {
-namespace wal {
-class LogfileManager;
-}
+class MMFilesLogfileManager;
 
 class MMFilesSynchronizerThread final : public Thread {
   /// @brief MMFilesSynchronizerThread
@@ -41,7 +39,7 @@ class MMFilesSynchronizerThread final : public Thread {
   MMFilesSynchronizerThread& operator=(MMFilesSynchronizerThread const&) = delete;
 
  public:
-  MMFilesSynchronizerThread(wal::LogfileManager*, uint64_t);
+  MMFilesSynchronizerThread(MMFilesLogfileManager*, uint64_t);
   ~MMFilesSynchronizerThread() { shutdown(); }
 
  public:
@@ -63,7 +61,7 @@ class MMFilesSynchronizerThread final : public Thread {
 
  private:
   /// @brief the logfile manager
-  wal::LogfileManager* _logfileManager;
+  MMFilesLogfileManager* _logfileManager;
 
   /// @brief condition variable for the thread
   basics::ConditionVariable _condition;

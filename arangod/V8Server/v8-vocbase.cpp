@@ -78,7 +78,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -404,7 +404,7 @@ static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("properties(<object>)");
   }
 
-  auto l = arangodb::wal::LogfileManager::instance();
+  auto l = arangodb::MMFilesLogfileManager::instance();
 
   if (args.Length() == 1) {
     // set the properties
@@ -517,7 +517,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_RETURN_TRUE();
   }
 
-  res = arangodb::wal::LogfileManager::instance()->flush(
+  res = arangodb::MMFilesLogfileManager::instance()->flush(
       waitForSync, waitForCollector, writeShutdownFile);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -570,7 +570,7 @@ static void JS_WaitCollectorWal(
     timeout = TRI_ObjectToDouble(args[1]);
   }
 
-  int res = arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
+  int res = arangodb::MMFilesLogfileManager::instance()->waitForCollectorQueue(
       col->cid(), timeout);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -591,7 +591,7 @@ static void JS_TransactionsWal(
   v8::HandleScope scope(isolate);
 
   auto const& info =
-      arangodb::wal::LogfileManager::instance()->runningTransactions();
+      arangodb::MMFilesLogfileManager::instance()->runningTransactions();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 

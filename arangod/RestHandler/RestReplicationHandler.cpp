@@ -53,7 +53,7 @@
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
 #include "VocBase/ticks.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -416,9 +416,9 @@ void RestReplicationHandler::handleCommandLoggerState() {
   VPackBuilder builder;
   builder.add(VPackValue(VPackValueType::Object));  // Base
 
-  arangodb::wal::LogfileManager::instance()->waitForSync(10.0);
-  arangodb::wal::LogfileManagerState const s =
-      arangodb::wal::LogfileManager::instance()->state();
+  arangodb::MMFilesLogfileManager::instance()->waitForSync(10.0);
+  arangodb::MMFilesLogfileManagerState const s =
+      arangodb::MMFilesLogfileManager::instance()->state();
 
   // "state" part
   builder.add("state", VPackValue(VPackValueType::Object));
@@ -464,7 +464,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerTickRanges() {
-  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
+  auto const& ranges = arangodb::MMFilesLogfileManager::instance()->ranges();
   VPackBuilder b;
   b.add(VPackValue(VPackValueType::Array));
 
@@ -486,7 +486,7 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerFirstTick() {
-  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
+  auto const& ranges = arangodb::MMFilesLogfileManager::instance()->ranges();
 
   VPackBuilder b;
   b.add(VPackValue(VPackValueType::Object));
@@ -649,7 +649,7 @@ void RestReplicationHandler::handleCommandBarrier() {
     }
 
     TRI_voc_tick_t id =
-        arangodb::wal::LogfileManager::instance()->addLogfileBarrier(minTick,
+        arangodb::MMFilesLogfileManager::instance()->addLogfileBarrier(minTick,
                                                                      ttl);
 
     VPackBuilder b;
@@ -687,7 +687,7 @@ void RestReplicationHandler::handleCommandBarrier() {
       minTick = v.getNumber<TRI_voc_tick_t>();
     }
 
-    if (arangodb::wal::LogfileManager::instance()->extendLogfileBarrier(
+    if (arangodb::MMFilesLogfileManager::instance()->extendLogfileBarrier(
             id, ttl, minTick)) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
@@ -701,7 +701,7 @@ void RestReplicationHandler::handleCommandBarrier() {
     // delete an existing barrier
     TRI_voc_tick_t id = StringUtils::uint64(suffixes[1]);
 
-    if (arangodb::wal::LogfileManager::instance()->removeLogfileBarrier(id)) {
+    if (arangodb::MMFilesLogfileManager::instance()->removeLogfileBarrier(id)) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
       int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -712,7 +712,7 @@ void RestReplicationHandler::handleCommandBarrier() {
 
   if (type == rest::RequestType::GET) {
     // fetch all barriers
-    auto ids = arangodb::wal::LogfileManager::instance()->getLogfileBarriers();
+    auto ids = arangodb::MMFilesLogfileManager::instance()->getLogfileBarriers();
 
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Array));
@@ -854,8 +854,8 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   }
 
   // determine start and end tick
-  arangodb::wal::LogfileManagerState const state =
-      arangodb::wal::LogfileManager::instance()->state();
+  arangodb::MMFilesLogfileManagerState const state =
+      arangodb::MMFilesLogfileManager::instance()->state();
   TRI_voc_tick_t tickStart = 0;
   TRI_voc_tick_t tickEnd = UINT64_MAX;
   TRI_voc_tick_t firstRegularTick = 0;
@@ -951,7 +951,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 
   if (barrierId > 0) {
     // extend the WAL logfile barrier
-    arangodb::wal::LogfileManager::instance()->extendLogfileBarrier(
+    arangodb::MMFilesLogfileManager::instance()->extendLogfileBarrier(
         barrierId, 180, tickStart);
   }
 
@@ -1034,8 +1034,8 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 
 void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
   // determine start and end tick
-  arangodb::wal::LogfileManagerState const state =
-      arangodb::wal::LogfileManager::instance()->state();
+  arangodb::MMFilesLogfileManagerState const state =
+      arangodb::MMFilesLogfileManager::instance()->state();
   TRI_voc_tick_t tickStart = 0;
   TRI_voc_tick_t tickEnd = state.lastCommittedTick;
 
@@ -1136,8 +1136,8 @@ void RestReplicationHandler::handleCommandInventory() {
   // "state"
   builder.add("state", VPackValue(VPackValueType::Object));
 
-  arangodb::wal::LogfileManagerState const s =
-      arangodb::wal::LogfileManager::instance()->state();
+  arangodb::MMFilesLogfileManagerState const s =
+      arangodb::MMFilesLogfileManager::instance()->state();
 
   builder.add("running", VPackValue(true));
   builder.add("lastLogTick", VPackValue(std::to_string(s.lastCommittedTick)));
@@ -2775,11 +2775,11 @@ void RestReplicationHandler::handleCommandDump() {
              << "', tickStart: " << tickStart << ", tickEnd: " << tickEnd;
 
   if (flush) {
-    arangodb::wal::LogfileManager::instance()->flush(true, true, false);
+    arangodb::MMFilesLogfileManager::instance()->flush(true, true, false);
 
     // additionally wait for the collector
     if (flushWait > 0) {
-      arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
+      arangodb::MMFilesLogfileManager::instance()->waitForCollectorQueue(
           c->cid(), static_cast<double>(flushWait));
     }
   }
@@ -3094,7 +3094,7 @@ void RestReplicationHandler::handleCommandSync() {
   config._useCollectionId = useCollectionId;
 
   // wait until all data in current logfile got synced
-  arangodb::wal::LogfileManager::instance()->waitForSync(5.0);
+  arangodb::MMFilesLogfileManager::instance()->waitForSync(5.0);
 
   InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
                        verbose);

@@ -31,7 +31,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/RevisionCacheChunk.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -94,7 +94,7 @@ TransactionContext::~TransactionContext() {
 
   // unregister the transaction from the logfile manager
   if (_transaction.id > 0) {
-    arangodb::wal::LogfileManager::instance()->unregisterTransaction(_transaction.id, _transaction.hasFailedOperations);
+    arangodb::MMFilesLogfileManager::instance()->unregisterTransaction(_transaction.id, _transaction.hasFailedOperations);
   }
 
   for (auto& it : _ditches) {

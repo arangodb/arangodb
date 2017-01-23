@@ -32,9 +32,7 @@
 #include "Wal/Logfile.h"
 
 namespace arangodb {
-namespace wal {
-class LogfileManager;
-}
+class MMFilesLogfileManager;
 
 struct MMFilesWalSlotInfoCopy {
   explicit MMFilesWalSlotInfoCopy(MMFilesWalSlot const* slot)
@@ -79,7 +77,7 @@ class MMFilesWalSlots {
 
  public:
   /// @brief create the slots
-  MMFilesWalSlots(wal::LogfileManager*, size_t, MMFilesWalSlot::TickType);
+  MMFilesWalSlots(MMFilesLogfileManager*, size_t, MMFilesWalSlot::TickType);
 
   /// @brief destroy the slots
   ~MMFilesWalSlots();
@@ -150,7 +148,7 @@ class MMFilesWalSlots {
 
  private:
   /// @brief the logfile manager
-  wal::LogfileManager* _logfileManager;
+  MMFilesLogfileManager* _logfileManager;
 
   /// @brief condition variable for slots
   basics::ConditionVariable _condition;
@@ -200,7 +198,7 @@ class MMFilesWalSlots {
   /// @brief last written collection id (in prologue marker)
   TRI_voc_cid_t _lastCollectionId;
 
-  /// @brief shutdown flag, set by LogfileManager on shutdown
+  /// @brief shutdown flag, set by MMFilesLogfileManager on shutdown
   bool _shutdown;
 };
 

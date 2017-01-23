@@ -25,10 +25,10 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/xxhash.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/RevisionCacheChunk.h"
-#include "Wal/LogfileManager.h"
 
 using namespace arangodb;
 

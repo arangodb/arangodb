@@ -30,7 +30,7 @@
 #include "StorageEngine/MMFilesWalSlots.h"
 #include "StorageEngine/MMFilesWalSyncRegion.h"
 #include "VocBase/ticks.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 using namespace arangodb;
   
@@ -45,7 +45,7 @@ static constexpr inline uint64_t syncWaitersMask() {
 /// for use in _waiters only
 static constexpr inline int asyncWaitersBits() { return 32; }
 
-MMFilesSynchronizerThread::MMFilesSynchronizerThread(wal::LogfileManager* logfileManager,
+MMFilesSynchronizerThread::MMFilesSynchronizerThread(MMFilesLogfileManager* logfileManager,
                                        uint64_t syncInterval)
     : Thread("WalSynchronizer"),
       _logfileManager(logfileManager),

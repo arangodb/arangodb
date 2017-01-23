@@ -36,10 +36,10 @@
 
 namespace arangodb {
 class LogicalCollection;
+class MMFilesLogfileManager;
 class SingleCollectionTransaction;
 
 namespace wal {
-class LogfileManager;
 class Logfile;
 }
 
@@ -48,7 +48,7 @@ class MMFilesCollectorThread final : public Thread {
   MMFilesCollectorThread& operator=(MMFilesCollectorThread const&) = delete;
 
  public:
-  explicit MMFilesCollectorThread(wal::LogfileManager*);
+  explicit MMFilesCollectorThread(MMFilesLogfileManager*);
   ~MMFilesCollectorThread() { shutdown(); }
 
  public:
@@ -107,7 +107,7 @@ class MMFilesCollectorThread final : public Thread {
 
  private:
   /// @brief the logfile manager
-  wal::LogfileManager* _logfileManager;
+  MMFilesLogfileManager* _logfileManager;
 
   /// @brief condition variable for the collector thread
   basics::ConditionVariable _condition;

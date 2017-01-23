@@ -34,7 +34,7 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/replication-dump.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -54,8 +54,8 @@ static void JS_StateLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::wal::LogfileManagerState const s =
-      arangodb::wal::LogfileManager::instance()->state();
+  arangodb::MMFilesLogfileManagerState const s =
+      arangodb::MMFilesLogfileManager::instance()->state();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -91,7 +91,7 @@ static void JS_TickRangesLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
+  auto const& ranges = arangodb::MMFilesLogfileManager::instance()->ranges();
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate, (int)ranges.size());
   uint32_t i = 0;
@@ -121,7 +121,7 @@ static void JS_FirstTickLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
+  auto const& ranges = arangodb::MMFilesLogfileManager::instance()->ranges();
 
   TRI_voc_tick_t tick = UINT64_MAX;
 

@@ -32,16 +32,14 @@
 #include "Basics/WriteLocker.h"
 
 namespace arangodb {
-namespace wal {
-class LogfileManager;
-}
+class MMFilesLogfileManager;
 
 class MMFilesAllocatorThread final : public Thread {
   MMFilesAllocatorThread(MMFilesAllocatorThread const&) = delete;
   MMFilesAllocatorThread& operator=(MMFilesAllocatorThread const&) = delete;
 
  public:
-  explicit MMFilesAllocatorThread(wal::LogfileManager*);
+  explicit MMFilesAllocatorThread(MMFilesLogfileManager*);
   ~MMFilesAllocatorThread() { shutdown(); }
 
  public:
@@ -76,7 +74,7 @@ class MMFilesAllocatorThread final : public Thread {
 
  private:
   /// @brief the logfile manager
-  wal::LogfileManager* _logfileManager;
+  MMFilesLogfileManager* _logfileManager;
 
   /// @brief condition variable for the allocator thread
   basics::ConditionVariable _condition;

@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_WAL_LOGFILE_MANAGER_H
-#define ARANGOD_WAL_LOGFILE_MANAGER_H 1
+#ifndef ARANGOD_MMFILES_LOGFILE_MANAGER_H
+#define ARANGOD_MMFILES_LOGFILE_MANAGER_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -44,10 +44,8 @@ namespace options {
 class ProgramOptions;
 }
 
-namespace wal {
-
 struct LogfileRange {
-  LogfileRange(Logfile::IdType id, std::string const& filename,
+  LogfileRange(wal::Logfile::IdType id, std::string const& filename,
                std::string const& state, TRI_voc_tick_t tickMin,
                TRI_voc_tick_t tickMax)
       : id(id),
@@ -56,7 +54,7 @@ struct LogfileRange {
         tickMin(tickMin),
         tickMax(tickMax) {}
 
-  Logfile::IdType id;
+  wal::Logfile::IdType id;
   std::string filename;
   std::string state;
   TRI_voc_tick_t tickMin;
@@ -65,7 +63,7 @@ struct LogfileRange {
 
 typedef std::vector<LogfileRange> LogfileRanges;
 
-struct LogfileManagerState {
+struct MMFilesLogfileManagerState {
   TRI_voc_tick_t lastAssignedTick;
   TRI_voc_tick_t lastCommittedTick;
   TRI_voc_tick_t lastCommittedDataTick;
@@ -85,29 +83,29 @@ struct LogfileBarrier {
   TRI_voc_tick_t minTick;
 };
 
-class LogfileManager final : public application_features::ApplicationFeature {
+class MMFilesLogfileManager final : public application_features::ApplicationFeature {
   friend class arangodb::MMFilesAllocatorThread;
   friend class arangodb::MMFilesCollectorThread;
 
-  LogfileManager(LogfileManager const&) = delete;
-  LogfileManager& operator=(LogfileManager const&) = delete;
+  MMFilesLogfileManager(MMFilesLogfileManager const&) = delete;
+  MMFilesLogfileManager& operator=(MMFilesLogfileManager const&) = delete;
 
   static constexpr size_t numBuckets = 16;
 
  public:
-  explicit LogfileManager(application_features::ApplicationServer* server);
+  explicit MMFilesLogfileManager(application_features::ApplicationServer* server);
 
   // destroy the logfile manager
-  ~LogfileManager();
+  ~MMFilesLogfileManager();
 
   // get the logfile manager instance
-  static LogfileManager* instance() {
+  static MMFilesLogfileManager* instance() {
     TRI_ASSERT(Instance != nullptr);
     return Instance;
   }
 
  private:
-  static LogfileManager* Instance;
+  static MMFilesLogfileManager* Instance;
 
  public:
   void collectOptions(
@@ -271,38 +269,38 @@ class LogfileManager final : public application_features::ApplicationFeature {
   bool waitForSync(double);
 
   // re-inserts a logfile back into the inventory only
-  void relinkLogfile(Logfile*);
+  void relinkLogfile(wal::Logfile*);
 
   // remove a logfile from the inventory only
-  bool unlinkLogfile(Logfile*);
+  bool unlinkLogfile(wal::Logfile*);
 
   // remove a logfile from the inventory only
-  Logfile* unlinkLogfile(Logfile::IdType);
+  wal::Logfile* unlinkLogfile(wal::Logfile::IdType);
 
   // removes logfiles that are allowed to be removed
   bool removeLogfiles();
 
   // sets the status of a logfile to open
-  void setLogfileOpen(Logfile*);
+  void setLogfileOpen(wal::Logfile*);
 
   // sets the status of a logfile to seal-requested
-  void setLogfileSealRequested(Logfile*);
+  void setLogfileSealRequested(wal::Logfile*);
 
   // sets the status of a logfile to sealed
-  void setLogfileSealed(Logfile*);
+  void setLogfileSealed(wal::Logfile*);
 
   // sets the status of a logfile to sealed
-  void setLogfileSealed(Logfile::IdType);
+  void setLogfileSealed(wal::Logfile::IdType);
 
   // return the status of a logfile
-  Logfile::StatusType getLogfileStatus(Logfile::IdType);
+  wal::Logfile::StatusType getLogfileStatus(wal::Logfile::IdType);
 
   // return the file descriptor of a logfile
-  int getLogfileDescriptor(Logfile::IdType);
+  int getLogfileDescriptor(wal::Logfile::IdType);
 
   // get the current open region of a logfile
   /// this uses the slots lock
-  void getActiveLogfileRegion(Logfile*, char const*&, char const*&);
+  void getActiveLogfileRegion(wal::Logfile*, char const*&, char const*&);
 
   // garbage collect expires logfile barriers
   void collectLogfileBarriers();
@@ -323,52 +321,52 @@ class LogfileManager final : public application_features::ApplicationFeature {
   TRI_voc_tick_t getMinBarrierTick();
 
   // get logfiles for a tick range
-  std::vector<Logfile*> getLogfilesForTickRange(TRI_voc_tick_t, TRI_voc_tick_t,
+  std::vector<wal::Logfile*> getLogfilesForTickRange(TRI_voc_tick_t, TRI_voc_tick_t,
                                                 bool& minTickIncluded);
 
   // return logfiles for a tick range
-  void returnLogfiles(std::vector<Logfile*> const&);
+  void returnLogfiles(std::vector<wal::Logfile*> const&);
 
   // get a logfile by id
-  Logfile* getLogfile(Logfile::IdType);
+  wal::Logfile* getLogfile(wal::Logfile::IdType);
 
   // get a logfile and its status by id
-  Logfile* getLogfile(Logfile::IdType, Logfile::StatusType&);
+  wal::Logfile* getLogfile(wal::Logfile::IdType, wal::Logfile::StatusType&);
 
   // get a logfile for writing. this may return nullptr
-  int getWriteableLogfile(uint32_t, Logfile::StatusType&, Logfile*&);
+  int getWriteableLogfile(uint32_t, wal::Logfile::StatusType&, wal::Logfile*&);
 
   // get a logfile to collect. this may return nullptr
-  Logfile* getCollectableLogfile();
+  wal::Logfile* getCollectableLogfile();
 
   // get a logfile to remove. this may return nullptr
   /// if it returns a logfile, the logfile is removed from the list of available
   /// logfiles
-  Logfile* getRemovableLogfile();
+  wal::Logfile* getRemovableLogfile();
 
   // increase the number of collect operations for a logfile
-  void increaseCollectQueueSize(Logfile*);
+  void increaseCollectQueueSize(wal::Logfile*);
 
   // decrease the number of collect operations for a logfile
-  void decreaseCollectQueueSize(Logfile*);
+  void decreaseCollectQueueSize(wal::Logfile*);
 
   // mark a file as being requested for collection
-  void setCollectionRequested(Logfile*);
+  void setCollectionRequested(wal::Logfile*);
 
   // mark a file as being done with collection
-  void setCollectionDone(Logfile*);
+  void setCollectionDone(wal::Logfile*);
 
   // force the status of a specific logfile
-  void forceStatus(Logfile*, Logfile::StatusType);
+  void forceStatus(wal::Logfile*, wal::Logfile::StatusType);
 
   // return the current state
-  LogfileManagerState state();
+  MMFilesLogfileManagerState state();
 
   // return the current available logfile ranges
   LogfileRanges ranges();
 
   // get information about running transactions
-  std::tuple<size_t, Logfile::IdType, Logfile::IdType> runningTransactions();
+  std::tuple<size_t, wal::Logfile::IdType, wal::Logfile::IdType> runningTransactions();
   
   void waitForCollector();
 
@@ -391,10 +389,10 @@ class LogfileManager final : public application_features::ApplicationFeature {
                          bool waitUntilSyncDone);
 
   // remove a logfile in the file system
-  void removeLogfile(Logfile*);
+  void removeLogfile(wal::Logfile*);
 
   // wait for the collector thread to collect a specific logfile
-  int waitForCollector(Logfile::IdType, double);
+  int waitForCollector(wal::Logfile::IdType, double);
 
   // closes all logfiles
   void closeLogfiles();
@@ -441,7 +439,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   int createReserveLogfile(uint32_t);
 
   // get an id for the next logfile
-  Logfile::IdType nextId();
+  wal::Logfile::IdType nextId();
 
   // ensure the wal logfiles directory is actually there
   int ensureDirectory();
@@ -450,7 +448,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   std::string shutdownFilename() const;
 
   // return an absolute filename for a logfile id
-  std::string logfileName(Logfile::IdType) const;
+  std::string logfileName(wal::Logfile::IdType) const;
 
  private:
   // the arangod config variable containing the database path
@@ -487,7 +485,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   basics::ReadWriteLock _logfilesLock;
 
   // the logfiles
-  std::map<Logfile::IdType, Logfile*> _logfiles;
+  std::map<wal::Logfile::IdType, wal::Logfile*> _logfiles;
 
   // the slots manager
   MMFilesWalSlots* _slots;
@@ -506,15 +504,15 @@ class LogfileManager final : public application_features::ApplicationFeature {
 
   // last opened logfile id. note: writing to this variable is protected
   /// by the _idLock
-  std::atomic<Logfile::IdType> _lastOpenedId;
+  std::atomic<wal::Logfile::IdType> _lastOpenedId;
 
   // last fully collected logfile id. note: writing to this variable is
   /// protected by the_idLock
-  std::atomic<Logfile::IdType> _lastCollectedId;
+  std::atomic<wal::Logfile::IdType> _lastCollectedId;
 
   // last fully sealed logfile id. note: writing to this variable is
   /// protected by the _idLock
-  std::atomic<Logfile::IdType> _lastSealedId;
+  std::atomic<wal::Logfile::IdType> _lastSealedId;
 
   // a lock protecting the shutdown file
   Mutex _shutdownFileLock;
@@ -529,7 +527,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
     basics::ReadWriteLock _lock;
 
     // currently ongoing transactions
-    std::unordered_map<TRI_voc_tid_t, std::pair<Logfile::IdType, Logfile::IdType>>
+    std::unordered_map<TRI_voc_tid_t, std::pair<wal::Logfile::IdType, wal::Logfile::IdType>>
         _activeTransactions;
 
     // set of failed transactions
@@ -560,7 +558,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   // barriers that prevent WAL logfiles from being collected
   std::unordered_map<TRI_voc_tick_t, LogfileBarrier*> _barriers;
 };
-}
+
 }
 
 #endif

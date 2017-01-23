@@ -32,7 +32,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 #include "VocBase/ticks.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 #include "Indexes/RocksDBFeature.h"
 
@@ -66,8 +66,8 @@ static inline bool IsLocked(TRI_transaction_collection_t const* trxCollection) {
 /// @brief return the logfile manager
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline arangodb::wal::LogfileManager* GetLogfileManager() {
-  return arangodb::wal::LogfileManager::instance();
+static inline arangodb::MMFilesLogfileManager* GetMMFilesLogfileManager() {
+  return arangodb::MMFilesLogfileManager::instance();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -548,7 +548,7 @@ static int WriteBeginMarker(TRI_transaction_t* trx) {
 
   try {
     MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, trx->_vocbase->id(), trx->_id);
-    res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    res = GetMMFilesLogfileManager()->allocateAndWrite(marker, false).errorCode;
     
     TRI_IF_FAILURE("TransactionWriteBeginMarkerThrow") { 
       throw std::bad_alloc();
@@ -594,7 +594,7 @@ static int WriteAbortMarker(TRI_transaction_t* trx) {
 
   try {
     MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, trx->_vocbase->id(), trx->_id);
-    res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    res = GetMMFilesLogfileManager()->allocateAndWrite(marker, false).errorCode;
     
     TRI_IF_FAILURE("TransactionWriteAbortMarkerThrow") { 
       throw std::bad_alloc();
@@ -634,7 +634,7 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
 
   try {
     MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, trx->_vocbase->id(), trx->_id);
-    res = GetLogfileManager()->allocateAndWrite(marker, trx->_waitForSync).errorCode;
+    res = GetMMFilesLogfileManager()->allocateAndWrite(marker, trx->_waitForSync).errorCode;
     
     TRI_IF_FAILURE("TransactionWriteCommitMarkerSegfault") { 
       TRI_SegfaultDebugging("crashing on commit");
@@ -992,7 +992,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     bool const wakeUpSynchronizer = isSingleOperationTransaction;
 
     MMFilesWalSlotInfoCopy slotInfo =
-        arangodb::wal::LogfileManager::instance()->allocateAndWrite(
+        arangodb::MMFilesLogfileManager::instance()->allocateAndWrite(
             trx->_vocbase->id(), collection->cid(), 
             marker, wakeUpSynchronizer,
             localWaitForSync, waitForTick);
@@ -1092,7 +1092,7 @@ int TRI_BeginTransaction(TRI_transaction_t* trx, TRI_transaction_hint_t hints,
   if (nestingLevel == 0) {
     TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED);
 
-    auto logfileManager = arangodb::wal::LogfileManager::instance();
+    auto logfileManager = arangodb::MMFilesLogfileManager::instance();
 
     if (!HasHint(trx, TRI_TRANSACTION_HINT_NO_THROTTLING) &&
         trx->_type == TRI_TRANSACTION_WRITE &&

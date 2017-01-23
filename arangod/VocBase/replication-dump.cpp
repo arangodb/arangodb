@@ -29,13 +29,13 @@
 #include "Logger/Logger.h"
 #include "StorageEngine/MMFilesDatafile.h"
 #include "StorageEngine/MMFilesDatafileHelper.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 #include "StorageEngine/MMFilesWalMarker.h"
 #include "VocBase/CompactionLocker.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "Wal/Logfile.h"
-#include "Wal/LogfileManager.h"
 
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
@@ -654,7 +654,7 @@ int TRI_DumpLogReplication(
   // ask the logfile manager which datafiles qualify
   bool fromTickIncluded = false;
   std::vector<arangodb::wal::Logfile*> logfiles =
-      arangodb::wal::LogfileManager::instance()->getLogfilesForTickRange(
+      arangodb::MMFilesLogfileManager::instance()->getLogfilesForTickRange(
           tickMin, tickMax, fromTickIncluded);
 
   // setup some iteration state
@@ -679,7 +679,7 @@ int TRI_DumpLogReplication(
 
       char const* ptr;
       char const* end;
-      arangodb::wal::LogfileManager::instance()->getActiveLogfileRegion(
+      arangodb::MMFilesLogfileManager::instance()->getActiveLogfileRegion(
           logfile, ptr, end);
 
       while (ptr < end) {
@@ -808,7 +808,7 @@ int TRI_DumpLogReplication(
   }
 
   // always return the logfiles we have used
-  arangodb::wal::LogfileManager::instance()->returnLogfiles(logfiles);
+  arangodb::MMFilesLogfileManager::instance()->returnLogfiles(logfiles);
 
   dump->_fromTickIncluded = fromTickIncluded;
 
@@ -845,7 +845,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
   // ask the logfile manager which datafiles qualify
   bool fromTickIncluded = false;
   std::vector<arangodb::wal::Logfile*> logfiles =
-      arangodb::wal::LogfileManager::instance()->getLogfilesForTickRange(
+      arangodb::MMFilesLogfileManager::instance()->getLogfilesForTickRange(
           tickMin, tickMax, fromTickIncluded);
 
   // setup some iteration state
@@ -862,7 +862,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
 
       char const* ptr;
       char const* end;
-      arangodb::wal::LogfileManager::instance()->getActiveLogfileRegion(
+      arangodb::MMFilesLogfileManager::instance()->getActiveLogfileRegion(
           logfile, ptr, end);
 
       // LOG(INFO) << "scanning logfile " << i;
@@ -982,7 +982,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
   }
 
   // always return the logfiles we have used
-  arangodb::wal::LogfileManager::instance()->returnLogfiles(logfiles);
+  arangodb::MMFilesLogfileManager::instance()->returnLogfiles(logfiles);
 
   return res;
 }

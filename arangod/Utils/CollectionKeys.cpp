@@ -35,7 +35,7 @@
 #include "VocBase/RevisionCacheChunk.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -87,7 +87,7 @@ CollectionKeys::~CollectionKeys() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionKeys::create(TRI_voc_tick_t maxTick) {
-  arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
+  arangodb::MMFilesLogfileManager::instance()->waitForCollectorQueue(
       _collection->cid(), 30.0);
   
   StorageEngine* engine = EngineSelectorFeature::ENGINE;

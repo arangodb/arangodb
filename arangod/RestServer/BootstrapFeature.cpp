@@ -45,7 +45,7 @@ BootstrapFeature::BootstrapFeature(
   startsAfter("Endpoint");
   startsAfter("Scheduler");
   startsAfter("Server");
-  startsAfter("LogfileManager");
+  startsAfter("MMFilesLogfileManager");
   startsAfter("Database");
   startsAfter("Upgrade");
   startsAfter("CheckVersion");

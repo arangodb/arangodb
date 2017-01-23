@@ -26,14 +26,14 @@
 #include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 using namespace arangodb;
 
 /// @brief wait interval for the remover thread when idle
 uint64_t const MMFilesRemoverThread::Interval = 2000000;
 
-MMFilesRemoverThread::MMFilesRemoverThread(wal::LogfileManager* logfileManager)
+MMFilesRemoverThread::MMFilesRemoverThread(MMFilesLogfileManager* logfileManager)
     : Thread("WalRemover"), _logfileManager(logfileManager), _condition() {}
 
 /// @brief begin shutdown sequence

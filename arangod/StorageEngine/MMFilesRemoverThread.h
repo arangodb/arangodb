@@ -29,16 +29,14 @@
 #include "Basics/Thread.h"
 
 namespace arangodb {
-namespace wal {
-class LogfileManager;
-}
+class MMFilesLogfileManager;
 
 class MMFilesRemoverThread final : public Thread {
   MMFilesRemoverThread(MMFilesRemoverThread const&) = delete;
   MMFilesRemoverThread& operator=(MMFilesRemoverThread const&) = delete;
 
  public:
-  explicit MMFilesRemoverThread(wal::LogfileManager*);
+  explicit MMFilesRemoverThread(MMFilesLogfileManager*);
   ~MMFilesRemoverThread() { shutdown(); }
 
  public:
@@ -49,7 +47,7 @@ class MMFilesRemoverThread final : public Thread {
 
  private:
   /// @brief the logfile manager
-  wal::LogfileManager* _logfileManager;
+  MMFilesLogfileManager* _logfileManager;
 
   /// @brief condition variable for the collector thread
   basics::ConditionVariable _condition;

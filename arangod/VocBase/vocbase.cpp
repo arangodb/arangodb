@@ -59,7 +59,7 @@
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 #include "VocBase/transaction.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -146,7 +146,7 @@ int TRI_vocbase_t::writeDropCollectionMarker(TRI_voc_cid_t collectionId,
     MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_COLLECTION, _id, collectionId, builder.slice());
 
     MMFilesWalSlotInfoCopy slotInfo =
-        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+        arangodb::MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
@@ -493,7 +493,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   // collection is unloaded
   if (collection->status() == TRI_VOC_COL_STATUS_UNLOADED) {
     bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-    doSync = (doSync && !arangodb::wal::LogfileManager::instance()->isInRecovery());
+    doSync = (doSync && !arangodb::MMFilesLogfileManager::instance()->isInRecovery());
     
     if (!collection->deleted()) {
       collection->setDeleted(true);
@@ -544,7 +544,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     collection->setDeleted(true);
 
     bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-    doSync = (doSync && !arangodb::wal::LogfileManager::instance()->isInRecovery());
+    doSync = (doSync && !arangodb::MMFilesLogfileManager::instance()->isInRecovery());
 
     VPackBuilder builder;
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -793,7 +793,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_COLLECTION, _id, cid, slice);
 
     MMFilesWalSlotInfoCopy slotInfo =
-        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+        arangodb::MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
@@ -892,7 +892,7 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool 
 
   if (!allowDropSystem && 
       collection->isSystem() &&
-      !arangodb::wal::LogfileManager::instance()->isInRecovery()) {
+      !arangodb::MMFilesLogfileManager::instance()->isInRecovery()) {
     // prevent dropping of system collections
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
@@ -907,7 +907,7 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool 
     }
 
     if (state == DROP_PERFORM) {
-      if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
+      if (arangodb::MMFilesLogfileManager::instance()->isInRecovery()) {
         DropCollectionCallback(collection);
       } else {
         // add callback for dropping
@@ -1004,7 +1004,7 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
       MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_RENAME_COLLECTION, _id, collection->cid(), builder.slice());
 
       MMFilesWalSlotInfoCopy slotInfo =
-          arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+          arangodb::MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
 
       if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(slotInfo.errorCode);

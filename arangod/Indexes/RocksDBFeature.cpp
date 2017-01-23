@@ -65,7 +65,7 @@ RocksDBFeature::RocksDBFeature(
       _keepLogFileNum(1000), _logFileTimeToRoll(0), _compactionReadaheadSize(0) {
   setOptional(true);
   requiresElevatedPrivileges(false);
-  startsAfter("LogfileManager");
+  startsAfter("MMFilesLogfileManager");
   startsAfter("DatabasePath");
 }
 

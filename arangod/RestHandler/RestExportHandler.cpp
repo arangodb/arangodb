@@ -30,7 +30,7 @@
 #include "Utils/CollectionExport.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -229,7 +229,7 @@ void RestExportHandler::createCursor() {
   if (flush) {
     // flush the logfiles so the export can fetch all documents
     int res =
-        arangodb::wal::LogfileManager::instance()->flush(true, true, false);
+        arangodb::MMFilesLogfileManager::instance()->flush(true, true, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);

@@ -41,7 +41,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "Wal/LogfileManager.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 
 #include "Indexes/RocksDBFeature.h"
 #include "Indexes/RocksDBIndex.h"
@@ -484,7 +484,7 @@ TRI_vocbase_t* MMFilesEngine::openDatabase(VPackSlice const& parameters, bool is
   TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()));
   std::string const name = parameters.get("name").copyString();
   
-  bool const wasCleanShutdown = arangodb::wal::LogfileManager::instance()->hasFoundLastTick();
+  bool const wasCleanShutdown = arangodb::MMFilesLogfileManager::instance()->hasFoundLastTick();
   return openExistingDatabase(id, name, wasCleanShutdown, isUpgrade);
 }
 

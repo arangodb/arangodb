@@ -27,11 +27,11 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 #include "V8/v8-globals.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbase.h"
-#include "Wal/LogfileManager.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

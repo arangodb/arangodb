@@ -48,6 +48,7 @@
 #include "RestServer/RevisionCacheFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/MMFilesDocumentOperation.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 #include "StorageEngine/MMFilesWalMarker.h"
 #include "StorageEngine/MMFilesWalSlots.h"
 #include "StorageEngine/StorageEngine.h"
@@ -65,7 +66,6 @@
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/transaction.h"
-#include "Wal/LogfileManager.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -1421,7 +1421,7 @@ void LogicalCollection::open(bool ignoreErrors) {
     }
   }
 
-  if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
+  if (!arangodb::MMFilesLogfileManager::instance()->isInRecovery()) {
     // build the index structures, and fill the indexes
     fillIndexes(&trx);
   }
@@ -1562,7 +1562,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
   }
 
   bool const writeMarker =
-      !arangodb::wal::LogfileManager::instance()->isInRecovery();
+      !arangodb::MMFilesLogfileManager::instance()->isInRecovery();
   res = saveIndex(idx.get(), writeMarker);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1650,7 +1650,7 @@ int LogicalCollection::saveIndex(arangodb::Index* idx, bool writeMarker) {
                                            builder->slice());
 
     MMFilesWalSlotInfoCopy slotInfo =
-        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
+        arangodb::MMFilesLogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -1744,7 +1744,7 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
                                              markerBuilder.slice());
 
       MMFilesWalSlotInfoCopy slotInfo =
-          arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
+          arangodb::MMFilesLogfileManager::instance()->allocateAndWrite(marker,
                                                                       false);
 
       if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
