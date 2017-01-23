@@ -54,14 +54,14 @@ struct PRComputation : public VertexComputation<double, float, double> {
     double* ptr = mutableVertexData();
     double copy = *ptr;
     // TODO do initialization in GraphFormat?
-    if (localSuperstep() == 0) {
-      *ptr = 1.0f / context()->vertexCount();
+    if (globalSuperstep() == 0) {
+      *ptr = 1.0 / context()->vertexCount();
     } else if (globalSuperstep() > 0) {
       double sum = 0.0;
       for (const double* msg : messages) {
         sum += *msg;
       }
-      *ptr = 0.15 / context()->vertexCount() + 0.85 * sum;
+      *ptr = 0.85 * sum + 0.15 / context()->vertexCount();
     }
     double diff = fabs(copy - *ptr);
     aggregate(kConvergence, diff);
