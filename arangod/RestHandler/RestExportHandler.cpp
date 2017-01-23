@@ -229,7 +229,7 @@ void RestExportHandler::createCursor() {
   if (flush) {
     // flush the logfiles so the export can fetch all documents
     int res =
-        arangodb::MMFilesLogfileManager::instance()->flush(true, true, false);
+        MMFilesLogfileManager::instance()->flush(true, true, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);

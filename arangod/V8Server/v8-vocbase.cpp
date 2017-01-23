@@ -404,7 +404,7 @@ static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("properties(<object>)");
   }
 
-  auto l = arangodb::MMFilesLogfileManager::instance();
+  auto l = MMFilesLogfileManager::instance();
 
   if (args.Length() == 1) {
     // set the properties
@@ -517,7 +517,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_RETURN_TRUE();
   }
 
-  res = arangodb::MMFilesLogfileManager::instance()->flush(
+  res = MMFilesLogfileManager::instance()->flush(
       waitForSync, waitForCollector, writeShutdownFile);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -570,7 +570,7 @@ static void JS_WaitCollectorWal(
     timeout = TRI_ObjectToDouble(args[1]);
   }
 
-  int res = arangodb::MMFilesLogfileManager::instance()->waitForCollectorQueue(
+  int res = MMFilesLogfileManager::instance()->waitForCollectorQueue(
       col->cid(), timeout);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -591,7 +591,7 @@ static void JS_TransactionsWal(
   v8::HandleScope scope(isolate);
 
   auto const& info =
-      arangodb::MMFilesLogfileManager::instance()->runningTransactions();
+      MMFilesLogfileManager::instance()->runningTransactions();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 

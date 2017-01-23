@@ -132,7 +132,7 @@ void MMFilesWalSlot::setUnused() {
 }
 
 /// @brief mark as slot as used
-void MMFilesWalSlot::setUsed(void* mem, uint32_t size, wal::Logfile::IdType logfileId,
+void MMFilesWalSlot::setUsed(void* mem, uint32_t size, MMFilesWalLogfile::IdType logfileId,
                    MMFilesWalSlot::TickType tick) {
   TRI_ASSERT(isUnused());
   _tick = tick;

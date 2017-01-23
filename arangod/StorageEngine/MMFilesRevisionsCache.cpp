@@ -133,7 +133,7 @@ bool MMFilesRevisionsCache::updateConditional(TRI_voc_rid_t revisionId, TRI_df_m
   uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
   TRI_ASSERT(vpack != nullptr);
 
-  TRI_df_marker_t const* markerPtr = reinterpret_cast<TRI_df_marker_t const*>(vpack - arangodb::MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+  TRI_df_marker_t const* markerPtr = reinterpret_cast<TRI_df_marker_t const*>(vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
 
   if (markerPtr != oldPosition) {
     // element already outdated
@@ -142,7 +142,7 @@ bool MMFilesRevisionsCache::updateConditional(TRI_voc_rid_t revisionId, TRI_df_m
   
   _positions.removeByKey(nullptr, &revisionId);
 
-  old.dataptr(reinterpret_cast<char const*>(newPosition) + arangodb::MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+  old.dataptr(reinterpret_cast<char const*>(newPosition) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
   old.fid(newFid, isInWal); 
 
   _positions.insert(nullptr, old);

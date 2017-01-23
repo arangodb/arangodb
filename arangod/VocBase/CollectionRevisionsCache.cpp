@@ -132,7 +132,7 @@ bool CollectionRevisionsCache::lookupRevision(Transaction* trx, ManagedDocumentR
       locker.unlock();
       // document is still in WAL
       // TODO: handle WAL reference counters
-      wal::Logfile* logfile = found.logfile();
+      MMFilesWalLogfile* logfile = found.logfile();
       // now move it into read cache
       ChunkProtector protector = _readCache.insertAndLease(revisionId, reinterpret_cast<uint8_t const*>(logfile->data() + found.offset()), result);
       // must have succeeded (otherwise an exception was thrown)

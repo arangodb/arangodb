@@ -24,14 +24,15 @@
 #include "TransactionContext.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
+#include "RestServer/TransactionManagerFeature.h"
+#include "StorageEngine/MMFilesDatafileHelper.h"
+#include "StorageEngine/MMFilesLogfileManager.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
-#include "StorageEngine/MMFilesDatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/RevisionCacheChunk.h"
-#include "StorageEngine/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -94,7 +95,7 @@ TransactionContext::~TransactionContext() {
 
   // unregister the transaction from the logfile manager
   if (_transaction.id > 0) {
-    arangodb::MMFilesLogfileManager::instance()->unregisterTransaction(_transaction.id, _transaction.hasFailedOperations);
+    TransactionManagerFeature::MANAGER->unregisterTransaction(_transaction.id, _transaction.hasFailedOperations);
   }
 
   for (auto& it : _ditches) {

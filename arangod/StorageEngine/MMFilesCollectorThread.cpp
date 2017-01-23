@@ -31,6 +31,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/PrimaryIndex.h"
+#include "RestServer/TransactionManagerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
@@ -40,7 +41,7 @@
 #include "VocBase/CompactionLocker.h"
 #include "StorageEngine/MMFilesDatafileHelper.h"
 #include "VocBase/LogicalCollection.h"
-#include "Wal/Logfile.h"
+#include "StorageEngine/MMFilesWalLogfile.h"
 #include "StorageEngine/MMFilesLogfileManager.h"
 
 #include "Indexes/RocksDBIndex.h"
@@ -363,7 +364,7 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
 
   TRI_IF_FAILURE("CollectorThreadCollect") { return TRI_ERROR_NO_ERROR; }
 
-  wal::Logfile* logfile = _logfileManager->getCollectableLogfile();
+  MMFilesWalLogfile* logfile = _logfileManager->getCollectableLogfile();
 
   if (logfile == nullptr) {
     return TRI_ERROR_NO_ERROR;
@@ -385,7 +386,7 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
       _logfileManager->setCollectionDone(logfile);
     } else {
       // return the logfile to the logfile manager in case of errors
-      _logfileManager->forceStatus(logfile, wal::Logfile::StatusType::SEALED);
+      _logfileManager->forceStatus(logfile, MMFilesWalLogfile::StatusType::SEALED);
 
       // set error in collector
       broadcastCollectorResult(res);
@@ -393,7 +394,7 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
 
     return res;
   } catch (arangodb::basics::Exception const& ex) {
-    _logfileManager->forceStatus(logfile, wal::Logfile::StatusType::SEALED);
+    _logfileManager->forceStatus(logfile, MMFilesWalLogfile::StatusType::SEALED);
 
     int res = ex.code();
 
@@ -402,7 +403,7 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
 
     return res;
   } catch (...) {
-    _logfileManager->forceStatus(logfile, wal::Logfile::StatusType::SEALED);
+    _logfileManager->forceStatus(logfile, MMFilesWalLogfile::StatusType::SEALED);
 
     LOG_TOPIC(DEBUG, Logger::COLLECTOR) << "collecting logfile " << logfile->id() << " failed";
 
@@ -441,7 +442,7 @@ int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
 
     for (auto it2 = operations.begin(); it2 != operations.end();
          /* no hoisting */) {
-      wal::Logfile* logfile = (*it2)->logfile;
+      MMFilesWalLogfile* logfile = (*it2)->logfile;
 
       int res = TRI_ERROR_INTERNAL;
 
@@ -688,7 +689,7 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
 }
 
 /// @brief collect one logfile
-int MMFilesCollectorThread::collect(wal::Logfile* logfile) {
+int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
 
   LOG_TOPIC(TRACE, Logger::COLLECTOR) << "collecting logfile " << logfile->id();
@@ -709,7 +710,7 @@ int MMFilesCollectorThread::collect(wal::Logfile* logfile) {
   // create a state for the collector, beginning with the list of failed
   // transactions
   CollectorState state;
-  state.failedTransactions = _logfileManager->getFailedTransactions();
+  state.failedTransactions = TransactionManagerFeature::MANAGER->getFailedTransactions();
   /*
     if (_inRecovery) {
       state.droppedCollections = _logfileManager->getDroppedCollections();
@@ -841,14 +842,14 @@ int MMFilesCollectorThread::collect(wal::Logfile* logfile) {
 
   // remove all handled transactions from failedTransactions list
   if (!state.handledTransactions.empty()) {
-    _logfileManager->unregisterFailedTransactions(state.handledTransactions);
+    TransactionManagerFeature::MANAGER->unregisterFailedTransactions(state.handledTransactions);
   }
 
   return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief transfer markers into a collection
-int MMFilesCollectorThread::transferMarkers(wal::Logfile* logfile,
+int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
                                      TRI_voc_cid_t collectionId,
                                      TRI_voc_tick_t databaseId,
                                      int64_t totalOperationsCount,
@@ -900,7 +901,7 @@ int MMFilesCollectorThread::transferMarkers(wal::Logfile* logfile,
 }
 
 /// @brief insert the collect operations into a per-collection queue
-int MMFilesCollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
+int MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfile,
                                      std::unique_ptr<MMFilesCollectorCache>& cache) {
   TRI_ASSERT(cache != nullptr);
 

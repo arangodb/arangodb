@@ -1010,7 +1010,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* d
 }
 
 /// @brief replay a single logfile
-int MMFilesWalRecoverState::replayLogfile(wal::Logfile* logfile, int number) {
+int MMFilesWalRecoverState::replayLogfile(MMFilesWalLogfile* logfile, int number) {
   std::string const logfileName = logfile->filename();
 
   int const n = static_cast<int>(logfilesToProcess.size());
@@ -1079,7 +1079,7 @@ int MMFilesWalRecoverState::abortOpenTransactions() {
      
       MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, databaseId, transactionId);
       MMFilesWalSlotInfoCopy slotInfo =
-          arangodb::MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
+          MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
 
       if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(slotInfo.errorCode);

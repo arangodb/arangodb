@@ -145,7 +145,7 @@ int MMFilesSynchronizerThread::doSync(bool& checkMore) {
 
   // get region to sync
   MMFilesWalSyncRegion region = _logfileManager->slots()->getSyncRegion();
-  wal::Logfile::IdType const id = region.logfileId;
+  MMFilesWalLogfile::IdType const id = region.logfileId;
 
   // an id of 0 means an empty region...
   if (id == 0) {
@@ -154,8 +154,8 @@ int MMFilesSynchronizerThread::doSync(bool& checkMore) {
 
   // now perform the actual syncing
   auto status = region.logfileStatus;
-  TRI_ASSERT(status == wal::Logfile::StatusType::OPEN ||
-             status == wal::Logfile::StatusType::SEAL_REQUESTED);
+  TRI_ASSERT(status == MMFilesWalLogfile::StatusType::OPEN ||
+             status == MMFilesWalLogfile::StatusType::SEAL_REQUESTED);
 
   // get the logfile's file descriptor
   int fd = getLogfileDescriptor(region.logfileId);
@@ -175,7 +175,7 @@ int MMFilesSynchronizerThread::doSync(bool& checkMore) {
 
   // all ok
 
-  if (status == wal::Logfile::StatusType::SEAL_REQUESTED) {
+  if (status == MMFilesWalLogfile::StatusType::SEAL_REQUESTED) {
     // we might not yet be able to seal the logfile yet, for example in
     // the following situation when multi-threading:
     //
@@ -211,7 +211,7 @@ int MMFilesSynchronizerThread::doSync(bool& checkMore) {
 }
 
 /// @brief get a logfile descriptor (it caches the descriptor for performance)
-int MMFilesSynchronizerThread::getLogfileDescriptor(wal::Logfile::IdType id) {
+int MMFilesSynchronizerThread::getLogfileDescriptor(MMFilesWalLogfile::IdType id) {
   if (id != _logfileCache.id || _logfileCache.id == 0) {
     _logfileCache.id = id;
     _logfileCache.fd = _logfileManager->getLogfileDescriptor(id);

@@ -32,16 +32,12 @@
 #include "StorageEngine/MMFilesDatafile.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/voc-types.h"
-#include "Wal/Logfile.h"
 
 namespace arangodb {
 class LogicalCollection;
 class MMFilesLogfileManager;
+class MMFilesWalLogfile;
 class SingleCollectionTransaction;
-
-namespace wal {
-class Logfile;
-}
 
 class MMFilesCollectorThread final : public Thread {
   MMFilesCollectorThread(MMFilesCollectorThread const&) = delete;
@@ -91,14 +87,14 @@ class MMFilesCollectorThread final : public Thread {
   int processCollectionOperations(MMFilesCollectorCache*);
 
   /// @brief collect one logfile
-  int collect(wal::Logfile*);
+  int collect(MMFilesWalLogfile*);
 
   /// @brief transfer markers into a collection
-  int transferMarkers(wal::Logfile*, TRI_voc_cid_t, TRI_voc_tick_t,
+  int transferMarkers(MMFilesWalLogfile*, TRI_voc_cid_t, TRI_voc_tick_t,
                       int64_t, MMFilesOperationsType const&);
 
   /// @brief insert the collect operations into a per-collection queue
-  int queueOperations(wal::Logfile*, std::unique_ptr<MMFilesCollectorCache>&);
+  int queueOperations(MMFilesWalLogfile*, std::unique_ptr<MMFilesCollectorCache>&);
 
   /// @brief update a collection's datafile information
   int updateDatafileStatistics(LogicalCollection*, MMFilesCollectorCache*);

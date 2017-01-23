@@ -1921,7 +1921,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
  
   // wait for operation(s) to be synced to disk here 
   if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 && isSingleOperationTransaction()) {
-    arangodb::MMFilesLogfileManager::instance()->slots()->waitForTick(maxTick);
+    MMFilesLogfileManager::instance()->slots()->waitForTick(maxTick);
   }
   
 
@@ -2245,7 +2245,7 @@ OperationResult Transaction::modifyLocal(
   
   // wait for operation(s) to be synced to disk here 
   if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 && isSingleOperationTransaction()) {
-    arangodb::MMFilesLogfileManager::instance()->slots()->waitForTick(maxTick);
+    MMFilesLogfileManager::instance()->slots()->waitForTick(maxTick);
   }
 
   if (doingSynchronousReplication && res == TRI_ERROR_NO_ERROR) {
@@ -2494,7 +2494,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
  
   // wait for operation(s) to be synced to disk here 
   if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 && isSingleOperationTransaction()) {
-    arangodb::MMFilesLogfileManager::instance()->slots()->waitForTick(maxTick);
+    MMFilesLogfileManager::instance()->slots()->waitForTick(maxTick);
   }
 
   if (doingSynchronousReplication && res == TRI_ERROR_NO_ERROR) {

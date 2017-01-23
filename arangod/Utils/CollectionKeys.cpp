@@ -87,7 +87,7 @@ CollectionKeys::~CollectionKeys() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionKeys::create(TRI_voc_tick_t maxTick) {
-  arangodb::MMFilesLogfileManager::instance()->waitForCollectorQueue(
+  MMFilesLogfileManager::instance()->waitForCollectorQueue(
       _collection->cid(), 30.0);
   
   StorageEngine* engine = EngineSelectorFeature::ENGINE;

@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "Wal/Logfile.h"
+#include "StorageEngine/MMFilesWalLogfile.h"
 
 namespace arangodb {
 class MMFilesLogfileManager;
@@ -57,7 +57,7 @@ class MMFilesSynchronizerThread final : public Thread {
   int doSync(bool&);
 
   /// @brief get a logfile descriptor (it caches the descriptor for performance)
-  int getLogfileDescriptor(wal::Logfile::IdType);
+  int getLogfileDescriptor(MMFilesWalLogfile::IdType);
 
  private:
   /// @brief the logfile manager
@@ -71,7 +71,7 @@ class MMFilesSynchronizerThread final : public Thread {
 
   /// @brief logfile descriptor cache
   struct {
-    wal::Logfile::IdType id;
+    MMFilesWalLogfile::IdType id;
     int fd;
   } _logfileCache;
   

@@ -200,7 +200,7 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_vo
           }
 
           // fetch the next free logfile (this may create a new one)
-          wal::Logfile::StatusType status;
+          MMFilesWalLogfile::StatusType status;
           int res = newLogfile(alignedSize, status);
 
           if (res != TRI_ERROR_NO_ERROR) {
@@ -213,7 +213,7 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_vo
           } else {
             TRI_ASSERT(_logfile != nullptr);
 
-            if (status == wal::Logfile::StatusType::EMPTY) {
+            if (status == MMFilesWalLogfile::StatusType::EMPTY) {
               // initialize the empty logfile by writing a header marker
               int res = writeHeader(slot);
 
@@ -231,7 +231,7 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_vo
               slot = &_slots[_handoutIndex];
               _logfileManager->setLogfileOpen(_logfile);
             } else {
-              TRI_ASSERT(status == wal::Logfile::StatusType::OPEN);
+              TRI_ASSERT(status == MMFilesWalLogfile::StatusType::OPEN);
             }
           }
         }
@@ -363,7 +363,7 @@ MMFilesWalSyncRegion MMFilesWalSlots::getSyncRegion() {
 
     if (region.logfileId == 0) {
       // first member
-      wal::Logfile::StatusType status;
+      MMFilesWalLogfile::StatusType status;
 
       region.logfileId = slot->logfileId();
       // the following call also updates status
@@ -375,7 +375,7 @@ MMFilesWalSyncRegion MMFilesWalSlots::getSyncRegion() {
       region.lastSlotIndex = slotIndex;
       region.waitForSync = slot->waitForSync();
 
-      if (status == wal::Logfile::StatusType::SEAL_REQUESTED) {
+      if (status == MMFilesWalLogfile::StatusType::SEAL_REQUESTED) {
         sealRequested = true;
       }
     } else {
@@ -464,7 +464,7 @@ void MMFilesWalSlots::returnSyncRegion(MMFilesWalSyncRegion const& region) {
 
 /// @brief get the current open region of a logfile
 /// this uses the slots lock
-void MMFilesWalSlots::getActiveLogfileRegion(wal::Logfile* logfile, char const*& begin,
+void MMFilesWalSlots::getActiveLogfileRegion(MMFilesWalLogfile* logfile, char const*& begin,
                                    char const*& end) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -476,7 +476,7 @@ void MMFilesWalSlots::getActiveLogfileRegion(wal::Logfile* logfile, char const*&
 
 /// @brief get the current tick range of a logfile
 /// this uses the slots lock
-void MMFilesWalSlots::getActiveTickRange(wal::Logfile* logfile, TRI_voc_tick_t& tickMin,
+void MMFilesWalSlots::getActiveTickRange(MMFilesWalLogfile* logfile, TRI_voc_tick_t& tickMin,
                                TRI_voc_tick_t& tickMax) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -510,7 +510,7 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
         }
 
         if (_logfile != nullptr) {
-          if (_logfile->status() == wal::Logfile::StatusType::EMPTY) {
+          if (_logfile->status() == MMFilesWalLogfile::StatusType::EMPTY) {
             // no need to seal a still-empty logfile
             return TRI_ERROR_NO_ERROR;
           }
@@ -543,7 +543,7 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
         // fetch the next free logfile (this may create a new one)
         // note: as we don't have a real marker to write the size does
         // not matter (we use a size of 1 as it must be > 0)
-        wal::Logfile::StatusType status;
+        MMFilesWalLogfile::StatusType status;
         int res = newLogfile(1, status);
 
         if (res != TRI_ERROR_NO_ERROR) {
@@ -556,7 +556,7 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
         } else {
           TRI_ASSERT(_logfile != nullptr);
 
-          if (status == wal::Logfile::StatusType::EMPTY) {
+          if (status == MMFilesWalLogfile::StatusType::EMPTY) {
             // initialize the empty logfile by writing a header marker
             res = writeHeader(slot);
 
@@ -568,7 +568,7 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
             _logfileManager->setLogfileOpen(_logfile);
             worked = true;
           } else {
-            TRI_ASSERT(status == wal::Logfile::StatusType::OPEN);
+            TRI_ASSERT(status == MMFilesWalLogfile::StatusType::OPEN);
             worked = false;
           }
 
@@ -704,15 +704,15 @@ bool MMFilesWalSlots::waitForTick(MMFilesWalSlot::TickType tick) {
 
 /// @brief request a new logfile which can satisfy a marker of the
 /// specified size
-int MMFilesWalSlots::newLogfile(uint32_t size, wal::Logfile::StatusType& status) {
+int MMFilesWalSlots::newLogfile(uint32_t size, MMFilesWalLogfile::StatusType& status) {
   TRI_ASSERT(size > 0);
 
   if (_shutdown) {
     return TRI_ERROR_REQUEST_CANCELED;
   }
 
-  status = wal::Logfile::StatusType::UNKNOWN;
-  wal::Logfile* logfile = nullptr;
+  status = MMFilesWalLogfile::StatusType::UNKNOWN;
+  MMFilesWalLogfile* logfile = nullptr;
   int res = _logfileManager->getWriteableLogfile(size, status, logfile);
 
   if (res == TRI_ERROR_NO_ERROR) {

@@ -54,8 +54,8 @@ static void JS_StateLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::MMFilesLogfileManagerState const s =
-      arangodb::MMFilesLogfileManager::instance()->state();
+  MMFilesLogfileManagerState const s =
+      MMFilesLogfileManager::instance()->state();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -91,7 +91,7 @@ static void JS_TickRangesLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto const& ranges = arangodb::MMFilesLogfileManager::instance()->ranges();
+  auto const& ranges = MMFilesLogfileManager::instance()->ranges();
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate, (int)ranges.size());
   uint32_t i = 0;
@@ -121,7 +121,7 @@ static void JS_FirstTickLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto const& ranges = arangodb::MMFilesLogfileManager::instance()->ranges();
+  auto const& ranges = MMFilesLogfileManager::instance()->ranges();
 
   TRI_voc_tick_t tick = UINT64_MAX;
 

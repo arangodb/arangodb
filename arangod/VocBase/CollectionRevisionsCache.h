@@ -32,11 +32,8 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace wal {
-class Logfile;
-}
-
 class LogicalCollection;
+class MMFilesWalLogfile;
 class RevisionCacheChunkAllocator;
 class Transaction;
 

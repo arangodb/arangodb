@@ -64,6 +64,7 @@
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RestServer/TransactionManagerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UnitTestsFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -159,6 +160,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new SslFeature(&server));
   server.addFeature(new StatisticsFeature(&server));
   server.addFeature(new TempFeature(&server, name));
+  server.addFeature(new TransactionManagerFeature(&server));
   server.addFeature(new UnitTestsFeature(&server, &ret));
   server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new V8DealerFeature(&server));

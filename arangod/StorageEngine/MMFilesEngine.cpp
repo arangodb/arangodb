@@ -484,7 +484,7 @@ TRI_vocbase_t* MMFilesEngine::openDatabase(VPackSlice const& parameters, bool is
   TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()));
   std::string const name = parameters.get("name").copyString();
   
-  bool const wasCleanShutdown = arangodb::MMFilesLogfileManager::instance()->hasFoundLastTick();
+  bool const wasCleanShutdown = MMFilesLogfileManager::instance()->hasFoundLastTick();
   return openExistingDatabase(id, name, wasCleanShutdown, isUpgrade);
 }
 

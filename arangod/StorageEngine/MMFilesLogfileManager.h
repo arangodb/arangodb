@@ -28,9 +28,10 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "StorageEngine/MMFilesWalLogfile.h"
 #include "StorageEngine/MMFilesWalSlots.h"
+#include "VocBase/TransactionManager.h"
 #include "VocBase/voc-types.h"
-#include "Wal/Logfile.h"
 
 namespace arangodb {
 class MMFilesAllocatorThread;
@@ -45,7 +46,7 @@ class ProgramOptions;
 }
 
 struct LogfileRange {
-  LogfileRange(wal::Logfile::IdType id, std::string const& filename,
+  LogfileRange(MMFilesWalLogfile::IdType id, std::string const& filename,
                std::string const& state, TRI_voc_tick_t tickMin,
                TRI_voc_tick_t tickMax)
       : id(id),
@@ -54,7 +55,7 @@ struct LogfileRange {
         tickMin(tickMin),
         tickMax(tickMax) {}
 
-  wal::Logfile::IdType id;
+  MMFilesWalLogfile::IdType id;
   std::string filename;
   std::string state;
   TRI_voc_tick_t tickMin;
@@ -62,6 +63,14 @@ struct LogfileRange {
 };
 
 typedef std::vector<LogfileRange> LogfileRanges;
+
+struct MMFilesTransactionData final : public TransactionData {
+  MMFilesTransactionData() = delete;
+  MMFilesTransactionData(MMFilesWalLogfile::IdType lastCollectedId, MMFilesWalLogfile::IdType lastSealedId) :
+      lastCollectedId(lastCollectedId), lastSealedId(lastSealedId) {}
+  MMFilesWalLogfile::IdType lastCollectedId;
+  MMFilesWalLogfile::IdType lastSealedId;
+};
 
 struct MMFilesLogfileManagerState {
   TRI_voc_tick_t lastAssignedTick;
@@ -84,13 +93,11 @@ struct LogfileBarrier {
 };
 
 class MMFilesLogfileManager final : public application_features::ApplicationFeature {
-  friend class arangodb::MMFilesAllocatorThread;
-  friend class arangodb::MMFilesCollectorThread;
+  friend class MMFilesAllocatorThread;
+  friend class MMFilesCollectorThread;
 
   MMFilesLogfileManager(MMFilesLogfileManager const&) = delete;
   MMFilesLogfileManager& operator=(MMFilesLogfileManager const&) = delete;
-
-  static constexpr size_t numBuckets = 16;
 
  public:
   explicit MMFilesLogfileManager(application_features::ApplicationServer* server);
@@ -213,12 +220,6 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   // registers a transaction
   int registerTransaction(TRI_voc_tid_t);
 
-  // unregisters a transaction
-  void unregisterTransaction(TRI_voc_tid_t, bool);
-
-  // return the set of failed transactions
-  std::unordered_set<TRI_voc_tid_t> getFailedTransactions();
-
   // return the set of dropped collections
   /// this is used during recovery and not used afterwards
   std::unordered_set<TRI_voc_cid_t> getDroppedCollections();
@@ -226,9 +227,6 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   // return the set of dropped databases
   /// this is used during recovery and not used afterwards
   std::unordered_set<TRI_voc_tick_t> getDroppedDatabases();
-
-  // unregister a list of failed transactions
-  void unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> const&);
 
   // whether or not it is currently allowed to create an additional
   /// logfile
@@ -269,38 +267,38 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   bool waitForSync(double);
 
   // re-inserts a logfile back into the inventory only
-  void relinkLogfile(wal::Logfile*);
+  void relinkLogfile(MMFilesWalLogfile*);
 
   // remove a logfile from the inventory only
-  bool unlinkLogfile(wal::Logfile*);
+  bool unlinkLogfile(MMFilesWalLogfile*);
 
   // remove a logfile from the inventory only
-  wal::Logfile* unlinkLogfile(wal::Logfile::IdType);
+  MMFilesWalLogfile* unlinkLogfile(MMFilesWalLogfile::IdType);
 
   // removes logfiles that are allowed to be removed
   bool removeLogfiles();
 
   // sets the status of a logfile to open
-  void setLogfileOpen(wal::Logfile*);
+  void setLogfileOpen(MMFilesWalLogfile*);
 
   // sets the status of a logfile to seal-requested
-  void setLogfileSealRequested(wal::Logfile*);
+  void setLogfileSealRequested(MMFilesWalLogfile*);
 
   // sets the status of a logfile to sealed
-  void setLogfileSealed(wal::Logfile*);
+  void setLogfileSealed(MMFilesWalLogfile*);
 
   // sets the status of a logfile to sealed
-  void setLogfileSealed(wal::Logfile::IdType);
+  void setLogfileSealed(MMFilesWalLogfile::IdType);
 
   // return the status of a logfile
-  wal::Logfile::StatusType getLogfileStatus(wal::Logfile::IdType);
+  MMFilesWalLogfile::StatusType getLogfileStatus(MMFilesWalLogfile::IdType);
 
   // return the file descriptor of a logfile
-  int getLogfileDescriptor(wal::Logfile::IdType);
+  int getLogfileDescriptor(MMFilesWalLogfile::IdType);
 
   // get the current open region of a logfile
   /// this uses the slots lock
-  void getActiveLogfileRegion(wal::Logfile*, char const*&, char const*&);
+  void getActiveLogfileRegion(MMFilesWalLogfile*, char const*&, char const*&);
 
   // garbage collect expires logfile barriers
   void collectLogfileBarriers();
@@ -321,43 +319,43 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   TRI_voc_tick_t getMinBarrierTick();
 
   // get logfiles for a tick range
-  std::vector<wal::Logfile*> getLogfilesForTickRange(TRI_voc_tick_t, TRI_voc_tick_t,
+  std::vector<MMFilesWalLogfile*> getLogfilesForTickRange(TRI_voc_tick_t, TRI_voc_tick_t,
                                                 bool& minTickIncluded);
 
   // return logfiles for a tick range
-  void returnLogfiles(std::vector<wal::Logfile*> const&);
+  void returnLogfiles(std::vector<MMFilesWalLogfile*> const&);
 
   // get a logfile by id
-  wal::Logfile* getLogfile(wal::Logfile::IdType);
+  MMFilesWalLogfile* getLogfile(MMFilesWalLogfile::IdType);
 
   // get a logfile and its status by id
-  wal::Logfile* getLogfile(wal::Logfile::IdType, wal::Logfile::StatusType&);
+  MMFilesWalLogfile* getLogfile(MMFilesWalLogfile::IdType, MMFilesWalLogfile::StatusType&);
 
   // get a logfile for writing. this may return nullptr
-  int getWriteableLogfile(uint32_t, wal::Logfile::StatusType&, wal::Logfile*&);
+  int getWriteableLogfile(uint32_t, MMFilesWalLogfile::StatusType&, MMFilesWalLogfile*&);
 
   // get a logfile to collect. this may return nullptr
-  wal::Logfile* getCollectableLogfile();
+  MMFilesWalLogfile* getCollectableLogfile();
 
   // get a logfile to remove. this may return nullptr
   /// if it returns a logfile, the logfile is removed from the list of available
   /// logfiles
-  wal::Logfile* getRemovableLogfile();
+  MMFilesWalLogfile* getRemovableLogfile();
 
   // increase the number of collect operations for a logfile
-  void increaseCollectQueueSize(wal::Logfile*);
+  void increaseCollectQueueSize(MMFilesWalLogfile*);
 
   // decrease the number of collect operations for a logfile
-  void decreaseCollectQueueSize(wal::Logfile*);
+  void decreaseCollectQueueSize(MMFilesWalLogfile*);
 
   // mark a file as being requested for collection
-  void setCollectionRequested(wal::Logfile*);
+  void setCollectionRequested(MMFilesWalLogfile*);
 
   // mark a file as being done with collection
-  void setCollectionDone(wal::Logfile*);
+  void setCollectionDone(MMFilesWalLogfile*);
 
   // force the status of a specific logfile
-  void forceStatus(wal::Logfile*, wal::Logfile::StatusType);
+  void forceStatus(MMFilesWalLogfile*, MMFilesWalLogfile::StatusType);
 
   // return the current state
   MMFilesLogfileManagerState state();
@@ -366,14 +364,11 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   LogfileRanges ranges();
 
   // get information about running transactions
-  std::tuple<size_t, wal::Logfile::IdType, wal::Logfile::IdType> runningTransactions();
+  std::tuple<size_t, MMFilesWalLogfile::IdType, MMFilesWalLogfile::IdType> runningTransactions();
   
   void waitForCollector();
 
  private:
-  // hashes the transaction id into a bucket
-  size_t getBucket(TRI_voc_tid_t id) const { return std::hash<TRI_voc_cid_t>()(id) % numBuckets; }
-  
   // reserve space in a logfile
   MMFilesWalSlotInfo allocate(uint32_t);
 
@@ -389,10 +384,10 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
                          bool waitUntilSyncDone);
 
   // remove a logfile in the file system
-  void removeLogfile(wal::Logfile*);
+  void removeLogfile(MMFilesWalLogfile*);
 
   // wait for the collector thread to collect a specific logfile
-  int waitForCollector(wal::Logfile::IdType, double);
+  int waitForCollector(MMFilesWalLogfile::IdType, double);
 
   // closes all logfiles
   void closeLogfiles();
@@ -439,7 +434,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   int createReserveLogfile(uint32_t);
 
   // get an id for the next logfile
-  wal::Logfile::IdType nextId();
+  MMFilesWalLogfile::IdType nextId();
 
   // ensure the wal logfiles directory is actually there
   int ensureDirectory();
@@ -448,7 +443,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   std::string shutdownFilename() const;
 
   // return an absolute filename for a logfile id
-  std::string logfileName(wal::Logfile::IdType) const;
+  std::string logfileName(MMFilesWalLogfile::IdType) const;
 
  private:
   // the arangod config variable containing the database path
@@ -485,7 +480,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   basics::ReadWriteLock _logfilesLock;
 
   // the logfiles
-  std::map<wal::Logfile::IdType, wal::Logfile*> _logfiles;
+  std::map<MMFilesWalLogfile::IdType, MMFilesWalLogfile*> _logfiles;
 
   // the slots manager
   MMFilesWalSlots* _slots;
@@ -504,35 +499,20 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // last opened logfile id. note: writing to this variable is protected
   /// by the _idLock
-  std::atomic<wal::Logfile::IdType> _lastOpenedId;
+  std::atomic<MMFilesWalLogfile::IdType> _lastOpenedId;
 
   // last fully collected logfile id. note: writing to this variable is
   /// protected by the_idLock
-  std::atomic<wal::Logfile::IdType> _lastCollectedId;
+  std::atomic<MMFilesWalLogfile::IdType> _lastCollectedId;
 
   // last fully sealed logfile id. note: writing to this variable is
   /// protected by the _idLock
-  std::atomic<wal::Logfile::IdType> _lastSealedId;
+  std::atomic<MMFilesWalLogfile::IdType> _lastSealedId;
 
   // a lock protecting the shutdown file
   Mutex _shutdownFileLock;
 
   std::string _shutdownFile;
-
-  // a lock protecting ALL buckets in _transactions
-  basics::ReadWriteLock _allTransactionsLock;
-
-  struct {
-    // a lock protecting _activeTransactions and _failedTransactions
-    basics::ReadWriteLock _lock;
-
-    // currently ongoing transactions
-    std::unordered_map<TRI_voc_tid_t, std::pair<wal::Logfile::IdType, wal::Logfile::IdType>>
-        _activeTransactions;
-
-    // set of failed transactions
-    std::unordered_set<TRI_voc_tid_t> _failedTransactions;
-  } _transactions[numBuckets];
 
   // set of dropped collections
   /// this is populated during recovery and not used afterwards

@@ -29,7 +29,7 @@
 #include "Basics/Mutex.h"
 #include "StorageEngine/MMFilesWalSlot.h"
 #include "StorageEngine/MMFilesWalSyncRegion.h"
-#include "Wal/Logfile.h"
+#include "StorageEngine/MMFilesWalLogfile.h"
 
 namespace arangodb {
 class MMFilesLogfileManager;
@@ -47,7 +47,7 @@ struct MMFilesWalSlotInfoCopy {
 
   void const* mem;
   uint32_t const size;
-  wal::Logfile::IdType const logfileId;
+  MMFilesWalLogfile::IdType const logfileId;
   MMFilesWalSlot::TickType const tick;
   int const errorCode;
 };
@@ -114,11 +114,11 @@ class MMFilesWalSlots {
 
   /// @brief get the current open region of a logfile
   /// this uses the slots lock
-  void getActiveLogfileRegion(wal::Logfile*, char const*&, char const*&);
+  void getActiveLogfileRegion(MMFilesWalLogfile*, char const*&, char const*&);
 
   /// @brief get the current tick range of a logfile
   /// this uses the slots lock
-  void getActiveTickRange(wal::Logfile*, TRI_voc_tick_t&, TRI_voc_tick_t&);
+  void getActiveTickRange(MMFilesWalLogfile*, TRI_voc_tick_t&, TRI_voc_tick_t&);
 
   /// @brief close a logfile
   int closeLogfile(MMFilesWalSlot::TickType&, bool&);
@@ -144,7 +144,7 @@ class MMFilesWalSlots {
 
   /// @brief request a new logfile which can satisfy a marker of the
   /// specified size
-  int newLogfile(uint32_t, wal::Logfile::StatusType& status);
+  int newLogfile(uint32_t, MMFilesWalLogfile::StatusType& status);
 
  private:
   /// @brief the logfile manager
@@ -175,7 +175,7 @@ class MMFilesWalSlots {
   size_t _recycleIndex;
 
   /// @brief the current logfile to write into
-  wal::Logfile* _logfile;
+  MMFilesWalLogfile* _logfile;
 
   /// @brief last assigned tick value
   MMFilesWalSlot::TickType _lastAssignedTick;

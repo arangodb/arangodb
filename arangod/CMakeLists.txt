@@ -266,6 +266,7 @@ SET(ARANGOD_SOURCES
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
+  RestServer/TransactionManagerFeature.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/UnitTestsFeature.cpp
   RestServer/UpgradeFeature.cpp
@@ -300,6 +301,7 @@ SET(ARANGOD_SOURCES
   StorageEngine/MMFilesRemoverThread.cpp
   StorageEngine/MMFilesRevisionsCache.cpp
   StorageEngine/MMFilesSynchronizerThread.cpp
+  StorageEngine/MMFilesWalLogfile.cpp
   StorageEngine/MMFilesWalRecoverState.cpp
   StorageEngine/MMFilesWalRecoveryFeature.cpp
   StorageEngine/MMFilesWalSlot.cpp
@@ -350,6 +352,7 @@ SET(ARANGOD_SOURCES
   VocBase/RevisionCacheChunk.cpp
   VocBase/RevisionCacheChunkAllocator.cpp
   VocBase/SingleServerTraverser.cpp
+  VocBase/TransactionManager.cpp
   VocBase/Traverser.cpp
   VocBase/TraverserOptions.cpp
   VocBase/modes.cpp
@@ -359,7 +362,6 @@ SET(ARANGOD_SOURCES
   VocBase/ticks.cpp
   VocBase/transaction.cpp
   VocBase/vocbase.cpp
-  Wal/Logfile.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 

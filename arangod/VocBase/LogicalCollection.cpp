@@ -1421,7 +1421,7 @@ void LogicalCollection::open(bool ignoreErrors) {
     }
   }
 
-  if (!arangodb::MMFilesLogfileManager::instance()->isInRecovery()) {
+  if (!MMFilesLogfileManager::instance()->isInRecovery()) {
     // build the index structures, and fill the indexes
     fillIndexes(&trx);
   }
@@ -1562,7 +1562,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
   }
 
   bool const writeMarker =
-      !arangodb::MMFilesLogfileManager::instance()->isInRecovery();
+      !MMFilesLogfileManager::instance()->isInRecovery();
   res = saveIndex(idx.get(), writeMarker);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1650,7 +1650,7 @@ int LogicalCollection::saveIndex(arangodb::Index* idx, bool writeMarker) {
                                            builder->slice());
 
     MMFilesWalSlotInfoCopy slotInfo =
-        arangodb::MMFilesLogfileManager::instance()->allocateAndWrite(marker,
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -1744,7 +1744,7 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
                                              markerBuilder.slice());
 
       MMFilesWalSlotInfoCopy slotInfo =
-          arangodb::MMFilesLogfileManager::instance()->allocateAndWrite(marker,
+          MMFilesLogfileManager::instance()->allocateAndWrite(marker,
                                                                       false);
 
       if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {

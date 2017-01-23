@@ -66,8 +66,8 @@ static inline bool IsLocked(TRI_transaction_collection_t const* trxCollection) {
 /// @brief return the logfile manager
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline arangodb::MMFilesLogfileManager* GetMMFilesLogfileManager() {
-  return arangodb::MMFilesLogfileManager::instance();
+static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
+  return MMFilesLogfileManager::instance();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -992,7 +992,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     bool const wakeUpSynchronizer = isSingleOperationTransaction;
 
     MMFilesWalSlotInfoCopy slotInfo =
-        arangodb::MMFilesLogfileManager::instance()->allocateAndWrite(
+        MMFilesLogfileManager::instance()->allocateAndWrite(
             trx->_vocbase->id(), collection->cid(), 
             marker, wakeUpSynchronizer,
             localWaitForSync, waitForTick);
@@ -1021,7 +1021,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
       operation.type() == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
       operation.type() == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
     // adjust the data position in the header
-    uint8_t const* vpack = reinterpret_cast<uint8_t const*>(position) + arangodb::MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
+    uint8_t const* vpack = reinterpret_cast<uint8_t const*>(position) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
     TRI_ASSERT(fid > 0);
     operation.setVPack(vpack);
     collection->updateRevision(revisionId, vpack, fid, true); // always in WAL
@@ -1092,7 +1092,7 @@ int TRI_BeginTransaction(TRI_transaction_t* trx, TRI_transaction_hint_t hints,
   if (nestingLevel == 0) {
     TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED);
 
-    auto logfileManager = arangodb::MMFilesLogfileManager::instance();
+    auto logfileManager = MMFilesLogfileManager::instance();
 
     if (!HasHint(trx, TRI_TRANSACTION_HINT_NO_THROTTLING) &&
         trx->_type == TRI_TRANSACTION_WRITE &&

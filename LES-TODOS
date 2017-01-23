@@ -1,12 +1,13 @@
 done
 ----
 - create new branch
+- factor out transactions from LogfileManager
 
 in progress
 -----------
 
-- move files into directory: done for WAL subdirectory, now in progress for indexes
-- rename classes: done for WAL subdirectory, now in progress for indexes
+- move files into directory: now in progress for indexes
+- rename classes: now in progress for indexes
 
 to do
 -----
@@ -17,4 +18,3 @@ to do
 - transaction API
 - DDL API
 - index API
-- factor out transactions from LogfileManager

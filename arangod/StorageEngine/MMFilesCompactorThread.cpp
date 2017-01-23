@@ -280,7 +280,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
         SimpleIndexElement element = primaryIndex->lookupKey(context._trx, keySlice);
         if (element) {
           MMFilesDocumentPosition const old = static_cast<MMFilesCollection*>(collection->getPhysical())->lookupRevision(element.revisionId());
-          markerPtr = reinterpret_cast<TRI_df_marker_t const*>(static_cast<uint8_t const*>(old.dataptr()) - arangodb::MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+          markerPtr = reinterpret_cast<TRI_df_marker_t const*>(static_cast<uint8_t const*>(old.dataptr()) - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
         }
 
         bool deleted = (markerPtr == nullptr || marker != markerPtr);
@@ -369,7 +369,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       SimpleIndexElement element = primaryIndex->lookupKey(context->_trx, keySlice);
       if (element) {
         MMFilesDocumentPosition const old = static_cast<MMFilesCollection*>(collection->getPhysical())->lookupRevision(element.revisionId());
-        markerPtr = reinterpret_cast<TRI_df_marker_t const*>(static_cast<uint8_t const*>(old.dataptr()) - arangodb::MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+        markerPtr = reinterpret_cast<TRI_df_marker_t const*>(static_cast<uint8_t const*>(old.dataptr()) - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
       }
         
       bool deleted = (markerPtr == nullptr || marker != markerPtr);
@@ -394,7 +394,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       }
 
       // let marker point to the new position
-      uint8_t const* dataptr = reinterpret_cast<uint8_t const*>(result) + arangodb::MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
+      uint8_t const* dataptr = reinterpret_cast<uint8_t const*>(result) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
       collection->updateRevision(element.revisionId(), dataptr, targetFid, false);
 
       context->_dfi.numberAlive++;

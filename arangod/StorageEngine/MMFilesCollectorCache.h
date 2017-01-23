@@ -33,10 +33,7 @@ struct MMFilesDatafile;
 struct TRI_df_marker_t;
 
 namespace arangodb {
-
-namespace wal {
-class Logfile;
-}
+class MMFilesWalLogfile;
 
 struct MMFilesCollectorOperation {
   MMFilesCollectorOperation(char const* datafilePosition,
@@ -63,7 +60,7 @@ struct MMFilesCollectorCache {
   MMFilesCollectorCache& operator=(MMFilesCollectorCache const&) = delete;
 
   MMFilesCollectorCache(TRI_voc_cid_t collectionId, TRI_voc_tick_t databaseId,
-                 wal::Logfile* logfile, int64_t totalOperationsCount,
+                 MMFilesWalLogfile* logfile, int64_t totalOperationsCount,
                  size_t operationsSize)
       : collectionId(collectionId),
         databaseId(databaseId),
@@ -123,7 +120,7 @@ struct MMFilesCollectorCache {
   TRI_voc_tick_t const databaseId;
 
   /// @brief id of the WAL logfile
-  wal::Logfile* logfile;
+  MMFilesWalLogfile* logfile;
 
   /// @brief total number of operations in this block
   int64_t const totalOperationsCount;

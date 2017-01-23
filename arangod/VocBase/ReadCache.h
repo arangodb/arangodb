@@ -30,7 +30,7 @@
 #include "VocBase/RevisionCacheChunk.h"
 #include "VocBase/RevisionCacheChunkAllocator.h"
 #include "VocBase/voc-types.h"
-#include "Wal/Logfile.h"
+#include "StorageEngine/MMFilesWalLogfile.h"
 
 namespace arangodb {
 
@@ -70,7 +70,7 @@ struct ReadCachePosition {
 };
 
 struct WalPosition {
-  WalPosition(wal::Logfile* logfile, uint32_t offset) noexcept 
+  WalPosition(MMFilesWalLogfile* logfile, uint32_t offset) noexcept 
           : logfile(logfile), offset(offset), version(0) {}
   WalPosition(WalPosition const& other) noexcept 
           : logfile(other.logfile), offset(other.offset), version(0) {}
@@ -89,7 +89,7 @@ struct WalPosition {
     return *this;
   }
   
-  wal::Logfile* logfile;
+  MMFilesWalLogfile* logfile;
   uint32_t offset;
   uint32_t version; // will always be for a WAL entry (used to disambiguate WAL and Cache entries)
 };
@@ -102,7 +102,7 @@ union RevisionCacheValue {
   uint8_t raw[16];
 
   RevisionCacheValue(RevisionCacheChunk* chunk, uint32_t offset, uint32_t version) noexcept : chunk(chunk, offset, version) {}
-  RevisionCacheValue(wal::Logfile* logfile, uint32_t offset) noexcept : wal(logfile, offset) {}
+  RevisionCacheValue(MMFilesWalLogfile* logfile, uint32_t offset) noexcept : wal(logfile, offset) {}
   RevisionCacheValue(RevisionCacheValue const& other) noexcept {
     memcpy(&raw[0], &other.raw[0], sizeof(raw));
   }
@@ -123,7 +123,7 @@ struct RevisionCacheEntry {
   RevisionCacheEntry() noexcept : revisionId(0), data(nullptr, 0, UINT32_MAX) {}
 
   RevisionCacheEntry(TRI_voc_rid_t revisionId, RevisionCacheChunk* chunk, uint32_t offset, uint32_t version) noexcept : revisionId(revisionId), data(chunk, offset, version) {}
-  RevisionCacheEntry(TRI_voc_rid_t revisionId, wal::Logfile* logfile, uint32_t offset) noexcept : revisionId(revisionId), data(logfile, offset) {}
+  RevisionCacheEntry(TRI_voc_rid_t revisionId, MMFilesWalLogfile* logfile, uint32_t offset) noexcept : revisionId(revisionId), data(logfile, offset) {}
   
   RevisionCacheEntry(RevisionCacheEntry const& other) noexcept : revisionId(other.revisionId), data(other.data) {}
   
@@ -166,7 +166,7 @@ struct RevisionCacheEntry {
     return data.chunk.version;
   } 
   
-  inline wal::Logfile* logfile() const noexcept {
+  inline MMFilesWalLogfile* logfile() const noexcept {
     TRI_ASSERT(isWal());
     return data.wal.logfile;
   } 

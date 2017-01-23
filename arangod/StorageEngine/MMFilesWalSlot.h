@@ -25,7 +25,7 @@
 #define ARANGOD_MMFILES_WAL_SLOT_H 1
 
 #include "Basics/Common.h"
-#include "Wal/Logfile.h"
+#include "StorageEngine/MMFilesWalLogfile.h"
 
 namespace arangodb {
 class MMFilesWalSlots;
@@ -55,7 +55,7 @@ class MMFilesWalSlot {
   inline MMFilesWalSlot::TickType tick() const { return _tick; }
 
   /// @brief return the logfile id assigned to the slot
-  inline wal::Logfile::IdType logfileId() const { return _logfileId; }
+  inline MMFilesWalLogfile::IdType logfileId() const { return _logfileId; }
 
   /// @brief return the raw memory pointer assigned to the slot
   inline void* mem() const { return _mem; }
@@ -96,7 +96,7 @@ class MMFilesWalSlot {
   void setUnused();
 
   /// @brief mark as slot as used
-  void setUsed(void*, uint32_t, wal::Logfile::IdType, MMFilesWalSlot::TickType);
+  void setUsed(void*, uint32_t, MMFilesWalLogfile::IdType, MMFilesWalSlot::TickType);
 
   /// @brief mark as slot as returned
   void setReturned(bool waitForSync);
@@ -106,7 +106,7 @@ class MMFilesWalSlot {
   MMFilesWalSlot::TickType _tick;
 
   /// @brief slot logfile id
-  wal::Logfile::IdType _logfileId;
+  MMFilesWalLogfile::IdType _logfileId;
 
   /// @brief slot raw memory pointer
   void* _mem;

@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_WAL_LOGFILE_H
-#define ARANGOD_WAL_LOGFILE_H 1
+#ifndef ARANGOD_MMFILES_WAL_LOGFILE_H
+#define ARANGOD_MMFILES_WAL_LOGFILE_H 1
 
 #include "Basics/Common.h"
 #include "Logger/Logger.h"
@@ -32,9 +32,8 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace wal {
 
-class Logfile {
+class MMFilesWalLogfile {
  public:
   /// @brief typedef for logfile ids
   typedef TRI_voc_fid_t IdType;
@@ -51,22 +50,21 @@ class Logfile {
   };
 
  private:
-  /// @brief Logfile
-  Logfile(Logfile const&) = delete;
-  Logfile& operator=(Logfile const&) = delete;
+  MMFilesWalLogfile(MMFilesWalLogfile const&) = delete;
+  MMFilesWalLogfile& operator=(MMFilesWalLogfile const&) = delete;
 
  public:
   /// @brief create a logfile
-  Logfile(Logfile::IdType, MMFilesDatafile*, StatusType);
+  MMFilesWalLogfile(MMFilesWalLogfile::IdType, MMFilesDatafile*, StatusType);
 
   /// @brief destroy a logfile
-  ~Logfile();
+  ~MMFilesWalLogfile();
 
   /// @brief create a new logfile
-  static Logfile* createNew(std::string const&, Logfile::IdType, uint32_t);
+  static MMFilesWalLogfile* createNew(std::string const&, MMFilesWalLogfile::IdType, uint32_t);
 
   /// @brief open an existing logfile
-  static Logfile* openExisting(std::string const&, Logfile::IdType, bool, bool);
+  static MMFilesWalLogfile* openExisting(std::string const&, MMFilesWalLogfile::IdType, bool, bool);
 
   int lockInMemory() {
     return _df->lockInMemory();
@@ -97,7 +95,7 @@ class Logfile {
   inline int fd() const { return _df->fd(); }
 
   /// @brief return the logfile id
-  inline Logfile::IdType id() const { return _id; }
+  inline MMFilesWalLogfile::IdType id() const { return _id; }
 
   /// @brief update the logfile tick status
   inline void update(TRI_df_marker_t const* marker) {
@@ -105,7 +103,7 @@ class Logfile {
   }
 
   /// @brief return the logfile status
-  inline Logfile::StatusType status() const { return _status; }
+  inline MMFilesWalLogfile::StatusType status() const { return _status; }
 
   /// @brief return the allocated size of the logfile
   inline uint64_t allocatedSize() const {
@@ -238,7 +236,7 @@ class Logfile {
   }
 
   /// @brief the logfile id
-  Logfile::IdType const _id;
+  MMFilesWalLogfile::IdType const _id;
 
   /// @brief the number of logfile users
   std::atomic<int32_t> _users;
@@ -252,7 +250,7 @@ class Logfile {
   /// @brief number of collect operations waiting
   std::atomic<int64_t> _collectQueueSize;
 };
-}
+
 }
 
 #endif

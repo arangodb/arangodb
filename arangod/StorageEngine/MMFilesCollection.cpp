@@ -146,7 +146,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
 
     if (old.dataptr() != nullptr) { 
       uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
-      int64_t size = static_cast<int64_t>(arangodb::MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
+      int64_t size = static_cast<int64_t>(MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
 
       dfi->numberAlive--;
       dfi->sizeAlive -= MMFilesDatafileHelper::AlignedSize<int64_t>(size);
@@ -219,7 +219,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* m
     TRI_ASSERT(old.dataptr() != nullptr);
 
     uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
-    int64_t size = MMFilesDatafileHelper::AlignedSize<int64_t>(arangodb::MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
+    int64_t size = MMFilesDatafileHelper::AlignedSize<int64_t>(MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
 
     dfi->numberAlive--;
     dfi->sizeAlive -= MMFilesDatafileHelper::AlignedSize<int64_t>(size);
@@ -1168,7 +1168,7 @@ uint8_t const* MMFilesCollection::lookupRevisionVPackConditional(TRI_voc_rid_t r
   uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
 
   if (maxTick > 0) {
-    TRI_df_marker_t const* marker = reinterpret_cast<TRI_df_marker_t const*>(vpack - arangodb::MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+    TRI_df_marker_t const* marker = reinterpret_cast<TRI_df_marker_t const*>(vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
     if (marker->getTick() > maxTick) {
       return nullptr;
     }
@@ -1202,7 +1202,7 @@ void MMFilesCollection::removeRevision(TRI_voc_rid_t revisionId, bool updateStat
     if (old && !old.pointsToWal() && old.fid() != 0) {
       TRI_ASSERT(old.dataptr() != nullptr);
       uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
-      int64_t size = MMFilesDatafileHelper::AlignedSize<int64_t>(arangodb::MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
+      int64_t size = MMFilesDatafileHelper::AlignedSize<int64_t>(MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
       _datafileStatistics.increaseDead(old.fid(), 1, size);
     }
   } else {

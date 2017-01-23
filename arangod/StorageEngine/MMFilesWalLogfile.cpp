@@ -21,25 +21,24 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Logfile.h"
+#include "MMFilesWalLogfile.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
 #include "StorageEngine/MMFilesDatafileHelper.h"
 
 using namespace arangodb;
-using namespace arangodb::wal;
 
 /// @brief create the logfile
-Logfile::Logfile(Logfile::IdType id, MMFilesDatafile* df, StatusType status)
+MMFilesWalLogfile::MMFilesWalLogfile(MMFilesWalLogfile::IdType id, MMFilesDatafile* df, StatusType status)
     : _id(id), _users(0), _df(df), _status(status), _collectQueueSize(0) {}
 
 /// @brief destroy the logfile
-Logfile::~Logfile() {
+MMFilesWalLogfile::~MMFilesWalLogfile() {
   delete _df;
 }
 
 /// @brief create a new logfile
-Logfile* Logfile::createNew(std::string const& filename, Logfile::IdType id,
+MMFilesWalLogfile* MMFilesWalLogfile::createNew(std::string const& filename, MMFilesWalLogfile::IdType id,
                             uint32_t size) {
   std::unique_ptr<MMFilesDatafile> df(MMFilesDatafile::create(filename, id, static_cast<TRI_voc_size_t>(size), false));
 
@@ -52,13 +51,13 @@ Logfile* Logfile::createNew(std::string const& filename, Logfile::IdType id,
     }
   }
 
-  Logfile* logfile = new Logfile(id, df.get(), StatusType::EMPTY);
+  MMFilesWalLogfile* logfile = new MMFilesWalLogfile(id, df.get(), StatusType::EMPTY);
   df.release();
   return logfile;
 }
 
 /// @brief open an existing logfile
-Logfile* Logfile::openExisting(std::string const& filename, Logfile::IdType id,
+MMFilesWalLogfile* MMFilesWalLogfile::openExisting(std::string const& filename, MMFilesWalLogfile::IdType id,
                                bool wasCollected, bool ignoreErrors) {
   std::unique_ptr<MMFilesDatafile> df(MMFilesDatafile::open(filename, ignoreErrors));
 
@@ -86,13 +85,13 @@ Logfile* Logfile::openExisting(std::string const& filename, Logfile::IdType id,
     status = StatusType::COLLECTED;
   }
 
-  Logfile* logfile = new Logfile(id, df.get(), status);
+  MMFilesWalLogfile* logfile = new MMFilesWalLogfile(id, df.get(), status);
   df.release();
   return logfile;
 }
 
 /// @brief reserve space and update the current write position
-char* Logfile::reserve(size_t size) {
+char* MMFilesWalLogfile::reserve(size_t size) {
   return _df->advanceWritePosition(MMFilesDatafileHelper::AlignedSize<size_t>(size));
 }
 

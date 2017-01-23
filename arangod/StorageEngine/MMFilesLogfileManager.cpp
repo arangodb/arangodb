@@ -39,6 +39,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/TransactionManagerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/MMFilesAllocatorThread.h"
 #include "StorageEngine/MMFilesCollectorThread.h"
@@ -52,7 +53,6 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
-using namespace arangodb::wal;
 
 // the logfile manager singleton
 MMFilesLogfileManager* MMFilesLogfileManager::Instance = nullptr;
@@ -325,39 +325,33 @@ void MMFilesLogfileManager::start() {
 bool MMFilesLogfileManager::open() {
   // note all failed transactions that we found plus the list
   // of collections and databases that we can ignore
-  {
-    WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
-
-    for (auto const& it : _recoverState->failedTransactions) {
-      size_t bucket = getBucket(it.first);
-
-      WRITE_LOCKER(locker, _transactions[bucket]._lock);
-
-      _transactions[bucket]._failedTransactions.emplace(it.first);
-    }
-
-    _droppedDatabases = _recoverState->droppedDatabases;
-    _droppedCollections = _recoverState->droppedCollections;
+ 
+  std::unordered_set<TRI_voc_tid_t> failedTransactions;
+  for (auto const& it : _recoverState->failedTransactions) {
+    failedTransactions.emplace(it.first);
   }
+  TransactionManagerFeature::MANAGER->registerFailedTransactions(failedTransactions);
+  _droppedDatabases = _recoverState->droppedDatabases;
+  _droppedCollections = _recoverState->droppedCollections;
 
   {
     // set every open logfile to a status of sealed
     WRITE_LOCKER(writeLocker, _logfilesLock);
 
     for (auto& it : _logfiles) {
-      Logfile* logfile = it.second;
+      MMFilesWalLogfile* logfile = it.second;
 
       if (logfile == nullptr) {
         continue;
       }
 
-      Logfile::StatusType status = logfile->status();
+      MMFilesWalLogfile::StatusType status = logfile->status();
 
-      if (status == Logfile::StatusType::OPEN) {
+      if (status == MMFilesWalLogfile::StatusType::OPEN) {
         // set all logfiles to sealed status so they can be collected
 
         // we don't care about the previous status here
-        logfile->forceStatus(Logfile::StatusType::SEALED);
+        logfile->forceStatus(MMFilesWalLogfile::StatusType::SEALED);
 
         MUTEX_LOCKER(mutexLocker, _idLock);
 
@@ -547,55 +541,16 @@ int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId) {
     // intentionally fail here
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+    
+  TRI_ASSERT(lastCollectedId <= lastSealedId);
 
   try {
-    size_t bucket = getBucket(transactionId);
-    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-     
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-
-    // insert into currently running list of transactions
-    _transactions[bucket]._activeTransactions.emplace(transactionId, std::make_pair(lastCollectedId, lastSealedId));
-    TRI_ASSERT(lastCollectedId <= lastSealedId);
-
+    auto data = std::make_unique<MMFilesTransactionData>(lastCollectedId, lastSealedId);
+    TransactionManagerFeature::MANAGER->registerTransaction(transactionId, std::move(data));
     return TRI_ERROR_NO_ERROR;
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-}
-
-// unregisters a transaction
-void MMFilesLogfileManager::unregisterTransaction(TRI_voc_tid_t transactionId,
-                                           bool markAsFailed) {
-  size_t bucket = getBucket(transactionId);
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-    
-  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-
-  _transactions[bucket]._activeTransactions.erase(transactionId);
-
-  if (markAsFailed) {
-    _transactions[bucket]._failedTransactions.emplace(transactionId);
-  }
-}
-
-// return the set of failed transactions
-std::unordered_set<TRI_voc_tid_t> MMFilesLogfileManager::getFailedTransactions() {
-  std::unordered_set<TRI_voc_tid_t> failedTransactions;
-
-  {
-    WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
-
-    for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-      READ_LOCKER(locker, _transactions[bucket]._lock);
-
-      for (auto const& it : _transactions[bucket]._failedTransactions) {
-        failedTransactions.emplace(it);
-      }
-    }
-  }
-
-  return failedTransactions;
 }
 
 // return the set of dropped collections
@@ -624,20 +579,6 @@ std::unordered_set<TRI_voc_tick_t> MMFilesLogfileManager::getDroppedDatabases() 
   return droppedDatabases;
 }
 
-// unregister a list of failed transactions
-void MMFilesLogfileManager::unregisterFailedTransactions(
-    std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
-    
-  WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
-
-  for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    READ_LOCKER(locker, _transactions[bucket]._lock);
-
-    std::for_each(failedTransactions.begin(), failedTransactions.end(),
-                [&](TRI_voc_tid_t id) { _transactions[bucket]._failedTransactions.erase(id); });
-  }
-}
-
 // whether or not it is currently allowed to create an additional
 /// logfile
 bool MMFilesLogfileManager::logfileCreationAllowed(uint32_t size) {
@@ -658,12 +599,12 @@ bool MMFilesLogfileManager::logfileCreationAllowed(uint32_t size) {
   READ_LOCKER(readLocker, _logfilesLock);
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
-    Logfile* logfile = (*it).second;
+    MMFilesWalLogfile* logfile = (*it).second;
 
     TRI_ASSERT(logfile != nullptr);
 
-    if (logfile->status() == Logfile::StatusType::OPEN ||
-        logfile->status() == Logfile::StatusType::SEAL_REQUESTED) {
+    if (logfile->status() == MMFilesWalLogfile::StatusType::OPEN ||
+        logfile->status() == MMFilesWalLogfile::StatusType::SEAL_REQUESTED) {
       ++numberOfLogfiles;
     }
   }
@@ -681,7 +622,7 @@ bool MMFilesLogfileManager::hasReserveLogfiles() {
 
   // reverse-scan the logfiles map
   for (auto it = _logfiles.rbegin(); it != _logfiles.rend(); ++it) {
-    Logfile* logfile = (*it).second;
+    MMFilesWalLogfile* logfile = (*it).second;
 
     TRI_ASSERT(logfile != nullptr);
 
@@ -836,8 +777,8 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
                           bool writeShutdownFile) {
   TRI_ASSERT(!_inRecovery);
 
-  Logfile::IdType lastOpenLogfileId;
-  Logfile::IdType lastSealedLogfileId;
+  MMFilesWalLogfile::IdType lastOpenLogfileId;
+  MMFilesWalLogfile::IdType lastSealedLogfileId;
 
   {
     MUTEX_LOCKER(mutexLocker, _idLock);
@@ -934,16 +875,16 @@ bool MMFilesLogfileManager::waitForSync(double maxWait) {
 }
 
 // re-inserts a logfile back into the inventory only
-void MMFilesLogfileManager::relinkLogfile(Logfile* logfile) {
-  Logfile::IdType const id = logfile->id();
+void MMFilesLogfileManager::relinkLogfile(MMFilesWalLogfile* logfile) {
+  MMFilesWalLogfile::IdType const id = logfile->id();
 
   WRITE_LOCKER(writeLocker, _logfilesLock);
   _logfiles.emplace(id, logfile);
 }
 
 // remove a logfile from the inventory only
-bool MMFilesLogfileManager::unlinkLogfile(Logfile* logfile) {
-  Logfile::IdType const id = logfile->id();
+bool MMFilesLogfileManager::unlinkLogfile(MMFilesWalLogfile* logfile) {
+  MMFilesWalLogfile::IdType const id = logfile->id();
 
   WRITE_LOCKER(writeLocker, _logfilesLock);
   auto it = _logfiles.find(id);
@@ -958,7 +899,7 @@ bool MMFilesLogfileManager::unlinkLogfile(Logfile* logfile) {
 }
 
 // remove a logfile from the inventory only
-Logfile* MMFilesLogfileManager::unlinkLogfile(Logfile::IdType id) {
+MMFilesWalLogfile* MMFilesLogfileManager::unlinkLogfile(MMFilesWalLogfile::IdType id) {
   WRITE_LOCKER(writeLocker, _logfilesLock);
   auto it = _logfiles.find(id);
 
@@ -977,7 +918,7 @@ bool MMFilesLogfileManager::removeLogfiles() {
   bool worked = false;
 
   while (++iterations < 6) {
-    Logfile* logfile = getRemovableLogfile();
+    MMFilesWalLogfile* logfile = getRemovableLogfile();
 
     if (logfile == nullptr) {
       break;
@@ -991,34 +932,34 @@ bool MMFilesLogfileManager::removeLogfiles() {
 }
 
 // sets the status of a logfile to open
-void MMFilesLogfileManager::setLogfileOpen(Logfile* logfile) {
+void MMFilesLogfileManager::setLogfileOpen(MMFilesWalLogfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
 
   WRITE_LOCKER(writeLocker, _logfilesLock);
-  logfile->setStatus(Logfile::StatusType::OPEN);
+  logfile->setStatus(MMFilesWalLogfile::StatusType::OPEN);
 }
 
 // sets the status of a logfile to seal-requested
-void MMFilesLogfileManager::setLogfileSealRequested(Logfile* logfile) {
+void MMFilesLogfileManager::setLogfileSealRequested(MMFilesWalLogfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
 
   {
     WRITE_LOCKER(writeLocker, _logfilesLock);
-    logfile->setStatus(Logfile::StatusType::SEAL_REQUESTED);
+    logfile->setStatus(MMFilesWalLogfile::StatusType::SEAL_REQUESTED);
   }
 
   signalSync(true);
 }
 
 // sets the status of a logfile to sealed
-void MMFilesLogfileManager::setLogfileSealed(Logfile* logfile) {
+void MMFilesLogfileManager::setLogfileSealed(MMFilesWalLogfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
 
   setLogfileSealed(logfile->id());
 }
 
 // sets the status of a logfile to sealed
-void MMFilesLogfileManager::setLogfileSealed(Logfile::IdType id) {
+void MMFilesLogfileManager::setLogfileSealed(MMFilesWalLogfile::IdType id) {
   {
     WRITE_LOCKER(writeLocker, _logfilesLock);
 
@@ -1028,7 +969,7 @@ void MMFilesLogfileManager::setLogfileSealed(Logfile::IdType id) {
       return;
     }
 
-    (*it).second->setStatus(Logfile::StatusType::SEALED);
+    (*it).second->setStatus(MMFilesWalLogfile::StatusType::SEALED);
   }
 
   {
@@ -1038,20 +979,20 @@ void MMFilesLogfileManager::setLogfileSealed(Logfile::IdType id) {
 }
 
 // return the status of a logfile
-Logfile::StatusType MMFilesLogfileManager::getLogfileStatus(Logfile::IdType id) {
+MMFilesWalLogfile::StatusType MMFilesLogfileManager::getLogfileStatus(MMFilesWalLogfile::IdType id) {
   READ_LOCKER(readLocker, _logfilesLock);
 
   auto it = _logfiles.find(id);
 
   if (it == _logfiles.end()) {
-    return Logfile::StatusType::UNKNOWN;
+    return MMFilesWalLogfile::StatusType::UNKNOWN;
   }
 
   return (*it).second->status();
 }
 
 // return the file descriptor of a logfile
-int MMFilesLogfileManager::getLogfileDescriptor(Logfile::IdType id) {
+int MMFilesLogfileManager::getLogfileDescriptor(MMFilesWalLogfile::IdType id) {
   READ_LOCKER(readLocker, _logfilesLock);
 
   auto it = _logfiles.find(id);
@@ -1062,7 +1003,7 @@ int MMFilesLogfileManager::getLogfileDescriptor(Logfile::IdType id) {
     return -1;
   }
 
-  Logfile* logfile = (*it).second;
+  MMFilesWalLogfile* logfile = (*it).second;
   TRI_ASSERT(logfile != nullptr);
 
   return logfile->fd();
@@ -1070,7 +1011,7 @@ int MMFilesLogfileManager::getLogfileDescriptor(Logfile::IdType id) {
 
 // get the current open region of a logfile
 /// this uses the slots lock
-void MMFilesLogfileManager::getActiveLogfileRegion(Logfile* logfile,
+void MMFilesLogfileManager::getActiveLogfileRegion(MMFilesWalLogfile* logfile,
                                             char const*& begin,
                                             char const*& end) {
   _slots->getActiveLogfileRegion(logfile, begin, end);
@@ -1207,10 +1148,10 @@ TRI_voc_tick_t MMFilesLogfileManager::getMinBarrierTick() {
 }
 
 // get logfiles for a tick range
-std::vector<Logfile*> MMFilesLogfileManager::getLogfilesForTickRange(
+std::vector<MMFilesWalLogfile*> MMFilesLogfileManager::getLogfilesForTickRange(
     TRI_voc_tick_t minTick, TRI_voc_tick_t maxTick, bool& minTickIncluded) {
-  std::vector<Logfile*> temp;
-  std::vector<Logfile*> matching;
+  std::vector<MMFilesWalLogfile*> temp;
+  std::vector<MMFilesWalLogfile*> matching;
 
   minTickIncluded = false;
 
@@ -1225,10 +1166,10 @@ std::vector<Logfile*> MMFilesLogfileManager::getLogfilesForTickRange(
     matching.reserve(_logfiles.size());
 
     for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
-      Logfile* logfile = (*it).second;
+      MMFilesWalLogfile* logfile = (*it).second;
 
       if (logfile == nullptr ||
-          logfile->status() == Logfile::StatusType::EMPTY) {
+          logfile->status() == MMFilesWalLogfile::StatusType::EMPTY) {
         continue;
       }
 
@@ -1242,7 +1183,7 @@ std::vector<Logfile*> MMFilesLogfileManager::getLogfilesForTickRange(
 
   // now go on without the lock
   for (auto it = temp.begin(); it != temp.end(); ++it) {
-    Logfile* logfile = (*it);
+    MMFilesWalLogfile* logfile = (*it);
 
     TRI_voc_tick_t logMin;
     TRI_voc_tick_t logMax;
@@ -1270,14 +1211,14 @@ std::vector<Logfile*> MMFilesLogfileManager::getLogfilesForTickRange(
 }
 
 // return logfiles for a tick range
-void MMFilesLogfileManager::returnLogfiles(std::vector<Logfile*> const& logfiles) {
+void MMFilesLogfileManager::returnLogfiles(std::vector<MMFilesWalLogfile*> const& logfiles) {
   for (auto& logfile : logfiles) {
     logfile->release();
   }
 }
 
 // get a logfile by id
-Logfile* MMFilesLogfileManager::getLogfile(Logfile::IdType id) {
+MMFilesWalLogfile* MMFilesLogfileManager::getLogfile(MMFilesWalLogfile::IdType id) {
   READ_LOCKER(readLocker, _logfilesLock);
 
   auto it = _logfiles.find(id);
@@ -1290,8 +1231,8 @@ Logfile* MMFilesLogfileManager::getLogfile(Logfile::IdType id) {
 }
 
 // get a logfile and its status by id
-Logfile* MMFilesLogfileManager::getLogfile(Logfile::IdType id,
-                                    Logfile::StatusType& status) {
+MMFilesWalLogfile* MMFilesLogfileManager::getLogfile(MMFilesWalLogfile::IdType id,
+                                    MMFilesWalLogfile::StatusType& status) {
   READ_LOCKER(readLocker, _logfilesLock);
 
   auto it = _logfiles.find(id);
@@ -1301,15 +1242,15 @@ Logfile* MMFilesLogfileManager::getLogfile(Logfile::IdType id,
     return (*it).second;
   }
 
-  status = Logfile::StatusType::UNKNOWN;
+  status = MMFilesWalLogfile::StatusType::UNKNOWN;
 
   return nullptr;
 }
 
 // get a logfile for writing. this may return nullptr
 int MMFilesLogfileManager::getWriteableLogfile(uint32_t size,
-                                        Logfile::StatusType& status,
-                                        Logfile*& result) {
+                                        MMFilesWalLogfile::StatusType& status,
+                                        MMFilesWalLogfile*& result) {
   // always initialize the result
   result = nullptr;
 
@@ -1327,7 +1268,7 @@ int MMFilesLogfileManager::getWriteableLogfile(uint32_t size,
       auto it = _logfiles.begin();
 
       while (it != _logfiles.end()) {
-        Logfile* logfile = (*it).second;
+        MMFilesWalLogfile* logfile = (*it).second;
 
         TRI_ASSERT(logfile != nullptr);
 
@@ -1346,7 +1287,7 @@ int MMFilesLogfileManager::getWriteableLogfile(uint32_t size,
           return TRI_ERROR_NO_ERROR;
         }
 
-        if (logfile->status() == Logfile::StatusType::EMPTY &&
+        if (logfile->status() == MMFilesWalLogfile::StatusType::EMPTY &&
             !logfile->isWriteable(size)) {
           // we found an empty logfile, but the entry won't fit
 
@@ -1389,27 +1330,20 @@ int MMFilesLogfileManager::getWriteableLogfile(uint32_t size,
 }
 
 // get a logfile to collect. this may return nullptr
-Logfile* MMFilesLogfileManager::getCollectableLogfile() {
+MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
   // iterate over all active readers and find their minimum used logfile id
-  Logfile::IdType minId = UINT64_MAX;
+  MMFilesWalLogfile::IdType minId = UINT64_MAX;
 
-  { 
-    WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  auto cb = [&minId](TRI_voc_tid_t, TransactionData* data) {
+    MMFilesWalLogfile::IdType lastWrittenId = static_cast<MMFilesTransactionData*>(data)->lastSealedId;
 
-    // iterate over all active transactions and find their minimum used logfile
-    // id
-    for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-      READ_LOCKER(locker, _transactions[bucket]._lock);
-
-      for (auto const& it : _transactions[bucket]._activeTransactions) {
-        Logfile::IdType lastWrittenId = it.second.second;
-
-        if (lastWrittenId < minId && lastWrittenId != 0) {
-          minId = lastWrittenId;
-        }
-      }
+    if (lastWrittenId < minId && lastWrittenId != 0) {
+      minId = lastWrittenId;
     }
-  }
+  };
+
+  // iterate over all active transactions and find their minimum used logfile id
+  TransactionManagerFeature::MANAGER->iterateActiveTransactions(cb);
 
   {
     READ_LOCKER(readLocker, _logfilesLock);
@@ -1438,40 +1372,34 @@ Logfile* MMFilesLogfileManager::getCollectableLogfile() {
 // get a logfile to remove. this may return nullptr
 /// if it returns a logfile, the logfile is removed from the list of available
 /// logfiles
-Logfile* MMFilesLogfileManager::getRemovableLogfile() {
+MMFilesWalLogfile* MMFilesLogfileManager::getRemovableLogfile() {
   TRI_ASSERT(!_inRecovery);
 
   // take all barriers into account
-  Logfile::IdType const minBarrierTick = getMinBarrierTick();
+  MMFilesWalLogfile::IdType const minBarrierTick = getMinBarrierTick();
 
-  Logfile::IdType minId = UINT64_MAX;
+  MMFilesWalLogfile::IdType minId = UINT64_MAX;
+  
+  // iterate over all active transactions and find their minimum used logfile id
+  auto cb = [&minId](TRI_voc_tid_t, TransactionData* data) {
+    MMFilesWalLogfile::IdType lastCollectedId = static_cast<MMFilesTransactionData*>(data)->lastCollectedId;
 
-  {
-    WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
-
-    // iterate over all active readers and find their minimum used logfile id
-    for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-      READ_LOCKER(locker, _transactions[bucket]._lock);
-
-      for (auto const& it : _transactions[bucket]._activeTransactions) {
-        Logfile::IdType lastCollectedId = it.second.first;
-
-        if (lastCollectedId < minId && lastCollectedId != 0) {
-          minId = lastCollectedId;
-        }
-      }
+    if (lastCollectedId < minId && lastCollectedId != 0) {
+      minId = lastCollectedId;
     }
-  }
+  };
+
+  TransactionManagerFeature::MANAGER->iterateActiveTransactions(cb);
 
   {
     uint32_t numberOfLogfiles = 0;
     uint32_t const minHistoricLogfiles = historicLogfiles();
-    Logfile* first = nullptr;
+    MMFilesWalLogfile* first = nullptr;
 
     WRITE_LOCKER(writeLocker, _logfilesLock);
 
     for (auto& it : _logfiles) {
-      Logfile* logfile = it.second;
+      MMFilesWalLogfile* logfile = it.second;
 
       // find the first logfile that can be safely removed
       if (logfile == nullptr) {
@@ -1505,29 +1433,29 @@ Logfile* MMFilesLogfileManager::getRemovableLogfile() {
 }
 
 // increase the number of collect operations for a logfile
-void MMFilesLogfileManager::increaseCollectQueueSize(Logfile* logfile) {
+void MMFilesLogfileManager::increaseCollectQueueSize(MMFilesWalLogfile* logfile) {
   logfile->increaseCollectQueueSize();
 }
 
 // decrease the number of collect operations for a logfile
-void MMFilesLogfileManager::decreaseCollectQueueSize(Logfile* logfile) {
+void MMFilesLogfileManager::decreaseCollectQueueSize(MMFilesWalLogfile* logfile) {
   logfile->decreaseCollectQueueSize();
 }
 
 // mark a file as being requested for collection
-void MMFilesLogfileManager::setCollectionRequested(Logfile* logfile) {
+void MMFilesLogfileManager::setCollectionRequested(MMFilesWalLogfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
 
   {
     WRITE_LOCKER(writeLocker, _logfilesLock);
 
-    if (logfile->status() == Logfile::StatusType::COLLECTION_REQUESTED) {
+    if (logfile->status() == MMFilesWalLogfile::StatusType::COLLECTION_REQUESTED) {
       // the collector already asked for this file, but couldn't process it
       // due to some exception
       return;
     }
 
-    logfile->setStatus(Logfile::StatusType::COLLECTION_REQUESTED);
+    logfile->setStatus(MMFilesWalLogfile::StatusType::COLLECTION_REQUESTED);
   }
 
   if (!_inRecovery) {
@@ -1537,19 +1465,19 @@ void MMFilesLogfileManager::setCollectionRequested(Logfile* logfile) {
 }
 
 // mark a file as being done with collection
-void MMFilesLogfileManager::setCollectionDone(Logfile* logfile) {
+void MMFilesLogfileManager::setCollectionDone(MMFilesWalLogfile* logfile) {
   TRI_IF_FAILURE("setCollectionDone") {
     return;
   }
   
   TRI_ASSERT(logfile != nullptr);
-  Logfile::IdType id = logfile->id();
+  MMFilesWalLogfile::IdType id = logfile->id();
 
   // LOG(ERR) << "setCollectionDone setting lastCollectedId to " << (unsigned
   // long long) id;
   {
     WRITE_LOCKER(writeLocker, _logfilesLock);
-    logfile->setStatus(Logfile::StatusType::COLLECTED);
+    logfile->setStatus(MMFilesWalLogfile::StatusType::COLLECTED);
 
     if (_useMLock) {
       logfile->unlockFromMemory();
@@ -1569,7 +1497,7 @@ void MMFilesLogfileManager::setCollectionDone(Logfile* logfile) {
 }
 
 // force the status of a specific logfile
-void MMFilesLogfileManager::forceStatus(Logfile* logfile, Logfile::StatusType status) {
+void MMFilesLogfileManager::forceStatus(MMFilesWalLogfile* logfile, MMFilesWalLogfile::StatusType status) {
   TRI_ASSERT(logfile != nullptr);
 
   {
@@ -1597,7 +1525,7 @@ LogfileRanges MMFilesLogfileManager::ranges() {
   READ_LOCKER(readLocker, _logfilesLock);
 
   for (auto const& it : _logfiles) {
-    Logfile* logfile = it.second;
+    MMFilesWalLogfile* logfile = it.second;
 
     if (logfile == nullptr) {
       continue;
@@ -1617,43 +1545,37 @@ LogfileRanges MMFilesLogfileManager::ranges() {
 }
 
 // get information about running transactions
-std::tuple<size_t, Logfile::IdType, Logfile::IdType>
+std::tuple<size_t, MMFilesWalLogfile::IdType, MMFilesWalLogfile::IdType>
 MMFilesLogfileManager::runningTransactions() {
   size_t count = 0;
-  Logfile::IdType lastCollectedId = UINT64_MAX;
-  Logfile::IdType lastSealedId = UINT64_MAX;
+  MMFilesWalLogfile::IdType lastCollectedId = UINT64_MAX;
+  MMFilesWalLogfile::IdType lastSealedId = UINT64_MAX;
 
-  {
-    Logfile::IdType value;
-    WRITE_LOCKER(readLocker, _allTransactionsLock);
-
-    for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-      READ_LOCKER(locker, _transactions[bucket]._lock);
-
-      count += _transactions[bucket]._activeTransactions.size();
-      for (auto const& it : _transactions[bucket]._activeTransactions) {
-
-        value = it.second.first;
-        if (value < lastCollectedId && value != 0) {
-          lastCollectedId = value;
-        }
-
-        value = it.second.second;
-        if (value < lastSealedId && value != 0) {
-          lastSealedId = value;
-        }
-      }
+  auto cb = [&count, &lastCollectedId, &lastSealedId](TRI_voc_tid_t, TransactionData* data) {
+    ++count;
+        
+    MMFilesWalLogfile::IdType value = static_cast<MMFilesTransactionData*>(data)->lastCollectedId;
+    if (value < lastCollectedId && value != 0) {
+      lastCollectedId = value;
     }
-  }
 
-  return std::tuple<size_t, Logfile::IdType, Logfile::IdType>(
+    value = static_cast<MMFilesTransactionData*>(data)->lastSealedId;
+    if (value < lastSealedId && value != 0) {
+      lastSealedId = value;
+    }
+  };
+  
+  // iterate over all active transactions
+  TransactionManagerFeature::MANAGER->iterateActiveTransactions(cb);
+
+  return std::tuple<size_t, MMFilesWalLogfile::IdType, MMFilesWalLogfile::IdType>(
       count, lastCollectedId, lastSealedId);
 }
 
 // remove a logfile in the file system
-void MMFilesLogfileManager::removeLogfile(Logfile* logfile) {
+void MMFilesLogfileManager::removeLogfile(MMFilesWalLogfile* logfile) {
   // old filename
-  Logfile::IdType const id = logfile->id();
+  MMFilesWalLogfile::IdType const id = logfile->id();
   std::string const filename = logfileName(id);
 
   LOG(TRACE) << "removing logfile '" << filename << "'";
@@ -1682,7 +1604,7 @@ void MMFilesLogfileManager::waitForCollector() {
 }
 
 // wait until a specific logfile has been collected
-int MMFilesLogfileManager::waitForCollector(Logfile::IdType logfileId,
+int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
                                      double maxWaitTime) {
   if (maxWaitTime <= 0.0) {
     maxWaitTime = 24.0 * 3600.0; // wait "forever"
@@ -1783,7 +1705,7 @@ void MMFilesLogfileManager::closeLogfiles() {
   WRITE_LOCKER(writeLocker, _logfilesLock);
 
   for (auto& it : _logfiles) {
-    Logfile* logfile = it.second;
+    MMFilesWalLogfile* logfile = it.second;
 
     if (logfile != nullptr) {
       delete logfile;
@@ -1845,8 +1767,8 @@ int MMFilesLogfileManager::readShutdownInfo() {
 
   {
     MUTEX_LOCKER(mutexLocker, _idLock);
-    _lastCollectedId = static_cast<Logfile::IdType>(lastCollectedId);
-    _lastSealedId = static_cast<Logfile::IdType>(lastSealedId);
+    _lastCollectedId = static_cast<MMFilesWalLogfile::IdType>(lastCollectedId);
+    _lastSealedId = static_cast<MMFilesWalLogfile::IdType>(lastSealedId);
 
     LOG(TRACE) << "initial values for WAL logfile manager: tick: " << lastTick
                << ", hlc: " << hlc 
@@ -1869,8 +1791,8 @@ int MMFilesLogfileManager::writeShutdownInfo(bool writeShutdownTime) {
     builder.openObject();
 
     // create local copies of the instance variables while holding the read lock
-    Logfile::IdType lastCollectedId;
-    Logfile::IdType lastSealedId;
+    MMFilesWalLogfile::IdType lastCollectedId;
+    MMFilesWalLogfile::IdType lastSealedId;
 
     {
       MUTEX_LOCKER(mutexLocker, _idLock);
@@ -1981,15 +1903,15 @@ void MMFilesLogfileManager::stopMMFilesCollectorThread() {
     {
       READ_LOCKER(readLocker, _logfilesLock);
       for (auto& it : _logfiles) {
-        Logfile* logfile = it.second;
+        MMFilesWalLogfile* logfile = it.second;
 
         if (logfile == nullptr) {
           continue;
         }
 
-        Logfile::StatusType status = logfile->status();
+        MMFilesWalLogfile::StatusType status = logfile->status();
 
-        if (status == Logfile::StatusType::SEAL_REQUESTED) {
+        if (status == MMFilesWalLogfile::StatusType::SEAL_REQUESTED) {
           canAbort = false;
         }
       }
@@ -2046,7 +1968,7 @@ int MMFilesLogfileManager::inventory() {
 
     if (StringUtils::isPrefix(file, "logfile-") &&
         StringUtils::isSuffix(file, ".db")) {
-      Logfile::IdType const id =
+      MMFilesWalLogfile::IdType const id =
           basics::StringUtils::uint64(file.substr(8, file.size() - 8 - 3));
 
       if (id == 0) {
@@ -2074,7 +1996,7 @@ int MMFilesLogfileManager::inspectLogfiles() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // print an inventory
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
-    Logfile* logfile = (*it).second;
+    MMFilesWalLogfile* logfile = (*it).second;
 
     if (logfile != nullptr) {
       LOG(DEBUG) << "logfile " << logfile->id() << ", filename '" << logfile->filename()
@@ -2084,7 +2006,7 @@ int MMFilesLogfileManager::inspectLogfiles() {
 #endif
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); /* no hoisting */) {
-    Logfile::IdType const id = (*it).first;
+    MMFilesWalLogfile::IdType const id = (*it).first;
     std::string const filename = logfileName(id);
 
     TRI_ASSERT((*it).second == nullptr);
@@ -2098,7 +2020,7 @@ int MMFilesLogfileManager::inspectLogfiles() {
     }
 
     bool const wasCollected = (id <= _lastCollectedId);
-    std::unique_ptr<Logfile> logfile(Logfile::openExisting(filename, id, wasCollected, _ignoreLogfileErrors));
+    std::unique_ptr<MMFilesWalLogfile> logfile(MMFilesWalLogfile::openExisting(filename, id, wasCollected, _ignoreLogfileErrors));
 
     if (logfile == nullptr) {
       // an error happened when opening a logfile
@@ -2117,8 +2039,8 @@ int MMFilesLogfileManager::inspectLogfiles() {
       continue;
     }
 
-    if (logfile->status() == Logfile::StatusType::OPEN ||
-        logfile->status() == Logfile::StatusType::SEALED) {
+    if (logfile->status() == MMFilesWalLogfile::StatusType::OPEN ||
+        logfile->status() == MMFilesWalLogfile::StatusType::SEALED) {
       _recoverState->logfilesToProcess.push_back(logfile.get());
     }
 
@@ -2142,20 +2064,20 @@ int MMFilesLogfileManager::inspectLogfiles() {
                << "), tickMin: " << df->_tickMin
                << ", tickMax: " << df->_tickMax;
 
-    if (logfile->status() == Logfile::StatusType::SEALED) {
+    if (logfile->status() == MMFilesWalLogfile::StatusType::SEALED) {
       // If it is sealed, switch to random access:
       df->randomAccess();
     }
 
     {
       MUTEX_LOCKER(mutexLocker, _idLock);
-      if (logfile->status() == Logfile::StatusType::SEALED &&
+      if (logfile->status() == MMFilesWalLogfile::StatusType::SEALED &&
           id > _lastSealedId) {
         _lastSealedId = id;
       }
 
-      if ((logfile->status() == Logfile::StatusType::SEALED ||
-           logfile->status() == Logfile::StatusType::OPEN) &&
+      if ((logfile->status() == MMFilesWalLogfile::StatusType::SEALED ||
+           logfile->status() == MMFilesWalLogfile::StatusType::OPEN) &&
           id > _lastOpenedId) {
         _lastOpenedId = id;
       }
@@ -2178,7 +2100,7 @@ int MMFilesLogfileManager::inspectLogfiles() {
 
 // allocates a new reserve logfile
 int MMFilesLogfileManager::createReserveLogfile(uint32_t size) {
-  Logfile::IdType const id = nextId();
+  MMFilesWalLogfile::IdType const id = nextId();
   std::string const filename = logfileName(id);
 
   LOG(TRACE) << "creating empty logfile '" << filename << "' with size "
@@ -2193,7 +2115,7 @@ int MMFilesLogfileManager::createReserveLogfile(uint32_t size) {
     realsize = filesize();
   }
 
-  std::unique_ptr<Logfile> logfile(Logfile::createNew(filename, id, realsize));
+  std::unique_ptr<MMFilesWalLogfile> logfile(MMFilesWalLogfile::createNew(filename, id, realsize));
 
   if (logfile == nullptr) {
     int res = TRI_errno();
@@ -2216,8 +2138,8 @@ int MMFilesLogfileManager::createReserveLogfile(uint32_t size) {
 }
 
 // get an id for the next logfile
-Logfile::IdType MMFilesLogfileManager::nextId() {
-  return static_cast<Logfile::IdType>(TRI_NewTickServer());
+MMFilesWalLogfile::IdType MMFilesLogfileManager::nextId() {
+  return static_cast<MMFilesWalLogfile::IdType>(TRI_NewTickServer());
 }
 
 // ensure the wal logfiles directory is actually there
@@ -2258,7 +2180,7 @@ std::string MMFilesLogfileManager::shutdownFilename() const {
 }
 
 // return an absolute filename for a logfile id
-std::string MMFilesLogfileManager::logfileName(Logfile::IdType id) const {
+std::string MMFilesLogfileManager::logfileName(MMFilesWalLogfile::IdType id) const {
   return _directory + std::string("logfile-") + basics::StringUtils::itoa(id) +
          std::string(".db");
 }

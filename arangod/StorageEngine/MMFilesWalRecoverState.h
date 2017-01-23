@@ -30,7 +30,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-#include "Wal/Logfile.h"
+#include "StorageEngine/MMFilesWalLogfile.h"
 
 namespace arangodb {
 class DatabaseFeature;
@@ -137,7 +137,7 @@ struct MMFilesWalRecoverState {
   static bool InitialScanMarker(TRI_df_marker_t const*, void*, MMFilesDatafile*);
 
   /// @brief replay a single logfile
-  int replayLogfile(wal::Logfile*, int);
+  int replayLogfile(MMFilesWalLogfile*, int);
 
   /// @brief replay all logfiles
   int replayLogfiles();
@@ -160,7 +160,7 @@ struct MMFilesWalRecoverState {
   std::unordered_set<TRI_voc_tick_t> totalDroppedDatabases;
 
   TRI_voc_tick_t lastTick;
-  std::vector<wal::Logfile*> logfilesToProcess;
+  std::vector<MMFilesWalLogfile*> logfilesToProcess;
   std::unordered_map<TRI_voc_cid_t, arangodb::LogicalCollection*> openedCollections;
   std::unordered_map<TRI_voc_tick_t, TRI_vocbase_t*> openedDatabases;
   std::vector<std::string> emptyLogfiles;
