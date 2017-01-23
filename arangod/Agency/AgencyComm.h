@@ -261,6 +261,7 @@ class AgencyCommResult {
  private:
   std::shared_ptr<velocypack::Builder> _vpack;
 
+public:
   std::string _clientId;
 };
 
@@ -637,7 +638,8 @@ class AgencyComm {
   bool ensureStructureInitialized();
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
-                                    std::string const&, std::string const&);
+                                    std::string const&, std::string const&,
+                                    std::string const& clientId = std::string());
 
  private:
   bool lock(std::string const&, double, double,
@@ -646,7 +648,8 @@ class AgencyComm {
   bool unlock(std::string const&, arangodb::velocypack::Slice const&, double);
 
   AgencyCommResult send(httpclient::GeneralClientConnection*, rest::RequestType,
-                        double, std::string const&, std::string const&);
+                        double, std::string const&, std::string const&,
+                        std::string const& clientId = std::string());
 
   bool tryInitializeStructure(std::string const& jwtSecret);
 

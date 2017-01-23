@@ -608,7 +608,7 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
 /// @brief extracts a boolean parameter value
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestVocbaseBaseHandler::extractBooleanParameter(char const* name,
+bool RestVocbaseBaseHandler::extractBooleanParameter(std::string const& name,
                                                      bool def) const {
   bool found;
   std::string const& value = _request->value(name, found);

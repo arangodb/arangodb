@@ -624,7 +624,17 @@ bool Node::applieOp(VPackSlice const& slice) {
   } else if (oper == "observe") {  // "op":"observe"
     return handle<OBSERVE>(slice);
   } else if (oper == "unobserve") {  // "op":"unobserve"
-    return handle<UNOBSERVE>(slice);
+    handle<UNOBSERVE>(slice);
+    if (_children.empty() && _value.empty()) {
+      if (_parent == nullptr) {  // root node
+        _children.clear();
+        _value.clear();
+        return true;
+      } else {
+        return _parent->removeChild(_node_name);
+      }
+    }
+    return true;
   } else if (oper == "erase") {  // "op":"erase"
     return handle<ERASE>(slice);
   } else if (oper == "replace") {  // "op":"replace"

@@ -100,16 +100,31 @@ class Thread {
 
   static TRI_tid_t currentThreadId();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the current thread
-  //////////////////////////////////////////////////////////////////////////////
-
+  // returns the current thread
   static Thread* current() { return CURRENT_THREAD; }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief check if work has been canceled
-  //////////////////////////////////////////////////////////////////////////////
+  // returns the current work description or nullptr
+  static WorkDescription* currentWorkDescription() {
+    return CURRENT_THREAD == nullptr ? nullptr
+                                     : CURRENT_THREAD->workDescription();
+  }
 
+  // returns the current work context or nullptr
+  static WorkContext* currentWorkContext() {
+    if (CURRENT_THREAD == nullptr) {
+      return nullptr;
+    }
+
+    auto description = CURRENT_THREAD->workDescription();
+
+    if (description == nullptr) {
+      return nullptr;
+    }
+
+    return description->_context.get();
+  }
+
+  // checks if work has been canceled
   static bool isCanceled() {
     Thread* thread = CURRENT_THREAD;
 

@@ -102,7 +102,7 @@ class LogicalCollection {
   static bool IsAllowedName(bool isSystem, std::string const& name);
 
   void ensureRevisionsCache();
-      
+  
   void isInitialIteration(bool value) { _isInitialIteration = value; }
 
   // TODO: MOVE TO PHYSICAL?  
@@ -157,6 +157,9 @@ class LogicalCollection {
   std::string const& path() const;
   std::string const& distributeShardsLike() const;
   void distributeShardsLike(std::string const&);
+
+  std::vector<std::string> const& avoidServers() const;
+  void avoidServers(std::vector<std::string> const&) ;
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (enterprise only) this is
@@ -389,6 +392,7 @@ class LogicalCollection {
   void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
   bool updateRevisionConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal);
   void removeRevision(TRI_voc_rid_t revisionId, bool updateStats);
+  void removeRevisionCacheEntry(TRI_voc_rid_t revisionId);
 
  private:
   // SECTION: Index creation
@@ -504,8 +508,10 @@ class LogicalCollection {
   // @brief Name of other collection this shards should be distributed like
   std::string _distributeShardsLike;
 
-  // @brief Flag if this collection is a smart one. (Enterprise only)
+  // @brief Name of other collection this shards should be distributed like
+  std::vector<std::string> _avoidServers;
 
+  // @brief Flag if this collection is a smart one. (Enterprise only)
   bool _isSmart;
 
   // the following contains in the cluster/DBserver case the information

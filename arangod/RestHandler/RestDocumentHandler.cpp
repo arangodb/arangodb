@@ -115,10 +115,10 @@ bool RestDocumentHandler::createDocument() {
   VPackSlice body = parsedBody->slice();
 
   arangodb::OperationOptions opOptions;
-  opOptions.isRestore = extractBooleanParameter("isRestore", false);
-  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
-  opOptions.returnNew = extractBooleanParameter("returnNew", false);
-  opOptions.silent = extractBooleanParameter("silent", false);
+  opOptions.isRestore = extractBooleanParameter(StaticStrings::IsRestoreString, false);
+  opOptions.waitForSync = extractBooleanParameter(StaticStrings::WaitForSyncString, false);
+  opOptions.returnNew = extractBooleanParameter(StaticStrings::ReturnNewString, false);
+  opOptions.silent = extractBooleanParameter(StaticStrings::SilentString, false);
 
   // find and load collection given by name or identifier
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
@@ -380,12 +380,12 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   OperationOptions opOptions;
-  opOptions.isRestore = extractBooleanParameter("isRestore", false);
-  opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", true);
-  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
-  opOptions.returnNew = extractBooleanParameter("returnNew", false);
-  opOptions.returnOld = extractBooleanParameter("returnOld", false);
-  opOptions.silent = extractBooleanParameter("silent", false);
+  opOptions.isRestore = extractBooleanParameter(StaticStrings::IsRestoreString, false);
+  opOptions.ignoreRevs = extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
+  opOptions.waitForSync = extractBooleanParameter(StaticStrings::WaitForSyncString, false);
+  opOptions.returnNew = extractBooleanParameter(StaticStrings::ReturnNewString, false);
+  opOptions.returnOld = extractBooleanParameter(StaticStrings::ReturnOldString, false);
+  opOptions.silent = extractBooleanParameter(StaticStrings::SilentString, false);
 
   // extract the revision, if single document variant and header given:
   std::shared_ptr<VPackBuilder> builder;
@@ -442,8 +442,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   OperationResult result(TRI_ERROR_NO_ERROR);
   if (isPatch) {
     // patching an existing document
-    opOptions.keepNull = extractBooleanParameter("keepNull", true);
-    opOptions.mergeObjects = extractBooleanParameter("mergeObjects", true);
+    opOptions.keepNull = extractBooleanParameter(StaticStrings::KeepNullString, true);
+    opOptions.mergeObjects = extractBooleanParameter(StaticStrings::MergeObjectsString, true);
     result = trx.update(collectionName, body, opOptions);
   } else {
     result = trx.replace(collectionName, body, opOptions);
@@ -507,10 +507,10 @@ bool RestDocumentHandler::deleteDocument() {
   }
 
   OperationOptions opOptions;
-  opOptions.returnOld = extractBooleanParameter("returnOld", false);
-  opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", true);
-  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
-  opOptions.silent = extractBooleanParameter("silent", false);
+  opOptions.returnOld = extractBooleanParameter(StaticStrings::ReturnOldString, false);
+  opOptions.ignoreRevs = extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
+  opOptions.waitForSync = extractBooleanParameter(StaticStrings::WaitForSyncString, false);
+  opOptions.silent = extractBooleanParameter(StaticStrings::SilentString, false);
 
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
 
@@ -600,7 +600,7 @@ bool RestDocumentHandler::readManyDocuments() {
   std::string const& collectionName = suffixes[0];
 
   OperationOptions opOptions;
-  opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", true);
+  opOptions.ignoreRevs = extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
 
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collectionName,

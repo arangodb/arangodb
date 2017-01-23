@@ -50,6 +50,16 @@ class StaticStrings {
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
+
+  // URL parameter names
+  static std::string const IgnoreRevsString;
+  static std::string const IsRestoreString;
+  static std::string const KeepNullString;
+  static std::string const MergeObjectsString;
+  static std::string const ReturnNewString;
+  static std::string const ReturnOldString;
+  static std::string const SilentString;
+  static std::string const WaitForSyncString;
  
   // database and collection names 
   static std::string const SystemDatabase;

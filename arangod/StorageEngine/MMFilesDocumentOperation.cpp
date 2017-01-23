@@ -39,26 +39,6 @@ MMFilesDocumentOperation::MMFilesDocumentOperation(LogicalCollection* collection
 }
 
 MMFilesDocumentOperation::~MMFilesDocumentOperation() {
-  TRI_ASSERT(_status != StatusType::INDEXED);
- 
-  if (_status == StatusType::HANDLED) {
-    try {
-      if (_type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
-          _type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-        // remove old, now unused revision
-        TRI_ASSERT(!_oldRevision.empty());
-        TRI_ASSERT(!_newRevision.empty());
-        _collection->removeRevision(_oldRevision._revisionId, true);
-      } else if (_type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-        // remove old, now unused revision
-        TRI_ASSERT(!_oldRevision.empty());
-        TRI_ASSERT(_newRevision.empty());
-        _collection->removeRevision(_oldRevision._revisionId, true);
-      }
-    } catch (...) {
-      // never throw here because of destructor
-    }
-  } 
 }
   
 MMFilesDocumentOperation* MMFilesDocumentOperation::swap() {
@@ -108,16 +88,13 @@ void MMFilesDocumentOperation::setRevisions(DocumentDescriptor const& oldRevisio
 
 void MMFilesDocumentOperation::revert(arangodb::Transaction* trx) {
   TRI_ASSERT(trx != nullptr);
-
-  if (_status == StatusType::CREATED || 
-      _status == StatusType::SWAPPED ||
-      _status == StatusType::REVERTED) {
+  
+  if (_status == StatusType::SWAPPED || _status == StatusType::REVERTED) {
     return;
   }
-  
-  TRI_ASSERT(_status == StatusType::INDEXED || _status == StatusType::HANDLED);
-  
-  // set to reverted now
+
+  // fetch old status and set it to reverted now
+  StatusType status = _status;
   _status = StatusType::REVERTED;
 
   TRI_voc_rid_t oldRevisionId = 0;
@@ -136,39 +113,82 @@ void MMFilesDocumentOperation::revert(arangodb::Transaction* trx) {
     newDoc = VPackSlice(_newRevision._vpack);
   }
 
-  try {
-    _collection->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
-  } catch (...) {
-    // TODO: decide whether we should rethrow here
+  // clear caches so the following operations all use
+  if (oldRevisionId != 0) {
+    _collection->removeRevisionCacheEntry(oldRevisionId);
+  }
+  if (newRevisionId != 0) {
+    _collection->removeRevisionCacheEntry(newRevisionId);
   }
 
   if (_type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     TRI_ASSERT(_oldRevision.empty());
     TRI_ASSERT(!_newRevision.empty());
+    
+    if (status != StatusType::CREATED) { 
+      // remove revision from indexes
+      try {
+        _collection->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
+      } catch (...) {
+      }
+    }
+
     // remove now obsolete new revision
     try {
       _collection->removeRevision(newRevisionId, true);
     } catch (...) {
       // operation probably was never inserted
-      // TODO: decide whether we should rethrow here
     }
   } else if (_type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
              _type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
     TRI_ASSERT(!_oldRevision.empty());
     TRI_ASSERT(!_newRevision.empty());
+    
+    try {
+      // re-insert the old revision
+      _collection->insertRevision(_oldRevision._revisionId, _oldRevision._vpack, 0, true);
+    } catch (...) {
+    }
+
+    if (status != StatusType::CREATED) { 
+      try {
+        // restore the old index state
+        _collection->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
+      } catch (...) {
+      }
+    }
+   
+    // let the primary index entry point to the correct document 
     SimpleIndexElement* element = _collection->primaryIndex()->lookupKeyRef(trx, Transaction::extractKeyFromDocument(newDoc));
     if (element != nullptr && element->revisionId() != 0) {
       VPackSlice keySlice(Transaction::extractKeyFromDocument(oldDoc));
       element->updateRevisionId(oldRevisionId, static_cast<uint32_t>(keySlice.begin() - oldDoc.begin()));
     }
+    _collection->updateRevision(oldRevisionId, oldDoc.begin(), 0, false);
     
     // remove now obsolete new revision
+    if (oldRevisionId != newRevisionId) { 
+      // we need to check for the same revision id here
+      try {
+        _collection->removeRevision(newRevisionId, true);
+      } catch (...) {
+      }
+    }
+  } else if (_type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+    TRI_ASSERT(!_oldRevision.empty());
+    TRI_ASSERT(_newRevision.empty());
+    
     try {
-      _collection->removeRevision(newRevisionId, true);
+      _collection->insertRevision(_oldRevision._revisionId, _oldRevision._vpack, 0, true);
     } catch (...) {
-      // operation probably was never inserted
-      // TODO: decide whether we should rethrow here
+    }
+    
+    if (status != StatusType::CREATED) { 
+      try {
+        // remove from indexes again
+        _collection->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
+      } catch (...) {
+      }
     }
   }
 }
-

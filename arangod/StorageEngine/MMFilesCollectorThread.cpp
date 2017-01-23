@@ -374,16 +374,11 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
 
   try {
     int res = collect(logfile);
-    // LOG_TOPIC(TRACE, Logger::COLLECTOR) << "collected logfile: " << // logfile->id() << ". result: "
-    // << res;
+    // LOG_TOPIC(TRACE, Logger::COLLECTOR) << "collected logfile: " << logfile->id() << ". result: " << res;
 
     if (res == TRI_ERROR_NO_ERROR) {
       // reset collector status
-      {
-        CONDITION_LOCKER(guard, _collectorResultCondition);
-        _collectorResult = TRI_ERROR_NO_ERROR;
-        _collectorResultCondition.broadcast();
-      }
+      broadcastCollectorResult(res);
 
       RocksDBFeature::syncWal();
 
@@ -393,11 +388,7 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
       _logfileManager->forceStatus(logfile, wal::Logfile::StatusType::SEALED);
 
       // set error in collector
-      {
-        CONDITION_LOCKER(guard, _collectorResultCondition);
-        _collectorResult = res;
-        _collectorResultCondition.broadcast();
-      }
+      broadcastCollectorResult(res);
     }
 
     return res;
@@ -978,4 +969,10 @@ int MMFilesCollectorThread::updateDatafileStatistics(
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+      
+void MMFilesCollectorThread::broadcastCollectorResult(int res) { 
+  CONDITION_LOCKER(guard, _collectorResultCondition);
+  _collectorResult = res;
+  _collectorResultCondition.broadcast();
 }

@@ -25,6 +25,28 @@
 
 using namespace arangodb::consensus;
 
+bool arangodb::consensus::compareServerLists(Slice plan, Slice current) {
+  if (!plan.isArray() || !current.isArray()) {
+    return false;
+  }
+  std::vector<std::string> planv, currv;
+  for (auto const& srv : VPackArrayIterator(plan)) {
+    if (srv.isString()) {
+      planv.push_back(srv.copyString());
+    }
+  }
+  for (auto const& srv : VPackArrayIterator(current)) {
+    if (srv.isString()) {
+      currv.push_back(srv.copyString());
+    }
+  }
+  bool equalLeader = !planv.empty() && !currv.empty() &&
+                     planv.front() == currv.front();
+  std::sort(planv.begin(), planv.end());
+  std::sort(currv.begin(), currv.end());
+  return equalLeader && currv == planv;
+}
+
 Job::Job(Node const& snapshot, Agent* agent, std::string const& jobId,
          std::string const& creator, std::string const& agencyPrefix) :
   _snapshot(snapshot),

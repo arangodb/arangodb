@@ -52,8 +52,8 @@ Supervision::Supervision()
       _agent(nullptr),
       _snapshot("Supervision"),
       _transient("Transient"),
-      _frequency(5.),
-      _gracePeriod(15.),
+      _frequency(1.),
+      _gracePeriod(5.),
       _jobId(0),
       _jobIdMax(0),
       _selfShutdown(false) {}
@@ -103,13 +103,12 @@ void Supervision::upgradeAgency() {
 
 // Check all DB servers, guarded above doChecks
 std::vector<check_t> Supervision::checkDBServers() {
+
   std::vector<check_t> ret;
   Node::Children const& machinesPlanned =
       _snapshot(planDBServersPrefix).children();
   Node::Children const serversRegistered =
       _snapshot(currentServersRegisteredPrefix).children();
-
-  bool reportPersistent;
 
   std::vector<std::string> todelete;
   for (auto const& machine : _snapshot(healthPrefix).children()) {
@@ -120,6 +119,7 @@ std::vector<check_t> Supervision::checkDBServers() {
 
   for (auto const& machine : machinesPlanned) {
     bool good = false;
+    bool reportPersistent = false;
     std::string lastHeartbeatTime, lastHeartbeatAcked, lastStatus,
         heartbeatTime, heartbeatStatus, serverID;
 
@@ -148,6 +148,8 @@ std::vector<check_t> Supervision::checkDBServers() {
       good = true;
     }
 
+    reportPersistent = (heartbeatStatus != lastStatus);
+
     query_t report = std::make_shared<Builder>();
     report->openArray();
     report->openArray();
@@ -174,9 +176,6 @@ std::vector<check_t> Supervision::checkDBServers() {
 
     if (good) {
 
-      if (lastStatus != Supervision::HEALTH_STATUS_GOOD) {
-        reportPersistent = true;
-      }
       report->add(
         "LastHeartbeatAcked",
         VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -210,7 +209,6 @@ std::vector<check_t> Supervision::checkDBServers() {
       // for at least grace period
       if (t.count() > _gracePeriod && secondsSinceLeader > _gracePeriod) {
         if (lastStatus == "BAD") {
-          reportPersistent = true;
           report->add("Status", VPackValue("FAILED"));
           FailedServer fsj(_snapshot, _agent, std::to_string(_jobId++),
                            "supervision", _agencyPrefix, serverID);
@@ -257,6 +255,7 @@ std::vector<check_t> Supervision::checkDBServers() {
 
 // Check all coordinators, guarded above doChecks
 std::vector<check_t> Supervision::checkCoordinators() {
+
   std::vector<check_t> ret;
   Node::Children const& machinesPlanned =
       _snapshot(planCoordinatorsPrefix).children();
@@ -278,6 +277,7 @@ std::vector<check_t> Supervision::checkCoordinators() {
   }
 
   for (auto const& machine : machinesPlanned) {
+    bool reportPersistent = false;
     bool good = false;
     std::string lastHeartbeatTime, lastHeartbeatAcked, lastStatus,
         heartbeatTime, heartbeatStatus, serverID;
@@ -305,6 +305,8 @@ std::vector<check_t> Supervision::checkCoordinators() {
       good = true;
     }
 
+    reportPersistent = (heartbeatStatus != lastStatus);
+
     query_t report = std::make_shared<Builder>();
     report->openArray();
     report->openArray();
@@ -329,6 +331,7 @@ std::vector<check_t> Supervision::checkCoordinators() {
     }
 
     if (good) {
+
       if (goodServerId.empty()) {
         goodServerId = serverID;
       }
@@ -359,6 +362,9 @@ std::vector<check_t> Supervision::checkCoordinators() {
     report->close();
     if (!this->isStopping()) {
       _agent->transient(report);
+      if (reportPersistent) { // STATUS changes should be persisted
+        _agent->write(report);
+      }
     }
   }
 
@@ -689,10 +695,10 @@ void Supervision::enforceReplication() {
               }
             }
 
-            /*AddFollower(
+            AddFollower(
               _snapshot, _agent, std::to_string(_jobId++), "supervision",
               _agencyPrefix, db_.first, col_.first, shard_.first, newFollowers);
-            */
+
           }
         }
       }
