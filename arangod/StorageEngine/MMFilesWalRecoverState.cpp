@@ -32,13 +32,12 @@
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/MMFilesDatafileHelper.h"
+#include "StorageEngine/MMFilesPersistentIndexFeature.h"
 #include "StorageEngine/MMFilesWalSlots.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "StorageEngine/MMFilesLogfileManager.h"
-
-#include "Indexes/RocksDBFeature.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>

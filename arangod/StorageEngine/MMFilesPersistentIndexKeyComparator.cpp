@@ -21,11 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBKeyComparator.h"
+#include "MMFilesPersistentIndexKeyComparator.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
-#include "Indexes/RocksDBIndex.h"
 #include "Logger/Logger.h"
+#include "StorageEngine/MMFilesPersistentIndex.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/comparator.h>

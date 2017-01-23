@@ -76,13 +76,13 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/MMFilesEngine.h"
 #include "StorageEngine/MMFilesLogfileManager.h"
+#include "StorageEngine/MMFilesPersistentIndexFeature.h"
 #include "StorageEngine/MMFilesWalRecoveryFeature.h"
 #include "StorageEngine/RocksDBEngine.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/IndexThreadFeature.h"
 
-#include "Indexes/RocksDBFeature.h"
 
 #ifdef _WIN32
 #include "ApplicationFeatures/WindowsServiceFeature.h"

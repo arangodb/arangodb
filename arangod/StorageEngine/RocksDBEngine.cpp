@@ -37,8 +37,8 @@
 #include "VocBase/vocbase.h"
 #include "StorageEngine/MMFilesLogfileManager.h"
 
-#include "Indexes/RocksDBFeature.h"
-#include "Indexes/RocksDBIndex.h"
+#include "StorageEngine/MMFilesPersistentIndexFeature.h"
+#include "StorageEngine/MMFilesPersistentIndex.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>

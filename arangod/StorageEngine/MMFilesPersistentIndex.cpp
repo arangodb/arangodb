@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBIndex.h"
+#include "MMFilesPersistentIndex.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
@@ -29,9 +29,9 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
-#include "Indexes/PrimaryIndex.h"
-#include "Indexes/RocksDBFeature.h"
-#include "Indexes/RocksDBKeyComparator.h"
+#include "StorageEngine/MMFilesPrimaryIndex.h"
+#include "StorageEngine/MMFilesPersistentIndexFeature.h"
+#include "StorageEngine/MMFilesPersistentIndexKeyComparator.h"
 #include "Utils/Transaction.h"
 #include "VocBase/LogicalCollection.h"
 
