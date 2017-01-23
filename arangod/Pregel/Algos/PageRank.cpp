@@ -54,7 +54,7 @@ struct PRComputation : public VertexComputation<double, float, double> {
     double* ptr = mutableVertexData();
     double copy = *ptr;
     // TODO do initialization in GraphFormat?
-    if (globalSuperstep() == 0 && *ptr == 0) {
+    if (localSuperstep() == 0) {
       *ptr = 1.0f / context()->vertexCount();
     } else if (globalSuperstep() > 0) {
       double sum = 0.0;
