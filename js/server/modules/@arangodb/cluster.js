@@ -923,7 +923,7 @@ function updateCurrentForCollections(localErrors, currentCollections) {
       }
 
       if (indexErrors[agencyIndex.id] !== undefined) {
-        Object.assign(agencyIndex, indexError);
+        Object.assign(agencyIndex, indexErrors[agencyIndex.id]);
         delete error.indexes[agencyIndex.id];
       }
       return agencyIndex;
@@ -1121,7 +1121,7 @@ function migratePrimary(plan, current) {
 
   // diff current and local and prepare agency transactions or whatever
   // to update current. Will report the errors created locally to the agency
-  let trx = updateCurrentForCollections(localErrors, current);
+  let trx = updateCurrentForCollections(localErrors, current.Collections);
   if (Object.keys(trx).length > 0) {
     trx[curVersion] = {op: 'increment'};
     trx = [trx];
