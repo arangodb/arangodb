@@ -3517,6 +3517,11 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
+  {
+    CONDITION_LOCKER(locker, _condVar);
+    _holdReadLockJobs.emplace(id, false);
+  }
+
   auto trxContext = StandaloneTransactionContext::Create(_vocbase);
   SingleCollectionTransaction trx(trxContext, col->cid(), TRI_TRANSACTION_READ);
   trx.addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
@@ -3530,7 +3535,16 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
   {
     CONDITION_LOCKER(locker, _condVar);
-    _holdReadLockJobs.insert(id);
+    auto it = _holdReadLockJobs.find(id);
+    if (it == _holdReadLockJobs.end()) {
+      // Entry has been removed since, so we cancel the whole thing
+      // right away and generate an error:
+      generateError(rest::ResponseCode::SERVER_ERROR,
+                    TRI_ERROR_TRANSACTION_INTERNAL,
+                    "read transaction was cancelled");
+      return;
+    }
+    it->second = true;   // mark the read lock as acquired
   }
 
   double now = TRI_microtime();
@@ -3588,6 +3602,8 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
   }
   std::string id = idSlice.copyString();
 
+  bool lockHeld = false;
+
   {
     CONDITION_LOCKER(locker, _condVar);
     auto it = _holdReadLockJobs.find(id);
@@ -3596,12 +3612,17 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
                     "no hold read lock job found for 'id'");
       return;
     }
+    if (it->second) {
+      lockHeld = true;
+    }
+
   }
 
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
     b.add("error", VPackValue(false));
+    b.add("lockHeld", VPackValue(lockHeld));
   }
 
   generateResult(rest::ResponseCode::OK, b.slice());
@@ -3633,11 +3654,19 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
   }
   std::string id = idSlice.copyString();
 
+  bool lockHeld = false;
   {
     CONDITION_LOCKER(locker, _condVar);
     auto it = _holdReadLockJobs.find(id);
     if (it != _holdReadLockJobs.end()) {
+      // Note that this approach works if the lock has been acquired
+      // as well as if we still wait for the read lock, in which case
+      // it will eventually be acquired but immediately released:
+      if (it->second) {
+        lockHeld = true;
+      }
       _holdReadLockJobs.erase(it);
+      _condVar.broadcast();
     }
   }
 
@@ -3645,6 +3674,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
   {
     VPackObjectBuilder bb(&b);
     b.add("error", VPackValue(false));
+    b.add("lockHeld", VPackValue(lockHeld));
   }
 
   generateResult(rest::ResponseCode::OK, b.slice());
@@ -3677,4 +3707,4 @@ arangodb::basics::ConditionVariable RestReplicationHandler::_condVar;
 /// the flag is set of the ID of a job, the job is cancelled
 //////////////////////////////////////////////////////////////////////////////
 
-std::unordered_set<std::string> RestReplicationHandler::_holdReadLockJobs;
+std::unordered_map<std::string, bool> RestReplicationHandler::_holdReadLockJobs;
