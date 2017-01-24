@@ -1244,7 +1244,7 @@ function updateCurrentForDatabases(localErrors, currentDatabases) {
     if (localDatabases.hasOwnProperty(name)) {
       if (!currentDatabases.hasOwnProperty(name) ||
           !currentDatabases[name].hasOwnProperty(ourselves) ||
-          currentDatabases[name][ourselves].error == true) {
+          currentDatabases[name][ourselves].error) {
         console.debug("adding entry in Current for database '%s'", name);
         trx = Object.assign(trx, makeAddDatabaseAgencyOperation({error: false, errorNum: 0, name: name,
                                         id: localDatabases[name].id,
