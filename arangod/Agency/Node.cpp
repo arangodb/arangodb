@@ -139,6 +139,8 @@ std::string Node::uri() const {
 /// Move constructor
 Node::Node(Node&& other)
     : _node_name(std::move(other._node_name)),
+      _parent(nullptr),
+      _store(nullptr),
       _children(std::move(other._children)),
       _value(std::move(other._value)),
       _vecBuf(std::move(other._vecBuf)),
