@@ -166,7 +166,12 @@ Scheduler::Scheduler(size_t nrThreads, size_t maxQueueSize)
   initializeSignalHandlers();
 }
 
-Scheduler::~Scheduler() { deleteOldThreads(); }
+Scheduler::~Scheduler() {
+  if (_threadManager != nullptr) {
+    _threadManager->cancel();
+  }
+  deleteOldThreads();
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
