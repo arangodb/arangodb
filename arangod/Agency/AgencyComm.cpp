@@ -1313,7 +1313,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
   double conTimeout = 1.0;
   
   int tries = 0;
-  int lastStatusCode = 0;
+
   while (true) {  // will be left by timeout eventually
 
     // Raise waits to a maximum 10 seconds
@@ -1366,8 +1366,6 @@ AgencyCommResult AgencyComm::sendWithFailover(
       continue;
     }
 
-    lastStatusCode = result._statusCode;
-    
     // got a result, we are done
     if (result.successful()) {
       AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
@@ -1395,8 +1393,9 @@ AgencyCommResult AgencyComm::sendWithFailover(
       if (inq.successful()) {
         auto bodyBuilder = VPackParser::fromJson(inq._body);
         auto const& outer = bodyBuilder->slice();
-        bool success = false;
+
         if (outer.isArray() && outer.length() > 0) {
+          bool success = false;
           for (auto const& inner : VPackArrayIterator(outer)) {
             if (inner.isArray() && inner.length() > 0) {
               for (auto const& i : VPackArrayIterator(inner)) {
