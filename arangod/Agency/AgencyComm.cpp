@@ -329,6 +329,7 @@ AgencyCommResult::AgencyCommResult()
       _values(),
       _statusCode(0),
       _connected(false),
+      _sent(false),
       _clientId("") {}
 
 AgencyCommResult::AgencyCommResult(
@@ -339,6 +340,7 @@ AgencyCommResult::AgencyCommResult(
       _values(),
       _statusCode(code),
       _connected(false),
+      _sent(false),
     _clientId(clientId) {}
 
 bool AgencyCommResult::connected() const { return _connected; }
@@ -346,6 +348,8 @@ bool AgencyCommResult::connected() const { return _connected; }
 std::string AgencyCommResult::clientId() const { return _clientId; }
 
 int AgencyCommResult::httpCode() const { return _statusCode; }
+
+bool AgencyCommResult::sent() const { return _sent; }
 
 int AgencyCommResult::errorCode() const {
   try {
@@ -409,6 +413,8 @@ void AgencyCommResult::clear() {
   _message = "";
   _body = "";
   _statusCode = 0;
+  _sent = false;
+  _connected = false;
 }
 
 VPackSlice AgencyCommResult::slice() const { return _vpack->slice(); }
@@ -1369,7 +1375,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     }
     
     // break on a watch timeout (drop connection)
-    if (!clientId.empty() &&
+    if (!clientId.empty() && result._sent &&
         (result._statusCode == 0 || result._statusCode == 503)) {
 
       VPackBuilder b;
@@ -1484,8 +1490,7 @@ AgencyCommResult AgencyComm::send(
   TRI_ASSERT(!url.empty());
 
   AgencyCommResult result;
-  result._connected = false;
-  result._statusCode = 0;
+  
   if (!clientId.empty()) {
     result._clientId = clientId;
   }
@@ -1526,6 +1531,7 @@ AgencyCommResult AgencyComm::send(
     return result;
   }
 
+  result._sent = response->haveSentRequestFully();
   result._connected = true;
 
   if (response->getHttpReturnCode() ==
