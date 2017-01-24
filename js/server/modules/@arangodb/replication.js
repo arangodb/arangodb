@@ -339,7 +339,7 @@ function syncCollectionFinalize (database, collname, from, config) {
       l = l.map(JSON.parse);
     } catch (err) {
       return {error: true, errorMessage: 'could not parse body',
-      response: chunk, exception: err};
+              response: chunk, exception: err};
     }
 
     console.debug('Applying chunk:', l);
@@ -349,7 +349,7 @@ function syncCollectionFinalize (database, collname, from, config) {
       }
     } catch (err2) {
       return {error: true, errorMessage: 'could not replicate body ops',
-      response: chunk, exception: err2};
+              response: chunk, exception: err2};
     }
     if (chunk.headers['x-arango-replication-checkmore'] !== 'true') {
       break; // all done
