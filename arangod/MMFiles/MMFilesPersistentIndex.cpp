@@ -32,6 +32,7 @@
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesPersistentIndexKeyComparator.h"
+#include "MMFiles/MMFilesToken.h"
 #include "Utils/Transaction.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -137,13 +138,13 @@ void PersistentIndexIterator::reset() {
 }
 
 /// @brief Get the next element in the index
-IndexLookupResult PersistentIndexIterator::next() {
+DocumentIdentifierToken PersistentIndexIterator::next() {
   auto comparator = RocksDBFeature::instance()->comparator();
     
   while (true) {
     if (!_cursor->Valid()) {
       // We are exhausted already, sorry
-      return IndexLookupResult();
+      return MMFilesToken{};
     }
   
     rocksdb::Slice key = _cursor->key();
@@ -154,7 +155,7 @@ IndexLookupResult PersistentIndexIterator::next() {
 
     if (res < 0) {
       if (_reverse) {
-        return IndexLookupResult();
+        return MMFilesToken{};
       } else {
         _cursor->Next();
       }
@@ -164,7 +165,7 @@ IndexLookupResult PersistentIndexIterator::next() {
     res = comparator->Compare(key, rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
     // LOG(TRACE) << "comparing: " << VPackSlice(key.data() + PersistentIndex::keyPrefixSize()).toJson() << " with " << VPackSlice((char const*) _rightEndpoint->data() + PersistentIndex::keyPrefixSize()).toJson() << " - res: " << res;
    
-    IndexLookupResult doc;
+    MMFilesToken doc;
      
     if (res <= 0) {
       // get the value for _key, which is the last entry in the key array
@@ -179,7 +180,7 @@ IndexLookupResult PersistentIndexIterator::next() {
       // use primary index to lookup the document
       MMFilesSimpleIndexElement element = _primaryIndex->lookupKey(_trx, keySlice[n - 1]);
       if (element) {
-        doc = IndexLookupResult(element.revisionId());
+        doc = MMFilesToken{element.revisionId()};
       }
     }
     
@@ -191,13 +192,13 @@ IndexLookupResult PersistentIndexIterator::next() {
 
     if (res > 0) {
       if (!_probe) {
-        return IndexLookupResult();
+        return MMFilesToken{};
       }
       _probe = false;
       continue;
     }
 
-    if (doc) {
+    if (doc != 0) {
       return doc;
     }
   }

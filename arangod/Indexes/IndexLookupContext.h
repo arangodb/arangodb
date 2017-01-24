@@ -45,9 +45,9 @@ class IndexLookupContext {
 
   ~IndexLookupContext() {}
 
-  uint8_t const* lookup(TRI_voc_rid_t revisionId) {
+  uint8_t const* lookup(DocumentIdentifierToken token) {
     try {
-      if (_collection->readRevision(_trx, *_result, revisionId)) {
+      if (_collection->readDocument(_trx, *_result, token)) {
         return _result->vpack();
       } 
     } catch (...) {

@@ -48,6 +48,7 @@
 #include "MMFiles/MMFilesPersistentIndex.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesSkiplistIndex.h"
+#include "MMFiles/MMFilesToken.h"
 #include "MMFiles/MMFilesWalMarker.h"
 #include "MMFiles/MMFilesWalSlots.h"
 #include "StorageEngine/StorageEngine.h"
@@ -3764,6 +3765,13 @@ bool LogicalCollection::readRevisionConditional(Transaction* trx,
     return true;
   } 
   return false;
+}
+
+// TODO ONLY TEMP wrapper
+bool LogicalCollection::readDocument(arangodb::Transaction* trx, ManagedDocumentResult& result, DocumentIdentifierToken const& token) {
+  // TODO This only works for MMFiles Engine. Has to be moved => StorageEngine
+  auto tkn = static_cast<MMFilesToken const*>(&token);
+  return readRevision(trx, result, tkn->revisionId());
 }
 
 void LogicalCollection::insertRevision(TRI_voc_rid_t revisionId,

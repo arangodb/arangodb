@@ -78,8 +78,7 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
   _cachePos++;
   if (_cachePos < _cache.size()) {
     LogicalCollection* collection = _cursors[_currentCursor][_currentSubCursor]->collection();
-    TRI_voc_rid_t revisionId = _cache[_cachePos].revisionId();
-    if (collection->readRevision(_trx, *_mmdr, revisionId)) {
+    if (collection->readDocument(_trx, *_mmdr, _cache[_cachePos])) {
       result.emplace_back(_mmdr->vpack());
     }
     if (_internalCursorMapping != nullptr) {
@@ -128,8 +127,7 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
 
   TRI_ASSERT(_cachePos < _cache.size());
   LogicalCollection* collection = cursor->collection();
-  TRI_voc_rid_t revisionId = _cache[_cachePos].revisionId();
-  if (collection->readRevision(_trx, *_mmdr, revisionId)) {
+  if (collection->readDocument(_trx, *_mmdr, _cache[_cachePos])) {
     result.emplace_back(_mmdr->vpack());
   }
   if (_internalCursorMapping != nullptr) {
@@ -162,8 +160,7 @@ bool SingleServerEdgeCursor::readAll(std::unordered_set<VPackSlice>& result,
       // because the cursor expect's it to be filled.
       cursor->getMoreMptr(_cache);
       for (auto const& element : _cache) {
-        TRI_voc_rid_t revisionId = element.revisionId();
-        if (collection->readRevision(_trx, *_mmdr, revisionId)) {
+        if (collection->readDocument(_trx, *_mmdr, element)) {
           result.emplace(_mmdr->vpack());
         }
       }

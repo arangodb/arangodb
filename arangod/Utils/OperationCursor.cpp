@@ -47,8 +47,8 @@ void OperationCursor::reset() {
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
 
-std::vector<IndexLookupResult> OperationCursor::getMoreMptr(uint64_t batchSize) {
-  std::vector<IndexLookupResult> res;
+std::vector<DocumentIdentifierToken> OperationCursor::getMoreMptr(uint64_t batchSize) {
+  std::vector<DocumentIdentifierToken> res;
   getMoreMptr(res, batchSize);
   return res;
 }
@@ -62,7 +62,7 @@ std::vector<IndexLookupResult> OperationCursor::getMoreMptr(uint64_t batchSize) 
 ///              The caller shall NOT modify it.
 //////////////////////////////////////////////////////////////////////////////
 
-void OperationCursor::getMoreMptr(std::vector<IndexLookupResult>& result,
+void OperationCursor::getMoreMptr(std::vector<DocumentIdentifierToken>& result,
                                   uint64_t batchSize) {
   if (!hasMore()) {
     TRI_ASSERT(false);

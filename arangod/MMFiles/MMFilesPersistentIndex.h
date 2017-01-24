@@ -75,7 +75,7 @@ class PersistentIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "rocksdb-index-iterator"; }
 
   /// @brief Get the next element in the index
-  IndexLookupResult next() override;
+  DocumentIdentifierToken next() override;
 
   /// @brief Reset the cursor
   void reset() override;

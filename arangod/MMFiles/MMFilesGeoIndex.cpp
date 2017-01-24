@@ -29,6 +29,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesToken.h"
 #include "VocBase/transaction.h"
 
 using namespace arangodb;
@@ -85,7 +86,7 @@ void MMFilesGeoIndexIterator::evaluateCondition() {
   }
 }
 
-IndexLookupResult MMFilesGeoIndexIterator::next() {
+DocumentIdentifierToken MMFilesGeoIndexIterator::next() {
   if (!_cursor) {
     createCursor(_lat, _lon);
   }
@@ -98,14 +99,14 @@ IndexLookupResult MMFilesGeoIndexIterator::next() {
        )
     {
       auto revision = ::MMFilesGeoIndex::toRevision(coords->coordinates[0].data);
-      return IndexLookupResult{revision};
+      return MMFilesToken{revision};
     }
   }
   // if there are no more results we return the default constructed IndexLookupResult
-  return IndexLookupResult{};
+  return MMFilesToken{};
 }
 
-void MMFilesGeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t batchSize) {
+void MMFilesGeoIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& result, size_t batchSize) {
   if (!_cursor) { 
     createCursor(_lat, _lon);
     
@@ -135,7 +136,8 @@ void MMFilesGeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result,
       withDistances = true;
       maxDistance = _radius;
     }
-    auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor, static_cast<int>(batchSize), withDistances, maxDistance));
+    auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(
+        _cursor, static_cast<int>(batchSize), withDistances, maxDistance));
 
     size_t const length = coords ? coords->length : 0;
     
@@ -197,7 +199,7 @@ void MMFilesGeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result,
     result.reserve(numDocs);
         
     for (size_t i = 0; i < numDocs; ++i) {
-      result.emplace_back(IndexLookupResult(::MMFilesGeoIndex::toRevision(coords->coordinates[i].data)));
+      result.emplace_back(MMFilesToken(::MMFilesGeoIndex::toRevision(coords->coordinates[i].data)));
     }
   }
 

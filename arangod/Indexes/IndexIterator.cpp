@@ -51,16 +51,16 @@ IndexIterator::~IndexIterator() {
 }
 
 /// @brief default implementation for next
-IndexLookupResult IndexIterator::next() { return IndexLookupResult(); }
+DocumentIdentifierToken IndexIterator::next() { return DocumentIdentifierToken(); }
 
 /// @brief default implementation for nextBabies
-void IndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t batchSize) {
+void IndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& result, size_t batchSize) {
   result.clear();
 
   if (batchSize > 0) {
     while (true) {
-      IndexLookupResult element = next();
-      if (!element) {
+      DocumentIdentifierToken element = next();
+      if (element == 0) {
         return;
       }
       result.emplace_back(element);
@@ -79,7 +79,7 @@ void IndexIterator::reset() {}
 void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
   // Skip the first count-many entries
   // TODO: Can be improved
-  while (count > 0 && next()) {
+  while (count > 0 && next() != 0) {
     --count;
     skipped++;
   }
@@ -88,16 +88,16 @@ void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
 /// @brief Get the next element
 ///        If one iterator is exhausted, the next one is used.
 ///        A nullptr indicates that all iterators are exhausted
-IndexLookupResult MultiIndexIterator::next() {
+DocumentIdentifierToken MultiIndexIterator::next() {
   if (_current == nullptr) {
-    return IndexLookupResult();
+    return DocumentIdentifierToken();
   }
-  IndexLookupResult next = _current->next();
-  while (!next) {
+  DocumentIdentifierToken next = _current->next();
+  while (next == 0) {
     _currentIdx++;
     if (_currentIdx >= _iterators.size()) {
       _current = nullptr;
-      return IndexLookupResult();
+      return DocumentIdentifierToken();
     }
     _current = _iterators.at(_currentIdx);
     next = _current->next();
@@ -108,7 +108,7 @@ IndexLookupResult MultiIndexIterator::next() {
 /// @brief Get the next limit many elements
 ///        If one iterator is exhausted, the next one will be used.
 ///        An empty result vector indicates that all iterators are exhausted
-void MultiIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t limit) {
+void MultiIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& result, size_t limit) {
   result.clear();
 
   if (_current == nullptr) {

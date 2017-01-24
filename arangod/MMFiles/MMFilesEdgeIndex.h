@@ -53,9 +53,9 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
   
   char const* typeName() const override { return "edge-index-iterator"; }
 
-  IndexLookupResult next() override;
+  DocumentIdentifierToken next() override;
 
-  void nextBabies(std::vector<IndexLookupResult>&, size_t) override;
+  void nextBabies(std::vector<DocumentIdentifierToken>&, size_t) override;
 
   void reset() override;
 
@@ -85,16 +85,16 @@ class AnyDirectionMMFilesEdgeIndexIterator final : public IndexIterator {
   
   char const* typeName() const override { return "any-edge-index-iterator"; }
 
-  IndexLookupResult next() override;
+  DocumentIdentifierToken next() override;
 
-  void nextBabies(std::vector<IndexLookupResult>&, size_t) override;
+  void nextBabies(std::vector<DocumentIdentifierToken>&, size_t) override;
 
   void reset() override;
 
  private:
   MMFilesEdgeIndexIterator* _outbound;
   MMFilesEdgeIndexIterator* _inbound;
-  std::unordered_set<TRI_voc_rid_t> _seen;
+  std::unordered_set<DocumentIdentifierToken> _seen;
   bool _useInbound;
 };
 

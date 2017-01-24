@@ -1286,14 +1286,13 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
                 {}, &mmdr, skip, limit, 1000, false);
 
   LogicalCollection* collection = cursor->collection();
-  std::vector<IndexLookupResult> result;
+  std::vector<DocumentIdentifierToken> result;
   
   while (cursor->hasMore()) {
     result.clear();
     cursor->getMoreMptr(result);
     for (auto const& element : result) {
-      TRI_voc_rid_t revisionId = element.revisionId();
-      if (collection->readRevision(this, mmdr, revisionId)) {
+      if (collection->readDocument(this, mmdr, element)) {
         uint8_t const* vpack = mmdr.vpack();
         resultBuilder.add(VPackSlice(vpack));
       }
@@ -2647,14 +2646,13 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   }
 
   LogicalCollection* collection = cursor->collection();
-  std::vector<IndexLookupResult> result;
+  std::vector<DocumentIdentifierToken> result;
   result.reserve(1000);
   
   while (cursor->hasMore()) {
     cursor->getMoreMptr(result, 1000);
     for (auto const& element : result) {
-      TRI_voc_rid_t revisionId = element.revisionId();
-      if (collection->readRevision(this, mmdr, revisionId)) {
+      if (collection->readDocument(this, mmdr, element)) {
         uint8_t const* vpack = mmdr.vpack();
         resultBuilder.addExternal(vpack);
       }

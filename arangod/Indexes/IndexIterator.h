@@ -26,7 +26,7 @@
 //
 // typeName() returns a string descibing the type of the indexIterator
 //
-// The next() function of the IndexIterator returns IndexLookupResults that are
+// The next() function of the IndexIterator returns DocumentIdentifierTokens that are
 // created from RevisionIds. If there is nothing more to return a default
 // constructed IndesLookupResult is returend.
 //
@@ -51,6 +51,7 @@
 #include "Basics/Common.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/IndexLookupContext.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
@@ -58,24 +59,6 @@ namespace arangodb {
 class Index;
 class LogicalCollection;
 class Transaction;
-
-class IndexLookupResult {
- public:
-  constexpr IndexLookupResult() : _revisionId(0) {}
-  explicit IndexLookupResult(TRI_voc_rid_t revisionId) : _revisionId(revisionId) {}
-  IndexLookupResult(IndexLookupResult const& other) : _revisionId(other._revisionId) {}
-  IndexLookupResult& operator=(IndexLookupResult const& other) {
-    _revisionId = other._revisionId;
-    return *this;
-  }
-
-  inline operator bool() const { return _revisionId != 0; }
-
-  inline TRI_voc_rid_t revisionId() const { return _revisionId; }
-
- private:
-  TRI_voc_rid_t _revisionId;
-};
 
 /// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself
@@ -94,9 +77,9 @@ class IndexIterator {
   LogicalCollection* collection() const { return _collection; }
   arangodb::Transaction* transaction() const { return _trx; }
 
-  virtual IndexLookupResult next();
+  virtual DocumentIdentifierToken next();
 
-  virtual void nextBabies(std::vector<IndexLookupResult>&, size_t);
+  virtual void nextBabies(std::vector<DocumentIdentifierToken>&, size_t);
 
   virtual void reset();
 
@@ -120,9 +103,9 @@ class EmptyIndexIterator final : public IndexIterator {
 
     char const* typeName() const override { return "empty-index-iterator"; }
 
-    IndexLookupResult next() override { return IndexLookupResult(); }
+    DocumentIdentifierToken next() override { return DocumentIdentifierToken(); }
 
-    void nextBabies(std::vector<IndexLookupResult>&, size_t) override {}
+    void nextBabies(std::vector<DocumentIdentifierToken>&, size_t) override {}
 
     void reset() override {}
 
@@ -161,12 +144,12 @@ class MultiIndexIterator final : public IndexIterator {
     /// @brief Get the next element
     ///        If one iterator is exhausted, the next one is used.
     ///        A nullptr indicates that all iterators are exhausted
-    IndexLookupResult next() override;
+    DocumentIdentifierToken next() override;
 
     /// @brief Get at most the next limit many elements
     ///        If one iterator is exhausted, the next one will be used.
     ///        An empty result vector indicates that all iterators are exhausted
-    void nextBabies(std::vector<IndexLookupResult>&, size_t) override;
+    void nextBabies(std::vector<DocumentIdentifierToken>&, size_t) override;
 
     /// @brief Reset the cursor
     ///        This will reset ALL internal iterators and start all over again

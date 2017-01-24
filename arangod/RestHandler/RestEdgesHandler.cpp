@@ -91,7 +91,7 @@ bool RestEdgesHandler::getEdgesForVertexList(
     THROW_ARANGO_EXCEPTION(cursor->code);
   }
 
-  std::vector<IndexLookupResult> batch;
+  std::vector<DocumentIdentifierToken> batch;
   ManagedDocumentResult mmdr;
   auto collection = trx.documentCollection();
   while (cursor->hasMore()) {
@@ -99,8 +99,7 @@ bool RestEdgesHandler::getEdgesForVertexList(
     scannedIndex += batch.size();
 
     for (auto const& it : batch) {
-      TRI_voc_rid_t revisionId = it.revisionId();
-      if (collection->readRevision(&trx, mmdr, revisionId)) {
+      if (collection->readDocument(&trx, mmdr, it)) {
         result.add(VPackSlice(mmdr.vpack()));
       }
     }
@@ -129,7 +128,7 @@ bool RestEdgesHandler::getEdgesForVertex(
     THROW_ARANGO_EXCEPTION(cursor->code);
   }
 
-  std::vector<IndexLookupResult> batch;
+  std::vector<DocumentIdentifierToken> batch;
   ManagedDocumentResult mmdr;
   auto collection = trx.documentCollection();
   while (cursor->hasMore()) {
@@ -137,8 +136,7 @@ bool RestEdgesHandler::getEdgesForVertex(
     scannedIndex += batch.size();
 
     for (auto const& it : batch) {
-      TRI_voc_rid_t revisionId = it.revisionId();
-      if (collection->readRevision(&trx, mmdr, revisionId)) {
+      if (collection->readDocument(&trx, mmdr, it)) {
         result.add(VPackSlice(mmdr.vpack()));
       }
     }

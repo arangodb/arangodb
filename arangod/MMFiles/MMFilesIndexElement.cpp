@@ -24,6 +24,7 @@
 #include "MMFilesIndexElement.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesToken.h"
 
 using namespace arangodb;
 
@@ -57,7 +58,7 @@ arangodb::velocypack::Slice MMFilesHashIndexElement::slice(IndexLookupContext* c
   if (offset == 0) {
     return basics::VelocyPackHelper::NullValue();
   } 
-  uint8_t const* vpack = context->lookup(_revisionId);
+  uint8_t const* vpack = context->lookup(MMFilesToken{_revisionId});
   if (vpack == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   } 
@@ -133,7 +134,7 @@ arangodb::velocypack::Slice MMFilesSkiplistIndexElement::slice(IndexLookupContex
   if (offset == 0) {
     return basics::VelocyPackHelper::NullValue();
   } 
-  uint8_t const* vpack = context->lookup(_revisionId);
+  uint8_t const* vpack = context->lookup(MMFilesToken{_revisionId});
   if (vpack == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   } 
@@ -149,7 +150,7 @@ uint64_t MMFilesSimpleIndexElement::hash(arangodb::velocypack::Slice const& valu
 }
 
 VPackSlice MMFilesSimpleIndexElement::slice(IndexLookupContext* context) const {
-  uint8_t const* vpack = context->lookup(_revisionId);
+  uint8_t const* vpack = context->lookup(MMFilesToken{_revisionId});
   if (vpack == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   } 

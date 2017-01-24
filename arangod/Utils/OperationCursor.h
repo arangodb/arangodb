@@ -108,7 +108,7 @@ struct OperationCursor {
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
   
-  std::vector<IndexLookupResult> getMoreMptr(uint64_t batchSize = 1000);
+  std::vector<DocumentIdentifierToken> getMoreMptr(uint64_t batchSize = 1000);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Get next batchSize many elements. mptr variant
@@ -118,7 +118,7 @@ struct OperationCursor {
 ///        NOTE: The result vector handed in will be cleared.
 //////////////////////////////////////////////////////////////////////////////
 
-  void getMoreMptr(std::vector<IndexLookupResult>& result, uint64_t batchSize = 1000);
+  void getMoreMptr(std::vector<DocumentIdentifierToken>& result, uint64_t batchSize = 1000);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Skip the next toSkip many elements.

@@ -18,42 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECTION_SCANNER_H
-#define ARANGOD_AQL_COLLECTION_SCANNER_H 1
-
-#include "Basics/Common.h"
-#include "Indexes/IndexIterator.h"
+#include "StorageEngine/StorageEngine.h"
 
 namespace arangodb {
-class ManagedDocumentResult;
-struct OperationCursor;
-class Transaction;
 
-namespace aql {
-
-class CollectionScanner {
+struct MMFilesToken : public DocumentIdentifierToken {
  public:
-  CollectionScanner(arangodb::Transaction*, ManagedDocumentResult*, std::string const&, bool);
+  MMFilesToken() : DocumentIdentifierToken() {}
+  explicit MMFilesToken(TRI_voc_rid_t revisionId)
+      : DocumentIdentifierToken(revisionId) {}
+  MMFilesToken(MMFilesToken const& other)
+      : DocumentIdentifierToken(other._data) {}
+  MMFilesToken& operator=(MMFilesToken const& other) {
+    _data = other._data;
+    return *this;
+  }
 
-  ~CollectionScanner();
-
-  void scan(std::vector<DocumentIdentifierToken>& result, size_t batchSize);
-
-  void reset();
-
-  /// @brief forwards the cursor n elements. Does not read the data.
-  ///        Will at most forward to the last element.
-  ///        In the second parameter we add how many elements are
-  ///        really skipped
-  int forward(size_t, uint64_t&);
-
- private:
-  std::unique_ptr<OperationCursor> _cursor;
+  inline TRI_voc_rid_t revisionId() const {
+    return static_cast<TRI_voc_rid_t>(_data);
+  }
 };
-}
-}
+static_assert(sizeof(MMFilesToken) == sizeof(uint64_t), "invalid MMFilesToken size");
 
-#endif
+}
