@@ -488,11 +488,12 @@ void MMFilesWalSlots::getActiveTickRange(wal::Logfile* logfile, TRI_voc_tick_t& 
 
 /// @brief close a logfile
 int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, bool& worked) {
-  int iterations = 0;
   bool hasWaited = false;
   worked = false;
 
-  while (++iterations < 1000) {
+  double const maxWait = 30.0;
+  double const end = TRI_microtime() + maxWait;
+  while (true) {
     {
       MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -592,6 +593,11 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
 
     if (mustWait) {
       guard.wait(10 * 1000);
+    }
+    
+    if (TRI_microtime() >= end) {
+      // time's up!
+      break;
     }
   }
 
