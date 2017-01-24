@@ -12,11 +12,12 @@ done
 - rename "RocksDBIndex" to "PersistentIndex"
 - Delete OperationCursor->getMore. Replace by getMoreTokens
 - remove ReadCache
+- Index API
+- Indexes always return std::vector<TOKEN>
 
 in progress
 -----------
-- Index API
-  - Rename OperationCursor->getMoreMptr => getMoreTokens, "returns" std::vector<TOKEN>&
+- Rename OperationCursor->getMoreMptr => getMoreTokens, "returns" std::vector<TOKEN>&
 
 to do
 -----
@@ -32,7 +33,10 @@ to do
   - void readDocument(TOKEN id, VPackBuilder& result)  => Collects the document and inserts it asis into result. Does NOT clear result.
   - void readDocument(TOKEN id, std::vector<std::string> const& attributePath, VPackBuilder& result) => Collects the document and writes only the value at the given attributePath (e.g. `a.b.c`) into result. Does NOT clear result.
 
-- Indexes always return std::vector<TOKEN>
 - AqlValue needs a (lazy evaluated) type TOKEN that handles collection ID and TOKEN inplace.
   - slice() => looksup the value in the Database
-
+  - We need to keep in mind the cluster. If a DBServer creates this token-type it has to be translated BEFORE the register is teleported to coordinator
+- Remove temporary wrapper LogCol::readDocument()
+- GeoIndex hands out TRI_revision instead of Tokens
+- FulltextIndex hands out TRI_revision instead of Tokens
+- trx::InvokeOnAllElements : uses SimpleIndexLookupElements => Has to use Tokens instead?
