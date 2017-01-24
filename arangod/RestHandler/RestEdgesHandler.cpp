@@ -72,6 +72,7 @@ bool RestEdgesHandler::getEdgesForVertexList(
     VPackSlice const ids,
     TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
     VPackBuilder& result, size_t& scannedIndex, size_t& filtered) {
+  TRI_ASSERT(result.isOpenArray());
   TRI_ASSERT(ids.isArray());
   trx.orderDitch(trx.cid());  // will throw when it fails
 
@@ -104,7 +105,6 @@ bool RestEdgesHandler::getEdgesForVertexList(
       }
     }
   }
-  result.close();
 
   return true;
 }
@@ -113,6 +113,7 @@ bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id, std::string const& collectionName,
     TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
     VPackBuilder& result, size_t& scannedIndex, size_t& filtered) {
+  TRI_ASSERT(result.isOpenArray());
   trx.orderDitch(trx.cid());  // will throw when it fails
 
   Transaction::IndexHandle indexId = trx.edgeIndexHandle(collectionName);
