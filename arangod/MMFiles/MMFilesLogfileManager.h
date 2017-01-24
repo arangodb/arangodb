@@ -458,6 +458,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   uint32_t _historicLogfiles = 10;
   bool _ignoreLogfileErrors = false;
   bool _ignoreRecoveryErrors = false;
+  uint64_t _flushTimeout = 15000;
   uint32_t _filesize = 32 * 1024 * 1024;
   uint32_t _maxOpenLogfiles = 0;
   uint32_t _reserveLogfiles = 3;
