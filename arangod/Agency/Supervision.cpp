@@ -148,8 +148,6 @@ std::vector<check_t> Supervision::checkDBServers() {
       good = true;
     }
 
-    reportPersistent = (heartbeatStatus != lastStatus);
-
     query_t report = std::make_shared<Builder>();
     report->openArray();
     report->openArray();
@@ -175,7 +173,9 @@ std::vector<check_t> Supervision::checkDBServers() {
     }
 
     if (good) {
-
+      if (lastStatus != Supervision::HEALTH_STATUS_GOOD) {
+        reportPersistent = true;
+      }
       report->add(
         "LastHeartbeatAcked",
         VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -209,6 +209,7 @@ std::vector<check_t> Supervision::checkDBServers() {
       // for at least grace period
       if (t.count() > _gracePeriod && secondsSinceLeader > _gracePeriod) {
         if (lastStatus == "BAD") {
+          reportPersistent = true;
           report->add("Status", VPackValue("FAILED"));
           FailedServer fsj(_snapshot, _agent, std::to_string(_jobId++),
                            "supervision", _agencyPrefix, serverID);
@@ -305,8 +306,6 @@ std::vector<check_t> Supervision::checkCoordinators() {
       good = true;
     }
 
-    reportPersistent = (heartbeatStatus != lastStatus);
-
     query_t report = std::make_shared<Builder>();
     report->openArray();
     report->openArray();
@@ -331,7 +330,9 @@ std::vector<check_t> Supervision::checkCoordinators() {
     }
 
     if (good) {
-
+      if (lastStatus != Supervision::HEALTH_STATUS_GOOD) {
+        reportPersistent = true;
+      }
       if (goodServerId.empty()) {
         goodServerId = serverID;
       }
@@ -350,6 +351,7 @@ std::vector<check_t> Supervision::checkCoordinators() {
       if (t.count() > _gracePeriod) {  // Failure
         if (lastStatus == Supervision::HEALTH_STATUS_BAD) {
           report->add("Status", VPackValue(Supervision::HEALTH_STATUS_FAILED));
+          reportPersistent = true;
         }
       } else {
         report->add("Status", VPackValue(Supervision::HEALTH_STATUS_BAD));
