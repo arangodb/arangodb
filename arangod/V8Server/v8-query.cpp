@@ -255,15 +255,17 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler().get();
 
   std::vector<IndexLookupResult> batch;
-  opCursor->getMoreMptr(batch);
-  // We only need this one call, limit == batchsize
-  ManagedDocumentResult mmdr(&trx);
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
-  for (auto const& it : batch) {
-    TRI_voc_rid_t revisionId = it.revisionId();
-    if (collection->readRevision(&trx, mmdr, revisionId)) {
-      resultBuilder.add(VPackSlice(mmdr.vpack()));
+  while (opCursor->hasMore()) {
+    opCursor->getMoreMptr(batch);
+    // We only need this one call, limit == batchsize
+    ManagedDocumentResult mmdr(&trx);
+    for (auto const& it : batch) {
+      TRI_voc_rid_t revisionId = it.revisionId();
+      if (collection->readRevision(&trx, mmdr, revisionId)) {
+        resultBuilder.add(VPackSlice(mmdr.vpack()));
+      }
     }
   }
   resultBuilder.close();
