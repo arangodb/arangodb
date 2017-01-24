@@ -740,7 +740,7 @@ describe('Cluster sync', function() {
       expect(db._collection('s100001').isLeader()).to.equal(true);
     });
   });
-  describe('Update current', function() {
+  describe('Update current database', function() {
     beforeEach(function() {
       db._databases().forEach(database => {
         if (database !== '_system') {
@@ -853,5 +853,8 @@ describe('Cluster sync', function() {
       expect(result['/arango/Current/Databases/testi/repltest']).to.have.deep.property('new.name', 'testi');
       expect(result['/arango/Current/Databases/testi/repltest']).to.have.deep.property('new.error', false);
     });
+  });
+  describe('Update current collection', function() {
+
   });
 });

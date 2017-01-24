@@ -936,12 +936,14 @@ function updateCurrentForCollections(localErrors, current) {
     return payload;
   }
 
-  function makeDropCurrentEntryCollection(dbname, col, shard, trx) {
-    trx[0][curCollections + dbname + '/' + col + '/' + shard] =
+  function makeDropCurrentEntryCollection(dbname, col, shard) {
+    let trx = {};
+    trx[curCollections + dbname + '/' + col + '/' + shard] =
       {op: 'delete'};
+    return trx;
   }
 
-  let trx = [{}];
+  let trx = {};
 
   // Go through local databases and collections and add stuff to Current
   // as needed:
@@ -962,7 +964,7 @@ function updateCurrentForCollections(localErrors, current) {
 
             let currentCollectionInfo = fetchKey(current, 'Collections', database, shardInfo.planId, shard);
             if (!_.isEqual(localCollectionInfo, currentCollectionInfo)) {
-              trx[0][curCollections + database + '/' + shardInfo.planId + '/' + shardInfo.name] = {
+              trx[curCollections + database + '/' + shardInfo.planId + '/' + shardInfo.name] = {
                 op: 'set',
                 new: localCollectionInfo,
               };
@@ -971,7 +973,7 @@ function updateCurrentForCollections(localErrors, current) {
             let currentServers = fetchKey(current, 'Collections', database, shardInfo.planId, shard, 'servers');
             // we were previously leader and we are done resigning. update current and let supervision handle the rest
             if (Array.isArray(currentServers) && currentServers[0] === ourselves) {
-              trx[0][curCollections + database + '/' + shardInfo.planId + '/' + shardInfo.name + '/servers'] = {
+              trx[curCollections + database + '/' + shardInfo.planId + '/' + shardInfo.name + '/servers'] = {
                 op: 'set',
                 new: ['_' + ourselves].concat(db._collection(shardInfo.name).getFollowers()),
               };
@@ -1009,8 +1011,7 @@ function updateCurrentForCollections(localErrors, current) {
                   let cur = currentCollections[database][collection][shard];
                   if (!localCollections.hasOwnProperty(shard) &&
                       cur.servers[0] === ourselves) {
-                    makeDropCurrentEntryCollection(database, collection, shard,
-                                                   trx);
+                    Object.assign(trx, makeDropCurrentEntryCollection(database, collection, shard));
                   }
                 }
               }
@@ -1120,8 +1121,9 @@ function migratePrimary(plan, current) {
   // diff current and local and prepare agency transactions or whatever
   // to update current. Will report the errors created locally to the agency
   let trx = updateCurrentForCollections(localErrors, current);
-  if (trx.length > 0 && Object.keys(trx[0]).length !== 0) {
-    trx[0][curVersion] = {op: 'increment'};
+  if (Object.keys(trx).length > 0) {
+    trx[curVersion] = {op: 'increment'};
+    trx = [trx];
     // TODO: reduce timeout when we can:
     try {
       let res = global.ArangoAgency.write([trx]);
@@ -1288,9 +1290,9 @@ function migrateAnyServer(plan, current) {
   // diff current and local and prepare agency transactions or whatever
   // to update current. will report the errors created locally to the agency
   let trx = updateCurrentForDatabases(localErrors, current.Databases);
-  if (Object.keys(trx).length !== 0) {
+  if (Object.keys(trx).length > 0) {
+    trx[curVersion] = {op: 'increment'};
     trx = [trx];
-    trx[0][curVersion] = {op: 'increment'};
     // TODO: reduce timeout when we can:
     try {
       let res = global.ArangoAgency.write([trx]);
