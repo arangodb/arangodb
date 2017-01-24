@@ -39,6 +39,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
+static float EPS = 0.00001;
 static std::string const kConvergence = "convergence";
 static std::string const kStep = "step";
 static std::string const kRank = "rank";
@@ -47,15 +48,9 @@ static std::string const kNonFailedCount = "nonfailedCount";
 static std::string const kScale = "scale";
 
 
-RecoveringPageRank::RecoveringPageRank(arangodb::velocypack::Slice params)
-    : SimpleAlgorithm("PageRank", params) {
-  VPackSlice t = params.get("convergenceThreshold");
-  _threshold = t.isNumber() ? t.getNumber<float>() : 0.000002f;
-}
-
-struct RPRComputation : public VertexComputation<float, float, float> {
-  float _limit;
-  RPRComputation(float t) : _limit(t) {}
+struct MyComputation : public VertexComputation<float, float, float> {
+  
+  MyComputation() {}
   void compute(MessageIterator<float> const& messages) override {
     float* ptr = mutableVertexData();
     float copy = *ptr;
@@ -72,26 +67,18 @@ struct RPRComputation : public VertexComputation<float, float, float> {
     float diff = fabsf(copy - *ptr);
     aggregate(kConvergence, diff);
     aggregate(kRank, ptr);
-    // const float* val = getAggregatedValue<float>("convergence");
-    // if (val) {  // if global convergence is available use it
-    //  diff = *val;
-    //}
 
-    if (globalSuperstep() < 50 && diff > _limit) {
-      RangeIterator<Edge<float>> edges = getEdges();
-      float val = *ptr / edges.size();
-      for (Edge<float>* edge : edges) {
-        sendMessage(edge, val);
-      }
-    } else {
-      voteHalt();
+    RangeIterator<Edge<float>> edges = getEdges();
+    float val = *ptr / edges.size();
+    for (Edge<float>* edge : edges) {
+      sendMessage(edge, val);
     }
   }
 };
 
 VertexComputation<float, float, float>* RecoveringPageRank::createComputation(
     WorkerConfig const* config) const {
-  return new RPRComputation(_threshold);
+  return new MyComputation();
 }
 
 IAggregator* RecoveringPageRank::aggregator(std::string const& name) const {
@@ -140,24 +127,31 @@ VertexCompensation<float, float, float>* RecoveringPageRank::createCompensation(
 }
 
 struct MyMasterContext : public MasterContext {
-  MyMasterContext(VPackSlice params) {};
+  float _threshold;
+  
+  MyMasterContext(VPackSlice params) {
+    VPackSlice t = params.get("convergenceThreshold");
+    _threshold = t.isNumber() ? t.getNumber<float>() : EPS;
+  };
 
   int32_t recoveryStep = 0;
   float totalRank = 0;
   
-  bool postGlobalSuperstep(uint64_t gss) override {
+  bool postGlobalSuperstep() override {
     const float* convergence = getAggregatedValue<float>(kConvergence);
     LOG(INFO) << "Current convergence level" << *convergence;
     totalRank = *getAggregatedValue<float>(kRank);
-    return true;
+    
+    float const* diff = getAggregatedValue<float>(kConvergence);
+    return globalSuperstep() < 50 && *diff > _threshold;
   }
 
-  bool preCompensation(uint64_t gss) override {
+  bool preCompensation() override {
     aggregate(kStep, recoveryStep);
     return totalRank != 0;
   }
 
-  bool postCompensation(uint64_t gss) override {
+  bool postCompensation() override {
     if (recoveryStep == 0) {
       recoveryStep = 1;
       

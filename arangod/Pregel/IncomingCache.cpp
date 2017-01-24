@@ -22,7 +22,7 @@
 
 #include "Pregel/IncomingCache.h"
 #include "Pregel/Utils.h"
-//#include "Pregel/AdditionalFormats.h"
+#include "Pregel/CommonFormats.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -30,9 +30,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-
-//#include <libcuckoo/city_hasher.hh>
-//#include <libcuckoo/cuckoohash_map.hh>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -240,15 +237,17 @@ void CombiningInCache<M>::forEach(
 }
 
 // template types to create
-//template class arangodb::pregel::InCache<SenderValue<int64_t>>;
 template class arangodb::pregel::InCache<int64_t>;
 template class arangodb::pregel::InCache<float>;
 template class arangodb::pregel::InCache<double>;
-//template class arangodb::pregel::ArrayInCache<SenderValue<int64_t>>;
 template class arangodb::pregel::ArrayInCache<int64_t>;
 template class arangodb::pregel::ArrayInCache<float>;
 template class arangodb::pregel::ArrayInCache<double>;
-//template class arangodb::pregel::CombiningInCache<SenderValue<int64_t>>;
 template class arangodb::pregel::CombiningInCache<int64_t>;
 template class arangodb::pregel::CombiningInCache<float>;
 template class arangodb::pregel::CombiningInCache<double>;
+
+// algo specific
+template class arangodb::pregel::InCache<SenderMessage<uint64_t>>;
+template class arangodb::pregel::ArrayInCache<SenderMessage<uint64_t>>;
+template class arangodb::pregel::CombiningInCache<SenderMessage<uint64_t>>;

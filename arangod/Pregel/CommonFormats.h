@@ -20,34 +20,48 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ADDITIONAL_MFORMATS_H
-#define ARANGODB_PREGEL_ADDITIONAL_MFORMATS_H 1
 
+// NOTE: this files exists primarily to include these algorithm specfic structs in the
+// cpp files to do template specialization
 
+#ifndef ARANGODB_PREGEL_COMMON_MFORMATS_H
+#define ARANGODB_PREGEL_COMMON_MFORMATS_H 1
+
+#include "Pregel/GraphFormat.h"
 #include "Pregel/MessageFormat.h"
 #include "Pregel/Graph.h"
 
 
 namespace arangodb {
 namespace pregel {
+  
+struct SCCValue {
+  std::vector<PregelID> parents;
+  uint64_t vertexID;
+  uint64_t color;
+};
 
 template<typename T>
-struct SenderValue {
+struct SenderMessage {
+  SenderMessage() {}
+  SenderMessage(PregelID const& pid, T const& val)
+    : pregelId(pid), value(val) {}
+  
   PregelID pregelId;
   T value;
 };
   
 template <typename T>
-struct NumberSenderFormat : public MessageFormat<SenderValue<T>> {
+struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
   static_assert(std::is_arithmetic<T>::value, "Message type must be numeric");
-  NumberSenderFormat() {}
-  void unwrapValue(VPackSlice s, SenderValue<T>& senderVal) const override {
+  SenderMessageFormat() {}
+  void unwrapValue(VPackSlice s, SenderMessage<T>& senderVal) const override {
     VPackArrayIterator array(s);
     senderVal.pregelId.shard = (*array).getUInt();
     senderVal.pregelId.key = (*(++array)).copyString();
     senderVal.value = (*(++array)).getNumber<T>();
   }
-  void addValue(VPackBuilder& arrayBuilder, SenderValue<T> const& senderVal) const override {
+  void addValue(VPackBuilder& arrayBuilder, SenderMessage<T> const& senderVal) const override {
     arrayBuilder.openArray();
     arrayBuilder.add(VPackValue(senderVal.pregelId.shard));
     arrayBuilder.add(VPackValue(senderVal.pregelId.key));

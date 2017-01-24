@@ -39,63 +39,56 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
+static float EPS = 0.00001;
 static std::string const kConvergence = "convergence";
 
-static double EPS = 0.00001;
-PageRank::PageRank(arangodb::velocypack::Slice params)
-    : SimpleAlgorithm("PageRank", params) {
-  VPackSlice t = params.get("convergenceThreshold");
-  _threshold = t.isNumber() ? t.getNumber<double>() : EPS;
-}
-
-struct PRComputation : public VertexComputation<double, float, double> {
+struct PRComputation : public VertexComputation<float, float, float> {
 
   PRComputation() {}
-  void compute(MessageIterator<double> const& messages) override {
-    double* ptr = mutableVertexData();
-    double copy = *ptr;
+  void compute(MessageIterator<float> const& messages) override {
+    float* ptr = mutableVertexData();
+    float copy = *ptr;
     
     if (globalSuperstep() == 0) {
       *ptr = 1.0 / context()->vertexCount();
     } else {
-      double sum = 0.0;
-      for (const double* msg : messages) {
+      float sum = 0.0;
+      for (const float* msg : messages) {
         sum += *msg;
       }
       *ptr = 0.85 * sum + 0.15 / context()->vertexCount();
     }
-    double diff = fabs(copy - *ptr);
+    float diff = fabs(copy - *ptr);
     aggregate(kConvergence, diff);
     
-    if (globalSuperstep() < 50) {
-      RangeIterator<Edge<float>> edges = getEdges();
-      double val = *ptr / edges.size();
-      for (Edge<float>* edge : edges) {
-        sendMessage(edge, val);
-      }
-    } else {
-      voteHalt();
+    RangeIterator<Edge<float>> edges = getEdges();
+    float val = *ptr / edges.size();
+    for (Edge<float>* edge : edges) {
+      sendMessage(edge, val);
     }
   }
 };
 
-VertexComputation<double, float, double>* PageRank::createComputation(
+VertexComputation<float, float, float>* PageRank::createComputation(
     WorkerConfig const* config) const {
   return new PRComputation();
 }
 
 IAggregator* PageRank::aggregator(std::string const& name) const {
   if (name == kConvergence) {
-    return new MaxAggregator<double>(-1.0f, false);
+    return new MaxAggregator<float>(MAXFLOAT, false);
   }
   return nullptr;
 }
 
-struct MyMasterContext : MasterContext {
-  MyMasterContext() {}// TODO use _threashold
-  bool postGlobalSuperstep(uint64_t gss) {
-    double const* diff = getAggregatedValue<double>(kConvergence);
-    return globalSuperstep() < 2 || *diff > EPS;
+struct MyMasterContext : public MasterContext {
+  MyMasterContext() {
+    //VPackSlice t = params.get("convergenceThreshold");
+    //_threshold = t.isNumber() ? t.getNumber<float>() : EPS;
+  }// TODO use _threashold
+  bool postGlobalSuperstep() override {
+    float const* diff = getAggregatedValue<float>(kConvergence);
+    return globalSuperstep() < 50 && *diff > EPS;
   };
 };
 

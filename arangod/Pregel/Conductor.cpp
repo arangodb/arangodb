@@ -141,7 +141,7 @@ bool Conductor::_startGlobalStep() {
   bool proceed = true;
   if (_masterContext && _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
     _masterContext->_globalSuperstep = _globalSuperstep - 1;
-    proceed = _masterContext->postGlobalSuperstep(_globalSuperstep);
+    proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
       LOG(INFO) << "Master context ended execution";
     }
@@ -159,7 +159,7 @@ bool Conductor::_startGlobalStep() {
     _masterContext->_globalSuperstep = _globalSuperstep;
     _masterContext->_vertexCount = _totalVerticesCount;
     _masterContext->_edgeCount = _totalEdgesCount;
-    _masterContext->preGlobalSuperstep(_globalSuperstep);
+    _masterContext->preGlobalSuperstep();
   }
 
   b.clear();
@@ -291,7 +291,7 @@ void Conductor::finishedRecoveryStep(VPackSlice data) {
   // only compensations supported
   bool proceed = false;
   if (_masterContext) {
-    proceed = proceed || _masterContext->postCompensation(_globalSuperstep);
+    proceed = proceed || _masterContext->postCompensation();
   }
   
   int res = TRI_ERROR_NO_ERROR;
@@ -299,7 +299,7 @@ void Conductor::finishedRecoveryStep(VPackSlice data) {
     // reset values which are calculated during the superstep
     _aggregators->resetValues();
     if (_masterContext) {
-      _masterContext->preCompensation(_globalSuperstep);
+      _masterContext->preCompensation();
     }
     
     VPackBuilder b;
@@ -401,7 +401,7 @@ void Conductor::startRecovery() {
 
     // Let's try recovery
     if (_masterContext) {
-      bool proceed = _masterContext->preCompensation(_globalSuperstep);
+      bool proceed = _masterContext->preCompensation();
       if (!proceed) {
         cancel();
       }

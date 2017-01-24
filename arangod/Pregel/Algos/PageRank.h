@@ -31,25 +31,24 @@ namespace pregel {
 namespace algos {
 
 /// PageRank
-struct PageRank : public SimpleAlgorithm<double, float, double> {
-  float _threshold;
+struct PageRank : public SimpleAlgorithm<float, float, float> {
 
- public:
-  PageRank(arangodb::velocypack::Slice params);
+  PageRank(arangodb::velocypack::Slice params)
+    : SimpleAlgorithm("PageRank", params) {}
 
   GraphFormat* inputFormat() const override {
-    return new VertexGraphFormat<double, float>(_resultField, 0);
+    return new VertexGraphFormat<float, float>(_resultField, 0);
   }
   
-  MessageFormat<double>* messageFormat() const override {
-    return new DoubleMessageFormat();
+  MessageFormat<float>* messageFormat() const override {
+    return new NumberMessageFormat<float>();
   }
   
-  MessageCombiner<double>* messageCombiner() const override {
-    return new SumCombiner<double>();
+  MessageCombiner<float>* messageCombiner() const override {
+    return new SumCombiner<float>();
   }
   
-  VertexComputation<double, float, double>* createComputation(
+  VertexComputation<float, float, float>* createComputation(
       WorkerConfig const*) const override;
   IAggregator* aggregator(std::string const& name) const override;
   

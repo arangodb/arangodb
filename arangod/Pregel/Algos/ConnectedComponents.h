@@ -38,7 +38,7 @@ struct ConnectedComponents : public SimpleAlgorithm<int64_t, int64_t, int64_t> {
  public:
   ConnectedComponents(VPackSlice userParams) : SimpleAlgorithm("ConnectedComponents", userParams) {}
 
-  bool supportsAsyncMode() const override { return false; }
+  bool supportsAsyncMode() const override { return true; }
   bool supportsCompensation() const override { return true; }
 
   GraphFormat* inputFormat() const override;

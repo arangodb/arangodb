@@ -81,6 +81,7 @@ class VertexContext {
 
   void voteHalt() { _vertexEntry->setActive(false); }
   void voteActive() { _vertexEntry->setActive(true); }
+  bool isActive() { return _vertexEntry->active(); }
 
   inline uint64_t globalSuperstep() const { return _gss; }
   inline uint64_t localSuperstep() const { return _lss; }
@@ -99,6 +100,10 @@ class VertexComputation : public VertexContext<V, E, M> {
  public:
   void sendMessage(Edge<E> const* edge, M const& data) {
     _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
+  }
+  
+  void sendMessage(PregelID const& pid, M const& data) {
+    _cache->appendMessage(pid.shard, pid.key, data);
   }
   
   // TODO optimize outgoing cache somehow

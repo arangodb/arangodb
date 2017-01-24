@@ -113,6 +113,7 @@ struct ValueAggregator : public NumberAggregator<T> {
   void aggregate(void const* valuePtr) override { this->_value = *((T*)valuePtr); };
   void parse(VPackSlice slice) override {this-> _value = slice.getNumber<T>(); }
 };
+
 }
 }
 #endif

@@ -84,7 +84,9 @@ struct Algorithm : IAlgorithm {
   }
   virtual GraphFormat* inputFormat() const = 0;
   virtual MessageFormat<M>* messageFormat() const = 0;
-  virtual MessageCombiner<M>* messageCombiner() const = 0;
+  virtual MessageCombiner<M>* messageCombiner() const {
+    return nullptr;
+  };
   virtual VertexComputation<V, E, M>* createComputation(
       WorkerConfig const*) const = 0;
   virtual VertexCompensation<V, E, M>* createCompensation(

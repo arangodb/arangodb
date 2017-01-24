@@ -65,17 +65,17 @@ class MasterContext {
 
   /// @brief called before supersteps
   /// @return true to continue the computation
-  virtual void preGlobalSuperstep(uint64_t gss) {};
+  virtual void preGlobalSuperstep() {};
   /// @brief called after supersteps
   /// @return true to continue the computation
-  virtual bool postGlobalSuperstep(uint64_t gss) { return true; };
+  virtual bool postGlobalSuperstep() { return true; };
   virtual void postApplication(){};
 
   /// should indicate if compensation is supposed to start by returning true
-  virtual bool preCompensation(uint64_t gss) { return true; }
+  virtual bool preCompensation() { return true; }
   /// should indicate if compensation is finished, by returning false.
   /// otherwise workers will be called again with the aggregated values
-  virtual bool postCompensation(uint64_t gss) { return false; }
+  virtual bool postCompensation() { return false; }
 
 };
 }

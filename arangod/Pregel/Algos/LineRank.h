@@ -44,7 +44,7 @@ struct LineRank : public SimpleAlgorithm<float, float, float> {
     return new VertexGraphFormat<float, float>(_resultField, -1.0);
   }
   MessageFormat<float>* messageFormat() const override {
-    return new FloatMessageFormat();
+    return new NumberMessageFormat<float>();
   }
   
   MessageCombiner<float>* messageCombiner() const override {

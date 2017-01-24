@@ -28,7 +28,8 @@
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/Index.h"
 #include "Pregel/WorkerConfig.h"
-#include "Utils.h"
+#include "Pregel/Utils.h"
+#include "Pregel/CommonFormats.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExplicitTransaction.h"
 #include "Utils/OperationCursor.h"
@@ -438,4 +439,9 @@ template class arangodb::pregel::GraphStore<int64_t, int64_t>;
 template class arangodb::pregel::GraphStore<float, float>;
 template class arangodb::pregel::GraphStore<double, float>;
 template class arangodb::pregel::GraphStore<double, double>;
+
+// specific algo combos
+template class arangodb::pregel::GraphStore<SCCValue, int32_t>;
+
+
 

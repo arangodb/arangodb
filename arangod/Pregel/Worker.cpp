@@ -29,7 +29,7 @@
 #include "Pregel/Utils.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/WorkerConfig.h"
-//#include "Pregel/AdditionalFormats.h"
+#include "Pregel/CommonFormats.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
@@ -662,5 +662,5 @@ Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
 template class arangodb::pregel::Worker<int64_t, int64_t, int64_t>;
 template class arangodb::pregel::Worker<float, float, float>;
 template class arangodb::pregel::Worker<double, float, double>;
-// complex types
-//template class arangodb::pregel::Worker<int64_t, int64_t, SenderValue<int64_t>>;
+// custom algorihm types
+template class arangodb::pregel::Worker<SCCValue, int32_t, SenderMessage<uint64_t>>;

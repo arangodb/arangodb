@@ -24,7 +24,7 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConfig.h"
-//#include "Pregel/AdditionalFormats.h"
+#include "Pregel/CommonFormats.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -258,15 +258,18 @@ void CombiningOutCache<M>::flushMessages() {
 }
 
 // template types to create
-//template class arangodb::pregel::OutCache<SenderValue<int64_t>>;
+
 template class arangodb::pregel::OutCache<int64_t>;
 template class arangodb::pregel::OutCache<float>;
 template class arangodb::pregel::OutCache<double>;
-//template class arangodb::pregel::ArrayOutCache<SenderValue<int64_t>>;
 template class arangodb::pregel::ArrayOutCache<int64_t>;
 template class arangodb::pregel::ArrayOutCache<float>;
 template class arangodb::pregel::ArrayOutCache<double>;
-//template class arangodb::pregel::CombiningOutCache<SenderValue<int64_t>>;
 template class arangodb::pregel::CombiningOutCache<int64_t>;
 template class arangodb::pregel::CombiningOutCache<float>;
 template class arangodb::pregel::CombiningOutCache<double>;
+
+// algo specific
+template class arangodb::pregel::OutCache<SenderMessage<uint64_t>>;
+template class arangodb::pregel::ArrayOutCache<SenderMessage<uint64_t>>;
+template class arangodb::pregel::CombiningOutCache<SenderMessage<uint64_t>>;

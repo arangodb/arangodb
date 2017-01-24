@@ -32,10 +32,9 @@ namespace algos {
 
 /// PageRank
 struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
-  float _threshold;
-
- public:
-  RecoveringPageRank(arangodb::velocypack::Slice params);
+  
+  RecoveringPageRank(arangodb::velocypack::Slice params)
+  : SimpleAlgorithm("PageRank", params) {}
 
   bool supportsCompensation() const override { return true; }
   MasterContext* masterContext(VPackSlice userParams) const override;
@@ -45,7 +44,7 @@ struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
   }
   
   MessageFormat<float>* messageFormat() const override {
-    return new FloatMessageFormat();
+    return new NumberMessageFormat<float>();
   }
   
   MessageCombiner<float>* messageCombiner() const override {
