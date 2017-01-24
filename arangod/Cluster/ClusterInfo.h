@@ -186,8 +186,7 @@ class CollectionInfoCurrent {
   bool getFlag(char const* name, ShardID const& shardID) const {
     auto it = _vpacks.find(shardID);
     if (it != _vpacks.end()) {
-      return arangodb::basics::VelocyPackHelper::getBooleanValue(it->second->slice(), "errorMessage",
-                                                          "");
+      return arangodb::basics::VelocyPackHelper::getBooleanValue(it->second->slice(), name, false);
     }
     return false;
   }

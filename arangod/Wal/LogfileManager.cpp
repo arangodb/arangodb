@@ -174,6 +174,9 @@ void LogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--wal.ignore-recovery-errors",
       "continue recovery even if re-applying operations fails",
       new BooleanParameter(&_ignoreRecoveryErrors));
+  
+  options->addHiddenOption("--wal.flush-timeout", "flush timeout (in milliseconds)",
+                     new UInt64Parameter(&_flushTimeout));
 
   options->addOption("--wal.logfile-size", "size of each logfile (in bytes)",
                      new UInt32Parameter(&_filesize));
@@ -1319,7 +1322,7 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
   }
   
   size_t iterations = 0;
-  double const end = TRI_microtime() + 15.0;
+  double const end = TRI_microtime() + (_flushTimeout / 1000.0);
 
   while (true) {
     {
@@ -1383,7 +1386,7 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
   }
 
   TRI_ASSERT(result == nullptr);
-  LOG(ERR) << "unable to acquire writeable WAL logfile after 15 s";
+  LOG(ERR) << "unable to acquire writeable WAL logfile after " << _flushTimeout << " ms";
 
   return TRI_ERROR_LOCK_TIMEOUT;
 }
