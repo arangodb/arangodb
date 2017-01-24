@@ -50,7 +50,6 @@ class VertexContext {
   AggregatorHandler* _conductorAggregators;
   AggregatorHandler* _workerAggregators;
   VertexEntry* _vertexEntry;
-  WorkerConfig* _workerConfig;
 
  public:
   template <typename T>

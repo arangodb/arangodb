@@ -139,8 +139,12 @@ bool Conductor::_startGlobalStep() {
   // workers are done if all messages were processed and no active vertices
   // are left to process
   bool proceed = true;
-  if (_masterContext) {  // ask algorithm to evaluate aggregated values
+  if (_masterContext && _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
+    _masterContext->_globalSuperstep = _globalSuperstep - 1;
     proceed = _masterContext->postGlobalSuperstep(_globalSuperstep);
+    if (!proceed) {
+      LOG(INFO) << "Master context ended execution";
+    }
   }
 
   // TODO make maximum configurable
@@ -152,6 +156,9 @@ bool Conductor::_startGlobalStep() {
     return false;
   }
   if (_masterContext) {
+    _masterContext->_globalSuperstep = _globalSuperstep;
+    _masterContext->_vertexCount = _totalVerticesCount;
+    _masterContext->_edgeCount = _totalEdgesCount;
     _masterContext->preGlobalSuperstep(_globalSuperstep);
   }
 
@@ -195,6 +202,7 @@ void Conductor::finishedWorkerStartup(VPackSlice data) {
   LOG(INFO) << _totalVerticesCount << " vertices, " << _totalEdgesCount
             << " edges";
   if (_masterContext) {
+    _masterContext->_globalSuperstep = 0;
     _masterContext->_vertexCount = _totalVerticesCount;
     _masterContext->_edgeCount = _totalEdgesCount;
     _masterContext->_aggregators = _aggregators.get();

@@ -34,16 +34,21 @@ namespace pregel {
 class MasterContext {
   friend class Conductor;
 
+  uint64_t _globalSuperstep = 0;
   uint64_t _vertexCount = 0;
   uint64_t _edgeCount = 0;
   AggregatorHandler* _aggregators;
 
  public:
   
-  MasterContext(VPackSlice params){};
+  MasterContext(){};
   
+  inline uint64_t globalSuperstep() const { return _globalSuperstep; }
+  
+  /// current global vertex count, might change after each gss
   inline uint64_t vertexCount() const { return _vertexCount; }
   
+  /// current global edge count, might change after each gss
   inline uint64_t edgeCount() const { return _edgeCount; }
   
   template <typename T>

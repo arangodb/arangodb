@@ -41,22 +41,23 @@ using namespace arangodb::pregel::algos;
 
 static std::string const kConvergence = "convergence";
 
+static double EPS = 0.00001;
 PageRank::PageRank(arangodb::velocypack::Slice params)
     : SimpleAlgorithm("PageRank", params) {
   VPackSlice t = params.get("convergenceThreshold");
-  _threshold = t.isNumber() ? t.getNumber<double>() : 0.000002f;
+  _threshold = t.isNumber() ? t.getNumber<double>() : EPS;
 }
 
 struct PRComputation : public VertexComputation<double, float, double> {
-  double _limit;
-  PRComputation(double t) : _limit(t) {}
+
+  PRComputation() {}
   void compute(MessageIterator<double> const& messages) override {
     double* ptr = mutableVertexData();
     double copy = *ptr;
-    // TODO do initialization in GraphFormat?
+    
     if (globalSuperstep() == 0) {
       *ptr = 1.0 / context()->vertexCount();
-    } else if (globalSuperstep() > 0) {
+    } else {
       double sum = 0.0;
       for (const double* msg : messages) {
         sum += *msg;
@@ -66,7 +67,7 @@ struct PRComputation : public VertexComputation<double, float, double> {
     double diff = fabs(copy - *ptr);
     aggregate(kConvergence, diff);
     
-    if (diff > _limit) {
+    if (globalSuperstep() < 50) {
       RangeIterator<Edge<float>> edges = getEdges();
       double val = *ptr / edges.size();
       for (Edge<float>* edge : edges) {
@@ -80,7 +81,7 @@ struct PRComputation : public VertexComputation<double, float, double> {
 
 VertexComputation<double, float, double>* PageRank::createComputation(
     WorkerConfig const* config) const {
-  return new PRComputation(_threshold);
+  return new PRComputation();
 }
 
 IAggregator* PageRank::aggregator(std::string const& name) const {
@@ -88,4 +89,16 @@ IAggregator* PageRank::aggregator(std::string const& name) const {
     return new MaxAggregator<double>(-1.0f, false);
   }
   return nullptr;
+}
+
+struct MyMasterContext : MasterContext {
+  MyMasterContext() {}// TODO use _threashold
+  bool postGlobalSuperstep(uint64_t gss) {
+    double const* diff = getAggregatedValue<double>(kConvergence);
+    return globalSuperstep() < 2 || *diff > EPS;
+  };
+};
+
+MasterContext* PageRank::masterContext(VPackSlice userParams) const {
+  return new MyMasterContext();
 }

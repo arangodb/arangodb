@@ -379,7 +379,6 @@ bool Worker<V, E, M>::_processVertices(
   _writeCache->mergeCache(inCache.get());
   // TODO ask how to implement message sending without waiting for a response
 
-  LOG(INFO) << "Finished executing vertex programs.";
   MessageStats stats;
   stats.sendCount = outCache->sendCount();
   stats.superstepRuntimeSecs = TRI_microtime() - start;
@@ -452,21 +451,22 @@ void Worker<V, E, M>::_finishedProcessing() {
     package.add(Utils::globalSuperstepKey,
                 VPackValue(_config.globalSuperstep()));
     _messageStats.serializeValues(package);
+    if (_config.asynchronousMode()) {
+      _workerAggregators->serializeValues(package, true);
+    }
+    package.close();
     
     // adaptive message buffering
     ThreadPool* pool = PregelFeature::instance()->threadPool();
     double msgsPerSec = _messageStats.sendCount / _messageStats.superstepRuntimeSecs;
     msgsPerSec /= pool->numThreads(); // per thread
-    _messageBatchSize = (uint32_t) fmax(0.08 * msgsPerSec, 250);// 80ms time window,
+    _messageBatchSize = (uint32_t) fmax(0.06 * msgsPerSec, 250);// 80ms time window,
     _messageStats.resetTracking();
     
     LOG(INFO) << "Batch size: " << _messageBatchSize;
   }
-  // serialize converging values only in async mode
+  
   if (_config.asynchronousMode()) {
-    _workerAggregators->serializeValues(package, true);
-    package.close();
-    
     bool proceed = true;
     // if the conductor is unreachable or has send data (try to) proceed
     std::unique_ptr<ClusterCommResult> result = _callConductorWithResponse(Utils::finishedWorkerStepPath, package.slice());
@@ -479,7 +479,6 @@ void Worker<V, E, M>::_finishedProcessing() {
       _continueAsync();
     }
   } else {// no answer expected
-    package.close();
     _callConductor(Utils::finishedWorkerStepPath, package.slice());
     LOG(INFO) << "Finished GSS: " << package.toJson();
   }

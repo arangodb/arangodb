@@ -140,7 +140,7 @@ VertexCompensation<float, float, float>* RecoveringPageRank::createCompensation(
 }
 
 struct MyMasterContext : public MasterContext {
-  MyMasterContext(VPackSlice params) : MasterContext(params){};
+  MyMasterContext(VPackSlice params) {};
 
   int32_t recoveryStep = 0;
   float totalRank = 0;

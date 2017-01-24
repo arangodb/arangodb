@@ -315,10 +315,6 @@ void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
   result.reserve(1000);
 
   while (cursor->hasMore()) {
-    if (vertexEntry._edgeCount == 0) {// initalize the start
-      vertexEntry._edgeDataOffset = _edges.size();
-    }
-
     cursor->getMoreMptr(result, 1000);
     for (auto const& element : result) {
       TRI_voc_rid_t revisionId = element.revisionId();
@@ -327,9 +323,6 @@ void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
         if (document.isExternal()) {
           document = document.resolveExternal();
         }
-
-        // ====== actual loading ======
-        vertexEntry._edgeCount += 1;
 
         // LOG(INFO) << "Loaded Edge: " << document.toJson();
         std::string toValue =
@@ -352,10 +345,16 @@ void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
           LOG(ERR) << "Unknown shard";
           continue;
         }
-
+        // copy edge data
         Edge<E> edge(source, target, _key);
         // size_t size =
         _graphFormat->copyEdgeData(document, edge.data(), sizeof(E));
+        
+        //  store into the edge store, edgeCount and offset are 0 initally
+        if (vertexEntry._edgeCount == 0) {// initalize the start
+          vertexEntry._edgeDataOffset = _edges.size();
+        }
+        vertexEntry._edgeCount++;
         // TODO store size value at some point
         _edges.push_back(edge);
         _localEdgeCount++;

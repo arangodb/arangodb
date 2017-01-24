@@ -68,9 +68,9 @@ class VertexEntry {
 
   const prgl_shard_t _shard;
   const std::string _key;
-  size_t _vertexDataOffset;
-  size_t _edgeDataOffset;
-  size_t _edgeCount;
+  size_t _vertexDataOffset = 0;
+  size_t _edgeDataOffset = 0;
+  size_t _edgeCount = 0;
   bool _active = true;
 
  public:

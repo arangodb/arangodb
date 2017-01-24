@@ -52,6 +52,8 @@ struct PageRank : public SimpleAlgorithm<double, float, double> {
   VertexComputation<double, float, double>* createComputation(
       WorkerConfig const*) const override;
   IAggregator* aggregator(std::string const& name) const override;
+  
+  MasterContext* masterContext(VPackSlice userParams) const override;
 };
 }
 }

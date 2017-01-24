@@ -60,7 +60,7 @@ struct NumberAggregator : public IAggregator {
   static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
   
   NumberAggregator(T init, bool perm = false, bool conv = false)
-  : _value(init), _initial(init), _converging(conv) {}
+  : _value(init), _initial(init), _permanent(perm), _converging(conv) {}
   
   void const* getValue() const override { return &_value; };
   VPackValue vpackValue() const override { return VPackValue(_value); };

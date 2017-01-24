@@ -163,19 +163,6 @@ void ArrayInCache<M>::forEach(
 template <typename M>
 void CombiningInCache<M>::_set(prgl_shard_t shard, std::string const& key,
                                M const& newValue) {
-  /*cuckoohash_map<int, std::string, CityHasher<int>> Table;
-  for (int i = 0; i < 100; i++) {
-    Table[i] = "hello"+std::to_string(i);
-  }
-  for (int i = 0; i < 101; i++) {
-    std::string out;
-    if (Table.find(i, out)) {
-      LOG(INFO) << i << "  " << out;
-    } else {
-      LOG(INFO) << i << "  NOT FOUND";
-    }
-  }*/
-
   this->_containedMessageCount++;
   HMap& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);

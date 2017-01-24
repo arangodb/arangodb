@@ -193,11 +193,11 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
       _combiner->combine(vertexMap[key], data);
     } else {  // first message for this vertex
       vertexMap.emplace(key, data);
-    }
-
-    if (this->_containedMessages++ > this->_batchSize) {
-      LOG(INFO) << "Hit buffer limit";
-      flushMessages();
+      
+      if (this->_containedMessages++ > this->_batchSize) {
+        LOG(INFO) << "Hit buffer limit";
+        flushMessages();
+      }
     }
   }
 }
