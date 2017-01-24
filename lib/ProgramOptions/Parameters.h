@@ -42,8 +42,8 @@ namespace options {
 template <typename T>
 inline typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(
     std::string const& value) {
-  auto v = static_cast<T>(std::stoll(value));
-  if (v < (std::numeric_limits<T>::min)() || v > (std::numeric_limits<T>::max)()) {
+  auto v = static_cast<int64_t>(std::stoll(value));
+  if (v < static_cast<int64_t>((std::numeric_limits<T>::min)()) || v > static_cast<int64_t>((std::numeric_limits<T>::max)())) {
     throw std::out_of_range(value);
   }
   return static_cast<T>(v);
@@ -53,8 +53,8 @@ inline typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(
 template <typename T>
 inline typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(
     std::string const& value) {
-  auto v = static_cast<T>(std::stoull(value));
-  if (v < (std::numeric_limits<T>::min)() || v > (std::numeric_limits<T>::max)()) {
+  auto v = static_cast<uint64_t>(std::stoull(value));
+  if (v < static_cast<uint64_t>((std::numeric_limits<T>::min)()) || v > static_cast<uint64_t>((std::numeric_limits<T>::max)())) {
     throw std::out_of_range(value);
   }
   return static_cast<T>(v);
@@ -210,15 +210,11 @@ struct NumericParameter : public Parameter {
   std::string set(std::string const& value) override {
     try {
       ValueType v = toNumber<ValueType>(value);
-      if (v >= (std::numeric_limits<T>::min)() &&
-          v <= (std::numeric_limits<T>::max)()) {
-        *ptr = v;
-        return "";
-      }
+      *ptr = v;
+      return "";
     } catch (...) {
       return "invalid numeric value";
     }
-    return "number out of range";
   }
 
   void toVPack(VPackBuilder& builder) const override {
@@ -291,9 +287,7 @@ struct BoundedParameter : public T {
   std::string set(std::string const& value) override {
     try {
       typename T::ValueType v = toNumber<typename T::ValueType>(value);
-      if (v >= (std::numeric_limits<typename T::ValueType>::min)() &&
-          v <= (std::numeric_limits<typename T::ValueType>::max)() && v >= minValue &&
-          v <= maxValue) {
+      if (v >= minValue && v <= maxValue) {
         *this->ptr = v;
         return "";
       }
