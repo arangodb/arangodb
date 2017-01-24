@@ -192,6 +192,7 @@ const optionsDefaults = {
   'valgrindArgs': {},
   'valgrindHosts': false,
   'verbose': false,
+  'walFlushTimeout': 30000,
   'writeXmlReport': true
 };
 
@@ -312,6 +313,7 @@ function makeArgsArangod (options, appDir, role) {
   return {
     'configuration': 'etc/testing/' + config,
     'define': 'TOP_DIR=' + TOP_DIR,
+    'wal.flush-timeout': options.walFlushTimeout,
     'javascript.app-path': appDir,
     'http.trusted-origin': options.httpTrustedOrigin || 'all'
   };
