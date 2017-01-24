@@ -11,6 +11,7 @@ done
 - move fulltext & geoindex & skiplist helper code into MMFiles
 - rename "RocksDBIndex" to "PersistentIndex"
 - Delete OperationCursor->getMore. Replace by getMoreTokens
+- remove ReadCache
 
 in progress
 -----------
@@ -35,4 +36,3 @@ to do
 - AqlValue needs a (lazy evaluated) type TOKEN that handles collection ID and TOKEN inplace.
   - slice() => looksup the value in the Database
 
-- remove ReadCache
