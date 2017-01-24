@@ -243,6 +243,8 @@ class AgencyCommResult {
   std::string const body() const { return _body; }
   std::string const& bodyRef() const { return _body; }
 
+  bool sent() const;
+
   void clear();
 
   VPackSlice slice() const;
@@ -257,6 +259,7 @@ class AgencyCommResult {
   std::map<std::string, AgencyCommResultEntry> _values;
   int _statusCode;
   bool _connected;
+  bool _sent;
 
  private:
   std::shared_ptr<velocypack::Builder> _vpack;
