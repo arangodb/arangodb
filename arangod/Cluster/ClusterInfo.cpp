@@ -2360,35 +2360,19 @@ void ClusterInfo::loadCurrentDBServers() {
 
 std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
   std::vector<ServerID> result;
-  int tries = 0;
 
   if (!_DBServersProt.isValid) {
     loadCurrentDBServers();
-    tries++;
   }
-  while (true) {
-    {
-      // return a consistent state of servers
-      READ_LOCKER(readLocker, _DBServersProt.lock);
+  // return a consistent state of servers
+  READ_LOCKER(readLocker, _DBServersProt.lock);
 
-      result.reserve(_DBServers.size());
+  result.reserve(_DBServers.size());
 
-      for (auto& it : _DBServers) {
-        result.emplace_back(it.first);
-      }
-
-      return result;
-    }
-
-    if (++tries >= 2) {
-      break;
-    }
-
-    // loadCurrentDBServers needs the write lock
-    loadCurrentDBServers();
+  for (auto& it : _DBServers) {
+    result.emplace_back(it.first);
   }
 
-  // note that the result will be empty if we get here
   return result;
 }
 
@@ -2560,35 +2544,20 @@ int ClusterInfo::getResponsibleShard(LogicalCollection* collInfo,
 
 std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
   std::vector<ServerID> result;
-  int tries = 0;
 
   if (!_coordinatorsProt.isValid) {
     loadCurrentCoordinators();
-    tries++;
-  }
-  while (true) {
-    {
-      // return a consistent state of servers
-      READ_LOCKER(readLocker, _coordinatorsProt.lock);
-
-      result.reserve(_coordinators.size());
-
-      for (auto& it : _coordinators) {
-        result.emplace_back(it.first);
-      }
-
-      return result;
-    }
-
-    if (++tries >= 2) {
-      break;
-    }
-
-    // loadCurrentCoordinators needs the write lock
-    loadCurrentCoordinators();
   }
 
-  // note that the result will be empty if we get here
+  // return a consistent state of servers
+  READ_LOCKER(readLocker, _coordinatorsProt.lock);
+
+  result.reserve(_coordinators.size());
+
+  for (auto& it : _coordinators) {
+    result.emplace_back(it.first);
+  }
+
   return result;
 }
 

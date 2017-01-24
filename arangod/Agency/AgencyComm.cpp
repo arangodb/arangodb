@@ -23,6 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyComm.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ServerFeature.h"
 
 #include <thread>
 #ifdef DEBUG_SYNC_REPLICATION
@@ -329,6 +331,7 @@ AgencyCommResult::AgencyCommResult()
       _values(),
       _statusCode(0),
       _connected(false),
+      _sent(false),
       _clientId("") {}
 
 AgencyCommResult::AgencyCommResult(
@@ -339,6 +342,7 @@ AgencyCommResult::AgencyCommResult(
       _values(),
       _statusCode(code),
       _connected(false),
+      _sent(false),
     _clientId(clientId) {}
 
 bool AgencyCommResult::connected() const { return _connected; }
@@ -346,6 +350,8 @@ bool AgencyCommResult::connected() const { return _connected; }
 std::string AgencyCommResult::clientId() const { return _clientId; }
 
 int AgencyCommResult::httpCode() const { return _statusCode; }
+
+bool AgencyCommResult::sent() const { return _sent; }
 
 int AgencyCommResult::errorCode() const {
   try {
@@ -409,6 +415,8 @@ void AgencyCommResult::clear() {
   _message = "";
   _body = "";
   _statusCode = 0;
+  _sent = false;
+  _connected = false;
 }
 
 VPackSlice AgencyCommResult::slice() const { return _vpack->slice(); }
@@ -1307,7 +1315,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
   double conTimeout = 1.0;
   
   int tries = 0;
-  int lastStatusCode = 0;
+
   while (true) {  // will be left by timeout eventually
 
     // Raise waits to a maximum 10 seconds
@@ -1316,6 +1324,18 @@ AgencyCommResult AgencyComm::sendWithFailover(
     // timeout exit startegy
     if (std::chrono::steady_clock::now() < timeOut) {
       if (tries > 0) {
+        auto serverFeature =
+            application_features::ApplicationServer::getFeature<ServerFeature>(
+            "Server");
+        if (serverFeature->isStopping()) {
+          LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+            << "Unsuccessful AgencyComm: Timeout because of shutdown "
+            << "errorCode: " << result.errorCode()
+            << " errorMessage: " << result.errorMessage()
+            << " errorDetails: " << result.errorDetails();
+          return result;
+        }
+
         std::this_thread::sleep_for(waitUntil-std::chrono::steady_clock::now());
         if (waitInterval.count() == 0.0) {
           waitInterval = std::chrono::duration<double>(0.25);
@@ -1360,8 +1380,6 @@ AgencyCommResult AgencyComm::sendWithFailover(
       continue;
     }
 
-    lastStatusCode = result._statusCode;
-    
     // got a result, we are done
     if (result.successful()) {
       AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
@@ -1369,7 +1387,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     }
     
     // break on a watch timeout (drop connection)
-    if (!clientId.empty() &&
+    if (!clientId.empty() && result._sent &&
         (result._statusCode == 0 || result._statusCode == 503)) {
 
       VPackBuilder b;
@@ -1389,8 +1407,9 @@ AgencyCommResult AgencyComm::sendWithFailover(
       if (inq.successful()) {
         auto bodyBuilder = VPackParser::fromJson(inq._body);
         auto const& outer = bodyBuilder->slice();
-        bool success = false;
+
         if (outer.isArray() && outer.length() > 0) {
+          bool success = false;
           for (auto const& inner : VPackArrayIterator(outer)) {
             if (inner.isArray() && inner.length() > 0) {
               for (auto const& i : VPackArrayIterator(inner)) {
@@ -1484,8 +1503,7 @@ AgencyCommResult AgencyComm::send(
   TRI_ASSERT(!url.empty());
 
   AgencyCommResult result;
-  result._connected = false;
-  result._statusCode = 0;
+  
   if (!clientId.empty()) {
     result._clientId = clientId;
   }
@@ -1526,6 +1544,7 @@ AgencyCommResult AgencyComm::send(
     return result;
   }
 
+  result._sent = response->haveSentRequestFully();
   result._connected = true;
 
   if (response->getHttpReturnCode() ==

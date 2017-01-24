@@ -65,7 +65,7 @@ var endpointToURL = function (endpoint) {
 function startReadLockOnLeader (endpoint, database, collName, timeout) {
   var url = endpointToURL(endpoint) + '/_db/' + database;
   var r = request({ url: url + '/_api/replication/holdReadLockCollection',
-  method: 'GET' });
+                    method: 'GET' });
   if (r.status !== 200) {
     console.error('startReadLockOnLeader: Could not get ID for shard',
       collName, r);
@@ -83,30 +83,47 @@ function startReadLockOnLeader (endpoint, database, collName, timeout) {
 
   var body = { 'id': id, 'collection': collName, 'ttl': timeout };
   r = request({ url: url + '/_api/replication/holdReadLockCollection',
-    body: JSON.stringify(body),
-  method: 'POST', headers: {'x-arango-async': 'store'} });
+                body: JSON.stringify(body),
+                method: 'POST', headers: {'x-arango-async': true} });
   if (r.status !== 202) {
     console.error('startReadLockOnLeader: Could not start read lock for shard',
       collName, r);
     return false;
   }
-  var rr = r; // keep a copy
 
   var count = 0;
   while (++count < 20) { // wait for some time until read lock established:
     // Now check that we hold the read lock:
     r = request({ url: url + '/_api/replication/holdReadLockCollection',
-      body: JSON.stringify(body),
-    method: 'PUT' });
+                  body: JSON.stringify(body), method: 'PUT' });
     if (r.status === 200) {
-      return id;
+      let ansBody = {};
+      try {
+        ansBody = JSON.parse(r.body);
+      } catch (err) {
+      }
+      if (ansBody.lockHeld) {
+        return id;
+      } else {
+        console.debug('startReadLockOnLeader: Lock not yet acquired...');
+      }
+    } else {
+      console.debug('startReadLockOnLeader: Do not see read lock yet...');
     }
-    console.debug('startReadLockOnLeader: Do not see read lock yet...');
     wait(0.5);
   }
-  var asyncJobId = rr.headers['x-arango-async-id'];
-  r = request({ url: url + '/_api/job/' + asyncJobId, body: '', method: 'PUT'});
-  console.error('startReadLockOnLeader: giving up, async result:', r);
+  console.error('startReadLockOnLeader: giving up');
+  try {
+    r = request({ url: url + '/_api/replication/holdReadLockCollection',
+                  body: JSON.stringify({'id': id}), method: 'DELETE' });
+  } catch (err2) {
+    console.error('startReadLockOnLeader: expection in cancel:',
+                  JSON.stringify(err2));
+  }
+  if (r.status !== 200) {
+    console.error('startReadLockOnLeader: cancelation error for shard',
+                  collName, r);
+  }
   return false;
 }
 
@@ -527,8 +544,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
               'syncCollectionFinalize:', err3);
           }
           finally {
-            if (!cancelReadLockOnLeader(ep, database,
-                lockJobId)) {
+            if (!cancelReadLockOnLeader(ep, database, lockJobId)) {
               console.error('synchronizeOneShard: read lock has timed out',
                 'for shard', shard);
               ok = false;
@@ -539,7 +555,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
             shard);
         }
         if (ok) {
-          console.debug('synchronizeOneShard: synchronization worked for shard',
+          console.info('synchronizeOneShard: synchronization worked for shard',
             shard);
         } else {
           throw 'Did not work for shard ' + shard + '.';
