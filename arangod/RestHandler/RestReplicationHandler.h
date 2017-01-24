@@ -366,13 +366,18 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static arangodb::basics::ConditionVariable _condVar;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief global set of ids of holdReadLockCollection jobs, if
-  /// an id is removed here (under the protection of the mutex of
-  /// condVar) and a broadcast is sent, the job with that id is
-  /// terminated.
+  /// @brief global set of ids of holdReadLockCollection jobs, an
+  /// id mapping to false here indicates that a request to get the
+  /// read lock has been started, the bool is changed to true once
+  /// this read lock is acquired. To cancel the read lock, remove
+  /// the entry here (under the protection of the mutex of
+  /// condVar) and send a broadcast to the condition variable, 
+  /// the job with that id is terminated. If it timeouts, then
+  /// the read lock is released automatically and the entry here
+  /// is deleted.
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::unordered_set<std::string> _holdReadLockJobs;
+  static std::unordered_map<std::string, bool> _holdReadLockJobs;
 
 };
 }

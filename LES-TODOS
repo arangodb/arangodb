@@ -18,11 +18,11 @@ done
 in progress
 -----------
 - Rename OperationCursor->getMoreMptr => getMoreTokens, "returns" std::vector<TOKEN>&
+- move engine-specific parts of transaction.cpp into engine
+- transaction API
 
 to do
 -----
-- move engine-specific parts of transaction.cpp into engine
-- transaction API
 - check for illegal includes
 - fix includes during API conversion
 - DML API

@@ -56,25 +56,7 @@ function agencyTestSuite () {
   /// @brief the agency servers
   ////////////////////////////////////////////////////////////////////////////////
 
-  var count = 20;
-  while (true) {
-    if (require('fs').exists('instanceinfo.json')) {
-      var instanceInfoData = require('fs').read('instanceinfo.json');
-      var instanceInfo;
-      try {
-        instanceInfo = JSON.parse(instanceInfoData);
-        break;
-      } catch (err) {
-        console.error('Failed to parse JSON: instanceinfo.json');
-        console.error(instanceInfoData);
-      }
-    } 
-    wait(1.0);
-    if (--count <= 0) {
-      throw 'peng';
-    }
-  } 
-
+  var instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
   var agencyServers = instanceInfo.arangods.map(arangod => {
     return arangod.url;
   });

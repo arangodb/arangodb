@@ -65,7 +65,7 @@ var endpointToURL = function (endpoint) {
 function startReadLockOnLeader (endpoint, database, collName, timeout) {
   var url = endpointToURL(endpoint) + '/_db/' + database;
   var r = request({ url: url + '/_api/replication/holdReadLockCollection',
-  method: 'GET' });
+                    method: 'GET' });
   if (r.status !== 200) {
     console.error('startReadLockOnLeader: Could not get ID for shard',
       collName, r);
@@ -83,30 +83,47 @@ function startReadLockOnLeader (endpoint, database, collName, timeout) {
 
   var body = { 'id': id, 'collection': collName, 'ttl': timeout };
   r = request({ url: url + '/_api/replication/holdReadLockCollection',
-    body: JSON.stringify(body),
-  method: 'POST', headers: {'x-arango-async': 'store'} });
+                body: JSON.stringify(body),
+                method: 'POST', headers: {'x-arango-async': true} });
   if (r.status !== 202) {
     console.error('startReadLockOnLeader: Could not start read lock for shard',
       collName, r);
     return false;
   }
-  var rr = r; // keep a copy
 
   var count = 0;
   while (++count < 20) { // wait for some time until read lock established:
     // Now check that we hold the read lock:
     r = request({ url: url + '/_api/replication/holdReadLockCollection',
-      body: JSON.stringify(body),
-    method: 'PUT' });
+                  body: JSON.stringify(body), method: 'PUT' });
     if (r.status === 200) {
-      return id;
+      let ansBody = {};
+      try {
+        ansBody = JSON.parse(r.body);
+      } catch (err) {
+      }
+      if (ansBody.lockHeld) {
+        return id;
+      } else {
+        console.debug('startReadLockOnLeader: Lock not yet acquired...');
+      }
+    } else {
+      console.debug('startReadLockOnLeader: Do not see read lock yet...');
     }
-    console.debug('startReadLockOnLeader: Do not see read lock yet...');
     wait(0.5);
   }
-  var asyncJobId = rr.headers['x-arango-async-id'];
-  r = request({ url: url + '/_api/job/' + asyncJobId, body: '', method: 'PUT'});
-  console.error('startReadLockOnLeader: giving up, async result:', r);
+  console.error('startReadLockOnLeader: giving up');
+  try {
+    r = request({ url: url + '/_api/replication/holdReadLockCollection',
+                  body: JSON.stringify({'id': id}), method: 'DELETE' });
+  } catch (err2) {
+    console.error('startReadLockOnLeader: expection in cancel:',
+                  JSON.stringify(err2));
+  }
+  if (r.status !== 200) {
+    console.error('startReadLockOnLeader: cancelation error for shard',
+                  collName, r);
+  }
   return false;
 }
 
@@ -527,8 +544,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
               'syncCollectionFinalize:', err3);
           }
           finally {
-            if (!cancelReadLockOnLeader(ep, database,
-                lockJobId)) {
+            if (!cancelReadLockOnLeader(ep, database, lockJobId)) {
               console.error('synchronizeOneShard: read lock has timed out',
                 'for shard', shard);
               ok = false;
@@ -539,7 +555,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
             shard);
         }
         if (ok) {
-          console.debug('synchronizeOneShard: synchronization worked for shard',
+          console.info('synchronizeOneShard: synchronization worked for shard',
             shard);
         } else {
           throw 'Did not work for shard ' + shard + '.';
@@ -920,12 +936,14 @@ function updateCurrentForCollections(localErrors, current) {
     return payload;
   }
 
-  function makeDropCurrentEntryCollection(dbname, col, shard, trx) {
-    trx[0][curCollections + dbname + '/' + col + '/' + shard] =
+  function makeDropCurrentEntryCollection(dbname, col, shard) {
+    let trx = {};
+    trx[curCollections + dbname + '/' + col + '/' + shard] =
       {op: 'delete'};
+    return trx;
   }
 
-  let trx = [{}];
+  let trx = {};
 
   // Go through local databases and collections and add stuff to Current
   // as needed:
@@ -946,7 +964,7 @@ function updateCurrentForCollections(localErrors, current) {
 
             let currentCollectionInfo = fetchKey(current, 'Collections', database, shardInfo.planId, shard);
             if (!_.isEqual(localCollectionInfo, currentCollectionInfo)) {
-              trx[0][curCollections + database + '/' + shardInfo.planId + '/' + shardInfo.name] = {
+              trx[curCollections + database + '/' + shardInfo.planId + '/' + shardInfo.name] = {
                 op: 'set',
                 new: localCollectionInfo,
               };
@@ -955,7 +973,7 @@ function updateCurrentForCollections(localErrors, current) {
             let currentServers = fetchKey(current, 'Collections', database, shardInfo.planId, shard, 'servers');
             // we were previously leader and we are done resigning. update current and let supervision handle the rest
             if (Array.isArray(currentServers) && currentServers[0] === ourselves) {
-              trx[0][curCollections + database + '/' + shardInfo.planId + '/' + shardInfo.name + '/servers'] = {
+              trx[curCollections + database + '/' + shardInfo.planId + '/' + shardInfo.name + '/servers'] = {
                 op: 'set',
                 new: ['_' + ourselves].concat(db._collection(shardInfo.name).getFollowers()),
               };
@@ -993,8 +1011,7 @@ function updateCurrentForCollections(localErrors, current) {
                   let cur = currentCollections[database][collection][shard];
                   if (!localCollections.hasOwnProperty(shard) &&
                       cur.servers[0] === ourselves) {
-                    makeDropCurrentEntryCollection(database, collection, shard,
-                                                   trx);
+                    Object.assign(trx, makeDropCurrentEntryCollection(database, collection, shard));
                   }
                 }
               }
@@ -1104,8 +1121,9 @@ function migratePrimary(plan, current) {
   // diff current and local and prepare agency transactions or whatever
   // to update current. Will report the errors created locally to the agency
   let trx = updateCurrentForCollections(localErrors, current);
-  if (trx.length > 0 && Object.keys(trx[0]).length !== 0) {
-    trx[0][curVersion] = {op: 'increment'};
+  if (Object.keys(trx).length > 0) {
+    trx[curVersion] = {op: 'increment'};
+    trx = [trx];
     // TODO: reduce timeout when we can:
     try {
       let res = global.ArangoAgency.write([trx]);
@@ -1272,9 +1290,9 @@ function migrateAnyServer(plan, current) {
   // diff current and local and prepare agency transactions or whatever
   // to update current. will report the errors created locally to the agency
   let trx = updateCurrentForDatabases(localErrors, current.Databases);
-  if (Object.keys(trx).length !== 0) {
+  if (Object.keys(trx).length > 0) {
+    trx[curVersion] = {op: 'increment'};
     trx = [trx];
-    trx[0][curVersion] = {op: 'increment'};
     // TODO: reduce timeout when we can:
     try {
       let res = global.ArangoAgency.write([trx]);

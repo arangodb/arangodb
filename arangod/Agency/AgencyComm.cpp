@@ -23,6 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyComm.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ServerFeature.h"
 
 #include <thread>
 #ifdef DEBUG_SYNC_REPLICATION
@@ -1322,6 +1324,18 @@ AgencyCommResult AgencyComm::sendWithFailover(
     // timeout exit startegy
     if (std::chrono::steady_clock::now() < timeOut) {
       if (tries > 0) {
+        auto serverFeature =
+            application_features::ApplicationServer::getFeature<ServerFeature>(
+            "Server");
+        if (serverFeature->isStopping()) {
+          LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+            << "Unsuccessful AgencyComm: Timeout because of shutdown "
+            << "errorCode: " << result.errorCode()
+            << " errorMessage: " << result.errorMessage()
+            << " errorDetails: " << result.errorDetails();
+          return result;
+        }
+
         std::this_thread::sleep_for(waitUntil-std::chrono::steady_clock::now());
         if (waitInterval.count() == 0.0) {
           waitInterval = std::chrono::duration<double>(0.25);

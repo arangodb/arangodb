@@ -192,6 +192,7 @@ const optionsDefaults = {
   'valgrindArgs': {},
   'valgrindHosts': false,
   'verbose': false,
+  'walFlushTimeout': 30000,
   'writeXmlReport': true
 };
 
@@ -248,7 +249,7 @@ let LOGS_DIR;
 let UNITTESTS_DIR;
 let GDB_OUTPUT="";
 
-function makeResults (testname) {
+function makeResults (testname, instanceInfo) {
   const startTime = time();
 
   return function (status, message) {
@@ -259,7 +260,7 @@ function makeResults (testname) {
       let result;
 
       try {
-        result = JSON.parse(fs.read('testresult.json'));
+        result = JSON.parse(fs.read(instanceInfo.rootDir + '/testresult.json'));
 
         if ((typeof result[0] === 'object') &&
           result[0].hasOwnProperty('status')) {
@@ -312,6 +313,7 @@ function makeArgsArangod (options, appDir, role) {
   return {
     'configuration': 'etc/testing/' + config,
     'define': 'TOP_DIR=' + TOP_DIR,
+    'wal.flush-timeout': options.walFlushTimeout,
     'javascript.app-path': appDir,
     'http.trusted-origin': options.httpTrustedOrigin || 'all'
   };
@@ -691,9 +693,7 @@ function runThere (options, instanceInfo, file) {
         'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');';
     }
 
-    if (options.propagateInstanceInfo) {
-      testCode = 'global.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode;
-    }
+    testCode = 'global.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode;
 
     let httpOptions = makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
@@ -1078,12 +1078,12 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   if (addArgs !== undefined) {
     args = Object.assign(args, addArgs);
   }
-  fs.write('instanceinfo.json', JSON.stringify(instanceInfo));
+  require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   let rc = executeAndWait(ARANGOSH_BIN, toArgv(args), options);
 
   let result;
   try {
-    result = JSON.parse(fs.read('testresult.json'));
+    result = JSON.parse(fs.read(instanceInfo.rootDir + '/testresult.json'));
   } catch (x) {
     return rc;
   }
@@ -1116,6 +1116,7 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds) {
     args = Object.assign(args, addArgs);
   }
 
+  require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   const argv = toArgv(args).concat(cmds);
   return executeAndWait(ARANGOSH_BIN, argv, options);
 }
@@ -3357,9 +3358,9 @@ testFuncs.recovery = function (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 testFuncs.replication_ongoing = function (options) {
-  const mr = makeResults('replication');
-
   let master = startInstance('tcp', options, {}, 'master_ongoing');
+
+  const mr = makeResults('replication', master);
 
   if (master === false) {
     return mr(false, 'failed to start master!');
@@ -3399,11 +3400,11 @@ testFuncs.replication_ongoing = function (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 testFuncs.replication_static = function (options) {
-  const mr = makeResults('replication');
-
   let master = startInstance('tcp', options, {
     'server.authentication': 'true'
   }, 'master_static');
+  
+  const mr = makeResults('replication', master);
 
   if (master === false) {
     return mr(false, 'failed to start master!');
@@ -3455,9 +3456,9 @@ testFuncs.replication_static = function (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 testFuncs.replication_sync = function (options) {
-  const mr = makeResults('replication');
   let master = startInstance('tcp', options, {}, 'master_sync');
 
+  const mr = makeResults('replication', master);
   if (master === false) {
     return mr(false, 'failed to start master!');
   }
