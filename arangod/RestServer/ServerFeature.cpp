@@ -190,6 +190,7 @@ void ServerFeature::beginShutdown() {
   std::string msg =
       ArangoGlobalContext::CONTEXT->binaryName() + " [shutting down]";
   TRI_SetProcessTitle(msg.c_str());
+  _isStopping = true;
 }
 
 void ServerFeature::waitForHeartbeat() {

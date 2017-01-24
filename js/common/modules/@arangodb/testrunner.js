@@ -10,6 +10,10 @@ var runTest = require('jsunity').runTest,
   // //////////////////////////////////////////////////////////////////////////////
 
 function runJSUnityTests (tests) {
+  let instanceinfo = JSON.parse(require('internal').env.INSTANCEINFO);
+  if (!instanceinfo) {
+    throw new Error('env.INSTANCEINFO was not set by caller!');
+  }
   var result = true;
   var allResults = [];
   var failed = [];
@@ -45,7 +49,7 @@ function runJSUnityTests (tests) {
 
     internal.wait(0); // force GC
   });
-  require('fs').write('testresult.json', JSON.stringify(allResults));
+  require('fs').write(instanceinfo.rootDir + '/testresult.json', JSON.stringify(allResults));
 
   if (failed.length > 1) {
     print('The following ' + failed.length + ' test files produced errors: ', failed.join(', '));
