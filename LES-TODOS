@@ -17,11 +17,11 @@ in progress
 -----------
 - Index API
   - Rename OperationCursor->getMoreMptr => getMoreTokens, "returns" std::vector<TOKEN>&
+- move engine-specific parts of transaction.cpp into engine
+- transaction API
 
 to do
 -----
-- move engine-specific parts of transaction.cpp into engine
-- transaction API
 - check for illegal includes
 - fix includes during API conversion
 - DML API
@@ -34,5 +34,5 @@ to do
 
 - Indexes always return std::vector<TOKEN>
 - AqlValue needs a (lazy evaluated) type TOKEN that handles collection ID and TOKEN inplace.
-  - slice() => looksup the value in the Database
+  - slice() => looks up the value in the Database
 
