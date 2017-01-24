@@ -54,7 +54,6 @@ class Builder;
 
 class Index;
 class ManagedDocumentResult;
-class RevisionCacheChunk;
 
 namespace aql {
 class Ast;
@@ -667,9 +666,6 @@ class Transaction {
   /// @brief Clone this transaction. Only works for selected sub-classes
   virtual Transaction* clone() const;
   
-  void addChunk(RevisionCacheChunk* chunk);
-  void clearChunks(size_t threshold);
-
  private:
   
   //////////////////////////////////////////////////////////////////////////////

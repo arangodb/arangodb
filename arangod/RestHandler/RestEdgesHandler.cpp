@@ -91,7 +91,7 @@ bool RestEdgesHandler::getEdgesForVertexList(
   }
 
   std::vector<IndexLookupResult> batch;
-  ManagedDocumentResult mmdr(&trx);
+  ManagedDocumentResult mmdr;
   auto collection = trx.documentCollection();
   while (cursor->hasMore()) {
     cursor->getMoreMptr(batch);
@@ -129,7 +129,7 @@ bool RestEdgesHandler::getEdgesForVertex(
   }
 
   std::vector<IndexLookupResult> batch;
-  ManagedDocumentResult mmdr(&trx);
+  ManagedDocumentResult mmdr;
   auto collection = trx.documentCollection();
   while (cursor->hasMore()) {
     cursor->getMoreMptr(batch);

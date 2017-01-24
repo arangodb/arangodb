@@ -125,7 +125,6 @@ class CollectionKeys {
   bool _isDeleted;
   bool _isUsed;
   std::vector<uint8_t const*> _vpack;
-  std::unordered_set<RevisionCacheChunk*> _chunks;
 };
 }
 

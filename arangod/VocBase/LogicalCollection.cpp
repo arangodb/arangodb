@@ -38,7 +38,6 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/RevisionCacheFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesLogfileManager.h"
@@ -58,7 +57,6 @@
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "VocBase/CollectionRevisionsCache.h"
 #include "VocBase/DatafileStatisticsContainer.h"
 #include "VocBase/IndexThreadFeature.h"
 #include "VocBase/KeyGenerator.h"
@@ -328,7 +326,6 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _cleanupIndexes(0),
       _persistentIndexes(0),
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(this)),
-      _revisionsCache(nullptr),
       _useSecondaryIndexes(true),
       _maxTick(0),
       _keyGenerator(),
@@ -394,7 +391,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _persistentIndexes(0),
       _path(ReadStringValue(info, "path", "")),
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(this)),
-      _revisionsCache(nullptr),
       _useSecondaryIndexes(true),
       _maxTick(0),
       _keyGenerator(),
@@ -662,13 +658,6 @@ bool LogicalCollection::IsAllowedName(VPackSlice parameters) {
   }
 
   return true;
-}
-
-void LogicalCollection::ensureRevisionsCache() {
-  if (!_revisionsCache) {
-    _revisionsCache.reset(
-        new CollectionRevisionsCache(this, RevisionCacheFeature::ALLOCATOR));
-  }
 }
 
 /// @brief checks if a collection name is allowed
@@ -1047,24 +1036,13 @@ int LogicalCollection::close() {
     idx->unload();
   }
 
-  if (_revisionsCache != nullptr) {
-    _revisionsCache->clear();
-  }
-
   return getPhysical()->close();
 }
 
 void LogicalCollection::unload() {
-  if (_revisionsCache != nullptr) {
-    _revisionsCache->closeWriteChunk();
-  }
 }
 
 void LogicalCollection::drop() {
-  if (_revisionsCache != nullptr) {
-    _revisionsCache->clear();
-  }
-  
   // make sure collection has been closed
   this->close();
 
@@ -1316,13 +1294,6 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
     builder->add("time", VPackValue(&lastCompactionStampString[0]));
     builder->close();  // compactionStatus
 
-    if (_revisionsCache) {
-      builder->add("readCache", VPackValue(VPackValueType::Object));
-      builder->add("count", VPackValue(_revisionsCache->size()));
-      builder->add("size", VPackValue(_revisionsCache->memoryUsage()));
-      builder->close();  // readCache
-    }
-
     // add engine-specific figures
     getPhysical()->figures(builder);
     builder->close();
@@ -1333,8 +1304,6 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
 
 /// @brief opens an existing collection
 void LogicalCollection::open(bool ignoreErrors) {
-  ensureRevisionsCache();
-
   VPackBuilder builder;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->getCollectionInfo(_vocbase, cid(), builder, true, 0);
@@ -1372,7 +1341,6 @@ void LogicalCollection::open(bool ignoreErrors) {
       << "iterate-markers { collection: " << _vocbase->name() << "/" << _name
       << " }";
 
-  _revisionsCache->allowInvalidation(false);
   _isInitialIteration = true;
 
   // iterate over all markers of the collection
@@ -1425,8 +1393,6 @@ void LogicalCollection::open(bool ignoreErrors) {
     // build the index structures, and fill the indexes
     fillIndexes(&trx);
   }
-
-  _revisionsCache->allowInvalidation(true);
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
       << "[timer] " << Logger::FIXED(TRI_microtime() - start)
@@ -2032,9 +1998,6 @@ int LogicalCollection::read(Transaction* trx, StringRef const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogicalCollection::truncate(Transaction* trx) {
-  if (_revisionsCache != nullptr) {
-    _revisionsCache->clear();
-  }
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -2318,7 +2281,7 @@ int LogicalCollection::update(Transaction* trx, VPackSlice const newSlice,
     
     if (oldRevisionId == revisionId) {
       // update with same revision id => can happen if isRestore = true
-      result.clear(0);
+      result.clear();
     }
 
     res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, newDoc,
@@ -2481,7 +2444,7 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
     
     if (oldRevisionId == revisionId) {
       // update with same revision id => can happen if isRestore = true
-      result.clear(0);
+      result.clear();
     }
 
     res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, newDoc,
@@ -2499,7 +2462,7 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
   } else {
     if (oldRevisionId == revisionId) {
       // update with same revision id => can happen if isRestore = true
-      result.clear(0);
+      result.clear();
     }
     readRevision(trx, result, revisionId);
 
@@ -2781,8 +2744,6 @@ int LogicalCollection::rollbackOperation(arangodb::Transaction* trx,
     TRI_ASSERT(newRevisionId != 0);
     TRI_ASSERT(!newDoc.isNone());
 
-    removeRevisionCacheEntry(newRevisionId);
-
     // ignore any errors we're getting from this
     deleteMMFilesPrimaryIndex(trx, newRevisionId, newDoc);
     deleteSecondaryIndexes(trx, newRevisionId, newDoc, true);
@@ -2796,9 +2757,6 @@ int LogicalCollection::rollbackOperation(arangodb::Transaction* trx,
     TRI_ASSERT(newRevisionId != 0);
     TRI_ASSERT(!newDoc.isNone());
     
-    removeRevisionCacheEntry(oldRevisionId);
-    removeRevisionCacheEntry(newRevisionId);
-
     // remove the current values from the indexes
     deleteSecondaryIndexes(trx, newRevisionId, newDoc, true);
     // re-insert old state
@@ -2812,8 +2770,6 @@ int LogicalCollection::rollbackOperation(arangodb::Transaction* trx,
     TRI_ASSERT(newRevisionId == 0);
     TRI_ASSERT(newDoc.isNone());
     
-    removeRevisionCacheEntry(oldRevisionId);
-
     int res = insertMMFilesPrimaryIndex(trx, oldRevisionId, oldDoc);
 
     if (res == TRI_ERROR_NO_ERROR) {
@@ -2840,8 +2796,6 @@ void LogicalCollection::sizeHint(Transaction* trx, int64_t hint) {
   if (res != TRI_ERROR_NO_ERROR) {
     return;
   }
-
-  _revisionsCache->sizeHint(hint);
 }
 
 /// @brief initializes an index with all existing documents
@@ -2925,7 +2879,7 @@ int LogicalCollection::fillIndexBatch(arangodb::Transaction* trx,
 
   int res = TRI_ERROR_NO_ERROR;
 
-  ManagedDocumentResult mmdr(trx);
+  ManagedDocumentResult mmdr;
 
   std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> documents;
   documents.reserve(blockSize);
@@ -3003,7 +2957,7 @@ int LogicalCollection::fillIndexSequential(arangodb::Transaction* trx,
 
     arangodb::basics::BucketPosition position;
     uint64_t total = 0;
-    ManagedDocumentResult result(trx);
+    ManagedDocumentResult result;
 
     while (true) {
       MMFilesSimpleIndexElement element =
@@ -3368,11 +3322,8 @@ int LogicalCollection::updateDocument(
       removeRevision(oldRevisionId, true);
     } catch (...) {
     }
-  } else {
-    // clear readcache entry for the revision
-    removeRevisionCacheEntry(oldRevisionId);
   }
-
+  
   TRI_IF_FAILURE("UpdateDocumentNoOperation") { return TRI_ERROR_DEBUG; }
 
   TRI_IF_FAILURE("UpdateDocumentNoOperationExcept") {
@@ -3793,9 +3744,12 @@ void LogicalCollection::newObjectForRemove(Transaction* trx,
 bool LogicalCollection::readRevision(Transaction* trx,
                                      ManagedDocumentResult& result,
                                      TRI_voc_rid_t revisionId) {
-  TRI_ASSERT(_revisionsCache != nullptr);
-  return _revisionsCache->lookupRevision(trx, result, revisionId,
-                                         !_isInitialIteration);
+  uint8_t const* vpack = getPhysical()->lookupRevisionVPack(revisionId);
+  if (vpack != nullptr) {
+    result.addExisting(vpack, revisionId);
+    return true;
+  } 
+  return false;
 }
 
 bool LogicalCollection::readRevisionConditional(Transaction* trx,
@@ -3803,9 +3757,13 @@ bool LogicalCollection::readRevisionConditional(Transaction* trx,
                                                 TRI_voc_rid_t revisionId,
                                                 TRI_voc_tick_t maxTick,
                                                 bool excludeWal) {
-  TRI_ASSERT(_revisionsCache != nullptr);
-  return _revisionsCache->lookupRevisionConditional(trx, result, revisionId,
-                                                    maxTick, excludeWal, true);
+  TRI_ASSERT(revisionId != 0);
+  uint8_t const* vpack  = getPhysical()->lookupRevisionVPackConditional(revisionId, maxTick, excludeWal);
+  if (vpack != nullptr) {
+    result.addExisting(vpack, revisionId);
+    return true;
+  } 
+  return false;
 }
 
 void LogicalCollection::insertRevision(TRI_voc_rid_t revisionId,
@@ -3833,17 +3791,8 @@ bool LogicalCollection::updateRevisionConditional(
 
 void LogicalCollection::removeRevision(TRI_voc_rid_t revisionId,
                                        bool updateStats) {
-  // clean up cache entry
-  removeRevisionCacheEntry(revisionId);
-
   // and remove from storage engine
   getPhysical()->removeRevision(revisionId, updateStats);
-}
-
-void LogicalCollection::removeRevisionCacheEntry(TRI_voc_rid_t revisionId) {
-  // clean up cache entry
-  TRI_ASSERT(_revisionsCache);
-  _revisionsCache->removeRevision(revisionId); 
 }
 
 /// @brief a method to skip certain documents in AQL write operations,

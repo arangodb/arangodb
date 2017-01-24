@@ -44,7 +44,6 @@ typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
-class CollectionRevisionsCache;
 struct DatafileStatisticsContainer;
 class Ditches;
 class FollowerInfo;
@@ -101,8 +100,6 @@ class LogicalCollection {
   static bool IsAllowedName(arangodb::velocypack::Slice parameters);
   static bool IsAllowedName(bool isSystem, std::string const& name);
 
-  void ensureRevisionsCache();
-  
   void isInitialIteration(bool value) { _isInitialIteration = value; }
 
   // TODO: MOVE TO PHYSICAL?  
@@ -392,7 +389,6 @@ class LogicalCollection {
   void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
   bool updateRevisionConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal);
   void removeRevision(TRI_voc_rid_t revisionId, bool updateStats);
-  void removeRevisionCacheEntry(TRI_voc_rid_t revisionId);
 
  private:
   // SECTION: Index creation
@@ -563,7 +559,6 @@ class LogicalCollection {
   std::string _path;
 
   std::unique_ptr<PhysicalCollection> _physical;
-  std::unique_ptr<CollectionRevisionsCache> _revisionsCache;
 
   // whether or not secondary indexes should be filled
   bool _useSecondaryIndexes;

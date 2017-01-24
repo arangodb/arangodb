@@ -38,7 +38,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     ExecutionEngine* engine, EnumerateCollectionNode const* ep)
     : ExecutionBlock(engine, ep),
       _collection(ep->_collection),
-      _mmdr(new ManagedDocumentResult(transaction())),
+      _mmdr(new ManagedDocumentResult),
       _scanner(_trx, _mmdr.get(), _collection->getName(), ep->_random),
       _position(0),
       _mustStoreResult(true) {

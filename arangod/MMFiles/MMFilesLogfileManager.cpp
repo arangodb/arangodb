@@ -114,7 +114,6 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("FeatureCache");
-  startsAfter("RevisionCache");
 
   for (auto const& it : EngineSelectorFeature::availableEngines()) {
     startsAfter(it.second);

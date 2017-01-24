@@ -25,105 +25,34 @@
 #define ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/RevisionCacheChunk.h"
-#include "Logger/Logger.h"
 
 namespace arangodb {
-class Transaction;
-
-struct ChunkCache {
-  static constexpr size_t STATIC_ARRAY_SIZE = 4;
-  size_t _chunksUsed;
-  RevisionCacheChunk* _chunksArray[STATIC_ARRAY_SIZE];
-  std::unordered_set<RevisionCacheChunk*> _chunksHash;
-
-  ChunkCache() : _chunksUsed(0), _chunksArray() {}
-
-  void clear() {
-    if (_chunksUsed > STATIC_ARRAY_SIZE) {
-      _chunksHash.clear();
-    }
-    _chunksUsed = 0;
-  }
-
-  void add(RevisionCacheChunk* chunk) {
-    if (_chunksUsed <= STATIC_ARRAY_SIZE) {
-      if (_chunksUsed == STATIC_ARRAY_SIZE) {
-        // transition static array to an unordered_map
-        for (size_t i = 0; i < STATIC_ARRAY_SIZE; ++i) {
-          _chunksHash.emplace(_chunksArray[i]);
-        }
-        _chunksHash.emplace(chunk);
-      } else {
-        if (_chunksUsed > 0) {
-          TRI_ASSERT(_chunksUsed < STATIC_ARRAY_SIZE);
-          // move elements in array
-          for (size_t i = _chunksUsed; i > 0; --i) {
-            _chunksArray[i] = _chunksArray[i - 1];
-          }
-        }
-
-        // finally insert chunk at head of static array
-        _chunksArray[0] = chunk;
-      }
-    } else {
-      // insert chunk into map
-      _chunksHash.emplace(chunk);
-    }
-    
-    ++_chunksUsed;
-  }
-
-  bool contains(RevisionCacheChunk* chunk) const {
-    if (_chunksUsed > STATIC_ARRAY_SIZE) {
-      // lookup chunk in map
-      return _chunksHash.find(chunk) != _chunksHash.end();
-    }
-
-    // look up chunk in static array
-    for (size_t i = 0; i < _chunksUsed; ++i) {
-      if (_chunksArray[i] == chunk) {
-        return true;
-      }
-    }
-    return false;
-  }
-};
 
 class ManagedDocumentResult {
  public:
-  ManagedDocumentResult() = delete;
-  ManagedDocumentResult(ManagedDocumentResult const& other) = delete;
-  ManagedDocumentResult(ManagedDocumentResult&& other) = delete;
-  ManagedDocumentResult& operator=(ManagedDocumentResult const& other);
-  ManagedDocumentResult& operator=(ManagedDocumentResult&& other) = delete;
-
-  explicit ManagedDocumentResult(Transaction*);
-  ~ManagedDocumentResult();
+  ManagedDocumentResult() : _vpack(nullptr), _lastRevisionId(0) {}
+  ~ManagedDocumentResult() = default;
 
   inline uint8_t const* vpack() const { 
     TRI_ASSERT(_vpack != nullptr); 
     return _vpack; 
   }
   
-  void add(ChunkProtector& protector, TRI_voc_rid_t revisionId);
-  void addExisting(ChunkProtector& protector, TRI_voc_rid_t revisionId);
-
-  bool hasSeenChunk(RevisionCacheChunk* chunk) const { return _chunkCache.contains(chunk); }
-  inline TRI_voc_rid_t lastRevisionId() const { return _lastRevisionId; }
-
-  inline void setCache(TRI_voc_rid_t revisionId, uint8_t const* vpack) {
-    _lastRevisionId = revisionId;
+  inline void addExisting(uint8_t const* vpack, TRI_voc_rid_t revisionId) {
     _vpack = vpack;
+    _lastRevisionId = revisionId;
   }
 
-  void clear(size_t threshold);
+  inline TRI_voc_rid_t lastRevisionId() const { return _lastRevisionId; }
+
+  void clear() {
+    _vpack = nullptr;
+    _lastRevisionId = 0;
+  }
 
  private:
-  Transaction* _trx;
   uint8_t const* _vpack;
   TRI_voc_rid_t _lastRevisionId;
-  ChunkCache _chunkCache;
 };
 
 }

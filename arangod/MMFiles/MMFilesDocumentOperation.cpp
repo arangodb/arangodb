@@ -113,14 +113,6 @@ void MMFilesDocumentOperation::revert(arangodb::Transaction* trx) {
     newDoc = VPackSlice(_newRevision._vpack);
   }
 
-  // clear caches so the following operations all use
-  if (oldRevisionId != 0) {
-    _collection->removeRevisionCacheEntry(oldRevisionId);
-  }
-  if (newRevisionId != 0) {
-    _collection->removeRevisionCacheEntry(newRevisionId);
-  }
-
   if (_type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     TRI_ASSERT(_oldRevision.empty());
     TRI_ASSERT(!_newRevision.empty());

@@ -31,7 +31,6 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/RevisionCacheChunk.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -55,10 +54,6 @@ CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
 CollectionExport::~CollectionExport() {
   if (_ditch != nullptr) {
     _ditch->ditches()->freeDocumentDitch(_ditch, false);
-  }
-
-  for (auto& chunk : _chunks) {
-    chunk->release();
   }
 }
 
@@ -112,7 +107,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
 
     _vpack.reserve(limit);
 
-    ManagedDocumentResult mmdr(&trx);
+    ManagedDocumentResult mmdr;
     trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr](MMFilesSimpleIndexElement const& element) {
       if (limit == 0) {
         return false;
@@ -123,8 +118,6 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       }
       return true;
     });
-
-    trx.transactionContext()->stealChunks(_chunks);
 
     trx.finish(res);
   }

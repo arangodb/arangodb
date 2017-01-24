@@ -689,7 +689,7 @@ int MMFilesHashIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
     size /= 5;
   }
  
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, numPaths());
 
   if (_unique) {
@@ -707,7 +707,7 @@ int MMFilesHashIndex::lookup(arangodb::Transaction* trx,
     return TRI_ERROR_NO_ERROR;
   }
 
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
 
   if (_unique) {
@@ -745,7 +745,7 @@ int MMFilesHashIndex::insertUnique(arangodb::Transaction* trx, TRI_voc_rid_t rev
     return res;
   }
       
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
 
   auto work =
@@ -797,7 +797,7 @@ int MMFilesHashIndex::batchInsertUnique(arangodb::Transaction* trx,
   
   // functions that will be called for each thread
   auto creator = [&trx, this]() -> void* {
-    ManagedDocumentResult* result = new ManagedDocumentResult(trx);
+    ManagedDocumentResult* result = new ManagedDocumentResult;
     return new IndexLookupContext(trx, _collection, result, numPaths());
   };
   auto destroyer = [](void* userData) {
@@ -830,7 +830,7 @@ int MMFilesHashIndex::insertMulti(arangodb::Transaction* trx, TRI_voc_rid_t revi
     return res;
   }
   
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
 
   auto work = [this, &context](MMFilesHashIndexElement*& element, bool) {
@@ -904,7 +904,7 @@ int MMFilesHashIndex::batchInsertMulti(arangodb::Transaction* trx,
   
   // functions that will be called for each thread
   auto creator = [&trx, this]() -> void* {
-    ManagedDocumentResult* result = new ManagedDocumentResult(trx);
+    ManagedDocumentResult* result = new ManagedDocumentResult;
     return new IndexLookupContext(trx, _collection, result, numPaths());
   };
   auto destroyer = [](void* userData) {
@@ -920,7 +920,7 @@ int MMFilesHashIndex::removeUniqueElement(arangodb::Transaction* trx,
                                    MMFilesHashIndexElement* element,
                                    bool isRollback) {
   TRI_IF_FAILURE("RemoveHashIndex") { return TRI_ERROR_DEBUG; }
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
   MMFilesHashIndexElement* old = _uniqueArray->_hashArray->remove(&context, element);
 
@@ -940,7 +940,7 @@ int MMFilesHashIndex::removeMultiElement(arangodb::Transaction* trx,
                                   MMFilesHashIndexElement* element,
                                   bool isRollback) {
   TRI_IF_FAILURE("RemoveHashIndex") { return TRI_ERROR_DEBUG; }
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
   MMFilesHashIndexElement* old = _multiArray->_hashArray->remove(&context, element);
 

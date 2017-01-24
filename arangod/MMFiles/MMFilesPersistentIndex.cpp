@@ -257,7 +257,7 @@ int PersistentIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
     return res;
   }
   
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
   VPackSlice const key = Transaction::extractKeyFromDocument(doc);
   std::string const prefix =
@@ -413,7 +413,7 @@ int PersistentIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
     return res;
   }
   
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
   VPackSlice const key = Transaction::extractKeyFromDocument(doc);
   

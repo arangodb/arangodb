@@ -35,7 +35,7 @@ IndexIterator::IndexIterator(LogicalCollection* collection,
                              arangodb::Index const* index)
       : _collection(collection), 
         _trx(trx), 
-        _mmdr(mmdr ? mmdr : new ManagedDocumentResult(trx)), 
+        _mmdr(mmdr ? mmdr : new ManagedDocumentResult), 
         _context(trx, collection, _mmdr, index->fields().size()),
         _responsible(mmdr == nullptr) {
   TRI_ASSERT(_collection != nullptr);

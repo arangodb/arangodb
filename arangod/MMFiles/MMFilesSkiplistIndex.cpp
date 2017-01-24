@@ -767,7 +767,7 @@ int MMFilesSkiplistIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revis
     return res;
   }
   
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
 
   // insert into the index. the memory for the element will be owned or freed
@@ -818,7 +818,7 @@ int MMFilesSkiplistIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revis
     return res;
   }
   
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
 
   // attempt the removal for skiplist indexes

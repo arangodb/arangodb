@@ -146,7 +146,7 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
   size_t cursorId = 0;
   size_t read = 0;
   size_t filtered = 0;
-  ManagedDocumentResult mmdr(_trx);
+  ManagedDocumentResult mmdr;
   std::vector<VPackSlice> result;
   builder.openObject();
   builder.add(VPackValue("edges"));

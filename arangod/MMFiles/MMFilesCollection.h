@@ -71,7 +71,7 @@ class MMFilesCollection final : public PhysicalCollection {
           _stats(),
           _dfi(nullptr),
           _trx(trx),
-          _mmdr(trx),
+          _mmdr(),
           _context(trx, collection, &_mmdr, 1),
           _deletions(0),
           _documents(0),

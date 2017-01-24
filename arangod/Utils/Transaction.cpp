@@ -1279,7 +1279,7 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
   
-  ManagedDocumentResult mmdr(this);
+  ManagedDocumentResult mmdr;
 
   std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, Transaction::CursorType::ANY, IndexHandle(), 
@@ -1471,7 +1471,7 @@ int Transaction::documentFastPath(std::string const& collectionName,
 
   std::unique_ptr<ManagedDocumentResult> tmp;
   if (mmdr == nullptr) {
-    tmp.reset(new ManagedDocumentResult(this));
+    tmp.reset(new ManagedDocumentResult);
     mmdr = tmp.get();
   }
   
@@ -1707,7 +1707,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     
     TIMER_STOP(TRANSACTION_DOCUMENT_EXTRACT);
 
-    ManagedDocumentResult result(this);
+    ManagedDocumentResult result;
     TIMER_START(TRANSACTION_DOCUMENT_DOCUMENT_DOCUMENT);
     int res = collection->read(this, key, result,
                                !isLocked(collection, TRI_TRANSACTION_READ));
@@ -1859,7 +1859,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
       return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
     }
 
-    ManagedDocumentResult result(this);
+    ManagedDocumentResult result;
     TRI_voc_tick_t resultMarkerTick = 0;
 
     TIMER_START(TRANSACTION_INSERT_DOCUMENT_INSERT);
@@ -2179,9 +2179,9 @@ OperationResult Transaction::modifyLocal(
       return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
     }
     
-    ManagedDocumentResult result(this);
+    ManagedDocumentResult result;
     TRI_voc_rid_t actualRevision = 0;
-    ManagedDocumentResult previous(this);
+    ManagedDocumentResult previous;
     TRI_voc_tick_t resultMarkerTick = 0;
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
@@ -2426,7 +2426,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
 
   auto workOnOneDocument = [&](VPackSlice value, bool isBabies) -> int {
     TRI_voc_rid_t actualRevision = 0;
-    ManagedDocumentResult previous(this);
+    ManagedDocumentResult previous;
     TransactionBuilderLeaser builder(this);
     StringRef key;
     if (value.isString()) {
@@ -2636,7 +2636,7 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
   
-  ManagedDocumentResult mmdr(this);
+  ManagedDocumentResult mmdr;
 
   std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, Transaction::CursorType::ALL, IndexHandle(),
@@ -2732,7 +2732,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
   options.ignoreRevs = true;
  
   TRI_voc_tick_t resultMarkerTick = 0;
-  ManagedDocumentResult mmdr(this);
+  ManagedDocumentResult mmdr;
 
   auto callback = [&](MMFilesSimpleIndexElement const& element) {
     TRI_voc_rid_t revisionId = element.revisionId();
@@ -3336,15 +3336,6 @@ int Transaction::unlock(TRI_transaction_collection_t* trxCollection,
   return TRI_UnlockCollectionTransaction(trxCollection, type, _nestingLevel);
 }
   
-void Transaction::addChunk(RevisionCacheChunk* chunk) {
-  TRI_ASSERT(chunk != nullptr);
-  _transactionContext->addChunk(chunk);
-}
-
-void Transaction::clearChunks(size_t threshold) {
-  _transactionContext->clearChunks(threshold);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get list of indexes for a collection
 ////////////////////////////////////////////////////////////////////////////////

@@ -257,7 +257,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::vector<IndexLookupResult> batch;
   opCursor->getMoreMptr(batch);
   // We only need this one call, limit == batchsize
-  ManagedDocumentResult mmdr(&trx);
+  ManagedDocumentResult mmdr;
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
   for (auto const& it : batch) {
@@ -390,7 +390,7 @@ static void JS_ChecksumCollection(
   std::string const revisionId = TRI_RidToString(physical->revision());
   uint64_t hash = 0;
         
-  ManagedDocumentResult mmdr(&trx);
+  ManagedDocumentResult mmdr;
   trx.invokeOnAllElements(col->name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](MMFilesSimpleIndexElement const& element) {
     collection->readRevision(&trx, mmdr, element.revisionId());
     VPackSlice const slice(mmdr.vpack());

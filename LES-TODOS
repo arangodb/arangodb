@@ -19,7 +19,6 @@ in progress
 
 to do
 -----
-- create AqlValue type for document ids
 - move engine-specific parts of transaction.cpp into engine
 - transaction API
 - check for illegal includes

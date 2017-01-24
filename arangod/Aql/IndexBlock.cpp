@@ -52,7 +52,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _condition(en->_condition->root()),
       _hasV8Expression(false) {
     
-  _mmdr.reset(new ManagedDocumentResult(transaction()));
+  _mmdr.reset(new ManagedDocumentResult);
  
   if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a 

@@ -32,7 +32,6 @@
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/RevisionCacheChunk.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "MMFiles/MMFilesLogfileManager.h"
@@ -76,10 +75,6 @@ CollectionKeys::~CollectionKeys() {
   if (_ditch != nullptr) {
     _ditch->ditches()->freeDocumentDitch(_ditch, false);
   }
-  
-  for (auto& chunk : _chunks) {
-    chunk->release();
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,7 +110,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    ManagedDocumentResult mmdr(&trx);
+    ManagedDocumentResult mmdr;
     trx.invokeOnAllElements(
         _collection->name(), [this, &trx, &maxTick, &mmdr](MMFilesSimpleIndexElement const& element) {
           if (_collection->readRevisionConditional(&trx, mmdr, element.revisionId(), maxTick, true)) {
@@ -123,8 +118,6 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
           }
           return true;
         });
-
-    trx.transactionContext()->stealChunks(_chunks);
 
     trx.finish(res);
   }

@@ -778,7 +778,7 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
             });
 
   try {
-    ManagedDocumentResult mmdr(trx);
+    ManagedDocumentResult mmdr;
     TransactionBuilderLeaser builder(trx);
     builder->openArray();
     if (!attributeName.empty()) {
@@ -4027,7 +4027,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
   try {
     builder->openArray();
 
-    ManagedDocumentResult mmdr(trx);
+    ManagedDocumentResult mmdr;
     size_t const numResults = queryResult->_numDocuments;
     for (size_t i = 0; i < numResults; ++i) {
       TRI_voc_rid_t revisionId = MMFilesFulltextIndex::toRevision(queryResult->_documents[i]);

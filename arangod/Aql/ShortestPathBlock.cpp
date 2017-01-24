@@ -356,7 +356,7 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
       _usedConstant(false) {
 
   ep->fillOptions(_opts);
-  _mmdr.reset(new ManagedDocumentResult(_trx));
+  _mmdr.reset(new ManagedDocumentResult);
 
   size_t count = ep->_edgeColls.size();
   TRI_ASSERT(ep->_directions.size());

@@ -69,7 +69,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
   }
 
   _opts = ep->options();
-  _mmdr.reset(new ManagedDocumentResult(_trx));
+  _mmdr.reset(new ManagedDocumentResult);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE

@@ -277,7 +277,6 @@ SET(ARANGOD_SOURCES
   RestServer/InitDatabaseFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/QueryRegistryFeature.cpp
-  RestServer/RevisionCacheFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
@@ -335,7 +334,6 @@ SET(ARANGOD_SOURCES
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
   VocBase/AuthInfo.cpp
-  VocBase/CollectionRevisionsCache.cpp
   VocBase/DatafileStatisticsContainer.cpp
   VocBase/Ditch.cpp
   VocBase/EdgeCollectionInfo.cpp
@@ -343,11 +341,7 @@ SET(ARANGOD_SOURCES
   VocBase/IndexThreadFeature.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
-  VocBase/ManagedDocumentResult.cpp
   VocBase/PathEnumerator.cpp
-  VocBase/ReadCache.cpp
-  VocBase/RevisionCacheChunk.cpp
-  VocBase/RevisionCacheChunkAllocator.cpp
   VocBase/SingleServerTraverser.cpp
   VocBase/TransactionManager.cpp
   VocBase/Traverser.cpp

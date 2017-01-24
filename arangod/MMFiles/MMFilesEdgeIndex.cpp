@@ -478,7 +478,7 @@ int MMFilesEdgeIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionI
   MMFilesSimpleIndexElement fromElement(buildFromElement(revisionId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(revisionId, doc));
     
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, 1); 
   _edgesFrom->insert(&context, fromElement, true, isRollback);
 
@@ -498,7 +498,7 @@ int MMFilesEdgeIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionI
   MMFilesSimpleIndexElement fromElement(buildFromElement(revisionId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(revisionId, doc));
   
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, 1); 
  
   try { 
@@ -525,7 +525,7 @@ int MMFilesEdgeIndex::batchInsert(arangodb::Transaction* trx,
 
   // functions that will be called for each thread
   auto creator = [&trx, this]() -> void* {
-    ManagedDocumentResult* result = new ManagedDocumentResult(trx);
+    ManagedDocumentResult* result = new ManagedDocumentResult;
     return new IndexLookupContext(trx, _collection, result, 1);
   };
   auto destroyer = [](void* userData) {
@@ -578,7 +578,7 @@ int MMFilesEdgeIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
 
   // set an initial size for the index for some new nodes to be created
   // without resizing
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, 1); 
   int err = _edgesFrom->resize(&context, size + 2049);
 

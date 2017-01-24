@@ -1057,12 +1057,6 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 
   TRI_DEFER(col->ditches()->freeDitch(ditch));
 
-  std::unordered_set<RevisionCacheChunk*> chunks;
-  auto cleanupChunks = [&chunks]() {
-    for (auto& chunk : chunks) { chunk->release(); }
-  };
-  TRI_DEFER(cleanupChunks());
-
   {
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_READ);
   
@@ -1080,7 +1074,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     markers.reserve(idx->size());
 
     uint64_t iterations = 0;
-    ManagedDocumentResult mmdr(&trx);
+    ManagedDocumentResult mmdr;
     trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations, &idx](MMFilesSimpleIndexElement const& element) {
       if (idx->collection()->readRevision(&trx, mmdr, element.revisionId())) {
         markers.emplace_back(mmdr.vpack());
@@ -1093,8 +1087,6 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       }
       return true;
     });
-
-    trx.transactionContext()->stealChunks(chunks);
 
     if (checkAborted()) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;

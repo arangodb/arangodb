@@ -256,7 +256,7 @@ int MMFilesPrimaryIndex::unload() {
 /// @brief looks up an element given a key
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(arangodb::Transaction* trx,
                                            VPackSlice const& key) const {
-  ManagedDocumentResult mmdr(trx); 
+  ManagedDocumentResult mmdr; 
   IndexLookupContext context(trx, _collection, &mmdr, 1); 
   TRI_ASSERT(key.isString());
   return _primaryIndex->findByKey(&context, key.begin());
@@ -274,7 +274,7 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(arangodb::Transaction* 
 /// @brief looks up an element given a key
 MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(arangodb::Transaction* trx,
                                                VPackSlice const& key) const {
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, 1); 
   TRI_ASSERT(key.isString());
   MMFilesSimpleIndexElement* element = _primaryIndex->findByKeyRef(&context, key.begin());
@@ -305,7 +305,7 @@ MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(arangodb::Transacti
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequential(
     arangodb::Transaction* trx, arangodb::basics::BucketPosition& position,
     uint64_t& total) {
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, 1); 
   return _primaryIndex->findSequential(&context, position, total);
 }
@@ -333,7 +333,7 @@ IndexIterator* MMFilesPrimaryIndex::anyIterator(arangodb::Transaction* trx,
 ///        DEPRECATED
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequentialReverse(
     arangodb::Transaction* trx, arangodb::basics::BucketPosition& position) {
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, 1); 
   return _primaryIndex->findSequentialReverse(&context, position);
 }
@@ -341,7 +341,7 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequentialReverse(
 /// @brief adds a key/element to the index
 /// returns a status code, and *found will contain a found element (if any)
 int MMFilesPrimaryIndex::insertKey(arangodb::Transaction* trx, TRI_voc_rid_t revisionId, VPackSlice const& doc) {
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, 1); 
   MMFilesSimpleIndexElement element(buildKeyElement(revisionId, doc));
  
@@ -358,7 +358,7 @@ int MMFilesPrimaryIndex::insertKey(arangodb::Transaction* trx, TRI_voc_rid_t rev
 /// @brief removes an key/element from the index
 int MMFilesPrimaryIndex::removeKey(arangodb::Transaction* trx,
                             TRI_voc_rid_t revisionId, VPackSlice const& doc) {
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, 1); 
   
   VPackSlice keySlice(Transaction::extractKeyFromDocument(doc));
@@ -387,7 +387,7 @@ int MMFilesPrimaryIndex::removeKey(arangodb::Transaction* trx,
 
 /// @brief resizes the index
 int MMFilesPrimaryIndex::resize(arangodb::Transaction* trx, size_t targetSize) {
-  ManagedDocumentResult result(trx); 
+  ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, 1); 
   return _primaryIndex->resize(&context, targetSize);
 }

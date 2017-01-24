@@ -238,7 +238,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("MMFilesLogfileManager");
   startsAfter("InitDatabase");
   startsAfter("IndexThread");
-  startsAfter("RevisionCache");
 }
 
 DatabaseFeature::~DatabaseFeature() {
