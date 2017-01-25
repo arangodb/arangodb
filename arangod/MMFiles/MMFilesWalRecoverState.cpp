@@ -266,7 +266,7 @@ int MMFilesWalRecoverState::executeSingleOperation(
   res = TRI_ERROR_INTERNAL;
 
   try {
-    SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(vocbase), collectionId, TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(vocbase), collectionId, AccessMode::Type::WRITE);
 
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
     trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, false);
@@ -709,7 +709,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* d
         } else {
           arangodb::SingleCollectionTransaction trx(
               arangodb::StandaloneTransactionContext::Create(vocbase),
-              collectionId, TRI_TRANSACTION_WRITE);
+              collectionId, AccessMode::Type::WRITE);
           std::shared_ptr<arangodb::Index> unused;
           int res = col->restoreIndex(&trx, payloadSlice, unused);
 
@@ -1129,7 +1129,7 @@ int MMFilesWalRecoverState::fillIndexes() {
 
     arangodb::SingleCollectionTransaction trx(
         arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
-        collection->cid(), TRI_TRANSACTION_WRITE);
+        collection->cid(), AccessMode::Type::WRITE);
 
     int res = collection->fillIndexes(&trx);
 

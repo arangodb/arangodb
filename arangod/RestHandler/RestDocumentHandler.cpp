@@ -123,7 +123,7 @@ bool RestDocumentHandler::createDocument() {
   // find and load collection given by name or identifier
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_WRITE);
+                                  AccessMode::Type::WRITE);
   bool const isMultiple = body.isArray();
   if (!isMultiple) {
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
@@ -234,7 +234,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   // find and load collection given by name or identifier
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collection,
-                                  TRI_TRANSACTION_READ);
+                                  AccessMode::Type::READ);
   trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   // ...........................................................................
@@ -423,7 +423,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   // find and load collection given by name or identifier
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_WRITE);
+                                  AccessMode::Type::WRITE);
   if (!isArrayCase) {
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
   }
@@ -550,7 +550,7 @@ bool RestDocumentHandler::deleteDocument() {
   }
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_WRITE);
+                                  AccessMode::Type::WRITE);
   if (suffixes.size() == 2 || !search.isArray()) {
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
   }
@@ -604,7 +604,7 @@ bool RestDocumentHandler::readManyDocuments() {
 
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_READ);
+                                  AccessMode::Type::READ);
 
   // ...........................................................................
   // inside read transaction

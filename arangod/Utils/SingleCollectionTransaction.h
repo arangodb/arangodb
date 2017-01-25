@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Utils/Transaction.h"
-#include "VocBase/transaction.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -41,14 +41,14 @@ class SingleCollectionTransaction : public Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   SingleCollectionTransaction(std::shared_ptr<TransactionContext>,
-                              TRI_voc_cid_t, TRI_transaction_type_e);
+                              TRI_voc_cid_t, AccessMode::Type);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction, using a collection name
   //////////////////////////////////////////////////////////////////////////////
 
   SingleCollectionTransaction(std::shared_ptr<TransactionContext>,
-                              std::string const&, TRI_transaction_type_e);
+                              std::string const&, AccessMode::Type);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief end the transaction
@@ -142,7 +142,7 @@ class SingleCollectionTransaction : public Transaction {
   /// @brief collection access type
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_transaction_type_e _accessType;
+  AccessMode::Type _accessType;
 };
 }
 

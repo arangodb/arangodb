@@ -773,7 +773,7 @@ int InitialSyncer::handleCollectionDump(
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
+      SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
       
       res = trx.begin();
 
@@ -977,7 +977,7 @@ int InitialSyncer::handleCollectionSync(
 
   if (count.getNumber<size_t>() <= 0) {
     // remote collection has no documents. now truncate our local collection
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
 
     int res = trx.begin();
 
@@ -1037,7 +1037,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
   // acquire a replication ditch so no datafiles are thrown away from now on
   // note: the ditch also protects against unloading the collection
   {    
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_READ);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
   
     int res = trx.begin();
   
@@ -1058,7 +1058,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
   TRI_DEFER(col->ditches()->freeDitch(ditch));
 
   {
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_READ);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
   
     int res = trx.begin();
   
@@ -1198,7 +1198,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
   // remove all keys that are below first remote key or beyond last remote key
   if (n > 0) {
     // first chunk
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
   
     int res = trx.begin();
   
@@ -1269,7 +1269,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
     
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
   
     int res = trx.begin();
   
@@ -1645,7 +1645,7 @@ int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,
 ////////////////////////////////////////////////////////////////////////////////
 
 int64_t InitialSyncer::getSize(arangodb::LogicalCollection* col) {
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_READ);
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
 
   int res = trx.begin();
 
@@ -1733,7 +1733,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
           // system collection
           setProgress("truncating " + collectionMsg);
 
-          SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
+          SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
 
           int res = trx.begin();
 
@@ -1848,7 +1848,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
           setProgress(progress);
 
           try {
-            SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
+            SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
       
             res = trx.begin();
 

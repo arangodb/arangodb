@@ -25,7 +25,7 @@
 #define ARANGOD_AQL_COLLECTIONS_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/transaction.h"
+#include "VocBase/AccessMode.h"
 
 struct TRI_vocbase_t;
 
@@ -44,7 +44,7 @@ class Collections {
  public:
   Collection* get(std::string const&) const;
 
-  Collection* add(std::string const&, TRI_transaction_type_e);
+  Collection* add(std::string const&, AccessMode::Type);
 
   std::vector<std::string> collectionNames() const;
 

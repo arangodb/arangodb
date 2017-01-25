@@ -556,7 +556,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
       return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
     }
 
-    trx->addCollectionAtRuntime(cid, "", TRI_TRANSACTION_WRITE); 
+    trx->addCollectionAtRuntime(cid, "", AccessMode::Type::WRITE); 
     int res = applyCollectionDumpMarker(*trx, trx->name(cid), type, old, doc, errorMsg);
 
     if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
@@ -571,7 +571,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
     // standalone operation
     // update the apply tick for all standalone operations
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                            cid, TRI_TRANSACTION_WRITE);
+                                            cid, AccessMode::Type::WRITE);
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
     int res = trx.begin();

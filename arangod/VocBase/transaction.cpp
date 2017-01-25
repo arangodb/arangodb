@@ -54,13 +54,13 @@
 
 using namespace arangodb;
 
-static bool IsWrite(TRI_transaction_type_e type) {
-  return (type == TRI_TRANSACTION_WRITE || type == TRI_TRANSACTION_EXCLUSIVE);
+static bool IsWrite(AccessMode::Type type) {
+  return (type == AccessMode::Type::WRITE || type == AccessMode::Type::EXCLUSIVE);
 }
   
 /// @brief returns whether the collection is currently locked
 static inline bool IsLocked(TRI_transaction_collection_t const* trxCollection) {
-  return (trxCollection->_lockType != TRI_TRANSACTION_NONE);
+  return (trxCollection->_lockType != AccessMode::Type::NONE);
 }
 
 /// @brief return the logfile manager
@@ -70,7 +70,7 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
 
 /// @brief whether or not a transaction is read-only
 static inline bool IsReadOnlyTransaction(TRI_transaction_t const* trx) {
-  return (trx->_type == TRI_TRANSACTION_READ);
+  return (trx->_type == AccessMode::Type::READ);
 }
 
 /// @brief whether or not a specific hint is set for the transaction
@@ -226,7 +226,7 @@ static TRI_transaction_collection_t* FindCollection(
 
 /// @brief lock a collection
 static int LockCollection(TRI_transaction_collection_t* trxCollection,
-                          TRI_transaction_type_e type, int nestingLevel) {
+                          AccessMode::Type type, int nestingLevel) {
   TRI_ASSERT(trxCollection != nullptr);
 
   TRI_transaction_t* trx = trxCollection->_transaction;
@@ -280,7 +280,7 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
 
 /// @brief unlock a collection
 static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
-                            TRI_transaction_type_e type, int nestingLevel) {
+                            AccessMode::Type type, int nestingLevel) {
   TRI_ASSERT(trxCollection != nullptr);
 
   if (HasHint(trxCollection->_transaction, TRI_TRANSACTION_HINT_LOCK_NEVER)) {
@@ -332,7 +332,7 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
     collection->endWrite(useDeadlockDetector);
   }
 
-  trxCollection->_lockType = TRI_TRANSACTION_NONE;
+  trxCollection->_lockType = AccessMode::Type::NONE;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -450,7 +450,7 @@ static int UnuseCollections(TRI_transaction_t* trx, int nestingLevel) {
         }
       }
 
-      trxCollection->_lockType = TRI_TRANSACTION_NONE;
+      trxCollection->_lockType = AccessMode::Type::NONE;
     }
   }
 
@@ -631,25 +631,11 @@ static void UpdateTransactionStatus(TRI_transaction_t* const trx,
   trx->_status = status;
 }
 
-/// @brief get the transaction type from a string
-TRI_transaction_type_e TRI_GetTransactionTypeFromStr(char const* s) {
-  if (strcmp(s, "read") == 0) {
-    return TRI_TRANSACTION_READ;
-  } 
-  if (strcmp(s, "write") == 0) {
-    return TRI_TRANSACTION_WRITE;
-  } 
-  if (strcmp(s, "exclusive") == 0) {
-    return TRI_TRANSACTION_EXCLUSIVE;
-  } 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "invalid transaction type");
-}
 
 /// @brief return the collection from a transaction
 TRI_transaction_collection_t* TRI_GetCollectionTransaction(
     TRI_transaction_t const* trx, TRI_voc_cid_t cid,
-    TRI_transaction_type_e accessType) {
+    AccessMode::Type accessType) {
   TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED ||
              trx->_status == TRI_TRANSACTION_RUNNING);
 
@@ -681,7 +667,7 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction(
 
 /// @brief add a collection to a transaction
 int TRI_AddCollectionTransaction(TRI_transaction_t* trx, TRI_voc_cid_t cid,
-                                 TRI_transaction_type_e accessType,
+                                 AccessMode::Type accessType,
                                  int nestingLevel, bool force,
                                  bool allowImplicitCollections) {
   LOG_TRX(trx, nestingLevel) << "adding collection " << cid;
@@ -703,7 +689,7 @@ int TRI_AddCollectionTransaction(TRI_transaction_t* trx, TRI_voc_cid_t cid,
     if (IsWrite(accessType) && !IsWrite(trx->_type)) {
       // if one collection is written to, the whole transaction becomes a
       // write-transaction
-      trx->_type = TRI_TRANSACTION_WRITE;
+      trx->_type = AccessMode::Type::WRITE;
     }
   }
 
@@ -776,7 +762,7 @@ int TRI_EnsureCollectionsTransaction(TRI_transaction_t* trx, int nestingLevel) {
 
 /// @brief request a lock for a collection
 int TRI_LockCollectionTransaction(TRI_transaction_collection_t* trxCollection,
-                                  TRI_transaction_type_e accessType,
+                                  AccessMode::Type accessType,
                                   int nestingLevel) {
   if (IsWrite(accessType) && !IsWrite(trxCollection->_accessType)) {
     // wrong lock type
@@ -793,7 +779,7 @@ int TRI_LockCollectionTransaction(TRI_transaction_collection_t* trxCollection,
 
 /// @brief request an unlock for a collection
 int TRI_UnlockCollectionTransaction(TRI_transaction_collection_t* trxCollection,
-                                    TRI_transaction_type_e accessType,
+                                    AccessMode::Type accessType,
                                     int nestingLevel) {
   if (IsWrite(accessType) && !IsWrite(trxCollection->_accessType)) {
     // wrong lock type: write-unlock requested but collection is read-only
@@ -811,7 +797,7 @@ int TRI_UnlockCollectionTransaction(TRI_transaction_collection_t* trxCollection,
 /// @brief check if a collection is locked in a transaction
 bool TRI_IsLockedCollectionTransaction(
     TRI_transaction_collection_t const* trxCollection,
-    TRI_transaction_type_e accessType, int nestingLevel) {
+    AccessMode::Type accessType, int nestingLevel) {
   TRI_ASSERT(trxCollection != nullptr);
 
   if (IsWrite(accessType) && !IsWrite(trxCollection->_accessType)) {
@@ -957,7 +943,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   } else {
     // operation is buffered and might be rolled back
     TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(
-        trx, collection->cid(), TRI_TRANSACTION_WRITE);
+        trx, collection->cid(), AccessMode::Type::WRITE);
     if (trxCollection->_operations == nullptr) {
       trxCollection->_operations = new std::vector<MMFilesDocumentOperation*>;
       trxCollection->_operations->reserve(16);
@@ -1134,7 +1120,7 @@ bool TRI_IsSingleOperationTransaction(TRI_transaction_t const* trx) {
 TRI_transaction_t::TRI_transaction_t(TRI_vocbase_t* vocbase, double timeout, bool waitForSync)
     : _vocbase(vocbase), 
       _id(0), 
-      _type(TRI_TRANSACTION_READ),
+      _type(AccessMode::Type::READ),
       _status(TRI_TRANSACTION_CREATED),
       _arena(),
       _collections{_arena}, // assign arena to vector 

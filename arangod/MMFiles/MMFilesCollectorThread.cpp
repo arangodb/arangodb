@@ -629,7 +629,7 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
 
   arangodb::SingleCollectionTransaction trx(
       arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
-      collection->cid(), TRI_TRANSACTION_WRITE);
+      collection->cid(), AccessMode::Type::WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK,
               true);  // already locked by guard above
   trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK,

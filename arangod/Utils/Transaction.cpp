@@ -639,7 +639,7 @@ TRI_transaction_collection_t* Transaction::trxCollection(TRI_voc_cid_t cid) cons
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
 
-  return TRI_GetCollectionTransaction(_trx, cid, TRI_TRANSACTION_READ);
+  return TRI_GetCollectionTransaction(_trx, cid, AccessMode::Type::READ);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -655,7 +655,7 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
     return _ditchCache.ditch;
   }
 
-  TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(_trx, cid, TRI_TRANSACTION_READ);
+  TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(_trx, cid, AccessMode::Type::READ);
 
   if (trxCollection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to determine transaction collection");    
@@ -1270,7 +1270,7 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
  
   orderDitch(cid); // will throw when it fails 
   
-  int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
+  int res = lock(trxCollection(cid), AccessMode::Type::READ);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
@@ -1301,7 +1301,7 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
 
   resultBuilder.close();
 
-  res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
+  res = unlock(trxCollection(cid), AccessMode::Type::READ);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
@@ -1410,7 +1410,7 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
 
   orderDitch(cid); // will throw when it fails
 
-  int res = lock(trxCol, TRI_TRANSACTION_READ);
+  int res = lock(trxCol, AccessMode::Type::READ);
   
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -1419,7 +1419,7 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
   auto primaryIndex = document->primaryIndex();
   primaryIndex->invokeOnAllElements(callback);
   
-  res = unlock(trxCol, TRI_TRANSACTION_READ);
+  res = unlock(trxCol, AccessMode::Type::READ);
   
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -1477,7 +1477,7 @@ int Transaction::documentFastPath(std::string const& collectionName,
   TRI_ASSERT(mmdr != nullptr); 
 
   int res = collection->read(this, key, *mmdr,
-      shouldLock && !isLocked(collection, TRI_TRANSACTION_READ));
+      shouldLock && !isLocked(collection, AccessMode::Type::READ));
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1514,7 +1514,7 @@ int Transaction::documentFastPathLocal(std::string const& collectionName,
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
-  int res = collection->read(this, key, result, !isLocked(collection, TRI_TRANSACTION_READ));
+  int res = collection->read(this, key, result, !isLocked(collection, AccessMode::Type::READ));
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1709,7 +1709,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     ManagedDocumentResult result;
     TIMER_START(TRANSACTION_DOCUMENT_DOCUMENT_DOCUMENT);
     int res = collection->read(this, key, result,
-                               !isLocked(collection, TRI_TRANSACTION_READ));
+                               !isLocked(collection, AccessMode::Type::READ));
     TIMER_STOP(TRANSACTION_DOCUMENT_DOCUMENT_DOCUMENT);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1882,7 +1882,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
 
     TIMER_START(TRANSACTION_INSERT_DOCUMENT_INSERT);
     int res = collection->insert(this, value, result, options, resultMarkerTick,
-                                 !isLocked(collection, TRI_TRANSACTION_WRITE));
+                                 !isLocked(collection, AccessMode::Type::WRITE));
     TIMER_STOP(TRANSACTION_INSERT_DOCUMENT_INSERT);
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
@@ -2183,7 +2183,7 @@ OperationResult Transaction::modifyLocal(
 
   // Update/replace are a read and a write, let's get the write lock already
   // for the read operation:
-  int res = lock(trxCollection(cid), TRI_TRANSACTION_WRITE);
+  int res = lock(trxCollection(cid), AccessMode::Type::WRITE);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
@@ -2204,11 +2204,11 @@ OperationResult Transaction::modifyLocal(
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       res = collection->replace(this, newVal, result, options, resultMarkerTick, 
-          !isLocked(collection, TRI_TRANSACTION_WRITE), actualRevision,
+          !isLocked(collection, AccessMode::Type::WRITE), actualRevision,
           previous);
     } else {
       res = collection->update(this, newVal, result, options, resultMarkerTick,
-          !isLocked(collection, TRI_TRANSACTION_WRITE), actualRevision,
+          !isLocked(collection, AccessMode::Type::WRITE), actualRevision,
           previous);
     }
     
@@ -2473,7 +2473,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     TRI_voc_tick_t resultMarkerTick = 0;
 
     int res = collection->remove(this, value, options, resultMarkerTick,
-                                 !isLocked(collection, TRI_TRANSACTION_WRITE),
+                                 !isLocked(collection, AccessMode::Type::WRITE),
                                  actualRevision, previous);
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
@@ -2655,7 +2655,7 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   
   orderDitch(cid); // will throw when it fails
   
-  int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
+  int res = lock(trxCollection(cid), AccessMode::Type::READ);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
@@ -2690,7 +2690,7 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
 
   resultBuilder.close();
 
-  res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
+  res = unlock(trxCollection(cid), AccessMode::Type::READ);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
@@ -2745,7 +2745,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
   
   orderDitch(cid); // will throw when it fails
   
-  int res = lock(trxCollection(cid), TRI_TRANSACTION_WRITE);
+  int res = lock(trxCollection(cid), AccessMode::Type::WRITE);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
@@ -2781,7 +2781,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
     primaryIndex->invokeOnAllElementsForRemoval(callback);
   }
   catch (basics::Exception const& ex) {
-    unlock(trxCollection(cid), TRI_TRANSACTION_WRITE);
+    unlock(trxCollection(cid), AccessMode::Type::WRITE);
     return OperationResult(ex.code());
   }
   
@@ -2836,7 +2836,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
     }
   }
 
-  res = unlock(trxCollection(cid), TRI_TRANSACTION_WRITE);
+  res = unlock(trxCollection(cid), AccessMode::Type::WRITE);
 
   return OperationResult(res);
 }
@@ -2880,7 +2880,7 @@ OperationResult Transaction::countCoordinator(std::string const& collectionName,
 OperationResult Transaction::countLocal(std::string const& collectionName) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   
-  int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
+  int res = lock(trxCollection(cid), AccessMode::Type::READ);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
@@ -2891,7 +2891,7 @@ OperationResult Transaction::countLocal(std::string const& collectionName) {
 
   uint64_t num = collection->numberDocuments();
 
-  res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
+  res = unlock(trxCollection(cid), AccessMode::Type::READ);
   
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
@@ -3241,7 +3241,7 @@ arangodb::LogicalCollection* Transaction::documentCollection(
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
   
-  auto trxCollection = TRI_GetCollectionTransaction(_trx, cid, TRI_TRANSACTION_READ);
+  auto trxCollection = TRI_GetCollectionTransaction(_trx, cid, AccessMode::Type::READ);
   if (trxCollection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not find collection");
   }
@@ -3256,7 +3256,7 @@ arangodb::LogicalCollection* Transaction::documentCollection(
 ////////////////////////////////////////////////////////////////////////////////
 
 int Transaction::addCollection(TRI_voc_cid_t cid, char const* name,
-                    TRI_transaction_type_e type) {
+                    AccessMode::Type type) {
   int res = this->addCollection(cid, type);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -3271,7 +3271,7 @@ int Transaction::addCollection(TRI_voc_cid_t cid, char const* name,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Transaction::addCollection(TRI_voc_cid_t cid, std::string const& name,
-                    TRI_transaction_type_e type) {
+                    AccessMode::Type type) {
   return addCollection(cid, name.c_str(), type);
 }
 
@@ -3279,7 +3279,7 @@ int Transaction::addCollection(TRI_voc_cid_t cid, std::string const& name,
 /// @brief add a collection by id
 ////////////////////////////////////////////////////////////////////////////////
 
-int Transaction::addCollection(TRI_voc_cid_t cid, TRI_transaction_type_e type) {
+int Transaction::addCollection(TRI_voc_cid_t cid, AccessMode::Type type) {
   if (_trx == nullptr) {
     return registerError(TRI_ERROR_INTERNAL);
   }
@@ -3312,7 +3312,7 @@ int Transaction::addCollection(TRI_voc_cid_t cid, TRI_transaction_type_e type) {
 /// @brief add a collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-int Transaction::addCollection(std::string const& name, TRI_transaction_type_e type) {
+int Transaction::addCollection(std::string const& name, AccessMode::Type type) {
   if (_setupState != TRI_ERROR_NO_ERROR) {
     return _setupState;
   }
@@ -3326,7 +3326,7 @@ int Transaction::addCollection(std::string const& name, TRI_transaction_type_e t
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Transaction::isLocked(LogicalCollection* document,
-                TRI_transaction_type_e type) {
+                AccessMode::Type type) {
   if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
     return false;
   }
@@ -3342,7 +3342,7 @@ bool Transaction::isLocked(LogicalCollection* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Transaction::lock(TRI_transaction_collection_t* trxCollection,
-           TRI_transaction_type_e type) {
+           AccessMode::Type type) {
   if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
@@ -3355,7 +3355,7 @@ int Transaction::lock(TRI_transaction_collection_t* trxCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Transaction::unlock(TRI_transaction_collection_t* trxCollection,
-             TRI_transaction_type_e type) {
+             AccessMode::Type type) {
   if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
@@ -3484,7 +3484,7 @@ Transaction::IndexHandle Transaction::getIndexByIdentifier(
 /// @brief add a collection to an embedded transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int Transaction::addCollectionEmbedded(TRI_voc_cid_t cid, TRI_transaction_type_e type) {
+int Transaction::addCollectionEmbedded(TRI_voc_cid_t cid, AccessMode::Type type) {
   TRI_ASSERT(_trx != nullptr);
 
   int res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel,
@@ -3493,7 +3493,7 @@ int Transaction::addCollectionEmbedded(TRI_voc_cid_t cid, TRI_transaction_type_e
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
       // special error message to indicate which collection was undeclared
-      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + resolver()->getCollectionNameCluster(cid) + " [" + TRI_TransactionTypeGetStr(type) + "]");
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + resolver()->getCollectionNameCluster(cid) + " [" + AccessMode::typeString(type) + "]");
     }
     return registerError(res);
   }
@@ -3505,7 +3505,7 @@ int Transaction::addCollectionEmbedded(TRI_voc_cid_t cid, TRI_transaction_type_e
 /// @brief add a collection to a top-level transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int Transaction::addCollectionToplevel(TRI_voc_cid_t cid, TRI_transaction_type_e type) {
+int Transaction::addCollectionToplevel(TRI_voc_cid_t cid, AccessMode::Type type) {
   TRI_ASSERT(_trx != nullptr);
 
   int res;
@@ -3521,7 +3521,7 @@ int Transaction::addCollectionToplevel(TRI_voc_cid_t cid, TRI_transaction_type_e
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
       // special error message to indicate which collection was undeclared
-      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + resolver()->getCollectionNameCluster(cid) + " [" + TRI_TransactionTypeGetStr(type) + "]");
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + resolver()->getCollectionNameCluster(cid) + " [" + AccessMode::typeString(type) + "]");
     }
     registerError(res);
   }

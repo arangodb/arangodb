@@ -57,15 +57,15 @@ class ExplicitTransaction final : public Transaction {
     }
     
     for (auto const& it : exclusiveCollections) {
-      this->addCollection(it, TRI_TRANSACTION_EXCLUSIVE);
+      this->addCollection(it, AccessMode::Type::EXCLUSIVE);
     }
 
     for (auto const& it : writeCollections) {
-      this->addCollection(it, TRI_TRANSACTION_WRITE);
+      this->addCollection(it, AccessMode::Type::WRITE);
     }
 
     for (auto const& it : readCollections) {
-      this->addCollection(it, TRI_TRANSACTION_READ);
+      this->addCollection(it, AccessMode::Type::READ);
     }
     
     this->setAllowImplicitCollections(allowImplicitCollections);
