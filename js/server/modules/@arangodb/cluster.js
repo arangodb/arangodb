@@ -406,7 +406,7 @@ function tryLaunchJob () {
               done = true;
             }
             if (!require('internal').isStopping()) {
-              console.error('Could not registerTask for shard synchronization.',
+              console.debug('Could not registerTask for shard synchronization.',
                             err);
               wait(1.0);
             } else {
@@ -565,7 +565,15 @@ function synchronizeOneShard (database, shard, planId, leader) {
     }
   } catch (err2) {
     if (!isStopping()) {
-      console.error("synchronization of local shard '%s/%s' for central '%s/%s' failed: %s",
+      let logLevel = 'error';
+      // ignore failures of jobs where the database to sync has been removed on the leader
+      // {"errorNum":1400,"errorMessage":"cannot sync from remote endpoint: job not found on master at tcp://127.0.0.1:15179. last progress message was 'send batch finish command to url /_api/replication/batch/2103395': no response"}
+      if (err2 && err2.errorNum === 1400) {
+        logLevel = 'debug';
+      } else if (err2 && err2.errorNum === 1402 && err2.errorMessage.match(/HTTP 404/)) {
+        logLevel = 'debug';
+      }
+      console[logLevel]("synchronization of local shard '%s/%s' for central '%s/%s' failed: %s",
         database, shard, database, planId, JSON.stringify(err2));
     }
   }
@@ -582,14 +590,6 @@ function synchronizeOneShard (database, shard, planId, leader) {
 function scheduleOneShardSynchronization (database, shard, planId, leader) {
   console.debug('scheduleOneShardSynchronization:', database, shard, planId,
     leader);
-  try {
-    global.KEY_GET('shardSynchronization', 'lock');
-  } catch (e) {
-    global.KEYSPACE_CREATE('shardSynchronization');
-    global.KEY_SET('shardSynchronization', 'scheduled', {});
-    global.KEY_SET('shardSynchronization', 'running', null);
-    global.KEY_SET('shardSynchronization', 'lock', null);
-  }
 
   lockSyncKeyspace();
   try {
@@ -610,7 +610,6 @@ function scheduleOneShardSynchronization (database, shard, planId, leader) {
   finally {
     unlockSyncKeyspace();
   }
-  tryLaunchJob();
   return true;
 }
 
@@ -1048,6 +1047,16 @@ function syncReplicatedShardsWithLeaders(plan, current, localErrors) {
       && currentDatabases.hasOwnProperty(databaseName)) {
         // switch into other database
         db._useDatabase(databaseName);
+        // XXX shouldn't this be done during db init?
+        // create keyspace
+        try {
+          global.KEY_GET('shardSynchronization', 'lock');
+        } catch (e) {
+          global.KEYSPACE_CREATE('shardSynchronization');
+          global.KEY_SET('shardSynchronization', 'scheduled', {});
+          global.KEY_SET('shardSynchronization', 'running', null);
+          global.KEY_SET('shardSynchronization', 'lock', null);
+        }
 
         try {
           // iterate over collections of database
@@ -1103,6 +1112,8 @@ function syncReplicatedShardsWithLeaders(plan, current, localErrors) {
         } catch (e) {
           console.debug('Got an error synchronizing with leader', e, e.stack);
         } finally {
+          // process any jobs
+          tryLaunchJob();
           // always return to previous database
           db._useDatabase('_system');
         }

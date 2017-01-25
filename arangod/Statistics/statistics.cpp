@@ -250,8 +250,8 @@ void TRI_ReleaseRequestStatistics(TRI_request_statistics_t* statistics) {
   } else {
     statistics->reset();
 
-    bool ok = RequestFreeList.push(statistics);
     statistics->_released = true;
+    bool ok = RequestFreeList.push(statistics);
     TRI_ASSERT(ok);
   }
 }
