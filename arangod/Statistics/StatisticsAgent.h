@@ -95,11 +95,13 @@ class StatisticsAgent {
 
  protected:
   void replace(STAT* statistics) {
-    if (_statistics != nullptr) {
-      FUNC::release(_statistics);
-    }
+    if (_statistics != statistics) {
+      if (_statistics != nullptr) {
+        FUNC::release(_statistics);
+      }
 
-    _statistics = statistics;
+      _statistics = statistics;
+    }
   }
 };
 

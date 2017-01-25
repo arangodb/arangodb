@@ -110,8 +110,6 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
 void HttpCommTask::addResponse(HttpResponse* response) {
   resetKeepAlive();
 
-  _requestPending = false;
-
   // CORS response handling
   if (!_origin.empty()) {
     // the request contained an Origin header. We have to send back the
@@ -172,10 +170,10 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   double const totalTime = agent->elapsedSinceReadStart();
 
   // append write buffer and statistics
-  //TRI_ASSERT(agent->_statistics != nullptr); // this is ok for async handler
-                                             // not checkable here as we do not
-                                             // have access to the handler
   addWriteBuffer(std::move(buffer), agent);
+
+  // response has been queued, allow further requests
+  _requestPending = false;
 
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
