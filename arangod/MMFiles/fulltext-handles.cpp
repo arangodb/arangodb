@@ -23,6 +23,8 @@
 
 #include "fulltext-handles.h"
 
+#include "MMFiles/MMFilesToken.h"
+
 /// @brief at what percentage of deleted documents should the handle list be
 /// cleaned?
 #define CLEANUP_THRESHOLD 0.25
@@ -51,9 +53,9 @@ static bool AllocateSlot(TRI_fulltext_handles_t* const handles,
   }
 
   // allocate and clear
-  slot->_documents = static_cast<TRI_fulltext_doc_t*>(
+  slot->_documents = static_cast<TRI_voc_rid_t*>(
       TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                   sizeof(TRI_fulltext_doc_t) * handles->_slotSize, true));
+                   sizeof(TRI_voc_rid_t) * handles->_slotSize, true));
 
   if (slot->_documents == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot);
@@ -256,7 +258,7 @@ TRI_fulltext_handles_t* TRI_CompactHandleMMFilesFulltextIndex(
 
 /// @brief insert a document and return a handle for it
 TRI_fulltext_handle_t TRI_InsertHandleMMFilesFulltextIndex(
-    TRI_fulltext_handles_t* const handles, const TRI_fulltext_doc_t document) {
+    TRI_fulltext_handles_t* const handles, const TRI_voc_rid_t document) {
   TRI_fulltext_handle_t handle;
   TRI_fulltext_handle_slot_t* slot;
   uint32_t slotNumber;
@@ -313,7 +315,7 @@ TRI_fulltext_handle_t TRI_InsertHandleMMFilesFulltextIndex(
 
 /// @brief mark a document as deleted in the handle list
 bool TRI_DeleteDocumentHandleMMFilesFulltextIndex(
-    TRI_fulltext_handles_t* const handles, const TRI_fulltext_doc_t document) {
+    TRI_fulltext_handles_t* const handles, const TRI_voc_rid_t document) {
   uint32_t i;
 
   if (document == 0) {
@@ -351,7 +353,7 @@ bool TRI_DeleteDocumentHandleMMFilesFulltextIndex(
 }
 
 /// @brief get the document id for a handle
-TRI_fulltext_doc_t TRI_GetDocumentMMFilesFulltextIndex(
+arangodb::DocumentIdentifierToken TRI_GetDocumentMMFilesFulltextIndex(
     const TRI_fulltext_handles_t* const handles,
     const TRI_fulltext_handle_t handle) {
   TRI_fulltext_handle_slot_t* slot;
@@ -362,7 +364,7 @@ TRI_fulltext_doc_t TRI_GetDocumentMMFilesFulltextIndex(
 #if TRI_FULLTEXT_DEBUG
   if (slotNumber >= handles->_numSlots) {
     // not found
-    return 0;
+    return arangodb::MMFilesToken{};
   }
 #endif
 
@@ -372,10 +374,10 @@ TRI_fulltext_doc_t TRI_GetDocumentMMFilesFulltextIndex(
   slotPosition = handle % handles->_slotSize;
   if (slot->_deleted[slotPosition]) {
     // document was deleted
-    return 0;
+    return arangodb::MMFilesToken{};
   }
 
-  return slot->_documents[slotPosition];
+  return arangodb::MMFilesToken{slot->_documents[slotPosition]};
 }
 
 /// @brief dump all handles
@@ -414,7 +416,7 @@ size_t TRI_MemoryHandleMMFilesFulltextIndex(
 
   numSlots = handles->_numSlots;
 
-  perSlot = (sizeof(TRI_fulltext_doc_t) + sizeof(uint8_t)) * handles->_slotSize;
+  perSlot = (sizeof(TRI_voc_rid_t) + sizeof(uint8_t)) * handles->_slotSize;
 
   // slots list
   memory = sizeof(TRI_fulltext_handle_slot_t*) * numSlots;

@@ -4030,8 +4030,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
     ManagedDocumentResult mmdr;
     size_t const numResults = queryResult->_numDocuments;
     for (size_t i = 0; i < numResults; ++i) {
-      TRI_voc_rid_t revisionId = MMFilesFulltextIndex::toRevision(queryResult->_documents[i]);
-      if (collection->readRevision(trx, mmdr, revisionId)) {
+      if (collection->readDocument(trx, mmdr, queryResult->_documents[i])) {
         builder->addExternal(mmdr.vpack());
       }
     }

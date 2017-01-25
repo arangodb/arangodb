@@ -23,6 +23,8 @@
 
 #include "fulltext-result.h"
 
+#include "StorageEngine/DocumentIdentifierToken.h"
+
 /// @brief create a result
 TRI_fulltext_result_t* TRI_CreateResultMMFilesFulltextIndex(const uint32_t size) {
   TRI_fulltext_result_t* result = static_cast<TRI_fulltext_result_t*>(
@@ -36,8 +38,8 @@ TRI_fulltext_result_t* TRI_CreateResultMMFilesFulltextIndex(const uint32_t size)
   result->_numDocuments = 0;
 
   if (size > 0) {
-    result->_documents = static_cast<TRI_fulltext_doc_t*>(TRI_Allocate(
-        TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_doc_t) * size, false));
+    result->_documents = static_cast<arangodb::DocumentIdentifierToken*>(TRI_Allocate(
+        TRI_UNKNOWN_MEM_ZONE, sizeof(arangodb::DocumentIdentifierToken) * size, false));
 
     if (result->_documents == nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);

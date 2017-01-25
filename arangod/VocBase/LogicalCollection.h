@@ -47,6 +47,7 @@ typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
 struct DatafileStatisticsContainer;
 class Ditches;
+struct DocumentIdentifierToken;
 class FollowerInfo;
 class Index;
 class KeyGenerator;

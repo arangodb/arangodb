@@ -36,8 +36,4 @@
 /// with
 typedef void TRI_fts_index_t;
 
-/// @brief typedef for a document indexed. this must be big enough to contain
-/// a TRI_voc_rid_t
-typedef uint64_t TRI_fulltext_doc_t;
-
 #endif
