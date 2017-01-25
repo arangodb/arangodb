@@ -871,7 +871,7 @@ function executePlanForCollections(plannedCollections) {
                 }
               }
             }
-            console.info("dropping local shard '%s/%s' of '%s/%s",
+            console.debug("dropping local shard '%s/%s' of '%s/%s",
               database,
               collection,
               database,
