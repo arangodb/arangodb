@@ -186,7 +186,7 @@ Thread::~Thread() {
   if (state != ThreadState::DETACHED && state != ThreadState::CREATED) {
     LOG(FATAL) << "thread is not detached but " << stringify(state)
                << ". shutting down hard";
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_ABORT();
   }
 }
 
@@ -253,7 +253,7 @@ void Thread::shutdown() {
 
   if (_state.load() != ThreadState::STOPPED) {
     LOG(FATAL) << "cannot shutdown thread, giving up";
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_ABORT();
   }
 }
 
@@ -279,7 +279,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
                << (ApplicationServer::server == nullptr
                        ? -1
                        : (int)ApplicationServer::server->state());
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_ABORT();
   }
 
   _finishedCondition = finishedCondition;
@@ -289,7 +289,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     LOG_TOPIC(FATAL, Logger::THREADS)
         << "called started on an already started thread, thread is in state "
         << stringify(state);
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_ABORT();
   }
 
   ThreadState expected = ThreadState::CREATED;
