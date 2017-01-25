@@ -50,8 +50,8 @@ LineRank::LineRank(arangodb::velocypack::Slice params)
 }
 
 // github.com/JananiC/NetworkCentralities/blob/master/src/main/java/linerank/LineRank.java
-struct MyComputation : public VertexComputation<float, float, float> {
-  MyComputation() {}
+struct LRComputation : public VertexComputation<float, float, float> {
+  LRComputation() {}
   void compute(MessageIterator<float> const& messages) override {
     
     float startAtNodeProb = 1.0f / context()->edgeCount();
@@ -95,7 +95,7 @@ struct MyComputation : public VertexComputation<float, float, float> {
 
 VertexComputation<float, float, float>* LineRank::createComputation(
     WorkerConfig const* config) const {
-  return new MyComputation();
+  return new LRComputation();
 }
 
 IAggregator* LineRank::aggregator(std::string const& name) const {

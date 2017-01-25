@@ -48,9 +48,9 @@ static std::string const kNonFailedCount = "nonfailedCount";
 static std::string const kScale = "scale";
 
 
-struct MyComputation : public VertexComputation<float, float, float> {
+struct RPRComputation : public VertexComputation<float, float, float> {
   
-  MyComputation() {}
+  RPRComputation() {}
   void compute(MessageIterator<float> const& messages) override {
     float* ptr = mutableVertexData();
     float copy = *ptr;
@@ -78,7 +78,7 @@ struct MyComputation : public VertexComputation<float, float, float> {
 
 VertexComputation<float, float, float>* RecoveringPageRank::createComputation(
     WorkerConfig const* config) const {
-  return new MyComputation();
+  return new RPRComputation();
 }
 
 IAggregator* RecoveringPageRank::aggregator(std::string const& name) const {
@@ -126,10 +126,10 @@ VertexCompensation<float, float, float>* RecoveringPageRank::createCompensation(
   return new RPRCompensation();
 }
 
-struct MyMasterContext : public MasterContext {
+struct RPRMasterContext : public MasterContext {
   float _threshold;
   
-  MyMasterContext(VPackSlice params) {
+  RPRMasterContext(VPackSlice params) {
     VPackSlice t = params.get("convergenceThreshold");
     _threshold = t.isNumber() ? t.getNumber<float>() : EPS;
   };
@@ -170,5 +170,5 @@ struct MyMasterContext : public MasterContext {
 };
 
 MasterContext* RecoveringPageRank::masterContext(VPackSlice userParams) const {
-  return new MyMasterContext(userParams);
+  return new RPRMasterContext(userParams);
 }

@@ -39,7 +39,7 @@ struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
   bool supportsCompensation() const override { return true; }
   MasterContext* masterContext(VPackSlice userParams) const override;
 
-  GraphFormat* inputFormat() const override {
+  GraphFormat<float, float>* inputFormat() const override {
     return new VertexGraphFormat<float, float>(_resultField, 0);
   }
   

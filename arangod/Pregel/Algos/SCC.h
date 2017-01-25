@@ -45,7 +45,7 @@ struct SCC : public SimpleAlgorithm<SCCValue, int32_t, SenderMessage<uint64_t>> 
   SCC(VPackSlice userParams)
     : SimpleAlgorithm<SCCValue, int32_t, SenderMessage<uint64_t>>("SCC", userParams) {}
 
-  GraphFormat* inputFormat() const override;
+  GraphFormat<SCCValue, int32_t>* inputFormat() const override;
   MessageFormat<SenderMessage<uint64_t>>* messageFormat() const override {
     return new SenderMessageFormat<uint64_t>();
   }
@@ -53,7 +53,7 @@ struct SCC : public SimpleAlgorithm<SCCValue, int32_t, SenderMessage<uint64_t>> 
   VertexComputation<SCCValue, int32_t, SenderMessage<uint64_t>>*
     createComputation( WorkerConfig const*) const override;
   
-   MasterContext* masterContext(VPackSlice userParams) const override;
+  MasterContext* masterContext(VPackSlice userParams) const override;
     
   IAggregator* aggregator(std::string const& name) const override;
 };

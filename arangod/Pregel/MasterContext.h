@@ -52,8 +52,9 @@ class MasterContext {
   inline uint64_t edgeCount() const { return _edgeCount; }
   
   template <typename T>
-  inline void aggregate(std::string const& name, T const& valuePtr) {
-    _aggregators->aggregate(name, &valuePtr);
+  inline void aggregate(std::string const& name, T const& value) {
+    T const* ptr = &value;
+    _aggregators->aggregate(name, ptr);
   }
 
   template <typename T>

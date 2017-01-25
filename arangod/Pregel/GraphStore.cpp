@@ -44,7 +44,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 template <typename V, typename E>
-GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, GraphFormat* graphFormat)
+GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, GraphFormat<V, E>* graphFormat)
     : _vocbaseGuard(vb), _graphFormat(graphFormat) {}
 
 template <typename V, typename E>
@@ -125,15 +125,21 @@ void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
   }
 
   std::string documentId = _readTrx->extractIdString(opResult.slice());
-  VertexEntry entry(sourceShard, _key);
-  V vertexData;
-  size_t size = _graphFormat->copyVertexData(entry, documentId,
-                                             opResult.slice(),
-                                             &vertexData, sizeof(V));
-  if (size > 0) {
+  _index.emplace_back(sourceShard, _key);
+  _localVerticeCount++;
+
+  VertexEntry &entry = _index.back();
+  if (_graphFormat->estimatedVertexSize() > 0) {
     entry._vertexDataOffset = _vertexData.size();
-    _vertexData.push_back(vertexData);
+    
+    // allocate space
+    _vertexData.push_back(V());
+    V &data = _vertexData.back();
+    _graphFormat->copyVertexData(documentId, opResult.slice(),
+                                 &data, sizeof(V));
   }
+  
+  // load edges
   std::map<CollectionID, std::vector<ShardID>> const& vertexMap =
       config.vertexCollectionShards();
   std::map<CollectionID, std::vector<ShardID>> const& edgeMap =
@@ -150,8 +156,6 @@ void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
       }
     }
   }
-  _index.push_back(entry);
-  _localVerticeCount++;
 }
 
 template <typename V, typename E>
@@ -277,18 +281,20 @@ void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
         std::string key = document.get(StaticStrings::KeyString).copyString();
         std::string documentId = _readTrx->extractIdString(document);
 
-        VertexEntry entry(sourceShard, key);
-        V vertexData;
-        size_t size = _graphFormat->copyVertexData(entry, documentId, document,
-                                                   &vertexData, sizeof(V));
-        if (size > 0) {
-          entry._vertexDataOffset = _vertexData.size();
-          _vertexData.push_back(vertexData);
-        }
-
-        _loadEdges(state, edgeShard, entry, documentId);
-        _index.push_back(entry);
+        _index.emplace_back(sourceShard, key);
         _localVerticeCount++;
+        
+        VertexEntry &entry = _index.back();
+        if (_graphFormat->estimatedVertexSize() > 0) {
+          entry._vertexDataOffset = _vertexData.size();
+          
+          // allocate space
+          _vertexData.push_back(V());
+          V &data = _vertexData.back();
+          _graphFormat->copyVertexData(documentId, document,
+                                       &data, sizeof(V));
+        }
+        _loadEdges(state, edgeShard, entry, documentId);
       }
     }
   }
@@ -346,19 +352,17 @@ void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
           LOG(ERR) << "Unknown shard";
           continue;
         }
-        // copy edge data
-        Edge<E> edge(source, target, _key);
-        // size_t size =
-        _graphFormat->copyEdgeData(document, edge.data(), sizeof(E));
         
         //  store into the edge store, edgeCount and offset are 0 initally
         if (vertexEntry._edgeCount == 0) {// initalize the start
           vertexEntry._edgeDataOffset = _edges.size();
         }
         vertexEntry._edgeCount++;
-        // TODO store size value at some point
-        _edges.push_back(edge);
         _localEdgeCount++;
+        // TODO store size value at some point
+        
+        _edges.emplace_back(source, target, _key);
+        _graphFormat->copyEdgeData(document, _edges.back().data(), sizeof(E));
       }
     }
   }
@@ -407,7 +411,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
         break;
       }
       
-      void* data = _vertexData.data() + it->_vertexDataOffset;
+      V* data = _vertexData.data() + it->_vertexDataOffset;
       b->openObject();
       b->add(StaticStrings::KeyString, VPackValue(it->key()));
       //bool store =

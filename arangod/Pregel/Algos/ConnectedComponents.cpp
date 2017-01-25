@@ -70,16 +70,15 @@ struct MyGraphFormat : public VertexGraphFormat<int64_t, int64_t> {
     }
   }
   
-  size_t copyVertexData(VertexEntry const& vertex,
-                        std::string const& documentId,
+  size_t copyVertexData(std::string const& documentId,
                         arangodb::velocypack::Slice document,
-                        void* targetPtr, size_t maxSize) override {
-    *((int64_t*)targetPtr) = vertexIdRange++;
+                        int64_t* targetPtr, size_t maxSize) override {
+    *targetPtr = vertexIdRange++;
     return sizeof(int64_t);
   }
 };
 
-GraphFormat* ConnectedComponents::inputFormat() const {
+GraphFormat<int64_t, int64_t>* ConnectedComponents::inputFormat() const {
   return new MyGraphFormat(_resultField);
 }
 

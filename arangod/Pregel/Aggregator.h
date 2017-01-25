@@ -114,6 +114,29 @@ struct ValueAggregator : public NumberAggregator<T> {
   void parse(VPackSlice slice) override {this-> _value = slice.getNumber<T>(); }
 };
 
+/// always initializes to true.
+struct BoolOrAggregator : public IAggregator {
+  
+  BoolOrAggregator(bool perm = false) : _permanent(perm) {}
+  
+  void const* getValue() const override { return &_value; };
+  VPackValue vpackValue() const override { return VPackValue(_value); };
+  
+  void aggregate(void const* valuePtr) override { _value = _value || *((bool*)valuePtr); };
+  void parse(VPackSlice slice) override {
+    _value = _value || slice.getBool();
+  }
+  
+  void reset(bool force) override {
+    if (!_permanent || force) {_value = false; }
+  }
+  
+  bool isConverging() const override { return false; }
+  
+protected:
+  bool _value = false, _permanent;
+};
+
 }
 }
 #endif

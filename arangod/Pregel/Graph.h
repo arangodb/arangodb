@@ -31,7 +31,7 @@ struct PregelID {
   prgl_shard_t shard;
   std::string key;
 
-  PregelID() {}
+  PregelID() : shard(0), key("") {}
   PregelID(prgl_shard_t s, std::string const& k) : shard(s), key(k) {}
 
   inline bool operator==(const PregelID& rhs) {

@@ -33,10 +33,10 @@ using namespace arangodb::pregel::algos;
 
 static std::string const spUpperPathBound = "bound";
 
-struct ShortestPathComp : public VertexComputation<int64_t, int64_t, int64_t> {
+struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
   PregelID _target;
 
-  ShortestPathComp(PregelID const& target) : _target(target) {}
+  SPComputation(PregelID const& target) : _target(target) {}
   void compute(MessageIterator<int64_t> const& messages) override {
     int64_t current = vertexData();
     for (const int64_t* msg : messages) {
@@ -83,16 +83,15 @@ struct arangodb::pregel::algos::SPGraphFormat
       : InitGraphFormat<int64_t, int64_t>("length", 0, 1),
         _sourceDocId(source), _targetDocId(target) {}
 
-  size_t copyVertexData(VertexEntry const& vertex,
-                        std::string const& documentId,
-                        arangodb::velocypack::Slice document, void* targetPtr,
+  size_t copyVertexData(std::string const& documentId,
+                        arangodb::velocypack::Slice document, int64_t* targetPtr,
                         size_t maxSize) override {
-    *((int64_t*)targetPtr) = documentId == _sourceDocId ? 0 : INT64_MAX;
+    *targetPtr = documentId == _sourceDocId ? 0 : INT64_MAX;
     return sizeof(int64_t);
   }
       
   bool buildEdgeDocument(arangodb::velocypack::Builder& b,
-                         const void* targetPtr, size_t size) override {
+                         const int64_t* targetPtr, size_t size) override {
     return false;
   }
 };
@@ -112,14 +111,14 @@ std::set<std::string> ShortestPathAlgorithm::initialActiveSet() {
   return std::set<std::string>{_format->_sourceDocId};
 }
 
-GraphFormat* ShortestPathAlgorithm::inputFormat() const {
+GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {
   return _format;
 }
 
 VertexComputation<int64_t, int64_t, int64_t>*
 ShortestPathAlgorithm::createComputation(WorkerConfig const* _config) const {
   PregelID target = _config->documentIdToPregel(_format->_targetDocId);
-  return new ShortestPathComp(target);
+  return new SPComputation(target);
 }
 
 IAggregator* ShortestPathAlgorithm::aggregator(std::string const& name) const {

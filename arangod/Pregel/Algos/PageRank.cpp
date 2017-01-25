@@ -76,13 +76,13 @@ VertexComputation<float, float, float>* PageRank::createComputation(
 
 IAggregator* PageRank::aggregator(std::string const& name) const {
   if (name == kConvergence) {
-    return new MaxAggregator<float>(MAXFLOAT, false);
+    return new MaxAggregator<float>(-1, false);
   }
   return nullptr;
 }
 
-struct MyMasterContext : public MasterContext {
-  MyMasterContext() {
+struct PRMasterContext : public MasterContext {
+  PRMasterContext() {
     //VPackSlice t = params.get("convergenceThreshold");
     //_threshold = t.isNumber() ? t.getNumber<float>() : EPS;
   }// TODO use _threashold
@@ -93,5 +93,5 @@ struct MyMasterContext : public MasterContext {
 };
 
 MasterContext* PageRank::masterContext(VPackSlice userParams) const {
-  return new MyMasterContext();
+  return new PRMasterContext();
 }

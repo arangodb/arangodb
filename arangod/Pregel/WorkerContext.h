@@ -41,9 +41,11 @@ class WorkerContext {
   AggregatorHandler* _workerAggregators;
 
  protected:
+
   template <typename T>
-  inline void aggregate(std::string const& name, T const& valuePtr) {
-    _workerAggregators->aggregate(name, &valuePtr);
+  inline void aggregate(std::string const& name, T const& value) {
+    T const* ptr = &value;
+    _workerAggregators->aggregate(name, ptr);
   }
 
   template <typename T>

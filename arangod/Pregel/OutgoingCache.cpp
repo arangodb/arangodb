@@ -105,8 +105,8 @@ void ArrayOutCache<M>::flushMessages() {
       continue;
     }
 
-    VPackBuilder data;
-    data.openObject(&options);
+    VPackBuilder data(&options);
+    data.openObject();
     data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     data.add(Utils::executionNumberKey,
                 VPackValue(this->_config->executionNumber()));

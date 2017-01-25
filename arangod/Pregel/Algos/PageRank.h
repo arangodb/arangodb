@@ -36,7 +36,7 @@ struct PageRank : public SimpleAlgorithm<float, float, float> {
   PageRank(arangodb::velocypack::Slice params)
     : SimpleAlgorithm("PageRank", params) {}
 
-  GraphFormat* inputFormat() const override {
+  GraphFormat<float, float>* inputFormat() const override {
     return new VertexGraphFormat<float, float>(_resultField, 0);
   }
   

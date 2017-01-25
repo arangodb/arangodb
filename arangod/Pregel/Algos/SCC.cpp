@@ -45,8 +45,8 @@ enum SCCPhase {
   BACKWARD_TRAVERSAL_REST = 4
 };
 
-struct MyComputation : public VertexComputation<SCCValue, int32_t, SenderMessage<uint64_t>> {
-  MyComputation() {}
+struct SCCComputation : public VertexComputation<SCCValue, int32_t, SenderMessage<uint64_t>> {
+  SCCComputation() {}
 
   void compute(MessageIterator<SenderMessage<uint64_t>> const& messages) override {
     if (isActive() == false) {
@@ -55,8 +55,7 @@ struct MyComputation : public VertexComputation<SCCValue, int32_t, SenderMessage
     }
     
     SCCValue *vertexState = mutableVertexData();
-    
-    int64_t const* phase = getAggregatedValue<int64_t>(kPhase);
+    uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
     switch (*phase) {
         
       // let all our connected nodes know we are there
@@ -83,6 +82,7 @@ struct MyComputation : public VertexComputation<SCCValue, int32_t, SenderMessage
         // it can't be part of an SCC
         RangeIterator<Edge<int32_t>> edges = getEdges();
         if (vertexState->parents.size() == 0 || edges.size() == 0) {
+          vertexState->color = INT_MAX;
           voteHalt();
         } else {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
@@ -139,15 +139,15 @@ struct MyComputation : public VertexComputation<SCCValue, int32_t, SenderMessage
 VertexComputation<SCCValue, int32_t,
 SenderMessage<uint64_t>>* SCC::createComputation(
     WorkerConfig const* config) const {
-  return new MyComputation();
+  return new SCCComputation();
 }
 
 
-struct MyGraphFormat : public GraphFormat {
+struct SCCGraphFormat : public GraphFormat<SCCValue, int32_t> {
   const std::string _resultField;
   uint64_t vertexIdRange = 0;
   
-  MyGraphFormat(std::string const& result) : _resultField(result) {}
+  SCCGraphFormat(std::string const& result) : _resultField(result) {}
   
   void willLoadVertices(uint64_t count) override {
     // if we aren't running in a cluster it doesn't matter
@@ -159,76 +159,79 @@ struct MyGraphFormat : public GraphFormat {
     }
   }
   
-  size_t estimatedVertexSize() const override { return sizeof(SCCValue); };
   size_t estimatedEdgeSize() const override { return 0; };
   
-  size_t copyVertexData(VertexEntry const& vertex,
-                        std::string const& documentId,
+  size_t copyVertexData(std::string const& documentId,
                         arangodb::velocypack::Slice document,
-                        void* targetPtr, size_t maxSize) override {
+                        SCCValue* targetPtr, size_t maxSize) override {
     SCCValue *senders = (SCCValue*) targetPtr;
     senders->vertexID = vertexIdRange++;
     return sizeof(SCCValue);
   }
   
-  size_t copyEdgeData(arangodb::velocypack::Slice document, void* targetPtr,
+  size_t copyEdgeData(arangodb::velocypack::Slice document, int32_t* targetPtr,
                       size_t maxSize) override {
     return 0;
   }
   
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           const void* ptr,
+                           const SCCValue* ptr,
                            size_t size) override {
     SCCValue *senders = (SCCValue*) ptr;
     b.add(_resultField, VPackValue(senders->color));
     return true;
   }
   
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const void* ptr,
+  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const int32_t* ptr,
                          size_t size) override {
     return false;
   }
 };
 
 
-GraphFormat* SCC::inputFormat() const {
-  return new MyGraphFormat(_resultField);
+GraphFormat<SCCValue, int32_t>* SCC::inputFormat() const {
+  return new SCCGraphFormat(_resultField);
 }
 
-struct MyMasterContext : public MasterContext {
-  MyMasterContext() {}// TODO use _threashold
+struct SCCMasterContext : public MasterContext {
+  SCCMasterContext() {}// TODO use _threashold
   void preGlobalSuperstep() override {
     if (globalSuperstep() == 0) {
       return;
     }
     
-    int64_t const* phase = getAggregatedValue<int64_t>(kPhase);
+    uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
     switch (*phase) {
       case SCCPhase::TRANSPOSE:
-        aggregate(kPhase, SCCPhase::TRIMMING);
+        LOG(INFO) << "Phase: TRANSPOSE";
+        aggregate<uint32_t>(kPhase, SCCPhase::TRIMMING);
         break;
         
       case SCCPhase::TRIMMING:
-        aggregate(kPhase, SCCPhase::FORWARD_TRAVERSAL);
+        LOG(INFO) << "Phase: TRANSPOSE";
+        aggregate<uint32_t>(kPhase, SCCPhase::FORWARD_TRAVERSAL);
         break;
         
       case SCCPhase::FORWARD_TRAVERSAL: {
+        LOG(INFO) << "Phase: FORWARD_TRAVERSAL";
         bool const* newMaxFound = getAggregatedValue<bool>(kFoundNewMax);
         if (*newMaxFound == false) {
-          aggregate(kPhase, SCCPhase::BACKWARD_TRAVERSAL_START);
+          aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_START);
         }
       }
         break;
         
       case SCCPhase::BACKWARD_TRAVERSAL_START:
-        aggregate(kPhase, SCCPhase::BACKWARD_TRAVERSAL_REST);
+        LOG(INFO) << "Phase: BACKWARD_TRAVERSAL_START";
+        aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_REST);
         break;
         
       case SCCPhase::BACKWARD_TRAVERSAL_REST:
+        LOG(INFO) << "Phase: BACKWARD_TRAVERSAL_REST";
         bool const* converged = getAggregatedValue<bool>(kConverged);
         // continue until no more vertices are updated
         if (*converged == false) {
-          aggregate(kPhase, SCCPhase::TRANSPOSE);
+          aggregate<uint32_t>(kPhase, SCCPhase::TRANSPOSE);
         }
         break;
     }
@@ -236,16 +239,16 @@ struct MyMasterContext : public MasterContext {
 };
 
 MasterContext* SCC::masterContext(VPackSlice userParams) const {
-  return new MyMasterContext();
+  return new SCCMasterContext();
 }
 
 IAggregator* SCC::aggregator(std::string const& name) const {
-  if (name == kPhase) {
-    return new ValueAggregator<int64_t>(SCCPhase::TRANSPOSE, true);
+  if (name == kPhase) {// permanent value
+    return new ValueAggregator<uint32_t>(SCCPhase::TRANSPOSE, true);
   } else if (name == kFoundNewMax) {
-    return new ValueAggregator<bool>(false, false);
+    return new BoolOrAggregator(false);// non perm
   } else if (name == kConverged) {
-    return new ValueAggregator<bool>(false, true);
+    return new BoolOrAggregator(false);// non perm
   }
   return nullptr;
 }

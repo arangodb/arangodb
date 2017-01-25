@@ -43,7 +43,7 @@ struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   bool supportsAsyncMode() const override { return true; }
   bool supportsLazyLoading() const override { return true; }
 
-  GraphFormat* inputFormat() const override;
+  GraphFormat<int64_t, int64_t>* inputFormat() const override;
   MessageFormat<int64_t>* messageFormat() const override {
     return new IntegerMessageFormat();
   }

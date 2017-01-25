@@ -82,7 +82,7 @@ struct Algorithm : IAlgorithm {
   virtual WorkerContext* workerContext(VPackSlice userParams) const {
     return new WorkerContext(userParams);
   }
-  virtual GraphFormat* inputFormat() const = 0;
+  virtual GraphFormat<V, E>* inputFormat() const = 0;
   virtual MessageFormat<M>* messageFormat() const = 0;
   virtual MessageCombiner<M>* messageCombiner() const {
     return nullptr;
