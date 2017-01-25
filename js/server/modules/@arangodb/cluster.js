@@ -406,7 +406,7 @@ function tryLaunchJob () {
               done = true;
             }
             if (!require('internal').isStopping()) {
-              console.error('Could not registerTask for shard synchronization.',
+              console.debug('Could not registerTask for shard synchronization.',
                             err);
               wait(1.0);
             } else {
@@ -565,7 +565,15 @@ function synchronizeOneShard (database, shard, planId, leader) {
     }
   } catch (err2) {
     if (!isStopping()) {
-      console.error("synchronization of local shard '%s/%s' for central '%s/%s' failed: %s",
+      let logLevel = 'error';
+      // ignore failures of jobs where the database to sync has been removed on the leader
+      // {"errorNum":1400,"errorMessage":"cannot sync from remote endpoint: job not found on master at tcp://127.0.0.1:15179. last progress message was 'send batch finish command to url /_api/replication/batch/2103395': no response"}
+      if (err2 && err2.errorNum == 1400) {
+        logLevel = 'debug';
+      } else if (err2 && err2.errorNum == 1402 && err2.errorMessage.match(/HTTP 404/)) {
+        logLevel = 'debug';
+      }
+      console[logLevel]("synchronization of local shard '%s/%s' for central '%s/%s' failed: %s",
         database, shard, database, planId, JSON.stringify(err2));
     }
   }
