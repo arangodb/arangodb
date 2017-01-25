@@ -534,7 +534,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     result.add("collections", VPackValue(VPackValueType::Array));
     result.openObject();
     result.add("name", VPackValue(shardId));
-    result.add("type", VPackValue(TRI_TransactionTypeGetStr(collection->accessType)));
+    result.add("type", VPackValue(AccessMode::typeString(collection->accessType)));
     result.close();
 
     // mop: this is currently only working for satellites and hardcoded to their structure
@@ -545,7 +545,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       result.openObject();
       auto auxiliaryShards = auxiliaryCollection->shardIds();
       result.add("name", VPackValue((*auxiliaryShards)[0]));
-      result.add("type", VPackValue(TRI_TransactionTypeGetStr(collection->accessType)));
+      result.add("type", VPackValue(AccessMode::typeString(collection->accessType)));
       result.close();
     }
     result.close(); // collections

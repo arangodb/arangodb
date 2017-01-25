@@ -871,7 +871,7 @@ function executePlanForCollections(plannedCollections) {
                 }
               }
             }
-            console.info("dropping local shard '%s/%s' of '%s/%s",
+            console.debug("dropping local shard '%s/%s' of '%s/%s",
               database,
               collection,
               database,
@@ -893,8 +893,7 @@ function executePlanForCollections(plannedCollections) {
 // / @brief updateCurrentForCollections
 // /////////////////////////////////////////////////////////////////////////////
 
-function updateCurrentForCollections(localErrors, current) {
-  let currentCollections = current.Collections;
+function updateCurrentForCollections(localErrors, currentCollections) {
   let ourselves = global.ArangoServerState.id();
 
   let db = require('internal').db;
@@ -906,10 +905,12 @@ function updateCurrentForCollections(localErrors, current) {
   function assembleLocalCollectionInfo(info, error) {
     let coll = db._collection(info.name);
     let payload = {
-      error: error.error,
-      errorMessage: error.errorMessage,
-      errorNum: error.errorNum,
+      error: error.error || false,
+      errorMessage: error.errorMessage || '',
+      errorNum: error.errorNum || 0,
     };
+    let indexErrors = fetchKey(error, 'indexes') || {};
+
     payload.indexes = coll.getIndexes().map(index => {
       let agencyIndex = {};
       Object.assign(agencyIndex, index);
@@ -921,14 +922,14 @@ function updateCurrentForCollections(localErrors, current) {
         agencyIndex.id = index.id;
       }
 
-      if (error.indexes[agencyIndex.id] !== undefined) {
-        Object.assign(agencyIndex, error.indexes[agencyIndex.id]);
+      if (indexErrors[agencyIndex.id] !== undefined) {
+        Object.assign(agencyIndex, indexErrors[agencyIndex.id]);
         delete error.indexes[agencyIndex.id];
       }
       return agencyIndex;
     });
     // add the remaining errors which do not have a local id
-    Object.keys(error.indexes).forEach(indexId => {
+    Object.keys(indexErrors).forEach(indexId => {
       payload.indexes.push(error.indexes[indexId]);
     });
     
@@ -960,9 +961,9 @@ function updateCurrentForCollections(localErrors, current) {
         if (localCollections.hasOwnProperty(shard)) {
           let shardInfo = localCollections[shard];
           if (shardInfo.isLeader) {
-            let localCollectionInfo = assembleLocalCollectionInfo(shardInfo, localErrors[shard]);
+            let localCollectionInfo = assembleLocalCollectionInfo(shardInfo, localErrors[shard] || {});
 
-            let currentCollectionInfo = fetchKey(current, 'Collections', database, shardInfo.planId, shard);
+            let currentCollectionInfo = fetchKey(currentCollections, database, shardInfo.planId, shard);
             if (!_.isEqual(localCollectionInfo, currentCollectionInfo)) {
               trx[curCollections + database + '/' + shardInfo.planId + '/' + shardInfo.name] = {
                 op: 'set',
@@ -970,7 +971,7 @@ function updateCurrentForCollections(localErrors, current) {
               };
             }
           } else {
-            let currentServers = fetchKey(current, 'Collections', database, shardInfo.planId, shard, 'servers');
+            let currentServers = fetchKey(currentCollections, database, shardInfo.planId, shard, 'servers');
             // we were previously leader and we are done resigning. update current and let supervision handle the rest
             if (Array.isArray(currentServers) && currentServers[0] === ourselves) {
               trx[curCollections + database + '/' + shardInfo.planId + '/' + shardInfo.name + '/servers'] = {
@@ -1120,7 +1121,7 @@ function migratePrimary(plan, current) {
 
   // diff current and local and prepare agency transactions or whatever
   // to update current. Will report the errors created locally to the agency
-  let trx = updateCurrentForCollections(localErrors, current);
+  let trx = updateCurrentForCollections(localErrors, current.Collections);
   if (Object.keys(trx).length > 0) {
     trx[curVersion] = {op: 'increment'};
     trx = [trx];
@@ -1242,7 +1243,8 @@ function updateCurrentForDatabases(localErrors, currentDatabases) {
   for (name in localDatabases) {
     if (localDatabases.hasOwnProperty(name)) {
       if (!currentDatabases.hasOwnProperty(name) ||
-          !currentDatabases[name].hasOwnProperty(ourselves)) {
+          !currentDatabases[name].hasOwnProperty(ourselves) ||
+          currentDatabases[name][ourselves].error) {
         console.debug("adding entry in Current for database '%s'", name);
         trx = Object.assign(trx, makeAddDatabaseAgencyOperation({error: false, errorNum: 0, name: name,
                                         id: localDatabases[name].id,

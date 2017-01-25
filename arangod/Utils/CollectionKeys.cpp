@@ -102,7 +102,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   {
     SingleCollectionTransaction trx(
         StandaloneTransactionContext::Create(_collection->vocbase()), _name,
-        TRI_TRANSACTION_READ);
+        AccessMode::Type::READ);
 
     int res = trx.begin();
 

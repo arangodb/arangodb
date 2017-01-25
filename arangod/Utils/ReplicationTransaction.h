@@ -56,11 +56,11 @@ class ReplicationTransaction : public Transaction {
     TRI_ASSERT(cid > 0);
 
     TRI_transaction_collection_t* trxCollection =
-        TRI_GetCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_WRITE);
+        TRI_GetCollectionTransaction(this->_trx, cid, AccessMode::Type::WRITE);
 
     if (trxCollection == nullptr) {
       int res = TRI_AddCollectionTransaction(
-          this->_trx, cid, TRI_TRANSACTION_WRITE, 0, true, true);
+          this->_trx, cid, AccessMode::Type::WRITE, 0, true, true);
 
       if (res == TRI_ERROR_NO_ERROR) {
         res = TRI_EnsureCollectionsTransaction(this->_trx);
@@ -71,7 +71,7 @@ class ReplicationTransaction : public Transaction {
       }
 
       trxCollection =
-          TRI_GetCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_WRITE);
+          TRI_GetCollectionTransaction(this->_trx, cid, AccessMode::Type::WRITE);
     }
 
     return trxCollection;

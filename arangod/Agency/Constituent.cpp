@@ -129,7 +129,7 @@ void Constituent::termNoLock(term_t t) {
     auto transactionContext =
         std::make_shared<StandaloneTransactionContext>(_vocbase);
     SingleCollectionTransaction trx(transactionContext, "election",
-                                    TRI_TRANSACTION_WRITE);
+                                    AccessMode::Type::WRITE);
 
     int res = trx.begin();
 

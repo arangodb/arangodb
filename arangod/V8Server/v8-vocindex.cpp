@@ -469,7 +469,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   SingleCollectionTransaction trx(
       V8TransactionContext::Create(collection->vocbase(), true),
-      collection->cid(), create ? TRI_TRANSACTION_WRITE : TRI_TRANSACTION_READ);
+      collection->cid(), create ? AccessMode::Type::WRITE : AccessMode::Type::READ);
 
   int res = trx.begin();
 
@@ -855,7 +855,7 @@ static void JS_DropIndexVocbaseCol(
 
   SingleCollectionTransaction trx(
       V8TransactionContext::Create(collection->vocbase(), true),
-      collection->cid(), TRI_TRANSACTION_WRITE);
+      collection->cid(), AccessMode::Type::WRITE);
 
   int res = trx.begin();
 
@@ -949,7 +949,7 @@ static void JS_GetIndexesVocbaseCol(
 
   SingleCollectionTransaction trx(
       V8TransactionContext::Create(collection->vocbase(), true),
-      collection->cid(), TRI_TRANSACTION_READ);
+      collection->cid(), AccessMode::Type::READ);
     
   trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, false);
 

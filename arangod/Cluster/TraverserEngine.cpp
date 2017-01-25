@@ -74,7 +74,7 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
     TRI_ASSERT(shardList.isArray());
     for (VPackSlice const shard : VPackArrayIterator(shardList)) {
       TRI_ASSERT(shard.isString());
-      _collections.add(shard.copyString(), TRI_TRANSACTION_READ); 
+      _collections.add(shard.copyString(), AccessMode::Type::READ); 
     }
   }
 
@@ -84,7 +84,7 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
     for (VPackSlice const shard : VPackArrayIterator(collection.value)) {
       TRI_ASSERT(shard.isString());
       std::string name = shard.copyString();
-      _collections.add(name, TRI_TRANSACTION_READ); 
+      _collections.add(name, AccessMode::Type::READ); 
       shards.emplace_back(std::move(name));
     }
     _vertexShards.emplace(collection.key.copyString(), shards);
@@ -126,7 +126,7 @@ BaseTraverserEngine::~BaseTraverserEngine() {
       LOG(ERR) << "Failed to unlock shard " << shard << ": not found";
       continue;
     }
-    int res = _trx->unlock(_trx->trxCollection(cid), TRI_TRANSACTION_READ);
+    int res = _trx->unlock(_trx->trxCollection(cid), AccessMode::Type::READ);
     if (res != TRI_ERROR_NO_ERROR) {
       LOG(ERR) << "Failed to unlock shard " << shard << ": "
                << TRI_errno_string(res);
@@ -304,7 +304,7 @@ bool BaseTraverserEngine::lockCollection(std::string const& shard) {
     return false;
   }
   _trx->orderDitch(cid); // will throw when it fails 
-  int res = _trx->lock(_trx->trxCollection(cid), TRI_TRANSACTION_READ);
+  int res = _trx->lock(_trx->trxCollection(cid), AccessMode::Type::READ);
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "Logging Shard " << shard << " lead to exception '"
              << TRI_errno_string(res) << "' (" << res << ") ";

@@ -214,7 +214,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::shared_ptr<V8TransactionContext> transactionContext =
       V8TransactionContext::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, collection->cid(),
-                                  TRI_TRANSACTION_READ);
+                                  AccessMode::Type::READ);
 
   int res = trx.begin();
 
@@ -309,7 +309,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::shared_ptr<V8TransactionContext> transactionContext =
       V8TransactionContext::Create(col->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, col->cid(),
-                                  TRI_TRANSACTION_READ);
+                                  AccessMode::Type::READ);
 
   int res = trx.begin();
 
@@ -373,7 +373,7 @@ static void JS_ChecksumCollection(
   }
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->vocbase(), true),
-                                          col->cid(), TRI_TRANSACTION_READ);
+                                          col->cid(), AccessMode::Type::READ);
 
   int res = trx.begin();
 
@@ -505,7 +505,7 @@ static void JS_FulltextQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   {
     SingleCollectionTransaction trx(
         V8TransactionContext::Create(collection->vocbase(), true),
-        collection->cid(), TRI_TRANSACTION_READ);
+        collection->cid(), AccessMode::Type::READ);
 
     int res = trx.begin();
 
@@ -582,7 +582,7 @@ static void JS_NearQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   {
     SingleCollectionTransaction trx(
         V8TransactionContext::Create(collection->vocbase(), true),
-        collection->cid(), TRI_TRANSACTION_READ);
+        collection->cid(), AccessMode::Type::READ);
 
     int res = trx.begin();
 
@@ -658,7 +658,7 @@ static void JS_WithinQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   {
     SingleCollectionTransaction trx(
         V8TransactionContext::Create(collection->vocbase(), true),
-        collection->cid(), TRI_TRANSACTION_READ);
+        collection->cid(), AccessMode::Type::READ);
 
     int res = trx.begin();
 

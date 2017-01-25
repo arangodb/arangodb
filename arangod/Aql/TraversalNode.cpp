@@ -190,14 +190,14 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
         if (dir != TRI_EDGE_IN) {
           _directions.emplace_back(TRI_EDGE_OUT);
           _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-              n, _vocbase, TRI_TRANSACTION_READ));
+              n, _vocbase, AccessMode::Type::READ));
         }
         return;
       } else if (n.compare(0, 4, "_to_") == 0) {
         if (dir != TRI_EDGE_OUT) {
           _directions.emplace_back(TRI_EDGE_IN);
           _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-              n, _vocbase, TRI_TRANSACTION_READ));
+              n, _vocbase, AccessMode::Type::READ));
         }
         return;
       }
@@ -206,15 +206,15 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
     if (dir == TRI_EDGE_ANY) {
       _directions.emplace_back(TRI_EDGE_OUT);
       _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-          n, _vocbase, TRI_TRANSACTION_READ));
+          n, _vocbase, AccessMode::Type::READ));
 
       _directions.emplace_back(TRI_EDGE_IN);
       _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-          n, _vocbase, TRI_TRANSACTION_READ));
+          n, _vocbase, AccessMode::Type::READ));
     } else {
       _directions.emplace_back(dir);
       _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-          n, _vocbase, TRI_TRANSACTION_READ));
+          n, _vocbase, AccessMode::Type::READ));
     }
   };
 
@@ -376,7 +376,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
         _vertexColls.reserve(length);
         for (auto const& v : vColls) {
           _vertexColls.emplace_back(std::make_unique<aql::Collection>(
-              v, _vocbase, TRI_TRANSACTION_READ));
+              v, _vocbase, AccessMode::Type::READ));
         }
       }
     }
@@ -441,14 +441,14 @@ TraversalNode::TraversalNode(
   for (auto& it : edgeColls) {
     // Collections cannot be copied. So we need to create new ones to prevent leaks
     _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-        it->getName(), _vocbase, TRI_TRANSACTION_READ));
+        it->getName(), _vocbase, AccessMode::Type::READ));
     _graphInfo.add(VPackValue(it->getName()));
   }
 
   for (auto& it : vertexColls) {
     // Collections cannot be copied. So we need to create new ones to prevent leaks
     _vertexColls.emplace_back(std::make_unique<aql::Collection>(
-        it->getName(), _vocbase, TRI_TRANSACTION_READ));
+        it->getName(), _vocbase, AccessMode::Type::READ));
   }
 
   _graphInfo.close();
@@ -560,7 +560,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
   for (auto const& it : VPackArrayIterator(list)) {
     std::string e = arangodb::basics::VelocyPackHelper::getStringValue(it, "");
     _edgeColls.emplace_back(
-        std::make_unique<aql::Collection>(e, _vocbase, TRI_TRANSACTION_READ));
+        std::make_unique<aql::Collection>(e, _vocbase, AccessMode::Type::READ));
   }
 
   list = base.get("vertexCollections");
@@ -573,7 +573,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
   for (auto const& it : VPackArrayIterator(list)) {
     std::string v = arangodb::basics::VelocyPackHelper::getStringValue(it, "");
     _vertexColls.emplace_back(
-        std::make_unique<aql::Collection>(v, _vocbase, TRI_TRANSACTION_READ));
+        std::make_unique<aql::Collection>(v, _vocbase, AccessMode::Type::READ));
   }
 
   // Out variables

@@ -30,6 +30,7 @@
 #include "Aql/Scopes.h"
 #include "Aql/Variable.h"
 #include "Aql/VariableGenerator.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/transaction.h"
 
 #include <functional>
@@ -220,7 +221,7 @@ class Ast {
   AstNode* createNodeVariable(char const*, size_t, bool);
 
   /// @brief create an AST collection node
-  AstNode* createNodeCollection(char const*, TRI_transaction_type_e);
+  AstNode* createNodeCollection(char const*, AccessMode::Type);
 
   /// @brief create an AST reference node
   AstNode* createNodeReference(char const*, size_t);

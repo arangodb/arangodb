@@ -231,7 +231,7 @@ bool RestEdgesHandler::readEdges() {
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
       StandaloneTransactionContext::Create(_vocbase), collectionName,
-      TRI_TRANSACTION_READ);
+      AccessMode::Type::READ);
 
   // .............................................................................
   // inside read transaction
@@ -387,7 +387,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
       StandaloneTransactionContext::Create(_vocbase), collectionName,
-      TRI_TRANSACTION_READ);
+      AccessMode::Type::READ);
 
   // .............................................................................
   // inside read transaction

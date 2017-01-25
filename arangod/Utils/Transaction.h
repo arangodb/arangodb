@@ -31,6 +31,7 @@
 #include "MMFiles/MMFilesIndexElement.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -393,7 +394,7 @@ class Transaction {
 
   TRI_voc_cid_t addCollectionAtRuntime(TRI_voc_cid_t cid, 
                                        std::string const& collectionName,
-                                       TRI_transaction_type_e type = TRI_TRANSACTION_READ) {
+                                       AccessMode::Type type = AccessMode::Type::READ) {
     auto collection = this->trxCollection(cid);
 
     if (collection == nullptr) {
@@ -403,7 +404,7 @@ class Transaction {
       if (res != TRI_ERROR_NO_ERROR) {
         if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
           // special error message to indicate which collection was undeclared
-          THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + collectionName + " [" + TRI_TransactionTypeGetStr(type) + "]");
+          THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + collectionName + " [" + AccessMode::typeString(type) + "]");
         }
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -635,7 +636,7 @@ class Transaction {
   /// @brief test if a collection is already locked
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isLocked(arangodb::LogicalCollection*, TRI_transaction_type_e);
+  bool isLocked(arangodb::LogicalCollection*, AccessMode::Type);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the setup state
@@ -770,25 +771,25 @@ class Transaction {
   /// @brief add a collection by id, with the name supplied
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollection(TRI_voc_cid_t, char const*, TRI_transaction_type_e);
+  int addCollection(TRI_voc_cid_t, char const*, AccessMode::Type);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection by id, with the name supplied
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollection(TRI_voc_cid_t, std::string const&, TRI_transaction_type_e);
+  int addCollection(TRI_voc_cid_t, std::string const&, AccessMode::Type);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection by id
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollection(TRI_voc_cid_t, TRI_transaction_type_e);
+  int addCollection(TRI_voc_cid_t, AccessMode::Type);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection by name
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollection(std::string const&, TRI_transaction_type_e);
+  int addCollection(std::string const&, AccessMode::Type);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the lock acquisition timeout
@@ -817,13 +818,13 @@ class Transaction {
   /// @brief read- or write-lock a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int lock(TRI_transaction_collection_t*, TRI_transaction_type_e);
+  int lock(TRI_transaction_collection_t*, AccessMode::Type);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read- or write-unlock a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int unlock(TRI_transaction_collection_t*, TRI_transaction_type_e);
+  int unlock(TRI_transaction_collection_t*, AccessMode::Type);
 
  private:
 
@@ -919,13 +920,13 @@ class Transaction {
   /// @brief add a collection to an embedded transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollectionEmbedded(TRI_voc_cid_t, TRI_transaction_type_e);
+  int addCollectionEmbedded(TRI_voc_cid_t, AccessMode::Type);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection to a top-level transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollectionToplevel(TRI_voc_cid_t, TRI_transaction_type_e);
+  int addCollectionToplevel(TRI_voc_cid_t, AccessMode::Type);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the transaction

@@ -90,6 +90,14 @@ class JobQueueThread final : public Thread {
         _jobQueue->waitForWork();
       }
     }
+
+    // clear all non-processed jobs
+    for (size_t i = 0; i < JobQueue::SYSTEM_QUEUE_SIZE; ++i) {
+      Job* job = nullptr;
+      while (_jobQueue->pop(i, job)) {
+        delete job;
+      }
+    }
   }
 
  private:

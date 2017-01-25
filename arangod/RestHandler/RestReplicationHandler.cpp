@@ -1527,7 +1527,7 @@ int RestReplicationHandler::processRestoreCollection(
         // instead, truncate them
         SingleCollectionTransaction trx(
             StandaloneTransactionContext::Create(_vocbase), col->cid(),
-            TRI_TRANSACTION_WRITE);
+            AccessMode::Type::WRITE);
         trx.addHint(TRI_TRANSACTION_HINT_RECOVERY,
                     false);  // to turn off waitForSync!
 
@@ -1828,7 +1828,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
 
     SingleCollectionTransaction trx(
         StandaloneTransactionContext::Create(_vocbase), collection->cid(),
-        TRI_TRANSACTION_WRITE);
+        AccessMode::Type::WRITE);
 
     int res = trx.begin();
 
@@ -2334,7 +2334,7 @@ int RestReplicationHandler::processRestoreData(
 
   SingleCollectionTransaction trx(
       StandaloneTransactionContext::Create(_vocbase), colName,
-      TRI_TRANSACTION_WRITE);
+      AccessMode::Type::WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_RECOVERY,
               false);  // to turn off waitForSync!
 
@@ -3523,7 +3523,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   auto trxContext = StandaloneTransactionContext::Create(_vocbase);
-  SingleCollectionTransaction trx(trxContext, col->cid(), TRI_TRANSACTION_READ);
+  SingleCollectionTransaction trx(trxContext, col->cid(), AccessMode::Type::READ);
   trx.addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {

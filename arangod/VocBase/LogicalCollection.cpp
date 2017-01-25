@@ -1333,7 +1333,7 @@ void LogicalCollection::open(bool ignoreErrors) {
 
   arangodb::SingleCollectionTransaction trx(
       arangodb::StandaloneTransactionContext::Create(_vocbase), cid(),
-      TRI_TRANSACTION_WRITE);
+      AccessMode::Type::WRITE);
 
   // build the primary index
   double startIterate = TRI_microtime();

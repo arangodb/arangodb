@@ -182,6 +182,8 @@ static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
   statistics->reset();
 
   // put statistics item back onto the freelist
+  TRI_ASSERT(!statistics->_released);
+  statistics->_released = true;
   int tries = 0;
   while (++tries < 1000) {
     if (RequestFreeList.push(statistics)) {
@@ -221,6 +223,8 @@ TRI_request_statistics_t* TRI_AcquireRequestStatistics() {
   TRI_request_statistics_t* statistics = nullptr;
 
   if (StatisticsFeature::enabled() && RequestFreeList.pop(statistics)) {
+    TRI_ASSERT(statistics->_released);
+    statistics->_released = false;
     return statistics;
   }
 
@@ -238,6 +242,8 @@ void TRI_ReleaseRequestStatistics(TRI_request_statistics_t* statistics) {
     return;
   }
 
+  TRI_ASSERT(!statistics->_released);
+
   if (!statistics->_ignore) {
     bool ok = RequestFinishedList.push(statistics);
     TRI_ASSERT(ok);
@@ -245,6 +251,7 @@ void TRI_ReleaseRequestStatistics(TRI_request_statistics_t* statistics) {
     statistics->reset();
 
     bool ok = RequestFreeList.push(statistics);
+    statistics->_released = true;
     TRI_ASSERT(ok);
   }
 }
@@ -430,6 +437,7 @@ void StatisticsThread::run() {
   {
     TRI_request_statistics_t* entry = nullptr;
     while (RequestFreeList.pop(entry)) {
+      TRI_ASSERT(entry->_released);
       delete entry;
     }
   }
@@ -592,6 +600,7 @@ void TRI_InitializeStatistics() {
 
   for (size_t i = 0; i < QUEUE_SIZE; ++i) {
     auto entry = new TRI_request_statistics_t;
+    TRI_ASSERT(entry->_released);
     bool ok = RequestFreeList.push(entry);
     TRI_ASSERT(ok);
   }

@@ -423,7 +423,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   };
 
   arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(collection->vocbase()), 
-      collection->cid(), TRI_TRANSACTION_WRITE);
+      collection->cid(), AccessMode::Type::WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true);
@@ -951,7 +951,7 @@ void MMFilesCompactorThread::run() {
 uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collection) {
   SingleCollectionTransaction trx(
       StandaloneTransactionContext::Create(_vocbase), collection->cid(),
-      TRI_TRANSACTION_READ);
+      AccessMode::Type::READ);
   // only try to acquire the lock here
   // if lock acquisition fails, we go on and report an (arbitrary) positive number
   trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, false); 

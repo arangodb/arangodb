@@ -607,7 +607,7 @@ static void GetDocumentByIdentifier(arangodb::Transaction* trx,
     }
     if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
       // special error message to indicate which collection was undeclared
-      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + collectionName + " [" + TRI_TransactionTypeGetStr(TRI_TRANSACTION_READ) + "]");
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + collectionName + " [" + AccessMode::typeString(AccessMode::Type::READ) + "]");
     }
     THROW_ARANGO_EXCEPTION(res);
   }
