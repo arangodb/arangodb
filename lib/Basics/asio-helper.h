@@ -62,6 +62,8 @@ class Unused2 {
  protected:
   const boost::system::error_category& unused1
     = boost::asio::error::ssl_category;
+  const boost::system::error_category& unused2
+    = boost::asio::ssl::error::stream_category;
 };
 }
 #endif

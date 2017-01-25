@@ -30,6 +30,7 @@
 // #define TRI_CHECK_MULTI_POINTER_HASH 1
 
 #include "Basics/Common.h"
+#include "Basics/AssocHelpers.h"
 #include "Basics/IndexBucket.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"

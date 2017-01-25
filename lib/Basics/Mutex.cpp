@@ -74,7 +74,7 @@ void Mutex::lock() {
     }
 
     LOG(FATAL) << "could not lock the mutex: " << strerror(rc);
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_ABORT();
   }
 }
 
@@ -97,7 +97,7 @@ void Mutex::unlock() {
 
   if (rc != 0) {
     LOG(FATAL) << "could not release the mutex: " << strerror(rc);
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_ABORT();
   }
 }
 
