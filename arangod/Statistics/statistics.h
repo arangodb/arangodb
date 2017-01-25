@@ -53,7 +53,8 @@ struct TRI_request_statistics_t {
         _tooLarge(false),
         _executeError(false),
         _ignore(false),
-        _released(true) {
+        _released(true),
+        _inQueue(false) {
 #ifdef USE_DEV_TIMERS
     _id = nullptr;
 #endif
@@ -103,6 +104,7 @@ struct TRI_request_statistics_t {
   bool _executeError;
   bool _ignore;
   bool _released;
+  bool _inQueue;
 
 #ifdef USE_DEV_TIMERS
   void* _id;

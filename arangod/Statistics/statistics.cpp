@@ -207,6 +207,8 @@ static size_t ProcessAllRequestStatistics() {
 
   while (RequestFinishedList.pop(statistics)) {
     if (statistics != nullptr) {
+      TRI_ASSERT(statistics->_inQueue);
+      statistics->_inQueue = false;
       ProcessRequestStatistics(statistics);
       ++count;
     }
@@ -245,6 +247,8 @@ void TRI_ReleaseRequestStatistics(TRI_request_statistics_t* statistics) {
   TRI_ASSERT(!statistics->_released);
 
   if (!statistics->_ignore) {
+    TRI_ASSERT(!statistics->_inQueue);
+    statistics->_inQueue = true;
     bool ok = RequestFinishedList.push(statistics);
     TRI_ASSERT(ok);
   } else {
@@ -445,6 +449,8 @@ void StatisticsThread::run() {
   {
     TRI_request_statistics_t* entry = nullptr;
     while (RequestFinishedList.pop(entry)) {
+      TRI_ASSERT(entry->_inQueue);
+      entry->_inQueue = false;
       delete entry;
     }
   }
