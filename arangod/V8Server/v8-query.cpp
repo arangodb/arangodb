@@ -27,7 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
-#include "MMFiles/MMFilesGeoIndex.h"
+#include "Indexes/Index.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"
@@ -576,31 +576,7 @@ static void JS_NearQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // expected: NEAR(<index-id>, <latitude>, <longitude>, <limit>)
   if (args.Length() < 4) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "WITHIN(<index-handle>, <latitude>, <longitude>, <limit>, <distance>)");
-  }
-  
-  {
-    SingleCollectionTransaction trx(
-        V8TransactionContext::Create(collection->vocbase(), true),
-        collection->cid(), AccessMode::Type::READ);
-
-    int res = trx.begin();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-
-    // extract the index
-    auto idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection,
-                                       args[0], false);
-
-    if (idx == nullptr ||
-        (idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX &&
-         idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
-    }
-    
-    trx.finish(TRI_ERROR_NO_ERROR);
+        "NEAR(<index-handle>, <latitude>, <longitude>, <limit>, <distance>)");
   }
   
   // extract latitude, longitude, limit, distance etc.
@@ -653,30 +629,6 @@ static void JS_WithinQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 4) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "WITHIN(<index-handle>, <latitude>, <longitude>, <radius>, <distance>)");
-  }
-  
-  {
-    SingleCollectionTransaction trx(
-        V8TransactionContext::Create(collection->vocbase(), true),
-        collection->cid(), AccessMode::Type::READ);
-
-    int res = trx.begin();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-
-    // extract the index
-    auto idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection,
-                                       args[0], false);
-
-    if (idx == nullptr ||
-        (idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX &&
-         idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
-    }
-    
-    trx.finish(TRI_ERROR_NO_ERROR);
   }
   
   // extract latitude, longitude, radius, distance etc.
