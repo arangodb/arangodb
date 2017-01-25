@@ -1130,7 +1130,7 @@ TRI_transaction_t::TRI_transaction_t(TRI_vocbase_t* vocbase, double timeout, boo
       _hasOperations(false), 
       _waitForSync(waitForSync),
       _beginWritten(false), 
-      _timeout(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT) {
+      _timeout(Transaction::DefaultLockTimeout) {
   
   if (timeout > 0.0) {
     _timeout = timeout;

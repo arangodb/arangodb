@@ -43,9 +43,6 @@ class Transaction;
 struct TRI_transaction_collection_t;
 struct TRI_vocbase_t;
 
-/// @brief time (in seconds) that is spent waiting for a lock
-#define TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT 30.0
-
 /// @brief transaction statuses
 enum TRI_transaction_status_e {
   TRI_TRANSACTION_UNDEFINED = 0,

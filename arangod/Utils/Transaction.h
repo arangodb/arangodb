@@ -86,6 +86,9 @@ class Transaction {
 
  public:
 
+  /// @brief time (in seconds) that is spent waiting for a lock
+  static constexpr double DefaultLockTimeout = 30.0; 
+
   class IndexHandle {
     friend class Transaction;
     std::shared_ptr<arangodb::Index> _index;
