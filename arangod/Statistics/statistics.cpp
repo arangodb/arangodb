@@ -38,7 +38,10 @@ thread_local TRI_request_statistics_t* TRI_request_statistics_t::STATS =
     nullptr;
 #endif
 
-static size_t const QUEUE_SIZE = 1000;
+static constexpr size_t QUEUE_SIZE = 1000;
+
+std::unique_ptr<TRI_request_statistics_t[]> RequestStatistics;
+std::unique_ptr<TRI_connection_statistics_t[]> ConnectionStatistics;
 
 std::string TRI_request_statistics_t::to_string() {
   std::stringstream ss;
@@ -437,30 +440,6 @@ void StatisticsThread::run() {
 
   delete TRI_BytesReceivedDistributionStatistics;
   TRI_BytesReceivedDistributionStatistics = nullptr;
-
-  {
-    TRI_request_statistics_t* entry = nullptr;
-    while (RequestFreeList.pop(entry)) {
-      TRI_ASSERT(entry->_released);
-      delete entry;
-    }
-  }
-
-  {
-    TRI_request_statistics_t* entry = nullptr;
-    while (RequestFinishedList.pop(entry)) {
-      TRI_ASSERT(entry->_inQueue);
-      entry->_inQueue = false;
-      delete entry;
-    }
-  }
-
-  {
-    TRI_connection_statistics_t* entry = nullptr;
-    while (ConnectionFreeList.pop(entry)) {
-      delete entry;
-    }
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -604,8 +583,9 @@ void TRI_InitializeStatistics() {
   // generate the request statistics queue
   // .............................................................................
 
+  RequestStatistics.reset(new TRI_request_statistics_t[QUEUE_SIZE]());
   for (size_t i = 0; i < QUEUE_SIZE; ++i) {
-    auto entry = new TRI_request_statistics_t;
+    TRI_request_statistics_t* entry = &RequestStatistics[i];
     TRI_ASSERT(entry->_released);
     bool ok = RequestFreeList.push(entry);
     TRI_ASSERT(ok);
@@ -615,8 +595,9 @@ void TRI_InitializeStatistics() {
   // generate the connection statistics queue
   // .............................................................................
 
+  ConnectionStatistics.reset(new TRI_connection_statistics_t[QUEUE_SIZE]());
   for (size_t i = 0; i < QUEUE_SIZE; ++i) {
-    auto entry = new TRI_connection_statistics_t;
+    TRI_connection_statistics_t* entry = &ConnectionStatistics[i];
     bool ok = ConnectionFreeList.push(entry);
     TRI_ASSERT(ok);
   }
