@@ -37,33 +37,6 @@ namespace arangodb {
 class LogicalCollection;
 class PhysicalCollection;
 
-// @brief This token is handed out by Indexes and
-// is used by StorageEngines to return a document
-// Only specializations of this token can be created.
-
-struct DocumentIdentifierToken {
- public:
-   // TODO Replace by Engine::InvalidToken
-  constexpr DocumentIdentifierToken() : _data(0) {}
-
-  ~DocumentIdentifierToken() {}
-
-  inline bool operator==(DocumentIdentifierToken const& other) const { return _data == other._data; }
-
-  inline bool operator==(uint64_t const& other) const { return _data == other; }
-
-  inline bool operator!=(DocumentIdentifierToken const& other) const { return !(operator==(other)); }
-  inline bool operator!=(uint64_t const& other) const { return !(operator==(other)); }
-
- protected:
-  explicit DocumentIdentifierToken(uint64_t data) : _data(data) {}
-
- public:
-  uint64_t _data;
-};
-
-
-
 class StorageEngine : public application_features::ApplicationFeature {
  public:
 
@@ -272,24 +245,6 @@ class StorageEngine : public application_features::ApplicationFeature {
  
  private:
   std::string const _typeName;
-};
-
-}
-
-namespace std {
-template <>
-struct hash<arangodb::DocumentIdentifierToken> {
-  inline size_t operator()(arangodb::DocumentIdentifierToken const& token) const noexcept {
-    return token._data;
-  }
-};
-
-template <>
-struct equal_to<arangodb::DocumentIdentifierToken> {
-  bool operator()(arangodb::DocumentIdentifierToken const& lhs,
-                  arangodb::DocumentIdentifierToken const& rhs) const {
-    return lhs == rhs;
-  }
 };
 
 }

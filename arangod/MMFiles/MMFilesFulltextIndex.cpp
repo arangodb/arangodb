@@ -27,6 +27,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "MMFiles/fulltext-index.h"
+#include "MMFiles/MMFilesToken.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Iterator.h>
@@ -58,6 +59,17 @@ static void ExtractWords(std::vector<std::string>& words,
       ExtractWords(words, v.value, minWordLength, level + 1);
     }
   }
+}
+
+TRI_voc_rid_t MMFilesFulltextIndex::fromDocumentIdentifierToken(
+    DocumentIdentifierToken const& token) {
+  auto tkn = static_cast<MMFilesToken const*>(&token);
+  return tkn->revisionId();
+}
+
+DocumentIdentifierToken MMFilesFulltextIndex::toDocumentIdentifierToken(
+    TRI_voc_rid_t revisionId) {
+  return MMFilesToken{revisionId};
 }
 
 MMFilesFulltextIndex::MMFilesFulltextIndex(TRI_idx_iid_t iid,
@@ -211,8 +223,7 @@ int MMFilesFulltextIndex::insert(arangodb::Transaction*, TRI_voc_rid_t revisionI
   }
 
   // TODO: use status codes
-  if (!TRI_InsertWordsMMFilesFulltextIndex(
-          _fulltextIndex, fromRevision(revisionId), words)) {
+  if (!TRI_InsertWordsMMFilesFulltextIndex(_fulltextIndex, revisionId, words)) {
     LOG(ERR) << "adding document to fulltext index failed";
     res = TRI_ERROR_INTERNAL;
   }
@@ -221,7 +232,7 @@ int MMFilesFulltextIndex::insert(arangodb::Transaction*, TRI_voc_rid_t revisionI
 
 int MMFilesFulltextIndex::remove(arangodb::Transaction*, TRI_voc_rid_t revisionId,
                           VPackSlice const& doc, bool isRollback) {
-  TRI_DeleteDocumentMMFilesFulltextIndex(_fulltextIndex, fromRevision(revisionId));
+  TRI_DeleteDocumentMMFilesFulltextIndex(_fulltextIndex, revisionId);
 
   return TRI_ERROR_NO_ERROR;
 }

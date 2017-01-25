@@ -98,8 +98,8 @@ DocumentIdentifierToken MMFilesGeoIndexIterator::next() {
        || ( _inclusive && coords->distances[0] <= _radius)
        )
     {
-      auto revision = ::MMFilesGeoIndex::toRevision(coords->coordinates[0].data);
-      return MMFilesToken{revision};
+      return ::MMFilesGeoIndex::toDocumentIdentifierToken(
+          coords->coordinates[0].data);
     }
   }
   // if there are no more results we return the default constructed IndexLookupResult
@@ -199,7 +199,8 @@ void MMFilesGeoIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& r
     result.reserve(numDocs);
         
     for (size_t i = 0; i < numDocs; ++i) {
-      result.emplace_back(MMFilesToken(::MMFilesGeoIndex::toRevision(coords->coordinates[i].data)));
+      result.emplace_back(::MMFilesGeoIndex::toDocumentIdentifierToken(
+          coords->coordinates[i].data));
     }
   }
 
@@ -220,6 +221,16 @@ void MMFilesGeoIndexIterator::replaceCursor(::GeoCursor* c) {
 void MMFilesGeoIndexIterator::createCursor(double lat, double lon) {
   _coor = GeoCoordinate{lat, lon, 0};
   replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &_coor));
+}
+
+uint64_t MMFilesGeoIndex::fromDocumentIdentifierToken(
+    DocumentIdentifierToken const& token) {
+  auto tkn = static_cast<MMFilesToken const*>(&token);
+  return static_cast<uint64_t>(tkn->revisionId());
+}
+
+DocumentIdentifierToken MMFilesGeoIndex::toDocumentIdentifierToken(uint64_t internal) {
+  return MMFilesToken{internal};
 }
 
 /// @brief creates an IndexIterator for the given Condition
@@ -425,7 +436,7 @@ int MMFilesGeoIndex::insert(arangodb::Transaction*, TRI_voc_rid_t revisionId,
   GeoCoordinate gc;
   gc.latitude = latitude;
   gc.longitude = longitude;
-  gc.data = fromRevision(revisionId);
+  gc.data = static_cast<uint64_t>(revisionId);
 
   int res = GeoIndex_insert(_geoIndex, &gc);
 
@@ -495,7 +506,7 @@ int MMFilesGeoIndex::remove(arangodb::Transaction*, TRI_voc_rid_t revisionId,
   GeoCoordinate gc;
   gc.latitude = latitude;
   gc.longitude = longitude;
-  gc.data = fromRevision(revisionId);
+  gc.data = static_cast<uint64_t>(revisionId);
 
   // ignore non-existing elements in geo-index
   GeoIndex_remove(_geoIndex, &gc);

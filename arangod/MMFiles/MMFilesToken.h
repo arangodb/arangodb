@@ -21,7 +21,10 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "StorageEngine/StorageEngine.h"
+#ifndef ARANGOD_MMFILES_MMFILES_TOKEN_H
+#define ARANGOD_MMFILES_MMFILES_TOKEN_H 1
+
+#include "StorageEngine/DocumentIdentifierToken.h"
 
 namespace arangodb {
 
@@ -32,10 +35,6 @@ struct MMFilesToken : public DocumentIdentifierToken {
       : DocumentIdentifierToken(revisionId) {}
   MMFilesToken(MMFilesToken const& other)
       : DocumentIdentifierToken(other._data) {}
-  MMFilesToken& operator=(MMFilesToken const& other) {
-    _data = other._data;
-    return *this;
-  }
 
   inline TRI_voc_rid_t revisionId() const {
     return static_cast<TRI_voc_rid_t>(_data);
@@ -44,3 +43,5 @@ struct MMFilesToken : public DocumentIdentifierToken {
 static_assert(sizeof(MMFilesToken) == sizeof(uint64_t), "invalid MMFilesToken size");
 
 }
+
+#endif

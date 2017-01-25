@@ -26,6 +26,8 @@
 
 #include "fulltext-common.h"
 
+#include "VocBase/voc-types.h"
+
 struct TRI_fulltext_query_s;
 struct TRI_fulltext_result_s;
 struct TRI_fulltext_wordlist_s;
@@ -65,12 +67,12 @@ void TRI_TruncateMMFilesFulltextIndex(TRI_fts_index_t*);
 
 /// @brief delete a document from the index
 void TRI_DeleteDocumentMMFilesFulltextIndex(TRI_fts_index_t* const,
-                                     const TRI_fulltext_doc_t);
+                                            const TRI_voc_rid_t);
 
 /// @brief insert a list of words to the index
 bool TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* const,
-                                  const TRI_fulltext_doc_t,
-                                  std::vector<std::string>&);
+                                         const TRI_voc_rid_t,
+                                         std::vector<std::string>&);
 
 /// @brief find all documents that contain a word (exact match)
 #if 0

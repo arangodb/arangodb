@@ -30,6 +30,7 @@
 #include "MMFiles/fulltext-list.h"
 #include "MMFiles/fulltext-query.h"
 #include "MMFiles/fulltext-result.h"
+#include "StorageEngine/DocumentIdentifierToken.h"
 
 /// @brief use padding for pointers in binary data
 #ifndef TRI_UNALIGNED_ACCESS
@@ -1029,10 +1030,10 @@ static TRI_fulltext_result_t* MakeListResult(index__t* const idx,
 
   for (i = 0; i < originalNumResults; ++i) {
     TRI_fulltext_handle_t handle;
-    TRI_fulltext_doc_t doc;
 
     handle = listEntries[i];
-    doc = TRI_GetDocumentMMFilesFulltextIndex(idx->_handles, handle);
+    arangodb::DocumentIdentifierToken doc =
+        TRI_GetDocumentMMFilesFulltextIndex(idx->_handles, handle);
 
     if (doc == 0) {
       // deleted document
@@ -1211,7 +1212,7 @@ void TRI_TruncateMMFilesFulltextIndex(TRI_fts_index_t* ftx) {
 
 /// @brief delete a document from the index
 void TRI_DeleteDocumentMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
-                                     const TRI_fulltext_doc_t document) {
+                                            const TRI_voc_rid_t document) {
   index__t* idx = (index__t*)ftx;
 
   TRI_WriteLockReadWriteLock(&idx->_lock);
@@ -1229,8 +1230,8 @@ void TRI_DeleteDocumentMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
 /// - save redundant lookups of prefix nodes for adjacent words with shared
 ///   prefixes
 bool TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
-                                  const TRI_fulltext_doc_t document,
-                                  std::vector<std::string>& wordlist) {
+                                         const TRI_voc_rid_t document,
+                                         std::vector<std::string>& wordlist) {
   index__t* idx;
   TRI_fulltext_handle_t handle;
   node_t* paths[MAX_WORD_BYTES + 4];

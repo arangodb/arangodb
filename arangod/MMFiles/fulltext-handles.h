@@ -25,9 +25,14 @@
 #define ARANGOD_FULLTEXT_INDEX_FULLTEXT_HANDLES_H 1
 
 #include "fulltext-common.h"
+#include "VocBase/voc-types.h"
 
 /// @brief typedef for a fulltext handle entry
 typedef uint32_t TRI_fulltext_handle_t;
+
+namespace arangodb {
+  struct DocumentIdentifierToken;
+}
 
 /// @brief a slot containing _numUsed handles and has some statistics about
 /// itself
@@ -71,9 +76,9 @@ typedef uint32_t TRI_fulltext_handle_t;
 typedef struct TRI_fulltext_handle_slot_s {
   uint32_t _numUsed;               // number of handles used in slot
   uint32_t _numDeleted;            // number of deleted handles in slot
-  TRI_fulltext_doc_t _min;         // minimum handle value in slot
-  TRI_fulltext_doc_t _max;         // maximum handle value in slot
-  TRI_fulltext_doc_t* _documents;  // document ids for the slots
+  TRI_voc_rid_t _min;              // minimum handle value in slot
+  TRI_voc_rid_t _max;              // maximum handle value in slot
+  TRI_voc_rid_t* _documents;       // document ids for the slots
   uint8_t* _deleted;               // deleted flags for the slots
 } TRI_fulltext_handle_slot_t;
 
@@ -112,14 +117,14 @@ TRI_fulltext_handles_t* TRI_CompactHandleMMFilesFulltextIndex(
 
 /// @brief insert a document and return a handle for it
 TRI_fulltext_handle_t TRI_InsertHandleMMFilesFulltextIndex(
-    TRI_fulltext_handles_t* const, const TRI_fulltext_doc_t);
+    TRI_fulltext_handles_t* const, const TRI_voc_rid_t);
 
 /// @brief mark a document as deleted in the handle list
 bool TRI_DeleteDocumentHandleMMFilesFulltextIndex(TRI_fulltext_handles_t* const,
-                                           const TRI_fulltext_doc_t);
+                                           const TRI_voc_rid_t);
 
 /// @brief get the document id for a handle
-TRI_fulltext_doc_t TRI_GetDocumentMMFilesFulltextIndex(
+arangodb::DocumentIdentifierToken TRI_GetDocumentMMFilesFulltextIndex(
     const TRI_fulltext_handles_t* const, const TRI_fulltext_handle_t);
 
 /// @brief dump all handles

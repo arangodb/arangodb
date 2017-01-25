@@ -33,9 +33,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-// TRI_fulltext_doc_t must be capable of storing revision ids
-static_assert(sizeof(TRI_fulltext_doc_t) >= sizeof(TRI_voc_rid_t), "invalid size of TRI_fulltext_doc_t");
-
 namespace arangodb {
 
 class MMFilesFulltextIndex final : public Index {
@@ -83,13 +80,10 @@ class MMFilesFulltextIndex final : public Index {
 
   TRI_fts_index_t* internals() { return _fulltextIndex; }
 
-  static TRI_fulltext_doc_t fromRevision(TRI_voc_rid_t revisionId) {
-    return static_cast<TRI_fulltext_doc_t>(revisionId);
-  }
-
-  static TRI_voc_rid_t toRevision(TRI_fulltext_doc_t internal) {
-    return static_cast<TRI_voc_rid_t>(internal);
-  }
+  static TRI_voc_rid_t fromDocumentIdentifierToken(
+      DocumentIdentifierToken const& token);
+  static DocumentIdentifierToken toDocumentIdentifierToken(
+      TRI_voc_rid_t revisionId);
 
  private:
   std::vector<std::string> wordlist(arangodb::velocypack::Slice const&);

@@ -26,10 +26,15 @@
 
 #include "fulltext-common.h"
 
+// Forward declarations
+namespace arangodb {
+  struct DocumentIdentifierToken;
+}
+
 /// @brief typedef for a fulltext result list
 typedef struct TRI_fulltext_result_s {
   uint32_t _numDocuments;
-  TRI_fulltext_doc_t* _documents;
+  arangodb::DocumentIdentifierToken* _documents;
 } TRI_fulltext_result_t;
 
 /// @brief create a result

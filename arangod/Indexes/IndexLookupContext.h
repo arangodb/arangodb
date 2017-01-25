@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Logger/Logger.h"
 #include "Utils/Transaction.h"
+#include "StorageEngine/DocumentIdentifierToken.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
