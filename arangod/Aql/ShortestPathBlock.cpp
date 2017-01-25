@@ -70,7 +70,7 @@ struct ConstDistanceExpanderLocal {
   bool _isReverse;
 
   /// @brief Local cursor vector
-  std::vector<IndexLookupResult> _cursor;
+  std::vector<DocumentIdentifierToken> _cursor;
 
  public:
   ConstDistanceExpanderLocal(ShortestPathBlock const* block,
@@ -96,10 +96,9 @@ struct ConstDistanceExpanderLocal {
       _cursor.clear();
       LogicalCollection* collection = edgeCursor->collection();
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMoreMptr(_cursor, UINT64_MAX);
+        edgeCursor->getMoreTokens(_cursor, 1000);
         for (auto const& element : _cursor) {
-          TRI_voc_rid_t revisionId = element.revisionId();
-          if (collection->readRevision(_block->transaction(), *mmdr, revisionId)) {
+          if (collection->readDocument(_block->transaction(), *mmdr, element)) {
             VPackSlice edge(mmdr->vpack());
             VPackSlice from =
                 arangodb::Transaction::extractFromFromDocument(edge);
@@ -220,7 +219,7 @@ struct EdgeWeightExpanderLocal {
   void operator()(VPackSlice const& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
     ManagedDocumentResult* mmdr = _block->_mmdr.get();
-    std::vector<IndexLookupResult> cursor;
+    std::vector<DocumentIdentifierToken> cursor;
     std::unique_ptr<arangodb::OperationCursor> edgeCursor;
     std::unordered_map<VPackSlice, size_t> candidates;
     for (auto const& edgeCollection : _block->_collectionInfos) {
@@ -240,10 +239,9 @@ struct EdgeWeightExpanderLocal {
       cursor.clear();
       LogicalCollection* collection = edgeCursor->collection();
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMoreMptr(cursor, UINT64_MAX);
+        edgeCursor->getMoreTokens(cursor, 1000);
         for (auto const& element : cursor) {
-          TRI_voc_rid_t revisionId = element.revisionId();
-          if (collection->readRevision(_block->transaction(), *mmdr, revisionId)) {
+          if (collection->readDocument(_block->transaction(), *mmdr, element)) {
             VPackSlice edge(mmdr->vpack());
             VPackSlice from =
                 arangodb::Transaction::extractFromFromDocument(edge);

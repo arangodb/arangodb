@@ -29,6 +29,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesToken.h"
 #include "Utils/Transaction.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -520,10 +521,10 @@ void MMFilesSkiplistIterator::reset() {
 }
 
 /// @brief Get the next element in the skiplist
-IndexLookupResult MMFilesSkiplistIterator::next() {
+DocumentIdentifierToken MMFilesSkiplistIterator::next() {
   if (_cursor == nullptr) {
     // We are exhausted already, sorry
-    return IndexLookupResult();
+    return MMFilesToken{};
   }
   Node* tmp = _cursor;
   if (_reverse) {
@@ -541,7 +542,7 @@ IndexLookupResult MMFilesSkiplistIterator::next() {
   }
   TRI_ASSERT(tmp != nullptr);
   TRI_ASSERT(tmp->document() != nullptr);
-  return IndexLookupResult(tmp->document()->revisionId());
+  return MMFilesToken{tmp->document()->revisionId()};
 }
   
 MMFilesSkiplistIterator2::MMFilesSkiplistIterator2(LogicalCollection* collection, arangodb::Transaction* trx,
@@ -602,10 +603,10 @@ void MMFilesSkiplistIterator2::reset() {
 }
 
 /// @brief Get the next element in the skiplist
-IndexLookupResult MMFilesSkiplistIterator2::next() {
+DocumentIdentifierToken MMFilesSkiplistIterator2::next() {
   if (_cursor == nullptr) {
     // We are exhausted already, sorry
-    return IndexLookupResult();
+    return MMFilesToken{};
   }
   TRI_ASSERT(_currentInterval < _intervals.size());
   auto const& interval = _intervals[_currentInterval];
@@ -625,7 +626,7 @@ IndexLookupResult MMFilesSkiplistIterator2::next() {
   }
   TRI_ASSERT(tmp != nullptr);
   TRI_ASSERT(tmp->document() != nullptr);
-  return IndexLookupResult(tmp->document()->revisionId());
+  return MMFilesToken{tmp->document()->revisionId()};
 }
 
 void MMFilesSkiplistIterator2::forwardCursor() {

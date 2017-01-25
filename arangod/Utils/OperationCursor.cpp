@@ -41,20 +41,20 @@ void OperationCursor::reset() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements. mptr variant
+/// @brief Get next batchSize many DocumentTokens.
 ///        Defaults to _batchSize
 ///        Check hasMore()==true before using this
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
 
-std::vector<IndexLookupResult> OperationCursor::getMoreMptr(uint64_t batchSize) {
-  std::vector<IndexLookupResult> res;
-  getMoreMptr(res, batchSize);
+std::vector<DocumentIdentifierToken> OperationCursor::getMoreTokens(uint64_t batchSize) {
+  std::vector<DocumentIdentifierToken> res;
+  getMoreTokens(res, batchSize);
   return res;
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements. mptr variant
+/// @brief Get next batchSize many DocumentTokens.
 ///        Defaults to _batchSize
 ///        Check hasMore()==true before using this
 ///        NOTE: This will throw on OUT_OF_MEMORY
@@ -62,7 +62,7 @@ std::vector<IndexLookupResult> OperationCursor::getMoreMptr(uint64_t batchSize) 
 ///              The caller shall NOT modify it.
 //////////////////////////////////////////////////////////////////////////////
 
-void OperationCursor::getMoreMptr(std::vector<IndexLookupResult>& result,
+void OperationCursor::getMoreTokens(std::vector<DocumentIdentifierToken>& result,
                                   uint64_t batchSize) {
   if (!hasMore()) {
     TRI_ASSERT(false);

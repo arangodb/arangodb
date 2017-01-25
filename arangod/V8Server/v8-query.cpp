@@ -254,16 +254,14 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackOptions resultOptions = VPackOptions::Defaults;
   resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler().get();
 
-  std::vector<IndexLookupResult> batch;
+  std::vector<DocumentIdentifierToken> batch;
   ManagedDocumentResult mmdr;
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
   while (opCursor->hasMore()) {
-    opCursor->getMoreMptr(batch);
-    // We only need this one call, limit == batchsize
+    opCursor->getMoreTokens(batch, 1000);
     for (auto const& it : batch) {
-      TRI_voc_rid_t revisionId = it.revisionId();
-      if (collection->readRevision(&trx, mmdr, revisionId)) {
+      if (collection->readDocument(&trx, mmdr, it)) {
         resultBuilder.add(VPackSlice(mmdr.vpack()));
       }
     }

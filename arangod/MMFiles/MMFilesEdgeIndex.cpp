@@ -31,6 +31,7 @@
 #include "Basics/hashes.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "MMFiles/MMFilesToken.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
@@ -126,7 +127,7 @@ MMFilesEdgeIndexIterator::~MMFilesEdgeIndexIterator() {
   }
 }
 
-IndexLookupResult MMFilesEdgeIndexIterator::next() {
+DocumentIdentifierToken MMFilesEdgeIndexIterator::next() {
   while (_iterator.valid()) {
     if (_buffer.empty()) {
       // We start a new lookup
@@ -150,17 +151,17 @@ IndexLookupResult MMFilesEdgeIndexIterator::next() {
     } else {
       _lastElement = _buffer.back();
       // found something
-      return IndexLookupResult(_buffer[_posInBuffer++].revisionId());
+      return MMFilesToken{_buffer[_posInBuffer++].revisionId()};
     }
 
     // found no result. now go to next lookup value in _keys
     _iterator.next();
   }
 
-  return IndexLookupResult();
+  return MMFilesToken{};
 }
 
-void MMFilesEdgeIndexIterator::nextBabies(std::vector<IndexLookupResult>& buffer, size_t limit) {
+void MMFilesEdgeIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& buffer, size_t limit) {
   size_t atMost = _batchSize > limit ? limit : _batchSize;
 
   if (atMost == 0) {
@@ -187,7 +188,7 @@ void MMFilesEdgeIndexIterator::nextBabies(std::vector<IndexLookupResult>& buffer
     }
 
     for (auto& it : _buffer) {
-      buffer.emplace_back(it.revisionId());
+      buffer.emplace_back(MMFilesToken(it.revisionId()));
     }
     
     if (_buffer.empty()) {
@@ -223,28 +224,28 @@ AnyDirectionMMFilesEdgeIndexIterator::AnyDirectionMMFilesEdgeIndexIterator(Logic
       _inbound(inboundIterator),
       _useInbound(false) {}
 
-IndexLookupResult AnyDirectionMMFilesEdgeIndexIterator::next() {
-  IndexLookupResult res;
+DocumentIdentifierToken AnyDirectionMMFilesEdgeIndexIterator::next() {
+  DocumentIdentifierToken res;
   if (_useInbound) {
     do {
       res = _inbound->next();
-    } while (res && _seen.find(res.revisionId()) != _seen.end());
+    } while (res != 0 && _seen.find(res) != _seen.end());
     return res;
   }
   res = _outbound->next();
-  if (!res) {
+  if (res == 0) {
     _useInbound = true;
     return next();
   }
-  _seen.emplace(res.revisionId());
+  _seen.emplace(res);
   return res;
 }
 
-void AnyDirectionMMFilesEdgeIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t limit) {
+void AnyDirectionMMFilesEdgeIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& result, size_t limit) {
   result.clear();
   for (size_t i = 0; i < limit; ++i) {
-    IndexLookupResult res = next();
-    if (!res) {
+    DocumentIdentifierToken res = next();
+    if (res == 0) {
       return;
     }
     result.emplace_back(res);

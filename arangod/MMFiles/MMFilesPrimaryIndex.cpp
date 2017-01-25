@@ -29,6 +29,7 @@
 #include "Basics/tri-strings.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "MMFiles/MMFilesToken.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/LogicalCollection.h"
@@ -106,20 +107,20 @@ MMFilesPrimaryIndexIterator::~MMFilesPrimaryIndexIterator() {
   }
 }
 
-IndexLookupResult MMFilesPrimaryIndexIterator::next() {
+DocumentIdentifierToken MMFilesPrimaryIndexIterator::next() {
   while (_iterator.valid()) {
     MMFilesSimpleIndexElement result = _index->lookupKey(_trx, _iterator.value());
     _iterator.next();
 
     if (result) {
       // found a result
-      return IndexLookupResult(result.revisionId());
+      return MMFilesToken{result.revisionId()};
     }
 
     // found no result. now go to next lookup value in _keys
   }
 
-  return IndexLookupResult();
+  return MMFilesToken{};
 }
 
 void MMFilesPrimaryIndexIterator::reset() { _iterator.reset(); }
@@ -132,7 +133,7 @@ AllIndexIterator::AllIndexIterator(LogicalCollection* collection,
                    bool reverse)
     : IndexIterator(collection, trx, mmdr, index), _index(indexImpl), _reverse(reverse), _total(0) {}
 
-IndexLookupResult AllIndexIterator::next() {
+DocumentIdentifierToken AllIndexIterator::next() {
   MMFilesSimpleIndexElement element;
   if (_reverse) {
     element = _index->findSequentialReverse(&_context, _position);
@@ -140,12 +141,12 @@ IndexLookupResult AllIndexIterator::next() {
     element = _index->findSequential(&_context, _position, _total);
   }
   if (element) {
-    return IndexLookupResult(element.revisionId());
+    return MMFilesToken{element.revisionId()};
   }
-  return IndexLookupResult();
+  return MMFilesToken{};
 }
 
-void AllIndexIterator::nextBabies(std::vector<IndexLookupResult>& buffer, size_t limit) {
+void AllIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& buffer, size_t limit) {
   size_t atMost = limit;
 
   buffer.clear();
@@ -154,9 +155,9 @@ void AllIndexIterator::nextBabies(std::vector<IndexLookupResult>& buffer, size_t
   }
 
   while (atMost > 0) {
-    IndexLookupResult result = next();
+    DocumentIdentifierToken result = next();
 
-    if (!result) {
+    if (result == 0) {
       return;
     }
 
@@ -173,12 +174,12 @@ AnyIndexIterator::AnyIndexIterator(LogicalCollection* collection, arangodb::Tran
                                    MMFilesPrimaryIndexImpl const* indexImpl)
     : IndexIterator(collection, trx, mmdr, index), _index(indexImpl), _step(0), _total(0) {}
 
-IndexLookupResult AnyIndexIterator::next() {
+DocumentIdentifierToken AnyIndexIterator::next() {
   MMFilesSimpleIndexElement element = _index->findRandom(&_context, _initial, _position, _step, _total);
   if (element) {
-    return IndexLookupResult(element.revisionId());
+    return MMFilesToken{element.revisionId()};
   }
-  return IndexLookupResult();
+  return MMFilesToken{};
 }
 
 void AnyIndexIterator::reset() {

@@ -42,14 +42,14 @@ CollectionScanner::CollectionScanner(arangodb::Transaction* trx,
 
 CollectionScanner::~CollectionScanner() {}
 
-void CollectionScanner::scan(std::vector<arangodb::IndexLookupResult>& result, size_t batchSize) {
+void CollectionScanner::scan(std::vector<arangodb::DocumentIdentifierToken>& result, size_t batchSize) {
   result.clear();
 
   if (!_cursor->hasMore()) {
     return;
   }
 
-  _cursor->getMoreMptr(result, batchSize); 
+  _cursor->getMoreTokens(result, batchSize); 
 }
 
 int CollectionScanner::forward(size_t batchSize, uint64_t& skipped) {

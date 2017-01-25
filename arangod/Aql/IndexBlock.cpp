@@ -412,7 +412,7 @@ bool IndexBlock::readIndex(size_t atMost) {
     }
 
     LogicalCollection* collection = _cursor->collection();
-    _cursor->getMoreMptr(_result, atMost);
+    _cursor->getMoreTokens(_result, atMost);
 
     size_t length = _result.size();
 
@@ -430,18 +430,17 @@ bool IndexBlock::readIndex(size_t atMost) {
 
     if (hasMultipleIndexes) {
       for (auto const& element : _result) {
-        TRI_voc_rid_t revisionId = element.revisionId();
-        if (collection->readRevision(_trx, *_mmdr, revisionId)) {
+        if (collection->readDocument(_trx, *_mmdr, element)) {
           uint8_t const* vpack = _mmdr->vpack(); //back();
           // uniqueness checks
           if (!isLastIndex) {
             // insert & check for duplicates in one go
-            if (_alreadyReturned.emplace(revisionId).second) {
+            if (_alreadyReturned.emplace(element).second) {
               _documents.emplace_back(vpack);
             }
           } else {
             // only check for duplicates
-            if (_alreadyReturned.find(revisionId) == _alreadyReturned.end()) {
+            if (_alreadyReturned.find(element) == _alreadyReturned.end()) {
               _documents.emplace_back(vpack);
             }
           }
@@ -449,8 +448,7 @@ bool IndexBlock::readIndex(size_t atMost) {
       }
     } else {
       for (auto const& element : _result) {
-        TRI_voc_rid_t revisionId = element.revisionId();
-        if (collection->readRevision(_trx, *_mmdr, revisionId)) {
+        if (collection->readDocument(_trx, *_mmdr, element)) {
           uint8_t const* vpack = _mmdr->vpack(); //back();
           _documents.emplace_back(vpack);
         }
