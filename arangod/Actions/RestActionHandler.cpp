@@ -48,7 +48,7 @@ RestStatus RestActionHandler::execute() {
   TRI_action_result_t result;
 
   // check the request path
-  if (_request->databaseName() == "_system") {
+  if (_request->databaseName() == TRI_VOC_SYSTEM_DATABASE) {
     if (StringUtils::isPrefix(_request->requestPath(), "/_admin/aardvark")) {
       requestStatisticsAgentSetIgnore();
     }
