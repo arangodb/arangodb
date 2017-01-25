@@ -58,13 +58,13 @@
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "Utils/TransactionState.h"
 #include "VocBase/DatafileStatisticsContainer.h"
 #include "VocBase/IndexThreadFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/ticks.h"
-#include "VocBase/transaction.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -72,11 +72,6 @@
 
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
-
-/// forward
-int TRI_AddOperationTransaction(TRI_transaction_t*, TRI_voc_rid_t,
-                                MMFilesDocumentOperation&,
-                                MMFilesWalMarker const* marker, bool&);
 
 /// @brief helper struct for filling indexes
 class IndexFiller {

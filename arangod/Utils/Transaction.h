@@ -32,8 +32,8 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/TransactionHints.h"
+#include "Utils/TransactionState.h"
 #include "VocBase/AccessMode.h"
-#include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -170,7 +170,7 @@ class Transaction {
   /// @brief return internals of transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  inline TRI_transaction_t* getInternals() const { return _trx; }
+  inline TransactionState* getInternals() const { return _trx; }
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return role of server in cluster
@@ -1018,7 +1018,7 @@ class Transaction {
   /// @brief the C transaction struct
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_transaction_t* _trx;
+  TransactionState* _trx;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the vocbase

@@ -851,22 +851,6 @@ VPackSlice AstNode::computeValue() const {
   return VPackSlice(computedValue);
 }
 
-/// @brief compute the value for a constant value node
-/// the value is owned by the node and must not be freed by the caller
-VPackSlice AstNode::computeValue(arangodb::Transaction* trx) const {
-  TRI_ASSERT(isConstant());
-
-  if (computedValue == nullptr) {
-    TransactionBuilderLeaser builder(trx);
-    toVelocyPackValue(*builder.get());
-
-    computedValue = new uint8_t[builder->size()];
-    memcpy(computedValue, builder->data(), builder->size());
-  }
-
-  return VPackSlice(computedValue);
-}
-
 /// @brief sort the members of an (array) node
 /// this will also set the VALUE_SORTED flag for the node
 void AstNode::sort() {

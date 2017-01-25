@@ -27,10 +27,10 @@
 #include "Basics/Common.h"
 #include "Utils/TransactionContext.h"
 
-struct TRI_transaction_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+struct TransactionState;
 
 class StandaloneTransactionContext final : public TransactionContext {
 
@@ -66,13 +66,13 @@ class StandaloneTransactionContext final : public TransactionContext {
   /// @brief return the parent transaction (none in our case)
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_transaction_t* getParentTransaction() const override;
+  TransactionState* getParentTransaction() const override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register the transaction, does nothing
   //////////////////////////////////////////////////////////////////////////////
 
-  int registerTransaction(struct TRI_transaction_t*) override;
+  int registerTransaction(TransactionState*) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the transaction

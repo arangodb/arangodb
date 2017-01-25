@@ -1083,7 +1083,7 @@ AstNode* Condition::mergeInOperations(arangodb::Transaction* trx, AstNode const*
   TRI_ASSERT(lValue->isArray() && lValue->isConstant());
   TRI_ASSERT(rValue->isArray() && rValue->isConstant());
 
-  return _ast->createNodeIntersectedArray(trx, lValue, rValue);
+  return _ast->createNodeIntersectedArray(lValue, rValue);
 }
 
 /// @brief merges the current node with the sub nodes of same type

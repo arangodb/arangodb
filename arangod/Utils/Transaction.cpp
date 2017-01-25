@@ -313,8 +313,7 @@ bool Transaction::sortOrs(arangodb::aql::Ast* ast,
         // merge IN with IN
         TRI_ASSERT(previousIn < i);
         auto emptyArray = ast->createNodeArray();
-        auto mergedIn = ast->createNodeUnionizedArray(this,
-            parts[previousIn].valueNode, p.valueNode);
+        auto mergedIn = ast->createNodeUnionizedArray(parts[previousIn].valueNode, p.valueNode);
         parts[previousIn].valueNode = mergedIn;
         parts[i].valueNode = emptyArray;
         root->getMember(previousIn)->getMember(0)->changeMember(1, mergedIn);
@@ -3577,7 +3576,7 @@ int Transaction::setupToplevel() {
 
   // we are not embedded. now start our own transaction
   try {
-    _trx = new TRI_transaction_t(_vocbase, _timeout, _waitForSync);
+    _trx = new TransactionState(_vocbase, _timeout, _waitForSync);
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }

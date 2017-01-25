@@ -26,8 +26,8 @@
 
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
+#include "Utils/TransactionState.h"
 #include "VocBase/ticks.h"
-#include "VocBase/transaction.h"
 
 struct TRI_vocbase_t;
 

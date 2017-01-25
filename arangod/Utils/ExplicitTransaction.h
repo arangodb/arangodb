@@ -27,9 +27,9 @@
 #include "Basics/Common.h"
 
 #include "Utils/Transaction.h"
+#include "Utils/TransactionState.h"
 #include "Utils/V8TransactionContext.h"
 #include "VocBase/ticks.h"
-#include "VocBase/transaction.h"
 
 namespace arangodb {
 

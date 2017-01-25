@@ -31,7 +31,6 @@
 
 #include <velocypack/Options.h>
 
-struct TRI_transaction_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -48,6 +47,7 @@ class CollectionNameResolver;
 class DocumentDitch;
 class LogicalCollection;
 class Transaction;
+struct TransactionState;
 
 class TransactionContext {
  public:
@@ -158,7 +158,7 @@ class TransactionContext {
   /// @brief get parent transaction (if any)
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual struct TRI_transaction_t* getParentTransaction() const = 0;
+  virtual TransactionState* getParentTransaction() const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the transaction is embeddable
@@ -170,7 +170,7 @@ class TransactionContext {
   /// @brief register the transaction in the context
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual int registerTransaction(struct TRI_transaction_t*) = 0;
+  virtual int registerTransaction(TransactionState*) = 0;
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the transaction

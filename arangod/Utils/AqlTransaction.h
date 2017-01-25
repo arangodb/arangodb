@@ -29,7 +29,7 @@
 #include "Cluster/ServerState.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
-#include "VocBase/transaction.h"
+#include "Utils/TransactionState.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {

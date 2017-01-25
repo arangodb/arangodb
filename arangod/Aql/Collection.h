@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {

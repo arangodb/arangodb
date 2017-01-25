@@ -28,7 +28,7 @@
 #include "Logger/Logger.h"
 #include "MMFiles/fulltext-index.h"
 #include "MMFiles/MMFilesToken.h"
-#include "VocBase/transaction.h"
+#include "Utils/TransactionState.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

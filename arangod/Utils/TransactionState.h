@@ -21,14 +21,16 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_TRANSACTION_H
-#define ARANGOD_VOC_BASE_TRANSACTION_H 1
+#ifndef ARANGOD_UTILS_TRANSACTION_STATE_H
+#define ARANGOD_UTILS_TRANSACTION_STATE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 #include "Utils/TransactionHints.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
+                                
+struct TRI_vocbase_t;
 
 namespace rocksdb {
 class Transaction;
@@ -37,11 +39,10 @@ class Transaction;
 namespace arangodb {
 class LogicalCollection;
 struct MMFilesDocumentOperation;
+class MMFilesWalMarker;
 class Transaction;
-}
 
 struct TRI_transaction_collection_t;
-struct TRI_vocbase_t;
 
 /// @brief transaction statuses
 enum TRI_transaction_status_e {
@@ -53,9 +54,9 @@ enum TRI_transaction_status_e {
 };
 
 /// @brief transaction type
-struct TRI_transaction_t {
-  TRI_transaction_t(TRI_vocbase_t* vocbase, double timeout, bool waitForSync);
-  ~TRI_transaction_t();
+struct TransactionState {
+  TransactionState(TRI_vocbase_t* vocbase, double timeout, bool waitForSync);
+  ~TransactionState();
 
   bool hasFailedOperations() const {
     return (_hasOperations && _status == TRI_TRANSACTION_ABORTED);
@@ -63,12 +64,12 @@ struct TRI_transaction_t {
   
   TRI_vocbase_t* _vocbase;            // vocbase
   TRI_voc_tid_t _id;                  // local trx id
-  arangodb::AccessMode::Type _type;       // access type (read|write)
+  AccessMode::Type _type;       // access type (read|write)
   TRI_transaction_status_e _status;   // current status
-  arangodb::SmallVector<TRI_transaction_collection_t*>::allocator_type::arena_type _arena; // memory for collections
-  arangodb::SmallVector<TRI_transaction_collection_t*> _collections; // list of participating collections
+  SmallVector<TRI_transaction_collection_t*>::allocator_type::arena_type _arena; // memory for collections
+  SmallVector<TRI_transaction_collection_t*> _collections; // list of participating collections
   rocksdb::Transaction* _rocksTransaction;
-  arangodb::TransactionHints _hints;      // hints;
+  TransactionHints _hints;      // hints;
   int _nestingLevel;
   bool _allowImplicit;
   bool _hasOperations;
@@ -79,18 +80,18 @@ struct TRI_transaction_t {
 
 /// @brief collection used in a transaction
 struct TRI_transaction_collection_t {
-  TRI_transaction_collection_t(TRI_transaction_t* trx, TRI_voc_cid_t cid, arangodb::AccessMode::Type accessType, int nestingLevel)
+  TRI_transaction_collection_t(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel)
       : _transaction(trx), _cid(cid), _accessType(accessType), _nestingLevel(nestingLevel), _collection(nullptr), _operations(nullptr),
-        _originalRevision(0), _lockType(arangodb::AccessMode::Type::NONE), _compactionLocked(false), _waitForSync(false) {}
+        _originalRevision(0), _lockType(AccessMode::Type::NONE), _compactionLocked(false), _waitForSync(false) {}
 
-  TRI_transaction_t* _transaction;     // the transaction
+  TransactionState* _transaction;     // the transaction
   TRI_voc_cid_t const _cid;                  // collection id
-  arangodb::AccessMode::Type _accessType;  // access type (read|write)
+  AccessMode::Type _accessType;  // access type (read|write)
   int _nestingLevel;  // the transaction level that added this collection
-  arangodb::LogicalCollection* _collection;  // vocbase collection pointer
-  std::vector<arangodb::MMFilesDocumentOperation*>* _operations;
+  LogicalCollection* _collection;  // vocbase collection pointer
+  std::vector<MMFilesDocumentOperation*>* _operations;
   TRI_voc_rid_t _originalRevision;   // collection revision at trx start
-  arangodb::AccessMode::Type _lockType;  // collection lock type
+  AccessMode::Type _lockType;  // collection lock type
   bool
       _compactionLocked;  // was the compaction lock grabbed for the collection?
   bool _waitForSync;      // whether or not the collection has waitForSync
@@ -99,8 +100,8 @@ struct TRI_transaction_collection_t {
 
 /// @brief get the transaction id for usage in a marker
 static inline TRI_voc_tid_t TRI_MarkerIdTransaction(
-    TRI_transaction_t const* trx) {
-  if (trx->_hints.has(arangodb::TransactionHints::Hint::SINGLE_OPERATION)) {
+    TransactionState const* trx) {
+  if (trx->_hints.has(TransactionHints::Hint::SINGLE_OPERATION)) {
     return 0;
   }
 
@@ -109,43 +110,50 @@ static inline TRI_voc_tid_t TRI_MarkerIdTransaction(
 
 /// @brief return the collection from a transaction
 TRI_transaction_collection_t* TRI_GetCollectionTransaction(
-    TRI_transaction_t const*, TRI_voc_cid_t, arangodb::AccessMode::Type);
+    TransactionState const*, TRI_voc_cid_t, AccessMode::Type);
 
 /// @brief add a collection to a transaction
-int TRI_AddCollectionTransaction(TRI_transaction_t*, TRI_voc_cid_t,
-                                 arangodb::AccessMode::Type, int, bool, bool);
+int TRI_AddCollectionTransaction(TransactionState*, TRI_voc_cid_t,
+                                 AccessMode::Type, int, bool, bool);
 
 /// @brief make sure all declared collections are used & locked
-int TRI_EnsureCollectionsTransaction(TRI_transaction_t*, int = 0);
+int TRI_EnsureCollectionsTransaction(TransactionState*, int = 0);
 
 /// @brief request a lock for a collection
 int TRI_LockCollectionTransaction(TRI_transaction_collection_t*,
-                                  arangodb::AccessMode::Type, int);
+                                  AccessMode::Type, int);
 
 /// @brief request an unlock for a collection
 int TRI_UnlockCollectionTransaction(TRI_transaction_collection_t*,
-                                    arangodb::AccessMode::Type, int);
+                                    AccessMode::Type, int);
 
 /// @brief check whether a collection is locked in a transaction
 bool TRI_IsLockedCollectionTransaction(TRI_transaction_collection_t const*,
-                                       arangodb::AccessMode::Type, int);
+                                       AccessMode::Type, int);
 
 /// @brief check whether a collection is locked in a transaction
 bool TRI_IsLockedCollectionTransaction(TRI_transaction_collection_t const*);
 
 /// @brief check whether a collection is contained in a transaction
-bool TRI_IsContainedCollectionTransaction(TRI_transaction_t*, TRI_voc_cid_t);
+bool TRI_IsContainedCollectionTransaction(TransactionState*, TRI_voc_cid_t);
+
+/// @brief add a WAL operation for a transaction collection
+int TRI_AddOperationTransaction(TransactionState*, TRI_voc_rid_t,
+                                MMFilesDocumentOperation&,
+                                MMFilesWalMarker const* marker, bool&);
 
 /// @brief begin a transaction
-int TRI_BeginTransaction(TRI_transaction_t*, arangodb::TransactionHints, int);
+int TRI_BeginTransaction(TransactionState*, TransactionHints, int);
 
 /// @brief commit a transaction
-int TRI_CommitTransaction(arangodb::Transaction*, TRI_transaction_t*, int);
+int TRI_CommitTransaction(Transaction*, TransactionState*, int);
 
 /// @brief abort a transaction
-int TRI_AbortTransaction(arangodb::Transaction*, TRI_transaction_t*, int);
+int TRI_AbortTransaction(Transaction*, TransactionState*, int);
 
 /// @brief whether or not a transaction consists of a single operation
-bool TRI_IsSingleOperationTransaction(TRI_transaction_t const*);
+bool TRI_IsSingleOperationTransaction(TransactionState const*);
+
+}
 
 #endif

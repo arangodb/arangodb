@@ -30,10 +30,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesToken.h"
-#include "VocBase/transaction.h"
+#include "Utils/TransactionState.h"
 
 using namespace arangodb;
-using namespace arangodb::aql;
 
 MMFilesGeoIndexIterator::MMFilesGeoIndexIterator(LogicalCollection* collection,
                                      arangodb::Transaction* trx,
@@ -61,7 +60,7 @@ void MMFilesGeoIndexIterator::evaluateCondition() {
 
     TRI_ASSERT(numMembers == 1); // should only be an FCALL
     auto fcall = _condition->getMember(0);
-    TRI_ASSERT(fcall->type == NODE_TYPE_FCALL);
+    TRI_ASSERT(fcall->type == arangodb::aql::NODE_TYPE_FCALL);
     TRI_ASSERT(fcall->numMembers() == 1);
     auto args = fcall->getMember(0);
 
