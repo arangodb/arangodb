@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
+#include "Utils/TransactionHints.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 
@@ -54,24 +55,6 @@ enum TRI_transaction_status_e {
   TRI_TRANSACTION_ABORTED = 4
 };
 
-/// @brief typedef for transaction hints
-typedef uint32_t TRI_transaction_hint_t;
-
-/// @brief hints that can be used for transactions
-enum TRI_transaction_hint_e {
-  TRI_TRANSACTION_HINT_NONE = 0,
-  TRI_TRANSACTION_HINT_SINGLE_OPERATION = 1,
-  TRI_TRANSACTION_HINT_LOCK_ENTIRELY = 2,
-  TRI_TRANSACTION_HINT_LOCK_NEVER = 4,
-  TRI_TRANSACTION_HINT_NO_BEGIN_MARKER = 8,
-  TRI_TRANSACTION_HINT_NO_ABORT_MARKER = 16,
-  TRI_TRANSACTION_HINT_NO_THROTTLING = 32,
-  TRI_TRANSACTION_HINT_TRY_LOCK = 64,
-  TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK = 128,
-  TRI_TRANSACTION_HINT_NO_USAGE_LOCK = 256,
-  TRI_TRANSACTION_HINT_RECOVERY = 512
-};
-
 /// @brief transaction type
 struct TRI_transaction_t {
   TRI_transaction_t(TRI_vocbase_t* vocbase, double timeout, bool waitForSync);
@@ -88,7 +71,7 @@ struct TRI_transaction_t {
   arangodb::SmallVector<TRI_transaction_collection_t*>::allocator_type::arena_type _arena; // memory for collections
   arangodb::SmallVector<TRI_transaction_collection_t*> _collections; // list of participating collections
   rocksdb::Transaction* _rocksTransaction;
-  TRI_transaction_hint_t _hints;      // hints;
+  arangodb::TransactionHints _hints;      // hints;
   int _nestingLevel;
   bool _allowImplicit;
   bool _hasOperations;
@@ -120,8 +103,7 @@ struct TRI_transaction_collection_t {
 /// @brief get the transaction id for usage in a marker
 static inline TRI_voc_tid_t TRI_MarkerIdTransaction(
     TRI_transaction_t const* trx) {
-  if ((trx->_hints &
-       (TRI_transaction_hint_t)TRI_TRANSACTION_HINT_SINGLE_OPERATION) != 0) {
+  if (trx->_hints.has(arangodb::TransactionHints::Hint::SINGLE_OPERATION)) {
     return 0;
   }
 
@@ -158,7 +140,7 @@ bool TRI_IsLockedCollectionTransaction(TRI_transaction_collection_t const*);
 bool TRI_IsContainedCollectionTransaction(TRI_transaction_t*, TRI_voc_cid_t);
 
 /// @brief begin a transaction
-int TRI_BeginTransaction(TRI_transaction_t*, TRI_transaction_hint_t, int);
+int TRI_BeginTransaction(TRI_transaction_t*, arangodb::TransactionHints, int);
 
 /// @brief commit a transaction
 int TRI_CommitTransaction(arangodb::Transaction*, TRI_transaction_t*, int);

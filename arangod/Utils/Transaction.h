@@ -31,6 +31,7 @@
 #include "MMFiles/MMFilesIndexElement.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
+#include "Utils/TransactionHints.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -139,7 +140,7 @@ class Transaction {
   virtual ~Transaction();
 
  public:
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief default batch size for index and other operations
   //////////////////////////////////////////////////////////////////////////////
@@ -200,11 +201,11 @@ class Transaction {
   /// @brief add a transaction hint
   //////////////////////////////////////////////////////////////////////////////
 
-  void inline addHint(TRI_transaction_hint_e hint, bool passthrough) {
-    _hints |= (TRI_transaction_hint_t)hint;
+  void inline addHint(TransactionHints::Hint hint, bool passthrough) {
+    _hints.set(hint);
 
     if (passthrough && _trx != nullptr) {
-      _trx->_hints |= ((TRI_transaction_hint_t)hint);
+      _trx->_hints.set(hint);
     }
   }
 
@@ -212,11 +213,11 @@ class Transaction {
   /// @brief remove a transaction hint
   //////////////////////////////////////////////////////////////////////////////
 
-  void inline removeHint(TRI_transaction_hint_e hint, bool passthrough) {
-    _hints &= ~((TRI_transaction_hint_t)hint);
+  void inline removeHint(TransactionHints::Hint hint, bool passthrough) {
+    _hints.unset(hint);
 
     if (passthrough && _trx != nullptr) {
-      _trx->_hints &= ~((TRI_transaction_hint_t)hint);
+      _trx->_hints.unset(hint);
     }
   }
 
@@ -983,7 +984,7 @@ class Transaction {
   /// @brief transaction hints
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_transaction_hint_t _hints;
+  TransactionHints _hints;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief timeout for lock acquisition

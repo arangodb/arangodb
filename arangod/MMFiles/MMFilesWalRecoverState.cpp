@@ -32,12 +32,13 @@
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesWalSlots.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "Utils/TransactionHints.h"
 #include "VocBase/LogicalCollection.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
@@ -268,12 +269,12 @@ int MMFilesWalRecoverState::executeSingleOperation(
   try {
     SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(vocbase), collectionId, AccessMode::Type::WRITE);
 
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
-    trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, false);
-    trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, false);
-    trx.addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, false);
-    trx.addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, false);
-    trx.addHint(TRI_TRANSACTION_HINT_RECOVERY, false); // to turn off waitForSync!
+    trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
+    trx.addHint(TransactionHints::Hint::NO_BEGIN_MARKER, false);
+    trx.addHint(TransactionHints::Hint::NO_ABORT_MARKER, false);
+    trx.addHint(TransactionHints::Hint::NO_THROTTLING, false);
+    trx.addHint(TransactionHints::Hint::LOCK_NEVER, false);
+    trx.addHint(TransactionHints::Hint::RECOVERY, false); // to turn off waitForSync!
 
     res = trx.begin();
 

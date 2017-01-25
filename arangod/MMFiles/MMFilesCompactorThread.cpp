@@ -30,15 +30,16 @@
 #include "Basics/FileUtils.h"
 #include "Basics/memory-map.h"
 #include "Logger/Logger.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "MMFiles/MMFilesCollection.h"
+#include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "Utils/TransactionHints.h"
 #include "VocBase/CompactionLocker.h"
-#include "MMFiles/MMFilesDatafileHelper.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -424,10 +425,10 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(collection->vocbase()), 
       collection->cid(), AccessMode::Type::WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
-  trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
-  trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true);
-  trx.addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, true);
+  trx.addHint(TransactionHints::Hint::NO_BEGIN_MARKER, true);
+  trx.addHint(TransactionHints::Hint::NO_ABORT_MARKER, true);
+  trx.addHint(TransactionHints::Hint::NO_COMPACTION_LOCK, true);
+  trx.addHint(TransactionHints::Hint::NO_THROTTLING, true);
 
   CompactionInitialContext initial = getCompactionContext(&trx, collection, toCompact);
 
@@ -954,8 +955,8 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collect
       AccessMode::Type::READ);
   // only try to acquire the lock here
   // if lock acquisition fails, we go on and report an (arbitrary) positive number
-  trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, false); 
-  trx.addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, true);
+  trx.addHint(TransactionHints::Hint::TRY_LOCK, false); 
+  trx.addHint(TransactionHints::Hint::NO_THROTTLING, true);
 
   int res = trx.begin();
 

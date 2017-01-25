@@ -46,7 +46,7 @@ class ExplicitTransaction final : public Transaction {
                       double lockTimeout, bool waitForSync,
                       bool allowImplicitCollections)
       : Transaction(transactionContext) {
-    this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
+    this->addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
 
     if (lockTimeout >= 0.0) {
       this->setTimeout(lockTimeout);

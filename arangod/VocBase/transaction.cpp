@@ -28,13 +28,12 @@
 #include "Basics/StaticStrings.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "Utils/Transaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 #include "VocBase/ticks.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
@@ -75,13 +74,13 @@ static inline bool IsReadOnlyTransaction(TRI_transaction_t const* trx) {
 
 /// @brief whether or not a specific hint is set for the transaction
 static inline bool HasHint(TRI_transaction_t const* trx,
-                           TRI_transaction_hint_e hint) {
-  return ((trx->_hints & (TRI_transaction_hint_t)hint) != 0);
+                           TransactionHints::Hint hint) {
+  return trx->_hints.has(hint);
 }
 
 /// @brief whether or not a transaction consists of a single operation
 static inline bool IsSingleOperationTransaction(TRI_transaction_t const* trx) {
-  return HasHint(trx, TRI_TRANSACTION_HINT_SINGLE_OPERATION);
+  return HasHint(trx, TransactionHints::Hint::SINGLE_OPERATION);
 }
 
 /// @brief whether or not a marker needs to be written
@@ -231,7 +230,7 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
 
   TRI_transaction_t* trx = trxCollection->_transaction;
 
-  if (HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER)) {
+  if (HasHint(trx, TransactionHints::Hint::LOCK_NEVER)) {
     // never lock
     return TRI_ERROR_NO_ERROR;
   }
@@ -254,7 +253,7 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
   LogicalCollection* collection = trxCollection->_collection;
   TRI_ASSERT(collection != nullptr);
   double timeout = trx->_timeout;
-  if (HasHint(trxCollection->_transaction, TRI_TRANSACTION_HINT_TRY_LOCK)) {
+  if (HasHint(trxCollection->_transaction, TransactionHints::Hint::TRY_LOCK)) {
     // give up early if we cannot acquire the lock instantly
     timeout = 0.00000001;
   }
@@ -283,7 +282,7 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
                             AccessMode::Type type, int nestingLevel) {
   TRI_ASSERT(trxCollection != nullptr);
 
-  if (HasHint(trxCollection->_transaction, TRI_TRANSACTION_HINT_LOCK_NEVER)) {
+  if (HasHint(trxCollection->_transaction, TransactionHints::Hint::LOCK_NEVER)) {
     // never unlock
     return TRI_ERROR_NO_ERROR;
   }
@@ -348,8 +347,8 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
 
     if (trxCollection->_collection == nullptr) {
       // open the collection
-      if (!HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER) &&
-          !HasHint(trx, TRI_TRANSACTION_HINT_NO_USAGE_LOCK)) {
+      if (!HasHint(trx, TransactionHints::Hint::LOCK_NEVER) &&
+          !HasHint(trx, TransactionHints::Hint::NO_USAGE_LOCK)) {
         // use and usage-lock
         TRI_vocbase_col_status_e status;
         LOG_TRX(trx, nestingLevel) << "using collection " << trxCollection->_cid;
@@ -391,7 +390,7 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
     if (nestingLevel == 0 &&
         IsWrite(trxCollection->_accessType)) {
       // read-lock the compaction lock
-      if (!HasHint(trx, TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK)) {
+      if (!HasHint(trx, TransactionHints::Hint::NO_COMPACTION_LOCK)) {
         if (!trxCollection->_compactionLocked) {
           trxCollection->_collection->preventCompaction();
           trxCollection->_compactionLocked = true;
@@ -406,7 +405,7 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
           trxCollection->_collection->revision();
     }
 
-    bool shouldLock = HasHint(trx, TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
+    bool shouldLock = HasHint(trx, TransactionHints::Hint::LOCK_ENTIRELY);
 
     if (!shouldLock) {
       shouldLock = (IsWrite(trxCollection->_accessType) && !IsSingleOperationTransaction(trx));
@@ -442,7 +441,7 @@ static int UnuseCollections(TRI_transaction_t* trx, int nestingLevel) {
 
     // the top level transaction releases all collections
     if (nestingLevel == 0 && trxCollection->_collection != nullptr) {
-      if (!HasHint(trx, TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK)) {
+      if (!HasHint(trx, TransactionHints::Hint::NO_COMPACTION_LOCK)) {
         if (IsWrite(trxCollection->_accessType) && trxCollection->_compactionLocked) {
           // read-unlock the compaction lock
           trxCollection->_collection->allowCompaction();
@@ -460,8 +459,8 @@ static int UnuseCollections(TRI_transaction_t* trx, int nestingLevel) {
 /// @brief release collection locks for a transaction
 static int ReleaseCollections(TRI_transaction_t* trx, int nestingLevel) {
   TRI_ASSERT(nestingLevel == 0);
-  if (HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER) ||
-      HasHint(trx, TRI_TRANSACTION_HINT_NO_USAGE_LOCK)) {
+  if (HasHint(trx, TransactionHints::Hint::LOCK_NEVER) ||
+      HasHint(trx, TransactionHints::Hint::NO_USAGE_LOCK)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -488,7 +487,7 @@ static int WriteBeginMarker(TRI_transaction_t* trx) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (HasHint(trx, TRI_TRANSACTION_HINT_NO_BEGIN_MARKER)) {
+  if (HasHint(trx, TransactionHints::Hint::NO_BEGIN_MARKER)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -531,7 +530,7 @@ static int WriteAbortMarker(TRI_transaction_t* trx) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (HasHint(trx, TRI_TRANSACTION_HINT_NO_ABORT_MARKER)) {
+  if (HasHint(trx, TransactionHints::Hint::NO_ABORT_MARKER)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -648,8 +647,8 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction(
   }
 
   if (trxCollection->_collection == nullptr) {
-    if (!HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER) ||
-        !HasHint(trx, TRI_TRANSACTION_HINT_NO_USAGE_LOCK)) {
+    if (!HasHint(trx, TransactionHints::Hint::LOCK_NEVER) ||
+        !HasHint(trx, TransactionHints::Hint::NO_USAGE_LOCK)) {
       // not opened. probably a mistake made by the caller
       return nullptr;
     }
@@ -837,7 +836,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   LogicalCollection* collection = operation.collection();
   bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
 
-  if (HasHint(trx, TRI_TRANSACTION_HINT_RECOVERY)) {
+  if (HasHint(trx, TransactionHints::Hint::RECOVERY)) {
     // turn off all waitForSync operations during recovery
     waitForSync = false;
   } else if (!waitForSync) {
@@ -978,7 +977,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
 }
 
 /// @brief start a transaction
-int TRI_BeginTransaction(TRI_transaction_t* trx, TRI_transaction_hint_t hints,
+int TRI_BeginTransaction(TRI_transaction_t* trx, TransactionHints hints,
                          int nestingLevel) {
   LOG_TRX(trx, nestingLevel) << "beginning " << (IsWrite(trx->_type) ? "write" : "read") << " transaction";
 
@@ -987,7 +986,7 @@ int TRI_BeginTransaction(TRI_transaction_t* trx, TRI_transaction_hint_t hints,
 
     auto logfileManager = MMFilesLogfileManager::instance();
 
-    if (!HasHint(trx, TRI_TRANSACTION_HINT_NO_THROTTLING) &&
+    if (!HasHint(trx, TransactionHints::Hint::NO_THROTTLING) &&
         IsWrite(trx->_type) &&
         logfileManager->canBeThrottled()) {
       // write-throttling?
@@ -1113,7 +1112,7 @@ int TRI_AbortTransaction(arangodb::Transaction* activeTrx, TRI_transaction_t* tr
 
 /// @brief whether or not a transaction consists of a single operation
 bool TRI_IsSingleOperationTransaction(TRI_transaction_t const* trx) {
-  return HasHint(trx, TRI_TRANSACTION_HINT_SINGLE_OPERATION);
+  return HasHint(trx, TransactionHints::Hint::SINGLE_OPERATION);
 }
 
 /// @brief transaction type
@@ -1125,7 +1124,7 @@ TRI_transaction_t::TRI_transaction_t(TRI_vocbase_t* vocbase, double timeout, boo
       _arena(),
       _collections{_arena}, // assign arena to vector 
       _rocksTransaction(nullptr),
-      _hints(0),
+      _hints(),
       _nestingLevel(0), 
       _allowImplicit(true),
       _hasOperations(false), 
