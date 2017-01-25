@@ -69,10 +69,6 @@ int RestHandler::prepareEngine() {
   requestStatisticsAgentSetRequestStart();
   requestStatisticsAgentSetRequestEnd();  // set end immeadiately so we
                                           // do not get netative statistics
-#ifdef USE_DEV_TIMERS
-  TRI_request_statistics_t::STATS = _statistics;
-#endif
-
   if (_canceled) {
     _engine.setState(RestEngine::State::DONE);
     requestStatisticsAgentSetExecuteError();
@@ -140,10 +136,6 @@ int RestHandler::finalizeEngine() {
     _engine.setState(RestEngine::State::FAILED);
     _storeResult(this);
   }
-
-#ifdef USE_DEV_TIMERS
-  TRI_request_statistics_t::STATS = nullptr;
-#endif
 
   return res;
 }
