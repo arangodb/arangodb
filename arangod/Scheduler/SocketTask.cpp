@@ -211,7 +211,7 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
 
                         if (ec) {
                           LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-                              << "SocketTask::addWriterBuffer(async_write) - write on stream "
+                              << "SocketTask::addWriteBuffer(async_write) - write on stream "
                               << " failed with: " << ec.message();
                           closeStream();
                         } else {
