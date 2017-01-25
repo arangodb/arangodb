@@ -30,7 +30,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"
-#include "MMFiles/MMFilesPersistentIndex.h"
 #include "MMFiles/fulltext-index.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -308,6 +307,7 @@ static int EnhanceJsonIndexRocksDB(v8::Isolate* isolate,
 /// @brief enhances the json of a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
+// TODO Move to IndexFactory
 static int EnhanceJsonIndexFulltext(v8::Isolate* isolate,
                                     v8::Handle<v8::Object> const obj,
                                     VPackBuilder& builder, bool create) {

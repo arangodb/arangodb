@@ -29,6 +29,7 @@
 #include "Basics/tri-strings.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesToken.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
@@ -394,8 +395,11 @@ int MMFilesPrimaryIndex::resize(arangodb::Transaction* trx, size_t targetSize) {
 }
 
 void MMFilesPrimaryIndex::invokeOnAllElements(
-    std::function<bool(MMFilesSimpleIndexElement const&)> work) {
-  _primaryIndex->invokeOnAllElements(work);
+    std::function<bool(DocumentIdentifierToken const&)> work) {
+  auto wrappedWork = [&work](MMFilesSimpleIndexElement const& el) -> bool {
+    return work(MMFilesToken{el.revisionId()});
+  };
+  _primaryIndex->invokeOnAllElements(wrappedWork);
 }
 
 void MMFilesPrimaryIndex::invokeOnAllElementsForRemoval(

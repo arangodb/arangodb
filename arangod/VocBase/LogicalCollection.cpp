@@ -3769,6 +3769,17 @@ bool LogicalCollection::readDocument(arangodb::Transaction* trx, ManagedDocument
   return readRevision(trx, result, tkn->revisionId());
 }
 
+// TODO ONLY TEMP wrapper
+bool LogicalCollection::readDocumentConditional(Transaction* trx,
+                                                ManagedDocumentResult& result,
+                                                DocumentIdentifierToken const& token,
+                                                TRI_voc_tick_t maxTick,
+                                                bool excludeWal) {
+  // TODO This only works for MMFiles Engine. Has to be moved => StorageEngine
+  auto tkn = static_cast<MMFilesToken const*>(&token);
+  return readRevisionConditional(trx, result, tkn->revisionId(), maxTick, excludeWal);
+}
+
 void LogicalCollection::insertRevision(TRI_voc_rid_t revisionId,
                                        uint8_t const* dataptr,
                                        TRI_voc_fid_t fid, bool isInWal) {

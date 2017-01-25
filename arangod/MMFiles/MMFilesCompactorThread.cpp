@@ -33,6 +33,7 @@
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
+#include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"

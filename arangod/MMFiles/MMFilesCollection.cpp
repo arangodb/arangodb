@@ -34,6 +34,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
+#include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/SingleCollectionTransaction.h"

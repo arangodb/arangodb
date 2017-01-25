@@ -28,7 +28,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
-#include "MMFiles/MMFilesIndexElement.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/TransactionHints.h"
@@ -44,6 +43,8 @@ class Transaction;
 }
 
 namespace arangodb {
+
+struct DocumentIdentifierToken;
 
 namespace basics {
 struct AttributeName;
@@ -455,7 +456,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   void invokeOnAllElements(std::string const& collectionName,
-                           std::function<bool(MMFilesSimpleIndexElement const&)>);
+                           std::function<bool(arangodb::DocumentIdentifierToken const&)>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return one  document from a collection, fast path

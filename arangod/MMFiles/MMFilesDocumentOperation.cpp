@@ -25,6 +25,7 @@
 #include "Indexes/IndexIterator.h"
 #include "Utils/Transaction.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "VocBase/LogicalCollection.h"
 
