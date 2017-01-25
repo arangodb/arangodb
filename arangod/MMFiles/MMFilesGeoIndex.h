@@ -152,14 +152,11 @@ friend class MMFilesGeoIndexIterator;
     return (!_latitude.empty() && !_longitude.empty() &&
             _latitude == latitude && _longitude == longitude);
   }
-  
-  static uint64_t fromRevision(TRI_voc_rid_t revisionId) {
-    return static_cast<uint64_t>(revisionId);
-  }
 
-  static TRI_voc_rid_t toRevision(uint64_t internal) {
-    return static_cast<TRI_voc_rid_t>(internal);
-  }
+  static uint64_t fromDocumentIdentifierToken(
+      DocumentIdentifierToken const& token);
+
+  static DocumentIdentifierToken toDocumentIdentifierToken(uint64_t internal);
 
  private:
 

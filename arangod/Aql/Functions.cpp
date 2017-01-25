@@ -746,11 +746,11 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
   }
 
   struct geo_coordinate_distance_t {
-    geo_coordinate_distance_t(double distance, TRI_voc_rid_t revisionId)
-        : _distance(distance), _revisionId(revisionId) {}
+    geo_coordinate_distance_t(double distance, DocumentIdentifierToken token)
+        : _distance(distance), _token(token) {}
 
     double _distance;
-    TRI_voc_rid_t _revisionId;
+    DocumentIdentifierToken _token;
   };
 
   std::vector<geo_coordinate_distance_t> distances;
@@ -761,7 +761,8 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
     for (size_t i = 0; i < nCoords; ++i) {
       distances.emplace_back(geo_coordinate_distance_t(
           cors->distances[i],
-          arangodb::MMFilesGeoIndex::toRevision(cors->coordinates[i].data)));
+          arangodb::MMFilesGeoIndex::toDocumentIdentifierToken(
+              cors->coordinates[i].data)));
     }
   } catch (...) {
     GeoIndex_CoordinatesFree(cors);
@@ -786,8 +787,7 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
       for (auto& it : distances) {
         VPackObjectBuilder docGuard(builder.get());
         builder->add(attributeName, VPackValue(it._distance));
-        TRI_voc_rid_t revisionId = it._revisionId;
-        if (collection->readRevision(trx, mmdr, revisionId)) {
+        if (collection->readDocument(trx, mmdr, it._token)) {
           VPackSlice doc(mmdr.vpack());
           for (auto const& entry : VPackObjectIterator(doc)) {
             std::string key = entry.key.copyString();
@@ -800,7 +800,7 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
 
     } else {
       for (auto& it : distances) {
-        if (collection->readRevision(trx, mmdr, it._revisionId)) {
+        if (collection->readDocument(trx, mmdr, it._token)) {
           builder->addExternal(mmdr.vpack());
         }
       }
