@@ -28,6 +28,7 @@
 #include "Basics/AssocMulti.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "MMFiles/MMFilesIndexElement.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -35,6 +36,7 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+
 class MMFilesEdgeIndex;
   
 typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice, MMFilesSimpleIndexElement,

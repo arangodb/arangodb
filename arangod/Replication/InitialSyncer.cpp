@@ -35,6 +35,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
@@ -1075,8 +1076,8 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 
     uint64_t iterations = 0;
     ManagedDocumentResult mmdr;
-    trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations, &idx](MMFilesSimpleIndexElement const& element) {
-      if (idx->collection()->readRevision(&trx, mmdr, element.revisionId())) {
+    trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations, &idx](DocumentIdentifierToken const& token) {
+      if (idx->collection()->readDocument(&trx, mmdr, token)) {
         markers.emplace_back(mmdr.vpack());
         
         if (++iterations % 10000 == 0) {

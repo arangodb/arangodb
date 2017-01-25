@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "VocBase/AccessMode.h"
-#include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
@@ -83,20 +82,16 @@ struct Collection {
   bool usesDefaultSharding() const;
 
   /// @brief set the underlying collection
-  void setCollection(arangodb::LogicalCollection* coll) { collection = coll; }
+  void setCollection(arangodb::LogicalCollection* coll);
 
   /// @brief either use the set collection or get one from ClusterInfo:
   std::shared_ptr<arangodb::LogicalCollection> getCollection() const;
 
   /// @brief check smartness of the underlying collection
-  bool isSmart() const {
-    return getCollection()->isSmart();
-  }
+  bool isSmart() const;
 
   /// @brief check if collection is a satellite collection
-  bool isSatellite() const {
-    return getCollection()->isSatellite();
-  }
+  bool isSatellite() const;
 
  private:
 

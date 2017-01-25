@@ -32,6 +32,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
 #include "StorageEngine/StorageEngine.h"

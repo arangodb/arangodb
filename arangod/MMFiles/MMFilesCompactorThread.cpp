@@ -39,6 +39,7 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/CompactionLocker.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesIndexElement.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 

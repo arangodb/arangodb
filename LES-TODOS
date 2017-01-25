@@ -17,10 +17,10 @@ done
 - Rename OperationCursor->getMoreMptr => getMoreTokens, "returns" std::vector<TOKEN>&
 - GeoIndex hands out TRI_revision instead of Tokens
 - FulltextIndex hands out TRI_revision instead of Tokens
+- trx::InvokeOnAllElements : uses SimpleIndexLookupElements => Has to use Tokens instead?
 
 in progress
 -----------
-- trx::InvokeOnAllElements : uses SimpleIndexLookupElements => Has to use Tokens instead?
 - move engine-specific parts of transaction.cpp into engine
 - transaction API
 

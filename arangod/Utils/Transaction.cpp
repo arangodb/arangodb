@@ -1398,7 +1398,7 @@ Transaction::IndexHandle Transaction::edgeIndexHandle(std::string const& collect
 //////////////////////////////////////////////////////////////////////////////
 
 void Transaction::invokeOnAllElements(std::string const& collectionName,
-                                      std::function<bool(MMFilesSimpleIndexElement const&)> callback) {
+                                      std::function<bool(DocumentIdentifierToken const&)> callback) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
   if (ServerState::isCoordinator(_serverRole)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

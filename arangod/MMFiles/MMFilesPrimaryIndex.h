@@ -38,6 +38,7 @@
 namespace arangodb {
 
 class MMFilesPrimaryIndex;
+struct MMFilesSimpleIndexElement;
 class Transaction;
   
 typedef arangodb::basics::AssocUnique<uint8_t, MMFilesSimpleIndexElement> MMFilesPrimaryIndexImpl;
@@ -190,7 +191,7 @@ class MMFilesPrimaryIndex final : public Index {
 
   int resize(arangodb::Transaction*, size_t);
 
-  void invokeOnAllElements(std::function<bool(MMFilesSimpleIndexElement const&)>);
+  void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)>);
   void invokeOnAllElementsForRemoval(std::function<bool(MMFilesSimpleIndexElement&)>);
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,

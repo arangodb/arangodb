@@ -108,11 +108,11 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     _vpack.reserve(limit);
 
     ManagedDocumentResult mmdr;
-    trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr](MMFilesSimpleIndexElement const& element) {
+    trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr](DocumentIdentifierToken const& token) {
       if (limit == 0) {
         return false;
       }
-      if (_collection->readRevisionConditional(&trx, mmdr, element.revisionId(), 0, true)) {
+      if (_collection->readDocumentConditional(&trx, mmdr, token, 0, true)) {
         _vpack.emplace_back(mmdr.vpack());
         --limit;
       }

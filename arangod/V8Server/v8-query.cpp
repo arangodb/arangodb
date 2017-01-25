@@ -391,8 +391,8 @@ static void JS_ChecksumCollection(
   uint64_t hash = 0;
         
   ManagedDocumentResult mmdr;
-  trx.invokeOnAllElements(col->name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](MMFilesSimpleIndexElement const& element) {
-    collection->readRevision(&trx, mmdr, element.revisionId());
+  trx.invokeOnAllElements(col->name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](DocumentIdentifierToken const& token) {
+    collection->readDocument(&trx, mmdr, token);
     VPackSlice const slice(mmdr.vpack());
 
     uint64_t localHash = Transaction::extractKeyFromDocument(slice).hashString(); 

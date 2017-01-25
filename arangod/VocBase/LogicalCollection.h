@@ -387,6 +387,7 @@ class LogicalCollection {
   bool readRevision(arangodb::Transaction*, ManagedDocumentResult& result, TRI_voc_rid_t revisionId);
   bool readRevisionConditional(arangodb::Transaction*, ManagedDocumentResult& result, TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal);
   bool readDocument(arangodb::Transaction*, ManagedDocumentResult& result, DocumentIdentifierToken const& token);
+  bool readDocumentConditional(arangodb::Transaction*, ManagedDocumentResult& result, DocumentIdentifierToken const& token, TRI_voc_tick_t maxTick, bool excludeWal);
 
   void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
   void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
