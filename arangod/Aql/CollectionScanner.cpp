@@ -49,7 +49,7 @@ void CollectionScanner::scan(std::vector<arangodb::DocumentIdentifierToken>& res
     return;
   }
 
-  _cursor->getMoreMptr(result, batchSize); 
+  _cursor->getMoreTokens(result, batchSize); 
 }
 
 int CollectionScanner::forward(size_t batchSize, uint64_t& skipped) {

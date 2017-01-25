@@ -412,7 +412,7 @@ bool IndexBlock::readIndex(size_t atMost) {
     }
 
     LogicalCollection* collection = _cursor->collection();
-    _cursor->getMoreMptr(_result, atMost);
+    _cursor->getMoreTokens(_result, atMost);
 
     size_t length = _result.size();
 

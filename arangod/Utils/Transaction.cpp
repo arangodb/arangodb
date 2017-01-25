@@ -1290,7 +1290,7 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
   
   while (cursor->hasMore()) {
     result.clear();
-    cursor->getMoreMptr(result);
+    cursor->getMoreTokens(result, 1000);
     for (auto const& element : result) {
       if (collection->readDocument(this, mmdr, element)) {
         uint8_t const* vpack = mmdr.vpack();
@@ -2679,7 +2679,7 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   result.reserve(1000);
   
   while (cursor->hasMore()) {
-    cursor->getMoreMptr(result, 1000);
+    cursor->getMoreTokens(result, 1000);
     for (auto const& element : result) {
       if (collection->readDocument(this, mmdr, element)) {
         uint8_t const* vpack = mmdr.vpack();

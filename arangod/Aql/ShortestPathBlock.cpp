@@ -96,7 +96,7 @@ struct ConstDistanceExpanderLocal {
       _cursor.clear();
       LogicalCollection* collection = edgeCursor->collection();
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMoreMptr(_cursor, 1000);
+        edgeCursor->getMoreTokens(_cursor, 1000);
         for (auto const& element : _cursor) {
           if (collection->readDocument(_block->transaction(), *mmdr, element)) {
             VPackSlice edge(mmdr->vpack());
@@ -239,7 +239,7 @@ struct EdgeWeightExpanderLocal {
       cursor.clear();
       LogicalCollection* collection = edgeCursor->collection();
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMoreMptr(cursor, 1000);
+        edgeCursor->getMoreTokens(cursor, 1000);
         for (auto const& element : cursor) {
           if (collection->readDocument(_block->transaction(), *mmdr, element)) {
             VPackSlice edge(mmdr->vpack());

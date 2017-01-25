@@ -121,7 +121,7 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
       // If we switch the cursor. We have to clear the cache.
       _cache.clear();
     } else {
-      cursor->getMoreMptr(_cache);
+      cursor->getMoreTokens(_cache, 1000);
     }
   } while (_cache.empty());
 
@@ -158,7 +158,7 @@ bool SingleServerEdgeCursor::readAll(std::unordered_set<VPackSlice>& result,
     while (cursor->hasMore()) {
       // NOTE: We cannot clear the cache,
       // because the cursor expect's it to be filled.
-      cursor->getMoreMptr(_cache);
+      cursor->getMoreTokens(_cache, 1000);
       for (auto const& element : _cache) {
         if (collection->readDocument(_trx, *_mmdr, element)) {
           result.emplace(_mmdr->vpack());

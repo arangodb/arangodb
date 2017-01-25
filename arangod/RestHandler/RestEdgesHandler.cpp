@@ -95,7 +95,7 @@ bool RestEdgesHandler::getEdgesForVertexList(
   ManagedDocumentResult mmdr;
   auto collection = trx.documentCollection();
   while (cursor->hasMore()) {
-    cursor->getMoreMptr(batch);
+    cursor->getMoreTokens(batch, 1000);
     scannedIndex += batch.size();
 
     for (auto const& it : batch) {
@@ -132,7 +132,7 @@ bool RestEdgesHandler::getEdgesForVertex(
   ManagedDocumentResult mmdr;
   auto collection = trx.documentCollection();
   while (cursor->hasMore()) {
-    cursor->getMoreMptr(batch);
+    cursor->getMoreTokens(batch, 1000);
     scannedIndex += batch.size();
 
     for (auto const& it : batch) {
