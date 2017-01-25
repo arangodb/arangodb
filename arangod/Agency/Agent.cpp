@@ -934,15 +934,57 @@ void Agent::beginShutdown() {
   // Stop constituent and key value stores
   _constituent.beginShutdown();
 
+  // Stop inception process
+  if (_inception != nullptr) {
+    _inception->beginShutdown();
+  }
+
+  // Stop key value stores
   _spearhead.beginShutdown();
   _readDB.beginShutdown();
 
+  if (_inception != nullptr) {
+    int counter = 0;
+    while (_inception->isRunning()) {
+      usleep(100000);
+      // emit warning after 5 seconds
+      if (++counter == 10 * 5) {
+        LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for inception thread to finish";
+      }
+    }
+  }
+
+  int counter = 0;
+  while (_spearhead.isRunning() || _readDB.isRunning()) {
+    usleep(100000);
+    // emit warning after 5 seconds
+    if (++counter == 10 * 5) {
+      LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for key-value threads to finish";
+    }
+  }
+
+  while (_constituent.isRunning()) {
+    usleep(100000);
+    // emit warning after 5 seconds
+    if (++counter == 10 * 5) {
+      LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for constituent thread to finish";
+    }
+  }
+  
+  while (_supervision.isRunning()) {
+    usleep(100000);
+    // emit warning after 5 seconds
+    if (++counter == 10 * 5) {
+      LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for supervision thread to finish";
+    }
+  }
+  
   // Wake up all waiting rest handlers
   {
     CONDITION_LOCKER(guardW, _waitForCV);
     guardW.broadcast();
   }
-
+  
   // Wake up run
   {
     CONDITION_LOCKER(guardA, _appendCV);
