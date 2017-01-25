@@ -252,12 +252,10 @@ void AgencyFeature::beginShutdown() {
   _agent->beginShutdown();
 }
 
-void AgencyFeature::unprepare() {
+void AgencyFeature::stop() {
   if (!isEnabled()) {
     return;
   }
-
-  _agent->beginShutdown();
 
   if (_agent != nullptr) {
     int counter = 0;
