@@ -22,8 +22,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-//#define DEBUG_STATISTICS
-
 #include "SocketTask.h"
 
 #include "Basics/MutexLocker.h"

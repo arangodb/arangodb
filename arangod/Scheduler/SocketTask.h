@@ -74,7 +74,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
  protected:
   void addWriteBuffer(std::unique_ptr<basics::StringBuffer> buffer) {
-    addWriteBuffer(std::move(buffer), (RequestStatisticsAgent*)nullptr);
+    addWriteBuffer(std::move(buffer), nullptr);
   }
 
   void addWriteBuffer(std::unique_ptr<basics::StringBuffer>,
