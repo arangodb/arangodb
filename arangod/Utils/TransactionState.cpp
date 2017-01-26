@@ -127,17 +127,17 @@ void ClearQueryCache(TransactionState* trx) {
 
 /// @brief return the status of the transaction as a string
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-static char const* StatusTransaction(const TRI_transaction_status_e status) {
+static char const* StatusTransaction(Transaction::Status status) {
   switch (status) {
-    case TRI_TRANSACTION_UNDEFINED:
+    case Transaction::Status::UNDEFINED:
       return "undefined";
-    case TRI_TRANSACTION_CREATED:
+    case Transaction::Status::CREATED:
       return "created";
-    case TRI_TRANSACTION_RUNNING:
+    case Transaction::Status::RUNNING:
       return "running";
-    case TRI_TRANSACTION_COMMITTED:
+    case Transaction::Status::COMMITTED:
       return "committed";
-    case TRI_TRANSACTION_ABORTED:
+    case Transaction::Status::ABORTED:
       return "aborted";
   }
 
@@ -148,7 +148,7 @@ static char const* StatusTransaction(const TRI_transaction_status_e status) {
 
 /// @brief free all operations for a transaction
 static void FreeOperations(arangodb::Transaction* activeTrx, TransactionState* trx) {
-  bool const mustRollback = (trx->_status == TRI_TRANSACTION_ABORTED);
+  bool const mustRollback = (trx->_status == Transaction::Status::ABORTED);
   bool const isSingleOperation = IsSingleOperationTransaction(trx);
      
   TRI_ASSERT(activeTrx != nullptr);
@@ -615,16 +615,16 @@ static int WriteCommitMarker(TransactionState* trx) {
 
 /// @brief update the status of a transaction
 static void UpdateTransactionStatus(TransactionState* const trx,
-                                    TRI_transaction_status_e status) {
-  TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED ||
-             trx->_status == TRI_TRANSACTION_RUNNING);
+                                    Transaction::Status status) {
+  TRI_ASSERT(trx->_status == Transaction::Status::CREATED ||
+             trx->_status == Transaction::Status::RUNNING);
 
-  if (trx->_status == TRI_TRANSACTION_CREATED) {
-    TRI_ASSERT(status == TRI_TRANSACTION_RUNNING ||
-               status == TRI_TRANSACTION_ABORTED);
-  } else if (trx->_status == TRI_TRANSACTION_RUNNING) {
-    TRI_ASSERT(status == TRI_TRANSACTION_COMMITTED ||
-               status == TRI_TRANSACTION_ABORTED);
+  if (trx->_status == Transaction::Status::CREATED) {
+    TRI_ASSERT(status == Transaction::Status::RUNNING ||
+               status == Transaction::Status::ABORTED);
+  } else if (trx->_status == Transaction::Status::RUNNING) {
+    TRI_ASSERT(status == Transaction::Status::COMMITTED ||
+               status == Transaction::Status::ABORTED);
   }
 
   trx->_status = status;
@@ -635,8 +635,8 @@ static void UpdateTransactionStatus(TransactionState* const trx,
 TRI_transaction_collection_t* arangodb::TRI_GetCollectionTransaction(
     TransactionState const* trx, TRI_voc_cid_t cid,
     AccessMode::Type accessType) {
-  TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED ||
-             trx->_status == TRI_TRANSACTION_RUNNING);
+  TRI_ASSERT(trx->_status == Transaction::Status::CREATED ||
+             trx->_status == Transaction::Status::RUNNING);
 
   TRI_transaction_collection_t* trxCollection =
       FindCollection(trx, cid, nullptr);
@@ -682,7 +682,7 @@ int arangodb::TRI_AddCollectionTransaction(TransactionState* trx, TRI_voc_cid_t 
   // upgrade transaction type if required
   if (nestingLevel == 0) {
     if (!force) {
-      TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED);
+      TRI_ASSERT(trx->_status == Transaction::Status::CREATED);
     }
 
     if (IsWrite(accessType) && !IsWrite(trx->_type)) {
@@ -982,7 +982,7 @@ int arangodb::TRI_BeginTransaction(TransactionState* trx, TransactionHints hints
   LOG_TRX(trx, nestingLevel) << "beginning " << (IsWrite(trx->_type) ? "write" : "read") << " transaction";
 
   if (nestingLevel == 0) {
-    TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED);
+    TRI_ASSERT(trx->_status == Transaction::Status::CREATED);
 
     auto logfileManager = MMFilesLogfileManager::instance();
 
@@ -1018,7 +1018,7 @@ int arangodb::TRI_BeginTransaction(TransactionState* trx, TransactionHints hints
     }
   
   } else {
-    TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING);
+    TRI_ASSERT(trx->_status == Transaction::Status::RUNNING);
   }
 
   int res = UseCollections(trx, nestingLevel);
@@ -1026,14 +1026,14 @@ int arangodb::TRI_BeginTransaction(TransactionState* trx, TransactionHints hints
   if (res == TRI_ERROR_NO_ERROR) {
     // all valid
     if (nestingLevel == 0) {
-      UpdateTransactionStatus(trx, TRI_TRANSACTION_RUNNING);
+      UpdateTransactionStatus(trx, Transaction::Status::RUNNING);
 
       // defer writing of the begin marker until necessary!
     }
   } else {
     // something is wrong
     if (nestingLevel == 0) {
-      UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
+      UpdateTransactionStatus(trx, Transaction::Status::ABORTED);
     }
 
     // free what we have got so far
@@ -1047,7 +1047,7 @@ int arangodb::TRI_BeginTransaction(TransactionState* trx, TransactionHints hints
 int arangodb::TRI_CommitTransaction(arangodb::Transaction* activeTrx, TransactionState* trx, int nestingLevel) {
   LOG_TRX(trx, nestingLevel) << "committing " << (IsWrite(trx->_type) ? "write" : "read") << " transaction";
 
-  TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING);
+  TRI_ASSERT(trx->_status == Transaction::Status::RUNNING);
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -1072,7 +1072,7 @@ int arangodb::TRI_CommitTransaction(arangodb::Transaction* activeTrx, Transactio
       return res;
     }
 
-    UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
+    UpdateTransactionStatus(trx, Transaction::Status::COMMITTED);
 
     // if a write query, clear the query cache for the participating collections
     if (IsWrite(trx->_type) &&
@@ -1093,14 +1093,14 @@ int arangodb::TRI_CommitTransaction(arangodb::Transaction* activeTrx, Transactio
 int arangodb::TRI_AbortTransaction(arangodb::Transaction* activeTrx, TransactionState* trx, int nestingLevel) {
   LOG_TRX(trx, nestingLevel) << "aborting " << (IsWrite(trx->_type) ? "write" : "read") << " transaction";
 
-  TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING);
+  TRI_ASSERT(trx->_status == Transaction::Status::RUNNING);
 
   int res = TRI_ERROR_NO_ERROR;
 
   if (nestingLevel == 0) {
     res = WriteAbortMarker(trx);
 
-    UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
+    UpdateTransactionStatus(trx, Transaction::Status::ABORTED);
 
     FreeOperations(activeTrx, trx);
   }
@@ -1120,7 +1120,7 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase, double timeout, bool 
     : _vocbase(vocbase), 
       _id(0), 
       _type(AccessMode::Type::READ),
-      _status(TRI_TRANSACTION_CREATED),
+      _status(Transaction::Status::CREATED),
       _arena(),
       _collections{_arena}, // assign arena to vector 
       _rocksTransaction(nullptr),
@@ -1139,7 +1139,7 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase, double timeout, bool 
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
-  TRI_ASSERT(_status != TRI_TRANSACTION_RUNNING);
+  TRI_ASSERT(_status != Transaction::Status::RUNNING);
 
   delete _rocksTransaction;
 

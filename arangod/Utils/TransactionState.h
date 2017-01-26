@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
+#include "Utils/Transaction.h"
 #include "Utils/TransactionHints.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
@@ -44,14 +45,6 @@ class Transaction;
 
 struct TRI_transaction_collection_t;
 
-/// @brief transaction statuses
-enum TRI_transaction_status_e {
-  TRI_TRANSACTION_UNDEFINED = 0,
-  TRI_TRANSACTION_CREATED = 1,
-  TRI_TRANSACTION_RUNNING = 2,
-  TRI_TRANSACTION_COMMITTED = 3,
-  TRI_TRANSACTION_ABORTED = 4
-};
 
 /// @brief transaction type
 struct TransactionState {
@@ -59,13 +52,13 @@ struct TransactionState {
   ~TransactionState();
 
   bool hasFailedOperations() const {
-    return (_hasOperations && _status == TRI_TRANSACTION_ABORTED);
+    return (_hasOperations && _status == Transaction::Status::ABORTED);
   }
   
   TRI_vocbase_t* _vocbase;            // vocbase
   TRI_voc_tid_t _id;                  // local trx id
   AccessMode::Type _type;       // access type (read|write)
-  TRI_transaction_status_e _status;   // current status
+  Transaction::Status _status;   // current status
   SmallVector<TRI_transaction_collection_t*>::allocator_type::arena_type _arena; // memory for collections
   SmallVector<TRI_transaction_collection_t*> _collections; // list of participating collections
   rocksdb::Transaction* _rocksTransaction;

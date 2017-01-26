@@ -31,7 +31,6 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/TransactionHints.h"
-#include "Utils/TransactionState.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -81,11 +80,22 @@ class CollectionNameResolver;
 class DocumentDitch;
 struct OperationCursor;
 class TransactionContext;
+struct TransactionState;
+struct TRI_transaction_collection_t;
 
 class Transaction {
   friend class traverser::BaseTraverserEngine;
 
  public:
+
+  /// @brief transaction statuses
+  enum class Status : uint32_t {
+    UNDEFINED = 0,
+    CREATED = 1,
+    RUNNING = 2,
+    COMMITTED = 3,
+    ABORTED = 4
+  };
 
   /// @brief time (in seconds) that is spent waiting for a lock
   static constexpr double DefaultLockTimeout = 30.0; 
@@ -205,25 +215,13 @@ class Transaction {
   /// @brief add a transaction hint
   //////////////////////////////////////////////////////////////////////////////
 
-  void inline addHint(TransactionHints::Hint hint, bool passthrough) {
-    _hints.set(hint);
-
-    if (passthrough && _trx != nullptr) {
-      _trx->_hints.set(hint);
-    }
-  }
+  void addHint(TransactionHints::Hint hint, bool passthrough);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a transaction hint
   //////////////////////////////////////////////////////////////////////////////
 
-  void inline removeHint(TransactionHints::Hint hint, bool passthrough) {
-    _hints.unset(hint);
-
-    if (passthrough && _trx != nullptr) {
-      _trx->_hints.unset(hint);
-    }
-  }
+  void removeHint(TransactionHints::Hint hint, bool passthrough);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the registered error data
@@ -253,21 +251,13 @@ class Transaction {
   /// @brief whether or not the transaction consists of a single operation only
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isSingleOperationTransaction() const {
-    return TRI_IsSingleOperationTransaction(_trx);
-  }
+  bool isSingleOperationTransaction() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the status of the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  inline TRI_transaction_status_e getStatus() const {
-    if (_trx != nullptr) {
-      return _trx->_status;
-    }
-
-    return TRI_TRANSACTION_UNDEFINED;
-  }
+  Status getStatus() const;
 
   int nestingLevel() const { return _nestingLevel; }
 
@@ -399,32 +389,8 @@ class Transaction {
 
   TRI_voc_cid_t addCollectionAtRuntime(TRI_voc_cid_t cid, 
                                        std::string const& collectionName,
-                                       AccessMode::Type type = AccessMode::Type::READ) {
-    auto collection = this->trxCollection(cid);
-
-    if (collection == nullptr) {
-      int res = TRI_AddCollectionTransaction(_trx, cid,
-                                             type,
-                                             _nestingLevel, true, _allowImplicitCollections);
-      if (res != TRI_ERROR_NO_ERROR) {
-        if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
-          // special error message to indicate which collection was undeclared
-          THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + collectionName + " [" + AccessMode::typeString(type) + "]");
-        }
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      TRI_EnsureCollectionsTransaction(_trx, _nestingLevel);
-      collection = this->trxCollection(cid);
-
-      if (collection == nullptr) {
-        THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                      collectionName.c_str());
-      }
-    }
-    TRI_ASSERT(collection != nullptr);
-    return cid;
-  }
-
+                                       AccessMode::Type type = AccessMode::Type::READ);
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection to the transaction for read, at runtime
   //////////////////////////////////////////////////////////////////////////////
@@ -812,12 +778,7 @@ class Transaction {
   /// @brief set the allowImplicitCollections property
   //////////////////////////////////////////////////////////////////////////////
 
-  void setAllowImplicitCollections(bool value) {
-    _allowImplicitCollections = value;
-    if (_trx != nullptr) {
-      _trx->_allowImplicit = value;
-    }
-  }
+  void setAllowImplicitCollections(bool value);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read- or write-lock a collection
