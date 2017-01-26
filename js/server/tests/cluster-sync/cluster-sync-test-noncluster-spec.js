@@ -1118,5 +1118,60 @@ describe('Cluster sync', function() {
         .that.has.deep.property('new.indexes.1.error')
         .equals(true);
     });
+    it('should report deleted indexes', function() {
+      let current = {
+        testung: {
+          888111: {
+            testi : { "error" : false, "errorMessage" : "", "errorNum" : 0, "indexes" : [ { "id" : "0", "type" : "primary", "fields" : [ "_key" ], "selectivityEstimate" : 1, "unique" : true, "sparse" : false },
+                  {
+                    "fields": [
+                      "test"
+                    ],
+                    "id": "testi",
+                    "selectivityEstimate": 1,
+                    "sparse": false,
+                    "type": "hash",
+                    "unique": false
+                  }
+            ], "servers" : [ "repltest" ] }
+          },
+        }
+      };
+
+      let props = { planId: '888111' };
+      let collection = db._create('testi', props);
+      collection.assumeLeadership();
+      let result = cluster.updateCurrentForCollections({}, current);
+      expect(result).to.be.an('object');
+      expect(Object.keys(result)).to.have.lengthOf(1);
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.have.property('op', 'set');
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.has.deep.property('new.indexes')
+        .that.has.lengthOf(1);
+    });
+    it('should report added indexes', function() {
+      let current = {
+        testung: {
+          888111: {
+            testi : { "error" : false, "errorMessage" : "", "errorNum" : 0, "indexes" : [ { "id" : "0", "type" : "primary", "fields" : [ "_key" ], "selectivityEstimate" : 1, "unique" : true, "sparse" : false },
+            ], "servers" : [ "repltest" ] }
+          },
+        }
+      };
+
+      let props = { planId: '888111' };
+      let collection = db._create('testi', props);
+      collection.assumeLeadership();
+      collection.ensureIndex({type: "hash", fields: ["test"]});
+      let result = cluster.updateCurrentForCollections({}, current);
+      expect(result).to.be.an('object');
+      expect(Object.keys(result)).to.have.lengthOf(1);
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.have.property('op', 'set');
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.has.deep.property('new.indexes')
+        .that.has.lengthOf(2);
+    });
   });
 });
