@@ -2555,6 +2555,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
   uint8_t const* vpack = previous.vpack();
   VPackSlice oldDoc(vpack);
   TRI_voc_rid_t oldRevisionId = Transaction::extractRevFromDocument(oldDoc);
+  prevRev = oldRevisionId;
 
   // Check old revision:
   if (!options.ignoreRevs && slice.isObject()) {
