@@ -1913,34 +1913,48 @@ function supervisionState () {
 // / @brief wait for synchronous replication to settle
 // /////////////////////////////////////////////////////////////////////////////
 
+function checkForSyncReplOneCollection (dbName, collName) {
+  try {
+    let cinfo = global.ArangoClusterInfo.getCollectionInfo(dbName, collName);
+    let shards = Object.keys(cinfo.shards);
+    let ccinfo = shards.map(function (s) {
+      return global.ArangoClusterInfo.getCollectionInfoCurrent(dbName,
+        collName, s).servers;
+    });
+    console.debug('checkForSyncReplOneCollection:', dbName, collName, shards,
+                  cinfo.shards, ccinfo);
+    let ok = true;
+    for (let i = 0; i < shards.length; ++i) {
+      if (cinfo.shards[shards[i]].length !== ccinfo[i].length) {
+        ok = false;
+      }
+    }
+    if (ok) {
+      console.debug('checkForSyncReplOneCollection: OK:', dbName, collName,
+                    shards);
+      return true;
+    }
+    console.debug('checkForSyncReplOneCollection: not yet:', dbName, collName,
+                  shards);
+    return false;
+  } catch (err) {
+    console.error('checkForSyncReplOneCollection: exception:', dbName, collName,
+                  JSON.stringify(err));
+  }
+  return false;
+}
+
 function waitForSyncReplOneCollection (dbName, collName) {
   console.debug('waitForSyncRepl:', dbName, collName);
-  try {
-    var count = 60;
-    while (--count > 0) {
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(dbName, collName);
-      var shards = Object.keys(cinfo.shards);
-      var ccinfo = shards.map(function (s) {
-	return global.ArangoClusterInfo.getCollectionInfoCurrent(dbName,
-	  collName, s).servers;
-      });
-      console.debug('waitForSyncRepl', dbName, collName, shards, cinfo.shards, ccinfo);
-      var ok = true;
-      for (var i = 0; i < shards.length; ++i) {
-	if (cinfo.shards[shards[i]].length !== ccinfo[i].length) {
-	  ok = false;
-	}
-      }
-      if (ok) {
-	console.debug('waitForSyncRepl: OK:', dbName, collName, shards);
-	return true;
-      }
-      require('internal').wait(1);
+  let count = 60;
+  while (--count > 0) {
+    let ok = checkForSyncReplOneCollection(dbName, collName);
+    if (ok) {
+      return true;
     }
-  } catch (err) {
-    console.warn('waitForSyncRepl:', dbName, collName, ': exception', JSON.stringify(err));
+    require('internal').wait(1);
   }
-  console.warn('waitForSyncRepl:', dbName, collName, ': BAD');
+  console.warn('waitForSyncReplOneCollection:', dbName, collName, ': BAD');
   return false;
 }
 
@@ -1948,11 +1962,24 @@ function waitForSyncRepl (dbName, collList) {
   if (!isCoordinator()) {
     return true;
   }
-  var ok = true;
-  for (var i = 0; i < collList.length; ++i) {
-    ok = waitForSyncReplOneCollection(dbName, collList[i].name()) && ok;
+  let n = collList.length;
+  let count = 10 * n;   // wait for up to 10 * collList.length seconds
+  let ok = [...Array(n)].map(v => false);
+  while (--count > 0) {
+    let allOk = true;
+    for (var i = 0; i < n; ++i) {
+      if (!ok[i]) {
+        ok[i] = checkForSyncReplOneCollection(dbName, collList[i].name());
+        allOk = allOk && ok[i];
+      }
+    }
+    if (allOk) {
+      return true;
+    }
+    require('internal').wait(1);
   }
-  return ok;
+  console.warn('waitForSyncRepl: timeout:', dbName, collList);
+  return false;
 }
 
 exports.bootstrapDbServers = bootstrapDbServers;
