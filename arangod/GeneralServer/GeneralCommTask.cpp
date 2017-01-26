@@ -88,19 +88,18 @@ void GeneralCommTask::executeRequest(
           std::move(request), std::move(response)));
 
   // transfer statistics into handler
-  getAgent(messageId)->transferTo(handler.get());
-
   if (handler == nullptr) {
     LOG(TRACE) << "no handler is known, giving up";
     handleSimpleError(rest::ResponseCode::NOT_FOUND, messageId);
     return;
   }
 
+  getAgent(messageId)->transferTo(handler.get());
+
   // asynchronous request
   bool ok = false;
 
   if (found && (asyncExecution == "true" || asyncExecution == "store")) {
-    // getAgent(messageId)->requestStatisticsAgentSetAsync();
     handler->requestStatisticsAgentSetAsync();
     uint64_t jobId = 0;
 
