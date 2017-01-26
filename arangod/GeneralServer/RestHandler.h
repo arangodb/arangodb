@@ -66,9 +66,7 @@ class RestHandler : public RequestStatisticsAgent,
     return std::move(_response);
   }
 
-  std::shared_ptr<WorkContext> context() {
-    return _context;
-  }
+  std::shared_ptr<WorkContext> context() { return _context; }
 
  public:
   virtual char const* name() const = 0;

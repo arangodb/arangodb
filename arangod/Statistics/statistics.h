@@ -33,10 +33,6 @@
 #include <string>
 
 struct TRI_request_statistics_t {
-#ifdef USE_DEV_TIMERS
-  static thread_local TRI_request_statistics_t* STATS;
-#endif
-
   TRI_request_statistics_t()
       : _readStart(0.0),
         _readEnd(0.0),

@@ -1537,6 +1537,8 @@ AgencyCommResult AgencyComm::send(
     return result;
   }
 
+  result._sent = response->haveSentRequestFully();
+
   if (!response->isComplete()) {
     result._message = "sending request to agency failed";
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "sending request to agency failed";
@@ -1544,7 +1546,6 @@ AgencyCommResult AgencyComm::send(
     return result;
   }
 
-  result._sent = response->haveSentRequestFully();
   result._connected = true;
 
   if (response->getHttpReturnCode() ==

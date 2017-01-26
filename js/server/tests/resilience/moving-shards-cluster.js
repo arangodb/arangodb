@@ -36,6 +36,16 @@ const _ = require("lodash");
 const wait = require("internal").wait;
 const supervisionState = require("@arangodb/cluster").supervisionState;
 
+function getDBServers() {
+  var tmp = global.ArangoClusterInfo.getDBServers();
+  var servers = [];
+  for (var i = 0; i < tmp.length; ++i) {
+    servers[i] = tmp[i].serverId;
+  }
+  return servers;
+}
+
+const servers = getDBServers();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -46,7 +56,7 @@ function MovingShardsSuite () {
   var cn = "UnitTestMovingShards";
   var count = 0;
   var c = [];
-  var dbservers = global.ArangoClusterInfo.getDBServers();
+  var dbservers = getDBServers();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find out servers for a collection
@@ -90,7 +100,7 @@ function MovingShardsSuite () {
     }
     return true;
   }
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get cleaned out servers
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,23 +142,31 @@ function MovingShardsSuite () {
     if (toCollNr === undefined) {
       toCollNr = c.length - 1;
     }
-    var count = 100;
+    var count = 300;
     var ok = false;
+
+    console.info("Waiting for server " + id + " to be cleaned out ...");
 
     if (checkList) {
 
       // Wait until the server appears in the list of cleanedOutServers:
-      count = 100;
-
+      var obj;
       while (--count > 0) {
-        var obj = getCleanedOutServers();
+        obj = getCleanedOutServers();
         if (obj.cleanedServers.indexOf(id) >= 0) {
           ok = true;
+          console.info("Success: Server " + id + " cleaned out.");
           break;
         }
         wait(1.0);
       }
 
+      if (!ok) {
+        console.info(
+          "Failed: Server " + id + " was not cleaned out. List of cleaned servers: ["
+            + obj.cleanedServers + "]");
+      }
+      
     } else {
     
       for (var i = fromCollNr; i <= toCollNr; ++i) {
@@ -242,7 +260,7 @@ function MovingShardsSuite () {
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
-    var numberOfDBServers = global.ArangoClusterInfo.getDBServers().length;
+    var numberOfDBServers = servers.length;
     var body = {"cleanedServers":[], "numberOfDBServers":numberOfDBServers};
     try {
       var res = request({ method: "PUT",
@@ -378,7 +396,7 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSetup : function () {
-      dbservers = global.ArangoClusterInfo.getDBServers();
+      dbservers = getDBServers();
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
@@ -388,7 +406,7 @@ function MovingShardsSuite () {
     
     testShrinkNoReplication : function() {
       assertTrue(waitForSynchronousReplication("_system"));
-      var _dbservers = global.ArangoClusterInfo.getDBServers();
+      var _dbservers = servers;
       _dbservers.sort();
       assertTrue(shrinkCluster(4));
       assertTrue(testServerEmpty(_dbservers[4], true));

@@ -82,7 +82,7 @@ void TRI_LockMutex(TRI_mutex_t* mutex) {
     if (rc == EDEADLK) {
       LOG(ERR) << "mutex deadlock detected";
     }
-    LOG(FATAL) << "could not lock the mutex: " << strerror(rc); 
+    LOG(FATAL) << "could not lock the TRI_mutex: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
 }

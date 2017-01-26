@@ -33,11 +33,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-#ifdef USE_DEV_TIMERS
-thread_local TRI_request_statistics_t* TRI_request_statistics_t::STATS =
-    nullptr;
-#endif
-
 static constexpr size_t QUEUE_SIZE = 1000;
 
 std::unique_ptr<TRI_request_statistics_t[]> RequestStatistics;

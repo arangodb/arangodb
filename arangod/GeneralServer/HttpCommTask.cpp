@@ -68,7 +68,6 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
   connectionStatisticsAgentSetHttp();
   
   auto agent = std::make_unique<RequestStatisticsAgent>(true);
-  agent->acquire();
   MUTEX_LOCKER(lock, _agentsMutex);
   _agents.emplace(std::make_pair(1UL, std::move(agent)));
 }
@@ -109,8 +108,6 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
 
 void HttpCommTask::addResponse(HttpResponse* response) {
   resetKeepAlive();
-
-  _requestPending = false;
 
   // CORS response handling
   if (!_origin.empty()) {
@@ -172,10 +169,10 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   double const totalTime = agent->elapsedSinceReadStart();
 
   // append write buffer and statistics
-  //TRI_ASSERT(agent->_statistics != nullptr); // this is ok for async handler
-                                             // not checkable here as we do not
-                                             // have access to the handler
   addWriteBuffer(std::move(buffer), agent);
+
+  // response has been queued, allow further requests
+  _requestPending = false;
 
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
@@ -266,11 +263,11 @@ bool HttpCommTask::processRead(double startTime) {
       return false;
     }
 
-    if (std::strncmp(_readBuffer.c_str(), "VST/1.0\r\n\r\n", 11) == 0) {
-      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "Switching from Http to Vst";
-      std::shared_ptr<GeneralCommTask> commTask;
+    if (_readBuffer.length() >= 11 && std::memcmp(_readBuffer.c_str(), "VST/1.0\r\n\r\n", 11) == 0) {
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "switching from HTTP to VST";
       _abandoned = true;
       cancelKeepAlive();
+      std::shared_ptr<GeneralCommTask> commTask;
       commTask = std::make_shared<VppCommTask>(
           _loop, _server, std::move(_peer), std::move(_connectionInfo),
           GeneralServerFeature::keepAliveTimeout(), /*skipSocketInit*/ true);
@@ -288,8 +285,8 @@ bool HttpCommTask::processRead(double startTime) {
       char const* sptr = _readBuffer.c_str() + _startPosition;
       size_t slen = _readPosition - _startPosition;
 
-      if (slen == 11 && memcmp(sptr, "VST/1.1", 7) == 0) {
-        LOG(WARN) << "got VelocyStream request on HTTP port";
+      if (slen == 11 && std::memcmp(sptr, "VST/1.1\r\n\r\n", 11) == 0) {
+        LOG(WARN) << "got VST request on HTTP port";
         return false;
       }
 

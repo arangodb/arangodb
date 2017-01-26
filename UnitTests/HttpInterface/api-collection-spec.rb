@@ -301,7 +301,7 @@ describe ArangoDB do
 
         # flush wal
         ArangoDB.put("/_admin/wal/flush?waitForSync=true&waitForCollector=true", { })
-        sleep 3
+        sleep 6
         
         doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
         doc.code.should eq(200)
@@ -325,7 +325,7 @@ describe ArangoDB do
         
         # flush wal
         ArangoDB.put("/_admin/wal/flush?waitForSync=true&waitForCollector=true", { })
-        sleep 3 
+        sleep 6
         
         doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
         doc.code.should eq(200)
