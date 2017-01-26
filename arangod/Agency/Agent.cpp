@@ -943,7 +943,6 @@ void Agent::beginShutdown() {
   _spearhead.beginShutdown();
   _readDB.beginShutdown();
 
-  int counter = 0;
   if (_inception != nullptr) {
     int counter = 0;
     while (_inception->isRunning()) {
@@ -955,24 +954,6 @@ void Agent::beginShutdown() {
     }
   }
 
-  counter = 0;
-  while (_spearhead.isRunning() || _readDB.isRunning()) {
-    usleep(100000);
-    // emit warning after 5 seconds
-    if (++counter == 10 * 5) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for key-value threads to finish";
-    }
-  }
-
-  counter = 0;
-  while (_constituent.isRunning()) {
-    usleep(100000);
-    // emit warning after 5 seconds
-    if (++counter == 10 * 5) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for constituent thread to finish";
-    }
-  }
-  
   // Wake up all waiting rest handlers
   {
     CONDITION_LOCKER(guardW, _waitForCV);
