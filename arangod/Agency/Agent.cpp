@@ -935,7 +935,7 @@ void Agent::beginShutdown() {
   }
 
   // Stop inception process
-  if (_inception != nullptr) {
+  if (size() > 1 && _inception != nullptr) {
     _inception->beginShutdown();
   }
 
@@ -943,13 +943,14 @@ void Agent::beginShutdown() {
   _spearhead.beginShutdown();
   _readDB.beginShutdown();
 
-  if (_inception != nullptr) {
+  if (size() > 1 && _inception != nullptr) {
     int counter = 0;
     while (_inception->isRunning()) {
       usleep(100000);
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
-        LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for inception thread to finish";
+        LOG_TOPIC(WARN, Logger::AGENCY)
+          << "waiting for inception thread to finish";
       }
     }
   }
