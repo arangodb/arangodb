@@ -29,11 +29,11 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "GeneralServer/VppCommTask.h"
 #include "Meta/conversion.h"
 #include "Rest/HttpRequest.h"
+#include "Statistics/ConnectionStatistics.h"
 #include "VocBase/ticks.h"
-
-#include "VppCommTask.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -65,11 +65,7 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
       _originalBodyLength(0) {
   _protocol = "http";
 
-  connectionStatisticsAgentSetHttp();
-  
-  auto agent = std::make_unique<RequestStatisticsAgent>(true);
-  MUTEX_LOCKER(lock, _agentsMutex);
-  _agents.emplace(std::make_pair(1UL, std::move(agent)));
+  ConnectionStatistics::SET_HTTP(_connectionStatistics);
 }
 
 void HttpCommTask::handleSimpleError(rest::ResponseCode code,
@@ -109,6 +105,9 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
 void HttpCommTask::addResponse(HttpResponse* response) {
   resetKeepAlive();
 
+  // response has been queued, allow further requests
+  _requestPending = false;
+
   // CORS response handling
   if (!_origin.empty()) {
     // the request contained an Origin header. We have to send back the
@@ -116,7 +115,8 @@ void HttpCommTask::addResponse(HttpResponse* response) {
     LOG(TRACE) << "handling CORS response";
 
     // send back original value of "Origin" header
-    response->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin, _origin);
+    response->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin,
+                                  _origin);
 
     // send back "Access-Control-Allow-Credentials" header
     response->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
@@ -126,7 +126,6 @@ void HttpCommTask::addResponse(HttpResponse* response) {
     // by Foxx applications
     response->setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
                                   StaticStrings::ExposedCorsHeaders);
-
   }
 
   // set "connection" header, keep-alive is the default
@@ -136,7 +135,6 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   size_t const responseBodyLength = response->bodySize();
 
-  // TODO(fc) should be handled by the response / request
   if (_requestType == rest::RequestType::HEAD) {
     // clear body if this is an HTTP HEAD request
     // HEAD must not return a body
@@ -144,35 +142,33 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   }
 
   // reserve a buffer with some spare capacity
-  auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE,
-                                               responseBodyLength + 128, false);
+  RequestStatistics* stat = stealStatistics(1UL);
+
+  WriteBuffer buffer(
+      new StringBuffer(TRI_UNKNOWN_MEM_ZONE, responseBodyLength + 128, false),
+      stat);
 
   // write header
-  response->writeHeader(buffer.get());
+  response->writeHeader(buffer._buffer);
 
   // write body
   if (_requestType != rest::RequestType::HEAD) {
-    buffer->appendText(response->body());
+    buffer._buffer->appendText(response->body());
   }
 
-  buffer->ensureNullTerminated();
+  buffer._buffer->ensureNullTerminated();
 
-  if (!buffer->empty()) {
+  if (!buffer._buffer->empty()) {
     LOG_TOPIC(TRACE, Logger::REQUESTS)
         << "\"http-request-response\",\"" << (void*)this << "\",\"" << _fullUrl
-        << "\",\"" << StringUtils::escapeUnicode(
-                          std::string(buffer->c_str(), buffer->length()))
+        << "\",\"" << StringUtils::escapeUnicode(std::string(
+                          buffer._buffer->c_str(), buffer._buffer->length()))
         << "\"";
   }
 
-  auto agent = getAgent(1UL);
-  double const totalTime = agent->elapsedSinceReadStart();
-
   // append write buffer and statistics
-  addWriteBuffer(std::move(buffer), agent);
-
-  // response has been queued, allow further requests
-  _requestPending = false;
+  double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
+  addWriteBuffer(buffer);
 
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
@@ -198,7 +194,7 @@ bool HttpCommTask::processRead(double startTime) {
     return false;
   }
 
-  auto agent = getAgent(1UL);
+  RequestStatistics* stat = nullptr;
   bool handleRequest = false;
 
   // still trying to read the header fields
@@ -213,13 +209,8 @@ bool HttpCommTask::processRead(double startTime) {
     // starting a new request
     if (_newRequest) {
       // acquire a new statistics entry for the request
-      agent->acquire();
-
-#if USE_DEV_TIMERS
-      if (RequestStatisticsAgent::_statistics != nullptr) {
-        RequestStatisticsAgent::_statistics->_id = (void*)this;
-      }
-#endif
+      stat = acquireStatistics(1UL);
+      RequestStatistics::SET_READ_START(stat, startTime);
 
       _newRequest = false;
       _startPosition = _readPosition;
@@ -237,9 +228,6 @@ bool HttpCommTask::processRead(double startTime) {
     if (ptr >= end) {
       return false;
     }
-
-    // request started
-    agent->requestStatisticsAgentSetReadStart(startTime);
 
     // check for the end of the request
     for (; ptr < end; ptr++) {
@@ -263,7 +251,8 @@ bool HttpCommTask::processRead(double startTime) {
       return false;
     }
 
-    if (_readBuffer.length() >= 11 && std::memcmp(_readBuffer.c_str(), "VST/1.0\r\n\r\n", 11) == 0) {
+    if (_readBuffer.length() >= 11 &&
+        std::memcmp(_readBuffer.c_str(), "VST/1.0\r\n\r\n", 11) == 0) {
       LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "switching from HTTP to VST";
       _abandoned = true;
       cancelKeepAlive();
@@ -278,6 +267,7 @@ bool HttpCommTask::processRead(double startTime) {
       // statistics?!
       return false;
     }
+
     // header is complete
     if (ptr < end) {
       _readPosition = ptr - _readBuffer.c_str() + 4;
@@ -374,7 +364,11 @@ bool HttpCommTask::processRead(double startTime) {
       // (original request object gets deleted before responding)
       _requestType = _incompleteRequest->requestType();
 
-      agent->requestStatisticsAgentSetRequestType(_requestType);
+      if (stat == nullptr) {
+        stat = statistics(1UL);
+      }
+
+      RequestStatistics::SET_REQUEST_TYPE(stat, _requestType);
 
       // handle different HTTP methods
       switch (_requestType) {
@@ -431,12 +425,13 @@ bool HttpCommTask::processRead(double startTime) {
         if (found && StringUtils::trim(expect) == "100-continue") {
           LOG(TRACE) << "received a 100-continue request";
 
-          auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE);
-          buffer->appendText(
-              TRI_CHAR_LENGTH_PAIR("HTTP/1.1 100 (Continue)\r\n\r\n"));
-          buffer->ensureNullTerminated();
+          WriteBuffer buffer(new StringBuffer(TRI_UNKNOWN_MEM_ZONE), nullptr);
 
-          addWriteBuffer(std::move(buffer));
+          buffer._buffer->appendText(
+              TRI_CHAR_LENGTH_PAIR("HTTP/1.1 100 (Continue)\r\n\r\n"));
+          buffer._buffer->ensureNullTerminated();
+
+          addWriteBuffer(buffer);
         }
       }
     } else {
@@ -499,9 +494,14 @@ bool HttpCommTask::processRead(double startTime) {
     return false;
   }
 
-  agent->requestStatisticsAgentSetReadEnd();
-  agent->requestStatisticsAgentAddReceivedBytes(_bodyPosition - _startPosition +
-                                                _bodyLength);
+  if (stat == nullptr) {
+    stat = statistics(1UL);
+  }
+
+  auto bytes = _bodyPosition - _startPosition + _bodyLength;
+
+  RequestStatistics::SET_READ_END(stat);
+  RequestStatistics::ADD_RECEIVED_BYTES(stat, bytes);
 
   bool const isOptionsRequest = (_requestType == rest::RequestType::OPTIONS);
   resetState();
@@ -663,7 +663,8 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
   HttpResponse response(rest::ResponseCode::OK);
 
-  response.setHeaderNCIfNotSet(StaticStrings::Allow, StaticStrings::CorsMethods);
+  response.setHeaderNCIfNotSet(StaticStrings::Allow,
+                               StaticStrings::CorsMethods);
 
   if (!_origin.empty()) {
     LOG(TRACE) << "got CORS preflight request";
@@ -678,7 +679,8 @@ void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
     if (!allowHeaders.empty()) {
       // allow all extra headers the client requested
       // we don't verify them here. the worst that can happen is that the
-      // client sends some broken headers and then later cannot access the data on
+      // client sends some broken headers and then later cannot access the data
+      // on
       // the server. that's a client problem.
       response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowHeaders,
                                    allowHeaders);

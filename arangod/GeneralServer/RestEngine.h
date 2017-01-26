@@ -44,9 +44,8 @@ class RestEngine {
   RestEngine() {}
 
  public:
-  void init(EventLoop loop, rest::RequestStatisticsAgent* agent) {
+  void init(EventLoop loop) {
     _loop = loop;
-    _agent = agent;
   }
 
   int asyncRun(std::shared_ptr<rest::RestHandler>);
@@ -75,7 +74,6 @@ class RestEngine {
   std::vector<std::shared_ptr<RestStatusElement>> _elements;
 
   EventLoop _loop;
-  rest::RequestStatisticsAgent* _agent = nullptr;
 };
 }
 

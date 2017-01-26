@@ -65,18 +65,14 @@ VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
   TRI_ASSERT(_authentication != nullptr);
 
   _protocol = "vst";
-  _readBuffer.reserve(
-      _bufferLength);  // ATTENTION <- this is required so we do not
-                       // lose information during a resize
-  auto agent = std::make_unique<RequestStatisticsAgent>(true);
-  agent->acquire();
-  MUTEX_LOCKER(lock, _agentsMutex);
-  _agents.emplace(std::make_pair(0UL, std::move(agent)));
+
+  // ATTENTION <- this is required so we do not lose information during a resize
+  _readBuffer.reserve(_bufferLength);
 }
 
 void VppCommTask::addResponse(VppResponse* response) {
   VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
-  uint64_t& id = response_message._id;
+  uint64_t const id = response_message._id;
 
   std::vector<VPackSlice> slices;
   slices.push_back(response_message._header);
@@ -113,11 +109,18 @@ void VppCommTask::addResponse(VppResponse* response) {
   size_t n = buffers.size() - 1;
   size_t c = 0;
 
-  auto agent = getAgent(id);
-  double const totalTime = agent->elapsedSinceReadStart();
+  RequestStatistics* stat = stealStatistics(id);
+  double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
 
   for (auto&& buffer : buffers) {
-    addWriteBuffer(std::move(buffer), (c == n) ? agent : nullptr);
+    if (c == n) {
+      WriteBuffer b(buffer.get(), stat);
+      addWriteBuffer(b);
+    } else {
+      WriteBuffer b(buffer.get(), nullptr);
+      addWriteBuffer(b);
+    }
+
     ++c;
   }
 
@@ -128,13 +131,6 @@ void VppCommTask::addResponse(VppResponse* response) {
       << VppRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response->responseCode()) << ","
       << "\"," << Logger::FIXED(totalTime, 6);
-
-  if (id) {
-    MUTEX_LOCKER(lock, _agentsMutex);
-    _agents.erase(id);  // all ids except 0
-  } else {
-    getAgent(0UL)->acquire();
-  }
 }
 
 VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
@@ -245,11 +241,8 @@ bool VppCommTask::processRead(double startTime) {
 
   if (chunkHeader._isFirst) {
     // create agent for new messages
-    auto agent = std::make_unique<RequestStatisticsAgent>(true);
-    agent->acquire();
-    agent->requestStatisticsAgentSetReadStart(startTime);
-    MUTEX_LOCKER(lock, _agentsMutex);
-    _agents.emplace(std::make_pair(chunkHeader._messageID, std::move(agent)));
+    RequestStatistics* stat = acquireStatistics(chunkHeader._messageID);
+    RequestStatistics::SET_READ_START(stat, startTime);
   }
 
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
@@ -265,8 +258,6 @@ bool VppCommTask::processRead(double startTime) {
       return *rv;
     }
   }
-
-  getAgent(chunkHeader._messageID)->requestStatisticsAgentSetQueueEnd();
 
   read_maybe_only_part_of_buffer = true;
   prv._currentChunkLength = 0;  // we have read a complete chunk

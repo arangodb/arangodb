@@ -28,7 +28,6 @@
 #include "Meta/utility.h"
 
 #include "Statistics/StatisticsFeature.h"
-#include "Statistics/statistics.h"
 
 namespace arangodb {
 namespace rest {
@@ -71,14 +70,6 @@ class StatisticsAgent {
     _statistics = nullptr;
     // readtime for agent?!
     return statistics;
-  }
-
-  double elapsedSinceReadStart() {
-    if (_lastReadStart != 0.0) {
-      return TRI_StatisticsTime() - _lastReadStart;
-    }
-
-    return 0.0;
   }
 
   std::string to_string() {
@@ -134,34 +125,10 @@ class RequestStatisticsAgent
     other._lastReadStart = 0.0;
   }
 
-  void requestStatisticsAgentSetRequestType(rest::RequestType b) {
-    if (StatisticsFeature::enabled()) {
-      if (_statistics != nullptr) {
-        _statistics->_requestType = b;
-      }
-    }
-  }
-
-  void requestStatisticsAgentSetAsync() {
-    if (StatisticsFeature::enabled()) {
-      if (_statistics != nullptr) {
-        _statistics->_async = true;
-      }
-    }
-  }
-
   void requestStatisticsAgentSetReadStart(double startTime /* = TRI_StatisticsTime() */) {
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr && _statistics->_readStart == 0.0) {
         _lastReadStart = _statistics->_readStart = startTime;
-      }
-    }
-  }
-
-  void requestStatisticsAgentSetReadEnd() {
-    if (StatisticsFeature::enabled()) {
-      if (_statistics != nullptr) {
-        _statistics->_readEnd = TRI_StatisticsTime();
       }
     }
   }
@@ -210,30 +177,6 @@ class RequestStatisticsAgent
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_requestEnd = TRI_StatisticsTime();
-      }
-    }
-  }
-
-  void requestStatisticsAgentSetExecuteError() {
-    if (StatisticsFeature::enabled()) {
-      if (_statistics != nullptr) {
-        _statistics->_executeError = true;
-      }
-    }
-  }
-
-  void requestStatisticsAgentSetIgnore() {
-    if (StatisticsFeature::enabled()) {
-      if (_statistics != nullptr) {
-        _statistics->_ignore = true;
-      }
-    }
-  }
-
-  void requestStatisticsAgentAddReceivedBytes(size_t b) {
-    if (StatisticsFeature::enabled()) {
-      if (_statistics != nullptr) {
-        _statistics->_receivedBytes += b;
       }
     }
   }
