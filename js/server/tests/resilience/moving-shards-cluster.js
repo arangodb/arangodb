@@ -155,7 +155,8 @@ function MovingShardsSuite () {
         obj = getCleanedOutServers();
         if (obj.cleanedServers.indexOf(id) >= 0) {
           ok = true;
-          console.info("Success: Server " + id + " cleaned out.");
+          console.info(
+            "Success: Server " + id + " cleaned out after " + (300-count) + " seconds");
           break;
         }
         wait(1.0);

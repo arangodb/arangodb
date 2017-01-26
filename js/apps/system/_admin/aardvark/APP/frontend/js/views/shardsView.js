@@ -109,7 +109,7 @@
           self.dbServers[0].each(function (db) {
             if (db.get('name') !== fromServer) {
               obj[db.get('name')] = {
-                value: db.get('name'),
+                value: db.get('id'),
                 label: db.get('name')
               };
             }
