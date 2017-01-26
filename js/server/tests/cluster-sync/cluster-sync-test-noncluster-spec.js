@@ -434,6 +434,72 @@ describe('Cluster sync', function() {
       let indexes = db._collection('s100001').getIndexes();
       expect(indexes).to.have.lengthOf(2);
     });
+    it('should report failure when creating an index does not work', function() {
+      let c = db._create('s100001');
+      c.insert({"peng": "peng"});
+      c.insert({"peng": "peng"});
+      let plan = {
+        Collections: {
+          test: {
+            "100001": {
+              "deleted": false,
+              "doCompact": true,
+              "id": "100001",
+              "indexBuckets": 8,
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                  {
+                    "error": false,
+                    "errorMessage": "",
+                    "errorNum": 0,
+                    "fields": [
+                      "peng"
+                    ],
+                    "id": "100005",
+                    "sparse": true,
+                    "type": "hash",
+                    "unique": true
+                  }
+              ],
+              "isSystem": false,
+              "isVolatile": false,
+              "journalSize": 1048576,
+              "keyOptions": {
+                "allowUserKeys": true,
+                "type": "traditional"
+              },
+              "name": "test",
+              "numberOfShards": 1,
+              "replicationFactor": 2,
+              "shardKeys": [
+                "_key"
+              ],
+              "shards": {
+                "s100001": [
+                  "repltest",
+                ]
+              },
+              "status": 2,
+              "type": 2,
+              "waitForSync": false
+            }
+          }
+        }
+      };
+
+      let errors = cluster.executePlanForCollections(plan.Collections);
+      expect(errors).to.have.property('s100001')
+        .with.property('indexErrors')
+        .with.property('100005');
+    });
     it('should remove an additional index if instructed to do so', function() {
       db._create('s100001');
       db._collection('s100001').ensureIndex({ type: "hash", fields: [ "name" ] });
