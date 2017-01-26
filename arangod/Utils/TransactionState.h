@@ -46,21 +46,32 @@ struct TransactionCollection;
 
 /// @brief transaction type
 struct TransactionState {
+  TransactionState() = delete;
+  TransactionState(TransactionState const&) = delete;
+  TransactionState& operator=(TransactionState const&) = delete;
+
   TransactionState(TRI_vocbase_t* vocbase, double timeout, bool waitForSync);
   ~TransactionState();
+
+ public:
+
+  /// @brief return the collection from a transaction
+  TransactionCollection* collection(TRI_voc_cid_t cid, AccessMode::Type accessType);
 
   bool hasFailedOperations() const {
     return (_hasOperations && _status == Transaction::Status::ABORTED);
   }
+
+ public:
   
   TRI_vocbase_t* _vocbase;            // vocbase
   TRI_voc_tid_t _id;                  // local trx id
-  AccessMode::Type _type;       // access type (read|write)
-  Transaction::Status _status;   // current status
+  AccessMode::Type _type;             // access type (read|write)
+  Transaction::Status _status;        // current status
   SmallVector<TransactionCollection*>::allocator_type::arena_type _arena; // memory for collections
   SmallVector<TransactionCollection*> _collections; // list of participating collections
   rocksdb::Transaction* _rocksTransaction;
-  TransactionHints _hints;      // hints;
+  TransactionHints _hints;            // hints;
   int _nestingLevel;
   bool _allowImplicit;
   bool _hasOperations;
@@ -78,10 +89,6 @@ static inline TRI_voc_tid_t TRI_MarkerIdTransaction(
 
   return trx->_id;
 }
-
-/// @brief return the collection from a transaction
-TransactionCollection* TRI_GetCollectionTransaction(
-    TransactionState const*, TRI_voc_cid_t, AccessMode::Type);
 
 /// @brief add a collection to a transaction
 int TRI_AddCollectionTransaction(TransactionState*, TRI_voc_cid_t,

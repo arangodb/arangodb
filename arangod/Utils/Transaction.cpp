@@ -640,7 +640,7 @@ TransactionCollection* Transaction::trxCollection(TRI_voc_cid_t cid) const {
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(getStatus() == Transaction::Status::RUNNING);
 
-  return TRI_GetCollectionTransaction(_trx, cid, AccessMode::Type::READ);
+  return _trx->collection(cid, AccessMode::Type::READ);
 }
 
 /// @brief order a ditch for a collection
@@ -653,7 +653,7 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
     return _ditchCache.ditch;
   }
 
-  TransactionCollection* trxCollection = TRI_GetCollectionTransaction(_trx, cid, AccessMode::Type::READ);
+  TransactionCollection* trxCollection = _trx->collection(cid, AccessMode::Type::READ);
 
   if (trxCollection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to determine transaction collection");    
@@ -3094,7 +3094,8 @@ arangodb::LogicalCollection* Transaction::documentCollection(
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(getStatus() == Transaction::Status::RUNNING);
   
-  auto trxCollection = TRI_GetCollectionTransaction(_trx, cid, AccessMode::Type::READ);
+  auto trxCollection = _trx->collection(cid, AccessMode::Type::READ);
+
   if (trxCollection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not find collection");
   }
@@ -3169,8 +3170,8 @@ bool Transaction::isLocked(LogicalCollection* document,
     return false;
   }
 
-  TransactionCollection* trxCollection =
-      TRI_GetCollectionTransaction(_trx, document->cid(), type);
+  TransactionCollection* trxCollection = _trx->collection(document->cid(), type);
+
   TRI_ASSERT(trxCollection != nullptr);
   return TRI_IsLockedCollectionTransaction(trxCollection, type, _nestingLevel);
 }

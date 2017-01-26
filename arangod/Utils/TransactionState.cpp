@@ -631,16 +631,13 @@ static void UpdateTransactionStatus(TransactionState* const trx,
   trx->_status = status;
 }
 
-
 /// @brief return the collection from a transaction
-TransactionCollection* arangodb::TRI_GetCollectionTransaction(
-    TransactionState const* trx, TRI_voc_cid_t cid,
-    AccessMode::Type accessType) {
-  TRI_ASSERT(trx->_status == Transaction::Status::CREATED ||
-             trx->_status == Transaction::Status::RUNNING);
+TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid, AccessMode::Type accessType) {
+  TRI_ASSERT(_status == Transaction::Status::CREATED ||
+             _status == Transaction::Status::RUNNING);
 
   TransactionCollection* trxCollection =
-      FindCollection(trx, cid, nullptr);
+      FindCollection(this, cid, nullptr);
 
   if (trxCollection == nullptr) {
     // not found
@@ -648,8 +645,8 @@ TransactionCollection* arangodb::TRI_GetCollectionTransaction(
   }
 
   if (trxCollection->_collection == nullptr) {
-    if (!HasHint(trx, TransactionHints::Hint::LOCK_NEVER) ||
-        !HasHint(trx, TransactionHints::Hint::NO_USAGE_LOCK)) {
+    if (!HasHint(this, TransactionHints::Hint::LOCK_NEVER) ||
+        !HasHint(this, TransactionHints::Hint::NO_USAGE_LOCK)) {
       // not opened. probably a mistake made by the caller
       return nullptr;
     }
@@ -942,8 +939,8 @@ int arangodb::TRI_AddOperationTransaction(TransactionState* trx,
     collection->increaseUncollectedLogfileEntries(1);
   } else {
     // operation is buffered and might be rolled back
-    TransactionCollection* trxCollection = TRI_GetCollectionTransaction(
-        trx, collection->cid(), AccessMode::Type::WRITE);
+    TransactionCollection* trxCollection = trx->collection(collection->cid(), AccessMode::Type::WRITE);
+
     if (trxCollection->_operations == nullptr) {
       trxCollection->_operations = new std::vector<MMFilesDocumentOperation*>;
       trxCollection->_operations->reserve(16);
