@@ -45,8 +45,9 @@ class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
 
  private:
   ExecutionPlan* _plan;
+  std::unordered_set<VariableId> _filterVariables;
+  std::vector<AstNode const*> _conditions;
   std::unordered_map<VariableId, CalculationNode const*> _variableDefinitions;
-  std::unordered_map<VariableId, ExecutionNode const*> _filters;
   bool* _planAltered;
 };
 }

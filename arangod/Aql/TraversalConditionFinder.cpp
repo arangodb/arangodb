@@ -147,12 +147,10 @@ static bool matchesArrayAccessPattern(AstNode const* testee,
   return false;
 }
 
-static bool checkPathVariableAccessFeasible(CalculationNode const* cn,
+static bool checkPathVariableAccessFeasible(AstNode const* node,
                                             TraversalNode* tn,
                                             Variable const* var,
                                             bool& conditionIsImpossible) {
-  auto node = cn->expression()->node();
-
   if (node->containsNodeType(NODE_TYPE_OPERATOR_BINARY_OR)) {
     return false;
   }
@@ -416,10 +414,12 @@ static void transformCondition(AstNode const* node, Variable const* pvar,
 }
 
 bool TraversalConditionFinder::before(ExecutionNode* en) {
-  if (!_variableDefinitions.empty() && en->canThrow()) {
+  if (!_conditions.empty() && en->canThrow()) {
     // we already found a FILTER and
     // something that can throw is not safe to optimize
-    _filters.clear();
+
+    _filterVariables.clear();
+    // What about _expressionNodes?
     return true;
   }
 
@@ -457,18 +457,29 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       std::vector<Variable const*>&& invars = en->getVariablesUsedHere();
       TRI_ASSERT(invars.size() == 1);
       // register which variable is used in a FILTER
-      _filters.emplace(invars[0]->id, en);
+      _filterVariables.emplace(invars[0]->id);
       break;
     }
 
     case EN::CALCULATION: {
-      auto outvars = en->getVariablesSetHere();
-      TRI_ASSERT(outvars.size() == 1);
+      auto calcNode = static_cast<CalculationNode const*>(en);
+      Variable const* outVar = calcNode->outVariable();
+      if (_filterVariables.find(outVar->id) != _filterVariables.end()) {
+        // This calculationNode is directly part of a filter condition
+        // So we have to iterate through it.
+        TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        /*
+        AstNode const* cond = calcNode->expression()->node();
+        switch (cond->type) {
+          NODE_TYPE_BINARY_AND
 
-      _variableDefinitions.emplace(outvars[0]->id,
-                                   static_cast<CalculationNode const*>(en));
-      TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        */
+        // TODO If this is an AND we either split it up here
+        // or we split up internally
+        _conditions.emplace_back(calcNode->expression()->node());
       }
       break;
     }
@@ -480,73 +491,76 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
       bool foundCondition = false;
       auto const& varsValidInTraversal = node->getVarsValid();
-      std::unordered_set<Variable const*> varsUsedByCondition;
 
       bool conditionIsImpossible = false;
+      auto vertexVar = node->vertexOutVariable();
+      auto edgeVar = node->edgeOutVariable();
+      auto pathVar = node->pathOutVariable();
 
-      for (auto& it : _variableDefinitions) {
-        auto f = _filters.find(it.first);
-        if (f != _filters.end()) {
-          // a variable used in a FILTER
-          auto outVar = node->getVariablesSetHere();
-          if (outVar.size() != 1 || outVar[0]->id == f->first) {
-            // now we know, this filter is used for our traversal node.
-            auto cn = it.second;
+      if (pathVar == nullptr) {
+        // This traverser does not have a path output.
+        // So the user cannot filter based on it
+        // => No optimization
+        break;
+      }
 
-            // check whether variables that are not in scope of the condition
-            // are used:
-            varsUsedByCondition.clear();
-            Ast::getReferencedVariables(cn->expression()->node(),
-                                        varsUsedByCondition);
-            bool unknownVariableFound = false;
-            for (auto const& conditionVar : varsUsedByCondition) {
-              bool found = false;
-              for (auto const& traversalKnownVar : varsValidInTraversal) {
-                if (conditionVar->id == traversalKnownVar->id) {
-                  found = true;
-                  break;
-                }
-              }
-              if (!found) {
-                unknownVariableFound = true;
-                break;
-              }
-            }
-            if (unknownVariableFound) {
-              continue;
-            }
+      std::unordered_set<Variable const*> varsUsedByCondition;
 
-            for (auto const& conditionVar : varsUsedByCondition) {
-              // check whether conditionVar is one of those we emit
-              int variableType = node->checkIsOutVariable(conditionVar->id);
-              if (variableType >= 0) {
-                if ((variableType == 2) &&
-                    checkPathVariableAccessFeasible(cn, node, conditionVar,
-                                                    conditionIsImpossible)) {
-                  condition->andCombine(
-                      it.second->expression()->node()->clone(_plan->getAst()));
-                  foundCondition = true;
-                }
-                if (conditionIsImpossible) {
-                  break;
-                }
-              }
-            }
+      /*
+      // TEMP check
+      auto tmpCond = std::make_unique<Condition>(_plan->getAst());
+      for (auto const& cond : _conditions) {
+        tmpCond->andCombine(cond->clone(_plan->getAst()));
+      }
+      tmpCond->normalize(_plan);
+      VPackBuilder husten;
+      tmpCond->toVelocyPack(husten, true);
+      LOG(ERR) << "ALl normalized " << husten.toJson();
+      */
+
+      for (auto const& cond : _conditions) {
+        // We now iterate over all conditions we found, and check if we can
+        // optimize them
+        varsUsedByCondition.clear();
+        Ast::getReferencedVariables(cond, varsUsedByCondition);
+
+        if (varsUsedByCondition.find(pathVar) == varsUsedByCondition.end()) {
+          // For now we only! optimize filter conditions on the path
+          // So we skip all FILTERS not referencing the path
+          continue; 
+        }
+
+        // now we validate that there is no variable used in this condition the Traverser does not know
+        bool unknownVarFound = false;
+        for (auto const& var : varsUsedByCondition) {
+          if (var == edgeVar || var == vertexVar) {
+            unknownVarFound = true;
+            break;
           }
+          if (varsValidInTraversal.find(var) == varsValidInTraversal.end()) {
+            unknownVarFound = true;
+            break;
+          }
+        }
+
+        if (unknownVarFound) {
+          // we found a variable created after the
+          // traversal. Cannot optimize this condition
+          continue;
+        }
+
+        // If we get here we can optimize this condition
+        if (checkPathVariableAccessFeasible(cond, node, pathVar,
+                                            conditionIsImpossible)) {
+          condition->andCombine(cond->clone(_plan->getAst()));
+          foundCondition = true;
         }
         if (conditionIsImpossible) {
           break;
         }
       }
 
-      // TODO: we can't execute if we condition->normalize(_plan); in
-      // generateCodeNode
-      if (!conditionIsImpossible) {
-        // right now we're not clever enough to find impossible conditions...
-        conditionIsImpossible = (foundCondition && condition->isEmpty());
-      }
-
-      if (conditionIsImpossible) {
+      if (conditionIsImpossible || (foundCondition && condition->isEmpty())) {
         // condition is always false
         for (auto const& x : node->getParents()) {
           auto noRes = new NoResultsNode(_plan, _plan->nextId());
@@ -556,16 +570,17 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         }
         break;
       }
+
       if (foundCondition) {
         condition->normalize();
         TRI_IF_FAILURE("ConditionFinder::normalizePlan") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        transformCondition(condition->root(), node->pathOutVariable(), _plan->getAst(), node);
+        transformCondition(condition->root(), node->pathOutVariable(),
+   _plan->getAst(), node);
         node->setCondition(condition.release());
         *_planAltered = true;
       }
-
       break;
     }
   }
