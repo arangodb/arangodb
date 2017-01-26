@@ -100,7 +100,7 @@ function MovingShardsSuite () {
     }
     return true;
   }
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get cleaned out servers
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,23 +142,31 @@ function MovingShardsSuite () {
     if (toCollNr === undefined) {
       toCollNr = c.length - 1;
     }
-    var count = 100;
+    var count = 300;
     var ok = false;
+
+    console.info("Waiting for server " + id + " to be cleaned out ...");
 
     if (checkList) {
 
       // Wait until the server appears in the list of cleanedOutServers:
-      count = 100;
-
+      var obj;
       while (--count > 0) {
-        var obj = getCleanedOutServers();
+        obj = getCleanedOutServers();
         if (obj.cleanedServers.indexOf(id) >= 0) {
           ok = true;
+          console.info("Success: Server " + id + " cleaned out.");
           break;
         }
         wait(1.0);
       }
 
+      if (!ok) {
+        console.info(
+          "Failed: Server " + id + " was not cleaned out. List of cleaned servers: ["
+            + obj.cleanedServers + "]");
+      }
+      
     } else {
     
       for (var i = fromCollNr; i <= toCollNr; ++i) {
