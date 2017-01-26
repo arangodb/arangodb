@@ -12,6 +12,7 @@ $user = ENV['ARANGO_USER']
 $password = ENV['ARANGO_PASSWORD']
 $ssl = ENV['ARANGO_SSL']
 $silent = ENV['ARANGO_NO_LOG'] || ''
+$skip_timecritical = ENV['SKIP_TIMECRITICAL'] || true
 
 begin
   $address = RSpec.configuration.ARANGO_SERVER
@@ -29,6 +30,10 @@ begin
   $ssl = RSpec.configuration.ARANGO_SSL
 rescue
 end
+begin
+  $skip_timecritical = RSpec.configuration.SKIP_TIMECRITICAL
+rescue
+end
 
 RSpec.configure do |config|
   config.expect_with :rspec do |c|
@@ -40,6 +45,9 @@ RSpec.configure do |config|
   # tests to be excluded when under ssl
   if $ssl == '1'
     config.filter_run_excluding :ssl => true
+  end
+  if $skip_timecritical
+    config.filter_run_excluding :timecritical => true
   end
 end
 
