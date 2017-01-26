@@ -971,13 +971,13 @@ void Agent::beginShutdown() {
     }
   }
   
-  while (_supervision.isRunning()) {
+/*  while (_supervision.isRunning()) {
     usleep(100000);
     // emit warning after 5 seconds
     if (++counter == 10 * 5) {
       LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for supervision thread to finish";
     }
-  }
+    }*/
   
   // Wake up all waiting rest handlers
   {
