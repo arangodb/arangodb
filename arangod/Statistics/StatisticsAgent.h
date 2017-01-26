@@ -101,8 +101,8 @@ class StatisticsAgent {
       }
 
       _statistics = statistics;
-    } else {
-      LOG(ERR) << "RequestStatisticsAgent::replace called with alias.";
+    } else if (_statistics != nullptr) {
+      LOG(ERR) << "StatisticsAgent::replace called with alias and not nullptr";
     }
   }
 };
