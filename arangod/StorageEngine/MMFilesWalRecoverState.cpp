@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RecoverState.h"
+#include "MMFilesWalRecoverState.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/conversions.h"
@@ -31,12 +31,12 @@
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/MMFilesDatafileHelper.h"
+#include "StorageEngine/MMFilesWalSlots.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "VocBase/DatafileHelper.h"
 #include "VocBase/LogicalCollection.h"
 #include "Wal/LogfileManager.h"
-#include "Wal/Slots.h"
 
 #include "Indexes/RocksDBFeature.h"
 
@@ -45,7 +45,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-using namespace arangodb::wal;
 
 /// @brief convert a number slice into its numeric equivalent
 template <typename T>
@@ -67,7 +66,7 @@ static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
 }
 
 /// @brief creates the recover state
-RecoverState::RecoverState(bool ignoreRecoveryErrors)
+MMFilesWalRecoverState::MMFilesWalRecoverState(bool ignoreRecoveryErrors)
     : databaseFeature(nullptr),
       failedTransactions(),
       lastTick(0),
@@ -85,11 +84,11 @@ RecoverState::RecoverState(bool ignoreRecoveryErrors)
 }
 
 /// @brief destroys the recover state
-RecoverState::~RecoverState() { releaseResources(); }
+MMFilesWalRecoverState::~MMFilesWalRecoverState() { releaseResources(); }
 
 /// @brief release opened collections and databases so they can be shut down
 /// etc.
-void RecoverState::releaseResources() {
+void MMFilesWalRecoverState::releaseResources() {
   // release all collections
   for (auto it = openedCollections.begin(); it != openedCollections.end();
        ++it) {
@@ -108,7 +107,7 @@ void RecoverState::releaseResources() {
 }
 
 /// @brief gets a database (and inserts it into the cache if not in it)
-TRI_vocbase_t* RecoverState::useDatabase(TRI_voc_tick_t databaseId) {
+TRI_vocbase_t* MMFilesWalRecoverState::useDatabase(TRI_voc_tick_t databaseId) {
   auto it = openedDatabases.find(databaseId);
 
   if (it != openedDatabases.end()) {
@@ -126,7 +125,7 @@ TRI_vocbase_t* RecoverState::useDatabase(TRI_voc_tick_t databaseId) {
 }
 
 /// @brief release a database (so it can be dropped)
-TRI_vocbase_t* RecoverState::releaseDatabase(TRI_voc_tick_t databaseId) {
+TRI_vocbase_t* MMFilesWalRecoverState::releaseDatabase(TRI_voc_tick_t databaseId) {
   auto it = openedDatabases.find(databaseId);
 
   if (it == openedDatabases.end()) {
@@ -164,7 +163,7 @@ TRI_vocbase_t* RecoverState::releaseDatabase(TRI_voc_tick_t databaseId) {
 }
 
 /// @brief release a collection (so it can be dropped)
-arangodb::LogicalCollection* RecoverState::releaseCollection(TRI_voc_cid_t collectionId) {
+arangodb::LogicalCollection* MMFilesWalRecoverState::releaseCollection(TRI_voc_cid_t collectionId) {
   auto it = openedCollections.find(collectionId);
 
   if (it == openedCollections.end()) {
@@ -181,7 +180,7 @@ arangodb::LogicalCollection* RecoverState::releaseCollection(TRI_voc_cid_t colle
 }
 
 /// @brief gets a collection (and inserts it into the cache if not in it)
-arangodb::LogicalCollection* RecoverState::useCollection(
+arangodb::LogicalCollection* MMFilesWalRecoverState::useCollection(
     TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId, int& res) {
   auto it = openedCollections.find(collectionId);
 
@@ -216,7 +215,7 @@ arangodb::LogicalCollection* RecoverState::useCollection(
 /// the collection will be opened after this call and inserted into a local
 /// cache for faster lookups
 /// returns nullptr if the collection does not exist
-LogicalCollection* RecoverState::getCollection(
+LogicalCollection* MMFilesWalRecoverState::getCollection(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
   TRI_vocbase_t* vocbase = useDatabase(databaseId);
 
@@ -236,10 +235,10 @@ LogicalCollection* RecoverState::getCollection(
 }
 
 /// @brief executes a single operation inside a transaction
-int RecoverState::executeSingleOperation(
+int MMFilesWalRecoverState::executeSingleOperation(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     TRI_df_marker_t const* marker, TRI_voc_fid_t fid,
-    std::function<int(SingleCollectionTransaction*, MarkerEnvelope*)> func) {
+    std::function<int(SingleCollectionTransaction*, MMFilesMarkerEnvelope*)> func) {
   // first find the correct database
   TRI_vocbase_t* vocbase = useDatabase(databaseId);
 
@@ -283,7 +282,7 @@ int RecoverState::executeSingleOperation(
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    MarkerEnvelope envelope(marker, fid);
+    MMFilesMarkerEnvelope envelope(marker, fid);
 
     // execute the operation
     res = func(&trx, &envelope);
@@ -310,9 +309,9 @@ int RecoverState::executeSingleOperation(
 
 /// @brief callback to handle one marker during recovery
 /// this function only builds up state and does not change any data
-bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
-                                     TRI_datafile_t* datafile) {
-  RecoverState* state = reinterpret_cast<RecoverState*>(data);
+bool MMFilesWalRecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
+                                     MMFilesDatafile* datafile) {
+  MMFilesWalRecoverState* state = reinterpret_cast<MMFilesWalRecoverState*>(data);
 
   TRI_ASSERT(marker != nullptr);
 
@@ -329,7 +328,7 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
 
   switch (type) {
     case TRI_DF_MARKER_VPACK_DOCUMENT: {
-      VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
+      VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
       if (payloadSlice.isObject()) {
         TRI_voc_rid_t revisionId = Transaction::extractRevFromDocument(payloadSlice);
         if (revisionId > state->maxRevisionId) {
@@ -345,37 +344,37 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
       // transaction,
       // we'll have it in the failed list at the end of the scan and can ignore
       // it
-      TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
-      TRI_voc_tid_t const tid = DatafileHelper::TransactionId(marker);
+      TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
+      TRI_voc_tid_t const tid = MMFilesDatafileHelper::TransactionId(marker);
       state->failedTransactions.emplace(tid, std::make_pair(databaseId, false));
       break;
     }
 
     case TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION: {
       // remove this transaction from the list of failed transactions
-      TRI_voc_tid_t const tid = DatafileHelper::TransactionId(marker);
+      TRI_voc_tid_t const tid = MMFilesDatafileHelper::TransactionId(marker);
       state->failedTransactions.erase(tid);
       break;
     }
 
     case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION: {
       // insert this transaction into the list of failed transactions
-      TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
-      TRI_voc_tid_t const tid = DatafileHelper::TransactionId(marker);
+      TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
+      TRI_voc_tid_t const tid = MMFilesDatafileHelper::TransactionId(marker);
       state->failedTransactions[tid] = std::make_pair(databaseId, true);
       break;
     }
     
     case TRI_DF_MARKER_VPACK_DROP_DATABASE: {
       // note that the database was dropped and doesn't need to be recovered
-      TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
+      TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
       state->totalDroppedDatabases.emplace(databaseId);
       break;
     }
 
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION: {
       // note that the collection was dropped and doesn't need to be recovered
-      TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
+      TRI_voc_cid_t const collectionId = MMFilesDatafileHelper::CollectionId(marker);
       state->totalDroppedCollections.emplace(collectionId);
       break;
     }
@@ -390,9 +389,9 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
 
 /// @brief callback to replay one marker during recovery
 /// this function modifies indexes etc.
-bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
-                                TRI_datafile_t* datafile) {
-  RecoverState* state = reinterpret_cast<RecoverState*>(data);
+bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
+                                MMFilesDatafile* datafile) {
+  MMFilesWalRecoverState* state = reinterpret_cast<MMFilesWalRecoverState*>(data);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   LOG(TRACE) << "replaying marker of type " << TRI_NameMarkerDatafile(marker);
@@ -404,8 +403,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
     switch (type) {
       case TRI_DF_MARKER_PROLOGUE: {
         // simply note the last state
-        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
-        TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
+        TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
+        TRI_voc_cid_t const collectionId = MMFilesDatafileHelper::CollectionId(marker);
 
         LOG(TRACE) << "found prologue marker. databaseId: " << databaseId << ", collectionId: " << collectionId;
         state->resetCollection(databaseId, collectionId);
@@ -425,7 +424,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        TRI_voc_tid_t const tid = DatafileHelper::TransactionId(marker);
+        TRI_voc_tid_t const tid = MMFilesDatafileHelper::TransactionId(marker);
         
         if (state->ignoreTransaction(tid)) {
           // transaction was aborted
@@ -436,7 +435,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         int res = state->executeSingleOperation(
             databaseId, collectionId, marker, datafile->fid(),
-            [&](SingleCollectionTransaction* trx, MarkerEnvelope* envelope) -> int {
+            [&](SingleCollectionTransaction* trx, MMFilesMarkerEnvelope* envelope) -> int {
               if (trx->documentCollection()->isVolatile()) {
                 return TRI_ERROR_NO_ERROR;
               }
@@ -444,7 +443,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(envelope->mem());
 
               std::string const collectionName = trx->documentCollection()->name();
-              uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + DatafileHelper::VPackOffset(type);
+              uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + MMFilesDatafileHelper::VPackOffset(type);
 
               OperationOptions options;
               options.silent = true;
@@ -489,7 +488,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        TRI_voc_tid_t const tid = DatafileHelper::TransactionId(marker);
+        TRI_voc_tid_t const tid = MMFilesDatafileHelper::TransactionId(marker);
         
         if (state->ignoreTransaction(tid)) {
           return true;
@@ -499,7 +498,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         int res = state->executeSingleOperation(
             databaseId, collectionId, marker, datafile->fid(),
-            [&](SingleCollectionTransaction* trx, MarkerEnvelope* envelope) -> int {
+            [&](SingleCollectionTransaction* trx, MMFilesMarkerEnvelope* envelope) -> int {
               if (trx->documentCollection()->isVolatile()) {
                 return TRI_ERROR_NO_ERROR;
               }
@@ -507,7 +506,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(envelope->mem());
 
               std::string const collectionName = trx->documentCollection()->name();
-              uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + DatafileHelper::VPackOffset(type);
+              uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + MMFilesDatafileHelper::VPackOffset(type);
 
               OperationOptions options;
               options.silent = true;
@@ -549,9 +548,9 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       // -----------------------------------------------------------------------------
 
       case TRI_DF_MARKER_VPACK_RENAME_COLLECTION: {
-        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
-        TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
-        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
+        TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
+        TRI_voc_cid_t const collectionId = MMFilesDatafileHelper::CollectionId(marker);
+        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
         
         if (!payloadSlice.isObject()) {
           LOG(WARN) << "cannot rename collection: invalid marker";
@@ -613,9 +612,9 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION: {
-        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
-        TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
-        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
+        TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
+        TRI_voc_cid_t const collectionId = MMFilesDatafileHelper::CollectionId(marker);
+        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
         
         if (!payloadSlice.isObject()) {
           LOG(WARN) << "cannot change properties of collection: invalid marker";
@@ -661,9 +660,9 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       case TRI_DF_MARKER_VPACK_CREATE_INDEX: {
-        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
-        TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
-        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
+        TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
+        TRI_voc_cid_t const collectionId = MMFilesDatafileHelper::CollectionId(marker);
+        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
         
         if (!payloadSlice.isObject()) {
           LOG(WARN) << "cannot create index for collection: invalid marker";
@@ -726,9 +725,9 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       case TRI_DF_MARKER_VPACK_CREATE_COLLECTION: {
-        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
-        TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
-        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
+        TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
+        TRI_voc_cid_t const collectionId = MMFilesDatafileHelper::CollectionId(marker);
+        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
         
         if (!payloadSlice.isObject()) {
           LOG(WARN) << "cannot create collection: invalid marker";
@@ -829,8 +828,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       case TRI_DF_MARKER_VPACK_CREATE_DATABASE: {
-        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
-        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
+        TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
+        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
         
         if (!payloadSlice.isObject()) {
           LOG(WARN) << "cannot create database: invalid marker";
@@ -890,9 +889,9 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       case TRI_DF_MARKER_VPACK_DROP_INDEX: {
-        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
-        TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
-        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
+        TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
+        TRI_voc_cid_t const collectionId = MMFilesDatafileHelper::CollectionId(marker);
+        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
         
         if (!payloadSlice.isObject()) {
           LOG(WARN) << "cannot drop index for collection: invalid marker";
@@ -937,8 +936,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       case TRI_DF_MARKER_VPACK_DROP_COLLECTION: {
-        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
-        TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
+        TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
+        TRI_voc_cid_t const collectionId = MMFilesDatafileHelper::CollectionId(marker);
         
         // insert the drop marker
         state->droppedCollections.emplace(collectionId);
@@ -967,7 +966,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       case TRI_DF_MARKER_VPACK_DROP_DATABASE: {
-        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
+        TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
 
         // insert the drop marker
         state->droppedDatabases.emplace(databaseId);
@@ -1011,20 +1010,20 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 }
 
 /// @brief replay a single logfile
-int RecoverState::replayLogfile(Logfile* logfile, int number) {
+int MMFilesWalRecoverState::replayLogfile(wal::Logfile* logfile, int number) {
   std::string const logfileName = logfile->filename();
 
   int const n = static_cast<int>(logfilesToProcess.size());
 
   LOG(INFO) << "replaying WAL logfile '" << logfileName << "' (" << (number + 1) << " of " << n << ")";
 
-  TRI_datafile_t* df = logfile->df();
+  MMFilesDatafile* df = logfile->df();
 
   // Advise on sequential use:
   df->sequentialAccess();
   df->willNeed();
 
-  if (!TRI_IterateDatafile(df, &RecoverState::ReplayMarker, static_cast<void*>(this))) {
+  if (!TRI_IterateDatafile(df, &MMFilesWalRecoverState::ReplayMarker, static_cast<void*>(this))) {
     LOG(WARN) << "WAL inspection failed when scanning logfile '" << logfileName << "'";
     return TRI_ERROR_ARANGO_RECOVERY;
   }
@@ -1036,7 +1035,7 @@ int RecoverState::replayLogfile(Logfile* logfile, int number) {
 }
 
 /// @brief replay all logfiles
-int RecoverState::replayLogfiles() {
+int MMFilesWalRecoverState::replayLogfiles() {
   droppedCollections.clear();
   droppedDatabases.clear();
 
@@ -1054,7 +1053,7 @@ int RecoverState::replayLogfiles() {
 }
 
 /// @brief abort open transactions
-int RecoverState::abortOpenTransactions() {
+int MMFilesWalRecoverState::abortOpenTransactions() {
   if (failedTransactions.empty()) {
     // nothing to do
     return TRI_ERROR_NO_ERROR;
@@ -1078,8 +1077,8 @@ int RecoverState::abortOpenTransactions() {
 
       TRI_voc_tick_t databaseId = (*it).second.first;
      
-      TransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, databaseId, transactionId);
-      SlotInfoCopy slotInfo =
+      MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, databaseId, transactionId);
+      MMFilesWalSlotInfoCopy slotInfo =
           arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
       if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -1099,7 +1098,7 @@ int RecoverState::abortOpenTransactions() {
 }
 
 /// @brief remove all empty logfiles found during logfile inspection
-int RecoverState::removeEmptyLogfiles() {
+int MMFilesWalRecoverState::removeEmptyLogfiles() {
   if (emptyLogfiles.empty()) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -1120,7 +1119,7 @@ int RecoverState::removeEmptyLogfiles() {
 }
 
 /// @brief fill the secondary indexes of all collections used in recovery
-int RecoverState::fillIndexes() {
+int MMFilesWalRecoverState::fillIndexes() {
   // release all collections
   for (auto it = openedCollections.begin(); it != openedCollections.end();
        ++it) {

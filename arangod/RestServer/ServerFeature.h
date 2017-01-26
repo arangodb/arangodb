@@ -47,6 +47,7 @@ class ServerFeature final : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void beginShutdown() override final;
+  bool isStopping() const { return _isStopping; }
 
  public:
   OperationMode operationMode() const { return _operationMode; }
@@ -70,6 +71,7 @@ class ServerFeature final : public application_features::ApplicationFeature {
   uint32_t _vppMaxSize;
   int* _result;
   OperationMode _operationMode;
+  bool _isStopping = false;
 };
 }
 

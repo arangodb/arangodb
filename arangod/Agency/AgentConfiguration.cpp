@@ -37,7 +37,8 @@ config_t::config_t()
       _supervision(false),
       _waitForSync(true),
       _supervisionFrequency(5.0),
-      _compactionStepSize(1000),
+      _compactionStepSize(2000),
+      _compactionKeepSize(500),
       _supervisionGracePeriod(15.0),
       _cmdLineTimings(false),
       _version(0),
@@ -47,7 +48,8 @@ config_t::config_t()
 
 config_t::config_t(size_t as, size_t ps, double minp, double maxp,
                    std::string const& e, std::vector<std::string> const& g,
-                   bool s, bool w, double f, uint64_t c, double p, bool t)
+                   bool s, bool w, double f, uint64_t c, uint64_t k, double p,
+                   bool t)
     : _agencySize(as),
       _poolSize(ps),
       _minPing(minp),
@@ -58,6 +60,7 @@ config_t::config_t(size_t as, size_t ps, double minp, double maxp,
       _waitForSync(w),
       _supervisionFrequency(f),
       _compactionStepSize(c),
+      _compactionKeepSize(k),      
       _supervisionGracePeriod(p),
       _cmdLineTimings(t),
       _version(0),
@@ -80,6 +83,7 @@ config_t::config_t(config_t&& other)
       _waitForSync(std::move(other._waitForSync)),
       _supervisionFrequency(std::move(other._supervisionFrequency)),
       _compactionStepSize(std::move(other._compactionStepSize)),
+      _compactionKeepSize(std::move(other._compactionKeepSize)),
       _supervisionGracePeriod(std::move(other._supervisionGracePeriod)),
       _cmdLineTimings(std::move(other._cmdLineTimings)),
       _version(std::move(other._version)),
@@ -102,6 +106,7 @@ config_t& config_t::operator=(config_t const& other) {
   _waitForSync = other._waitForSync;
   _supervisionFrequency = other._supervisionFrequency;
   _compactionStepSize = other._compactionStepSize;
+  _compactionKeepSize = other._compactionKeepSize;
   _supervisionGracePeriod = other._supervisionGracePeriod;
   _cmdLineTimings = other._cmdLineTimings;
   _version = other._version;
@@ -123,6 +128,7 @@ config_t& config_t::operator=(config_t&& other) {
   _waitForSync = std::move(other._waitForSync);
   _supervisionFrequency = std::move(other._supervisionFrequency);
   _compactionStepSize = std::move(other._compactionStepSize);
+  _compactionKeepSize = std::move(other._compactionKeepSize);
   _supervisionGracePeriod = std::move(other._supervisionGracePeriod);
   _cmdLineTimings = std::move(other._cmdLineTimings);
   _version = std::move(other._version);
@@ -285,6 +291,11 @@ std::string config_t::nextAgentInLine() const {
 size_t config_t::compactionStepSize() const {
   READ_LOCKER(readLocker, _lock);
   return _compactionStepSize;
+}
+
+size_t config_t::compactionKeepSize() const {
+  READ_LOCKER(readLocker, _lock);
+  return _compactionKeepSize;
 }
 
 size_t config_t::size() const {
@@ -479,6 +490,15 @@ void config_t::override(VPackSlice const& conf) {
                                    << conf.toJson();
   }
 
+  if (conf.hasKey(compactionKeepSizeStr) &&
+      conf.get(compactionKeepSizeStr).isUInt()) {
+    _compactionKeepSize = conf.get(compactionKeepSizeStr).getUInt();
+  } else {
+    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override "
+                                   << compactionKeepSizeStr << " from "
+                                   << conf.toJson();
+  }
+
   ++_version;
 }
 
@@ -515,6 +535,7 @@ query_t config_t::toBuilder() const {
     ret->add(supervisionStr, VPackValue(_supervision));
     ret->add(supervisionFrequencyStr, VPackValue(_supervisionFrequency));
     ret->add(compactionStepSizeStr, VPackValue(_compactionStepSize));
+    ret->add(compactionKeepSizeStr, VPackValue(_compactionKeepSize));
     ret->add(supervisionGracePeriodStr, VPackValue(_supervisionGracePeriod));
     ret->add(versionStr, VPackValue(_version));
     ret->add(startupStr, VPackValue(_startup));
@@ -685,7 +706,7 @@ bool config_t::merge(VPackSlice const& conf) {
       _compactionStepSize = conf.get(compactionStepSizeStr).getUInt();
       ss << _compactionStepSize << " (persisted)";
     } else {
-      _compactionStepSize = 1000;
+      _compactionStepSize = 2000;
       ss << _compactionStepSize << " (default)";
     }
   } else {
@@ -693,6 +714,21 @@ bool config_t::merge(VPackSlice const& conf) {
   }
   LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
+  ss.str("");
+  ss.clear();
+  ss << "Compaction keep size: ";
+  if (_compactionKeepSize == 0) {  // Command line beats persistence
+    if (conf.hasKey(compactionKeepSizeStr)) {
+      _compactionKeepSize = conf.get(compactionKeepSizeStr).getUInt();
+      ss << _compactionKeepSize << " (persisted)";
+    } else {
+      _compactionStepSize =  500;
+      ss << _compactionKeepSize << " (default)";
+    }
+  } else {
+    ss << _compactionKeepSize << " (command line)";
+  }
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
   ++_version;
   return true;
 }

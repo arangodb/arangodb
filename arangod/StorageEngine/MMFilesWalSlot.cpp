@@ -21,14 +21,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Slot.h"
+#include "MMFilesWalSlot.h"
 #include "Basics/hashes.h"
-#include "Wal/Marker.h"
+#include "StorageEngine/MMFilesWalMarker.h"
 
-using namespace arangodb::wal;
+using namespace arangodb;
 
 /// @brief create a slot
-Slot::Slot()
+MMFilesWalSlot::MMFilesWalSlot()
     : _tick(0),
       _logfileId(0),
       _mem(nullptr),
@@ -36,7 +36,7 @@ Slot::Slot()
       _status(StatusType::UNUSED) {}
 
 /// @brief return the slot status as a string
-std::string Slot::statusText() const {
+std::string MMFilesWalSlot::statusText() const {
   switch (_status) {
     case StatusType::UNUSED:
       return "unused";
@@ -59,7 +59,7 @@ std::string Slot::statusText() const {
 
 /// @brief calculate the CRC and length values for the slot and
 /// store them in the marker
-void Slot::finalize(Marker const* marker) {
+void MMFilesWalSlot::finalize(MMFilesWalMarker const* marker) {
   TRI_ASSERT(marker != nullptr);
   uint32_t const size = marker->size();
 
@@ -92,7 +92,7 @@ void Slot::finalize(Marker const* marker) {
 /// @brief calculate the CRC value for the source region (this will modify
 /// the source region) and copy the calculated marker data into the slot
 /// note that marker type has to be set already in the src 
-void Slot::fill(void* src, size_t size) {
+void MMFilesWalSlot::fill(void* src, size_t size) {
   TRI_ASSERT(size == _size);
   TRI_ASSERT(src != nullptr);
 
@@ -122,7 +122,7 @@ void Slot::fill(void* src, size_t size) {
 }
 
 /// @brief mark as slot as used
-void Slot::setUnused() {
+void MMFilesWalSlot::setUnused() {
   TRI_ASSERT(isReturned());
   _tick = 0;
   _logfileId = 0;
@@ -132,8 +132,8 @@ void Slot::setUnused() {
 }
 
 /// @brief mark as slot as used
-void Slot::setUsed(void* mem, uint32_t size, Logfile::IdType logfileId,
-                   Slot::TickType tick) {
+void MMFilesWalSlot::setUsed(void* mem, uint32_t size, wal::Logfile::IdType logfileId,
+                   MMFilesWalSlot::TickType tick) {
   TRI_ASSERT(isUnused());
   _tick = tick;
   _logfileId = logfileId;
@@ -143,7 +143,7 @@ void Slot::setUsed(void* mem, uint32_t size, Logfile::IdType logfileId,
 }
 
 /// @brief mark as slot as returned
-void Slot::setReturned(bool waitForSync) {
+void MMFilesWalSlot::setReturned(bool waitForSync) {
   TRI_ASSERT(isUsed());
   if (waitForSync) {
     _status = StatusType::RETURNED_WFS;

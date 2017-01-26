@@ -444,7 +444,7 @@ struct hash<arangodb::basics::VPackHashedSlice> {
 template <>
 struct equal_to<arangodb::basics::VPackHashedSlice> {
   bool operator()(arangodb::basics::VPackHashedSlice const& lhs,
-                  arangodb::basics::VPackHashedSlice const& rhs) const noexcept {
+                  arangodb::basics::VPackHashedSlice const& rhs) const {
     return lhs.slice.equals(rhs.slice);
   }
 };

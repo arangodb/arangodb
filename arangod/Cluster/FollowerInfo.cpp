@@ -100,6 +100,12 @@ static VPackBuilder newShardEntry(VPackSlice oldValue, ServerID const& sid,
 void FollowerInfo::add(ServerID const& sid) {
   MUTEX_LOCKER(locker, _mutex);
 
+  // First check if there is anything to do:
+  for (auto const& s : *_followers) {
+    if (s == sid) {
+      return;   // Do nothing, if follower already there
+    }
+  }
   // Fully copy the vector:
   auto v = std::make_shared<std::vector<ServerID>>(*_followers);
   v->push_back(sid);  // add a single entry
@@ -180,11 +186,25 @@ void FollowerInfo::add(ServerID const& sid) {
 void FollowerInfo::remove(ServerID const& sid) {
   MUTEX_LOCKER(locker, _mutex);
 
+  // First check if there is anything to do:
+  bool found = false;
+  for (auto const& s : *_followers) {
+    if (s == sid) {
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    return;  // nothing to do
+  }
+
   auto v = std::make_shared<std::vector<ServerID>>();
-  v->reserve(_followers->size() - 1);
-  for (auto const& i : *_followers) {
-    if (i != sid) {
-      v->push_back(i);
+  if (_followers->size() > 0) {
+    v->reserve(_followers->size() - 1);
+    for (auto const& i : *_followers) {
+      if (i != sid) {
+        v->push_back(i);
+      }
     }
   }
   _followers = v;  // will cast to std::vector<ServerID> const

@@ -2762,6 +2762,35 @@ static void JS_DecodeRev(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief decode a _rev time stamp
+////////////////////////////////////////////////////////////////////////////////
+
+void JS_ArangoDBContext(v8::FunctionCallbackInfo<v8::Value> const& args)
+{
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("ARANGODB_CONTEXT()");
+  }
+  
+
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  auto context = Thread::currentWorkContext();
+
+  if (context != nullptr) {
+    result->Set(TRI_V8_ASCII_STRING("user"),
+                TRI_V8_STD_STRING(context->_user));
+    result->Set(TRI_V8_ASCII_STRING("database"),
+                TRI_V8_STD_STRING(context->_database));
+  }
+
+  TRI_V8_RETURN(result);
+
+  TRI_V8_TRY_CATCH_END;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2959,6 +2988,11 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("DECODE_REV"),
                                JS_DecodeRev);
+
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("ARANGODB_CONTEXT"),
+                               JS_ArangoDBContext,
+                               true);
 
   // .............................................................................
   // create global variables

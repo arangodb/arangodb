@@ -31,6 +31,7 @@
 #include <string>
 
 #include "velocypack/velocypack-common.h"
+#include "velocypack/Exception.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -131,14 +132,23 @@ class Buffer {
   inline ValueLength size() const { return _pos; }
   inline ValueLength length() const { return _pos; }
   inline ValueLength byteSize() const { return _pos; }
+  
+  inline ValueLength capacity() const noexcept { return _alloc; }
 
   std::string toString() const {
     return std::string(reinterpret_cast<char const*>(_buffer), _pos);
   }
 
-  void reset() { 
+  void reset() noexcept { 
     _pos = 0;
     initWithNone();
+  }
+
+  void resetTo(ValueLength position) {
+    if (position >= _alloc) { 
+      throw Exception(Exception::IndexOutOfBounds);
+    }
+    _pos = position;
   }
 
   void clear() {
@@ -153,6 +163,28 @@ class Buffer {
 #endif
       initWithNone();
     }
+  }
+  
+  inline T& operator[](size_t position) noexcept {
+    return _buffer[position];
+  }
+
+  inline T const& operator[](size_t position) const noexcept {
+    return _buffer[position];
+  }
+  
+  inline T& at(size_t position) {
+    if (position >= _pos) {
+      throw Exception(Exception::IndexOutOfBounds);
+    }
+    return operator[](position);
+  }
+  
+  inline T const& at(size_t position) const {
+    if (position >= _pos) {
+      throw Exception(Exception::IndexOutOfBounds);
+    }
+    return operator[](position);
   }
 
   inline void push_back(char c) {
@@ -170,6 +202,14 @@ class Buffer {
     reserve(len);
     memcpy(_buffer + _pos, p, checkOverflow(len));
     _pos += len;
+  }
+  
+  void append(std::string const& value) {
+    return append(value.c_str(), value.size());
+  }
+  
+  void append(Buffer<T> const& value) {
+    return append(value.data(), value.size());
   }
 
   void reserve(ValueLength len) {
@@ -205,15 +245,16 @@ class Buffer {
   // reserve and zero fill
   void prealloc(ValueLength len) {
     reserve(len);
-    // memset(_buffer + _pos, 0, len);
+#ifdef VELOCYPACK_DEBUG
+    // poison memory
+    memset(_buffer + _pos, 0xa5, len);
+#endif
     _pos += len;
   }
 
  private:
   // initialize Buffer with a None value
-  inline void initWithNone() { _buffer[0] = '\x00'; }
-
-  inline ValueLength capacity() const { return _alloc; }
+  inline void initWithNone() noexcept { _buffer[0] = '\x00'; }
 
   T* _buffer;
   ValueLength _alloc;

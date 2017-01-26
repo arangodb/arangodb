@@ -62,6 +62,19 @@ class Transaction;
 
 namespace aql {
 
+/// @brief sort element for block, consisting of register, sort direction, 
+/// and a possible attribute path to dig into the document
+
+struct SortElementBlock {
+  RegisterId reg;
+  bool ascending;
+  std::vector<std::string> attributePath;
+
+  SortElementBlock(RegisterId r, bool asc)
+    : reg(r), ascending(asc) {
+  }
+};
+
 class ExecutionEngine;
 
 class ExecutionBlock {

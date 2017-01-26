@@ -23,7 +23,7 @@
 
 #include "RestAgencyCallbacksHandler.h"
 
-#include "Agency/AgencyCallbackRegistry.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 

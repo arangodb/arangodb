@@ -45,7 +45,8 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _supervision(false),
       _waitForSync(true),
       _supervisionFrequency(5.0),
-      _compactionStepSize(1000),
+      _compactionStepSize(2000),
+      _compactionKeepSize(500),
       _supervisionGracePeriod(15.0),
       _cmdLineTimings(false)
 {
@@ -55,7 +56,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
   startsAfter("Endpoint");
   startsAfter("QueryRegistry");
   startsAfter("Random");
-  startsAfter("Recovery");
+  startsAfter("MMFilesWalRecovery");
   startsAfter("Scheduler");
   startsAfter("Server");
 }
@@ -107,6 +108,10 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--agency.compaction-step-size",
                      "step size between state machine compactions",
                      new UInt64Parameter(&_compactionStepSize));
+
+  options->addOption("--agency.compaction-keep-size",
+                     "keep as many indices before compaction point",
+                     new UInt64Parameter(&_compactionKeepSize));
 
   options->addHiddenOption("--agency.wait-for-sync",
                            "wait for hard disk syncs on every persistence call "
@@ -228,7 +233,8 @@ void AgencyFeature::start() {
   _agent.reset(new consensus::Agent(consensus::config_t(
       _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
       _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
-      _compactionStepSize, _supervisionGracePeriod, _cmdLineTimings)));
+      _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
+      _cmdLineTimings)));
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
@@ -246,12 +252,10 @@ void AgencyFeature::beginShutdown() {
   _agent->beginShutdown();
 }
 
-void AgencyFeature::unprepare() {
+void AgencyFeature::stop() {
   if (!isEnabled()) {
     return;
   }
-
-  _agent->beginShutdown();
 
   if (_agent != nullptr) {
     int counter = 0;

@@ -33,12 +33,10 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-#ifdef USE_DEV_TIMERS
-thread_local TRI_request_statistics_t* TRI_request_statistics_t::STATS =
-    nullptr;
-#endif
+static constexpr size_t QUEUE_SIZE = 1000;
 
-static size_t const QUEUE_SIZE = 1000;
+std::unique_ptr<TRI_request_statistics_t[]> RequestStatistics;
+std::unique_ptr<TRI_connection_statistics_t[]> ConnectionStatistics;
 
 std::string TRI_request_statistics_t::to_string() {
   std::stringstream ss;
@@ -182,6 +180,8 @@ static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
   statistics->reset();
 
   // put statistics item back onto the freelist
+  TRI_ASSERT(!statistics->_released);
+  statistics->_released = true;
   int tries = 0;
   while (++tries < 1000) {
     if (RequestFreeList.push(statistics)) {
@@ -205,6 +205,8 @@ static size_t ProcessAllRequestStatistics() {
 
   while (RequestFinishedList.pop(statistics)) {
     if (statistics != nullptr) {
+      TRI_ASSERT(statistics->_inQueue);
+      statistics->_inQueue = false;
       ProcessRequestStatistics(statistics);
       ++count;
     }
@@ -221,6 +223,8 @@ TRI_request_statistics_t* TRI_AcquireRequestStatistics() {
   TRI_request_statistics_t* statistics = nullptr;
 
   if (StatisticsFeature::enabled() && RequestFreeList.pop(statistics)) {
+    TRI_ASSERT(statistics->_released);
+    statistics->_released = false;
     return statistics;
   }
 
@@ -238,12 +242,17 @@ void TRI_ReleaseRequestStatistics(TRI_request_statistics_t* statistics) {
     return;
   }
 
+  TRI_ASSERT(!statistics->_released);
+
   if (!statistics->_ignore) {
+    TRI_ASSERT(!statistics->_inQueue);
+    statistics->_inQueue = true;
     bool ok = RequestFinishedList.push(statistics);
     TRI_ASSERT(ok);
   } else {
     statistics->reset();
 
+    statistics->_released = true;
     bool ok = RequestFreeList.push(statistics);
     TRI_ASSERT(ok);
   }
@@ -426,27 +435,6 @@ void StatisticsThread::run() {
 
   delete TRI_BytesReceivedDistributionStatistics;
   TRI_BytesReceivedDistributionStatistics = nullptr;
-
-  {
-    TRI_request_statistics_t* entry = nullptr;
-    while (RequestFreeList.pop(entry)) {
-      delete entry;
-    }
-  }
-
-  {
-    TRI_request_statistics_t* entry = nullptr;
-    while (RequestFinishedList.pop(entry)) {
-      delete entry;
-    }
-  }
-
-  {
-    TRI_connection_statistics_t* entry = nullptr;
-    while (ConnectionFreeList.pop(entry)) {
-      delete entry;
-    }
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -590,8 +578,10 @@ void TRI_InitializeStatistics() {
   // generate the request statistics queue
   // .............................................................................
 
+  RequestStatistics.reset(new TRI_request_statistics_t[QUEUE_SIZE]());
   for (size_t i = 0; i < QUEUE_SIZE; ++i) {
-    auto entry = new TRI_request_statistics_t;
+    TRI_request_statistics_t* entry = &RequestStatistics[i];
+    TRI_ASSERT(entry->_released);
     bool ok = RequestFreeList.push(entry);
     TRI_ASSERT(ok);
   }
@@ -600,8 +590,9 @@ void TRI_InitializeStatistics() {
   // generate the connection statistics queue
   // .............................................................................
 
+  ConnectionStatistics.reset(new TRI_connection_statistics_t[QUEUE_SIZE]());
   for (size_t i = 0; i < QUEUE_SIZE; ++i) {
-    auto entry = new TRI_connection_statistics_t;
+    TRI_connection_statistics_t* entry = &ConnectionStatistics[i];
     bool ok = ConnectionFreeList.push(entry);
     TRI_ASSERT(ok);
   }

@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Cluster/ServerState.h"
 
 namespace arangodb {
 class AgencyCallbackRegistry;
@@ -58,6 +59,9 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _coordinatorConfig;
   uint32_t _systemReplicationFactor = 2;
 
+ private:
+  void reportRole(ServerState::RoleEnum);
+
  public:
   AgencyCallbackRegistry* agencyCallbackRegistry() const {
     return _agencyCallbackRegistry.get();
@@ -76,6 +80,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   uint64_t _heartbeatInterval;
   bool _disableHeartbeat;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
+  ServerState::RoleEnum _requestedRole;
 };
 }
 

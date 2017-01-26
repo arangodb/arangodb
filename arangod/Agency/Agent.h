@@ -93,11 +93,17 @@ class Agent : public arangodb::Thread {
   /// @brief Load persistent state
   bool load();
 
+  /// @brief Unpersisted key-value-store
+  trans_ret_t transient(query_t const&);
+
   /// @brief Attempt write
   write_ret_t write(query_t const&);
 
   /// @brief Read from agency
   read_ret_t read(query_t const&);
+
+  /// @brief Inquire success of logs given clientIds
+  inquire_ret_t inquire(query_t const&);
 
   /// @brief Attempt read/write transaction
   trans_ret_t transact(query_t const&);
@@ -161,6 +167,9 @@ class Agent : public arangodb::Thread {
   /// @brief Get spearhead store
   Store const& spearhead() const;
 
+  /// @brief Get transient store
+  Store const& transient() const;
+
   /// @brief Serve active agent interface
   bool serveActiveAgent();
 
@@ -214,9 +223,6 @@ class Agent : public arangodb::Thread {
   /// @brief persist agency configuration in RAFT
   void persistConfiguration(term_t t);
 
-  /// @brief Update my configuration as passive agent
-  void updateConfiguration();
-  
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
 
@@ -258,6 +264,9 @@ class Agent : public arangodb::Thread {
 
   /// @brief Committed (read) kv-store
   Store _readDB;
+
+  /// @brief Committed (read) kv-store
+  Store _transient;
 
   /// @brief Condition variable for appendEntries
   arangodb::basics::ConditionVariable _appendCV;

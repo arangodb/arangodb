@@ -38,11 +38,6 @@ namespace velocypack {
 class Slice;
 }
 
-namespace wal {
-struct DocumentOperation;
-class Marker;
-}
-
 typedef std::string ServerID;      // ID of a server
 typedef std::string DatabaseID;    // ID/name of a database
 typedef std::string CollectionID;  // ID of a collection
@@ -56,6 +51,8 @@ class FollowerInfo;
 class Index;
 class KeyGenerator;
 class ManagedDocumentResult;
+struct MMFilesDocumentOperation;
+class MMFilesWalMarker;
 struct OperationOptions;
 class PhysicalCollection;
 class PrimaryIndex;
@@ -105,7 +102,7 @@ class LogicalCollection {
   static bool IsAllowedName(bool isSystem, std::string const& name);
 
   void ensureRevisionsCache();
-      
+  
   void isInitialIteration(bool value) { _isInitialIteration = value; }
 
   // TODO: MOVE TO PHYSICAL?  
@@ -160,6 +157,9 @@ class LogicalCollection {
   std::string const& path() const;
   std::string const& distributeShardsLike() const;
   void distributeShardsLike(std::string const&);
+
+  std::vector<std::string> const& avoidServers() const;
+  void avoidServers(std::vector<std::string> const&) ;
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (enterprise only) this is
@@ -399,6 +399,7 @@ class LogicalCollection {
   void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
   bool updateRevisionConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal);
   void removeRevision(TRI_voc_rid_t revisionId, bool updateStats);
+  void removeRevisionCacheEntry(TRI_voc_rid_t revisionId);
 
  private:
   // SECTION: Index creation
@@ -433,10 +434,10 @@ class LogicalCollection {
   int updateDocument(arangodb::Transaction*, 
                      TRI_voc_rid_t oldRevisionId, arangodb::velocypack::Slice const& oldDoc,
                      TRI_voc_rid_t newRevisionId, arangodb::velocypack::Slice const& newDoc,
-                     arangodb::wal::DocumentOperation&, arangodb::wal::Marker const*,
+                     MMFilesDocumentOperation&, MMFilesWalMarker const*,
                      bool& waitForSync);
   int insertDocument(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&,
-                     arangodb::wal::DocumentOperation&, arangodb::wal::Marker const*,
+                     MMFilesDocumentOperation&, MMFilesWalMarker const*,
                      bool& waitForSync);
 
   int insertPrimaryIndex(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);
@@ -514,8 +515,10 @@ class LogicalCollection {
   // @brief Name of other collection this shards should be distributed like
   std::string _distributeShardsLike;
 
-  // @brief Flag if this collection is a smart one. (Enterprise only)
+  // @brief Name of other collection this shards should be distributed like
+  std::vector<std::string> _avoidServers;
 
+  // @brief Flag if this collection is a smart one. (Enterprise only)
   bool _isSmart;
 
   // the following contains in the cluster/DBserver case the information

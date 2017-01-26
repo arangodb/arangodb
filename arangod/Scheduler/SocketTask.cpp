@@ -80,7 +80,7 @@ SocketTask::~SocketTask() {
 
   if (err) {
     LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to cancel _keepAliveTimer";
-  } 
+  }
 }
 
 void SocketTask::start() {
@@ -121,21 +121,10 @@ void SocketTask::addWriteBuffer(std::unique_ptr<StringBuffer> buffer,
 void SocketTask::addWriteBuffer(StringBuffer* buffer,
                                 TRI_request_statistics_t* stat) {
   if (_closedSend) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "SocketTask::addWriteBuffer - "
-                                               "dropping output, send stream "
-                                               "already closed";
-
     delete buffer;
+
     if (stat) {
-      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-          << "SocketTask::addWriteBuffer - Statistics release: "
-          << stat->to_string();
       TRI_ReleaseRequestStatistics(stat);
-    } else {
-      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-          << "SocketTask::addWriteBuffer - "
-             "Statistics release: nullptr - "
-             "nothing to release";
     }
 
     return;
@@ -143,19 +132,16 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
 
   MUTEX_LOCKER(locker, _writeLock);
 
-  if (_writeBuffer != nullptr) {
-    _writeBuffers.push_back(buffer);
-    _writeBuffersStats.push_back(stat);
-    return;
-  }
+  // buffer and stats will be NULL when called from async handler
+  if (buffer) {
+    if (_writeBuffer != nullptr) {
+      _writeBuffers.push_back(buffer);
+      _writeBuffersStats.push_back(stat);
+      return;
+    }
 
-  _writeBuffer = buffer;
-  _writeBufferStatistics = stat;  // threadsafe? why not pass to
-                                  // completedWriteBuffer does this work with
-                                  // async?
-
-  if(_writeBufferStatistics){
-    _writeBufferStatistics->_writeStart = TRI_StatisticsTime();
+    _writeBuffer = buffer;
+    _writeBufferStatistics = stat;
   }
 
   if (_writeBuffer != nullptr) {
@@ -163,103 +149,104 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
     size_t written = 0;
 
     boost::system::error_code err;
-    do {
-      err.assign(boost::system::errc::success,
-                 boost::system::generic_category());
+    err.clear();
+
+    while (true) {
+      if (_writeBufferStatistics) {
+        _writeBufferStatistics->_writeStart = TRI_StatisticsTime();
+      }
+
       written = _peer->write(_writeBuffer, err);
-      if(_writeBufferStatistics){
+
+      if (err) {
+        break;
+      }
+
+      if (_writeBufferStatistics) {
         _writeBufferStatistics->_sentBytes += written;
       }
-      if (written == total) {
-        locker.unlock();
-        completedWriteBuffer();
+
+      if (written != total) {
+        // unable to write everything at once, might be a lot of data
+        // above code does not update the buffer positon
+        break;
+      }
+
+      if (!completedWriteBuffer()) {
         return;
       }
-    } while (err == boost::asio::error::would_block);
 
-    if (err != boost::system::errc::success) {
+      total = _writeBuffer->length();
+      written = 0;
+    }
+
+    // write could have blocked which is the only acceptable error
+    if (err && err != ::boost::asio::error::would_block) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "SocketTask::addWriteBuffer (write_some) - write on stream "
           << " failed with: " << err.message();
       closeStream();
       return;
     }
-      
-    boost::system::error_code ec;
-    ec.assign(boost::system::errc::success,
-              boost::system::generic_category());
+
+    // so the code could have blocked at this point or not all data
+    // was written in one go
 
     auto self = shared_from_this();
-    auto handler = [self, this](const boost::system::error_code& ec,
-                                std::size_t transferred) {
-      MUTEX_LOCKER(locker, _writeLock);
 
-      if (_writeBufferStatistics){
-        _writeBufferStatistics->_sentBytes += transferred;
-      }
-
-      if (ec) {
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-            << "SocketTask::addWriterBuffer(async_write) - write on stream "
-            << " failed with: " << ec.message();
-        closeStream();
-      } else {
-        locker.unlock();
-        completedWriteBuffer();
-      }
-    };
-
+    // begin writing at offset (written)
     _peer->asyncWrite(
         boost::asio::buffer(_writeBuffer->begin() + written, total - written),
-        handler);
+        [self, this](const boost::system::error_code& ec,
+                     std::size_t transferred) {
+          MUTEX_LOCKER(locker, _writeLock);
+
+          if (_writeBufferStatistics) {
+            _writeBufferStatistics->_sentBytes += transferred;
+          }
+
+          if (ec) {
+            LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+                << "SocketTask::addWriteBuffer(async_write) - write on stream "
+                << " failed with: " << ec.message();
+            closeStream();
+          } else {
+            if (completedWriteBuffer()) {
+              // completedWriteBuffer already advanced _writeBuffer and
+              // _writeBufferStatistics
+              locker.unlock();  // avoid recursive locking
+              addWriteBuffer(nullptr, nullptr);
+            }
+          }
+        });
   }
 }
 
-void SocketTask::completedWriteBuffer() {
-  StringBuffer* buffer = nullptr;
-  TRI_request_statistics_t* statistics = nullptr;
-  {
-    MUTEX_LOCKER(locker, _writeLock);
+bool SocketTask::completedWriteBuffer() {
+  delete _writeBuffer;
+  _writeBuffer = nullptr;
 
-    delete _writeBuffer;
-    _writeBuffer = nullptr;
-
-    if (_writeBufferStatistics != nullptr) {
-      _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
-#ifdef DEBUG_STATISTICS
-      LOG_TOPIC(TRACE, Logger::REQUESTS)
-        << "SocketTask::addWriteBuffer - Statistics release: "
-        << _writeBufferStatistics->to_string();
-#endif
-      TRI_ReleaseRequestStatistics(_writeBufferStatistics);
-      _writeBufferStatistics = nullptr;
-    } else {
-#ifdef DEBUG_STATISTICS
-      LOG_TOPIC(TRACE, Logger::REQUESTS) << "SocketTask::addWriteBuffer - "
-        "Statistics release: nullptr - "
-        "nothing to release";
-#endif
-    }
-
-    if (_writeBuffers.empty()) {
-      if (_closeRequested) {
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "SocketTask::"
-          "completedWriteBuffer - close "
-          "requested, closing stream";
-
-        closeStream();
-      }
-
-      return;
-    }
-
-    buffer = _writeBuffers.front();
-    _writeBuffers.pop_front();
-
-    statistics = _writeBuffersStats.front();
-    _writeBuffersStats.pop_front();
+  if (_writeBufferStatistics != nullptr) {
+    _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
+    TRI_ReleaseRequestStatistics(_writeBufferStatistics);
+    _writeBufferStatistics = nullptr;
   }
-  addWriteBuffer(buffer, statistics);
+
+  if (_writeBuffers.empty()) {
+    if (_closeRequested) {
+      closeStream();
+    }
+
+    return false;
+  }
+
+  _writeBuffer = _writeBuffers.front();
+  _writeBuffers.pop_front();
+
+  _writeBufferStatistics = _writeBuffersStats.front();
+  _writeBuffersStats.pop_front();
+
+  return true;
 }
 
 void SocketTask::closeStream() {
@@ -304,6 +291,7 @@ void SocketTask::closeStream() {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
 void SocketTask::addToReadBuffer(char const* data, std::size_t len) {
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << std::string(data, len);
   _readBuffer.appendText(data, len);
@@ -363,6 +351,7 @@ bool SocketTask::trySyncRead() {
   if (!_peer) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "SocketTask::trySyncRead "
                                             << "- peer disappeared ";
+    return false;
   }
 
   if (0 == _peer->available(err)) {
@@ -504,7 +493,6 @@ void SocketTask::asyncReadSome() {
     _peer->asyncRead(boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
                      handler);
   }
-
 }
 
 void SocketTask::closeReceiveStream() {

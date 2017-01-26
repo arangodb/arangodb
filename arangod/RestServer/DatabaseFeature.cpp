@@ -42,6 +42,8 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/MMFilesWalMarker.h"
+#include "StorageEngine/MMFilesWalSlots.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
@@ -1296,9 +1298,9 @@ int DatabaseFeature::writeCreateMarker(TRI_voc_tick_t id,
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::DatabaseMarker marker(TRI_DF_MARKER_VPACK_CREATE_DATABASE,
+    MMFilesDatabaseMarker marker(TRI_DF_MARKER_VPACK_CREATE_DATABASE,
                                          id, slice);
-    arangodb::wal::SlotInfoCopy slotInfo =
+    MMFilesWalSlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
 
@@ -1330,10 +1332,10 @@ int DatabaseFeature::writeDropMarker(TRI_voc_tick_t id) {
     builder.add("id", VPackValue(std::to_string(id)));
     builder.close();
 
-    arangodb::wal::DatabaseMarker marker(TRI_DF_MARKER_VPACK_DROP_DATABASE, id,
+    MMFilesDatabaseMarker marker(TRI_DF_MARKER_VPACK_DROP_DATABASE, id,
                                          builder.slice());
 
-    arangodb::wal::SlotInfoCopy slotInfo =
+    MMFilesWalSlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
 

@@ -325,7 +325,12 @@ module.exports =
               if (service.isDevelopment) {
                 const err = error.cause || error;
                 body.exception = String(err);
-                body.stacktrace = err.stack.replace(/\n+$/, '').split('\n');
+
+                if (err.stack === undefined) {
+                  body.stacktrace = "no stacktrace available";
+                } else {
+                  body.stacktrace = err.stack.replace(/\n+$/, '').split('\n');
+                }
               }
               if (error.extra) {
                 Object.keys(error.extra).forEach(function (key) {

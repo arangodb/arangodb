@@ -24,13 +24,13 @@
 #include "Logfile.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
-#include "VocBase/DatafileHelper.h"
+#include "StorageEngine/MMFilesDatafileHelper.h"
 
 using namespace arangodb;
 using namespace arangodb::wal;
 
 /// @brief create the logfile
-Logfile::Logfile(Logfile::IdType id, TRI_datafile_t* df, StatusType status)
+Logfile::Logfile(Logfile::IdType id, MMFilesDatafile* df, StatusType status)
     : _id(id), _users(0), _df(df), _status(status), _collectQueueSize(0) {}
 
 /// @brief destroy the logfile
@@ -41,7 +41,7 @@ Logfile::~Logfile() {
 /// @brief create a new logfile
 Logfile* Logfile::createNew(std::string const& filename, Logfile::IdType id,
                             uint32_t size) {
-  std::unique_ptr<TRI_datafile_t> df(TRI_datafile_t::create(filename, id, static_cast<TRI_voc_size_t>(size), false));
+  std::unique_ptr<MMFilesDatafile> df(MMFilesDatafile::create(filename, id, static_cast<TRI_voc_size_t>(size), false));
 
   if (df == nullptr) {
     int res = TRI_errno();
@@ -60,7 +60,7 @@ Logfile* Logfile::createNew(std::string const& filename, Logfile::IdType id,
 /// @brief open an existing logfile
 Logfile* Logfile::openExisting(std::string const& filename, Logfile::IdType id,
                                bool wasCollected, bool ignoreErrors) {
-  std::unique_ptr<TRI_datafile_t> df(TRI_datafile_t::open(filename, ignoreErrors));
+  std::unique_ptr<MMFilesDatafile> df(MMFilesDatafile::open(filename, ignoreErrors));
 
   if (df == nullptr) {
     int res = TRI_errno();
@@ -93,6 +93,6 @@ Logfile* Logfile::openExisting(std::string const& filename, Logfile::IdType id,
 
 /// @brief reserve space and update the current write position
 char* Logfile::reserve(size_t size) {
-  return _df->advanceWritePosition(DatafileHelper::AlignedSize<size_t>(size));
+  return _df->advanceWritePosition(MMFilesDatafileHelper::AlignedSize<size_t>(size));
 }
 

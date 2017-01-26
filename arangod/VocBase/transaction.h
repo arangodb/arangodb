@@ -35,11 +35,8 @@ class Transaction;
 namespace arangodb {
 class DocumentDitch;
 class LogicalCollection;
+struct MMFilesDocumentOperation;
 class Transaction;
-
-namespace wal {
-struct DocumentOperation;
-}
 }
 
 struct TRI_transaction_collection_t;
@@ -139,7 +136,7 @@ struct TRI_transaction_collection_t {
   TRI_transaction_type_e _accessType;  // access type (read|write)
   int _nestingLevel;  // the transaction level that added this collection
   arangodb::LogicalCollection* _collection;  // vocbase collection pointer
-  std::vector<arangodb::wal::DocumentOperation*>* _operations;
+  std::vector<arangodb::MMFilesDocumentOperation*>* _operations;
   TRI_voc_rid_t _originalRevision;   // collection revision at trx start
   TRI_transaction_type_e _lockType;  // collection lock type
   bool

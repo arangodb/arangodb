@@ -220,6 +220,19 @@ class SimpleHttpResult {
 
   virtual bool isJson() const { return _isJson; }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns whether the request has been sent in its entirety, this
+  /// is only meaningful if isComplete() returns false.
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual bool haveSentRequestFully() const { return _haveSentRequestFully; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set haveSentRequestFully
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual void setHaveSentRequestFully(bool b) { _haveSentRequestFully = b; }
+
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add header field
@@ -246,6 +259,10 @@ class SimpleHttpResult {
 
   // header fields
   std::unordered_map<std::string, std::string> _headerFields;
+
+  // flag which indicates whether or not the complete request has already be
+  // sent (to the operating system):
+  bool _haveSentRequestFully;
 };
 }
 }

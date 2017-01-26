@@ -56,7 +56,7 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
   requiresElevatedPrivileges(false);
   startsAfter("Cluster");
   startsAfter("Database");
-  startsAfter("Recovery");
+  startsAfter("MMFilesWalRecovery");
   startsAfter("Scheduler");
   startsAfter("Statistics");
   startsAfter("Upgrade");
@@ -190,6 +190,7 @@ void ServerFeature::beginShutdown() {
   std::string msg =
       ArangoGlobalContext::CONTEXT->binaryName() + " [shutting down]";
   TRI_SetProcessTitle(msg.c_str());
+  _isStopping = true;
 }
 
 void ServerFeature::waitForHeartbeat() {

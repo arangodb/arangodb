@@ -27,7 +27,6 @@
 #include <limits>
 #include <stdexcept>
 
-#include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <boost/optional.hpp>
@@ -48,9 +47,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
-
-#include <velocypack/Validator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -111,14 +107,18 @@ void VppCommTask::addResponse(VppResponse* response) {
       arangodb::application_features::ApplicationServer::getFeature<
           ServerFeature>("Server")
           ->vppMaxSize();
-  auto buffers = createChunkForNetwork(slices, id, chunkSize,
-                                       false);  // set some sensible maxchunk
-                                                // size and compression
 
-  double const totalTime = getAgent(id)->elapsedSinceReadStart();
+  // set some sensible maxchunk size and compression
+  auto buffers = createChunkForNetwork(slices, id, chunkSize, false);
+  size_t n = buffers.size() - 1;
+  size_t c = 0;
+
+  auto agent = getAgent(id);
+  double const totalTime = agent->elapsedSinceReadStart();
 
   for (auto&& buffer : buffers) {
-    addWriteBuffer(std::move(buffer), getAgent(id));
+    addWriteBuffer(std::move(buffer), (c == n) ? agent : nullptr);
+    ++c;
   }
 
   // and give some request information
@@ -131,7 +131,7 @@ void VppCommTask::addResponse(VppResponse* response) {
 
   if (id) {
     MUTEX_LOCKER(lock, _agentsMutex);
-    _agents.erase(id); //all ids except 0
+    _agents.erase(id);  // all ids except 0
   } else {
     getAgent(0UL)->acquire();
   }
@@ -143,6 +143,8 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
   auto cursor = _readBuffer.begin() + _processReadVariables._readBufferOffset;
 
   std::memcpy(&header._chunkLength, cursor, sizeof(header._chunkLength));
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunkLength: "
+                                          << header._chunkLength;
   cursor += sizeof(header._chunkLength);
 
   uint32_t chunkX;
@@ -150,9 +152,13 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
   cursor += sizeof(chunkX);
 
   header._isFirst = chunkX & 0x1;
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "is first: " << header._isFirst;
   header._chunk = chunkX >> 1;
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunk: " << header._chunk;
 
   std::memcpy(&header._messageID, cursor, sizeof(header._messageID));
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "message id: "
+                                          << header._messageID;
   cursor += sizeof(header._messageID);
 
   // extract total len of message
@@ -238,7 +244,7 @@ bool VppCommTask::processRead(double startTime) {
   VppInputMessage message;  // filled in CASE 1 or CASE 2b
 
   if (chunkHeader._isFirst) {
-    //create agent for new messages
+    // create agent for new messages
     auto agent = std::make_unique<RequestStatisticsAgent>(true);
     agent->acquire();
     agent->requestStatisticsAgentSetReadStart(startTime);
@@ -250,8 +256,8 @@ bool VppCommTask::processRead(double startTime) {
     // CASE 1: message is in one chunk
     if (auto rv = getMessageFromSingleChunk(chunkHeader, message, doExecute,
                                             vpackBegin, chunkEnd)) {
-      return *rv; // the optional will only contain false or boost::none
-                  // so the execution will contine if a message is complete
+      return *rv;  // the optional will only contain false or boost::none
+                   // so the execution will contine if a message is complete
     }
   } else {
     if (auto rv = getMessageFromMultiChunks(chunkHeader, message, doExecute,
@@ -292,7 +298,7 @@ bool VppCommTask::processRead(double startTime) {
       handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "VppCommTask: "
-          << std::string("VPack Validation failed!") + e.what();
+          << "VPack Validation failed: " << e.what();
       closeTask(rest::ResponseCode::BAD);
       return false;
     }
@@ -422,7 +428,6 @@ boost::optional<bool> VppCommTask::getMessageFromSingleChunk(
     char const* vpackBegin, char const* chunkEnd) {
   // add agent for this new message
 
-
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
                                           << "chunk contains single message";
   std::size_t payloads = 0;
@@ -433,15 +438,15 @@ boost::optional<bool> VppCommTask::getMessageFromSingleChunk(
     handleSimpleError(rest::ResponseCode::BAD,
                       TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                       chunkHeader._messageID);
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
-                                            << "VPack Validation failed!"
-                                            << e.what();
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        << "VppCommTask: "
+        << "VPack Validation failed: " << e.what();
     closeTask(rest::ResponseCode::BAD);
     return false;
   } catch (...) {
     handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
-                                            << "VPack Validation failed!";
+                                            << "VPack Validation failed";
     closeTask(rest::ResponseCode::BAD);
     return false;
   }
@@ -522,9 +527,9 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
         handleSimpleError(rest::ResponseCode::BAD,
                           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                           chunkHeader._messageID);
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
-                                                << "VPack Validation failed!"
-                                                << e.what();
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+            << "VppCommTask: "
+            << "VPack Validation failed: " << e.what();
         closeTask(rest::ResponseCode::BAD);
         return false;
       } catch (...) {

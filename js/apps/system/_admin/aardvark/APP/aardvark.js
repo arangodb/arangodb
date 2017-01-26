@@ -332,12 +332,18 @@ authRouter.get('/graph/:name', function (req, res) {
     ]
   };
 
-  // var traversal = require("@arangodb/graph/traversal");
-
   var graph = gm._graph(name);
 
   var verticesCollections = graph._vertexCollections();
-  var vertexName = verticesCollections[Math.floor(Math.random() * verticesCollections.length)].name();
+  if (!verticesCollections || verticesCollections.length === 0) {
+    res.throw('bad request', 'no vertex collections found for graph');
+  }
+  var vertexName;
+  try {
+    vertexName = verticesCollections[Math.floor(Math.random() * verticesCollections.length)].name();
+  } catch (err) {
+    res.throw('bad request', 'vertex collection of graph not found');
+  }
 
   var vertexCollections = [];
   _.each(graph._vertexCollections(), function (vertex) {
@@ -370,6 +376,13 @@ authRouter.get('/graph/:name', function (req, res) {
     startVertex = db[vertexName].any();
   }
 
+  var limit = 0;
+  if (config.limit !== undefined) {
+    if (config.limit.length > 0 && config.limit !== '0') {
+      limit = config.limit;
+    }
+  }
+
   var toReturn;
   if (startVertex === null) {
     toReturn = {
@@ -390,13 +403,6 @@ authRouter.get('/graph/:name', function (req, res) {
     if (config.query) {
       aqlQuery = config.query;
     } else {
-      var limit = 0;
-      if (config.limit !== undefined) {
-        if (config.limit.length > 0 && config.limit !== '0') {
-          limit = config.limit;
-        }
-      }
-
       aqlQuery =
         'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + startVertex._id + '" GRAPH "' + name + '"';
 
@@ -421,7 +427,45 @@ authRouter.get('/graph/:name', function (req, res) {
       return o;
     };
 
-    var cursor = AQL_EXECUTE(aqlQuery);
+    var cursor;
+    // get all nodes and edges, even if they are not connected
+    // atm there is no server side function, so we need to get all docs
+    // and edges of all related collections until the given limit is reached.
+    if (config.mode === 'all') {
+      var insertedEdges = 0;
+      var insertedNodes = 0;
+      var tmpEdges, tmpNodes;
+      cursor = {
+        json: [{
+          vertices: [],
+          edges: []
+        }]
+      };
+
+      // get all nodes
+      _.each(graph._vertexCollections(), function (node) {
+        if (insertedNodes < limit || limit === 0) {
+          tmpNodes = node.all().limit(limit).toArray();
+          _.each(tmpNodes, function (n) {
+            cursor.json[0].vertices.push(n);
+          });
+          insertedNodes += tmpNodes.length;
+        }
+      });
+      // get all edges
+      _.each(graph._edgeCollections(), function (edge) {
+        if (insertedEdges < limit || limit === 0) {
+          tmpEdges = edge.all().limit(limit).toArray();
+          _.each(tmpEdges, function (e) {
+            cursor.json[0].edges.push(e);
+          });
+          insertedEdges += tmpEdges.length;
+        }
+      });
+    } else {
+    // get all nodes and edges which are connected to the given start node
+      cursor = AQL_EXECUTE(aqlQuery);
+    }
 
     var nodesObj = {};
     var nodesArr = [];
@@ -437,7 +481,6 @@ authRouter.get('/graph/:name', function (req, res) {
     _.each(cursor.json, function (obj) {
       var edgeLabel = '';
       var edgeObj;
-
       _.each(obj.edges, function (edge) {
         if (edge._to && edge._from) {
           if (config.edgeLabel && config.edgeLabel.length > 0) {
@@ -590,6 +633,11 @@ authRouter.get('/graph/:name', function (req, res) {
       if (config.nodeSizeByEdges === 'true') {
         // + 10 visual adjustment sigma
         node.size = nodeEdgesCount[node.id] + 10;
+
+        // if a node without edges is found, use def. size 10
+        if (Number.isNaN(node.size)) {
+          node.size = 10;
+        }
       }
       nodesArr.push(node);
     });

@@ -66,6 +66,7 @@ function collectionRepresentation(collection, showProperties, showCount, showFig
       result.shardKeys = properties.shardKeys;
       result.numberOfShards = properties.numberOfShards;
       result.replicationFactor = properties.replicationFactor;
+      result.avoidServers = properties.avoidServers;
     }
   }
 
@@ -157,6 +158,10 @@ function parseBodyForCreateCollection (req, res) {
 
     if (body.hasOwnProperty('distributeShardsLike')) {
       r.parameters.distributeShardsLike = body.distributeShardsLike || '';
+    }
+
+    if (body.hasOwnProperty('avoidServers')) {
+      r.parameters.avoidServers = body.avoidServers || [];
     }
 
     if (body.hasOwnProperty('isSmart')) {

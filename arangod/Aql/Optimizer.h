@@ -62,145 +62,148 @@ class Optimizer {
     // lower level values mean earlier rule execution
 
     // note that levels must be unique
+    initial = 100,
 
     // "Pass 1": moving nodes "up" (potentially outside loops):
-    pass1 = 100,
+    // ========================================================
 
     // determine the "right" type of CollectNode and
     // add a sort node for each COLLECT (may be removed later)
-    specializeCollectRule_pass1 = 105,
+    specializeCollectRule_pass1,
 
-    inlineSubqueriesRule_pass1 = 106,
+    inlineSubqueriesRule_pass1,
 
     // split and-combined filters into multiple smaller filters
-    splitFiltersRule_pass1 = 110,
+    splitFiltersRule_pass1,
 
     // move calculations up the dependency chain (to pull them out of
     // inner loops etc.)
-    moveCalculationsUpRule_pass1 = 120,
+    moveCalculationsUpRule_pass1,
 
     // move filters up the dependency chain (to make result sets as small
     // as possible as early as possible)
-    moveFiltersUpRule_pass1 = 130,
+    moveFiltersUpRule_pass1,
 
     // remove calculations that are repeatedly used in a query
-    removeRedundantCalculationsRule_pass1 = 140,
+    removeRedundantCalculationsRule_pass1,
 
-    /// "Pass 2": try to remove redundant or unnecessary nodes
-    pass2 = 200,
+    // "Pass 2": try to remove redundant or unnecessary nodes
+    // ======================================================
+    
     // remove filters from the query that are not necessary at all
     // filters that are always true will be removed entirely
     // filters that are always false will be replaced with a NoResults node
-    removeUnnecessaryFiltersRule_pass2 = 210,
+    removeUnnecessaryFiltersRule_pass2,
 
     // remove calculations that are never necessary
-    removeUnnecessaryCalculationsRule_pass2 = 220,
+    removeUnnecessaryCalculationsRule_pass2,
 
     // remove redundant sort blocks
-    removeRedundantSortsRule_pass2 = 230,
+    removeRedundantSortsRule_pass2,
 
-    /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
-    ///           this is level 500, please never let new plans from higher
-    ///           levels go back to this or lower levels!
-    pass3 = 500,
-    interchangeAdjacentEnumerationsRule_pass3 = 510,
+    // "Pass 3": interchange EnumerateCollection nodes in all possible ways
+    //           this is level 500, please never let new plans from higher
+    //           levels go back to this or lower levels!
+    // ======================================================
+    
+    interchangeAdjacentEnumerationsRule_pass3,
 
     // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
-    pass4 = 600,
+    // ======================================================
+    
     // move calculations up the dependency chain (to pull them out of
     // inner loops etc.)
-    moveCalculationsUpRule_pass4 = 610,
+    moveCalculationsUpRule_pass4,
 
     // move filters up the dependency chain (to make result sets as small
     // as possible as early as possible)
-    moveFiltersUpRule_pass4 = 620,
+    moveFiltersUpRule_pass4,
 
     /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
     // remove filters from the query that are not necessary at all
     // filters that are always true will be removed entirely
     // filters that are always false will be replaced with a NoResults node
-    pass5 = 700,
+    // ======================================================
 
     // remove redundant sort blocks
-    removeRedundantSortsRule_pass5 = 710,
+    removeRedundantSortsRule_pass5,
 
     // remove SORT RAND() if appropriate
-    removeSortRandRule_pass5 = 720,
+    removeSortRandRule_pass5,
 
     // remove INTO for COLLECT if appropriate
-    removeCollectVariablesRule_pass5 = 740,
+    removeCollectVariablesRule_pass5,
 
     // propagate constant attributes in FILTERs
-    propagateConstantAttributesRule_pass5 = 750,
+    propagateConstantAttributesRule_pass5,
 
     // remove unused out variables for data-modification queries
-    removeDataModificationOutVariablesRule_pass5 = 760,
+    removeDataModificationOutVariablesRule_pass5,
 
     /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
-    pass6 = 800,
+    // ======================================================
 
     // replace simple OR conditions with IN
-    replaceOrWithInRule_pass6 = 810,
+    replaceOrWithInRule_pass6,
 
     // remove redundant OR conditions
-    removeRedundantOrRule_pass6 = 820,
+    removeRedundantOrRule_pass6,
 
-    applyGeoIndexRule = 825,
+    applyGeoIndexRule,
 
-    useIndexesRule_pass6 = 830,
+    useIndexesRule_pass6,
 
     // try to remove filters covered by index ranges
-    removeFiltersCoveredByIndexRule_pass6 = 840,
+    removeFiltersCoveredByIndexRule_pass6,
 
-    removeUnnecessaryFiltersRule_pass6 = 850,
+    removeUnnecessaryFiltersRule_pass6,
 
     // try to find sort blocks which are superseeded by indexes
-    useIndexForSortRule_pass6 = 860,
+    useIndexForSortRule_pass6,
 
     // sort values used in IN comparisons of remaining filters
-    sortInValuesRule_pass6 = 865,
+    sortInValuesRule_pass6,
 
     // remove calculations that are never necessary
-    removeUnnecessaryCalculationsRule_pass6 = 870,
+    removeUnnecessaryCalculationsRule_pass6,
 
     // merge filters into graph traversals
-    optimizeTraversalsRule_pass6 = 880,
-    prepareTraversalsRule_pass6 = 881,
+    optimizeTraversalsRule_pass6,
+    prepareTraversalsRule_pass6,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
-    moveCalculationsDownRule_pass9 = 900,
+    moveCalculationsDownRule_pass9,
 
     /// Pass 9: patch update statements
-    patchUpdateStatementsRule_pass9 = 902,
+    patchUpdateStatementsRule_pass9,
 
     /// "Pass 10": final transformations for the cluster
     // make operations on sharded collections use distribute
-    distributeInClusterRule_pass10 = 1000,
+    distributeInClusterRule_pass10,
 
     // make operations on sharded collections use scatter / gather / remote
-    scatterInClusterRule_pass10 = 1010,
+    scatterInClusterRule_pass10,
 
     // move FilterNodes & Calculation nodes in between
     // scatter(remote) <-> gather(remote) so they're
     // distributed to the cluster nodes.
-    distributeFilternCalcToClusterRule_pass10 = 1020,
+    distributeFilternCalcToClusterRule_pass10,
 
     // move SortNodes into the distribution.
     // adjust gathernode to also contain the sort criteria.
-    distributeSortToClusterRule_pass10 = 1030,
+    distributeSortToClusterRule_pass10,
 
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies
-    removeUnnecessaryRemoteScatterRule_pass10 = 1040,
+    removeUnnecessaryRemoteScatterRule_pass10,
 
     // remove any superflous satellite collection joins...
     // put it after Scatter rule because we would do
     // the work twice otherwise
-    removeSatelliteJoinsRule_pass10 = 1045,
+    removeSatelliteJoinsRule_pass10,
 
     // recognize that a RemoveNode can be moved to the shards
-    undistributeRemoveAfterEnumCollRule_pass10 = 1050
-
+    undistributeRemoveAfterEnumCollRule_pass10
   };
 
  public:

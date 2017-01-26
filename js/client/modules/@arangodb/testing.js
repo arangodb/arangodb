@@ -1,4 +1,3 @@
-
 /* jshint strict: false, sub: true */
 /* global print, arango */
 'use strict';
@@ -35,6 +34,8 @@ const functionsDocumentation = {
   'authentication_parameters': 'authentication parameters tests',
   'boost': 'boost test suites',
   'config': 'checks the config file parsing',
+  'client_resilience': 'client resilience tests',
+  'cluster_sync': 'cluster sync tests',
   'dump': 'dump tests',
   'dump_authentication': 'dump tests with authentication',
   'dfdb': 'start test',
@@ -49,7 +50,6 @@ const functionsDocumentation = {
   'replication_static': 'replication static tests',
   'replication_sync': 'replication sync tests',
   'resilience': 'resilience tests',
-  'client_resilience': 'client resilience tests',
   'shell_client': 'shell client tests',
   'shell_replication': 'shell replication tests',
   'shell_server': 'shell server tests',
@@ -159,7 +159,9 @@ const optionsDefaults = {
   'loopEternal': false,
   'loopSleepSec': 1,
   'loopSleepWhen': 1,
+  'minPort': 1024,
   'maxPort': 32768,
+  'mochaGrep': undefined,
   'onlyNightly': false,
   'password': '',
   'replication': false,
@@ -190,6 +192,7 @@ const optionsDefaults = {
   'valgrindArgs': {},
   'valgrindHosts': false,
   'verbose': false,
+  'walFlushTimeout': 30000,
   'writeXmlReport': true
 };
 
@@ -246,7 +249,7 @@ let LOGS_DIR;
 let UNITTESTS_DIR;
 let GDB_OUTPUT="";
 
-function makeResults (testname) {
+function makeResults (testname, instanceInfo) {
   const startTime = time();
 
   return function (status, message) {
@@ -257,7 +260,7 @@ function makeResults (testname) {
       let result;
 
       try {
-        result = JSON.parse(fs.read('testresult.json'));
+        result = JSON.parse(fs.read(instanceInfo.rootDir + '/testresult.json'));
 
         if ((typeof result[0] === 'object') &&
           result[0].hasOwnProperty('status')) {
@@ -310,6 +313,7 @@ function makeArgsArangod (options, appDir, role) {
   return {
     'configuration': 'etc/testing/' + config,
     'define': 'TOP_DIR=' + TOP_DIR,
+    'wal.flush-timeout': options.walFlushTimeout,
     'javascript.app-path': appDir,
     'http.trusted-origin': options.httpTrustedOrigin || 'all'
   };
@@ -628,20 +632,32 @@ function cleanupDBDirectories (options) {
 // / @brief finds a free port
 // //////////////////////////////////////////////////////////////////////////////
 
-function findFreePort (maxPort) {
+function findFreePort (minPort, maxPort, usedPorts) {
   if (typeof maxPort !== 'number') {
     maxPort = 32768;
   }
-  if (maxPort < 2048) {
-    maxPort = 2048;
+
+  if (maxPort - minPort < 0) {
+    throw new Error('minPort ' + minPort + ' is smaller than maxPort ' + maxPort);
   }
+
+  let tries = 0;
   while (true) {
-    const port = Math.floor(Math.random() * (maxPort - 1024)) + 1024;
+    const port = Math.floor(Math.random() * (maxPort - minPort)) + minPort;
+    tries++;
+    if (tries > 20) {
+      throw new Error('Couldn\'t find a port after ' + tries + ' tries. portrange of ' + minPort + ', ' + maxPort + ' too narrow?');
+    }
+    if (Array.isArray(usedPorts) && usedPorts.indexOf(port) >= 0) {
+      continue;
+    }
     const free = testPort('tcp://0.0.0.0:' + port);
 
     if (free) {
       return port;
     }
+
+    require('internal').wait(0.1);
   }
 }
 
@@ -668,18 +684,16 @@ function makePathGeneric (path) {
 function runThere (options, instanceInfo, file) {
   try {
     let testCode;
-
+    let mochaGrep = options.mochaGrep ? ', ' + JSON.stringify(options.mochaGrep) : '';
     if (file.indexOf('-spec') === -1) {
       testCode = 'const runTest = require("jsunity").runTest; ' +
         'return runTest(' + JSON.stringify(file) + ', true);';
     } else {
       testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
-        'return runTest(' + JSON.stringify(file) + ', true);';
+        'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');';
     }
 
-    if (options.propagateInstanceInfo) {
-      testCode = 'global.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode;
-    }
+    testCode = 'global.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode;
 
     let httpOptions = makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
@@ -1064,12 +1078,12 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   if (addArgs !== undefined) {
     args = Object.assign(args, addArgs);
   }
-  fs.write('instanceinfo.json', JSON.stringify(instanceInfo));
+  require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   let rc = executeAndWait(ARANGOSH_BIN, toArgv(args), options);
 
   let result;
   try {
-    result = JSON.parse(fs.read('testresult.json'));
+    result = JSON.parse(fs.read(instanceInfo.rootDir + '/testresult.json'));
   } catch (x) {
     return rc;
   }
@@ -1102,6 +1116,7 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds) {
     args = Object.assign(args, addArgs);
   }
 
+  require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   const argv = toArgv(args).concat(cmds);
   return executeAndWait(ARANGOSH_BIN, argv, options);
 }
@@ -1322,12 +1337,16 @@ function startInstanceCluster (instanceInfo, protocol, options,
   };
 
   options.agencyWaitForSync = false;
+  let usedPorts = [];
+  options.usedPorts = usedPorts;
   startInstanceAgency(instanceInfo, protocol, options, ...makeArgs('agency', 'agency', {}));
 
   let agencyEndpoint = instanceInfo.endpoint;
   let i;
   for (i = 0; i < options.dbServers; i++) {
-    let endpoint = protocol + '://127.0.0.1:' + findFreePort(options.maxPort);
+    let port = findFreePort(options.minPort, options.maxPort, usedPorts);
+    usedPorts.push(port);
+    let endpoint = protocol + '://127.0.0.1:' + port;
     let primaryArgs = _.clone(options.extraArgs);
     primaryArgs['server.endpoint'] = endpoint;
     primaryArgs['cluster.my-address'] = endpoint;
@@ -1339,7 +1358,9 @@ function startInstanceCluster (instanceInfo, protocol, options,
   }
 
   for (i=0;i<options.coordinators;i++) {
-    let endpoint = protocol + '://127.0.0.1:' + findFreePort(options.maxPort);
+    let port = findFreePort(options.minPort, options.maxPort, usedPorts);
+    usedPorts.push(port);
+    let endpoint = protocol + '://127.0.0.1:' + port;
     let coordinatorArgs = _.clone(options.extraArgs);
     coordinatorArgs['server.endpoint'] = endpoint;
     coordinatorArgs['cluster.my-address'] = endpoint;
@@ -1393,7 +1414,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   let port;
   
   if (!addArgs['server.endpoint']) {
-    port = findFreePort(options.maxPort);
+    port = findFreePort(options.minPort, options.maxPort);
     endpoint = protocol + '://127.0.0.1:' + port;
   } else {
     endpoint = addArgs['server.endpoint'];
@@ -1455,6 +1476,7 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
   }
   const wfs = options.agencyWaitForSync;
 
+  let usedPorts = options.usedPorts || [];
   for (let i = 0; i < N; i++) {
     let instanceArgs = _.clone(addArgs);
     instanceArgs['log.file'] = fs.join(rootDir, 'log' + String(i));
@@ -1464,7 +1486,8 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     instanceArgs['agency.wait-for-sync'] = String(wfs);
     instanceArgs['agency.supervision'] = String(S);
     instanceArgs['database.directory'] = dataDir + String(i);
-    const port = findFreePort(options.maxPort);
+    const port = findFreePort(options.minPort, options.maxPort, usedPorts);
+    usedPorts.push(port);
     instanceArgs['server.endpoint'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.my-address'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.supervision-grace-period'] = '5';
@@ -1808,6 +1831,7 @@ function findTests () {
   testsCases.resilience = doOnePath('js/server/tests/resilience');
 
   testsCases.client_resilience = doOnePath('js/client/tests/resilience');
+  testsCases.cluster_sync = doOnePath('js/server/tests/cluster-sync');
 
   testsCases.server = testsCases.common.concat(testsCases.server_only);
   testsCases.client = testsCases.common.concat(testsCases.client_only);
@@ -3334,9 +3358,9 @@ testFuncs.recovery = function (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 testFuncs.replication_ongoing = function (options) {
-  const mr = makeResults('replication');
-
   let master = startInstance('tcp', options, {}, 'master_ongoing');
+
+  const mr = makeResults('replication', master);
 
   if (master === false) {
     return mr(false, 'failed to start master!');
@@ -3376,11 +3400,11 @@ testFuncs.replication_ongoing = function (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 testFuncs.replication_static = function (options) {
-  const mr = makeResults('replication');
-
   let master = startInstance('tcp', options, {
     'server.authentication': 'true'
   }, 'master_static');
+  
+  const mr = makeResults('replication', master);
 
   if (master === false) {
     return mr(false, 'failed to start master!');
@@ -3432,9 +3456,9 @@ testFuncs.replication_static = function (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 testFuncs.replication_sync = function (options) {
-  const mr = makeResults('replication');
   let master = startInstance('tcp', options, {}, 'master_sync');
 
+  const mr = makeResults('replication', master);
   if (master === false) {
     return mr(false, 'failed to start master!');
   }
@@ -3554,6 +3578,28 @@ testFuncs.shell_server = function (options) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: cluster_sync
+// //////////////////////////////////////////////////////////////////////////////
+
+testFuncs.cluster_sync = function (options) {
+  if (options.cluster) {
+    // may sound strange but these are actually pure logic tests
+    // and should not be executed on the cluster
+    return {
+      'cluster_sync': {
+        'status': true,
+        'message': 'skipped because of cluster',
+        'skipped': true
+      }
+    };
+  }
+  findTests();
+  options.propagateInstanceInfo = true;
+
+  return performTests(options, testsCases.cluster_sync, 'cluster_sync', runThere);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_server_aql
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -3611,10 +3657,10 @@ testFuncs.endpoints = function(options) {
 
   let endpoints = {
     'tcpv4': function() {
-      return 'tcp://127.0.0.1:' + findFreePort(options.maxPort);
+      return 'tcp://127.0.0.1:' + findFreePort(options.minPort, options.maxPort);
     },
     'tcpv6': function() {
-      return 'tcp://[::1]:' + findFreePort(options.maxPort);
+      return 'tcp://[::1]:' + findFreePort(options.minPort, options.maxPort);
     },
     'unix': function() {
       if (platform.substr(0, 3) === 'win') {
@@ -3821,7 +3867,7 @@ testFuncs.upgrade = function (options) {
   fs.makeDirectoryRecursive(tmpDataDir);
 
   const appDir = fs.join(tmpDataDir, 'app');
-  const port = findFreePort(options.maxPort);
+  const port = findFreePort(options.minPort, options.maxPort);
 
   let args = makeArgsArangod(options, appDir);
   args['server.endpoint'] = 'tcp://127.0.0.1:' + port;

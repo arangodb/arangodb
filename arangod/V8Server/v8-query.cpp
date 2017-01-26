@@ -566,7 +566,7 @@ static void JS_NearQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // expected: NEAR(<index-id>, <latitude>, <longitude>, <limit>)
   if (args.Length() < 4) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "WITHIN(<index-handle>, <latitude>, <longitude>, <limit>, <distance>)");
+        "NEAR(<index-handle>, <latitude>, <longitude>, <limit>, <distance>)");
   }
   
   {

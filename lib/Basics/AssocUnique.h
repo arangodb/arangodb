@@ -32,6 +32,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/AssocHelpers.h"
 #include "Basics/IndexBucket.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/gcd.h"

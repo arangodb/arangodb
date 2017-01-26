@@ -600,7 +600,7 @@
 /// - 2003: @LIT{could not read from server}
 ///   Will be raised when the client could not read data.
 /// - 2100: @LIT{Request aborted}
-///    "Request was aborted."
+///   Request was aborted.
 /// - 3000: @LIT{failed to parse manifest file}
 ///   The service manifest file is not well-formed JSON.
 /// - 3001: @LIT{manifest file is invalid}
@@ -652,6 +652,8 @@
 ///   The inform message in the agency must contain an array 'active'.
 /// - 20015: @LIT{Inform message must contain object 'pool'}
 ///   The inform message in the agency must contain an object 'pool'.
+/// - 20020: @LIT{Inquiry failed}
+///   Inquiry by clientId failed
 /// - 21001: @LIT{dispatcher stopped}
 ///   Will be returned if a shutdown is in progress.
 /// - 21002: @LIT{named queue does not exist}
@@ -3201,7 +3203,7 @@ void TRI_InitializeErrorMessages ();
 ///
 /// Request aborted
 ///
-///  "Request was aborted."
+/// Request was aborted.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_COMMUNICATOR_REQUEST_ABORTED                                  (2100)
@@ -3448,6 +3450,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL                         (20015)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20020: ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING
+///
+/// Inquiry failed
+///
+/// Inquiry by clientId failed
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING                 (20020)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 21001: ERROR_DISPATCHER_IS_STOPPING

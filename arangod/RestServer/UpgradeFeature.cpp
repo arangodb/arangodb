@@ -51,7 +51,7 @@ UpgradeFeature::UpgradeFeature(
   startsAfter("CheckVersion");
   startsAfter("Cluster");
   startsAfter("Database");
-  startsAfter("Recovery");
+  startsAfter("MMFilesWalRecovery");
   startsAfter("V8Dealer");
 }
 

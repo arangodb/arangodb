@@ -43,15 +43,16 @@ namespace consensus {
 
 /// Agent configuration
 Agent::Agent(config_t const& config)
-    : Thread("Agent"),
-      _config(config),
-      _lastCommitIndex(0),
-      _spearhead(this),
-      _readDB(this),
-      _nextCompationAfter(_config.compactionStepSize()),
-      _inception(std::make_unique<Inception>(this)),
-      _activator(nullptr),
-      _ready(false) {
+  : Thread("Agent"),
+    _config(config),
+    _lastCommitIndex(0),
+    _spearhead(this),
+    _readDB(this),
+    _transient(this),
+    _nextCompationAfter(_config.compactionStepSize()),
+    _inception(std::make_unique<Inception>(this)),
+    _activator(nullptr),
+    _ready(false) {
   _state.configure(this);
   _constituent.configure(this);
 }
@@ -235,7 +236,7 @@ void Agent::reportIn(std::string const& peerId, index_t index) {
         _lastCommitIndex = index;
 
         if (_lastCommitIndex >= _nextCompationAfter) {
-          _state.compact(_lastCommitIndex);
+          _state.compact(_lastCommitIndex-_config.compactionKeepSize());
           _nextCompationAfter += _config.compactionStepSize();
         }
 
@@ -367,6 +368,7 @@ void Agent::sendAppendEntriesRPC() {
         builder.add("index", VPackValue(entry.index));
         builder.add("term", VPackValue(entry.term));
         builder.add("query", VPackSlice(entry.entry->data()));
+        builder.add("clientId", VPackValue(entry.clientId));
         builder.close();
         highest = entry.index;
       }
@@ -409,6 +411,7 @@ bool Agent::active() const {
   std::vector<std::string> active = _config.active();
   return (find(active.begin(), active.end(), id()) != active.end());
 }
+
 
 // Activate with everything I need to know
 query_t Agent::activate(query_t const& everything) {
@@ -613,7 +616,9 @@ trans_ret_t Agent::transact(query_t const& queries) {
     for (const auto& query : VPackArrayIterator(qs)) {
       if (query[0].isObject()) {
         if(_spearhead.apply(query)) {
-          maxind = _state.log(query[0], term());
+          maxind = (query.length() == 3 && query[2].isString()) ?
+            _state.log(query[0], term(), query[2].copyString()) :
+            _state.log(query[0], term());
           ret->add(VPackValue(maxind));
         } else {
           ret->add(VPackValue(0));
@@ -645,6 +650,76 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
   return trans_ret_t(true, id(), maxind, failed, ret);
 }
+
+
+// Non-persistent write to non-persisted key-value store
+trans_ret_t Agent::transient(query_t const& queries) {
+
+  auto ret = std::make_shared<arangodb::velocypack::Builder>();
+  auto leader = _constituent.leaderID();
+  if (leader != id()) {
+    return trans_ret_t(false, leader);
+  }
+  
+  // Apply to spearhead and get indices for log entries
+  {
+    VPackArrayBuilder b(ret.get());
+    
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+    
+    // Only leader else redirect
+    if (challengeLeadership()) {
+      _constituent.candidate();
+      return trans_ret_t(false, NO_LEADER);
+    }
+
+    // Read and writes
+    for (const auto& query : VPackArrayIterator(queries->slice())) {
+      if (query[0].isObject()) {
+        _transient.apply(query);
+      } else if (query[0].isString()) {
+        _transient.read(query, *ret);
+      }
+    }
+
+  }
+
+  return trans_ret_t(true, id(), 0, 0, ret);
+
+}
+
+
+inquire_ret_t Agent::inquire(query_t const& query) {
+  inquire_ret_t ret;
+
+  auto leader = _constituent.leaderID();
+  if (leader != id()) {
+    return inquire_ret_t(false, leader);
+  }
+  
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+
+  auto si = _state.inquire(query);
+
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    VPackArrayBuilder b(builder.get());
+    for (auto const& i : si) {
+      VPackArrayBuilder bb(builder.get());
+      for (auto const& j : i) {
+        VPackObjectBuilder bbb(builder.get());
+        builder->add("index", VPackValue(j.index));
+        builder->add("term", VPackValue(j.term));
+        builder->add("query", VPackSlice(j.entry->data()));
+        builder->add("index", VPackValue(j.index));
+      }
+    }
+  }
+  
+  ret = inquire_ret_t(true, id(), builder);
+  return ret;
+}
+
 
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query) {
@@ -735,7 +810,6 @@ void Agent::run() {
 
     } else {
       _appendCV.wait(1000000);
-      updateConfiguration();
     }
 
   }
@@ -835,9 +909,9 @@ void Agent::detectActiveAgentFailures() {
           system_clock::now() - lastAcked.at(id)).count();
         if (ds > 180.0) {
           std::string repl = _config.nextAgentInLine();
-          LOG_TOPIC(DEBUG, Logger::AGENCY) << "Active agent " << id << " has failed. << "
-                    << repl << " will be promoted to active agency membership";
-          // Guarded in ::
+          LOG_TOPIC(DEBUG, Logger::AGENCY)
+            << "Active agent " << id << " has failed. << " << repl
+            << " will be promoted to active agency membership";
           _activator = std::make_unique<AgentActivator>(this, id, repl);
           _activator->start();
           return;
@@ -845,13 +919,6 @@ void Agent::detectActiveAgentFailures() {
       }
     }
   }
-}
-
-
-void Agent::updateConfiguration() {
-
-  // First ask last know leader
-
 }
 
 
@@ -867,15 +934,57 @@ void Agent::beginShutdown() {
   // Stop constituent and key value stores
   _constituent.beginShutdown();
 
+  // Stop inception process
+  if (_inception != nullptr) {
+    _inception->beginShutdown();
+  }
+
+  // Stop key value stores
   _spearhead.beginShutdown();
   _readDB.beginShutdown();
 
+  if (_inception != nullptr) {
+    int counter = 0;
+    while (_inception->isRunning()) {
+      usleep(100000);
+      // emit warning after 5 seconds
+      if (++counter == 10 * 5) {
+        LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for inception thread to finish";
+      }
+    }
+  }
+
+  int counter = 0;
+  while (_spearhead.isRunning() || _readDB.isRunning()) {
+    usleep(100000);
+    // emit warning after 5 seconds
+    if (++counter == 10 * 5) {
+      LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for key-value threads to finish";
+    }
+  }
+
+  while (_constituent.isRunning()) {
+    usleep(100000);
+    // emit warning after 5 seconds
+    if (++counter == 10 * 5) {
+      LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for constituent thread to finish";
+    }
+  }
+  
+  while (_supervision.isRunning()) {
+    usleep(100000);
+    // emit warning after 5 seconds
+    if (++counter == 10 * 5) {
+      LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for supervision thread to finish";
+    }
+  }
+  
   // Wake up all waiting rest handlers
   {
     CONDITION_LOCKER(guardW, _waitForCV);
     guardW.broadcast();
   }
-
+  
   // Wake up run
   {
     CONDITION_LOCKER(guardA, _appendCV);
@@ -1075,6 +1184,9 @@ Store const& Agent::spearhead() const { return _spearhead; }
 
 /// Get readdb
 Store const& Agent::readDB() const { return _readDB; }
+
+/// Get transient
+Store const& Agent::transient() const { return _transient; }
 
 /// Rebuild from persisted state
 Agent& Agent::operator=(VPackSlice const& compaction) {

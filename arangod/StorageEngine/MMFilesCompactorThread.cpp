@@ -38,7 +38,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/CompactionLocker.h"
-#include "VocBase/DatafileHelper.h"
+#include "StorageEngine/MMFilesDatafileHelper.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -69,7 +69,7 @@ namespace arangodb {
 struct CompactionContext {
   arangodb::Transaction* _trx;
   LogicalCollection* _collection;
-  TRI_datafile_t* _compactor;
+  MMFilesDatafile* _compactor;
   DatafileStatisticsContainer _dfi;
   bool _keepDeletions;
 
@@ -79,10 +79,10 @@ struct CompactionContext {
 }
 
 /// @brief callback to drop a datafile
-void MMFilesCompactorThread::DropDatafileCallback(TRI_datafile_t* df, LogicalCollection* collection) {
+void MMFilesCompactorThread::DropDatafileCallback(MMFilesDatafile* df, LogicalCollection* collection) {
   TRI_ASSERT(df != nullptr);
 
-  std::unique_ptr<TRI_datafile_t> datafile(df);
+  std::unique_ptr<MMFilesDatafile> datafile(df);
   TRI_voc_fid_t fid = datafile->fid();
   
   std::string copy;
@@ -141,8 +141,8 @@ void MMFilesCompactorThread::DropDatafileCallback(TRI_datafile_t* df, LogicalCol
 /// will be treated as a temporary file and dropped.
 ////////////////////////////////////////////////////////////////////////////////
 
-void MMFilesCompactorThread::RenameDatafileCallback(TRI_datafile_t* datafile, 
-                                                    TRI_datafile_t* compactor, 
+void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile, 
+                                                    MMFilesDatafile* compactor, 
                                                     LogicalCollection* collection) {
   TRI_ASSERT(datafile != nullptr);
   TRI_ASSERT(compactor != nullptr);
@@ -188,7 +188,7 @@ void MMFilesCompactorThread::RenameDatafileCallback(TRI_datafile_t* datafile,
 
 /// @brief remove an empty compactor file
 int MMFilesCompactorThread::removeCompactor(LogicalCollection* collection,
-                                            TRI_datafile_t* compactor) {
+                                            MMFilesDatafile* compactor) {
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "removing empty compaction file '" << compactor->getName() << "'";
 
   // remove the compactor from the list of compactors
@@ -214,7 +214,7 @@ int MMFilesCompactorThread::removeCompactor(LogicalCollection* collection,
 
 /// @brief remove an empty datafile
 int MMFilesCompactorThread::removeDatafile(LogicalCollection* collection,
-                                           TRI_datafile_t* df) {
+                                           MMFilesDatafile* df) {
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "removing empty datafile '" << df->getName() << "'";
 
   bool ok = static_cast<MMFilesCollection*>(collection->getPhysical())->removeDatafile(df);
@@ -247,7 +247,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
 
   for (size_t i = 0; i < n; ++i) {
     auto compaction = toCompact[i];
-    TRI_datafile_t* df = compaction._datafile;
+    MMFilesDatafile* df = compaction._datafile;
 
     // We will sequentially scan the logfile for collection:
     if (df->isPhysical()) {
@@ -263,13 +263,13 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
     context._keepDeletions = compaction._keepDeletions;
 
     /// @brief datafile iterator, calculates necessary total size
-    auto calculateSize = [&context](TRI_df_marker_t const* marker, TRI_datafile_t* datafile) -> bool {
+    auto calculateSize = [&context](TRI_df_marker_t const* marker, MMFilesDatafile* datafile) -> bool {
       LogicalCollection* collection = context._collection;
       TRI_df_marker_type_t const type = marker->getType();
 
       // new or updated document
       if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
-        VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
+        VPackSlice const slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
         TRI_ASSERT(slice.isObject());
 
         VPackSlice keySlice = Transaction::extractKeyFromDocument(slice);
@@ -280,7 +280,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
         SimpleIndexElement element = primaryIndex->lookupKey(context._trx, keySlice);
         if (element) {
           MMFilesDocumentPosition const old = static_cast<MMFilesCollection*>(collection->getPhysical())->lookupRevision(element.revisionId());
-          markerPtr = reinterpret_cast<TRI_df_marker_t const*>(static_cast<uint8_t const*>(old.dataptr()) - arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+          markerPtr = reinterpret_cast<TRI_df_marker_t const*>(static_cast<uint8_t const*>(old.dataptr()) - arangodb::MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
         }
 
         bool deleted = (markerPtr == nullptr || marker != markerPtr);
@@ -290,13 +290,13 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
         }
 
         context._keepDeletions = true;
-        context._targetSize += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
+        context._targetSize += MMFilesDatafileHelper::AlignedMarkerSize<int64_t>(marker);
       }
 
       // deletions
       else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
         if (context._keepDeletions) {
-          context._targetSize += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
+          context._targetSize += MMFilesDatafileHelper::AlignedMarkerSize<int64_t>(marker);
         }
       }
 
@@ -350,7 +350,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   /// file.
   /// IMPORTANT: if the logic inside this function is adjusted, the total size
   /// calculated by function CalculateSize might need adjustment, too!!
-  auto compactifier = [&context, &collection, this](TRI_df_marker_t const* marker, TRI_datafile_t* datafile) -> bool {
+  auto compactifier = [&context, &collection, this](TRI_df_marker_t const* marker, MMFilesDatafile* datafile) -> bool {
     LogicalCollection* collection = context->_collection;
     TRI_voc_fid_t const targetFid = context->_compactor->fid();
 
@@ -358,7 +358,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
     // new or updated document
     if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
-      VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
+      VPackSlice const slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
       TRI_ASSERT(slice.isObject());
 
       VPackSlice keySlice = Transaction::extractKeyFromDocument(slice);
@@ -369,7 +369,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       SimpleIndexElement element = primaryIndex->lookupKey(context->_trx, keySlice);
       if (element) {
         MMFilesDocumentPosition const old = static_cast<MMFilesCollection*>(collection->getPhysical())->lookupRevision(element.revisionId());
-        markerPtr = reinterpret_cast<TRI_df_marker_t const*>(static_cast<uint8_t const*>(old.dataptr()) - arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+        markerPtr = reinterpret_cast<TRI_df_marker_t const*>(static_cast<uint8_t const*>(old.dataptr()) - arangodb::MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
       }
         
       bool deleted = (markerPtr == nullptr || marker != markerPtr);
@@ -377,7 +377,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       if (deleted) {
         // found a dead document
         context->_dfi.numberDead++;
-        context->_dfi.sizeDead += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
+        context->_dfi.sizeDead += MMFilesDatafileHelper::AlignedMarkerSize<int64_t>(marker);
         return true;
       }
 
@@ -394,11 +394,11 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       }
 
       // let marker point to the new position
-      uint8_t const* dataptr = reinterpret_cast<uint8_t const*>(result) + arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
+      uint8_t const* dataptr = reinterpret_cast<uint8_t const*>(result) + arangodb::MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
       collection->updateRevision(element.revisionId(), dataptr, targetFid, false);
 
       context->_dfi.numberAlive++;
-      context->_dfi.sizeAlive += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
+      context->_dfi.sizeAlive += MMFilesDatafileHelper::AlignedMarkerSize<int64_t>(marker);
     }
 
     // deletions
@@ -441,7 +441,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   // now create a new compactor file
   // we are re-using the _fid of the first original datafile!
-  TRI_datafile_t* compactor = nullptr;
+  MMFilesDatafile* compactor = nullptr;
   try {
     compactor = static_cast<MMFilesCollection*>(collection->getPhysical())->createCompactor(initial._fid, static_cast<TRI_voc_size_t>(initial._targetSize));
   } catch (std::exception const& ex) {
@@ -471,7 +471,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   // now compact all datafiles
   for (size_t i = 0; i < n; ++i) {
     auto compaction = toCompact[i];
-    TRI_datafile_t* df = compaction._datafile;
+    MMFilesDatafile* df = compaction._datafile;
 
     LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compacting datafile '" << df->getName() << "' into '" << compactor->getName() << "', number: " << i << ", keep deletions: " << compaction._keepDeletions;
 
@@ -517,7 +517,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       // create .dead files for all collected files
       for (size_t i = 0; i < n; ++i) {
         auto compaction = toCompact[i];
-        TRI_datafile_t* datafile = compaction._datafile;
+        MMFilesDatafile* datafile = compaction._datafile;
 
         if (datafile->isPhysical()) {
           std::string filename(datafile->getName());
@@ -551,7 +551,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       // create .dead files for all collected files but the first
       for (size_t i = 1; i < n; ++i) {
         auto compaction = toCompact[i];
-        TRI_datafile_t* datafile = compaction._datafile;
+        MMFilesDatafile* datafile = compaction._datafile;
 
         if (datafile->isPhysical()) {
           std::string filename(datafile->getName());
@@ -628,7 +628,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   }
 
   // copy datafiles vector
-  std::vector<TRI_datafile_t*> datafiles = physical->_datafiles;
+  std::vector<MMFilesDatafile*> datafiles = physical->_datafiles;
 
   if (datafiles.empty()) {
     // collection has no datafiles
@@ -675,7 +675,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   char const* firstReason = nullptr;
 
   for (size_t i = start; i < n; ++i) {
-    TRI_datafile_t* df = datafiles[i];
+    MMFilesDatafile* df = datafiles[i];
     TRI_ASSERT(df != nullptr);
 
     DatafileStatisticsContainer dfi = static_cast<MMFilesCollection*>(collection->getPhysical())->_datafileStatistics.get(df->fid());
@@ -967,7 +967,7 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collect
 }
 
 /// @brief write a copy of the marker into the datafile
-int MMFilesCompactorThread::copyMarker(TRI_datafile_t* compactor, TRI_df_marker_t const* marker,
+int MMFilesCompactorThread::copyMarker(MMFilesDatafile* compactor, TRI_df_marker_t const* marker,
                                        TRI_df_marker_t** result) {
   int res = compactor->reserveElement(marker->getSize(), result, 0);
 

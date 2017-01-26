@@ -21,43 +21,30 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_WAL_REMOVER_THREAD_H
-#define ARANGOD_WAL_REMOVER_THREAD_H 1
+#ifndef ARANGOD_MMFILES_WAL_RECOVERY_FEATURE_H
+#define ARANGOD_MMFILES_WAL_RECOVERY_FEATURE_H 1
 
-#include "Basics/Common.h"
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-namespace wal {
-
-class LogfileManager;
-
-class RemoverThread final : public Thread {
-  RemoverThread(RemoverThread const&) = delete;
-  RemoverThread& operator=(RemoverThread const&) = delete;
-
- public:
-  explicit RemoverThread(LogfileManager*);
-  ~RemoverThread() { shutdown(); }
-
- public:
-  void beginShutdown() override final;
-
- protected:
-  void run() override;
-
- private:
-  /// @brief the logfile manager
-  LogfileManager* _logfileManager;
-
-  /// @brief condition variable for the collector thread
-  basics::ConditionVariable _condition;
-
-  /// @brief wait interval for the collector thread when idle
-  static uint64_t const Interval;
-};
+namespace options {
+class ProgramOptions;
 }
+
+class MMFilesWalRecoveryFeature final : public application_features::ApplicationFeature {
+
+  MMFilesWalRecoveryFeature(MMFilesWalRecoveryFeature const&) = delete;
+  MMFilesWalRecoveryFeature& operator=(MMFilesWalRecoveryFeature const&) = delete;
+
+ public:
+  explicit MMFilesWalRecoveryFeature(application_features::ApplicationServer* server);
+  ~MMFilesWalRecoveryFeature() {}
+
+ public:
+  void start() override final;
+
+};
+
 }
 
 #endif

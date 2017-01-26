@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RecoveryFeature.h"
+#include "MMFilesWalRecoveryFeature.h"
 
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
@@ -33,10 +33,9 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
-using namespace arangodb::wal;
 
-RecoveryFeature::RecoveryFeature(ApplicationServer* server)
-    : ApplicationFeature(server, "Recovery") {
+MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(ApplicationServer* server)
+    : ApplicationFeature(server, "MMFilesWalRecovery") {
 
   setOptional(false);
   requiresElevatedPrivileges(false);
@@ -49,8 +48,8 @@ RecoveryFeature::RecoveryFeature(ApplicationServer* server)
 /// this is called after the logfiles have been scanned completely and
 /// recovery state has been build. additionally, all databases have been
 /// opened already so we can use collections
-void RecoveryFeature::start() {
-  LogfileManager* logfileManager = ApplicationServer::getFeature<LogfileManager>("LogfileManager");
+void MMFilesWalRecoveryFeature::start() {
+  wal::LogfileManager* logfileManager = ApplicationServer::getFeature<wal::LogfileManager>("LogfileManager");
 
   TRI_ASSERT(!logfileManager->allowWrites());
 

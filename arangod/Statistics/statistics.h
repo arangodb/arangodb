@@ -33,10 +33,6 @@
 #include <string>
 
 struct TRI_request_statistics_t {
-#ifdef USE_DEV_TIMERS
-  static thread_local TRI_request_statistics_t* STATS;
-#endif
-
   TRI_request_statistics_t()
       : _readStart(0.0),
         _readEnd(0.0),
@@ -52,12 +48,14 @@ struct TRI_request_statistics_t {
         _async(false),
         _tooLarge(false),
         _executeError(false),
-        _ignore(false) {
+        _ignore(false),
+        _released(true),
+        _inQueue(false) {
 #ifdef USE_DEV_TIMERS
     _id = nullptr;
 #endif
   }
-
+  
   void reset() {
     _readStart = 0.0;
     _readEnd = 0.0;
@@ -79,7 +77,7 @@ struct TRI_request_statistics_t {
     _timings.clear();
 #endif
   }
-
+  
   std::string to_string();
   void trace_log();
 
@@ -101,6 +99,8 @@ struct TRI_request_statistics_t {
   bool _tooLarge;
   bool _executeError;
   bool _ignore;
+  bool _released;
+  bool _inQueue;
 
 #ifdef USE_DEV_TIMERS
   void* _id;

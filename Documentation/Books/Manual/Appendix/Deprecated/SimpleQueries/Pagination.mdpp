@@ -1,6 +1,10 @@
 Pagination
 ==========
 
+{% hint 'warning' %}
+It is recommended to use AQL instead, see the [LIMIT operation](../../../../AQL/Operations/Limit.html).
+{% endhint %}
+
 If, for example, you display the result of a user search, then you are in
 general not interested in the completed result set, but only the first 10 or so
 documents. Or maybe the next 10 documents for the second page. In this case, you

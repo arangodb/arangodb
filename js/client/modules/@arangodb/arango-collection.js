@@ -327,7 +327,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'numberOfShards': false,
     'keyOptions': false,
     'indexBuckets': true,
-    'replicationFactor': false
+    'replicationFactor': false,
   };
   var a;
 

@@ -53,6 +53,8 @@ class RestAgencyHandler : public RestBaseHandler {
   RestStatus handleConfig();
   RestStatus reportMethodNotAllowed();
   RestStatus handleState();
+  RestStatus handleTransient();
+  RestStatus handleInquire();
 
   void redirectRequest(std::string const& leaderId);
   consensus::Agent* _agent;

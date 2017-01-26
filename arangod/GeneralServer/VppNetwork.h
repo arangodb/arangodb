@@ -28,6 +28,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/LoggerFeature.h"
 
+#include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -37,32 +38,30 @@
 
 using namespace arangodb;
 
-inline std::size_t validateAndCount(char const* vpHeaderStart,
+inline std::size_t validateAndCount(char const* vpStart,
                                     char const* vpEnd) {
+  VPackOptions validationOptions = VPackOptions::Defaults;
+  validationOptions.validateUtf8Strings = true;
+  VPackValidator validator(&validationOptions);
+
+  std::size_t numPayloads = 0;
+
   try {
-    VPackValidator validator;
     // check for slice start to the end of Chunk
     // isSubPart allows the slice to be shorter than the checked buffer.
-    validator.validate(vpHeaderStart, std::distance(vpHeaderStart, vpEnd),
-                       /*isSubPart =*/true);
+    do {
+      validator.validate(vpStart, std::distance(vpStart, vpEnd),
+                         /*isSubPart =*/true);
 
-    VPackSlice vpHeader(vpHeaderStart);
-    auto vpPayloadStart = vpHeaderStart + vpHeader.byteSize();
-
-    std::size_t numPayloads = 0;
-    while (vpPayloadStart != vpEnd) {
-      // validate
-      validator.validate(vpPayloadStart, std::distance(vpPayloadStart, vpEnd),
-                         true);
       // get offset to next
-      VPackSlice tmp(vpPayloadStart);
-      vpPayloadStart += tmp.byteSize();
+      VPackSlice tmp(vpStart);
+      vpStart += tmp.byteSize();
       numPayloads++;
-    }
-    return numPayloads;
+    } while (vpStart != vpEnd);
+    return numPayloads - 1;
   } catch (std::exception const& e) {
     throw std::runtime_error(
-        std::string("error during validation of incoming VPack") + e.what());
+        std::string("error during validation of incoming VPack: ") + e.what());
   }
 }
 
@@ -117,6 +116,7 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   auto buffer =
       std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, chunkLength, false);
 
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunkLength: " << chunkLength;
   appendToBuffer(buffer.get(), chunkLength);
   appendToBuffer(buffer.get(), chunk);
   appendToBuffer(buffer.get(), id);
@@ -127,6 +127,9 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
 
   // append data in slices
   for (auto const& slice : slices) {
+    try{
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << slice.toJson() << " , " << slice.byteSize();
+    } catch(...){}
     buffer->appendText(slice.startAs<char>(), slice.byteSize());
   }
 
@@ -319,6 +322,9 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
 
     // fill buffer
     for (auto const& slice : slices) {
+      try{
+        LOG_TOPIC(TRACE, Logger::COMMUNICATION) << slice.toJson() << " , " << slice.byteSize();
+      } catch(...){}
       vppPayload->appendText(slice.startAs<char>(), slice.byteSize());
     }
 

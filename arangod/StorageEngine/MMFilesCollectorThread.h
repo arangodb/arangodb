@@ -21,17 +21,17 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_WAL_COLLECTOR_THREAD_H
-#define ARANGOD_WAL_COLLECTOR_THREAD_H 1
+#ifndef ARANGOD_MMFILES_COLLECTOR_THREAD_H
+#define ARANGOD_MMFILES_COLLECTOR_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
-#include "VocBase/datafile.h"
+#include "StorageEngine/MMFilesCollectorCache.h"
+#include "StorageEngine/MMFilesDatafile.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/voc-types.h"
-#include "Wal/CollectorCache.h"
 #include "Wal/Logfile.h"
 
 namespace arangodb {
@@ -39,17 +39,17 @@ class LogicalCollection;
 class SingleCollectionTransaction;
 
 namespace wal {
-
 class LogfileManager;
 class Logfile;
+}
 
-class CollectorThread final : public Thread {
-  CollectorThread(CollectorThread const&) = delete;
-  CollectorThread& operator=(CollectorThread const&) = delete;
+class MMFilesCollectorThread final : public Thread {
+  MMFilesCollectorThread(MMFilesCollectorThread const&) = delete;
+  MMFilesCollectorThread& operator=(MMFilesCollectorThread const&) = delete;
 
  public:
-  explicit CollectorThread(LogfileManager*);
-  ~CollectorThread() { shutdown(); }
+  explicit MMFilesCollectorThread(wal::LogfileManager*);
+  ~MMFilesCollectorThread() { shutdown(); }
 
  public:
   void beginShutdown() override final;
@@ -76,7 +76,7 @@ class CollectorThread final : public Thread {
   /// @brief process a single marker in collector step 2
   void processCollectionMarker(
       arangodb::SingleCollectionTransaction&,
-      arangodb::LogicalCollection*, CollectorCache*, CollectorOperation const&);
+      arangodb::LogicalCollection*, MMFilesCollectorCache*, MMFilesCollectorOperation const&);
 
   /// @brief return the number of queued operations
   size_t numQueuedOperations();
@@ -88,24 +88,26 @@ class CollectorThread final : public Thread {
   int processQueuedOperations(bool&);
 
   /// @brief process all operations for a single collection
-  int processCollectionOperations(CollectorCache*);
+  int processCollectionOperations(MMFilesCollectorCache*);
 
   /// @brief collect one logfile
-  int collect(Logfile*);
+  int collect(wal::Logfile*);
 
   /// @brief transfer markers into a collection
-  int transferMarkers(arangodb::wal::Logfile*, TRI_voc_cid_t, TRI_voc_tick_t,
-                      int64_t, OperationsType const&);
+  int transferMarkers(wal::Logfile*, TRI_voc_cid_t, TRI_voc_tick_t,
+                      int64_t, MMFilesOperationsType const&);
 
   /// @brief insert the collect operations into a per-collection queue
-  int queueOperations(arangodb::wal::Logfile*, std::unique_ptr<CollectorCache>&);
+  int queueOperations(wal::Logfile*, std::unique_ptr<MMFilesCollectorCache>&);
 
   /// @brief update a collection's datafile information
-  int updateDatafileStatistics(LogicalCollection*, CollectorCache*);
+  int updateDatafileStatistics(LogicalCollection*, MMFilesCollectorCache*);
+
+  void broadcastCollectorResult(int res); 
 
  private:
   /// @brief the logfile manager
-  LogfileManager* _logfileManager;
+  wal::LogfileManager* _logfileManager;
 
   /// @brief condition variable for the collector thread
   basics::ConditionVariable _condition;
@@ -114,7 +116,7 @@ class CollectorThread final : public Thread {
   arangodb::Mutex _operationsQueueLock;
 
   /// @brief operations to collect later
-  std::unordered_map<TRI_voc_cid_t, std::vector<CollectorCache*>>
+  std::unordered_map<TRI_voc_cid_t, std::vector<MMFilesCollectorCache*>>
       _operationsQueue;
 
   /// @brief whether or not the queue is currently in use
@@ -132,7 +134,7 @@ class CollectorThread final : public Thread {
   /// @brief wait interval for the collector thread when idle
   static uint64_t const Interval;
 };
-}
+
 }
 
 #endif

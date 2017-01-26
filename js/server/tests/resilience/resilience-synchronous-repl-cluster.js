@@ -85,6 +85,7 @@ function SynchronousReplicationSuite () {
       wait(0.5);
       global.ArangoClusterInfo.flush();
     }
+    console.error(global.ArangoAgency.read([["/"]]));
     return false;
   }
 
@@ -323,7 +324,8 @@ function SynchronousReplicationSuite () {
       console.info("System collections use servers:", systemCollServers);
       while (true) {
         db._drop(cn);
-        c = db._create(cn, {numberOfShards: 1, replicationFactor: 2});
+        c = db._create(cn, {numberOfShards: 1, replicationFactor: 2,
+                            avoidServers: systemCollServers});
         var servers = findCollectionServers("_system", cn);
         console.info("Test collections uses servers:", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
@@ -824,7 +826,6 @@ function SynchronousReplicationSuite () {
         wait(5);
       }
       healLeader();
-      assertTrue(waitForSynchronousReplication("_system"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

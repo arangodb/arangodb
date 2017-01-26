@@ -21,18 +21,18 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AllocatorThread.h"
+#include "MMFilesAllocatorThread.h"
 #include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Wal/LogfileManager.h"
 
-using namespace arangodb::wal;
+using namespace arangodb;
 
 /// @brief wait interval for the allocator thread when idle
-uint64_t const AllocatorThread::Interval = 500 * 1000;
+uint64_t const MMFilesAllocatorThread::Interval = 500 * 1000;
 
-AllocatorThread::AllocatorThread(LogfileManager* logfileManager)
+MMFilesAllocatorThread::MMFilesAllocatorThread(wal::LogfileManager* logfileManager)
     : Thread("WalAllocator"),
       _logfileManager(logfileManager),
       _condition(),
@@ -40,23 +40,32 @@ AllocatorThread::AllocatorThread(LogfileManager* logfileManager)
       _requestedSize(0),
       _inRecovery(true),
       _allocatorResultCondition(),
-      _allocatorResult(TRI_ERROR_NO_ERROR) {}
+      _allocatorResult(TRI_ERROR_LOCKED) {}
 
 /// @brief wait for the collector result
-int AllocatorThread::waitForResult(uint64_t timeout) {
+int MMFilesAllocatorThread::waitForResult(uint64_t timeout) {
   CONDITION_LOCKER(guard, _allocatorResultCondition);
 
-  if (_allocatorResult == TRI_ERROR_NO_ERROR) {
+  if (_allocatorResult == TRI_ERROR_LOCKED) {
     if (guard.wait(timeout)) {
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
+ 
+  int res = _allocatorResult;
 
-  return _allocatorResult;
+  // convert "locked" into NO_ERROR
+  if (res == TRI_ERROR_LOCKED) {
+    res = TRI_ERROR_NO_ERROR;
+  }
+
+  TRI_ASSERT(res != TRI_ERROR_LOCKED);
+
+  return res;
 }
 
 /// @brief begin shutdown sequence
-void AllocatorThread::beginShutdown() {
+void MMFilesAllocatorThread::beginShutdown() {
   Thread::beginShutdown();
 
   CONDITION_LOCKER(guard, _condition);
@@ -64,7 +73,7 @@ void AllocatorThread::beginShutdown() {
 }
 
 /// @brief signal the creation of a new logfile
-void AllocatorThread::signal(uint32_t markerSize) {
+void MMFilesAllocatorThread::signal(uint32_t markerSize) {
   CONDITION_LOCKER(guard, _condition);
 
   if (_requestedSize == 0 || markerSize > _requestedSize) {
@@ -76,12 +85,12 @@ void AllocatorThread::signal(uint32_t markerSize) {
 }
 
 /// @brief creates a new reserve logfile
-int AllocatorThread::createReserveLogfile(uint32_t size) {
+int MMFilesAllocatorThread::createReserveLogfile(uint32_t size) {
   return _logfileManager->createReserveLogfile(size);
 }
 
 /// @brief main loop
-void AllocatorThread::run() {
+void MMFilesAllocatorThread::run() {
   while (!isStopping()) {
     uint32_t requestedSize = 0;
 
@@ -92,49 +101,54 @@ void AllocatorThread::run() {
     }
 
     int res = TRI_ERROR_NO_ERROR;
-
+    bool worked = false;
+    
     try {
       if (requestedSize == 0 && !inRecovery() &&
           !_logfileManager->hasReserveLogfiles()) {
-        // only create reserve files if we are not in the recovery mode
-        res = createReserveLogfile(0);
-
-        if (res == TRI_ERROR_NO_ERROR) {
-          continue;
+        // reset allocator status
+        {
+          CONDITION_LOCKER(guard, _allocatorResultCondition);
+          _allocatorResult = TRI_ERROR_LOCKED;
         }
 
-        LOG(ERR)
-            << "unable to create new WAL reserve logfile for sized marker: "
-            << TRI_errno_string(res);
+        // only create reserve files if we are not in the recovery mode
+        worked = true;
+        res = createReserveLogfile(0);
       } else if (requestedSize > 0 &&
                  _logfileManager->logfileCreationAllowed(requestedSize)) {
-        res = createReserveLogfile(requestedSize);
-
-        if (res == TRI_ERROR_NO_ERROR) {
-          continue;
+        // reset allocator status
+        {
+          CONDITION_LOCKER(guard, _allocatorResultCondition);
+          _allocatorResult = TRI_ERROR_LOCKED;
         }
 
-        LOG(ERR) << "unable to create new WAL reserve logfile: "
-                 << TRI_errno_string(res);
+        worked = true;
+        res = createReserveLogfile(requestedSize);
       }
     } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
       LOG(ERR) << "got unexpected error in allocatorThread: "
                << TRI_errno_string(res);
     } catch (...) {
+      res = TRI_ERROR_INTERNAL;
       LOG(ERR) << "got unspecific error in allocatorThread";
     }
 
-    // reset allocator status
-    {
+    if (worked) {
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG(ERR) << "unable to create new WAL reserve logfile: " << TRI_errno_string(res);
+      }
+
+      // broadcast new allocator status
       CONDITION_LOCKER(guard, _allocatorResultCondition);
       _allocatorResult = res;
+      guard.broadcast();
+    } else {
+      TRI_ASSERT(res == TRI_ERROR_NO_ERROR);
     }
 
-    {
-      CONDITION_LOCKER(guard, _condition);
-
-      guard.wait(Interval);
-    }
+    CONDITION_LOCKER(guard, _condition);
+    guard.wait(Interval);
   }
 }

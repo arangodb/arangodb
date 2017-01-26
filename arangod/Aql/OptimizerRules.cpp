@@ -720,7 +720,7 @@ void arangodb::aql::removeSortRandRule(Optimizer* opt, ExecutionPlan* plan,
       continue;
     }
 
-    auto const variable = elements[0].first;
+    auto const variable = elements[0].var;
     TRI_ASSERT(variable != nullptr);
 
     auto setter = plan->getVarSetBy(variable->id);
@@ -1033,9 +1033,9 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt, ExecutionPlan* plan,
 
       if (!collectNode->isDistinctCommand()) {
         // add the post-SORT
-        std::vector<std::pair<Variable const*, bool>> sortElements;
+        SortElementVector sortElements;
         for (auto const& v : newCollectNode->groupVariables()) {
-          sortElements.emplace_back(std::make_pair(v.first, true));
+          sortElements.emplace_back(v.first, true);
         }
 
         auto sortNode =
@@ -1074,9 +1074,9 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt, ExecutionPlan* plan,
 
     // insert a SortNode IN FRONT OF the CollectNode
     if (!groupVariables.empty()) {
-      std::vector<std::pair<Variable const*, bool>> sortElements;
+      SortElementVector sortElements;
       for (auto const& v : groupVariables) {
-        sortElements.emplace_back(std::make_pair(v.second, true));
+        sortElements.emplace_back(v.second, true);
       }
 
       auto sortNode = new SortNode(plan, plan->nextId(), sortElements, true);
@@ -1342,7 +1342,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
       case EN::SORT: {
         auto node = static_cast<SortNode*>(en);
         for (auto& variable : node->_elements) {
-          variable.first = Variable::replace(variable.first, _replacements);
+          variable.var = Variable::replace(variable.var, _replacements);
         }
         break;
       }
@@ -1981,7 +1981,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         }
         _sortNode = static_cast<SortNode*>(en);
         for (auto& it : _sortNode->getElements()) {
-          _sorts.emplace_back((it.first)->id, it.second);
+          _sorts.emplace_back((it.var)->id, it.ascending);
         }
         return false;
 
@@ -2332,12 +2332,33 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, ExecutionPlan* plan,
       TRI_vocbase_t* vocbase = nullptr;
       Collection const* collection = nullptr;
 
+      SortElementVector elements;
+
       if (nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
         vocbase = static_cast<EnumerateCollectionNode*>(node)->vocbase();
         collection = static_cast<EnumerateCollectionNode*>(node)->collection();
       } else if (nodeType == ExecutionNode::INDEX) {
-        vocbase = static_cast<IndexNode*>(node)->vocbase();
-        collection = static_cast<IndexNode*>(node)->collection();
+        auto idxNode = static_cast<IndexNode*>(node);
+        vocbase = idxNode->vocbase();
+        collection = idxNode->collection();
+        auto outVars = idxNode->getVariablesSetHere();
+        TRI_ASSERT(outVars.size() == 1);
+        Variable const* sortVariable = outVars[0];
+        bool isSortReverse = idxNode->reverse();
+        auto allIndexes = idxNode->getIndexes();
+        TRI_ASSERT(!allIndexes.empty());
+
+        // Using Index for sort only works if all indexes are equal.
+        auto first = allIndexes[0].getIndex();
+        for (auto const& path : first->fieldNames()) {
+          elements.emplace_back(sortVariable, !isSortReverse, path);
+        }
+        for (auto const& it : allIndexes) {
+          if (first != it.getIndex()) {
+            elements.clear();
+            break;
+          }
+        }
       } else if (nodeType == ExecutionNode::INSERT ||
                  nodeType == ExecutionNode::UPDATE ||
                  nodeType == ExecutionNode::REPLACE ||
@@ -2383,11 +2404,14 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, ExecutionPlan* plan,
       remoteNode->addDependency(node);
 
       // insert a gather node
-      ExecutionNode* gatherNode =
+      GatherNode* gatherNode =
           new GatherNode(plan, plan->nextId(), vocbase, collection);
       plan->registerNode(gatherNode);
       TRI_ASSERT(remoteNode);
       gatherNode->addDependency(remoteNode);
+      if (!elements.empty()) {
+        gatherNode->setElements(elements);
+      }
 
       // and now link the gather node with the rest of the plan
       if (parents.size() == 1) {
@@ -3928,10 +3952,6 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 ///////////////////////////////////////////////////////////////////////////////
 // GEO RULE ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-//
-// Description of what this Rule tries to achieve:
-// https://docs.google.com/document/d/1G57UP08ZFywUXKi5cLvEIKpZP-AUKGwG9oAnFOX8LLo
-//
 
 struct GeoIndexInfo{
   operator bool() const { return distanceNode && valid; }
@@ -4172,13 +4192,13 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
       auto& elements = node->getElements();
 
       // we're looking for "SORT DISTANCE(x,y,a,b) ASC", which has just one sort criterion
-      if ( !(elements.size() == 1 && elements[0].second)) {
+      if ( !(elements.size() == 1 && elements[0].ascending)) {
         //test on second makes sure the SORT is ascending
         return rv;
       }
 
       //variable of sort expression
-      auto variable = elements[0].first;
+      auto variable = elements[0].var;
       TRI_ASSERT(variable != nullptr);
 
       //// find the expression that is bound to the variable

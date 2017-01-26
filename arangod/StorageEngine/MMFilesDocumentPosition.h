@@ -25,7 +25,7 @@
 #define ARANGOD_STORAGE_ENGINE_MMFILES_DOCUMENT_POSITION_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/DatafileHelper.h"
+#include "StorageEngine/MMFilesDatafileHelper.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -38,7 +38,7 @@ class MMFilesDocumentPosition {
   MMFilesDocumentPosition(TRI_voc_rid_t revisionId, void const* dataptr, TRI_voc_fid_t fid, bool isWal) noexcept
           : _revisionId(revisionId), _fid(fid), _dataptr(dataptr) {
     if (isWal) {
-      _fid |= arangodb::DatafileHelper::WalFileBitmask();
+      _fid |= arangodb::MMFilesDatafileHelper::WalFileBitmask();
     }
   }
 
@@ -77,7 +77,7 @@ class MMFilesDocumentPosition {
   // return the datafile id.
   inline TRI_voc_fid_t fid() const noexcept { 
     // unmask the WAL bit
-    return (_fid & ~arangodb::DatafileHelper::WalFileBitmask());
+    return (_fid & ~arangodb::MMFilesDatafileHelper::WalFileBitmask());
   }
 
   // sets datafile id. note that the highest bit of the file id must
@@ -89,7 +89,7 @@ class MMFilesDocumentPosition {
     // set the WAL bit if required
     _fid = fid;
     if (isWal) {
-      _fid |= arangodb::DatafileHelper::WalFileBitmask();
+      _fid |= arangodb::MMFilesDatafileHelper::WalFileBitmask();
     }
   }
   
@@ -106,7 +106,7 @@ class MMFilesDocumentPosition {
   // the _fid value is set, and to a datafile otherwise
   inline bool pointsToWal() const noexcept {
     // check whether the WAL bit is set
-    return ((_fid & arangodb::DatafileHelper::WalFileBitmask()) != 0);
+    return ((_fid & arangodb::MMFilesDatafileHelper::WalFileBitmask()) != 0);
   }
 
   inline operator bool() const noexcept {

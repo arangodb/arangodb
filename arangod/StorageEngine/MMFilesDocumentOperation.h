@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_WAL_DOCUMENT_OPERATION_H
-#define ARANGOD_WAL_DOCUMENT_OPERATION_H 1
+#ifndef ARANGOD_MMFILES_DOCUMENT_OPERATION_H
+#define ARANGOD_MMFILES_DOCUMENT_OPERATION_H 1
 
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
@@ -31,9 +31,7 @@ namespace arangodb {
 class LogicalCollection;
 class Transaction;
 
-namespace wal {
-
-struct DocumentOperation {
+struct MMFilesDocumentOperation {
   enum class StatusType : uint8_t {
     CREATED,
     INDEXED,
@@ -42,12 +40,12 @@ struct DocumentOperation {
     REVERTED
   };
   
-  DocumentOperation(LogicalCollection* collection,
+  MMFilesDocumentOperation(LogicalCollection* collection,
                     TRI_voc_document_operation_e type);
 
-  ~DocumentOperation();
+  ~MMFilesDocumentOperation();
 
-  DocumentOperation* swap();
+  MMFilesDocumentOperation* swap();
 
   void setRevisions(DocumentDescriptor const& oldRevision,
                     DocumentDescriptor const& newRevision);
@@ -73,10 +71,6 @@ struct DocumentOperation {
     _status = StatusType::HANDLED;
   }
   
-  void done() noexcept {
-    _status = StatusType::SWAPPED;
-  }
-
   void revert(arangodb::Transaction*);
 
  private:
@@ -87,7 +81,7 @@ struct DocumentOperation {
   TRI_voc_document_operation_e _type;
   StatusType _status;
 };
-}
+
 }
 
 #endif

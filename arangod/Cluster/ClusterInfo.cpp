@@ -445,7 +445,7 @@ void ClusterInfo::loadPlan() {
           } else {
             vocbase = databaseFeature->lookupDatabase(databaseName);
           }
-          TRI_ASSERT(vocbase != nullptr);
+
           if (vocbase == nullptr) {
             // No database with this name found.
             // We have an invalid state here.
@@ -903,10 +903,11 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
         (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
       return setErrormsg(TRI_ERROR_ARANGO_DUPLICATE_NAME, errorMsg);
     }
-    errorMsg = std::string("Failed to create database in ") + __FILE__ + ":" + std::to_string(__LINE__);
+    errorMsg = std::string("Failed to create database with ") +
+      res._clientId + " at " + __FILE__ + ":" + std::to_string(__LINE__);
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,
                        errorMsg);
-  }
+  } 
 
   // Now update our own cache of planned databases:
   loadPlan();
@@ -1171,6 +1172,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
       }
     } else {
+      errorMsg += std::string("\nClientId ") + res._clientId;
       errorMsg += std::string("\n") + __FILE__ + std::to_string(__LINE__);
       errorMsg += std::string("\n") + res.errorMessage();
       errorMsg += std::string("\n") + res.errorDetails();
@@ -1295,9 +1297,9 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   res = ac.sendTransactionWithFailover(trans);
 
   if (!res.successful()) {
-    LOG(ERR) << "###################### WAS ERLAUBE? ####################";
     AgencyCommResult ag = ac.getValues("");
     if (ag.successful()) {
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "ClientId: " << res._clientId;
       LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
                                       << ag.slice().toJson();
     } else {
@@ -1552,11 +1554,6 @@ int ClusterInfo::ensureIndexCoordinator(
     std::shared_ptr<LogicalCollection> c =
         getCollection(databaseName, collectionID);
 
-    // Note that nobody is removing this collection in the plan, since
-    // we hold the write lock in the agency, therefore it does not matter
-    // that getCollection fetches the read lock and releases it before
-    // we get it again.
-    //
     READ_LOCKER(readLocker, _planProt.lock);
 
     if (c == nullptr) {
@@ -1761,8 +1758,23 @@ int ClusterInfo::ensureIndexCoordinator(
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
   if (!result.successful()) {
-    errorMsg += std::string(" ") + __FILE__ + ":" + std::to_string(__LINE__);
-    resultBuilder = *resBuilder;
+    if (result.httpCode() ==
+        (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      AgencyCommResult ag = ac.getValues("/");
+      if (ag.successful()) {
+        LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+                                        << ag.slice().toJson();
+      } else {
+        LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+      }
+    } else {
+      errorMsg += " Failed to execute ";
+      errorMsg += trx.toJson();
+      errorMsg += "ClientId: " + result._clientId + " ";
+      errorMsg += " ResultCode: " + std::to_string(result.errorCode()) + " ";
+      errorMsg += std::string(__FILE__) + ":" + std::to_string(__LINE__);
+      resultBuilder = *resBuilder;
+    }
     return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN;
   }
 
@@ -1981,7 +1993,11 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
   if (!result.successful()) {
-    errorMsg += std::string(" ") + __FILE__ + ":" + std::to_string(__LINE__);
+    errorMsg += " Failed to execute ";
+    errorMsg += trx.toJson();
+    errorMsg += " ClientId: " + result._clientId + " ";
+    errorMsg += " ResultCode: " + std::to_string(result.errorCode()) + " ";
+
     events::DropIndex(collectionID, idString,
                       TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN);
     return TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN;
@@ -2050,20 +2066,20 @@ void ClusterInfo::loadServers() {
       result.slice()[0].get(
         std::vector<std::string>(
           {AgencyCommManager::path(), "Current", "ServersRegistered"}));
-
+    
     velocypack::Slice serversAliases =
       result.slice()[0].get(
         std::vector<std::string>(
           {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
-  
-  if (serversRegistered.isObject()) {
+    
+    if (serversRegistered.isObject()) {
       decltype(_servers) newServers;
       decltype(_serverAliases) newAliases;
-
+      
       size_t i = 0;
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
         velocypack::Slice slice = res.value;
-
+        
         if (slice.isObject() && slice.hasKey("endpoint")) {
           std::string server =
             arangodb::basics::VelocyPackHelper::getStringValue(
@@ -2080,7 +2096,7 @@ void ClusterInfo::loadServers() {
           newServers.emplace(std::make_pair(res.key.copyString(), server));
         }
       }
-
+      
       // Now set the new value:
       {
         WRITE_LOCKER(writeLocker, _serversProt.lock);
@@ -2092,13 +2108,13 @@ void ClusterInfo::loadServers() {
       return;
     }
   }
-
+  
   LOG_TOPIC(DEBUG, Logger::CLUSTER)
-      << "Error while loading " << prefixServers
-      << " httpCode: " << result.httpCode()
-      << " errorCode: " << result.errorCode()
-      << " errorMessage: " << result.errorMessage()
-      << " body: " << result.body();
+    << "Error while loading " << prefixServers
+    << " httpCode: " << result.httpCode()
+    << " errorCode: " << result.errorCode()
+    << " errorMessage: " << result.errorMessage()
+    << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2344,35 +2360,19 @@ void ClusterInfo::loadCurrentDBServers() {
 
 std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
   std::vector<ServerID> result;
-  int tries = 0;
 
   if (!_DBServersProt.isValid) {
     loadCurrentDBServers();
-    tries++;
   }
-  while (true) {
-    {
-      // return a consistent state of servers
-      READ_LOCKER(readLocker, _DBServersProt.lock);
+  // return a consistent state of servers
+  READ_LOCKER(readLocker, _DBServersProt.lock);
 
-      result.reserve(_DBServers.size());
+  result.reserve(_DBServers.size());
 
-      for (auto& it : _DBServers) {
-        result.emplace_back(it.first);
-      }
-
-      return result;
-    }
-
-    if (++tries >= 2) {
-      break;
-    }
-
-    // loadCurrentDBServers needs the write lock
-    loadCurrentDBServers();
+  for (auto& it : _DBServers) {
+    result.emplace_back(it.first);
   }
 
-  // note that the result will be empty if we get here
   return result;
 }
 
@@ -2544,35 +2544,20 @@ int ClusterInfo::getResponsibleShard(LogicalCollection* collInfo,
 
 std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
   std::vector<ServerID> result;
-  int tries = 0;
 
   if (!_coordinatorsProt.isValid) {
     loadCurrentCoordinators();
-    tries++;
-  }
-  while (true) {
-    {
-      // return a consistent state of servers
-      READ_LOCKER(readLocker, _coordinatorsProt.lock);
-
-      result.reserve(_coordinators.size());
-
-      for (auto& it : _coordinators) {
-        result.emplace_back(it.first);
-      }
-
-      return result;
-    }
-
-    if (++tries >= 2) {
-      break;
-    }
-
-    // loadCurrentCoordinators needs the write lock
-    loadCurrentCoordinators();
   }
 
-  // note that the result will be empty if we get here
+  // return a consistent state of servers
+  READ_LOCKER(readLocker, _coordinatorsProt.lock);
+
+  result.reserve(_coordinators.size());
+
+  for (auto& it : _coordinators) {
+    result.emplace_back(it.first);
+  }
+
   return result;
 }
 

@@ -48,7 +48,8 @@ SimpleHttpResult::SimpleHttpResult()
       _chunked(false),
       _deflated(false),
       _resultBody(TRI_UNKNOWN_MEM_ZONE, false),
-      _requestResultType(UNKNOWN) {
+      _requestResultType(UNKNOWN),
+      _haveSentRequestFully(false) {
   
   _resultBody.ensureNullTerminated();
 }
@@ -71,6 +72,7 @@ void SimpleHttpResult::clear() {
   _headerFields.clear();
   _resultBody.clear();
   _resultBody.ensureNullTerminated();
+  _haveSentRequestFully = false;
 }
 
 StringBuffer& SimpleHttpResult::getBody() { return _resultBody; }

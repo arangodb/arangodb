@@ -697,17 +697,22 @@
       this.initDone = true;
       this.renderBindParamTable(true);
       this.restoreCachedQueries();
+      this.delegateEvents();
     },
 
     cleanupGraphs: function () {
-      _.each(this.graphViewers, function (graphView) {
-        graphView.killCurrentGraph();
-        graphView.remove();
-      });
-      $('canvas').remove();
+      if (this.graphViewers !== undefined || this.graphViewers !== null) {
+        _.each(this.graphViewers, function (graphView) {
+          if (graphView !== undefined) {
+            graphView.killCurrentGraph();
+            graphView.remove();
+          }
+        });
+        $('canvas').remove();
 
-      this.graphViewers = null;
-      this.graphViewers = [];
+        this.graphViewers = null;
+        this.graphViewers = [];
+      }
     },
 
     afterRender: function () {
@@ -739,6 +744,7 @@
             self.bindQueryResultButtons(null, counter);
           }
         });
+        $('#removeResults').show();
       }
     },
 

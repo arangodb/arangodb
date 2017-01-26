@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 
-struct TRI_datafile_t;
+struct MMFilesDatafile;
 
 namespace arangodb {
 class LogicalCollection;
@@ -140,9 +140,9 @@ class CompactionDitch final : public Ditch {
 /// @brief datafile removal ditch
 class DropDatafileDitch final : public Ditch {
  public:
-  DropDatafileDitch(Ditches* ditches, TRI_datafile_t* datafile,
+  DropDatafileDitch(Ditches* ditches, MMFilesDatafile* datafile,
                     LogicalCollection* collection,
-                    std::function<void(TRI_datafile_t*, LogicalCollection*)> const& callback,
+                    std::function<void(MMFilesDatafile*, LogicalCollection*)> const& callback,
                     char const* filename, int line);
 
   ~DropDatafileDitch();
@@ -155,17 +155,17 @@ class DropDatafileDitch final : public Ditch {
   void executeCallback() { _callback(_datafile, _collection); _datafile = nullptr; }
 
  private:
-  TRI_datafile_t* _datafile;
+  MMFilesDatafile* _datafile;
   LogicalCollection* _collection;
-  std::function<void(TRI_datafile_t*, LogicalCollection*)> _callback;
+  std::function<void(MMFilesDatafile*, LogicalCollection*)> _callback;
 };
 
 /// @brief datafile rename ditch
 class RenameDatafileDitch final : public Ditch {
  public:
-  RenameDatafileDitch(Ditches* ditches, TRI_datafile_t* datafile,
-                      TRI_datafile_t* compactor, LogicalCollection* collection,
-                      std::function<void(TRI_datafile_t*, TRI_datafile_t*, LogicalCollection*)> const& callback,
+  RenameDatafileDitch(Ditches* ditches, MMFilesDatafile* datafile,
+                      MMFilesDatafile* compactor, LogicalCollection* collection,
+                      std::function<void(MMFilesDatafile*, MMFilesDatafile*, LogicalCollection*)> const& callback,
                       char const* filename, int line);
 
   ~RenameDatafileDitch();
@@ -178,10 +178,10 @@ class RenameDatafileDitch final : public Ditch {
   void executeCallback() { _callback(_datafile, _compactor, _collection); }
 
  private:
-  TRI_datafile_t* _datafile;
-  TRI_datafile_t* _compactor;
+  MMFilesDatafile* _datafile;
+  MMFilesDatafile* _compactor;
   LogicalCollection* _collection;
-  std::function<void(TRI_datafile_t*, TRI_datafile_t*, LogicalCollection*)> _callback;
+  std::function<void(MMFilesDatafile*, MMFilesDatafile*, LogicalCollection*)> _callback;
 };
 
 /// @brief collection unload ditch
@@ -281,14 +281,14 @@ class Ditches {
 
   /// @brief creates a new datafile deletion ditch
   DropDatafileDitch* createDropDatafileDitch(
-      TRI_datafile_t* datafile, LogicalCollection* collection, 
-      std::function<void(TRI_datafile_t*, LogicalCollection*)> const& callback,
+      MMFilesDatafile* datafile, LogicalCollection* collection, 
+      std::function<void(MMFilesDatafile*, LogicalCollection*)> const& callback,
       char const* filename, int line);
 
   /// @brief creates a new datafile rename ditch
   RenameDatafileDitch* createRenameDatafileDitch(
-      TRI_datafile_t* datafile, TRI_datafile_t* compactor, LogicalCollection* collection,
-      std::function<void(TRI_datafile_t*, TRI_datafile_t*, LogicalCollection*)> const& callback,
+      MMFilesDatafile* datafile, MMFilesDatafile* compactor, LogicalCollection* collection,
+      std::function<void(MMFilesDatafile*, MMFilesDatafile*, LogicalCollection*)> const& callback,
       char const* filename, int line);
 
   /// @brief creates a new collection unload ditch

@@ -41,7 +41,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   void prepare() override final;
   void start() override final;
   void beginShutdown() override final;
-  void unprepare() override final;
+  void stop() override final;
 
  private:
   bool _activated;
@@ -54,6 +54,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   bool _waitForSync;
   double _supervisionFrequency;
   uint64_t _compactionStepSize;
+  uint64_t _compactionKeepSize;
   double _supervisionGracePeriod;
   std::string _agencyMyAddress;
   std::vector<std::string> _agencyEndpoints;

@@ -26,7 +26,7 @@
 #include "Basics/StringBuffer.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
-#include "VocBase/DatafileHelper.h"
+#include "StorageEngine/MMFilesDatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -188,6 +188,17 @@ void TransactionContext::addChunk(RevisionCacheChunk* chunk) {
   // another thread had inserted the same chunk already
   // now need to keep track of it twice
   chunk->release();
+}
+
+// clear chunks if they use too much memory
+void TransactionContext::clearChunks(size_t threshold) {
+  MUTEX_LOCKER(locker, _chunksLock);
+  if (_chunks.size() > threshold) {
+    for (auto& chunk : _chunks) {
+      chunk->release();
+    }
+    _chunks.clear();
+  }
 }
   
 void TransactionContext::stealChunks(std::unordered_set<RevisionCacheChunk*>& target) {

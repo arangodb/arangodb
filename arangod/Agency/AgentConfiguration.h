@@ -51,6 +51,7 @@ static const std::string waitForSyncStr = "wait for sync";
 static const std::string supervisionFrequencyStr = "supervision frequency";
 static const std::string supervisionGracePeriodStr = "supervision grace period";
 static const std::string compactionStepSizeStr = "compaction step size";
+static const std::string compactionKeepSizeStr = "compaction keep size";
 static const std::string defaultEndpointStr = "tcp://localhost:8529";
 static const std::string versionStr = "version";
 static const std::string startupStr = "startup";
@@ -69,6 +70,7 @@ struct config_t {
   bool _waitForSync;
   double _supervisionFrequency;
   uint64_t _compactionStepSize;
+  uint64_t _compactionKeepSize;
   double _supervisionGracePeriod;
   bool _cmdLineTimings;
   size_t _version;
@@ -82,7 +84,7 @@ struct config_t {
   /// @brief ctor
   config_t(size_t as, size_t ps, double minp, double maxp, std::string const& e,
            std::vector<std::string> const& g, bool s, bool w, double f,
-           uint64_t c, double p, bool t);
+           uint64_t c, uint64_t k, double p, bool t);
 
   /// @brief copy constructor
   config_t(config_t const&);
@@ -128,6 +130,9 @@ struct config_t {
 
   /// @brief pool size
   size_t compactionStepSize() const;
+
+  /// @brief pool size
+  size_t compactionKeepSize() const;
 
   /// @brief pool size
   size_t version() const;
