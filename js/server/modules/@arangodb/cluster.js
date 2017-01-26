@@ -59,6 +59,9 @@ var isEqual = function(object, other) {
   }
 
   if (Array.isArray(object)) {
+    if (object.length !== other.length) {
+      return false;
+    }
     return object.every((value, index) => {
       return isEqual(value, other[index]);
     });
@@ -674,6 +677,7 @@ function createIndexes(collection, plannedIndexes) {
       return localId(plannedIndex) === index.id;
     }).length === 0;
   });
+
   return indexesToDelete.reduce((errors, index) => {
     console.debug("dropping index '%s/%s': %s",
       collection._dbName,
@@ -1010,8 +1014,8 @@ function updateCurrentForCollections(localErrors, currentCollections) {
           let shardInfo = localCollections[shard];
           if (shardInfo.isLeader) {
             let localCollectionInfo = assembleLocalCollectionInfo(shardInfo, localErrors[shard] || {});
-
             let currentCollectionInfo = fetchKey(currentCollections, database, shardInfo.planId, shard);
+
             if (!isEqual(localCollectionInfo, currentCollectionInfo)) {
               trx[curCollections + database + '/' + shardInfo.planId + '/' + shardInfo.name] = {
                 op: 'set',
