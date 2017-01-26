@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -224,6 +224,7 @@ TRI_request_statistics_t* TRI_AcquireRequestStatistics() {
 
   if (StatisticsFeature::enabled() && RequestFreeList.pop(statistics)) {
     TRI_ASSERT(statistics->_released);
+    TRI_ASSERT(!statistics->_inQueue);
     statistics->_released = false;
     return statistics;
   }
@@ -582,6 +583,7 @@ void TRI_InitializeStatistics() {
   for (size_t i = 0; i < QUEUE_SIZE; ++i) {
     TRI_request_statistics_t* entry = &RequestStatistics[i];
     TRI_ASSERT(entry->_released);
+    TRI_ASSERT(!entry->_inQueue);
     bool ok = RequestFreeList.push(entry);
     TRI_ASSERT(ok);
   }
