@@ -433,9 +433,9 @@ class LogicalCollection {
                      MMFilesDocumentOperation&, MMFilesWalMarker const*,
                      bool& waitForSync);
 
-  int insertMMFilesPrimaryIndex(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);
+  int insertPrimaryIndex(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);
   
-  int deleteMMFilesPrimaryIndex(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);
+  int deletePrimaryIndex(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);
 
   int insertSecondaryIndexes(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&,
                              bool isRollback);

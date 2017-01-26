@@ -2539,13 +2539,11 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
   }
   TRI_ASSERT(!key.isNone());
 
-  MMFilesDocumentOperation operation(this,
-                                             TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+  MMFilesDocumentOperation operation(this, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
   bool const useDeadlockDetector =
       (lock && !trx->isSingleOperationTransaction());
-  arangodb::CollectionWriteLocker collectionLocker(this, useDeadlockDetector,
-                                                   lock);
+  arangodb::CollectionWriteLocker collectionLocker(this, useDeadlockDetector, lock);
 
   // get the previous revision
   int res = lookupDocument(trx, key, previous);
@@ -2555,20 +2553,19 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
   }
 
   uint8_t const* vpack = previous.vpack();
-  prevRev = Transaction::extractRevFromDocument(VPackSlice(vpack));
+  VPackSlice oldDoc(vpack);
+  TRI_voc_rid_t oldRevisionId = Transaction::extractRevFromDocument(oldDoc);
+  prevRev = oldRevisionId;
 
   // Check old revision:
   if (!options.ignoreRevs && slice.isObject()) {
-    TRI_voc_rid_t expectedRev = TRI_ExtractRevisionId(slice);
-    int res = checkRevision(trx, expectedRev, prevRev);
+    TRI_voc_rid_t expectedRevisionId = TRI_ExtractRevisionId(slice);
+    int res = checkRevision(trx, expectedRevisionId, oldRevisionId);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
   }
-
-  VPackSlice oldDoc(vpack);
-  TRI_voc_rid_t oldRevisionId = Transaction::extractRevFromDocument(oldDoc);
 
   // we found a document to remove
   try {
@@ -2583,7 +2580,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    res = deleteMMFilesPrimaryIndex(trx, oldRevisionId, oldDoc);
+    res = deletePrimaryIndex(trx, oldRevisionId, oldDoc);
 
     if (res != TRI_ERROR_NO_ERROR) {
       insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
@@ -2685,7 +2682,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    res = deleteMMFilesPrimaryIndex(trx, oldRevisionId, oldDoc);
+    res = deletePrimaryIndex(trx, oldRevisionId, oldDoc);
 
     if (res != TRI_ERROR_NO_ERROR) {
       insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
@@ -2741,7 +2738,7 @@ int LogicalCollection::rollbackOperation(arangodb::Transaction* trx,
     TRI_ASSERT(!newDoc.isNone());
 
     // ignore any errors we're getting from this
-    deleteMMFilesPrimaryIndex(trx, newRevisionId, newDoc);
+    deletePrimaryIndex(trx, newRevisionId, newDoc);
     deleteSecondaryIndexes(trx, newRevisionId, newDoc, true);
     return TRI_ERROR_NO_ERROR;
   }
@@ -2766,7 +2763,7 @@ int LogicalCollection::rollbackOperation(arangodb::Transaction* trx,
     TRI_ASSERT(newRevisionId == 0);
     TRI_ASSERT(newDoc.isNone());
     
-    int res = insertMMFilesPrimaryIndex(trx, oldRevisionId, oldDoc);
+    int res = insertPrimaryIndex(trx, oldRevisionId, oldDoc);
 
     if (res == TRI_ERROR_NO_ERROR) {
       res = insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
@@ -3337,7 +3334,7 @@ int LogicalCollection::insertDocument(
     MMFilesDocumentOperation& operation,
     MMFilesWalMarker const* marker, bool& waitForSync) {
   // insert into primary index first
-  int res = insertMMFilesPrimaryIndex(trx, revisionId, doc);
+  int res = insertPrimaryIndex(trx, revisionId, doc);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // insert has failed
@@ -3349,7 +3346,7 @@ int LogicalCollection::insertDocument(
 
   if (res != TRI_ERROR_NO_ERROR) {
     deleteSecondaryIndexes(trx, revisionId, doc, true);
-    deleteMMFilesPrimaryIndex(trx, revisionId, doc);
+    deletePrimaryIndex(trx, revisionId, doc);
     return res;
   }
 
@@ -3366,7 +3363,7 @@ int LogicalCollection::insertDocument(
 }
 
 /// @brief creates a new entry in the primary index
-int LogicalCollection::insertMMFilesPrimaryIndex(arangodb::Transaction* trx,
+int LogicalCollection::insertPrimaryIndex(arangodb::Transaction* trx,
                                           TRI_voc_rid_t revisionId,
                                           VPackSlice const& doc) {
   TRI_IF_FAILURE("InsertPrimaryIndex") { return TRI_ERROR_DEBUG; }
@@ -3376,7 +3373,7 @@ int LogicalCollection::insertMMFilesPrimaryIndex(arangodb::Transaction* trx,
 }
 
 /// @brief deletes an entry from the primary index
-int LogicalCollection::deleteMMFilesPrimaryIndex(arangodb::Transaction* trx,
+int LogicalCollection::deletePrimaryIndex(arangodb::Transaction* trx,
                                           TRI_voc_rid_t revisionId,
                                           VPackSlice const& doc) {
   TRI_IF_FAILURE("DeletePrimaryIndex") { return TRI_ERROR_DEBUG; }

@@ -1155,26 +1155,39 @@ void Transaction::buildDocumentIdentity(LogicalCollection* collection,
                                         TRI_voc_rid_t oldRid,
                                         uint8_t const* oldVPack,
                                         uint8_t const* newVPack) {
-  builder.openObject();
+  std::string temp;
+  temp.reserve(64);
+
   if (ServerState::isRunningInCluster(_serverRole)) {
     std::string resolved = resolver()->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE
-  if (resolved.compare(0, 7, "_local_") == 0) {
-    resolved.erase(0, 7);
-  } else if (resolved.compare(0, 6, "_from_") == 0) {
-    resolved.erase(0, 6);
-  } else if (resolved.compare(0, 4, "_to_") == 0) {
-    resolved.erase(0,4);
-  }
+    if (resolved.compare(0, 7, "_local_") == 0) {
+      resolved.erase(0, 7);
+    } else if (resolved.compare(0, 6, "_from_") == 0) {
+      resolved.erase(0, 6);
+    } else if (resolved.compare(0, 4, "_to_") == 0) {
+      resolved.erase(0,4);
+    }
 #endif
-    builder.add(StaticStrings::IdString, VPackValue(resolved + "/" + key.toString()));
+    // build collection name
+    temp.append(resolved);
   } else {
-    builder.add(StaticStrings::IdString,
-                VPackValue(collection->name() + "/" + key.toString()));
+    // build collection name
+    temp.append(collection->name());
   }
+
+  // append / and key part
+  temp.push_back('/');
+  temp.append(key.begin(), key.size());
+  
+  builder.openObject();
+  builder.add(StaticStrings::IdString, VPackValue(temp));
+
   builder.add(StaticStrings::KeyString, VPackValuePair(key.data(), key.length(), VPackValueType::String));
+  
   TRI_ASSERT(rid != 0);
   builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rid)));
+  
   if (oldRid != 0) {
     builder.add("_oldRev", VPackValue(TRI_RidToString(oldRid)));
   }
