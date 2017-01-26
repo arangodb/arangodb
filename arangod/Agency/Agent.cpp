@@ -926,13 +926,13 @@ void Agent::detectActiveAgentFailures() {
 void Agent::beginShutdown() {
   Thread::beginShutdown();
 
+  // Stop constituent and key value stores
+  _constituent.beginShutdown();
+
   // Stop supervision
   if (_config.supervision()) {
     _supervision.beginShutdown();
   }
-
-  // Stop constituent and key value stores
-  _constituent.beginShutdown();
 
   // Stop inception process
   if (_inception != nullptr) {
@@ -943,6 +943,7 @@ void Agent::beginShutdown() {
   _spearhead.beginShutdown();
   _readDB.beginShutdown();
 
+  int counter = 0;
   if (_inception != nullptr) {
     int counter = 0;
     while (_inception->isRunning()) {
@@ -954,7 +955,7 @@ void Agent::beginShutdown() {
     }
   }
 
-  int counter = 0;
+  counter = 0;
   while (_spearhead.isRunning() || _readDB.isRunning()) {
     usleep(100000);
     // emit warning after 5 seconds
@@ -963,6 +964,7 @@ void Agent::beginShutdown() {
     }
   }
 
+  counter = 0;
   while (_constituent.isRunning()) {
     usleep(100000);
     // emit warning after 5 seconds
@@ -970,14 +972,6 @@ void Agent::beginShutdown() {
       LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for constituent thread to finish";
     }
   }
-  
-/*  while (_supervision.isRunning()) {
-    usleep(100000);
-    // emit warning after 5 seconds
-    if (++counter == 10 * 5) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for supervision thread to finish";
-    }
-    }*/
   
   // Wake up all waiting rest handlers
   {
