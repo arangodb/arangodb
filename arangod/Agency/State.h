@@ -26,6 +26,7 @@
 
 #include "AgencyCommon.h"
 #include "Cluster/ClusterComm.h"
+#include "Utils/OperationOptions.h"
 
 #include <velocypack/vpack.h>
 

@@ -48,6 +48,7 @@
 #include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/OperationOptions.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/TransactionContext.h"
 #include "Utils/TransactionHints.h"

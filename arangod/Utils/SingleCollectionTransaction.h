@@ -61,7 +61,7 @@ class SingleCollectionTransaction : public Transaction {
   /// @brief get the underlying transaction collection
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_transaction_collection_t* trxCollection();
+  TransactionCollection* trxCollection();
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -130,7 +130,7 @@ class SingleCollectionTransaction : public Transaction {
   /// @brief trxCollection cache
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_transaction_collection_t* _trxCollection;
+  TransactionCollection* _trxCollection;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief LogicalCollection* cache

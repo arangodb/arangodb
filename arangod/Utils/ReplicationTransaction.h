@@ -52,10 +52,10 @@ class ReplicationTransaction : public Transaction {
   /// this will automatically add the collection to the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  inline TRI_transaction_collection_t* trxCollection(TRI_voc_cid_t cid) {
+  inline TransactionCollection* trxCollection(TRI_voc_cid_t cid) {
     TRI_ASSERT(cid > 0);
 
-    TRI_transaction_collection_t* trxCollection =
+    TransactionCollection* trxCollection =
         TRI_GetCollectionTransaction(this->_trx, cid, AccessMode::Type::WRITE);
 
     if (trxCollection == nullptr) {

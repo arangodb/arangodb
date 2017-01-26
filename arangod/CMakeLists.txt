@@ -314,6 +314,7 @@ SET(ARANGOD_SOURCES
   Utils/SingleCollectionTransaction.cpp
   Utils/StandaloneTransactionContext.cpp
   Utils/Transaction.cpp
+  Utils/TransactionCollection.cpp
   Utils/TransactionContext.cpp
   Utils/TransactionState.cpp
   Utils/V8TransactionContext.cpp

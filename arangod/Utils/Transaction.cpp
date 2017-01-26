@@ -47,7 +47,9 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationCursor.h"
+#include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utils/TransactionCollection.h"
 #include "Utils/TransactionContext.h"
 #include "Utils/TransactionState.h"
 #include "VocBase/Ditch.h"
@@ -634,7 +636,7 @@ CollectionNameResolver const* Transaction::resolver() {
 }
   
 /// @brief return the transaction collection for a document collection
-TRI_transaction_collection_t* Transaction::trxCollection(TRI_voc_cid_t cid) const {
+TransactionCollection* Transaction::trxCollection(TRI_voc_cid_t cid) const {
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(getStatus() == Transaction::Status::RUNNING);
 
@@ -651,7 +653,7 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
     return _ditchCache.ditch;
   }
 
-  TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(_trx, cid, AccessMode::Type::READ);
+  TransactionCollection* trxCollection = TRI_GetCollectionTransaction(_trx, cid, AccessMode::Type::READ);
 
   if (trxCollection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to determine transaction collection");    
@@ -1358,7 +1360,7 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
   }
   
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  TRI_transaction_collection_t* trxCol = trxCollection(cid);
+  TransactionCollection* trxCol = trxCollection(cid);
   LogicalCollection* document = documentCollection(trxCol);
 
   orderDitch(cid); // will throw when it fails
@@ -3077,7 +3079,7 @@ std::unique_ptr<OperationCursor> Transaction::indexScan(
   
 /// @brief return the collection
 arangodb::LogicalCollection* Transaction::documentCollection(
-      TRI_transaction_collection_t const* trxCollection) const {
+      TransactionCollection const* trxCollection) const {
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(trxCollection != nullptr);
   TRI_ASSERT(getStatus() == Transaction::Status::RUNNING);
@@ -3167,14 +3169,14 @@ bool Transaction::isLocked(LogicalCollection* document,
     return false;
   }
 
-  TRI_transaction_collection_t* trxCollection =
+  TransactionCollection* trxCollection =
       TRI_GetCollectionTransaction(_trx, document->cid(), type);
   TRI_ASSERT(trxCollection != nullptr);
   return TRI_IsLockedCollectionTransaction(trxCollection, type, _nestingLevel);
 }
 
 /// @brief read- or write-lock a collection
-int Transaction::lock(TRI_transaction_collection_t* trxCollection,
+int Transaction::lock(TransactionCollection* trxCollection,
            AccessMode::Type type) {
   if (_trx == nullptr || getStatus() != Transaction::Status::RUNNING) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
@@ -3184,7 +3186,7 @@ int Transaction::lock(TRI_transaction_collection_t* trxCollection,
 }
 
 /// @brief read- or write-unlock a collection
-int Transaction::unlock(TRI_transaction_collection_t* trxCollection,
+int Transaction::unlock(TransactionCollection* trxCollection,
              AccessMode::Type type) {
   if (_trx == nullptr || getStatus() != Transaction::Status::RUNNING) {
     return TRI_ERROR_TRANSACTION_INTERNAL;

@@ -31,6 +31,7 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "Utils/Transaction.h"
+#include "Utils/TransactionCollection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 #include "VocBase/ticks.h"
@@ -58,7 +59,7 @@ static bool IsWrite(AccessMode::Type type) {
 }
   
 /// @brief returns whether the collection is currently locked
-static inline bool IsLocked(TRI_transaction_collection_t const* trxCollection) {
+static inline bool IsLocked(TransactionCollection const* trxCollection) {
   return (trxCollection->_lockType != AccessMode::Type::NONE);
 }
 
@@ -193,7 +194,7 @@ static void FreeOperations(arangodb::Transaction* activeTrx, TransactionState* t
 }
 
 /// @brief find a collection in the transaction's list of collections
-static TRI_transaction_collection_t* FindCollection(
+static TransactionCollection* FindCollection(
     TransactionState const* trx, TRI_voc_cid_t cid,
     size_t* position) {
 
@@ -224,7 +225,7 @@ static TRI_transaction_collection_t* FindCollection(
 }
 
 /// @brief lock a collection
-static int LockCollection(TRI_transaction_collection_t* trxCollection,
+static int LockCollection(TransactionCollection* trxCollection,
                           AccessMode::Type type, int nestingLevel) {
   TRI_ASSERT(trxCollection != nullptr);
 
@@ -278,7 +279,7 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
 }
 
 /// @brief unlock a collection
-static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
+static int UnlockCollection(TransactionCollection* trxCollection,
                             AccessMode::Type type, int nestingLevel) {
   TRI_ASSERT(trxCollection != nullptr);
 
@@ -431,7 +432,7 @@ static int UnuseCollections(TransactionState* trx, int nestingLevel) {
 
   // process collections in reverse order
   for (auto it = trx->_collections.rbegin(); it != trx->_collections.rend(); ++it) {
-    TRI_transaction_collection_t* trxCollection = (*it);
+    TransactionCollection* trxCollection = (*it);
 
     if (IsLocked(trxCollection) &&
         (nestingLevel == 0 || trxCollection->_nestingLevel == nestingLevel)) {
@@ -466,7 +467,7 @@ static int ReleaseCollections(TransactionState* trx, int nestingLevel) {
 
   // process collections in reverse order
   for (auto it = trx->_collections.rbegin(); it != trx->_collections.rend(); ++it) {
-    TRI_transaction_collection_t* trxCollection = (*it);
+    TransactionCollection* trxCollection = (*it);
 
     // the top level transaction releases all collections
     if (trxCollection->_collection != nullptr) {
@@ -632,13 +633,13 @@ static void UpdateTransactionStatus(TransactionState* const trx,
 
 
 /// @brief return the collection from a transaction
-TRI_transaction_collection_t* arangodb::TRI_GetCollectionTransaction(
+TransactionCollection* arangodb::TRI_GetCollectionTransaction(
     TransactionState const* trx, TRI_voc_cid_t cid,
     AccessMode::Type accessType) {
   TRI_ASSERT(trx->_status == Transaction::Status::CREATED ||
              trx->_status == Transaction::Status::RUNNING);
 
-  TRI_transaction_collection_t* trxCollection =
+  TransactionCollection* trxCollection =
       FindCollection(trx, cid, nullptr);
 
   if (trxCollection == nullptr) {
@@ -694,7 +695,7 @@ int arangodb::TRI_AddCollectionTransaction(TransactionState* trx, TRI_voc_cid_t 
 
   // check if we already have got this collection in the _collections vector
   size_t position = 0;
-  TRI_transaction_collection_t* trxCollection =
+  TransactionCollection* trxCollection =
       FindCollection(trx, cid, &position);
   
   if (trxCollection != nullptr) {
@@ -735,7 +736,7 @@ int arangodb::TRI_AddCollectionTransaction(TransactionState* trx, TRI_voc_cid_t 
   // collection was not contained. now create and insert it
   TRI_ASSERT(trxCollection == nullptr);
   try {
-    trxCollection = new TRI_transaction_collection_t(trx, cid, accessType, nestingLevel);
+    trxCollection = new TransactionCollection(trx, cid, accessType, nestingLevel);
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -760,7 +761,7 @@ int arangodb::TRI_EnsureCollectionsTransaction(TransactionState* trx, int nestin
 }
 
 /// @brief request a lock for a collection
-int arangodb::TRI_LockCollectionTransaction(TRI_transaction_collection_t* trxCollection,
+int arangodb::TRI_LockCollectionTransaction(TransactionCollection* trxCollection,
                                   AccessMode::Type accessType,
                                   int nestingLevel) {
   if (IsWrite(accessType) && !IsWrite(trxCollection->_accessType)) {
@@ -777,7 +778,7 @@ int arangodb::TRI_LockCollectionTransaction(TRI_transaction_collection_t* trxCol
 }
 
 /// @brief request an unlock for a collection
-int arangodb::TRI_UnlockCollectionTransaction(TRI_transaction_collection_t* trxCollection,
+int arangodb::TRI_UnlockCollectionTransaction(TransactionCollection* trxCollection,
                                     AccessMode::Type accessType,
                                     int nestingLevel) {
   if (IsWrite(accessType) && !IsWrite(trxCollection->_accessType)) {
@@ -795,7 +796,7 @@ int arangodb::TRI_UnlockCollectionTransaction(TRI_transaction_collection_t* trxC
 
 /// @brief check if a collection is locked in a transaction
 bool arangodb::TRI_IsLockedCollectionTransaction(
-    TRI_transaction_collection_t const* trxCollection,
+    TransactionCollection const* trxCollection,
     AccessMode::Type accessType, int nestingLevel) {
   TRI_ASSERT(trxCollection != nullptr);
 
@@ -810,7 +811,7 @@ bool arangodb::TRI_IsLockedCollectionTransaction(
 
 /// @brief check if a collection is locked in a transaction
 bool arangodb::TRI_IsLockedCollectionTransaction(
-    TRI_transaction_collection_t const* trxCollection) {
+    TransactionCollection const* trxCollection) {
   TRI_ASSERT(trxCollection != nullptr);
   return IsLocked(trxCollection);
 }
@@ -941,7 +942,7 @@ int arangodb::TRI_AddOperationTransaction(TransactionState* trx,
     collection->increaseUncollectedLogfileEntries(1);
   } else {
     // operation is buffered and might be rolled back
-    TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(
+    TransactionCollection* trxCollection = TRI_GetCollectionTransaction(
         trx, collection->cid(), AccessMode::Type::WRITE);
     if (trxCollection->_operations == nullptr) {
       trxCollection->_operations = new std::vector<MMFilesDocumentOperation*>;

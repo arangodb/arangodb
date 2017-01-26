@@ -23,7 +23,9 @@
 
 #include "SingleCollectionTransaction.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/OperationResult.h"
 #include "Utils/Transaction.h"
+#include "Utils/TransactionCollection.h"
 #include "Utils/TransactionContext.h"
 #include "Utils/TransactionState.h"
 #include "VocBase/Ditch.h"
@@ -73,7 +75,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 /// @brief get the underlying transaction collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_transaction_collection_t* SingleCollectionTransaction::trxCollection() {
+TransactionCollection* SingleCollectionTransaction::trxCollection() {
   TRI_ASSERT(_cid > 0);
 
   if (_trxCollection == nullptr) {

@@ -28,7 +28,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
-#include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/TransactionHints.h"
 #include "VocBase/AccessMode.h"
@@ -74,9 +73,10 @@ struct DocumentIdentifierToken;
 class Index;
 class ManagedDocumentResult;
 struct OperationCursor;
+struct OperationOptions;
 class TransactionContext;
 struct TransactionState;
-struct TRI_transaction_collection_t;
+struct TransactionCollection;
 
 class Transaction {
   friend class traverser::BaseTraverserEngine;
@@ -532,11 +532,11 @@ class Transaction {
   static OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool aggregate);
 
   /// @brief return the transaction collection for a document collection
-  TRI_transaction_collection_t* trxCollection(TRI_voc_cid_t cid) const;
+  TransactionCollection* trxCollection(TRI_voc_cid_t cid) const;
 
   /// @brief return the collection
   arangodb::LogicalCollection* documentCollection(
-      TRI_transaction_collection_t const*) const;
+      TransactionCollection const*) const;
   
   /// @brief add a collection by id, with the name supplied
   int addCollection(TRI_voc_cid_t, char const*, AccessMode::Type);
@@ -560,10 +560,10 @@ class Transaction {
   void setAllowImplicitCollections(bool value);
 
   /// @brief read- or write-lock a collection
-  int lock(TRI_transaction_collection_t*, AccessMode::Type);
+  int lock(TransactionCollection*, AccessMode::Type);
 
   /// @brief read- or write-unlock a collection
-  int unlock(TRI_transaction_collection_t*, AccessMode::Type);
+  int unlock(TransactionCollection*, AccessMode::Type);
 
  private:
 

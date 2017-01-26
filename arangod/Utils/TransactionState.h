@@ -42,9 +42,7 @@ class LogicalCollection;
 struct MMFilesDocumentOperation;
 class MMFilesWalMarker;
 class Transaction;
-
-struct TRI_transaction_collection_t;
-
+struct TransactionCollection;
 
 /// @brief transaction type
 struct TransactionState {
@@ -59,8 +57,8 @@ struct TransactionState {
   TRI_voc_tid_t _id;                  // local trx id
   AccessMode::Type _type;       // access type (read|write)
   Transaction::Status _status;   // current status
-  SmallVector<TRI_transaction_collection_t*>::allocator_type::arena_type _arena; // memory for collections
-  SmallVector<TRI_transaction_collection_t*> _collections; // list of participating collections
+  SmallVector<TransactionCollection*>::allocator_type::arena_type _arena; // memory for collections
+  SmallVector<TransactionCollection*> _collections; // list of participating collections
   rocksdb::Transaction* _rocksTransaction;
   TransactionHints _hints;      // hints;
   int _nestingLevel;
@@ -70,26 +68,6 @@ struct TransactionState {
   bool _beginWritten;  // whether or not the begin marker was already written
   double _timeout;     // timeout for lock acquisition
 };
-
-/// @brief collection used in a transaction
-struct TRI_transaction_collection_t {
-  TRI_transaction_collection_t(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel)
-      : _transaction(trx), _cid(cid), _accessType(accessType), _nestingLevel(nestingLevel), _collection(nullptr), _operations(nullptr),
-        _originalRevision(0), _lockType(AccessMode::Type::NONE), _compactionLocked(false), _waitForSync(false) {}
-
-  TransactionState* _transaction;     // the transaction
-  TRI_voc_cid_t const _cid;                  // collection id
-  AccessMode::Type _accessType;  // access type (read|write)
-  int _nestingLevel;  // the transaction level that added this collection
-  LogicalCollection* _collection;  // vocbase collection pointer
-  std::vector<MMFilesDocumentOperation*>* _operations;
-  TRI_voc_rid_t _originalRevision;   // collection revision at trx start
-  AccessMode::Type _lockType;  // collection lock type
-  bool
-      _compactionLocked;  // was the compaction lock grabbed for the collection?
-  bool _waitForSync;      // whether or not the collection has waitForSync
-};
-
 
 /// @brief get the transaction id for usage in a marker
 static inline TRI_voc_tid_t TRI_MarkerIdTransaction(
@@ -102,7 +80,7 @@ static inline TRI_voc_tid_t TRI_MarkerIdTransaction(
 }
 
 /// @brief return the collection from a transaction
-TRI_transaction_collection_t* TRI_GetCollectionTransaction(
+TransactionCollection* TRI_GetCollectionTransaction(
     TransactionState const*, TRI_voc_cid_t, AccessMode::Type);
 
 /// @brief add a collection to a transaction
@@ -113,19 +91,19 @@ int TRI_AddCollectionTransaction(TransactionState*, TRI_voc_cid_t,
 int TRI_EnsureCollectionsTransaction(TransactionState*, int = 0);
 
 /// @brief request a lock for a collection
-int TRI_LockCollectionTransaction(TRI_transaction_collection_t*,
+int TRI_LockCollectionTransaction(TransactionCollection*,
                                   AccessMode::Type, int);
 
 /// @brief request an unlock for a collection
-int TRI_UnlockCollectionTransaction(TRI_transaction_collection_t*,
+int TRI_UnlockCollectionTransaction(TransactionCollection*,
                                     AccessMode::Type, int);
 
 /// @brief check whether a collection is locked in a transaction
-bool TRI_IsLockedCollectionTransaction(TRI_transaction_collection_t const*,
+bool TRI_IsLockedCollectionTransaction(TransactionCollection const*,
                                        AccessMode::Type, int);
 
 /// @brief check whether a collection is locked in a transaction
-bool TRI_IsLockedCollectionTransaction(TRI_transaction_collection_t const*);
+bool TRI_IsLockedCollectionTransaction(TransactionCollection const*);
 
 /// @brief check whether a collection is contained in a transaction
 bool TRI_IsContainedCollectionTransaction(TransactionState*, TRI_voc_cid_t);
