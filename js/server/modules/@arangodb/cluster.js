@@ -685,6 +685,7 @@ function createIndexes(collection, plannedIndexes) {
         errorMessage: 'could not delete index locally',
       };
     }
+    return errors;
   }, errors);
 }
 
@@ -705,7 +706,7 @@ function executePlanForCollections(plannedCollections) {
       fullError[shardName] = {
         info: {database, planId, shardName},
       };
-      fullError = Object.assign(fullError, errors);
+      fullError[shardName] = Object.assign(fullError[shardName], errors);
       return fullError;
     } else {
       return errors;
@@ -844,7 +845,7 @@ function executePlanForCollections(plannedCollections) {
               }
 
               let indexErrors = createIndexes(collection, collectionInfo.indexes || {});
-              if (indexErrors > 0) {
+              if (Object.keys(indexErrors).length > 0) {
                 shardErrors.indexErrors = indexErrors;
               }
             }
