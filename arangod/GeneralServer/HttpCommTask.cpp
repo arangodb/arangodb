@@ -68,7 +68,6 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
   connectionStatisticsAgentSetHttp();
   
   auto agent = std::make_unique<RequestStatisticsAgent>(true);
-  agent->acquire();
   MUTEX_LOCKER(lock, _agentsMutex);
   _agents.emplace(std::make_pair(1UL, std::move(agent)));
 }
@@ -264,11 +263,11 @@ bool HttpCommTask::processRead(double startTime) {
       return false;
     }
 
-    if (std::strncmp(_readBuffer.c_str(), "VST/1.0\r\n\r\n", 11) == 0) {
-      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "Switching from Http to Vst";
-      std::shared_ptr<GeneralCommTask> commTask;
+    if (_readBuffer.length() >= 11 && std::memcmp(_readBuffer.c_str(), "VST/1.0\r\n\r\n", 11) == 0) {
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "switching from HTTP to VST";
       _abandoned = true;
       cancelKeepAlive();
+      std::shared_ptr<GeneralCommTask> commTask;
       commTask = std::make_shared<VppCommTask>(
           _loop, _server, std::move(_peer), std::move(_connectionInfo),
           GeneralServerFeature::keepAliveTimeout(), /*skipSocketInit*/ true);
@@ -286,8 +285,8 @@ bool HttpCommTask::processRead(double startTime) {
       char const* sptr = _readBuffer.c_str() + _startPosition;
       size_t slen = _readPosition - _startPosition;
 
-      if (slen == 11 && memcmp(sptr, "VST/1.1", 7) == 0) {
-        LOG(WARN) << "got VelocyStream request on HTTP port";
+      if (slen == 11 && std::memcmp(sptr, "VST/1.1\r\n\r\n", 11) == 0) {
+        LOG(WARN) << "got VST request on HTTP port";
         return false;
       }
 
