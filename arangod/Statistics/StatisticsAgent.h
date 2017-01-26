@@ -95,13 +95,14 @@ class StatisticsAgent {
 
  protected:
   void replace(STAT* statistics) {
-    LOG(ERR) << "RequestStatisticsAgent::replace called with alias.";
     if (_statistics != statistics) {
       if (_statistics != nullptr) {
         FUNC::release(_statistics);
       }
 
       _statistics = statistics;
+    } else {
+      LOG(ERR) << "RequestStatisticsAgent::replace called with alias.";
     }
   }
 };
