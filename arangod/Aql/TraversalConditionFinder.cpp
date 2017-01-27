@@ -413,13 +413,19 @@ static void transformCondition(AstNode const* node, Variable const* pvar,
   }
 }
 
+TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan,
+                                                   bool* planAltered)
+    : _plan(plan),
+      _condition(std::make_unique<Condition>(plan->getAst())),
+      _planAltered(planAltered) {}
+
 bool TraversalConditionFinder::before(ExecutionNode* en) {
-  if (!_conditions.empty() && en->canThrow()) {
+  if (!_condition->isEmpty() && en->canThrow()) {
     // we already found a FILTER and
     // something that can throw is not safe to optimize
 
     _filterVariables.clear();
-    // What about _expressionNodes?
+    // What about _condition?
     return true;
   }
 
@@ -470,26 +476,18 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        /*
-        AstNode const* cond = calcNode->expression()->node();
-        switch (cond->type) {
-          NODE_TYPE_BINARY_AND
-
-        }
-        */
-        // TODO If this is an AND we either split it up here
-        // or we split up internally
-        _conditions.emplace_back(calcNode->expression()->node());
+        _condition->andCombine(calcNode->expression()->node());
       }
       break;
     }
 
     case EN::TRAVERSAL: {
       auto node = static_cast<TraversalNode*>(en);
+      if (_condition->isEmpty()) {
+        // No condition, no optimize
+        break;
+      }
 
-      auto condition = std::make_unique<Condition>(_plan->getAst());
-
-      bool foundCondition = false;
       auto const& varsValidInTraversal = node->getVarsValid();
 
       bool conditionIsImpossible = false;
@@ -504,63 +502,79 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         break;
       }
 
+      _condition->normalize(_plan);
+
+      TRI_IF_FAILURE("ConditionFinder::normalizePlan") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      // _condition is now in disjunctive normal form
+      auto orNode = _condition->root();
+      TRI_ASSERT(orNode->type == NODE_TYPE_OPERATOR_NARY_OR);
+      if (orNode->numMembers() != 1) {
+        // Multiple OR statements.
+        // => No optimization
+        break;
+      }
+
+      auto andNode = orNode->getMemberUnchecked(0);
+      TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
+
       std::unordered_set<Variable const*> varsUsedByCondition;
 
-      /*
-      // TEMP check
-      auto tmpCond = std::make_unique<Condition>(_plan->getAst());
-      for (auto const& cond : _conditions) {
-        tmpCond->andCombine(cond->clone(_plan->getAst()));
-      }
-      tmpCond->normalize(_plan);
-      VPackBuilder husten;
-      tmpCond->toVelocyPack(husten, true);
-      LOG(ERR) << "ALl normalized " << husten.toJson();
-      */
+      for (size_t i = andNode->numMembers(); i > 0; --i) {
+        // Whenever we do not support a of the condition we have to throw it out
 
-      for (auto const& cond : _conditions) {
-        // We now iterate over all conditions we found, and check if we can
-        // optimize them
+        auto cond = andNode->getMemberUnchecked(i - 1);
+        // We now iterate over all condition-parts  we found, and check if we
+        // can optimize them
         varsUsedByCondition.clear();
         Ast::getReferencedVariables(cond, varsUsedByCondition);
 
         if (varsUsedByCondition.find(pathVar) == varsUsedByCondition.end()) {
           // For now we only! optimize filter conditions on the path
           // So we skip all FILTERS not referencing the path
+          andNode->removeMemberUnchecked(i - 1);
           continue; 
         }
 
-        // now we validate that there is no variable used in this condition the Traverser does not know
-        bool unknownVarFound = false;
+        // now we validate that there is no illegal variable used.
+        // illegal are
+        // * edgeVar and vertexVar. Those are not set
+        // during runtime
+        // * variables issued after the traversal
+        bool illegalVarFound = false;
         for (auto const& var : varsUsedByCondition) {
-          if (var == edgeVar || var == vertexVar) {
-            unknownVarFound = true;
-            break;
-          }
-          if (varsValidInTraversal.find(var) == varsValidInTraversal.end()) {
-            unknownVarFound = true;
+          if (var == edgeVar || var == vertexVar ||
+              varsValidInTraversal.find(var) == varsValidInTraversal.end()) {
+            illegalVarFound = true;
             break;
           }
         }
 
-        if (unknownVarFound) {
+        if (illegalVarFound) {
           // we found a variable created after the
           // traversal. Cannot optimize this condition
+          andNode->removeMemberUnchecked(i - 1);
           continue;
         }
 
         // If we get here we can optimize this condition
         if (checkPathVariableAccessFeasible(cond, node, pathVar,
                                             conditionIsImpossible)) {
-          condition->andCombine(cond->clone(_plan->getAst()));
-          foundCondition = true;
-        }
-        if (conditionIsImpossible) {
-          break;
+          // TODO
+        } else {
+          andNode->removeMemberUnchecked(i - 1);
+          if (conditionIsImpossible) {
+            // If we get here we cannot fulfill the condition
+            // So clear
+            andNode->clearMembers();
+            break;
+          }
         }
       }
 
-      if (conditionIsImpossible || (foundCondition && condition->isEmpty())) {
+      if (conditionIsImpossible) {
         // condition is always false
         for (auto const& x : node->getParents()) {
           auto noRes = new NoResultsNode(_plan, _plan->nextId());
@@ -570,15 +584,36 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         }
         break;
       }
-
-      if (foundCondition) {
-        condition->normalize();
-        TRI_IF_FAILURE("ConditionFinder::normalizePlan") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      bool isEmpty = _condition->isEmpty();
+      if (!isEmpty) {
+        // Check if it only contains an empty n-ary-and within the n-ary-or
+        auto node = _condition->root();
+        TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR);
+        switch(node->numMembers()) {
+          case 0:
+            isEmpty = true;
+            break;
+          case 1:
+            node = node->getMemberUnchecked(0);
+            // We have a DNF, so only n-ary And allowed here
+            TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
+            // If this is empty the condition actually is empty.
+            isEmpty = (node->numMembers() == 0);
+            break;
+          default:
+            isEmpty = false;
         }
-        transformCondition(condition->root(), node->pathOutVariable(),
-   _plan->getAst(), node);
-        node->setCondition(condition.release());
+      }
+
+      if (!isEmpty) {
+        transformCondition(_condition->root(), node->pathOutVariable(),
+                           _plan->getAst(), node);
+        node->setCondition(_condition.release());
+        // We restart here with an empty condition.
+        // All Filters that have been collected thus far
+        // depend on sth issued by this traverser or later
+        // specifically they cannot be used by any earlier traversal
+        _condition = std::make_unique<Condition>(_plan->getAst());
         *_planAltered = true;
       }
       break;
