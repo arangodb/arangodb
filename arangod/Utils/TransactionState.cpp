@@ -224,238 +224,6 @@ static TransactionCollection* FindCollection(
   return nullptr;
 }
 
-/// @brief lock a collection
-static int LockCollection(TransactionCollection* trxCollection,
-                          AccessMode::Type type, int nestingLevel) {
-  TRI_ASSERT(trxCollection != nullptr);
-
-  TransactionState* trx = trxCollection->_transaction;
-
-  if (HasHint(trx, TransactionHints::Hint::LOCK_NEVER)) {
-    // never lock
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  TRI_ASSERT(trxCollection->_collection != nullptr);
-
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(trxCollection->_collection->name());
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "LockCollection blocked: " << collName << std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  TRI_ASSERT(!IsLocked(trxCollection));
-
-  LogicalCollection* collection = trxCollection->_collection;
-  TRI_ASSERT(collection != nullptr);
-  double timeout = trx->_timeout;
-  if (HasHint(trxCollection->_transaction, TransactionHints::Hint::TRY_LOCK)) {
-    // give up early if we cannot acquire the lock instantly
-    timeout = 0.00000001;
-  }
-  
-  bool const useDeadlockDetector = !IsSingleOperationTransaction(trx);
-
-  int res;
-  if (!IsWrite(type)) {
-    LOG_TRX(trx, nestingLevel) << "read-locking collection " << trxCollection->_cid;
-    res = collection->beginReadTimed(useDeadlockDetector, timeout);
-  } else { // WRITE or EXCLUSIVE
-    LOG_TRX(trx, nestingLevel) << "write-locking collection "
-                               << trxCollection->_cid;
-    res = collection->beginWriteTimed(useDeadlockDetector, timeout);
-  }
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    trxCollection->_lockType = type;
-  }
-
-  return res;
-}
-
-/// @brief unlock a collection
-static int UnlockCollection(TransactionCollection* trxCollection,
-                            AccessMode::Type type, int nestingLevel) {
-  TRI_ASSERT(trxCollection != nullptr);
-
-  if (HasHint(trxCollection->_transaction, TransactionHints::Hint::LOCK_NEVER)) {
-    // never unlock
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  TRI_ASSERT(trxCollection->_collection != nullptr);
-
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(trxCollection->_collection->name());
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "UnlockCollection blocked: " << collName << std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  TRI_ASSERT(IsLocked(trxCollection));
-
-  if (trxCollection->_nestingLevel < nestingLevel) {
-    // only process our own collections
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  if (!IsWrite(type) && IsWrite(trxCollection->_lockType)) {
-    // do not remove a write-lock if a read-unlock was requested!
-    return TRI_ERROR_NO_ERROR;
-  } else if (IsWrite(type) && !IsWrite(trxCollection->_lockType)) {
-    // we should never try to write-unlock a collection that we have only
-    // read-locked
-    LOG(ERR) << "logic error in UnlockCollection";
-    TRI_ASSERT(false);
-    return TRI_ERROR_INTERNAL;
-  }
-
-  TransactionState* trx = trxCollection->_transaction;
-  bool const useDeadlockDetector = !IsSingleOperationTransaction(trx);
-
-  LogicalCollection* collection = trxCollection->_collection;
-  TRI_ASSERT(collection != nullptr);
-  if (!IsWrite(trxCollection->_lockType)) {
-    LOG_TRX(trxCollection->_transaction, nestingLevel) << "read-unlocking collection " << trxCollection->_cid;
-    collection->endRead(useDeadlockDetector);
-  } else { // WRITE or EXCLUSIVE
-    LOG_TRX(trxCollection->_transaction, nestingLevel) << "write-unlocking collection " << trxCollection->_cid;
-    collection->endWrite(useDeadlockDetector);
-  }
-
-  trxCollection->_lockType = AccessMode::Type::NONE;
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief use all participating collections of a transaction
-static int UseCollections(TransactionState* trx, int nestingLevel) {
-  // process collections in forward order
-  for (auto& trxCollection : trx->_collections) {
-    if (trxCollection->_nestingLevel != nestingLevel) {
-      // only process our own collections
-      continue;
-    }
-
-    if (trxCollection->_collection == nullptr) {
-      // open the collection
-      if (!HasHint(trx, TransactionHints::Hint::LOCK_NEVER) &&
-          !HasHint(trx, TransactionHints::Hint::NO_USAGE_LOCK)) {
-        // use and usage-lock
-        TRI_vocbase_col_status_e status;
-        LOG_TRX(trx, nestingLevel) << "using collection " << trxCollection->_cid;
-        trxCollection->_collection = trx->_vocbase->useCollection(trxCollection->_cid, status);
-      } else {
-        // use without usage-lock (lock already set externally)
-        trxCollection->_collection = trx->_vocbase->lookupCollection(trxCollection->_cid);
-
-        if (trxCollection->_collection == nullptr) {
-          return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-        }
-      }
-
-      if (trxCollection->_collection == nullptr) {
-        // something went wrong
-        int res = TRI_errno();
-
-        if (res == TRI_ERROR_NO_ERROR) {
-          // must return an error
-          res = TRI_ERROR_INTERNAL;
-        }
-        return res;
-      }
-
-      if (IsWrite(trxCollection->_accessType) &&
-          TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE &&
-          !LogicalCollection::IsSystemName(
-              trxCollection->_collection->name())) {
-        return TRI_ERROR_ARANGO_READ_ONLY;
-      }
-
-      // store the waitForSync property
-      trxCollection->_waitForSync =
-          trxCollection->_collection->waitForSync();
-    }
-
-    TRI_ASSERT(trxCollection->_collection != nullptr);
-
-    if (nestingLevel == 0 &&
-        IsWrite(trxCollection->_accessType)) {
-      // read-lock the compaction lock
-      if (!HasHint(trx, TransactionHints::Hint::NO_COMPACTION_LOCK)) {
-        if (!trxCollection->_compactionLocked) {
-          trxCollection->_collection->preventCompaction();
-          trxCollection->_compactionLocked = true;
-        }
-      }
-    }
-
-    if (IsWrite(trxCollection->_accessType) &&
-        trxCollection->_originalRevision == 0) {
-      // store original revision at transaction start
-      trxCollection->_originalRevision =
-          trxCollection->_collection->revision();
-    }
-
-    bool shouldLock = HasHint(trx, TransactionHints::Hint::LOCK_ENTIRELY);
-
-    if (!shouldLock) {
-      shouldLock = (IsWrite(trxCollection->_accessType) && !IsSingleOperationTransaction(trx));
-    }
-
-    if (shouldLock && !IsLocked(trxCollection)) {
-      // r/w lock the collection
-      int res = LockCollection(trxCollection, trxCollection->_accessType,
-                               nestingLevel);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
-      }
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief release collection locks for a transaction
-static int UnuseCollections(TransactionState* trx, int nestingLevel) {
-  int res = TRI_ERROR_NO_ERROR;
-
-  // process collections in reverse order
-  for (auto it = trx->_collections.rbegin(); it != trx->_collections.rend(); ++it) {
-    TransactionCollection* trxCollection = (*it);
-
-    if (IsLocked(trxCollection) &&
-        (nestingLevel == 0 || trxCollection->_nestingLevel == nestingLevel)) {
-      // unlock our own r/w locks
-      UnlockCollection(trxCollection, trxCollection->_accessType, nestingLevel);
-    }
-
-    // the top level transaction releases all collections
-    if (nestingLevel == 0 && trxCollection->_collection != nullptr) {
-      if (!HasHint(trx, TransactionHints::Hint::NO_COMPACTION_LOCK)) {
-        if (IsWrite(trxCollection->_accessType) && trxCollection->_compactionLocked) {
-          // read-unlock the compaction lock
-          trxCollection->_collection->allowCompaction();
-          trxCollection->_compactionLocked = false;
-        }
-      }
-
-      trxCollection->_lockType = AccessMode::Type::NONE;
-    }
-  }
-
-  return res;
-}
 
 /// @brief release collection locks for a transaction
 static int ReleaseCollections(TransactionState* trx, int nestingLevel) {
@@ -754,7 +522,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
 
 /// @brief make sure all declared collections are used & locked
 int TransactionState::ensureCollections(int nestingLevel) {
-  return UseCollections(this, nestingLevel);
+  return useCollections(nestingLevel);
 }
 
 
@@ -952,7 +720,7 @@ int arangodb::TRI_BeginTransaction(TransactionState* trx, TransactionHints hints
     TRI_ASSERT(trx->_status == Transaction::Status::RUNNING);
   }
 
-  int res = UseCollections(trx, nestingLevel);
+  int res = trx->useCollections(nestingLevel);
 
   if (res == TRI_ERROR_NO_ERROR) {
     // all valid
@@ -968,7 +736,7 @@ int arangodb::TRI_BeginTransaction(TransactionState* trx, TransactionHints hints
     }
 
     // free what we have got so far
-    UnuseCollections(trx, nestingLevel);
+    trx->unuseCollections(nestingLevel);
   }
 
   return res;
@@ -1015,7 +783,7 @@ int arangodb::TRI_CommitTransaction(arangodb::Transaction* activeTrx, Transactio
     FreeOperations(activeTrx, trx);
   }
 
-  UnuseCollections(trx, nestingLevel);
+  trx->unuseCollections(nestingLevel);
 
   return res;
 }
@@ -1036,7 +804,7 @@ int arangodb::TRI_AbortTransaction(arangodb::Transaction* activeTrx, Transaction
     FreeOperations(activeTrx, trx);
   }
 
-  UnuseCollections(trx, nestingLevel);
+  trx->unuseCollections(nestingLevel);
 
   return res;
 }
@@ -1080,5 +848,124 @@ TransactionState::~TransactionState() {
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
     delete (*it);
   }
+}
+
+/// @brief use all participating collections of a transaction
+int TransactionState::useCollections(int nestingLevel) {
+  // process collections in forward order
+  for (auto& trxCollection : _collections) {
+    if (trxCollection->_nestingLevel != nestingLevel) {
+      // only process our own collections
+      continue;
+    }
+
+    if (trxCollection->_collection == nullptr) {
+      // open the collection
+      if (!HasHint(this, TransactionHints::Hint::LOCK_NEVER) &&
+          !HasHint(this, TransactionHints::Hint::NO_USAGE_LOCK)) {
+        // use and usage-lock
+        TRI_vocbase_col_status_e status;
+        LOG_TRX(this, nestingLevel) << "using collection " << trxCollection->_cid;
+        trxCollection->_collection = _vocbase->useCollection(trxCollection->_cid, status);
+      } else {
+        // use without usage-lock (lock already set externally)
+        trxCollection->_collection = _vocbase->lookupCollection(trxCollection->_cid);
+
+        if (trxCollection->_collection == nullptr) {
+          return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+        }
+      }
+
+      if (trxCollection->_collection == nullptr) {
+        // something went wrong
+        int res = TRI_errno();
+
+        if (res == TRI_ERROR_NO_ERROR) {
+          // must return an error
+          res = TRI_ERROR_INTERNAL;
+        }
+        return res;
+      }
+
+      if (IsWrite(trxCollection->_accessType) &&
+          TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE &&
+          !LogicalCollection::IsSystemName(
+              trxCollection->_collection->name())) {
+        return TRI_ERROR_ARANGO_READ_ONLY;
+      }
+
+      // store the waitForSync property
+      trxCollection->_waitForSync =
+          trxCollection->_collection->waitForSync();
+    }
+
+    TRI_ASSERT(trxCollection->_collection != nullptr);
+
+    if (nestingLevel == 0 &&
+        IsWrite(trxCollection->_accessType)) {
+      // read-lock the compaction lock
+      if (!HasHint(this, TransactionHints::Hint::NO_COMPACTION_LOCK)) {
+        if (!trxCollection->_compactionLocked) {
+          trxCollection->_collection->preventCompaction();
+          trxCollection->_compactionLocked = true;
+        }
+      }
+    }
+
+    if (IsWrite(trxCollection->_accessType) &&
+        trxCollection->_originalRevision == 0) {
+      // store original revision at transaction start
+      trxCollection->_originalRevision =
+          trxCollection->_collection->revision();
+    }
+
+    bool shouldLock = HasHint(this, TransactionHints::Hint::LOCK_ENTIRELY);
+
+    if (!shouldLock) {
+      shouldLock = (IsWrite(trxCollection->_accessType) && !IsSingleOperationTransaction(this));
+    }
+
+    if (shouldLock && !IsLocked(trxCollection)) {
+      // r/w lock the collection
+      int res = trxCollection->doLock(trxCollection->_accessType, nestingLevel);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief release collection locks for a transaction
+int TransactionState::unuseCollections(int nestingLevel) {
+  int res = TRI_ERROR_NO_ERROR;
+
+  // process collections in reverse order
+  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
+    TransactionCollection* trxCollection = (*it);
+
+    if (IsLocked(trxCollection) &&
+        (nestingLevel == 0 || trxCollection->_nestingLevel == nestingLevel)) {
+      // unlock our own r/w locks
+      trxCollection->doUnlock(trxCollection->_accessType, nestingLevel);
+    }
+
+    // the top level transaction releases all collections
+    if (nestingLevel == 0 && trxCollection->_collection != nullptr) {
+      if (!HasHint(this, TransactionHints::Hint::NO_COMPACTION_LOCK)) {
+        if (IsWrite(trxCollection->_accessType) && trxCollection->_compactionLocked) {
+          // read-unlock the compaction lock
+          trxCollection->_collection->allowCompaction();
+          trxCollection->_compactionLocked = false;
+        }
+      }
+
+      trxCollection->_lockType = AccessMode::Type::NONE;
+    }
+  }
+
+  return res;
 }
 

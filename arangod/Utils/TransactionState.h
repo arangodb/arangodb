@@ -64,6 +64,12 @@ struct TransactionState {
   /// @brief make sure all declared collections are used & locked
   int ensureCollections(int nestingLevel = 0);
 
+  /// @brief use all participating collections of a transaction
+  int useCollections(int nestingLevel);
+  
+  /// @brief release collection locks for a transaction
+  int unuseCollections(int nestingLevel);
+
   bool hasFailedOperations() const {
     return (_hasOperations && _status == Transaction::Status::ABORTED);
   }

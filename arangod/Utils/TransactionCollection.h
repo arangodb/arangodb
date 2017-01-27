@@ -35,6 +35,8 @@ struct TransactionState;
 
 /// @brief collection used in a transaction
 struct TransactionCollection {
+  friend class TransactionState;
+
   TransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel)
       : _transaction(trx), _cid(cid), _accessType(accessType), _nestingLevel(nestingLevel), _collection(nullptr), _operations(nullptr),
         _originalRevision(0), _lockType(AccessMode::Type::NONE), _compactionLocked(false), _waitForSync(false) {}
