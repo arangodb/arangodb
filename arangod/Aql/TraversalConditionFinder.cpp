@@ -291,7 +291,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
           // This completes this pattern. All good
           // Search for the parent having this node.
           patternStep = 5;
-        } else if (node->type == NODE_TYPE_
+        }
         // if we get here we are in the expansion operator.
         // We simply pipe this one through
         break;
