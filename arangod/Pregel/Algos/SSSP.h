@@ -32,16 +32,21 @@ namespace algos {
 /// Single Source Shortest Path. Uses integer attribute 'value', the source
 /// should have
 /// the value == 0, all others -1 or an undefined value
-struct SSSPAlgorithm : public SimpleAlgorithm<int64_t, int64_t, int64_t> {
+class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
+  std::string _sourceDocumentId, _resultField;
  public:
-  SSSPAlgorithm(VPackSlice userParams) : SimpleAlgorithm("SSSP", userParams) {}
+  SSSPAlgorithm(VPackSlice userParams) : Algorithm("SSSP") {
+    _sourceDocumentId = userParams.get("source").copyString();
+    VPackSlice slice = userParams.get("_resultField");
+    if (slice.isString()) {
+      _resultField = slice.copyString();
+    }
+  }
 
   bool supportsAsyncMode() const override { return true; }
   bool supportsCompensation() const override { return true; }
 
-  GraphFormat<int64_t, int64_t>* inputFormat() const override {
-    return new NumberGraphFormat<int64_t, int64_t> (_sourceField, _resultField, INT64_MAX, 1);
-  }
+  GraphFormat<int64_t, int64_t>* inputFormat() const override;
   
   MessageFormat<int64_t>* messageFormat() const override {
     return new IntegerMessageFormat();

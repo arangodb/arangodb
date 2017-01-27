@@ -50,33 +50,33 @@ std::string const Utils::finishedRecoveryPath = "finishedRecovery";
 std::string const Utils::finalizeRecoveryPath = "finalizeRecovery";
 
 std::string const Utils::executionNumberKey = "exn";
+std::string const Utils::algorithmKey = "algorithm";
+std::string const Utils::coordinatorIdKey = "coordinatorId";
 std::string const Utils::collectionPlanIdMapKey = "collectionPlanIdMap";
 std::string const Utils::vertexShardsKey = "vertexShards";
 std::string const Utils::edgeShardsKey = "edgeShards";
 std::string const Utils::globalShardListKey = "globalShardList";
-std::string const Utils::vertexCount = "vertexCount";
-std::string const Utils::edgeCount = "edgeCount";
+std::string const Utils::userParametersKey = "userparams";
 std::string const Utils::asyncMode = "asyncMode";
 std::string const Utils::lazyLoading = "lazyloading";
 
-std::string const Utils::coordinatorIdKey = "coordinatorId";
-std::string const Utils::algorithmKey = "algorithm";
 std::string const Utils::globalSuperstepKey = "gss";
+std::string const Utils::vertexCountKey = "vertexCount";
+std::string const Utils::edgeCountKey = "edgeCount";
 std::string const Utils::shardIdKey = "shrdId";
 std::string const Utils::messagesKey = "msgs";
 std::string const Utils::senderKey = "sender";
 std::string const Utils::recoveryMethodKey = "rmethod";
-std::string const Utils::compensate = "compensate";
-std::string const Utils::rollback = "rollback";
-
 std::string const Utils::storeResultsKey = "storeResults";
 std::string const Utils::aggregatorValuesKey = "aggregators";
 std::string const Utils::activeCountKey = "activeCount";
 std::string const Utils::receivedCountKey = "receivedCount";
 std::string const Utils::sendCountKey = "sendCount";
-std::string const Utils::superstepRuntimeKey = "superstepRuntime";
+std::string const Utils::enterNextGSSKey = "nextGSS";
 
-std::string const Utils::userParametersKey = "userparams";
+
+std::string const Utils::compensate = "compensate";
+std::string const Utils::rollback = "rollback";
 
 std::string Utils::baseUrl(std::string dbName) {
   return "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix;

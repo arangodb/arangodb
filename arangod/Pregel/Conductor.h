@@ -74,9 +74,12 @@ class Conductor {
   /// unique response, not necessarily during the async mode
   std::set<ServerID> _respondedServers;
   uint64_t _globalSuperstep = 0;
+  /// adjustable maximum gss for some algorithms
+  uint64_t _maxSuperstep = 100;
   /// determines whether we support async execution
   bool _asyncMode = false;
   bool _lazyLoading = false;
+  
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;
   /// Current number of vertices

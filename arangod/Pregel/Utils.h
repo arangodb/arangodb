@@ -61,28 +61,26 @@ class Utils {
   static std::string const vertexShardsKey;
   static std::string const edgeShardsKey;
   static std::string const globalShardListKey;
-  static std::string const vertexCount;
-  static std::string const edgeCount;
+  static std::string const userParametersKey;
   static std::string const asyncMode;
   static std::string const lazyLoading;
 
   static std::string const globalSuperstepKey;
+  static std::string const vertexCountKey;
+  static std::string const edgeCountKey;
   static std::string const shardIdKey;
   static std::string const messagesKey;
   static std::string const senderKey;
   static std::string const recoveryMethodKey;
-  static std::string const compensate;
-  static std::string const rollback;
-
   static std::string const storeResultsKey;
   static std::string const aggregatorValuesKey;
   static std::string const activeCountKey;
   static std::string const receivedCountKey;
   static std::string const sendCountKey;
-  static std::string const superstepRuntimeKey;
-
-  // User parameters
-  static std::string const userParametersKey;
+  static std::string const enterNextGSSKey;
+  
+  static std::string const compensate;
+  static std::string const rollback;
 
   static std::string baseUrl(std::string dbName);
   static void printResponses(std::vector<ClusterCommRequest> const& requests);

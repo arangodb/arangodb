@@ -37,6 +37,8 @@ class MasterContext {
   uint64_t _globalSuperstep = 0;
   uint64_t _vertexCount = 0;
   uint64_t _edgeCount = 0;
+  // Should cause the master to tell everyone to enter the next phase
+  bool _enterNextGSS = false;
   AggregatorHandler* _aggregators;
 
  public:
@@ -61,6 +63,10 @@ class MasterContext {
   inline const T* getAggregatedValue(std::string const& name) {
     return (const T*)_aggregators->getAggregatedValue(name);
   }
+  
+  inline void enterNextGlobalSuperstep() {
+    _enterNextGSS = true;
+  }
 
   virtual void preApplication(){};
 
@@ -71,6 +77,10 @@ class MasterContext {
   /// @return true to continue the computation
   virtual bool postGlobalSuperstep() { return true; };
   virtual void postApplication(){};
+  
+  /// Called when a worker send updated aggregator values.
+  /// Only called in async mode, never called after a global superstep
+  virtual void postLocalSuperstep() {};
 
   /// should indicate if compensation is supposed to start by returning true
   virtual bool preCompensation() { return true; }

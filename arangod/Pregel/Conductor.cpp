@@ -67,6 +67,15 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
   } else {
     _userParams.add(userConfig);
   }
+  
+  // Coloring based SCC algo tends to use a lot of steps
+  if (algoName == "scc") {
+    _maxSuperstep = 1000;
+  }
+  VPackSlice maxGSS = userConfig.get("maxGSS");
+  if (maxGSS.isInteger()) {
+    _maxSuperstep = maxGSS.getUInt();
+  }
 
   _startTimeSecs = TRI_microtime();
   _globalSuperstep = 0;
@@ -108,8 +117,8 @@ bool Conductor::_startGlobalStep() {
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::vertexCount, VPackValue(_totalVerticesCount));
-  b.add(Utils::edgeCount, VPackValue(_totalEdgesCount));
+  b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
+  b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
   b.close();
 
   // we are explicitly expecting an response containing the aggregated
@@ -132,8 +141,8 @@ bool Conductor::_startGlobalStep() {
     VPackSlice payload = req.result.answer->payload();
     _aggregators->parseValues(payload);
     _statistics.accumulateActiveCounts(payload);
-    _totalVerticesCount += payload.get(Utils::vertexCount).getUInt();
-    _totalEdgesCount += payload.get(Utils::edgeCount).getUInt();
+    _totalVerticesCount += payload.get(Utils::vertexCountKey).getUInt();
+    _totalEdgesCount += payload.get(Utils::edgeCountKey).getUInt();
   }
 
   // workers are done if all messages were processed and no active vertices
@@ -141,6 +150,7 @@ bool Conductor::_startGlobalStep() {
   bool proceed = true;
   if (_masterContext && _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
     _masterContext->_globalSuperstep = _globalSuperstep - 1;
+    _masterContext->_enterNextGSS = false;
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
       LOG(INFO) << "Master context ended execution";
@@ -149,7 +159,7 @@ bool Conductor::_startGlobalStep() {
 
   // TODO make maximum configurable
   bool done = _globalSuperstep != 0 && _statistics.executionFinished();
-  if (!proceed || done || _globalSuperstep >= 100) {
+  if (!proceed || done || _globalSuperstep >= _maxSuperstep) {
     _state = ExecutionState::DONE;
     // tells workers to store / discard results
     _finalizeWorkers();
@@ -166,8 +176,8 @@ bool Conductor::_startGlobalStep() {
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::vertexCount, VPackValue(_totalVerticesCount));
-  b.add(Utils::edgeCount, VPackValue(_totalEdgesCount));
+  b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
+  b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
   _aggregators->serializeValues(b);
   b.close();
   LOG(INFO) << b.toString();
@@ -193,8 +203,8 @@ void Conductor::finishedWorkerStartup(VPackSlice data) {
     return;
   }
   
-  _totalVerticesCount += data.get(Utils::vertexCount).getUInt();
-  _totalEdgesCount += data.get(Utils::edgeCount).getUInt();
+  _totalVerticesCount += data.get(Utils::vertexCountKey).getUInt();
+  _totalEdgesCount += data.get(Utils::edgeCountKey).getUInt();
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
@@ -246,8 +256,14 @@ void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder &response) {
   } else if (_statistics.clientCount() < _dbServers.size() ||  // no messages
              !_statistics.allMessagesProcessed()) {  // haven't received msgs    
     if (_aggregators->parseValues(data)) {
+      if (_masterContext) {
+        _masterContext->postLocalSuperstep();
+      }
       response.openObject();
       _aggregators->serializeValues(response);
+      if (_masterContext && _masterContext->_enterNextGSS) {
+        response.add(Utils::enterNextGSSKey, VPackValue(true));
+      }
       response.close();
     }
     return;
@@ -261,7 +277,7 @@ void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder &response) {
   // this should allow workers to go into the IDLE state
   basics::ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this] {
-    MUTEX_LOCKER(guard, _callbackMutex);
+    MUTEX_LOCKER(cguard, _callbackMutex);
 
     if (_state == ExecutionState::RUNNING) {
         _startGlobalStep();  // trigger next superstep

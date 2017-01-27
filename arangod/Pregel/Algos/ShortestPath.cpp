@@ -56,7 +56,7 @@ struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
       if (this->pregelId() == _target) {
         // TODO extend pregel to update certain aggregators during a GSS
         aggregate(spUpperPathBound, current);
-        enterNextPhase();
+        enterNextGlobalSuperstep();
         LOG(INFO) << "Found target " << current;
         return;
       }

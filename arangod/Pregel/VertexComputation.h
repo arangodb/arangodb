@@ -97,7 +97,7 @@ template <typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
   OutCache<M>* _cache;
-  bool _nextPhase = false;
+  bool _enterNextGSS = false;
 
  public:
   void sendMessage(Edge<E> const* edge, M const& data) {
@@ -117,9 +117,9 @@ class VertexComputation : public VertexContext<V, E, M> {
   }
 
   // only valid in async mode
-  void enterNextPhase() {
-    if (!_nextPhase) {// buffer this operation
-      _nextPhase = true;
+  void enterNextGlobalSuperstep() {
+    if (!_enterNextGSS) {// buffer this operation
+      _enterNextGSS = true;
       _cache->sendToNextGSS(true);
     }
   }

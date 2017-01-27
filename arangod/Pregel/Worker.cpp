@@ -103,9 +103,9 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
       package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
       package.add(Utils::executionNumberKey,
                   VPackValue(_config.executionNumber()));
-      package.add(Utils::vertexCount,
+      package.add(Utils::vertexCountKey,
                   VPackValue(_graphStore->localVertexCount()));
-      package.add(Utils::edgeCount, VPackValue(_graphStore->localEdgeCount()));
+      package.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
       package.close();
     }
     _callConductor(Utils::finishedStartupPath, package.slice());
@@ -155,8 +155,8 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
   if (_workerContext && gss == 0 && _config.localSuperstep() == 0) {
     _workerContext->_conductorAggregators = _conductorAggregators.get();
     _workerContext->_workerAggregators = _workerAggregators.get();
-    _workerContext->_vertexCount = data.get(Utils::vertexCount).getUInt();
-    _workerContext->_edgeCount = data.get(Utils::edgeCount).getUInt();
+    _workerContext->_vertexCount = data.get(Utils::vertexCountKey).getUInt();
+    _workerContext->_edgeCount = data.get(Utils::edgeCountKey).getUInt();
     _workerContext->preApplication();
   }
 
@@ -166,7 +166,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
   if (_config.asynchronousMode()) {
     TRI_ASSERT(_readCache->containedMessageCount() == 0);
     TRI_ASSERT(_writeCache->containedMessageCount() == 0);
-    WriteLocker<ReadWriteLock> guard(&_cacheRWLock);
+    WriteLocker<ReadWriteLock> wguard(&_cacheRWLock);
     std::swap(_readCache, _writeCacheNextGSS);
     _writeCache->clear();
     _requestedNextGSS = false;  // only relevant for async
@@ -174,7 +174,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
     _nextGSSSendMessageCount = 0;
   } else {
     TRI_ASSERT(_readCache->containedMessageCount() == 0);
-    WriteLocker<ReadWriteLock> guard(&_cacheRWLock);
+    WriteLocker<ReadWriteLock> wguard(&_cacheRWLock);
     std::swap(_readCache, _writeCache);
     _config._localSuperstep = gss;
   }
@@ -188,8 +188,8 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
   response.openObject();
   response.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
   response.add(Utils::activeCountKey, VPackValue(_activeCount));
-  response.add(Utils::vertexCount, VPackValue(_graphStore->localVertexCount()));
-  response.add(Utils::edgeCount, VPackValue(_graphStore->localEdgeCount()));
+  response.add(Utils::vertexCountKey, VPackValue(_graphStore->localVertexCount()));
+  response.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
   _workerAggregators->serializeValues(response);
   response.close();
 
@@ -247,8 +247,8 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
   _conductorAggregators->parseValues(data);
   // execute context
   if (_workerContext) {
-    _workerContext->_vertexCount = data.get(Utils::vertexCount).getUInt();
-    _workerContext->_edgeCount = data.get(Utils::edgeCount).getUInt();
+    _workerContext->_vertexCount = data.get(Utils::vertexCountKey).getUInt();
+    _workerContext->_edgeCount = data.get(Utils::edgeCountKey).getUInt();
     _workerContext->preGlobalSuperstep(gss);
   }
 
@@ -370,7 +370,7 @@ bool Worker<V, E, M>::_processVertices(
   if (!_writeCache) {// ~Worker was called
     return false;
   }
-  if (vertexComputation->_nextPhase) {
+  if (vertexComputation->_enterNextGSS) {
     _requestedNextGSS = true;
     _nextGSSSendMessageCount += outCache->sendCountNextGSS();
   }
@@ -425,7 +425,7 @@ void Worker<V, E, M>::_finishedProcessing() {
       size_t total = _graphStore->localVertexCount();
       if (total > currentAVCount) {
         if (_config.asynchronousMode()) {
-          ReadLocker<ReadWriteLock> guard(&_cacheRWLock);
+          ReadLocker<ReadWriteLock> rguard(&_cacheRWLock);
           _writeCache->mergeCache(_readCache);// compute in next superstep
           _messageStats.sendCount += _readCache->containedMessageCount();
         } else {
@@ -472,7 +472,12 @@ void Worker<V, E, M>::_finishedProcessing() {
     std::unique_ptr<ClusterCommResult> result = _callConductorWithResponse(Utils::finishedWorkerStepPath, package.slice());
     if (result->status == CL_COMM_RECEIVED) {
       VPackSlice data = result->answer->payload();
-      proceed = _conductorAggregators->parseValues(data);
+      if ((proceed = _conductorAggregators->parseValues(data))) {
+        VPackSlice nextGSS = data.get(Utils::enterNextGSSKey);
+        if (nextGSS.isBool()) {
+          _requestedNextGSS = nextGSS.getBool();
+        }
+      }
     }
     if (proceed) {
       MUTEX_LOCKER(guard, _commandMutex);

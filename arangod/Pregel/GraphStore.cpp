@@ -148,7 +148,7 @@ void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
     std::vector<ShardID> const& vertexShards = pair.second;
     auto it = std::find(vertexShards.begin(), vertexShards.end(), vertexShard);
     if (it != vertexShards.end()) {
-      size_t pos = it - vertexShards.begin();
+      size_t pos = (size_t) (it - vertexShards.begin());
 
       for (auto const& pair2 : edgeMap) {
         std::vector<ShardID> const& edgeShards = pair2.second;

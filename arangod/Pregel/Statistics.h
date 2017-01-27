@@ -55,16 +55,15 @@ struct MessageStats {
     if (p.isInteger()) {
       receivedCount += p.getUInt();
     }
-    p = statValues.get(Utils::superstepRuntimeKey);
-    if (p.isNumber()) {
-      superstepRuntimeSecs += p.getNumber<double>();
-    }
+    //p = statValues.get(Utils::superstepRuntimeKey);
+    //if (p.isNumber()) {
+    //  superstepRuntimeSecs += p.getNumber<double>();
+    //}
   }
 
   void serializeValues(VPackBuilder& b) const {
     b.add(Utils::sendCountKey, VPackValue(sendCount));
     b.add(Utils::receivedCountKey, VPackValue(receivedCount));
-    b.add(Utils::superstepRuntimeKey, VPackValue(superstepRuntimeSecs));
   }
 
   void resetTracking() {
