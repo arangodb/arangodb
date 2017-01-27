@@ -77,6 +77,8 @@ GeneralCommTask::~GeneralCommTask() {
 // -----------------------------------------------------------------------------
 
 void GeneralCommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
+  MUTEX_LOCKER(locker, _statisticsMutex);
+
   auto iter = _statisticsMap.find(id);
 
   if (iter == _statisticsMap.end()) {
@@ -180,7 +182,7 @@ void GeneralCommTask::processResponse(GeneralResponse* response) {
         << "processResponse received a nullptr, closing connection";
     closeStream();
   } else {
-    addResponse(response);
+    addResponse(response, nullptr);
   }
 }
 
@@ -191,6 +193,8 @@ RequestStatistics* GeneralCommTask::acquireStatistics(uint64_t id) {
 }
 
 RequestStatistics* GeneralCommTask::statistics(uint64_t id) {
+  MUTEX_LOCKER(locker, _statisticsMutex);
+  
   auto iter = _statisticsMap.find(id);
 
   if (iter == _statisticsMap.end()) {
@@ -201,6 +205,8 @@ RequestStatistics* GeneralCommTask::statistics(uint64_t id) {
 }
 
 RequestStatistics* GeneralCommTask::stealStatistics(uint64_t id) {
+  MUTEX_LOCKER(locker, _statisticsMutex);
+
   auto iter = _statisticsMap.find(id);
 
   if (iter == _statisticsMap.end()) {
@@ -270,8 +276,8 @@ void GeneralCommTask::handleRequestDirectly(
 
   auto self = shared_from_this();
   handler->initEngine(_loop, [self, this](RestHandler* h) {
-    h->transferStatisticsTo(this);
-    addResponse(h->response());
+      RequestStatistics* stat = h->stealStatistics();
+      addResponse(h->response(), stat);
   });
 
   HandlerWorkStack monitor(handler);
@@ -298,7 +304,6 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   if (store) {
     auto self = shared_from_this();
     handler->initEngine(_loop, [this, self](RestHandler* handler) {
-      handler->transferStatisticsTo(this);
       GeneralServerFeature::JOB_MANAGER->finishAsyncJob(handler);
     });
   } else {

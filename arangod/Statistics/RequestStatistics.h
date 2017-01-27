@@ -60,7 +60,7 @@ class RequestStatistics {
 
   static void SET_READ_START(RequestStatistics* stat, double start) {
     if (stat != nullptr) {
-      if (stat->_readStart == 0.0 && stat->_readStart == 0.0) {
+      if (stat->_readStart == 0.0) {
         stat->_readStart = start;
       }
     }

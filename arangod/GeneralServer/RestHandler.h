@@ -52,7 +52,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
  public:
   RestHandler(GeneralRequest*, GeneralResponse*);
-  ~RestHandler();
+  virtual ~RestHandler();
 
  public:
   uint64_t handlerId() const { return _handlerId; }
@@ -69,13 +69,18 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   std::shared_ptr<WorkContext> context() { return _context; }
 
-  RequestStatistics* statistics() const { return _statistics; }
-  void setStatistics(RequestStatistics* stat) {
-    if (_statistics != nullptr) {
-      _statistics->release();
-    }
+  RequestStatistics* statistics() const { return _statistics.load(); }
 
-    _statistics = stat;
+  RequestStatistics* stealStatistics() {
+    return _statistics.exchange(nullptr);
+  }
+  
+  void setStatistics(RequestStatistics* stat) {
+    RequestStatistics* old = _statistics.exchange(stat);
+
+    if (old != nullptr) {
+      old->release();
+    }
   }
 
  public:
@@ -107,7 +112,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   std::shared_ptr<WorkContext> _context;
 
-  RequestStatistics* _statistics;
+  std::atomic<RequestStatistics*> _statistics;
 
  private:
   bool _needsOwnThread = false;
@@ -129,8 +134,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   int executeEngine();
   int runEngine(bool synchron);
   int finalizeEngine();
-
-  void transferStatisticsTo(rest::GeneralCommTask*);
 
  private:
   RestEngine _engine;

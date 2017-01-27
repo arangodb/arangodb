@@ -65,9 +65,10 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
 }
 
 RestHandler::~RestHandler() {
-  if (_statistics != nullptr) {
-    _statistics->release();
-    _statistics = nullptr;
+  RequestStatistics* stat = _statistics.exchange(nullptr);
+  
+  if (stat != nullptr) {
+    stat->release();
   }
 }
 
@@ -296,13 +297,6 @@ int RestHandler::runEngine(bool synchron) {
   _engine.setState(RestEngine::State::FAILED);
   _storeResult(this);
   return TRI_ERROR_INTERNAL;
-}
-
-void RestHandler::transferStatisticsTo(GeneralCommTask* task) {
-  auto statistics = _statistics;
-  _statistics = nullptr;
-
-  task->setStatistics(messageId(), statistics);
 }
 
 // -----------------------------------------------------------------------------

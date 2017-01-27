@@ -71,7 +71,7 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
 void HttpCommTask::handleSimpleError(rest::ResponseCode code,
                                      uint64_t /* messageId */) {
   std::unique_ptr<GeneralResponse> response(new HttpResponse(code));
-  addResponse(response.get());
+  addResponse(response.get(), stealStatistics(1UL));
 }
 
 void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
@@ -89,7 +89,7 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
 
   try {
     response->setPayload(builder.slice(), true, VPackOptions::Defaults);
-    addResponse(response.get());
+    addResponse(response.get(), stealStatistics(1UL));
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "handleSimpleError received an exception, closing connection:"
@@ -102,7 +102,7 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
   }
 }
 
-void HttpCommTask::addResponse(HttpResponse* response) {
+void HttpCommTask::addResponse(HttpResponse* response, RequestStatistics* stat) {
   resetKeepAlive();
 
   // response has been queued, allow further requests
@@ -142,8 +142,6 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   }
 
   // reserve a buffer with some spare capacity
-  RequestStatistics* stat = stealStatistics(1UL);
-
   WriteBuffer buffer(
       new StringBuffer(TRI_UNKNOWN_MEM_ZONE, responseBodyLength + 128, false),
       stat);
@@ -264,7 +262,6 @@ bool HttpCommTask::processRead(double startTime) {
                                 _readBuffer.length() - 11);
       commTask->processRead(startTime);
       commTask->start();
-      // statistics?!
       return false;
     }
 
@@ -364,10 +361,7 @@ bool HttpCommTask::processRead(double startTime) {
       // (original request object gets deleted before responding)
       _requestType = _incompleteRequest->requestType();
 
-      if (stat == nullptr) {
-        stat = statistics(1UL);
-      }
-
+      stat = statistics(1UL);
       RequestStatistics::SET_REQUEST_TYPE(stat, _requestType);
 
       // handle different HTTP methods
@@ -494,12 +488,9 @@ bool HttpCommTask::processRead(double startTime) {
     return false;
   }
 
-  if (stat == nullptr) {
-    stat = statistics(1UL);
-  }
-
   auto bytes = _bodyPosition - _startPosition + _bodyLength;
 
+  stat = statistics(1UL);
   RequestStatistics::SET_READ_END(stat);
   RequestStatistics::ADD_RECEIVED_BYTES(stat, bytes);
 
