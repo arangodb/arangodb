@@ -3975,34 +3975,45 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
   // exception.
   if (message.IsEmpty()) {
     if (exceptionString == nullptr) {
-      result = "Unknown JavaScript exception\n";
+      result = "JavaScript exception\n";
     } else {
-      result = std::string(exceptionString) + "\n";
+      result = "JavaScript exception: " + std::string(exceptionString) + "\n";
     }
   } else {
     TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE,
                               message->GetScriptResourceName());
     char const* filenameString = *filename;
-
-    if ((filenameString == nullptr) ||
-        (!strcmp(filenameString, TRI_V8_SHELL_COMMAND_NAME))) {
-      result = "<internal>";
-    } else {
-      result = std::string(filenameString);
-    }
-
     int linenum = message->GetLineNumber();
     int start = message->GetStartColumn() + 1;
     int end = message->GetEndColumn();
 
-    result += ":" + StringUtils::itoa(linenum) + ":" + StringUtils::itoa(start) + "\n";
+    if ((filenameString == nullptr) ||
+        (!strcmp(filenameString, TRI_V8_SHELL_COMMAND_NAME))) {
+      if (exceptionString == nullptr) {
+        result = "JavaScript exception\n";
+      } else {
+        result = "JavaScript exception: " + std::string(exceptionString) + "\n";
+      }
+    } else {
+      if (exceptionString == nullptr) {
+        result = "JavaScript exception in file '" +
+                 std::string(filenameString) + "' at " +
+                 StringUtils::itoa(linenum) + "," + StringUtils::itoa(start) +
+                 "\n";
+      } else {
+        result = "JavaScript exception in file '" +
+                 std::string(filenameString) + "' at " +
+                 StringUtils::itoa(linenum) + "," + StringUtils::itoa(start) +
+                 ": " + exceptionString + "\n";
+      }
+    }
 
     TRI_Utf8ValueNFC sourceline(TRI_UNKNOWN_MEM_ZONE, message->GetSourceLine());
 
     if (*sourceline) {
       std::string l = *sourceline;
 
-      result += l + "\n";
+      result += "!" + l + "\n";
 
       if (1 < start) {
         l = std::string(start - 1, ' ');
@@ -4019,12 +4030,13 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
         l = "^";
       }
 
-      result += l + "\n";
+      result += "!" + l + "\n";
     }
 
     TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch->StackTrace());
+
     if (*stacktrace && stacktrace.length() > 0) {
-      result += std::string(*stacktrace) + "\n";
+      result += "stacktrace: " + std::string(*stacktrace) + "\n";
     }
   }
 
