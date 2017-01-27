@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, templateEngine, $, window */
+/* global Backbone, templateEngine, arangoHelper, $, window */
 (function () {
   'use strict';
 
@@ -39,7 +39,7 @@
 
       var callback = function () {
         this.continueRender();
-        this.breadcrumb(this.coordname);
+        this.breadcrumb(arangoHelper.getCoordinatorShortName(this.coordname));
         // window.arangoHelper.buildNodeSubNav(this.coordname, 'Dashboard', 'Logs')
         $(window).trigger('resize');
       }.bind(this);

@@ -93,9 +93,11 @@
 
       if (!from) {
         fromServer = $(e.currentTarget).parent().parent().attr('leader');
+        fromServer = arangoHelper.getDatabaseServerId(fromServer);
       } else {
         leader = $(e.currentTarget).parent().parent().attr('leader');
-        fromServer = from;
+        leader = arangoHelper.getDatabaseServerId(leader);
+        fromServer = arangoHelper.getDatabaseServerId(from);
       }
 
       var buttons = [];
@@ -107,7 +109,7 @@
       self.dbServers[0].fetch({
         success: function () {
           self.dbServers[0].each(function (db) {
-            if (db.get('name') !== fromServer) {
+            if (db.get('id') !== fromServer) {
               obj[db.get('name')] = {
                 value: db.get('id'),
                 label: db.get('name')
@@ -184,14 +186,14 @@
         async: true,
         success: function (data) {
           if (data.id) {
-            arangoHelper.arangoNotification('Shard ' + shardName + ' will be moved to ' + toServer + '.');
+            arangoHelper.arangoNotification('Shard ' + shardName + ' will be moved to ' + arangoHelper.getDatabaseServerId(toServer) + '.');
             window.setTimeout(function () {
               window.App.shardsView.render();
-            }, 2000);
+            }, 3000);
           }
         },
         error: function () {
-          arangoHelper.arangoError('Shard ' + shardName + ' could not be moved to ' + toServer + '.');
+          arangoHelper.arangoError('Shard ' + shardName + ' could not be moved to ' + arangoHelper.getDatabaseServerId(toServer) + '.');
         }
       });
 
@@ -213,7 +215,7 @@
           if (data === true) {
             window.setTimeout(function () {
               self.render(false);
-            }, 1500);
+            }, 3000);
             arangoHelper.arangoNotification('Started rebalance process.');
           }
         },
@@ -287,7 +289,7 @@
       if (doRerender) {
         window.setTimeout(function () {
           self.render();
-        }, 1500);
+        }, 3000);
       }
     },
 

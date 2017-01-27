@@ -31,8 +31,10 @@
 #include "Basics/ConditionLocker.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
+#include "Rest/HttpRequest.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Statistics/RequestStatistics.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -234,11 +236,12 @@ void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
   b->add("user", VPackValue(request->user()));
   b->add("taskId", VPackValue(request->clientTaskId()));
 
-  if (handler->_statistics != nullptr) {
-    b->add("startTime", VPackValue(handler->_statistics->_requestStart));
+  auto statistics = handler->statistics();
+
+  if (statistics != nullptr) {
+    b->add("startTime", VPackValue(statistics->requestStart()));
   } else {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "WorkMonitor::vpackHandler - missing statistics";
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "missing statistics";
   }
 
   auto& info = request->connectionInfo();
