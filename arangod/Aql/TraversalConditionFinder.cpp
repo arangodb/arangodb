@@ -30,7 +30,7 @@
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-static AstNode* createGlobalCondition(Ast* ast, AstNode const* condition) {
+static AstNodeType BuildSingleComparatorType (AstNode const* condition) {
   TRI_ASSERT(condition->numMembers() == 3);
   AstNodeType type = NODE_TYPE_ROOT;
 
@@ -73,344 +73,337 @@ static AstNode* createGlobalCondition(Ast* ast, AstNode const* condition) {
     }
     type = it->second;
   }
-  auto left = condition->getMemberUnchecked(0);
-  TRI_ASSERT(left->numMembers() >= 2);
+  return type;
+}
+
+static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition, AstNode* tmpVar) {
+  AstNodeType type = BuildSingleComparatorType(condition);
+
+  auto replaceReference = [&tmpVar](AstNode* node, void*) -> AstNode* {
+    if (node->type == NODE_TYPE_REFERENCE) {
+      return tmpVar;
+    }
+    return node;
+  };
+
+  // Now we need to traverse down and replace the reference
+  void* unused = nullptr;
+
+  auto lhs = condition->getMemberUnchecked(0);
+  auto rhs = condition->getMemberUnchecked(1);
+  // We can only optimize if path.edges[*] is on the left hand side
+  TRI_ASSERT(lhs->type == NODE_TYPE_EXPANSION);
+  TRI_ASSERT(lhs->numMembers() >= 2);
   // This is the part appended to each element in the expansion.
-  left = left->getMemberUnchecked(1);
-  auto right = condition->getMemberUnchecked(1);
-  return ast->createNodeBinaryOperator(type, left, right);
+  lhs = lhs->getMemberUnchecked(1);
+
+  Ast::traverseAndModify(lhs, replaceReference, unused);
+  return ast->createNodeBinaryOperator(type, lhs, rhs);
 }
 
-static bool matchesArrayAccessPattern(AstNode const* testee, 
-                                     Variable const* findme,
-                                     bool& isEdge,
-                                     VariableId& tmpVar) {
-  // The search pattern is:
-  // expansion{levels: 1} -> iterator -2> attributeAccess -> reference
-  // Where reference has to be equal to var
-  
-  if (testee->type != NODE_TYPE_EXPANSION) {
-    return false;
-  }
-  TRI_ASSERT(testee->numMembers() == 5);
-  auto levels = testee->getIntValue(true);
-  if (levels != 1) {
-    // This expression is too complicated for now.
-    return false;
-  }
-  if (testee->getMemberUnchecked(2)->type != NODE_TYPE_NOP ||
-      testee->getMemberUnchecked(3)->type != NODE_TYPE_NOP ||
-      testee->getMemberUnchecked(4)->type != NODE_TYPE_NOP) {
-    // Some complex transformation in subqueries happening.
-    // Do not optimize now.
-    return false;
-  }
-  testee = testee->getMemberUnchecked(0); 
-  TRI_ASSERT(testee->type == NODE_TYPE_ITERATOR); // Expansion always has iterator
-  TRI_ASSERT(testee->numMembers() == 2);
-  auto varNode = testee->getMemberUnchecked(0);
-  auto v = static_cast<Variable*>(varNode->getData());
-  tmpVar = v->id;
-  testee = testee->getMemberUnchecked(1);
-  if (testee->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
-    return false;
-  }
-
-  // Ok up to here, Check if it is edges or vertices
-  if (testee->stringEquals("edges", false)) {
-    // Ok this could be an edge access
-    isEdge = true;
-  } else if (testee->stringEquals("vertices", false)) {
-    // Ok this could be a vertex access
-    isEdge = false;
-  } else {
-    // This is indexed access on sth. completely different.
-    return false;
-  }
-
-  // Advance to the Variable
-  TRI_ASSERT(testee->numMembers() == 1);
-  testee = testee->getMemberUnchecked(0);
-  if (testee->type != NODE_TYPE_REFERENCE &&
-      testee->type != NODE_TYPE_VARIABLE  // Do we actually allow this case?
-    ) {
-    return false;
-  }
-
-  // Check if it really is the variable
-  auto variable = static_cast<Variable*>(testee->getData());
-  TRI_ASSERT(variable != nullptr);
-  if (variable->id == findme->id) {
-    return true;
-  }
-
-  return false;
-}
-
-static bool checkPathVariableAccessFeasible(AstNode const* node,
-                                            TraversalNode* tn,
-                                            Variable const* var,
-                                            bool& conditionIsImpossible) {
-  if (node->containsNodeType(NODE_TYPE_OPERATOR_BINARY_OR)) {
-    return false;
-  }
-
-  std::vector<AstNode const*> currentPath;
-  std::vector<std::vector<AstNode const*>> paths;
-
-  node->findVariableAccess(currentPath, paths, var);
-
-  for (auto const& onePath : paths) {
-    size_t len = onePath.size();
-    bool isEdgeAccess = false;
-
-    for (auto const & node : onePath) {
-      if (node->type == NODE_TYPE_FCALL) {
-        return false;
-      }
-      if (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
-          node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
-        if (!node->getMember(0)->isAttributeAccessForVariable(var, true)) {
-          return false;
-        }
-      }
-    }
-
-    if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      isEdgeAccess = onePath[len - 2]->stringEquals("edges", false);
-
-      if (!isEdgeAccess &&
-          !onePath[len - 2]->stringEquals("vertices", false)) {
-        /* We can't catch all cases in which this error would occur, so we don't
-           throw here.
-           std::string message("TRAVERSAL: path only knows 'edges' and
-           'vertices', not ");
-           message += onePath[len - 2]->getString();
-           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, message);
-        */
-        return false;
-      }
-    }
-
-    // we now need to check for p.edges[n] whether n is >= 0
-    if (onePath[len - 3]->type == NODE_TYPE_INDEXED_ACCESS) {
-      auto indexAccessNode = onePath[len - 3]->getMember(1);
-      if ((indexAccessNode->type != NODE_TYPE_VALUE) ||
-          (indexAccessNode->value.type != VALUE_TYPE_INT) ||
-          (indexAccessNode->value.value._int < 0)) {
-        return false;
-      }
-
-      conditionIsImpossible =
-          !tn->isInRange(indexAccessNode->value.value._int, isEdgeAccess);
-
-    } else if ((onePath[len - 3]->type == NODE_TYPE_ITERATOR) &&
-               (onePath[len - 4]->type == NODE_TYPE_EXPANSION)) {
-      // we now need to check for p.edges[*] which becomes a fancy structure
+static inline bool IsSupportedNode(AstNode const* node) {
+  switch (node->type) {
+    case NODE_TYPE_VARIABLE:
+    case NODE_TYPE_OPERATOR_UNARY_PLUS:
+    case NODE_TYPE_OPERATOR_UNARY_MINUS:
+    case NODE_TYPE_OPERATOR_UNARY_NOT:
+    case NODE_TYPE_OPERATOR_BINARY_AND:
+    case NODE_TYPE_OPERATOR_BINARY_OR:
+    case NODE_TYPE_OPERATOR_BINARY_PLUS:
+    case NODE_TYPE_OPERATOR_BINARY_MINUS:
+    case NODE_TYPE_OPERATOR_BINARY_TIMES:
+    case NODE_TYPE_OPERATOR_BINARY_DIV:
+    case NODE_TYPE_OPERATOR_BINARY_MOD:
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_NIN:
+    case NODE_TYPE_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_INDEXED_ACCESS:
+    case NODE_TYPE_EXPANSION:
+    case NODE_TYPE_ITERATOR:
+    case NODE_TYPE_VALUE:
+    case NODE_TYPE_ARRAY:
+    case NODE_TYPE_OBJECT:
+    case NODE_TYPE_OBJECT_ELEMENT:
+    case NODE_TYPE_REFERENCE:
+    case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_NOP:
+    case NODE_TYPE_RANGE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+    case NODE_TYPE_QUANTIFIER:
+      return true;
+    case NODE_TYPE_FCALL:
+    case NODE_TYPE_FCALL_USER:
+      // These may be possible in the future
       return false;
-    } else {
+    case NODE_TYPE_OPERATOR_NARY_OR:
+    case NODE_TYPE_OPERATOR_NARY_AND:
+      // If we get here the astNode->normalize() did not work
+      TRI_ASSERT(false);
       return false;
-    }
-  }
-
-  return true;
-}
-
-static bool matchesPathAccessPattern(AstNode const* testee,
-                                     Variable const* findme, size_t& idx,
-                                     bool& isEdge) {
-  // The search pattern is:
-  // indexedAccess -> attributeAccess -> reference
-  // Where reference has to be equal to var
-
-  // Testee has to be IndexedAccess
-  if (testee->type != NODE_TYPE_INDEXED_ACCESS) {
-    return false;
-  }
-  TRI_ASSERT(testee->numMembers() == 2);
-
-  // Ok up to here, read the idx already.
-  AstNode const* idxNode = testee->getMemberUnchecked(1);
-  idx = idxNode->value.value._int;
-
-  // Advance to the AttributeAccess
-  testee = testee->getMemberUnchecked(0);
-  if (testee->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
-    return false;
-  }
-  // Ok up to here, Check if it is edges or vertices
-  if (testee->stringEquals("edges", false)) {
-    // Ok this could be an edge access
-    isEdge = true;
-  } else if (testee->stringEquals("vertices", false)) {
-    // Ok this could be a vertex access
-    isEdge = false;
-  } else {
-    // This is indexed access on sth. completely different.
-    return false;
-  }
-
-
-  // Advance to the Variable
-  TRI_ASSERT(testee->numMembers() == 1);
-  testee = testee->getMemberUnchecked(0);
-  if (testee->type != NODE_TYPE_REFERENCE &&
-      testee->type != NODE_TYPE_VARIABLE  // Do we actually allow this case?
-    ) {
-    return false;
-  }
-
-  // Check if it really is the variable
-  auto variable = static_cast<Variable*>(testee->getData());
-  TRI_ASSERT(variable != nullptr);
-  if (variable->id == findme->id) {
-    return true;
-  }
-
-  return false;
-}
-
-static void transformCondition(AstNode const* node, Variable const* pvar,
-                               Ast* ast, TraversalNode* tn) {
-  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR);
-  // We do not support OR conditions for pruning
-  TRI_ASSERT(node->numMembers() == 1);
-
-  node = node->getMemberUnchecked(0);
-
-  AstNode* result = node->clone(ast);
-
-  AstNode* varRefNode = tn->getTemporaryRefNode();
-
-  size_t const n = result->numMembers();
-
-  for (size_t i = 0; i < n; ++i) {
-    AstNode* baseCondition = result->getMemberUnchecked(i);
+    default:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    switch (baseCondition->type) {
-      case NODE_TYPE_OPERATOR_BINARY_EQ:
-      case NODE_TYPE_OPERATOR_BINARY_NE:
-      case NODE_TYPE_OPERATOR_BINARY_LT:
-      case NODE_TYPE_OPERATOR_BINARY_LE:
-      case NODE_TYPE_OPERATOR_BINARY_GT:
-      case NODE_TYPE_OPERATOR_BINARY_GE:
-      case NODE_TYPE_OPERATOR_BINARY_IN:
-      case NODE_TYPE_OPERATOR_BINARY_NIN:
-      case NODE_TYPE_INDEXED_ACCESS:
-        TRI_ASSERT(baseCondition->numMembers() == 2);
-        break;
-      case NODE_TYPE_ATTRIBUTE_ACCESS:
-        TRI_ASSERT(baseCondition->numMembers() == 1);
-        break;
-      case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
-      case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
-      case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
-      case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
-      case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
-      case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
-      case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
-      case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
-        TRI_ASSERT(baseCondition->numMembers() == 3);
-        break;
-      default:
-        TRI_ASSERT(false);
-        break;
-    }
+      LOG(ERR) << "Traversal Optimizer encountered node: " << node->getTypeString();
 #endif
+      return false;
+  }
+}
 
+static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
+                                            size_t testIndex, TraversalNode* tn,
+                                            Variable const* pathVar,
+                                            bool& conditionIsImpossible) {
+  AstNode* node = parent->getMemberUnchecked(testIndex);
+  if (!IsSupportedNode(node)) {
+    return false;
+  }
+  // We need to walk through each branch and validate:
+  // 1. It does not contain unsupported types
+  // 2. Only one contains var
+  // 3. The one with var matches pattern:
+  //   A) var.vertices[n] (.*)
+  //   B) var.edges[n] (.*)
+  //   C) var.vertices[*] (.*) (ALL|NONE) (.*)
+  //   D) var.vertices[*] (.*) (ALL|NONE) (.*)
 
-    if (!baseCondition->isSimple()) {
-      // We would need v8 for this condition.
-      // This will not be used.
-      continue;
+  auto unusedWalker = [](AstNode const* n, void*) {};
+  bool isEdge = false;
+  // We define that depth == UINT64_MAX is "ALL depths"
+  size_t depth = UINT64_MAX;
+  void* unused = nullptr;
+  AstNode* parentOfReplace = nullptr;
+  size_t replaceIdx = 0;
+  bool notSupported = false;
+
+  // We define that patternStep >= 6 is complete Match.
+  unsigned char patternStep = 0;
+
+  auto supportedGuard = [&notSupported](AstNode const* n, void*) -> bool {
+    if (notSupported) {
+      return false;
     }
-
-    auto op = baseCondition->type;
-
-    AstNode* top = baseCondition;
-    bool isEdge = false;
-
-    if (op >= NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
-        op <= NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
-      // We have to handle this differently iff the left side is path access
-      AstNode* testee = baseCondition->getMemberUnchecked(0);
-      VariableId toReplace;
-
-      if (matchesArrayAccessPattern(testee, pvar, isEdge, toReplace)) {
-        auto quantifier = baseCondition->getMemberUnchecked(2);
-        TRI_ASSERT(quantifier->type == NODE_TYPE_QUANTIFIER);
-        int64_t val = quantifier->getIntValue(true);
-        if (val == Quantifier::ANY) {
-          // Nono optimize for ANY
-          continue;
-        }
-        AstNode* newCondition = createGlobalCondition(ast, baseCondition);
-        std::unordered_map<VariableId, Variable const*> replacements;
-        replacements.emplace(toReplace, tn->getTemporaryVariable());
-
-        newCondition = ast->replaceVariables(newCondition, replacements);
-        tn->registerGlobalCondition(isEdge, newCondition);
-        result->changeMember(i, newCondition);
-        continue;
-      }
+    if (!IsSupportedNode(n)) {
+      notSupported = true;
+      return false;
     }
+    return true;
+  };
 
-    size_t idx = 0;
-
-    if (op == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      // We only have a single attribute access. Identical to attr == true
-      AstNode* testee = baseCondition;
-      while(true) {
-        if (testee->numMembers() == 0) {
-          // Ok we barked up the wrong tree. Give up
-          break;
-        }
-        if (matchesPathAccessPattern(testee, pvar, idx, isEdge)) {
-          // On top level we may change a different member:
-          // cond == p.edges[x] 
-          // Otherwise we always switch the 0 member.
-          top->changeMember(0, varRefNode); 
-          tn->registerCondition(isEdge, idx, baseCondition);
-          break;
-        }
-        top = testee;
-        testee = testee->getMemberUnchecked(0);
-      }
-
-      continue;
+  auto searchPattern = [&patternStep, &isEdge, &depth, &pathVar, &notSupported,
+                        &parentOfReplace, &replaceIdx](AstNode* node, void* unused) -> AstNode* {
+    if (notSupported) {
+      // Short circuit, this condition cannot be fulfilled.
+      return node;
     }
-
-    bool foundVar = false;
-    TRI_ASSERT(baseCondition->numMembers() >= 2);
-    for (size_t i = 0; i < 2; ++i) {
-      bool firstRun = true;
-      AstNode* testee = baseCondition->getMemberUnchecked(i);
-      while(true) {
-        if (testee->numMembers() == 0) {
-          // Ok we barked up the wrong tree. Give up
-          break;
+    switch (patternStep) {
+      case 1:
+        // we have var.<this-here>
+        // Only vertices || edges supported
+        if (node->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+          // Incorrect type
+          notSupported = true;
+          return node;
         }
-        if (matchesPathAccessPattern(testee, pvar, idx, isEdge)) {
-          // We only find one!
-          TRI_ASSERT(!foundVar);
-          foundVar = true;
-          // On top level we may change a different member:
-          // cond == p.edges[x] 
-          // Otherwise we always switch the 0 member.
-          top->changeMember(firstRun ? i : 0, varRefNode); 
-          tn->registerCondition(isEdge, idx, baseCondition);
-          break;
+        if (node->stringEquals("edges", false)) {
+          isEdge = true;
+        } else if (node->stringEquals("vertices", false)) {
+          isEdge = false;
+        } else {
+          notSupported = true;
+          return node;
         }
-        top = testee;
-        testee = testee->getMemberUnchecked(0);
-        firstRun = false;
-      }
-      if (foundVar) {
-        // We have an access. Can only be one.
+        patternStep++;
+        return node;
+      case 2: {
+        switch (node->type) {
+          case NODE_TYPE_VALUE: {
+            // we have var.edges[<this-here>]
+            if (node->value.type != VALUE_TYPE_INT ||
+                node->value.value._int < 0) {
+              // Only positive indexed access allowed
+              notSupported = true;
+              return node;
+            }
+            depth = static_cast<size_t>(node->value.value._int);
+            break;
+          }
+          case NODE_TYPE_ITERATOR:
+            // This Node type is ok. it does not convey any information
+            break;
+          default:
+            // Other types cannot be optimized
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+            LOG(ERR) << "Failed type: " << node->getTypeString();
+            node->dump(0);
+#endif
+            notSupported = true;
+            return node;
+        }
+        patternStep++;
         break;
       }
+      case 3: 
+        if (depth != UINT64_MAX) {
+          // We are in depth pattern.
+          // The first Node we encount HAS to be indexed Access
+          if (node->type != NODE_TYPE_INDEXED_ACCESS) {
+            notSupported = true;
+            return node;
+          }
+          // This completes this pattern. All good
+          // Search for the parent having this node.
+          patternStep = 6;
+          parentOfReplace = node;
+          return node;
+        }
+        if (node->type == NODE_TYPE_EXPANSION) {
+          // We continue in this pattern, all good
+          patternStep++;
+          parentOfReplace = node;
+          return node;
+        }
+        // if we get here we are in the expansion operator.
+        // We simply pipe this one through
+        break;
+      case 4: {
+        if (node->type == NODE_TYPE_QUANTIFIER) {
+          // We are in array case. We need to wait for a quantifier
+          // This means we have path.edges[*] on the right hand side
+          int64_t val = node->getIntValue(true);
+          if (val == Quantifier::ANY) {
+            // Nono optimize for ANY
+            notSupported = true;
+            return node;
+          }
+          // This completes this pattern. All good
+          // Search for the parent having this node.
+          patternStep = 5;
+        } else if (node->type == NODE_TYPE_
+        // if we get here we are in the expansion operator.
+        // We simply pipe this one through
+        break;
+      }
+      case 5:
+      case 6: {
+        for (size_t idx = 0; idx < node->numMembers(); ++idx) {
+          if (node->getMemberUnchecked(idx) == parentOfReplace) {
+            if (patternStep == 5) {
+              if (idx != 0) {
+                // We found a right hand side expansion of y ALL == p.edges[*]
+                // We cannot optimize this
+                notSupported = true;
+                return node;
+              }
+            }
+            parentOfReplace = node;
+            replaceIdx = idx;
+            // Ok finally done. 
+            patternStep++;
+            break;
+          }
+        }
+      }
+      default:
+        // Just fall through
+        break;
+    }
+    if (node->type == NODE_TYPE_REFERENCE ||
+        node->type == NODE_TYPE_VARIABLE) {
+      // we are on the bottom of the tree. Check if it is our pathVar
+      auto variable = static_cast<Variable*>(node->getData());
+      if (pathVar == variable) {
+        // We found pathVar
+        if (patternStep != 0) {
+          // found it twice. Abort
+          notSupported = true;
+          return node;
+        }
+        ++patternStep;
+      }
+    }
+    return node;
+  };
+
+  // Check branches:
+  size_t numMembers = node->numMembers();
+  for (size_t i = 0; i < numMembers; ++i) {
+    Ast::traverseAndModify(node->getMemberUnchecked(i), supportedGuard,
+                           searchPattern, unusedWalker, unused);
+    if (notSupported) {
+      return false;
+    }
+    if (patternStep == 5) {
+      // The first item is direct child of the parent.
+      // Use parent to replace
+      // This is only the case on Expansion beeing
+      // the node we have to replace.
+      TRI_ASSERT(parentOfReplace->type == NODE_TYPE_EXPANSION);
+      if (parentOfReplace != node->getMemberUnchecked(0)) {
+        // We found a right hand side of x ALL == p.edges[*]
+        // Cannot optimize
+        return false;
+      }
+      parentOfReplace = node;
+      replaceIdx = 0;
+      patternStep++;
+    }
+    if (patternStep == 6) {
+      if (parentOfReplace == node) {
+        parentOfReplace = parent;
+        replaceIdx = testIndex;
+      } else {
+        TRI_ASSERT(parentOfReplace == node->getMemberUnchecked(i));
+        parentOfReplace = node;
+        replaceIdx = i;
+      }
+      patternStep++;
     }
   }
+
+  if (patternStep < 7) {
+    // We found sth. that is not matching the pattern complete.
+    // => Do not optimize
+    return false;
+  }
+
+  // If we get here we can optimize this condition
+  // As we modify the condition we need to clone it
+  auto tempNode = tn->getTemporaryRefNode();
+  TRI_ASSERT(parentOfReplace != nullptr);
+  if (depth == UINT64_MAX) {
+    // Global Case
+    auto replaceNode = BuildExpansionReplacement(
+        ast, parentOfReplace->getMemberUnchecked(replaceIdx), tempNode);
+    parentOfReplace->changeMember(replaceIdx, replaceNode);
+    // NOTE: We have to reload the NODE here, because we may have replaced
+    // it entirely
+    tn->registerGlobalCondition(isEdge, parent->getMemberUnchecked(testIndex));
+  } else {
+    conditionIsImpossible =
+        !tn->isInRange(depth, isEdge);
+    if (conditionIsImpossible) {
+      return false;
+    }
+    // Point Access
+    parentOfReplace->changeMember(replaceIdx, tempNode);
+    // NOTE: We have to reload the NODE here, because we may have replaced
+    // it entirely
+    tn->registerCondition(isEdge, depth, parent->getMemberUnchecked(testIndex));
+  }
+  return true;
 }
 
 TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan,
@@ -502,7 +495,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         break;
       }
 
-      _condition->normalize(_plan);
+      _condition->normalize();
 
       TRI_IF_FAILURE("ConditionFinder::normalizePlan") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -560,10 +553,9 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         }
 
         // If we get here we can optimize this condition
-        if (checkPathVariableAccessFeasible(cond, node, pathVar,
-                                            conditionIsImpossible)) {
-          // TODO
-        } else {
+        if (!checkPathVariableAccessFeasible(_plan->getAst(), andNode, i - 1,
+                                             node, pathVar,
+                                             conditionIsImpossible)) {
           andNode->removeMemberUnchecked(i - 1);
           if (conditionIsImpossible) {
             // If we get here we cannot fulfill the condition
@@ -606,8 +598,6 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       }
 
       if (!isEmpty) {
-        transformCondition(_condition->root(), node->pathOutVariable(),
-                           _plan->getAst(), node);
         node->setCondition(_condition.release());
         // We restart here with an empty condition.
         // All Filters that have been collected thus far
