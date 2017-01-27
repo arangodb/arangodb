@@ -33,7 +33,7 @@ namespace algos {
 /// should have
 /// the value == 0, all others -1 or an undefined value
 class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
-  std::string _sourceDocumentId, _resultField;
+  std::string _sourceDocumentId, _resultField = "result";
  public:
   SSSPAlgorithm(VPackSlice userParams) : Algorithm("SSSP") {
     _sourceDocumentId = userParams.get("source").copyString();
