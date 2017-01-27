@@ -161,7 +161,12 @@ int MMFilesSynchronizerThread::doSync(bool& checkMore) {
   int fd = getLogfileDescriptor(region.logfileId);
   TRI_ASSERT(fd >= 0);
 
+  double startTime = TRI_microtime();
   bool result = TRI_MSync(fd, region.mem, region.mem + region.size);
+  if (TRI_microtime() - startTime > 1.0) {
+    LOG(DEBUG) << "Long sync logfile " << id << ", region "
+      << (void*) region.mem << ", size " << region.size;
+  }
 
   LOG(TRACE) << "syncing logfile " << id << ", region " << (void*) region.mem << " - "
              << (void*)(region.mem + region.size) << ", length: " << region.size

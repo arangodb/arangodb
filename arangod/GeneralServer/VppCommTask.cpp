@@ -109,7 +109,9 @@ void VppCommTask::addResponse(VppResponse* response, RequestStatistics* stat) {
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
 
   if (buffers.empty()) {
-    stat->release();
+    if (stat != nullptr) {
+      stat->release();
+    }
   } else {
     size_t n = buffers.size() - 1;
     size_t c = 0;

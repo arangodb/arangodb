@@ -182,9 +182,9 @@ bool FailedLeader::start() {
   pending.close();
 
   // Preconditions
+  pending.openObject();
 
   // --- Check that Current servers are as we expect
-  pending.openObject();
   pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
   pending.add("old", current.slice());
   pending.close();
@@ -201,6 +201,8 @@ bool FailedLeader::start() {
   pending.close();
 
   pending.close();
+
+  // Preconditions end
   pending.close();
 
   // Transact
