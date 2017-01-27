@@ -104,8 +104,8 @@ LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
 int AqlTransaction::lockCollections() {
   auto trx = getInternals();
   for (auto& trxCollection : trx->_collections) {
-    int res = TRI_LockCollectionTransaction(trxCollection,
-                                            trxCollection->_accessType, 0);
+    int res = trxCollection->lock(trxCollection->_accessType, 0);
+
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }

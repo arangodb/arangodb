@@ -22,4 +22,214 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TransactionCollection.h"
+#include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
+#include "Utils/Transaction.h"
+#include "Utils/TransactionHints.h"
+#include "Utils/TransactionState.h"
+#include "VocBase/LogicalCollection.h"
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+#define LOG_TRX(trx, level)  \
+  LOG(TRACE) << "trx #" << trx->_id << "." << level << " (" << StatusTransaction(trx->_status) << "): " 
+
+#else
+
+#define LOG_TRX(...) while (0) LOG(TRACE)
+
+#endif
+
+
+using namespace arangodb;
+
+/// @brief return the status of the transaction as a string
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+static char const* StatusTransaction(Transaction::Status status) {
+  switch (status) {
+    case Transaction::Status::UNDEFINED:
+      return "undefined";
+    case Transaction::Status::CREATED:
+      return "created";
+    case Transaction::Status::RUNNING:
+      return "running";
+    case Transaction::Status::COMMITTED:
+      return "committed";
+    case Transaction::Status::ABORTED:
+      return "aborted";
+  }
+
+  TRI_ASSERT(false);
+  return "unknown";
+}
+#endif
+
+static bool IsWrite(AccessMode::Type type) {
+  return (type == AccessMode::Type::WRITE || type == AccessMode::Type::EXCLUSIVE);
+}
+
+/// @brief returns whether the collection is currently locked
+static inline bool IsLocked(TransactionCollection const* trxCollection) {
+  return (trxCollection->_lockType != AccessMode::Type::NONE);
+}
+
+/// @brief whether or not a specific hint is set for the transaction
+static inline bool HasHint(TransactionState const* trx,
+                           TransactionHints::Hint hint) {
+  return trx->_hints.has(hint);
+}
+
+/// @brief whether or not a transaction consists of a single operation
+static inline bool IsSingleOperationTransaction(TransactionState const* trx) {
+  return HasHint(trx, TransactionHints::Hint::SINGLE_OPERATION);
+}
+
+/// @brief request a lock for a collection
+int TransactionCollection::lock(AccessMode::Type accessType,
+                                int nestingLevel) {
+  if (IsWrite(accessType) && !IsWrite(_accessType)) {
+    // wrong lock type
+    return TRI_ERROR_INTERNAL;
+  }
+
+  if (IsLocked(this)) {
+    // already locked
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  return doLock(accessType, nestingLevel);
+}
+
+/// @brief request an unlock for a collection
+int TransactionCollection::unlock(AccessMode::Type accessType,
+                                  int nestingLevel) {
+  if (IsWrite(accessType) && !IsWrite(_accessType)) {
+    // wrong lock type: write-unlock requested but collection is read-only
+    return TRI_ERROR_INTERNAL;
+  }
+
+  if (!IsLocked(this)) {
+    // already unlocked
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  return doUnlock(accessType, nestingLevel);
+}
+
+/// @brief check if a collection is locked in a transaction
+bool TransactionCollection::isLocked(AccessMode::Type accessType, int nestingLevel) const {
+  if (IsWrite(accessType) && !IsWrite(_accessType)) {
+    // wrong lock type
+    LOG(WARN) << "logic error. checking wrong lock type";
+    return false;
+  }
+
+  return IsLocked(this);
+}
+
+/// @brief lock a collection
+int TransactionCollection::doLock(AccessMode::Type type, int nestingLevel) {
+  TransactionState* trx = _transaction;
+
+  if (HasHint(trx, TransactionHints::Hint::LOCK_NEVER)) {
+    // never lock
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  TRI_ASSERT(_collection != nullptr);
+
+  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(_collection->name());
+    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
+    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "LockCollection blocked: " << collName << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  TRI_ASSERT(!IsLocked(this));
+
+  LogicalCollection* collection = _collection;
+  TRI_ASSERT(collection != nullptr);
+  double timeout = trx->_timeout;
+  if (HasHint(_transaction, TransactionHints::Hint::TRY_LOCK)) {
+    // give up early if we cannot acquire the lock instantly
+    timeout = 0.00000001;
+  }
+  
+  bool const useDeadlockDetector = !IsSingleOperationTransaction(trx);
+
+  int res;
+  if (!IsWrite(type)) {
+    LOG_TRX(trx, nestingLevel) << "read-locking collection " << _cid;
+    res = collection->beginReadTimed(useDeadlockDetector, timeout);
+  } else { // WRITE or EXCLUSIVE
+    LOG_TRX(trx, nestingLevel) << "write-locking collection " << _cid;
+    res = collection->beginWriteTimed(useDeadlockDetector, timeout);
+  }
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    _lockType = type;
+  }
+
+  return res;
+}
+
+/// @brief unlock a collection
+int TransactionCollection::doUnlock(AccessMode::Type type, int nestingLevel) {
+  if (HasHint(_transaction, TransactionHints::Hint::LOCK_NEVER)) {
+    // never unlock
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  TRI_ASSERT(_collection != nullptr);
+
+  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(_collection->name());
+    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
+    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "UnlockCollection blocked: " << collName << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  TRI_ASSERT(IsLocked(this));
+
+  if (_nestingLevel < nestingLevel) {
+    // only process our own collections
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  if (!IsWrite(type) && IsWrite(_lockType)) {
+    // do not remove a write-lock if a read-unlock was requested!
+    return TRI_ERROR_NO_ERROR;
+  } else if (IsWrite(type) && !IsWrite(_lockType)) {
+    // we should never try to write-unlock a collection that we have only
+    // read-locked
+    LOG(ERR) << "logic error in UnlockCollection";
+    TRI_ASSERT(false);
+    return TRI_ERROR_INTERNAL;
+  }
+
+  TransactionState* trx = _transaction;
+  bool const useDeadlockDetector = !IsSingleOperationTransaction(trx);
+
+  LogicalCollection* collection = _collection;
+  TRI_ASSERT(collection != nullptr);
+  if (!IsWrite(_lockType)) {
+    LOG_TRX(_transaction, nestingLevel) << "read-unlocking collection " << _cid;
+    collection->endRead(useDeadlockDetector);
+  } else { // WRITE or EXCLUSIVE
+    LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;
+    collection->endWrite(useDeadlockDetector);
+  }
+
+  _lockType = AccessMode::Type::NONE;
+
+  return TRI_ERROR_NO_ERROR;
+}
 

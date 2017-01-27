@@ -96,20 +96,6 @@ static inline TRI_voc_tid_t TRI_MarkerIdTransaction(
   return trx->_id;
 }
 
-/// @brief request a lock for a collection
-int TRI_LockCollectionTransaction(TransactionCollection*,
-                                  AccessMode::Type, int);
-
-/// @brief request an unlock for a collection
-int TRI_UnlockCollectionTransaction(TransactionCollection*,
-                                    AccessMode::Type, int);
-
-/// @brief check whether a collection is locked in a transaction
-bool TRI_IsLockedCollectionTransaction(TransactionCollection const*,
-                                       AccessMode::Type, int);
-
-/// @brief check whether a collection is locked in a transaction
-bool TRI_IsLockedCollectionTransaction(TransactionCollection const*);
 
 /// @brief add a WAL operation for a transaction collection
 int TRI_AddOperationTransaction(TransactionState*, TRI_voc_rid_t,

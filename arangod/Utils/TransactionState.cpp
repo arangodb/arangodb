@@ -757,61 +757,6 @@ int TransactionState::ensureCollections(int nestingLevel) {
   return UseCollections(this, nestingLevel);
 }
 
-/// @brief request a lock for a collection
-int arangodb::TRI_LockCollectionTransaction(TransactionCollection* trxCollection,
-                                  AccessMode::Type accessType,
-                                  int nestingLevel) {
-  if (IsWrite(accessType) && !IsWrite(trxCollection->_accessType)) {
-    // wrong lock type
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (IsLocked(trxCollection)) {
-    // already locked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return LockCollection(trxCollection, accessType, nestingLevel);
-}
-
-/// @brief request an unlock for a collection
-int arangodb::TRI_UnlockCollectionTransaction(TransactionCollection* trxCollection,
-                                    AccessMode::Type accessType,
-                                    int nestingLevel) {
-  if (IsWrite(accessType) && !IsWrite(trxCollection->_accessType)) {
-    // wrong lock type: write-unlock requested but collection is read-only
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (!IsLocked(trxCollection)) {
-    // already unlocked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return UnlockCollection(trxCollection, accessType, nestingLevel);
-}
-
-/// @brief check if a collection is locked in a transaction
-bool arangodb::TRI_IsLockedCollectionTransaction(
-    TransactionCollection const* trxCollection,
-    AccessMode::Type accessType, int nestingLevel) {
-  TRI_ASSERT(trxCollection != nullptr);
-
-  if (IsWrite(accessType) && !IsWrite(trxCollection->_accessType)) {
-    // wrong lock type
-    LOG(WARN) << "logic error. checking wrong lock type";
-    return false;
-  }
-
-  return IsLocked(trxCollection);
-}
-
-/// @brief check if a collection is locked in a transaction
-bool arangodb::TRI_IsLockedCollectionTransaction(
-    TransactionCollection const* trxCollection) {
-  TRI_ASSERT(trxCollection != nullptr);
-  return IsLocked(trxCollection);
-}
 
 /// @brief add a WAL operation for a transaction collection
 int arangodb::TRI_AddOperationTransaction(TransactionState* trx,

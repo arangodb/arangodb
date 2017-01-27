@@ -3172,7 +3172,7 @@ bool Transaction::isLocked(LogicalCollection* document,
   TransactionCollection* trxCollection = _trx->collection(document->cid(), type);
 
   TRI_ASSERT(trxCollection != nullptr);
-  return TRI_IsLockedCollectionTransaction(trxCollection, type, _nestingLevel);
+  return trxCollection->isLocked(type, _nestingLevel);
 }
 
 /// @brief read- or write-lock a collection
@@ -3182,7 +3182,7 @@ int Transaction::lock(TransactionCollection* trxCollection,
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
-  return TRI_LockCollectionTransaction(trxCollection, type, _nestingLevel);
+  return trxCollection->lock(type, _nestingLevel);
 }
 
 /// @brief read- or write-unlock a collection
@@ -3192,7 +3192,7 @@ int Transaction::unlock(TransactionCollection* trxCollection,
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
-  return TRI_UnlockCollectionTransaction(trxCollection, type, _nestingLevel);
+  return trxCollection->unlock(type, _nestingLevel);
 }
   
 /// @brief get list of indexes for a collection

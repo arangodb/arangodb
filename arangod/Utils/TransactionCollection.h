@@ -39,6 +39,24 @@ struct TransactionCollection {
       : _transaction(trx), _cid(cid), _accessType(accessType), _nestingLevel(nestingLevel), _collection(nullptr), _operations(nullptr),
         _originalRevision(0), _lockType(AccessMode::Type::NONE), _compactionLocked(false), _waitForSync(false) {}
 
+ public:
+  /// @brief request a lock for a collection
+  int lock(AccessMode::Type, int nestingLevel);
+
+  /// @brief request an unlock for a collection
+  int unlock(AccessMode::Type, int nestingLevel);
+
+  /// @brief check whether a collection is locked in a transaction
+  bool isLocked(AccessMode::Type, int nestingLevel) const;
+
+ private:
+  /// @brief request a lock for a collection
+  int doLock(AccessMode::Type, int nestingLevel);
+
+  /// @brief request an unlock for a collection
+  int doUnlock(AccessMode::Type, int nestingLevel);
+
+ public:
   TransactionState* _transaction;     // the transaction
   TRI_voc_cid_t const _cid;                  // collection id
   AccessMode::Type _accessType;  // access type (read|write)
