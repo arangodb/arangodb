@@ -112,16 +112,31 @@
 * GitHub: https://github.com/ajaxorg/ace
 * License: [BSD-style 3-Clause License](https://github.com/ajaxorg/ace/blob/master/LICENSE)
 
+#### ansi-html
+
+* GitHub: https://github.com/Tjatse/ansi-html
+* License: [Apache 2 License](https://github.com/Tjatse/ansi-html/blob/master/LICENSE)
+
 #### ArangoDB Query Builder
 
 * GitHub: https://github.com/arangodb/aqbjs
 * License: [Apache 2 License](https://github.com/arangodb/aqbjs/blob/master/LICENSE)
+
+#### babel-code-frame
+
+* GitHub: https://github.com/babel/babel/tree/master/packages/babel-code-frame
+* License: [MIT License](https://github.com/babel/babel/blob/master/LICENSE)
 
 #### Chai
 
 * Project Home: http://chaijs.com
 * GitHub: https://github.com/chaijs/chai
 * License: [MIT License](https://github.com/chaijs/chai/blob/master/README.md)
+
+#### chalk
+
+* GitHub: https://github.com/chalk/chalk
+* License: [MIT License](https://github.com/chalk/chalk/blob/master/license)
 
 #### content-disposition
 
