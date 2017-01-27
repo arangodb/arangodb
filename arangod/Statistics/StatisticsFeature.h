@@ -25,18 +25,28 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Thread.h"
+#include "Statistics/figures.h"
 
 namespace arangodb {
+namespace basics {
+extern StatisticsCounter TRI_AsyncRequestsStatistics;
+extern StatisticsCounter TRI_HttpConnectionsStatistics;
+extern StatisticsCounter TRI_TotalRequestsStatistics;
+extern StatisticsDistribution* TRI_BytesReceivedDistributionStatistics;
+extern StatisticsDistribution* TRI_BytesSentDistributionStatistics;
+extern StatisticsDistribution* TRI_ConnectionTimeDistributionStatistics;
+extern StatisticsDistribution* TRI_IoTimeDistributionStatistics;
+extern StatisticsDistribution* TRI_QueueTimeDistributionStatistics;
+extern StatisticsDistribution* TRI_RequestTimeDistributionStatistics;
+extern StatisticsDistribution* TRI_TotalTimeDistributionStatistics;
+extern StatisticsVector TRI_BytesReceivedDistributionVectorStatistics;
+extern StatisticsVector TRI_BytesSentDistributionVectorStatistics;
+extern StatisticsVector TRI_ConnectionTimeDistributionVectorStatistics;
+extern StatisticsVector TRI_RequestTimeDistributionVectorStatistics;
+extern std::vector<StatisticsCounter> TRI_MethodRequestsStatistics;
+}
 
-/// @brief thread used for statistics
-class StatisticsThread final : public Thread {
- public:
-  StatisticsThread() : Thread("Statistics") {}
-  ~StatisticsThread() { shutdown(); }
-
- public:
-  void run() override;
-};
+class StatisticsThread;
 
 class StatisticsFeature final
     : public application_features::ApplicationFeature {
@@ -45,14 +55,17 @@ class StatisticsFeature final
     return STATISTICS != nullptr && STATISTICS->_statistics;
   }
 
+  static double time() { return TRI_microtime(); }
+
  private:
   static StatisticsFeature* STATISTICS;
-  
+
  public:
   explicit StatisticsFeature(application_features::ApplicationServer* server);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
   void start() override final;
   void unprepare() override final;
 

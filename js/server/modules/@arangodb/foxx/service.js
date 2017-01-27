@@ -39,6 +39,7 @@ const parameterTypes = require('@arangodb/foxx/manager-utils').parameterTypes;
 const getReadableName = require('@arangodb/foxx/manager-utils').getReadableName;
 const Router = require('@arangodb/foxx/router/router');
 const Tree = require('@arangodb/foxx/router/tree');
+const codeFrame = require('@arangodb/util').codeFrame;
 
 const $_MODULE_ROOT = Symbol.for('@arangodb/module.root');
 const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
@@ -242,16 +243,26 @@ module.exports =
     }
 
     buildRoutes () {
-      const service = this;
       this.tree = new Tree(this.main.context, this.router);
       let paths = [];
       try {
         paths = this.tree.buildSwaggerPaths();
       } catch (e) {
-        console.errorLines(e.stack);
-        let err = e.cause;
-        while (err && err.stack) {
-          console.errorLines(`via ${err.stack}`);
+        if (this.isDevelopment) {
+          const frame = codeFrame(e, this.basePath);
+          if (frame) {
+            console.errorLines(frame);
+          }
+        }
+        let err = e;
+        while (err) {
+          if (err.stack) {
+            console.errorLines(
+              err === e
+              ? err.stack
+              : `via ${err.stack}`
+            );
+          }
           err = err.cause;
         }
         console.warnLines(dd`
@@ -276,26 +287,35 @@ module.exports =
       this.routes.routes.push({
         url: {match: '/*'},
         action: {
-          callback(req, res, opts, next) {
+          callback: (req, res, opts, next) => {
             let handled = true;
 
             try {
-              handled = service.tree.dispatch(req, res);
+              handled = this.tree.dispatch(req, res);
             } catch (e) {
               const logLevel = (
-              !e.statusCode ? 'error' : // Unhandled
-                e.statusCode >= 500 ? 'warn' : // Internal
-                  service.isDevelopment ? 'info' : // Debug
-                    undefined
+                !e.statusCode
+                ? 'error' // Unhandled
+                : (
+                  e.statusCode >= 500
+                  ? 'warn' // Internal
+                  : (
+                    this.isDevelopment
+                    ? 'info' // Debug
+                    : undefined
+                  )
+                )
               );
+
               let error = e;
               if (!e.statusCode) {
                 error = new InternalServerError();
                 error.cause = e;
               }
+
               if (logLevel) {
                 console[logLevel](`Service "${
-                  service.mount
+                  this.mount
                 }" encountered error ${
                   e.statusCode || 500
                 } while handling ${
@@ -303,31 +323,44 @@ module.exports =
                 } ${
                   req.absoluteUrl()
                 }`);
-                console[`${logLevel}Lines`](e.stack);
-                let err = e.cause;
-                while (err && err.stack) {
-                  console[`${logLevel}Lines`](`via ${err.stack}`);
+
+                if (this.isDevelopment) {
+                  const frame = codeFrame(e.cause || e, this.basePath);
+                  if (frame) {
+                    console[`${logLevel}Lines`](frame);
+                  }
+                }
+                let err = e;
+                while (err) {
+                  if (err.stack) {
+                    console[`${logLevel}Lines`](
+                      err === e
+                      ? err.stack
+                      : `via ${err.stack}`
+                    );
+                  }
                   err = err.cause;
                 }
               }
+
               const body = {
                 error: true,
                 errorNum: error.errorNum || error.statusCode,
                 errorMessage: error.message,
                 code: error.statusCode
               };
+
               if (error.statusCode === 405 && error.methods) {
                 if (!res.headers) {
                   res.headers = {};
                 }
                 res.headers.allow = error.methods.join(', ');
               }
-              if (service.isDevelopment) {
-                const err = error.cause || error;
+              if (this.isDevelopment) {
+                const err = e.cause || e;
                 body.exception = String(err);
-
-                if (err.stack === undefined) {
-                  body.stacktrace = "no stacktrace available";
+                if (!err.stack) {
+                  body.stacktrace = 'no stacktrace available';
                 } else {
                   body.stacktrace = err.stack.replace(/\n+$/, '').split('\n');
                 }

@@ -106,11 +106,11 @@
         $('#offlinePlaceholder').hide();
 
         var callbackFunction = function (data) {
-          var health = data.Health;
+          window.clusterHealth = data.Health;
 
           var error = 0;
 
-          _.each(health, function (node) {
+          _.each(window.clusterHealth, function (node) {
             if (node.Status !== 'GOOD') {
               error++;
             }
