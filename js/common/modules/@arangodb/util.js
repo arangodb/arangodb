@@ -27,6 +27,12 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
+const fs = require('fs');
+const Chalk = require('chalk').constructor;
+const chalk = new Chalk({enabled: true});
+const dedent = require('dedent');
+const codeFrame = require('babel-code-frame');
+const stackParser = require('error-stack-parser');
 
 exports.pluck = function (objs, key) {
   return _.map(objs, function (obj) {
@@ -71,6 +77,29 @@ exports.drain = function (generator) {
   return results;
 };
 
+exports.codeFrame = function (e, basePath, withColor = false) {
+  try {
+    let err = e;
+    while (err) {
+      const stack = stackParser.parse(e);
+      for (const step of stack) {
+        if (!basePath || step.fileName.indexOf(basePath) === 0) {
+          const source = fs.readFileSync(step.fileName, 'utf-8');
+          const frame = codeFrame(source, step.lineNumber, step.columnNumber, {
+            highlightCode: withColor,
+            forceColor: withColor
+          });
+          const location = `@ ${step.fileName}:${step.lineNumber}:${step.columnNumber}\n`;
+          return (withColor ? chalk.grey(location) : location) + frame;
+        }
+      }
+      err = err.cause;
+    }
+  } catch (e) {
+    return null;
+  }
+};
+
 exports.inline = function (strs) {
   let str;
   if (typeof strs === 'string') {
@@ -84,6 +113,30 @@ exports.inline = function (strs) {
     str = strb.join('');
   }
   return str.replace(/\s*\n\s*/g, ' ').replace(/(^\s|\s$)/g, '');
+};
+
+exports.redent = function ([start, ...strs], ...vars) {
+  const body = start.split('\n');
+  for (let i = 0; i < vars.length; i++) {
+    const current = body[body.length - 1];
+    const match = current.match(/^(\s+)/);
+    const padding = match ? match[1] : '';
+    const lines = String(vars[i]).split('\n');
+    body.push(body.pop() + lines[0]);
+    if (lines.length > 1) {
+      body.push(...lines.slice(1).map(line => padding + line));
+    }
+    const append = strs[i].split('\n');
+    body.push(body.pop() + append[0]);
+    if (append.length > 1) {
+      body.push(...append.slice(1));
+    }
+  }
+  return body.join('\n');
+};
+
+exports.dedent = function (...args) {
+  return dedent(exports.redent(...args));
 };
 
 exports.propertyKeys = function (obj) {
