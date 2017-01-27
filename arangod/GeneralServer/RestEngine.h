@@ -32,7 +32,6 @@ namespace arangodb {
 class RestEngine;
 
 namespace rest {
-class RequestStatisticsAgent;
 class RestHandler;
 }
 
