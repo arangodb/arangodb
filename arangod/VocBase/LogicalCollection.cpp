@@ -1181,9 +1181,6 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result,
 void LogicalCollection::toVelocyPackInObject(VPackBuilder& result, bool translateCids) const {
   getPropertiesVPack(result, translateCids);
   result.add("numberOfShards", VPackValue(_numberOfShards));
-  if (!_distributeShardsLike.empty()) {
-    result.add("distributeShardsLike", VPackValue(_distributeShardsLike));
-  }
 
   if (!_avoidServers.empty()) {
     result.add(VPackValue("avoidServers"));
@@ -1193,19 +1190,6 @@ void LogicalCollection::toVelocyPackInObject(VPackBuilder& result, bool translat
     }
   }
 
-  if (_keyGenerator != nullptr) {
-    result.add(VPackValue("keyOptions"));
-    result.openObject();
-    _keyGenerator->toVelocyPack(result);
-    result.close();
-  }
-
-  result.add(VPackValue("shardKeys"));
-  result.openArray();
-  for (auto const& key : _shardKeys) {
-    result.add(VPackValue(key));
-  }
-  result.close();  // shardKeys
   result.add(VPackValue("shards"));
   result.openObject();
   for (auto const& shards : *_shardIds) {
