@@ -36,6 +36,17 @@
 
 #include <velocypack/Slice.h>
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+#define LOG_TRX(trx, level)  \
+  LOG(TRACE) << "trx #" << trx->_id << "." << level << " (" << Transaction::statusString(trx->_status) << "): " 
+
+#else
+
+#define LOG_TRX(...) while (0) LOG(TRACE)
+
+#endif
+
 namespace rocksdb {
 class Transaction;
 }
@@ -91,6 +102,25 @@ class Transaction {
     COMMITTED = 3,
     ABORTED = 4
   };
+
+  /// @brief return the status of the transaction as a string
+  static char const* statusString(Status status) {
+    switch (status) {
+      case Transaction::Status::UNDEFINED:
+        return "undefined";
+      case Transaction::Status::CREATED:
+        return "created";
+      case Transaction::Status::RUNNING:
+        return "running";
+      case Transaction::Status::COMMITTED:
+        return "committed";
+      case Transaction::Status::ABORTED:
+        return "aborted";
+    }
+
+    TRI_ASSERT(false);
+    return "unknown";
+  }
 
   /// @brief time (in seconds) that is spent waiting for a lock
   static constexpr double DefaultLockTimeout = 30.0; 

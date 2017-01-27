@@ -69,10 +69,68 @@ struct TransactionState {
   
   /// @brief release collection locks for a transaction
   int unuseCollections(int nestingLevel);
+  
+  /// @brief whether or not a transaction consists of a single operation
+  bool isSingleOperation() const;
+
+  /// @brief begin a transaction
+  int beginTransaction(TransactionHints hints, int nestingLevel);
+
+  /// @brief commit a transaction
+  int commitTransaction(Transaction* trx, int nestingLevel);
+
+  /// @brief abort a transaction
+  int abortTransaction(Transaction* trx, int nestingLevel);
+
+  /// @brief add a WAL operation for a transaction collection
+  int addOperation(TRI_voc_rid_t, MMFilesDocumentOperation&, MMFilesWalMarker const* marker, bool&);
+
+  /// @brief update the status of a transaction
+  void updateStatus(Transaction::Status status);
 
   bool hasFailedOperations() const {
     return (_hasOperations && _status == Transaction::Status::ABORTED);
   }
+
+  /// @brief whether or not a specific hint is set for the transaction
+  bool hasHint(TransactionHints::Hint hint) const {
+    return _hints.has(hint);
+  }
+
+ private:
+  /// @brief whether or not a transaction is read-only
+  bool isReadOnlyTransaction() const {
+    return (_type == AccessMode::Type::READ);
+  }
+
+  /// @brief whether or not a marker needs to be written
+  bool needWriteMarker(bool isBeginMarker) const {
+    if (isBeginMarker) {
+      return (!isReadOnlyTransaction() && !isSingleOperation());
+    }
+
+    return (_nestingLevel == 0 && _beginWritten &&
+            !isReadOnlyTransaction() && !isSingleOperation());
+  }
+
+  /// @brief write WAL begin marker
+  int writeBeginMarker();
+
+  /// @brief write WAL abort marker
+  int writeAbortMarker();
+
+  /// @brief write WAL commit marker
+  int writeCommitMarker();
+
+  /// @brief free all operations for a transaction
+  void freeOperations(arangodb::Transaction* activeTrx);
+
+  /// @brief release collection locks for a transaction
+  int releaseCollections();
+
+  /// @brief clear the query cache for all collections that were modified by
+  /// the transaction
+  void clearQueryCache();
 
  public:
   
@@ -101,24 +159,6 @@ static inline TRI_voc_tid_t TRI_MarkerIdTransaction(
 
   return trx->_id;
 }
-
-
-/// @brief add a WAL operation for a transaction collection
-int TRI_AddOperationTransaction(TransactionState*, TRI_voc_rid_t,
-                                MMFilesDocumentOperation&,
-                                MMFilesWalMarker const* marker, bool&);
-
-/// @brief begin a transaction
-int TRI_BeginTransaction(TransactionState*, TransactionHints, int);
-
-/// @brief commit a transaction
-int TRI_CommitTransaction(Transaction*, TransactionState*, int);
-
-/// @brief abort a transaction
-int TRI_AbortTransaction(Transaction*, TransactionState*, int);
-
-/// @brief whether or not a transaction consists of a single operation
-bool TRI_IsSingleOperationTransaction(TransactionState const*);
 
 }
 

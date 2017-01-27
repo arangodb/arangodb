@@ -48,8 +48,11 @@ struct TransactionCollection {
   /// @brief request an unlock for a collection
   int unlock(AccessMode::Type, int nestingLevel);
 
-  /// @brief check whether a collection is locked in a transaction
+  /// @brief check whether a collection is locked in a specific mode in a transaction
   bool isLocked(AccessMode::Type, int nestingLevel) const;
+  
+  /// @brief check whether a collection is locked at all
+  bool isLocked() const;
 
  private:
   /// @brief request a lock for a collection

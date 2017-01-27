@@ -29,48 +29,10 @@
 #include "Utils/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-#define LOG_TRX(trx, level)  \
-  LOG(TRACE) << "trx #" << trx->_id << "." << level << " (" << StatusTransaction(trx->_status) << "): " 
-
-#else
-
-#define LOG_TRX(...) while (0) LOG(TRACE)
-
-#endif
-
-
 using namespace arangodb;
-
-/// @brief return the status of the transaction as a string
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-static char const* StatusTransaction(Transaction::Status status) {
-  switch (status) {
-    case Transaction::Status::UNDEFINED:
-      return "undefined";
-    case Transaction::Status::CREATED:
-      return "created";
-    case Transaction::Status::RUNNING:
-      return "running";
-    case Transaction::Status::COMMITTED:
-      return "committed";
-    case Transaction::Status::ABORTED:
-      return "aborted";
-  }
-
-  TRI_ASSERT(false);
-  return "unknown";
-}
-#endif
 
 static bool IsWrite(AccessMode::Type type) {
   return (type == AccessMode::Type::WRITE || type == AccessMode::Type::EXCLUSIVE);
-}
-
-/// @brief returns whether the collection is currently locked
-static inline bool IsLocked(TransactionCollection const* trxCollection) {
-  return (trxCollection->_lockType != AccessMode::Type::NONE);
 }
 
 /// @brief whether or not a specific hint is set for the transaction
@@ -92,7 +54,7 @@ int TransactionCollection::lock(AccessMode::Type accessType,
     return TRI_ERROR_INTERNAL;
   }
 
-  if (IsLocked(this)) {
+  if (isLocked()) {
     // already locked
     return TRI_ERROR_NO_ERROR;
   }
@@ -108,7 +70,7 @@ int TransactionCollection::unlock(AccessMode::Type accessType,
     return TRI_ERROR_INTERNAL;
   }
 
-  if (!IsLocked(this)) {
+  if (!isLocked()) {
     // already unlocked
     return TRI_ERROR_NO_ERROR;
   }
@@ -116,7 +78,7 @@ int TransactionCollection::unlock(AccessMode::Type accessType,
   return doUnlock(accessType, nestingLevel);
 }
 
-/// @brief check if a collection is locked in a transaction
+/// @brief check if a collection is locked in a specific mode in a transaction
 bool TransactionCollection::isLocked(AccessMode::Type accessType, int nestingLevel) const {
   if (IsWrite(accessType) && !IsWrite(_accessType)) {
     // wrong lock type
@@ -124,7 +86,12 @@ bool TransactionCollection::isLocked(AccessMode::Type accessType, int nestingLev
     return false;
   }
 
-  return IsLocked(this);
+  return isLocked();
+}
+  
+/// @brief check whether a collection is locked at all
+bool TransactionCollection::isLocked() const {
+  return (_lockType != AccessMode::Type::NONE);
 }
 
 /// @brief lock a collection
@@ -149,7 +116,7 @@ int TransactionCollection::doLock(AccessMode::Type type, int nestingLevel) {
     }
   }
 
-  TRI_ASSERT(!IsLocked(this));
+  TRI_ASSERT(!isLocked());
 
   LogicalCollection* collection = _collection;
   TRI_ASSERT(collection != nullptr);
@@ -197,7 +164,7 @@ int TransactionCollection::doUnlock(AccessMode::Type type, int nestingLevel) {
     }
   }
 
-  TRI_ASSERT(IsLocked(this));
+  TRI_ASSERT(isLocked());
 
   if (_nestingLevel < nestingLevel) {
     // only process our own collections

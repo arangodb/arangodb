@@ -173,7 +173,7 @@ void Transaction::removeHint(TransactionHints::Hint hint, bool passthrough) {
   
 /// @brief whether or not the transaction consists of a single operation only
 bool Transaction::isSingleOperationTransaction() const {
-  return TRI_IsSingleOperationTransaction(_trx);
+  return _trx->isSingleOperation();
 }
   
 /// @brief get the status of the transaction
@@ -1123,9 +1123,7 @@ int Transaction::begin() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  int res = TRI_BeginTransaction(_trx, _hints, _nestingLevel);
-
-  return res;
+  return _trx->beginTransaction(_hints, _nestingLevel);
 }
   
 /// @brief commit / finish the transaction
@@ -1142,7 +1140,7 @@ int Transaction::commit() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return TRI_CommitTransaction(this, _trx, _nestingLevel);
+  return _trx->commitTransaction(this, _nestingLevel);
 }
   
 /// @brief abort the transaction
@@ -1160,7 +1158,7 @@ int Transaction::abort() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return TRI_AbortTransaction(this, _trx, _nestingLevel);
+  return _trx->abortTransaction(this, _nestingLevel);
 }
   
 /// @brief finish a transaction (commit or abort), based on the previous state

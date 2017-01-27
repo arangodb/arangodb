@@ -2604,8 +2604,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    res = TRI_AddOperationTransaction(trx->getInternals(), revisionId,
-                                      operation, marker, options.waitForSync);
+    res = trx->getInternals()->addOperation(revisionId, operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -2706,8 +2705,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    res = TRI_AddOperationTransaction(trx->getInternals(), revisionId,
-                                      operation, marker, options.waitForSync);
+    res = trx->getInternals()->addOperation(revisionId, operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -3325,8 +3323,7 @@ int LogicalCollection::updateDocument(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  return TRI_AddOperationTransaction(trx->getInternals(), newRevisionId,
-                                     operation, marker, waitForSync);
+  return trx->getInternals()->addOperation(newRevisionId, operation, marker, waitForSync);
 }
 
 /// @brief insert a document, low level worker
@@ -3360,8 +3357,7 @@ int LogicalCollection::insertDocument(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  return TRI_AddOperationTransaction(trx->getInternals(), revisionId, operation,
-                                     marker, waitForSync);
+  return trx->getInternals()->addOperation(revisionId, operation, marker, waitForSync);
 }
 
 /// @brief creates a new entry in the primary index

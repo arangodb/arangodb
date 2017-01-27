@@ -37,6 +37,10 @@ struct AccessMode {
     EXCLUSIVE = 4
   };
 
+  static bool isWriteOrExclusive(Type type) {
+    return (type == Type::WRITE || type == Type::EXCLUSIVE);
+  }
+
   /// @brief get the transaction type from a string
   static Type fromString(char const* value) {
     if (strcmp(value, "read") == 0) {
