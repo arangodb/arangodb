@@ -264,7 +264,6 @@ bool HttpCommTask::processRead(double startTime) {
                                 _readBuffer.length() - 11);
       commTask->processRead(startTime);
       commTask->start();
-      // statistics?!
       return false;
     }
 
@@ -364,10 +363,7 @@ bool HttpCommTask::processRead(double startTime) {
       // (original request object gets deleted before responding)
       _requestType = _incompleteRequest->requestType();
 
-      if (stat == nullptr) {
-        stat = statistics(1UL);
-      }
-
+      stat = statistics(1UL);
       RequestStatistics::SET_REQUEST_TYPE(stat, _requestType);
 
       // handle different HTTP methods
@@ -494,12 +490,9 @@ bool HttpCommTask::processRead(double startTime) {
     return false;
   }
 
-  if (stat == nullptr) {
-    stat = statistics(1UL);
-  }
-
   auto bytes = _bodyPosition - _startPosition + _bodyLength;
 
+  stat = statistics(1UL);
   RequestStatistics::SET_READ_END(stat);
   RequestStatistics::ADD_RECEIVED_BYTES(stat, bytes);
 
