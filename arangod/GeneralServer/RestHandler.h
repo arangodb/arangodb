@@ -52,7 +52,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
  public:
   RestHandler(GeneralRequest*, GeneralResponse*);
-  ~RestHandler();
+  virtual ~RestHandler();
 
  public:
   uint64_t handlerId() const { return _handlerId; }
