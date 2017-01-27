@@ -66,7 +66,7 @@ class ConnectionStatistics {
     _error = false;
   }
 
-  static size_t const QUEUE_SIZE = 1000;
+  static size_t const QUEUE_SIZE = 5000;
 
   static Mutex _dataLock;
 

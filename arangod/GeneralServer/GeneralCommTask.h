@@ -97,7 +97,7 @@ class GeneralCommTask : public SocketTask {
   virtual std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) = 0;
 
-  virtual void addResponse(GeneralResponse*) = 0;
+  virtual void addResponse(GeneralResponse*, RequestStatistics*) = 0;
 
  protected:
   void executeRequest(std::unique_ptr<GeneralRequest>&&,

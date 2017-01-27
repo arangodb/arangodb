@@ -25,14 +25,14 @@ class HttpCommTask final : public GeneralCommTask {
   };
 
   // convert from GeneralResponse to httpResponse
-  void addResponse(GeneralResponse* response) override {
+  void addResponse(GeneralResponse* response, RequestStatistics* stat) override {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
 
     if (httpResponse == nullptr) {
       throw std::logic_error("invalid response or response Type");
     }
 
-    addResponse(httpResponse);
+    addResponse(httpResponse, stat);
   };
 
  protected:
@@ -54,7 +54,7 @@ class HttpCommTask final : public GeneralCommTask {
 
   void resetState();
 
-  void addResponse(HttpResponse*);
+  void addResponse(HttpResponse*, RequestStatistics* stat);
 
   // check the content-length header of a request and fail it is broken
   bool checkContentLength(HttpRequest*, bool expectContentLength);

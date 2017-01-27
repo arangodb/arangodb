@@ -68,6 +68,11 @@ class MMFilesCollectorThread final : public Thread {
   /// collection
   bool hasQueuedOperations(TRI_voc_cid_t);
 
+  // execute a callback during a phase in which the collector has nothing
+  // queued. This is used in the DatabaseManagerThread when dropping
+  // a database to avoid existence of ditches of type DOCUMENT.
+  bool executeWhileNothingQueued(std::function<void()> const& cb);
+
  protected:
   /// @brief main loop
   void run() override;

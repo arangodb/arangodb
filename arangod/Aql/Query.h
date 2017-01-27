@@ -206,7 +206,7 @@ class Query {
   
   /// @brief memory limit for query
   size_t memoryLimit() const {
-    double value = getNumericOption("memoryLimit", 0.0);
+    double value = getNumericOption("memoryLimit", MemoryLimitValue);
     if (value > 0.0) {
       return static_cast<size_t>(value);
     }
@@ -298,6 +298,14 @@ class Query {
   /// @brief transform the list of warnings to VelocyPack.
   ///        NOTE: returns nullptr if there are no warnings.
    std::shared_ptr<arangodb::velocypack::Builder> warningsToVelocyPack() const;
+  
+  /// @brief fetch the query memory limit
+  static uint64_t MemoryLimit() { return MemoryLimitValue; }
+  
+  /// @brief set the query memory limit
+  static void MemoryLimit(uint64_t value) {
+    MemoryLimitValue = value;
+  }
 
   /// @brief fetch the global query tracking value
   static bool DisableQueryTracking() { return DoDisableQueryTracking; }
@@ -447,6 +455,9 @@ class Query {
 
   /// @brief whether or not the query is a data modification query
   bool _isModificationQuery;
+  
+  /// @brief global memory limit for AQL queries
+  static uint64_t MemoryLimitValue;
 
   /// @brief global threshold value for slow queries
   static double SlowQueryThresholdValue;

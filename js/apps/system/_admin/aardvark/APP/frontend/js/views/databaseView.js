@@ -59,31 +59,38 @@
     },
 
     render: function () {
+      var self = this;
+
       var callback = function (error, db) {
         if (error) {
           arangoHelper.arangoError('DB', 'Could not get current db properties');
         } else {
-          this.currentDB = db;
-          // sorting
-          this.collection.sort();
+          self.currentDB = db;
 
-          $(this.el).html(this.template.render({
-            collection: this.collection,
-            searchString: '',
-            currentDB: this.currentDB
-          }));
+          self.collection.fetch({
+            success: function () {
+              // sorting
+              self.collection.sort();
 
-          if (this.dropdownVisible === true) {
-            $('#dbSortDesc').attr('checked', this.collection.sortOptions.desc);
-            $('#databaseToggle').toggleClass('activated');
-            $('#databaseDropdown2').show();
-          }
+              $(self.el).html(self.template.render({
+                collection: self.collection,
+                searchString: '',
+                currentDB: self.currentDB
+              }));
 
-          arangoHelper.setCheckboxStatus('#databaseDropdown');
+              if (self.dropdownVisible === true) {
+                $('#dbSortDesc').attr('checked', self.collection.sortOptions.desc);
+                $('#databaseToggle').toggleClass('activated');
+                $('#databaseDropdown2').show();
+              }
 
-          this.replaceSVGs();
+              arangoHelper.setCheckboxStatus('#databaseDropdown');
+
+              self.replaceSVGs();
+            }
+          });
         }
-      }.bind(this);
+      };
 
       this.collection.getCurrentDatabase(callback);
 

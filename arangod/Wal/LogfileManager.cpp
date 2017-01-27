@@ -1684,6 +1684,16 @@ void LogfileManager::waitForCollector() {
   }
 }
 
+// execute a callback during a phase in which the collector has nothing
+// queued. This is used in the DatabaseManagerThread when dropping
+// a database to avoid existence of ditches of type DOCUMENT.
+bool LogfileManager::executeWhileNothingQueued(std::function<void()> const& cb) {
+  if (_collectorThread == nullptr) {
+    return true;
+  }
+  return _collectorThread->executeWhileNothingQueued(cb);
+}
+
 // wait until a specific logfile has been collected
 int LogfileManager::waitForCollector(Logfile::IdType logfileId,
                                      double maxWaitTime) {

@@ -70,7 +70,7 @@ VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
   _readBuffer.reserve(_bufferLength);
 }
 
-void VppCommTask::addResponse(VppResponse* response) {
+void VppCommTask::addResponse(VppResponse* response, RequestStatistics* stat) {
   VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
   uint64_t const id = response_message._id;
 
@@ -106,22 +106,27 @@ void VppCommTask::addResponse(VppResponse* response) {
 
   // set some sensible maxchunk size and compression
   auto buffers = createChunkForNetwork(slices, id, chunkSize, false);
-  size_t n = buffers.size() - 1;
-  size_t c = 0;
-
-  RequestStatistics* stat = stealStatistics(id);
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
 
-  for (auto&& buffer : buffers) {
-    if (c == n) {
-      WriteBuffer b(buffer.get(), stat);
-      addWriteBuffer(b);
-    } else {
-      WriteBuffer b(buffer.get(), nullptr);
-      addWriteBuffer(b);
+  if (buffers.empty()) {
+    if (stat != nullptr) {
+      stat->release();
     }
+  } else {
+    size_t n = buffers.size() - 1;
+    size_t c = 0;
 
-    ++c;
+    for (auto&& buffer : buffers) {
+      if (c == n) {
+        WriteBuffer b(buffer.release(), stat);
+        addWriteBuffer(b);
+      } else {
+        WriteBuffer b(buffer.release(), nullptr);
+        addWriteBuffer(b);
+      }
+
+      ++c;
+    }
   }
 
   // and give some request information
