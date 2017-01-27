@@ -58,6 +58,12 @@ struct TransactionState {
   /// @brief return the collection from a transaction
   TransactionCollection* collection(TRI_voc_cid_t cid, AccessMode::Type accessType);
 
+  /// @brief add a collection to a transaction
+  int addCollection(TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel, bool force, bool allowImplicitCollections);
+
+  /// @brief make sure all declared collections are used & locked
+  int ensureCollections(int nestingLevel = 0);
+
   bool hasFailedOperations() const {
     return (_hasOperations && _status == Transaction::Status::ABORTED);
   }
@@ -90,13 +96,6 @@ static inline TRI_voc_tid_t TRI_MarkerIdTransaction(
   return trx->_id;
 }
 
-/// @brief add a collection to a transaction
-int TRI_AddCollectionTransaction(TransactionState*, TRI_voc_cid_t,
-                                 AccessMode::Type, int, bool, bool);
-
-/// @brief make sure all declared collections are used & locked
-int TRI_EnsureCollectionsTransaction(TransactionState*, int = 0);
-
 /// @brief request a lock for a collection
 int TRI_LockCollectionTransaction(TransactionCollection*,
                                   AccessMode::Type, int);
@@ -111,9 +110,6 @@ bool TRI_IsLockedCollectionTransaction(TransactionCollection const*,
 
 /// @brief check whether a collection is locked in a transaction
 bool TRI_IsLockedCollectionTransaction(TransactionCollection const*);
-
-/// @brief check whether a collection is contained in a transaction
-bool TRI_IsContainedCollectionTransaction(TransactionState*, TRI_voc_cid_t);
 
 /// @brief add a WAL operation for a transaction collection
 int TRI_AddOperationTransaction(TransactionState*, TRI_voc_rid_t,

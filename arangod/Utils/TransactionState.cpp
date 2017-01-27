@@ -663,13 +663,13 @@ TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid, AccessMod
 }
 
 /// @brief add a collection to a transaction
-int arangodb::TRI_AddCollectionTransaction(TransactionState* trx, TRI_voc_cid_t cid,
-                                 AccessMode::Type accessType,
-                                 int nestingLevel, bool force,
-                                 bool allowImplicitCollections) {
-  LOG_TRX(trx, nestingLevel) << "adding collection " << cid;
+int TransactionState::addCollection(TRI_voc_cid_t cid,
+                                    AccessMode::Type accessType,
+                                    int nestingLevel, bool force,
+                                    bool allowImplicitCollections) {
+  LOG_TRX(this, nestingLevel) << "adding collection " << cid;
 
-  allowImplicitCollections &= trx->_allowImplicit;
+  allowImplicitCollections &= _allowImplicit;
 
   // LOG(TRACE) << "cid: " << cid 
   //            << ", accessType: " << accessType 
@@ -680,20 +680,20 @@ int arangodb::TRI_AddCollectionTransaction(TransactionState* trx, TRI_voc_cid_t 
   // upgrade transaction type if required
   if (nestingLevel == 0) {
     if (!force) {
-      TRI_ASSERT(trx->_status == Transaction::Status::CREATED);
+      TRI_ASSERT(_status == Transaction::Status::CREATED);
     }
 
-    if (IsWrite(accessType) && !IsWrite(trx->_type)) {
+    if (IsWrite(accessType) && !IsWrite(_type)) {
       // if one collection is written to, the whole transaction becomes a
       // write-transaction
-      trx->_type = AccessMode::Type::WRITE;
+      _type = AccessMode::Type::WRITE;
     }
   }
 
   // check if we already have got this collection in the _collections vector
   size_t position = 0;
   TransactionCollection* trxCollection =
-      FindCollection(trx, cid, &position);
+      FindCollection(this, cid, &position);
   
   if (trxCollection != nullptr) {
     // collection is already contained in vector
@@ -733,7 +733,7 @@ int arangodb::TRI_AddCollectionTransaction(TransactionState* trx, TRI_voc_cid_t 
   // collection was not contained. now create and insert it
   TRI_ASSERT(trxCollection == nullptr);
   try {
-    trxCollection = new TransactionCollection(trx, cid, accessType, nestingLevel);
+    trxCollection = new TransactionCollection(this, cid, accessType, nestingLevel);
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -742,7 +742,7 @@ int arangodb::TRI_AddCollectionTransaction(TransactionState* trx, TRI_voc_cid_t 
 
   // insert collection at the correct position
   try {
-    trx->_collections.insert(trx->_collections.begin() + position, trxCollection);
+    _collections.insert(_collections.begin() + position, trxCollection);
   } catch (...) {
     delete trxCollection;
 
@@ -753,8 +753,8 @@ int arangodb::TRI_AddCollectionTransaction(TransactionState* trx, TRI_voc_cid_t 
 }
 
 /// @brief make sure all declared collections are used & locked
-int arangodb::TRI_EnsureCollectionsTransaction(TransactionState* trx, int nestingLevel) {
-  return UseCollections(trx, nestingLevel);
+int TransactionState::ensureCollections(int nestingLevel) {
+  return UseCollections(this, nestingLevel);
 }
 
 /// @brief request a lock for a collection
@@ -811,18 +811,6 @@ bool arangodb::TRI_IsLockedCollectionTransaction(
     TransactionCollection const* trxCollection) {
   TRI_ASSERT(trxCollection != nullptr);
   return IsLocked(trxCollection);
-}
-
-/// @brief check whether a collection is used in a transaction
-bool arangodb::TRI_IsContainedCollectionTransaction(TransactionState* trx,
-                                          TRI_voc_cid_t cid) {
-  for (auto& trxCollection : trx->_collections) {
-    if (trxCollection->_cid == cid) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 /// @brief add a WAL operation for a transaction collection

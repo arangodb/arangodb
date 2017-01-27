@@ -1266,9 +1266,8 @@ TRI_voc_cid_t Transaction::addCollectionAtRuntime(TRI_voc_cid_t cid,
   auto collection = this->trxCollection(cid);
 
   if (collection == nullptr) {
-    int res = TRI_AddCollectionTransaction(_trx, cid,
-                                            type,
-                                            _nestingLevel, true, _allowImplicitCollections);
+    int res = _trx->addCollection(cid, type, _nestingLevel, true, _allowImplicitCollections);
+
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
         // special error message to indicate which collection was undeclared
@@ -1276,7 +1275,7 @@ TRI_voc_cid_t Transaction::addCollectionAtRuntime(TRI_voc_cid_t cid,
       }
       THROW_ARANGO_EXCEPTION(res);
     }
-    TRI_EnsureCollectionsTransaction(_trx, _nestingLevel);
+    _trx->ensureCollections(_nestingLevel);
     collection = this->trxCollection(cid);
 
     if (collection == nullptr) {
@@ -3305,8 +3304,7 @@ Transaction::IndexHandle Transaction::getIndexByIdentifier(
 int Transaction::addCollectionEmbedded(TRI_voc_cid_t cid, AccessMode::Type type) {
   TRI_ASSERT(_trx != nullptr);
 
-  int res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel,
-                                         false, _allowImplicitCollections);
+  int res = _trx->addCollection(cid, type, _nestingLevel, false, _allowImplicitCollections);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
@@ -3329,8 +3327,7 @@ int Transaction::addCollectionToplevel(TRI_voc_cid_t cid, AccessMode::Type type)
     // transaction already started?
     res = TRI_ERROR_TRANSACTION_INTERNAL;
   } else {
-    res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel, false,
-                                       _allowImplicitCollections);
+    res = _trx->addCollection(cid, type, _nestingLevel, false, _allowImplicitCollections);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
