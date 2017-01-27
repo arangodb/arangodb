@@ -32,17 +32,18 @@
 #include "Rest/GeneralResponse.h"
 #include "Scheduler/EventLoop.h"
 #include "Scheduler/JobQueue.h"
-#include "Statistics/StatisticsAgent.h"
+#include "Statistics/RequestStatistics.h"
 
 namespace arangodb {
 class GeneralRequest;
+class RequestStatistics;
 class WorkMonitor;
 
 namespace rest {
+class GeneralCommTask;
 class RestHandlerFactory;
 
-class RestHandler : public RequestStatisticsAgent,
-                    public std::enable_shared_from_this<RestHandler> {
+class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RestHandler(RestHandler const&) = delete;
   RestHandler& operator=(RestHandler const&) = delete;
 
@@ -51,7 +52,7 @@ class RestHandler : public RequestStatisticsAgent,
 
  public:
   RestHandler(GeneralRequest*, GeneralResponse*);
-  ~RestHandler() = default;
+  ~RestHandler();
 
  public:
   uint64_t handlerId() const { return _handlerId; }
@@ -67,6 +68,15 @@ class RestHandler : public RequestStatisticsAgent,
   }
 
   std::shared_ptr<WorkContext> context() { return _context; }
+
+  RequestStatistics* statistics() const { return _statistics; }
+  void setStatistics(RequestStatistics* stat) {
+    if (_statistics != nullptr) {
+      _statistics->release();
+    }
+
+    _statistics = stat;
+  }
 
  public:
   virtual char const* name() const = 0;
@@ -97,14 +107,16 @@ class RestHandler : public RequestStatisticsAgent,
 
   std::shared_ptr<WorkContext> _context;
 
+  RequestStatistics* _statistics;
+
  private:
   bool _needsOwnThread = false;
 
  public:
-  void initEngine(EventLoop loop, RequestStatisticsAgent* agent,
+  void initEngine(EventLoop loop,
                   std::function<void(RestHandler*)> storeResult) {
     _storeResult = storeResult;
-    _engine.init(loop, agent);
+    _engine.init(loop);
   }
 
   int asyncRunEngine() { return _engine.asyncRun(shared_from_this()); }
@@ -117,6 +129,8 @@ class RestHandler : public RequestStatisticsAgent,
   int executeEngine();
   int runEngine(bool synchron);
   int finalizeEngine();
+
+  void transferStatisticsTo(rest::GeneralCommTask*);
 
  private:
   RestEngine _engine;

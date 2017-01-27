@@ -26,8 +26,10 @@
 #include <velocypack/Exception.h>
 
 #include "Basics/StringUtils.h"
+#include "GeneralServer/GeneralCommTask.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
+#include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -48,7 +50,8 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
     : _handlerId(NEXT_HANDLER_ID.fetch_add(1, std::memory_order_seq_cst)),
       _canceled(false),
       _request(request),
-      _response(response) {
+      _response(response),
+      _statistics(nullptr) {
   bool found;
   std::string const& startThread =
       _request->header(StaticStrings::StartThread, found);
@@ -61,17 +64,26 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
       std::make_shared<WorkContext>(_request->user(), _request->databaseName());
 }
 
+RestHandler::~RestHandler() {
+  if (_statistics != nullptr) {
+    _statistics->release();
+    _statistics = nullptr;
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 int RestHandler::prepareEngine() {
-  requestStatisticsAgentSetRequestStart();
-  requestStatisticsAgentSetRequestEnd();  // set end immeadiately so we
-                                          // do not get netative statistics
+  RequestStatistics::SET_REQUEST_START(_statistics);
+
+  // set end immediately so we do not get netative statistics
+  RequestStatistics::SET_REQUEST_END(_statistics);
+
   if (_canceled) {
     _engine.setState(RestEngine::State::DONE);
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
 
     Exception err(TRI_ERROR_REQUEST_CANCELED,
                   "request has been canceled by user", __FILE__, __LINE__);
@@ -86,14 +98,14 @@ int RestHandler::prepareEngine() {
     _engine.setState(RestEngine::State::EXECUTE);
     return TRI_ERROR_NO_ERROR;
   } catch (Exception const& ex) {
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
   } catch (std::exception const& ex) {
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -111,24 +123,24 @@ int RestHandler::finalizeEngine() {
   } catch (Exception const& ex) {
     LOG(ERR) << "caught exception in " << name() << ": "
              << DIAGNOSTIC_INFORMATION(ex);
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
     res = TRI_ERROR_INTERNAL;
   } catch (std::exception const& ex) {
     LOG(ERR) << "caught exception in " << name() << ": " << ex.what();
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
     LOG(ERR) << "caught unknown exception in " << name();
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
     res = TRI_ERROR_INTERNAL;
   }
 
-  requestStatisticsAgentSetRequestEnd();
+  RequestStatistics::SET_REQUEST_END(_statistics);
 
   if (res == TRI_ERROR_NO_ERROR) {
     _engine.setState(RestEngine::State::DONE);
@@ -166,14 +178,14 @@ int RestHandler::executeEngine() {
     LOG(WARN) << "caught exception in " << name() << ": "
               << DIAGNOSTIC_INFORMATION(ex);
 #endif
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(WARN) << "caught exception in " << name() << ": "
               << DIAGNOSTIC_INFORMATION(ex);
 #endif
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(),
                   __FILE__, __LINE__);
     handleError(err);
@@ -182,7 +194,7 @@ int RestHandler::executeEngine() {
     LOG(WARN) << "caught exception in " << name() << ": "
               << DIAGNOSTIC_INFORMATION(ex);
 #endif
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::exception const& ex) {
@@ -190,14 +202,14 @@ int RestHandler::executeEngine() {
     LOG(WARN) << "caught exception in " << name() << ": "
               << DIAGNOSTIC_INFORMATION(ex);
 #endif
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(WARN) << "caught unknown exception in " << name();
 #endif
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -260,23 +272,23 @@ int RestHandler::runEngine(bool synchron) {
 
     return TRI_ERROR_NO_ERROR;
   } catch (Exception const& ex) {
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(),
                   __FILE__, __LINE__);
     handleError(err);
   } catch (std::bad_alloc const& ex) {
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::exception const& ex) {
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
-    requestStatisticsAgentSetExecuteError();
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -284,6 +296,13 @@ int RestHandler::runEngine(bool synchron) {
   _engine.setState(RestEngine::State::FAILED);
   _storeResult(this);
   return TRI_ERROR_INTERNAL;
+}
+
+void RestHandler::transferStatisticsTo(GeneralCommTask* task) {
+  auto statistics = _statistics;
+  _statistics = nullptr;
+
+  task->setStatistics(messageId(), statistics);
 }
 
 // -----------------------------------------------------------------------------
