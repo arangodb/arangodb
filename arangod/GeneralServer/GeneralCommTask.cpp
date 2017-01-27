@@ -77,6 +77,8 @@ GeneralCommTask::~GeneralCommTask() {
 // -----------------------------------------------------------------------------
 
 void GeneralCommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
+  MUTEX_LOCKER(locker, _statisticsMutex);
+
   auto iter = _statisticsMap.find(id);
 
   if (iter == _statisticsMap.end()) {
@@ -191,6 +193,8 @@ RequestStatistics* GeneralCommTask::acquireStatistics(uint64_t id) {
 }
 
 RequestStatistics* GeneralCommTask::statistics(uint64_t id) {
+  MUTEX_LOCKER(locker, _statisticsMutex);
+  
   auto iter = _statisticsMap.find(id);
 
   if (iter == _statisticsMap.end()) {
@@ -201,6 +205,8 @@ RequestStatistics* GeneralCommTask::statistics(uint64_t id) {
 }
 
 RequestStatistics* GeneralCommTask::stealStatistics(uint64_t id) {
+  MUTEX_LOCKER(locker, _statisticsMutex);
+
   auto iter = _statisticsMap.find(id);
 
   if (iter == _statisticsMap.end()) {

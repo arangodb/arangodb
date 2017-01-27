@@ -179,15 +179,14 @@ void RequestStatistics::process(RequestStatistics* statistics) {
 
 void RequestStatistics::release() {
   TRI_ASSERT(!_released);
+  TRI_ASSERT(!_inQueue);
 
   if (!_ignore) {
-    TRI_ASSERT(!_inQueue);
     _inQueue = true;
     bool ok = _finishedList.push(this);
     TRI_ASSERT(ok);
   } else {
     reset();
-    _released = true;
     bool ok = _freeList.push(this);
     TRI_ASSERT(ok);
   }
