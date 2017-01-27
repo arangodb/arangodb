@@ -98,6 +98,9 @@ struct TransactionState {
   }
 
  private:
+  /// @brief find a collection in the transaction's list of collections
+  TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;
+
   /// @brief whether or not a transaction is read-only
   bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);

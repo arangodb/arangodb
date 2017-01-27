@@ -48,37 +48,6 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
   return MMFilesLogfileManager::instance();
 }
 
-/// @brief find a collection in the transaction's list of collections
-static TransactionCollection* FindCollection(
-    TransactionState const* trx, TRI_voc_cid_t cid,
-    size_t* position) {
-
-  size_t const n = trx->_collections.size();
-  size_t i;
-
-  for (i = 0; i < n; ++i) {
-    auto trxCollection = trx->_collections.at(i);
-
-    if (cid < trxCollection->_cid) {
-      // collection not found
-      break;
-    }
-
-    if (cid == trxCollection->_cid) {
-      // found
-      return trxCollection;
-    }
-    // next
-  }
-
-  if (position != nullptr) {
-    // update the insert position if required
-    *position = i;
-  }
-
-  return nullptr;
-}
-
 /// @brief transaction type
 TransactionState::TransactionState(TRI_vocbase_t* vocbase, double timeout, bool waitForSync)
     : _vocbase(vocbase), 
@@ -120,8 +89,8 @@ TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid, AccessMod
   TRI_ASSERT(_status == Transaction::Status::CREATED ||
              _status == Transaction::Status::RUNNING);
 
-  TransactionCollection* trxCollection =
-      FindCollection(this, cid, nullptr);
+  size_t unused;
+  TransactionCollection* trxCollection = findCollection(cid, unused);
 
   if (trxCollection == nullptr) {
     // not found
@@ -176,8 +145,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
 
   // check if we already have got this collection in the _collections vector
   size_t position = 0;
-  TransactionCollection* trxCollection =
-      FindCollection(this, cid, &position);
+  TransactionCollection* trxCollection = findCollection(cid, position);
   
   if (trxCollection != nullptr) {
     // collection is already contained in vector
@@ -644,6 +612,32 @@ int TransactionState::addOperation(TRI_voc_rid_t revisionId,
 /// @brief whether or not a transaction consists of a single operation
 bool TransactionState::isSingleOperation() const {
   return hasHint(TransactionHints::Hint::SINGLE_OPERATION);
+}
+
+/// @brief find a collection in the transaction's list of collections
+TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid, size_t& position) const {
+  size_t const n = _collections.size();
+  size_t i;
+
+  for (i = 0; i < n; ++i) {
+    auto trxCollection = _collections.at(i);
+
+    if (cid < trxCollection->_cid) {
+      // collection not found
+      break;
+    }
+
+    if (cid == trxCollection->_cid) {
+      // found
+      return trxCollection;
+    }
+    // next
+  }
+
+  // update the insert position if required
+  position = i;
+
+  return nullptr;
 }
 
 /// @brief free all operations for a transaction
