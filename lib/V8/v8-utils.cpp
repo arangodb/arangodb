@@ -411,14 +411,16 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // compilation failed, we have caught an exception
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      std::string err = TRI_StringifyV8Exception(isolate, &tryCatch);
-
+      v8::Local<v8::Object> exceptionObj = tryCatch.Exception().As<v8::Object>();
+      std::string stack = TRI_StringifyV8Exception(isolate, &tryCatch);
+      exceptionObj->Set(TRI_V8_ASCII_STRING("stack"), TRI_V8_STD_STRING(stack));
       tryCatch.ReThrow();
-      TRI_V8_THROW_SYNTAX_ERROR(err.c_str());
+      return;
     } else {
       TRI_GET_GLOBALS();
       v8g->_canceled = true;
-      TRI_V8_RETURN_UNDEFINED();
+      tryCatch.ReThrow();
+      return;
     }
   }
 
@@ -466,15 +468,32 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "cannot read file");
   }
 
-  v8::Handle<v8::Value> result;
-  auto script = v8::Script::Compile(TRI_V8_PAIR_STRING(content, (int)length),
+  v8::TryCatch tryCatch;
+  v8::Handle<v8::Script> script =
+      v8::Script::Compile(TRI_V8_PAIR_STRING(content, (int)length),
                                     args[0]->ToString());
 
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
-  // compilation failed, print errors that happened during compilation
+  // compilation failed, we have caught an exception
+  if (tryCatch.HasCaught()) {
+    if (tryCatch.CanContinue()) {
+      v8::Local<v8::Object> exceptionObj = tryCatch.Exception().As<v8::Object>();
+      std::string stack = TRI_StringifyV8Exception(isolate, &tryCatch);
+      exceptionObj->Set(TRI_V8_ASCII_STRING("stack"), TRI_V8_STD_STRING(stack));
+      tryCatch.ReThrow();
+      return;
+    } else {
+      TRI_GET_GLOBALS();
+      v8g->_canceled = true;
+      tryCatch.ReThrow();
+      return;
+    }
+  }
+
+  // compilation failed, we don't know why
   if (script.IsEmpty()) {
-    TRI_V8_RETURN(result);
+    TRI_V8_RETURN_FALSE();
   }
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -999,12 +1018,16 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
 
       if (tryCatch.CanContinue()) {
-        TRI_V8_LOG_THROW_EXCEPTION(tryCatch);
-      } else {
+        v8::Local<v8::Object> exceptionObj = tryCatch.Exception().As<v8::Object>();
+        std::string stack = TRI_StringifyV8Exception(isolate, &tryCatch);
+        exceptionObj->Set(TRI_V8_ASCII_STRING("stack"), TRI_V8_STD_STRING(stack));
         tryCatch.ReThrow();
+        return;
+      } else {
         TRI_GET_GLOBALS();
         v8g->_canceled = true;
-        TRI_V8_RETURN_UNDEFINED();
+        tryCatch.ReThrow();
+        return;
       }
     }
 
@@ -3946,45 +3969,34 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
   // exception.
   if (message.IsEmpty()) {
     if (exceptionString == nullptr) {
-      result = "JavaScript exception\n";
+      result = "Unknown JavaScript exception\n";
     } else {
-      result = "JavaScript exception: " + std::string(exceptionString) + "\n";
+      result = std::string(exceptionString) + "\n";
     }
   } else {
     TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE,
                               message->GetScriptResourceName());
     char const* filenameString = *filename;
+
+    if ((filenameString == nullptr) ||
+        (!strcmp(filenameString, TRI_V8_SHELL_COMMAND_NAME))) {
+      result = "<internal>";
+    } else {
+      result = std::string(filenameString);
+    }
+
     int linenum = message->GetLineNumber();
     int start = message->GetStartColumn() + 1;
     int end = message->GetEndColumn();
 
-    if ((filenameString == nullptr) ||
-        (!strcmp(filenameString, TRI_V8_SHELL_COMMAND_NAME))) {
-      if (exceptionString == nullptr) {
-        result = "JavaScript exception\n";
-      } else {
-        result = "JavaScript exception: " + std::string(exceptionString) + "\n";
-      }
-    } else {
-      if (exceptionString == nullptr) {
-        result = "JavaScript exception in file '" +
-                 std::string(filenameString) + "' at " +
-                 StringUtils::itoa(linenum) + "," + StringUtils::itoa(start) +
-                 "\n";
-      } else {
-        result = "JavaScript exception in file '" +
-                 std::string(filenameString) + "' at " +
-                 StringUtils::itoa(linenum) + "," + StringUtils::itoa(start) +
-                 ": " + exceptionString + "\n";
-      }
-    }
+    result += ":" + StringUtils::itoa(linenum) + ":" + StringUtils::itoa(start) + "\n";
 
     TRI_Utf8ValueNFC sourceline(TRI_UNKNOWN_MEM_ZONE, message->GetSourceLine());
 
     if (*sourceline) {
       std::string l = *sourceline;
 
-      result += "!" + l + "\n";
+      result += l + "\n";
 
       if (1 < start) {
         l = std::string(start - 1, ' ');
@@ -4001,13 +4013,12 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
         l = "^";
       }
 
-      result += "!" + l + "\n";
+      result += l + "\n";
     }
 
     TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch->StackTrace());
-
     if (*stacktrace && stacktrace.length() > 0) {
-      result += "stacktrace: " + std::string(*stacktrace) + "\n";
+      result += std::string(*stacktrace) + "\n";
     }
   }
 
