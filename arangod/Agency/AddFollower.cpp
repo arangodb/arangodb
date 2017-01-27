@@ -242,6 +242,8 @@ bool AddFollower::start() {
   pending.openObject();
   pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
   pending.add("old", current);
+  pending.close();
+  // --- Check that Plan servers are as we expect
   pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Object));
   pending.add("old", planned);
   pending.close();
