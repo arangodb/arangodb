@@ -285,8 +285,10 @@ SET(ARANGOD_SOURCES
   Scheduler/SocketTask.cpp
   Scheduler/SocketTcp.cpp
   Scheduler/Task.cpp
+  Statistics/ConnectionStatistics.cpp
+  Statistics/RequestStatistics.cpp
+  Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
-  Statistics/statistics.cpp
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/MMFilesAllocatorThread.cpp
   StorageEngine/MMFilesCleanupThread.cpp

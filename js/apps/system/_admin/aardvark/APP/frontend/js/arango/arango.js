@@ -57,6 +57,30 @@
       localStorage.setItem('jwtUser', username);
     },
 
+    getCoordinatorShortName: function (id) {
+      var shortName;
+      if (window.clusterHealth) {
+        _.each(window.clusterHealth, function (value, key) {
+          if (id === key) {
+            shortName = value.ShortName;
+          }
+        });
+      }
+      return shortName;
+    },
+
+    getDatabaseServerId: function (shortname) {
+      var id;
+      if (window.clusterHealth) {
+        _.each(window.clusterHealth, function (value, key) {
+          if (shortname === value.ShortName) {
+            id = key;
+          }
+        });
+      }
+      return id;
+    },
+
     lastNotificationMessage: null,
 
     CollectionTypes: {},

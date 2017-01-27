@@ -175,34 +175,6 @@ typedef long suseconds_t;
 #undef TRI_WITHIN_COMMON
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief incrementing a uint64_t modulo a number with wraparound
-////////////////////////////////////////////////////////////////////////////////
-
-static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
-  // Note that the dummy variable gives the compiler a (good) chance to
-  // use a conditional move instruction instead of a branch. This actually
-  // works on modern gcc.
-  uint64_t dummy;
-  dummy = (++i) - len;
-  return i < len ? i : dummy;
-}
-
-static inline uint64_t TRI_DecModU64(uint64_t i, uint64_t len) {
-  if ((i--) != 0) {
-    return i;
-  }
-  return len - 1;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a trivial hash function for uint64_t to uint32_t
-////////////////////////////////////////////////////////////////////////////////
-
-static inline uint32_t TRI_64To32(uint64_t x) {
-  return static_cast<uint32_t>(x >> 32) ^ static_cast<uint32_t>(x);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper macro for calculating strlens for static strings at
 /// a compile-time (unless compiled with fno-builtin-strlen etc.)
 ////////////////////////////////////////////////////////////////////////////////
@@ -235,22 +207,33 @@ static inline uint32_t TRI_64To32(uint64_t x) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief aborts program execution
+/// @brief aborts program execution, returning an error code
 ///
 /// if backtraces are enabled, a backtrace will be printed before
 ////////////////////////////////////////////////////////////////////////////////
 
 #define FATAL_ERROR_EXIT(...)                 \
   do {                                        \
-    std::string bt;                           \
-    TRI_GetBacktrace(bt);                     \
-    if (!bt.empty()) {                        \
-      LOG(WARN) << bt;                        \
-    }                                         \
+    TRI_LogBacktrace();                       \
     arangodb::Logger::flush();                \
     arangodb::Logger::shutdown();             \
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr); \
     exit(EXIT_FAILURE);                       \
+  } while (0)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aborts program execution, calling std::abort
+///
+/// if backtraces are enabled, a backtrace will be printed before
+////////////////////////////////////////////////////////////////////////////////
+
+#define FATAL_ERROR_ABORT(...)                \
+  do {                                        \
+    TRI_LogBacktrace();                       \
+    arangodb::Logger::flush();                \
+    arangodb::Logger::shutdown();             \
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr); \
+    std::abort();                             \
   } while (0)
 
 #ifdef _WIN32

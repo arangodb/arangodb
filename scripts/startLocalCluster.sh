@@ -13,9 +13,9 @@ function help() {
   echo "     --log-level-agency   Log level (agency)  (string           default: )"
   echo "     --log-level-cluster  Log level (cluster) (string           default: )"
   echo "  -i/--interactive        Interactive mode    (C|D|R            default: '')"
-  
   echo "  -x/--xterm              XTerm command       (default: xterm)"
   echo "  -o/--xterm-options      XTerm options       (default: --geometry=80x43)"
+  echo "  -b/--offset-ports       Offset ports        (default: 0, i.e. A:4001, C:8530, D:8629)"
   echo ""
   echo "EXAMPLES:"
   echo "  scripts/startLocalCluster.sh"
@@ -42,6 +42,7 @@ fi
 SECONDARIES=0
 BUILD="build"
 JWT_SECRET=""
+PORT_OFFSET=0
 
 while [[ ${1} ]]; do
     case "${1}" in
@@ -87,6 +88,10 @@ while [[ ${1} ]]; do
       ;;
     -o|--xterm-options)
       XTERMOPTIONS=${2}
+      shift
+      ;;
+    -b|--port-offset)
+      PORT_OFFSET=${2}
       shift
       ;;
     -h|--help)
@@ -152,7 +157,9 @@ fi
 SFRE=5.0
 COMP=2000
 KEEP=0
-BASE=4001
+AG_BASE=$(( $PORT_OFFSET + 4001 ))
+CO_BASE=$(( $PORT_OFFSET + 8530 ))
+DB_BASE=$(( $PORT_OFFSET + 8629 ))
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 
 #rm -rf cluster
@@ -179,14 +186,14 @@ fi
 
 echo Starting agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
-    port=$(( $BASE + $aid ))
+    port=$(( $AG_BASE + $aid ))
     AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://localhost:$port "
     ${BUILD}/bin/arangod \
         -c none \
         --agency.activate true \
         --agency.compaction-step-size $COMP \
         --agency.compaction-keep-size $KEEP \
-        --agency.endpoint $TRANSPORT://localhost:$BASE \
+        --agency.endpoint $TRANSPORT://localhost:$AG_BASE \
         --agency.my-address $TRANSPORT://localhost:$port \
         --agency.pool-size $NRAGENTS \
         --agency.size $NRAGENTS \
@@ -224,7 +231,7 @@ start() {
     ${BUILD}/bin/arangod \
        -c none \
        --database.directory cluster/data$PORT \
-       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
        --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
        --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
        --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
@@ -257,7 +264,7 @@ startTerminal() {
     $XTERM $XTERMOPTIONS -e "${BUILD}/bin/arangod \
         -c none \
         --database.directory cluster/data$PORT \
-        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
         --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
         --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
         --cluster.my-role $ROLE \
@@ -286,7 +293,7 @@ startDebugger() {
     ${BUILD}/bin/arangod \
       -c none \
       --database.directory cluster/data$PORT \
-      --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+      --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
       --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
       --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
       --cluster.my-role $ROLE \
@@ -315,7 +322,7 @@ startRR() {
     $XTERM $XTERMOPTIONS -e "rr ${BUILD}/bin/arangod \
         -c none \
         --database.directory cluster/data$PORT \
-        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
         --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
         --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
         --cluster.my-role $ROLE \
@@ -331,8 +338,8 @@ startRR() {
         --console" &
 }
 
-PORTTOPDB=`expr 8629 + $NRDBSERVERS - 1`
-for p in `seq 8629 $PORTTOPDB` ; do
+PORTTOPDB=`expr $DB_BASE + $NRDBSERVERS - 1`
+for p in `seq $DB_BASE $PORTTOPDB` ; do
     if [ "$CLUSTERDEBUGGER" == "1" ] ; then
         startDebugger dbserver $p
     elif [ "$RRDEBUGGER" == "1" ] ; then
@@ -341,20 +348,20 @@ for p in `seq 8629 $PORTTOPDB` ; do
         start dbserver $p
     fi
 done
-if [ "$NRCOORDINATORS" -gt 0 ]
-then
-  PORTTOPCO=`expr 8530 + $NRCOORDINATORS - 1`
-  for p in `seq 8530 $PORTTOPCO` ; do
-      if [ "$CLUSTERDEBUGGER" == "1" ] ; then
-          startDebugger coordinator $p
-      elif [ $p == "8530" -a ! -z "$COORDINATORCONSOLE" ] ; then
-          startTerminal coordinator $p
-      elif [ "$RRDEBUGGER" == "1" ] ; then
-          startRR coordinator $p
-      else
-          start coordinator $p
-      fi
-  done
+
+if [ "$NRCOORDINATORS" -gt 0 ] ; then
+PORTTOPCO=`expr $CO_BASE + $NRCOORDINATORS - 1`
+for p in `seq $CO_BASE $PORTTOPCO` ; do
+    if [ "$CLUSTERDEBUGGER" == "1" ] ; then
+        startDebugger coordinator $p
+    elif [ $p == "$CO_BASE" -a ! -z "$COORDINATORCONSOLE" ] ; then
+        startTerminal coordinator $p
+    elif [ "$RRDEBUGGER" == "1" ] ; then
+        startRR coordinator $p
+    else
+        start coordinator $p
+    fi
+done
 fi
 
 if [ "$CLUSTERDEBUGGER" == "1" ] ; then
@@ -382,14 +389,14 @@ testServer() {
     done
 }
 
-for p in `seq 8629 $PORTTOPDB` ; do
+for p in `seq $DB_BASE $PORTTOPDB` ; do
     testServer $p
 done
-if [ "$NRCOORDINATORS" -gt 0 ]
-then
-  for p in `seq 8530 $PORTTOPCO` ; do
-      testServer $p
-  done
+
+if [ "$NRCOORDINATORS" -gt 0 ] ; then
+for p in `seq $CO_BASE $PORTTOPCO` ; do
+    testServer $p
+done
 fi
 
 if [ "$SECONDARIES" == "1" ] ; then
@@ -401,12 +408,12 @@ if [ "$SECONDARIES" == "1" ] ; then
         CLUSTER_ID="Secondary$index"
         
         echo Registering secondary $CLUSTER_ID for "DBServer$index"
-        curl -f -X PUT --data "{\"primary\": \"DBServer$index\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" localhost:8530/_admin/cluster/replaceSecondary
+        curl -f -X PUT --data "{\"primary\": \"DBServer$index\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" localhost:$CO_BASE/_admin/cluster/replaceSecondary
         echo Starting Secondary $CLUSTER_ID on port $PORT
         ${BUILD}/bin/arangod \
             -c none \
             --database.directory cluster/data$PORT \
-            --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+            --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
             --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
             --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
             --cluster.my-id $CLUSTER_ID \
@@ -424,9 +431,8 @@ if [ "$SECONDARIES" == "1" ] ; then
 fi
 
 echo Done, your cluster is ready at
-if [ "$NRCOORDINATORS" -gt 0 ]
-then
-for p in `seq 8530 $PORTTOPCO` ; do
+if [ "$NRCOORDINATORS" -gt 0 ] ; then
+for p in `seq $CO_BASE $PORTTOPCO` ; do
     echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://127.0.0.1:$p"
 done
 fi

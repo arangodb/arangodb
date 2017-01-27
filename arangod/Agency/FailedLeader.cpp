@@ -112,6 +112,7 @@ bool FailedLeader::start() {
       curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
 
   Node const& current = _snapshot(curPath);
+  Node const& planned = _snapshot(planPath);
 
   if (current.slice().length() == 1) {
     LOG_TOPIC(ERR, Logger::AGENCY)
@@ -180,11 +181,17 @@ bool FailedLeader::start() {
 
   pending.close();
 
-  // Precondition
-  // --- Check that Current servers are as we expect
+  // Preconditions
   pending.openObject();
+
+  // --- Check that Current servers are as we expect
   pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
   pending.add("old", current.slice());
+  pending.close();
+
+  // --- Check that Current servers are as we expect
+  pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Object));
+  pending.add("old", planned.slice());
   pending.close();
 
   // --- Check if shard is not blocked
@@ -194,6 +201,8 @@ bool FailedLeader::start() {
   pending.close();
 
   pending.close();
+
+  // Preconditions end
   pending.close();
 
   // Transact

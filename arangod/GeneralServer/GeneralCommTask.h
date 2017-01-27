@@ -84,24 +84,20 @@ class GeneralCommTask : public SocketTask {
 
  public:
   GeneralCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket>,
-                  ConnectionInfo&&, double keepAliveTimeout, bool skipSocketInit = false);
+                  ConnectionInfo&&, double keepAliveTimeout,
+                  bool skipSocketInit = false);
 
-  virtual void addResponse(GeneralResponse*) = 0;
+  ~GeneralCommTask();
+
   virtual arangodb::Endpoint::TransportType transportType() = 0;
 
-  RequestStatisticsAgent* getAgent(uint64_t id) {
-    MUTEX_LOCKER(lock, _agentsMutex);
-    auto agentIt = _agents.find(id);
-    if (agentIt != _agents.end()) {
-      return agentIt->second.get();
-    } else {
-      throw std::logic_error("there should be an agent for every request");
-    }
-  }
+  void setStatistics(uint64_t, RequestStatistics*);
 
  protected:
   virtual std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) = 0;
+
+  virtual void addResponse(GeneralResponse*, RequestStatistics*) = 0;
 
  protected:
   void executeRequest(std::unique_ptr<GeneralRequest>&&,
@@ -115,6 +111,11 @@ class GeneralCommTask : public SocketTask {
                                  std::string const& errorMessage,
                                  uint64_t messageId) = 0;
 
+  RequestStatistics* acquireStatistics(uint64_t);
+  RequestStatistics* statistics(uint64_t);
+  RequestStatistics* stealStatistics(uint64_t);
+  void transferStatisticsTo(uint64_t, RestHandler*);
+
  protected:
   GeneralServer* const _server;
 
@@ -122,8 +123,8 @@ class GeneralCommTask : public SocketTask {
   char const* _protocol = "unknown";
   rest::ProtocolVersion _protocolVersion = rest::ProtocolVersion::UNKNOWN;
 
-  std::unordered_map<uint64_t, std::unique_ptr<RequestStatisticsAgent>> _agents;
-  ::arangodb::Mutex _agentsMutex;
+  arangodb::Mutex _statisticsMutex;
+  std::unordered_map<uint64_t, RequestStatistics*> _statisticsMap;
 
  private:
   bool handleRequest(std::shared_ptr<RestHandler>);

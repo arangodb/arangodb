@@ -1490,8 +1490,8 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     usedPorts.push(port);
     instanceArgs['server.endpoint'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.my-address'] = protocol + '://127.0.0.1:' + port;
-    instanceArgs['agency.supervision-grace-period'] = '5';
-    instanceArgs['agency.supervision-frequency'] = '1'; 
+    instanceArgs['agency.supervision-grace-period'] = '5.0';
+    instanceArgs['agency.supervision-frequency'] = '0.05'; 
 
     if (i === N - 1) {
       let l = [];
@@ -1644,8 +1644,9 @@ function rubyTests (options, ssl) {
     '  c.ARANGO_USER = "' + options.username + '"\n' +
     '  c.add_setting :ARANGO_PASSWORD\n' +
     '  c.ARANGO_PASSWORD = "' + options.password + '"\n' +
+    '  c.add_setting :SKIP_TIMECRITICAL\n' +
+    '  c.SKIP_TIMECRITICAL = ' + JSON.stringify(options.skipTimeCritical) + '\n' +
     'end\n');
-
   try {
     fs.makeDirectory(LOGS_DIR);
   } catch (err) {}

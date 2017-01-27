@@ -981,15 +981,16 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("getDBServers()");
   }
 
-  std::vector<std::string> DBServers =
-      ClusterInfo::instance()->getCurrentDBServers();
+  auto DBServers = ClusterInfo::instance()->getCurrentDBServers();
+  auto serverAliases = ClusterInfo::instance()->getServerAliases();
 
   v8::Handle<v8::Array> l = v8::Array::New(isolate);
-
   for (size_t i = 0; i < DBServers.size(); ++i) {
-    ServerID const sid = DBServers[i];
-
-    l->Set((uint32_t)i, TRI_V8_STD_STRING(sid));
+    v8::Handle<v8::Object> result = v8::Object::New(isolate);
+    result->Set(TRI_V8_ASCII_STRING("serverId"), TRI_V8_STD_STRING(DBServers[i]));
+    result->Set(TRI_V8_ASCII_STRING("serverName"),
+                TRI_V8_STD_STRING(serverAliases.at(DBServers[i])));
+    l->Set((uint32_t)i, result);
   }
 
   TRI_V8_RETURN(l);

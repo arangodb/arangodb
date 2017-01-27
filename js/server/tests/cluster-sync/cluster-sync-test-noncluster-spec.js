@@ -434,6 +434,72 @@ describe('Cluster sync', function() {
       let indexes = db._collection('s100001').getIndexes();
       expect(indexes).to.have.lengthOf(2);
     });
+    it('should report failure when creating an index does not work', function() {
+      let c = db._create('s100001');
+      c.insert({"peng": "peng"});
+      c.insert({"peng": "peng"});
+      let plan = {
+        Collections: {
+          test: {
+            "100001": {
+              "deleted": false,
+              "doCompact": true,
+              "id": "100001",
+              "indexBuckets": 8,
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                  {
+                    "error": false,
+                    "errorMessage": "",
+                    "errorNum": 0,
+                    "fields": [
+                      "peng"
+                    ],
+                    "id": "100005",
+                    "sparse": true,
+                    "type": "hash",
+                    "unique": true
+                  }
+              ],
+              "isSystem": false,
+              "isVolatile": false,
+              "journalSize": 1048576,
+              "keyOptions": {
+                "allowUserKeys": true,
+                "type": "traditional"
+              },
+              "name": "test",
+              "numberOfShards": 1,
+              "replicationFactor": 2,
+              "shardKeys": [
+                "_key"
+              ],
+              "shards": {
+                "s100001": [
+                  "repltest",
+                ]
+              },
+              "status": 2,
+              "type": 2,
+              "waitForSync": false
+            }
+          }
+        }
+      };
+
+      let errors = cluster.executePlanForCollections(plan.Collections);
+      expect(errors).to.have.property('s100001')
+        .with.property('indexErrors')
+        .with.property('100005');
+    });
     it('should remove an additional index if instructed to do so', function() {
       db._create('s100001');
       db._collection('s100001').ensureIndex({ type: "hash", fields: [ "name" ] });
@@ -740,7 +806,7 @@ describe('Cluster sync', function() {
       expect(db._collection('s100001').isLeader()).to.equal(true);
     });
   });
-  describe('Update current', function() {
+  describe('Update current database', function() {
     beforeEach(function() {
       db._databases().forEach(database => {
         if (database !== '_system') {
@@ -840,8 +906,12 @@ describe('Cluster sync', function() {
             id: 1,
             name: '_system',
           },
-          testi: {
-            error: 'gut',
+        },
+        testi: {
+          repltest: {
+            id: 2,
+            name: 'testi',
+            error: true,
           }
         },
       };
@@ -852,6 +922,256 @@ describe('Cluster sync', function() {
       expect(result['/arango/Current/Databases/testi/repltest']).to.have.property('op', 'set');
       expect(result['/arango/Current/Databases/testi/repltest']).to.have.deep.property('new.name', 'testi');
       expect(result['/arango/Current/Databases/testi/repltest']).to.have.deep.property('new.error', false);
+    });
+    it('should not do anything if nothing happened', function() {
+      let current = {
+        _system: {
+          repltest: {
+            id: 1,
+            name: '_system',
+          },
+        },
+      };
+      let result = cluster.updateCurrentForDatabases({}, current);
+      expect(Object.keys(result)).to.have.lengthOf(0);
+    });
+  });
+  describe('Update current collection', function() {
+    beforeEach(function() {
+      db._useDatabase('_system');
+      db._databases().forEach(database => {
+        if (database !== '_system') {
+          db._dropDatabase(database);
+        }
+      });
+      db._createDatabase('testung');
+      db._useDatabase('testung');
+    });
+    it('should report a new collection in current', function() {
+      let props = { planId: '888111' };
+      let collection = db._create('testi', props);
+      collection.assumeLeadership();
+      let current = {
+      };
+      let result = cluster.updateCurrentForCollections({}, current);
+      expect(Object.keys(result)).to.have.length.of.at.least(1);
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi');
+      expect(result['/arango/Current/Collections/testung/888111/testi']).to.have.property('op', 'set');
+      expect(result['/arango/Current/Collections/testung/888111/testi']).to.have.deep.property('new.servers')
+        .that.is.an('array')
+        .that.deep.equals(['repltest']);
+    });
+    it('should not do anything if nothing changed', function() {
+      let current = {
+      };
+      let result = cluster.updateCurrentForCollections({}, current);
+      expect(Object.keys(result)).to.have.lengthOf(0);
+    });
+    it('should not report any collections for which we are not leader (will be handled in replication)', function() {
+      let props = { planId: '888111' };
+      let collection = db._create('testi', props);
+      let current = {
+      };
+      let result = cluster.updateCurrentForCollections({}, current);
+      expect(Object.keys(result)).to.have.lengthOf(0);
+    });
+    it('should not delete any collections for which we are not a leader locally', function() {
+      let current = {
+        testung: {
+          888111: {
+            testi : { "error" : false, "errorMessage" : "", "errorNum" : 0, "indexes" : [ { "id" : "0", "type" : "primary", "fields" : [ "_key" ], "selectivityEstimate" : 1, "unique" : true, "sparse" : false } ], "servers" : [ "the-master", "repltest" ] }
+          },
+        }
+      };
+      let result = cluster.updateCurrentForCollections({}, current);
+      expect(Object.keys(result)).to.have.lengthOf(0);
+    });
+    it('should resign leadership for which we are no more leader locally', function() {
+      let props = { planId: '888111' };
+      let collection = db._create('testi', props);
+      let current = {
+        testung: {
+          888111: {
+            testi : { "error" : false, "errorMessage" : "", "errorNum" : 0, "indexes" : [ { "id" : "0", "type" : "primary", "fields" : [ "_key" ], "selectivityEstimate" : 1, "unique" : true, "sparse" : false } ], "servers" : [ "repltest" ] }
+          },
+        }
+      };
+      let result = cluster.updateCurrentForCollections({}, current);
+      expect(result).to.be.an('object');
+      expect(Object.keys(result)).to.have.lengthOf(1);
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi/servers')
+        .that.have.property('op', 'set');
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi/servers')
+        .that.has.property('new')
+        .with.deep.equal(["_repltest"]);
+    });
+    it('should report newly assumed leadership for which we were a follower previously and remove any leaders and followers (these have to reregister themselves separateley)', function() {
+      let props = { planId: '888111' };
+      let collection = db._create('testi', props);
+      collection.assumeLeadership();
+      let current = {
+        testung: {
+          888111: {
+            testi : { "error" : false, "errorMessage" : "", "errorNum" : 0, "indexes" : [ { "id" : "0", "type" : "primary", "fields" : [ "_key" ], "selectivityEstimate" : 1, "unique" : true, "sparse" : false } ], "servers" : [ "bogus-old-leader", "repltest", "useless-follower" ] }
+          },
+        }
+      };
+      let result = cluster.updateCurrentForCollections({}, current);
+      expect(result).to.be.an('object');
+      expect(Object.keys(result)).to.have.lengthOf(1);
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.have.property('op', 'set');
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.has.deep.property('new.servers')
+        .with.deep.equal(["repltest"]);
+    });
+    it('should delete any collections for which we are not a leader locally', function() {
+      let current = {
+        testung: {
+          888111: {
+            testi : { "error" : false, "errorMessage" : "", "errorNum" : 0, "indexes" : [ { "id" : "0", "type" : "primary", "fields" : [ "_key" ], "selectivityEstimate" : 1, "unique" : true, "sparse" : false } ], "servers" : [ "repltest" ] }
+          },
+        }
+      };
+      let result = cluster.updateCurrentForCollections({}, current);
+      expect(result).to.be.an('object');
+      expect(Object.keys(result)).to.have.lengthOf(1);
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.has.deep.property('op', 'delete');
+    });
+    it('should report newly created indices', function() {
+      let props = { planId: '888111' };
+      let collection = db._create('testi', props);
+      collection.assumeLeadership();
+      collection.ensureIndex({"type": "hash", "fields": ["hund"]});
+      let current = {
+        testung: {
+          888111: {
+            testi : { "error" : false, "errorMessage" : "", "errorNum" : 0, "indexes" : [ { "id" : "0", "type" : "primary", "fields" : [ "_key" ], "selectivityEstimate" : 1, "unique" : true, "sparse" : false } ], "servers" : [ "repltest" ] }
+          },
+        }
+      };
+      let result = cluster.updateCurrentForCollections({}, current);
+      expect(result).to.be.an('object');
+      expect(Object.keys(result)).to.have.lengthOf(1);
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.have.property('op', 'set');
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.has.deep.property('new.indexes')
+        .with.lengthOf(2);
+    });
+    it('should report collection errors', function() {
+      let errors = {
+        'testi': {
+          collection: {
+            'name': 'testi',
+            'error': true,
+            'errorNum': 666,
+            'errorMessage': 'the number of the beast :S',
+          },
+          info: {
+            database: 'testung',
+            planId: '888111',
+            shardName: 'testi',
+          }
+        }
+      };
+      let result = cluster.updateCurrentForCollections(errors, {});
+      expect(result).to.be.an('object');
+      expect(Object.keys(result)).to.have.lengthOf(1);
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.have.property('op', 'set');
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.has.deep.property('new.error')
+        .equals(true);
+    });
+    it('should report index errors', function() {
+      let current = {
+        testung: {
+          888111: {
+            testi : { "error" : false, "errorMessage" : "", "errorNum" : 0, "indexes" : [ { "id" : "0", "type" : "primary", "fields" : [ "_key" ], "selectivityEstimate" : 1, "unique" : true, "sparse" : false } ], "servers" : [ "repltest" ] }
+          },
+        }
+      };
+
+      let errors = {
+        'testi': {
+          'indexErrors': {
+            1: {
+              'id': 1,
+              'error': true,
+              'errorNum': 666,
+              'errorMessage': 'the number of the beast :S',
+            }
+          },
+        }
+      };
+      let props = { planId: '888111' };
+      let collection = db._create('testi', props);
+      collection.assumeLeadership();
+      let result = cluster.updateCurrentForCollections(errors, current);
+      expect(result).to.be.an('object');
+      expect(Object.keys(result)).to.have.lengthOf(1);
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.have.property('op', 'set');
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.has.deep.property('new.indexes.1.error')
+        .equals(true);
+    });
+    it('should report deleted indexes', function() {
+      let current = {
+        testung: {
+          888111: {
+            testi : { "error" : false, "errorMessage" : "", "errorNum" : 0, "indexes" : [ { "id" : "0", "type" : "primary", "fields" : [ "_key" ], "selectivityEstimate" : 1, "unique" : true, "sparse" : false },
+                  {
+                    "fields": [
+                      "test"
+                    ],
+                    "id": "testi",
+                    "selectivityEstimate": 1,
+                    "sparse": false,
+                    "type": "hash",
+                    "unique": false
+                  }
+            ], "servers" : [ "repltest" ] }
+          },
+        }
+      };
+
+      let props = { planId: '888111' };
+      let collection = db._create('testi', props);
+      collection.assumeLeadership();
+      let result = cluster.updateCurrentForCollections({}, current);
+      expect(result).to.be.an('object');
+      expect(Object.keys(result)).to.have.lengthOf(1);
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.have.property('op', 'set');
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.has.deep.property('new.indexes')
+        .that.has.lengthOf(1);
+    });
+    it('should report added indexes', function() {
+      let current = {
+        testung: {
+          888111: {
+            testi : { "error" : false, "errorMessage" : "", "errorNum" : 0, "indexes" : [ { "id" : "0", "type" : "primary", "fields" : [ "_key" ], "selectivityEstimate" : 1, "unique" : true, "sparse" : false },
+            ], "servers" : [ "repltest" ] }
+          },
+        }
+      };
+
+      let props = { planId: '888111' };
+      let collection = db._create('testi', props);
+      collection.assumeLeadership();
+      collection.ensureIndex({type: "hash", fields: ["test"]});
+      let result = cluster.updateCurrentForCollections({}, current);
+      expect(result).to.be.an('object');
+      expect(Object.keys(result)).to.have.lengthOf(1);
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.have.property('op', 'set');
+      expect(result).to.have.property('/arango/Current/Collections/testung/888111/testi')
+        .that.has.deep.property('new.indexes')
+        .that.has.lengthOf(2);
     });
   });
 });
