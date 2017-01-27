@@ -132,7 +132,15 @@ function createCallbackFromActionCallbackString (callback, parentModule, route) 
   try {
     actionModule._compile(`module.exports = ${callback}`, route.name);
   } catch (e) {
-    console.errorLines(e.stack);
+    let err = e;
+    while (err) {
+      console.errorLines(
+        err === e
+        ? err.stack
+        : `via ${err.stack}`
+      );
+      err = err.cause;
+    }
     return notImplementedFunction(route, util.format(
       "could not generate callback for '%s'",
       callback

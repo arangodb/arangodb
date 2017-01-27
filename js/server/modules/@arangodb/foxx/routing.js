@@ -152,7 +152,18 @@ exports.routeService = function (service, throwOnErrors) {
       try {
         service.main.exports = service.run(service.manifest.main);
       } catch (e) {
-        console.errorLines(`Cannot execute Foxx service at ${service.mount}: ${e.stack}`);
+        console.errorLines(`Service "${service.mount}" encountered an error while being mounted`);
+        let err = e;
+        while (err) {
+          if (err.stack) {
+            console.errorLines(
+              err === e
+              ? err.stack
+              : `via ${err.stack}`
+            );
+          }
+          err = err.cause;
+        }
         error = e;
         if (throwOnErrors) {
           throw e;
