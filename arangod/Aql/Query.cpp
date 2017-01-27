@@ -127,6 +127,9 @@ std::shared_ptr<VPackBuilder> Profile::toVelocyPack() {
   return result;
 }
 
+/// @brief global memory limit for AQL queries
+uint64_t Query::MemoryLimitValue = 0;
+
 /// @brief global threshold value for slow queries
 double Query::SlowQueryThresholdValue = 10.0;
 
