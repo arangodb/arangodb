@@ -560,6 +560,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     if (_path.empty()) {
       _path = engine->createCollection(_vocbase, _cid, this);
+      ensureRevisionsCache();
     }
   }
 
@@ -1046,7 +1047,6 @@ void LogicalCollection::drop() {
 
   // save some memory by freeing the revisions cache and indexes
   _keyGenerator.reset();
-  _revisionsCache.reset(); 
   _indexes.clear();
   _physical.reset();
 }
@@ -3614,12 +3614,12 @@ void LogicalCollection::newObjectForRemove(
 }
 
 bool LogicalCollection::readRevision(Transaction* trx, ManagedDocumentResult& result, TRI_voc_rid_t revisionId) {
-  TRI_ASSERT(_revisionsCache);
+  TRI_ASSERT(_revisionsCache != nullptr);
   return _revisionsCache->lookupRevision(trx, result, revisionId, !_isInitialIteration);
 }
 
 bool LogicalCollection::readRevisionConditional(Transaction* trx, ManagedDocumentResult& result, TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) {
-  TRI_ASSERT(_revisionsCache);
+  TRI_ASSERT(_revisionsCache != nullptr);
   return _revisionsCache->lookupRevisionConditional(trx, result, revisionId, maxTick, excludeWal, true);
 }
 
@@ -3647,7 +3647,7 @@ void LogicalCollection::removeRevision(TRI_voc_rid_t revisionId, bool updateStat
 
 void LogicalCollection::removeRevisionCacheEntry(TRI_voc_rid_t revisionId) {
   // clean up cache entry
-  TRI_ASSERT(_revisionsCache);
+  TRI_ASSERT(_revisionsCache != nullptr);
   _revisionsCache->removeRevision(revisionId); 
 }
 
