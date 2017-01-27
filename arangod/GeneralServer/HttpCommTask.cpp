@@ -71,7 +71,7 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
 void HttpCommTask::handleSimpleError(rest::ResponseCode code,
                                      uint64_t /* messageId */) {
   std::unique_ptr<GeneralResponse> response(new HttpResponse(code));
-  addResponse(response.get());
+  addResponse(response.get(), stealStatistics(1UL));
 }
 
 void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
@@ -89,7 +89,7 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
 
   try {
     response->setPayload(builder.slice(), true, VPackOptions::Defaults);
-    addResponse(response.get());
+    addResponse(response.get(), stealStatistics(1UL));
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "handleSimpleError received an exception, closing connection:"
@@ -102,7 +102,7 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
   }
 }
 
-void HttpCommTask::addResponse(HttpResponse* response) {
+void HttpCommTask::addResponse(HttpResponse* response, RequestStatistics* stat) {
   resetKeepAlive();
 
   // response has been queued, allow further requests
@@ -142,8 +142,6 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   }
 
   // reserve a buffer with some spare capacity
-  RequestStatistics* stat = stealStatistics(1UL);
-
   WriteBuffer buffer(
       new StringBuffer(TRI_UNKNOWN_MEM_ZONE, responseBodyLength + 128, false),
       stat);

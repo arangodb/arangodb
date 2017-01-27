@@ -596,6 +596,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     if (_path.empty()) {
       _path = engine->createCollection(_vocbase, _cid, this);
+      ensureRevisionsCache();
     }
   }
 
