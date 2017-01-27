@@ -271,7 +271,7 @@ void GeneralCommTask::handleRequestDirectly(
   auto self = shared_from_this();
   handler->initEngine(_loop, [self, this](RestHandler* h) {
     h->transferStatisticsTo(this);
-    addResponse(h->stealResponse().release());
+    addResponse(h->response());
   });
 
   HandlerWorkStack monitor(handler);
