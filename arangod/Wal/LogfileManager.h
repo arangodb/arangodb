@@ -372,6 +372,11 @@ class LogfileManager final : public application_features::ApplicationFeature {
   
   void waitForCollector();
 
+  // execute a callback during a phase in which the collector has nothing
+  // queued. This is used in the DatabaseManagerThread when dropping
+  // a database to avoid existence of ditches of type DOCUMENT.
+  bool executeWhileNothingQueued(std::function<void()> const& cb);
+
  private:
   // hashes the transaction id into a bucket
   size_t getBucket(TRI_voc_tid_t id) const { return std::hash<TRI_voc_cid_t>()(id) % numBuckets; }
