@@ -114,10 +114,10 @@ void VppCommTask::addResponse(VppResponse* response) {
 
   for (auto&& buffer : buffers) {
     if (c == n) {
-      WriteBuffer b(buffer.get(), stat);
+      WriteBuffer b(buffer.release(), stat);
       addWriteBuffer(b);
     } else {
-      WriteBuffer b(buffer.get(), nullptr);
+      WriteBuffer b(buffer.release(), nullptr);
       addWriteBuffer(b);
     }
 
