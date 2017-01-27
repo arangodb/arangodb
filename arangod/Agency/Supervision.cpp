@@ -564,8 +564,8 @@ bool Supervision::handleJobs() {
   // Do supervision
   
   shrinkCluster();
-  workJobs();
   enforceReplication();
+  workJobs();
 
   return true;
 }
