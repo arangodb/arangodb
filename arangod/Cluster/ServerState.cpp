@@ -265,12 +265,13 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role,
 
   std::string id;
   bool found = true;
+
   if (!result.successful()) {
     found = false;
   } else {
     VPackSlice idSlice = result.slice()[0].get(
-        std::vector<std::string>({AgencyCommManager::path(), "Target",
-                                  "MapLocalToID", localInfoEncoded}));
+      std::vector<std::string>({AgencyCommManager::path(), "Target",
+            "MapLocalToID", localInfoEncoded}));
     if (!idSlice.isString()) {
       found = false;
     } else {
@@ -278,12 +279,15 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role,
       LOG(WARN) << "Have ID: " + id;
     }
   }
-  if (!found) {
+  createIdForRole(comm, role, id);
+  if (found) {
+    
+  } else {
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
-        << "Determining id from localinfo failed."
-        << "Continuing with registering ourselves for the first time";
+      << "Determining id from localinfo failed."
+      << "Continuing with registering ourselves for the first time";
     id = createIdForRole(comm, role);
-  }
+  } 
 
   const std::string agencyKey = roleToAgencyKey(role);
   const std::string planKey = "Plan/" + agencyKey + "/" + id;
@@ -368,11 +372,11 @@ void mkdir (std::string const& path) {
 /// @brief create an id for a specified role
 //////////////////////////////////////////////////////////////////////////////
 std::string ServerState::createIdForRole(AgencyComm comm,
-                                         ServerState::RoleEnum role) {
+                                         ServerState::RoleEnum role,
+                                         std::string id) {
   
   typedef std::pair<AgencyOperation,AgencyPrecondition> operationType;
   std::string const agencyKey = roleToAgencyKey(role);
-  
 
   VPackBuilder builder;
   builder.add(VPackValue("none"));
@@ -386,7 +390,6 @@ std::string ServerState::createIdForRole(AgencyComm comm,
 
   auto filePath = dbpath->directory() + "/UUID";
   std::ifstream ifs(filePath);
-  std::string id;
   
   if (ifs.is_open()) {
     std::getline(ifs, id);
@@ -396,7 +399,10 @@ std::string ServerState::createIdForRole(AgencyComm comm,
   } else {
     mkdir (dbpath->directory());
     std::ofstream ofs(filePath);
-    id = RoleStr.at(role) + "-" + to_string(boost::uuids::random_generator()());
+    if (id.empty()) {
+      id = RoleStr.at(role) + "-" +
+        to_string(boost::uuids::random_generator()());
+    }
     ofs << id << std::endl;
     ofs.close();
     LOG_TOPIC(INFO, Logger::CLUSTER)
@@ -409,6 +415,7 @@ std::string ServerState::createIdForRole(AgencyComm comm,
                << " from agency. Agency is not initialized?";
     FATAL_ERROR_EXIT();
   }
+  
   VPackSlice servers = result.slice()[0].get(
     std::vector<std::string>({AgencyCommManager::path(), "Plan", agencyKey}));
   if (!servers.isObject()) {
