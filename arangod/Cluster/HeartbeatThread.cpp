@@ -67,16 +67,16 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
       _maxFailsBeforeWarning(maxFailsBeforeWarning),
       _numFails(0),
       _lastSuccessfulVersion(0),
-      _isDispatchingChange(false),
       _currentPlanVersion(0),
       _ready(false),
       _currentVersions(0, 0),
       _desiredVersions(std::make_shared<AgencyVersions>(0, 0)),
       _wasNotified(false),
-      _strand(new boost::asio::io_service::strand(*ioService)),
-      _callbacksPosted(0),
-      _callbacksExecuted(0) {
-  
+      _ioService(ioService),
+      _backgroundJobsPosted(0),
+      _backgroundJobsLaunched(0),
+      _backgroundJobRunning(false),
+      _launchAnotherBackgroundJob(false) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,8 +104,6 @@ void HeartbeatThread::run() {
   } else {
     runDBServer();
   }
-
-  _strand.reset();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -318,7 +316,7 @@ void HeartbeatThread::runDBServer() {
     bool isInPlanChange;
     {
       MUTEX_LOCKER(mutexLocker, *_statusLock);
-      isInPlanChange = _isDispatchingChange;
+      isInPlanChange = _backgroundJobRunning;
     }
     if (!isInPlanChange) {
       break;
@@ -567,7 +565,6 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
       // mop: we will retry immediately so wait at least a LITTLE bit
       doSleep = true;
     }
-    _isDispatchingChange = false;
   }
   if (doSleep) {
     // Sleep a little longer, since this might be due to some synchronisation
@@ -697,66 +694,83 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 /// and every few heartbeats if the Current/Version has changed.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HeartbeatThread::syncDBServerStatusQuo() {
+void HeartbeatThread::syncDBServerStatusQuo() {
   bool shouldUpdate = false;
   bool becauseOfPlan = false;
   bool becauseOfCurrent = false;
-  {
-    MUTEX_LOCKER(mutexLocker, *_statusLock);
-    // mop: only dispatch one at a time
-    if (_isDispatchingChange) {
-      return false;
-    }
 
-    if (_desiredVersions->plan > _currentVersions.plan) {
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-          << "Plan version " << _currentVersions.plan
-          << " is lower than desired version " << _desiredVersions->plan;
-      _isDispatchingChange = true;
-      becauseOfPlan = true;
-    }
-    if (_desiredVersions->current > _currentVersions.current) {
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-          << "Current version " << _currentVersions.current
-          << " is lower than desired version " << _desiredVersions->current;
-      _isDispatchingChange = true;
-      becauseOfCurrent = true;
-    }
-    shouldUpdate = _isDispatchingChange;
+  MUTEX_LOCKER(mutexLocker, *_statusLock);
+
+  if (_desiredVersions->plan > _currentVersions.plan) {
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
+        << "Plan version " << _currentVersions.plan
+        << " is lower than desired version " << _desiredVersions->plan;
+    shouldUpdate = true;
+    becauseOfPlan = true;
+  }
+  if (_desiredVersions->current > _currentVersions.current) {
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
+        << "Current version " << _currentVersions.current
+        << " is lower than desired version " << _desiredVersions->current;
+    shouldUpdate = true;
+    becauseOfCurrent = true;
   }
 
-  if (shouldUpdate) {
-    // First invalidate the caches in ClusterInfo:
-    auto ci = ClusterInfo::instance();
-    if (becauseOfPlan) {
-      ci->invalidatePlan();
-    }
-    if (becauseOfCurrent) {
-      ci->invalidateCurrent();
+  if (!shouldUpdate) {
+    return;
+  }
+
+  // First invalidate the caches in ClusterInfo:
+  auto ci = ClusterInfo::instance();
+  if (becauseOfPlan) {
+    ci->invalidatePlan();
+  }
+  if (becauseOfCurrent) {
+    ci->invalidateCurrent();
+  }
+
+  if (_backgroundJobRunning) {
+    _launchAnotherBackgroundJob = true;
+    return;
+  }
+
+  // schedule a job for the change
+  auto self = shared_from_this();
+  std::function<void()> closureForJob = [self, this, &closureForJob]() {
+    {
+      MUTEX_LOCKER(mutexLocker, *_statusLock);
+      _backgroundJobRunning = true;
+      _launchAnotherBackgroundJob = false;
     }
 
-    // only warn if the application server is still there and dispatching
-    // should succeed
-    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync "
-      << ++_callbacksPosted;
-
-    // schedule a job for the change
-    auto self = shared_from_this();
-    _strand->post([self, this]() {
-      LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback started "
-        << ++_callbacksExecuted;
+    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback started "
+      << ++_backgroundJobsLaunched;
+    {
       DBServerAgencySync job(this);
-
       job.work();
-      LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback ended "
-        << _callbacksExecuted.load();
-    });
+    }
+    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback ended "
+      << _backgroundJobsLaunched.load();
 
-    MUTEX_LOCKER(mutexLocker, *_statusLock);
-    _isDispatchingChange = false;
-  }
+    bool startAnother = false;
+    {
+      MUTEX_LOCKER(mutexLocker, *_statusLock);
+      _backgroundJobRunning = false;
+      if (_launchAnotherBackgroundJob) {
+        startAnother = true;
+      }
+    }
+    if (startAnother) {
+      LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync tail "
+        << ++_backgroundJobsPosted;
 
-  return false;
+      _ioService->post(closureForJob);
+    }
+  };
+
+  LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync "
+    << ++_backgroundJobsPosted;
+  _ioService->post(closureForJob);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
