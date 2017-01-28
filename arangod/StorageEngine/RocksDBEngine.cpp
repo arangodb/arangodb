@@ -31,6 +31,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/RocksDBIndexFactory.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -51,7 +52,7 @@ std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
-    : StorageEngine(server, EngineName, FeatureName) {
+    : StorageEngine(server, EngineName, FeatureName, new RocksDBIndexFactory()) {
 }
 
 RocksDBEngine::~RocksDBEngine() {

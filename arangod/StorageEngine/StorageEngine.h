@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Indexes/IndexFactory.h"
 #include "MMFiles/MMFilesCollectorCache.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -41,8 +42,12 @@ class StorageEngine : public application_features::ApplicationFeature {
  public:
 
   // create the storage engine
-  StorageEngine(application_features::ApplicationServer* server, std::string const& engineName, std::string const& featureName) 
-      : application_features::ApplicationFeature(server, featureName), _typeName(engineName) {
+  StorageEngine(application_features::ApplicationServer* server,
+                std::string const& engineName, std::string const& featureName,
+                IndexFactory* indexFactory)
+      : application_features::ApplicationFeature(server, featureName),
+        _indexFactory(indexFactory),
+        _typeName(engineName) {
 
     // each specific storage engine feature is optional. the storage engine selection feature
     // will make sure that exactly one engine is selected at startup 
@@ -182,6 +187,16 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                          TRI_idx_iid_t id) = 0;
 
+  // Returns the StorageEngine-specific implementation
+  // of the IndexFactory. This is used to validate
+  // information about indexes.
+  IndexFactory const* indexFactory() {
+    // The factory has to be created by the implementation
+    // and shall never be deleted
+    TRI_ASSERT(_indexFactory.get() != nullptr);
+    return _indexFactory.get();
+  }
+
   virtual void unloadCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId) = 0;
   
   virtual void signalCleanup(TRI_vocbase_t* vocbase) = 0;
@@ -244,7 +259,11 @@ class StorageEngine : public application_features::ApplicationFeature {
   }
  
  private:
+
+  std::unique_ptr<IndexFactory> const _indexFactory;
+
   std::string const _typeName;
+
 };
 
 }

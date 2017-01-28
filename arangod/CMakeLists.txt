@@ -217,6 +217,7 @@ SET(ARANGOD_SOURCES
   MMFiles/MMFilesEdgeIndex.cpp
   MMFiles/MMFilesEngine.cpp
   MMFiles/MMFilesIndexElement.cpp
+  MMFiles/MMFilesIndexFactory.cpp
   MMFiles/MMFilesLogfileManager.cpp
   MMFiles/MMFilesFulltextIndex.cpp
   MMFiles/MMFilesGeoIndex.cpp
@@ -303,6 +304,7 @@ SET(ARANGOD_SOURCES
   Statistics/statistics.cpp
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/RocksDBEngine.cpp
+  StorageEngine/RocksDBIndexFactory.cpp
   Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp

@@ -38,6 +38,7 @@
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesIndexFactory.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -120,7 +121,7 @@ std::string const MMFilesEngine::FeatureName("MMFilesEngine");
 
 // create the storage engine
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
-    : StorageEngine(server, EngineName, FeatureName),
+    : StorageEngine(server, EngineName, FeatureName, new MMFilesIndexFactory()),
       _isUpgrade(false),
       _maxTick(0) {
 }
