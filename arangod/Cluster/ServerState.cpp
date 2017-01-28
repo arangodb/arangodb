@@ -263,8 +263,6 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role,
     StringUtils::urlEncode(getLocalInfo()),"%2E",".");
   result = comm.getValues("Target/MapLocalToID/" + localInfoEncoded);
 
-  LOG(WARN) << "Target/MapLocalToID/" + localInfoEncoded;
-  
   std::string id;
   bool found = true;
   if (!result.successful()) {
@@ -278,7 +276,6 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role,
     } else {
       id = idSlice.copyString();
       LOG(WARN) << "Have ID: " + id;
-
     }
   }
   if (!found) {
