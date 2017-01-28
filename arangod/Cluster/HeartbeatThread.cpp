@@ -77,40 +77,6 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
       _backgroundJobsLaunched(0),
       _backgroundJobRunning(false),
       _launchAnotherBackgroundJob(false) {
-
-  auto self = shared_from_this();
-  _backgroundJob = [self, this]() {
-    {
-      MUTEX_LOCKER(mutexLocker, *_statusLock);
-      _backgroundJobRunning = true;
-      _launchAnotherBackgroundJob = false;
-    }
-
-    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback started "
-      << ++_backgroundJobsLaunched;
-    {
-      DBServerAgencySync job(this);
-      job.work();
-    }
-    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback ended "
-      << _backgroundJobsLaunched.load();
-
-    bool startAnother = false;
-    {
-      MUTEX_LOCKER(mutexLocker, *_statusLock);
-      _backgroundJobRunning = false;
-      if (_launchAnotherBackgroundJob) {
-        startAnother = true;
-      }
-    }
-    if (startAnother) {
-      LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync tail "
-        << ++_backgroundJobsPosted;
-
-      _ioService->post(_backgroundJob);
-    }
-  };
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,6 +102,40 @@ void HeartbeatThread::run() {
   if (ServerState::instance()->isCoordinator()) {
     runCoordinator();
   } else {
+    // Set the member variable that holds a closure to run background
+    // jobs in JS:
+    auto self = shared_from_this();
+    _backgroundJob = [self, this]() {
+      {
+        MUTEX_LOCKER(mutexLocker, *_statusLock);
+        _backgroundJobRunning = true;
+        _launchAnotherBackgroundJob = false;
+      }
+
+      LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback started "
+        << ++_backgroundJobsLaunched;
+      {
+        DBServerAgencySync job(this);
+        job.work();
+      }
+      LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback ended "
+        << _backgroundJobsLaunched.load();
+
+      bool startAnother = false;
+      {
+        MUTEX_LOCKER(mutexLocker, *_statusLock);
+        _backgroundJobRunning = false;
+        if (_launchAnotherBackgroundJob) {
+          startAnother = true;
+        }
+      }
+      if (startAnother) {
+        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync tail "
+          << ++_backgroundJobsPosted;
+
+        _ioService->post(_backgroundJob);
+      }
+    };
     runDBServer();
   }
 }
