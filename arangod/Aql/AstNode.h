@@ -245,7 +245,7 @@ struct AstNode {
 
 /// @brief dump the node (for debugging purposes)
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  void dump(int) const;
+  void dump(int indent) const;
 #endif
 
   /// @brief compute the value for a constant value node

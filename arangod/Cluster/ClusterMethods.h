@@ -204,6 +204,31 @@ std::unordered_map<std::string, std::vector<std::string>> distributeShards(
     uint64_t replicationFactor,
     std::vector<std::string>& dbServers);
 
+class ClusterMethods {
+ public:
+  // wrapper Class for static functions.
+  // Cannot be instanciated.
+  ClusterMethods() = delete;
+  ~ClusterMethods() = delete;
+
+  // @brief Create a new collection on coordinator from a parameter VPack
+  // Note that this returns a newly allocated object and ownership is
+  // transferred
+  // to the caller, which is expressed by the returned unique_ptr.
+  static std::unique_ptr<LogicalCollection> createCollectionOnCoordinator(
+      TRI_col_type_e collectionType, TRI_vocbase_t* vocbase,
+      arangodb::velocypack::Slice parameters);
+
+ private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Persist collection in Agency and trigger shard creation process
+////////////////////////////////////////////////////////////////////////////////
+
+  static std::unique_ptr<LogicalCollection> persistCollectionInAgency(
+      LogicalCollection* col);
+};
+
 }  // namespace arangodb
 
 #endif
