@@ -562,8 +562,8 @@ ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
 if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
     ${PACKAGE_MAKE} packages
 fi
-# and install
 
+# and install
 
 if test -n "${TARGET_DIR}";  then
     echo "building distribution tarball"
