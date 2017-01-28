@@ -176,6 +176,7 @@ void DatabaseManagerThread::run() {
           while (!arangodb::wal::LogfileManager::instance()
                   ->executeWhileNothingQueued(callback)) {
             LOG(INFO) << "Trying to shutdown dropped database, waiting for phase in which the collector thread does not have queued operations.";
+            usleep(500000);
           }
 
           engine->dropDatabase(database);
