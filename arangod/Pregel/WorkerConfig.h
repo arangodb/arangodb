@@ -93,17 +93,13 @@ class WorkerConfig {
     return _localEdgeShardIDs;
   };
   inline prgl_shard_t shardId(ShardID const& responsibleShard) const {
-    auto it = std::find(_globalShardIDs.begin(), _globalShardIDs.end(),
-                        responsibleShard);
-    return it != _globalShardIDs.end() ? it - _globalShardIDs.begin()
-                                       : (prgl_shard_t)-1;
+    auto const& it = _shardIDs.find(responsibleShard);
+    return it != _shardIDs.end() ? *it ? (prgl_shard_t)-1;
   }
   // index in globalShardIDs
   inline bool isLocalVertexShard(prgl_shard_t shardIndex) const {
     // TODO cache this? prob small
-    ShardID const& shard = _globalShardIDs[shardIndex];
-    return std::find(_localVertexShardIDs.begin(), _localVertexShardIDs.end(),
-                     shard) != _localVertexShardIDs.end();
+    return _localShardIDs.find(shardIndex) != _localShardIDs.end();
   }
 
   PregelID documentIdToPregel(std::string const& documentID) const;
@@ -112,6 +108,9 @@ class WorkerConfig {
   uint64_t _executionNumber = 0;
   uint64_t _globalSuperstep = 0;
   uint64_t _localSuperstep = 0;
+  
+  std::map<std::string, prgl_shard_t> _shardIDs;
+  std::set<prgl_shard_t> _localShardIDs;
 
   bool _asynchronousMode = false;
   /// load vertices on a lazy basis

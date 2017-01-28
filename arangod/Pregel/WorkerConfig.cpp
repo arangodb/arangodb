@@ -59,6 +59,17 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
     }
     _vertexCollectionShards.emplace(pair.key.copyString(), shards);
   }
+      
+  prgl_shard_t i = 0;
+  for (VPackSlice shard : VPackArrayIterator(globalShards)) {
+    ShardID s = shard.copyString();
+    _globalShardIDs.push_back(s);
+    _shardIDs.emplace(s, i++);
+  }
+  
+  for (auto const& it : VPackObjectIterator(collectionPlanIdMap)) {
+    _collectionPlanIdMap.emplace(it.key.copyString(), it.value.copyString());
+  }
 
   for (auto const& pair : VPackObjectIterator(edgeShardMap)) {
     std::vector<ShardID> shards;
@@ -66,16 +77,14 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
       ShardID shard = shardSlice.copyString();
       shards.push_back(shard);
       _localEdgeShardIDs.push_back(shard);
+      
+      auto const& it = std::find(_localVertexShardIDs.begin(),
+                                 _localVertexShardIDs.end(),
+                                 shard);
+      prgl_shard_t ID = it - _localVertexShardIDs.end();
+      _
     }
     _edgeCollectionShards.emplace(pair.key.copyString(), shards);
-  }
-
-  for (VPackSlice shard : VPackArrayIterator(globalShards)) {
-    _globalShardIDs.push_back(shard.copyString());
-  }
-
-  for (auto const& it : VPackObjectIterator(collectionPlanIdMap)) {
-    _collectionPlanIdMap.emplace(it.key.copyString(), it.value.copyString());
   }
 }
 
