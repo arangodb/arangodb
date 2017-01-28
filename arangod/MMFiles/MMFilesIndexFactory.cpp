@@ -123,8 +123,10 @@ static void ProcessIndexSparseFlag(VPackSlice const definition,
 static int EnhanceJsonIndexHash(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 0, create);
-  ProcessIndexSparseFlag(definition, builder, create);
-  ProcessIndexUniqueFlag(definition, builder);
+  if (res == TRI_ERROR_NO_ERROR) {
+    ProcessIndexSparseFlag(definition, builder, create);
+    ProcessIndexUniqueFlag(definition, builder);
+  }
   return res;
 }
 
@@ -135,8 +137,10 @@ static int EnhanceJsonIndexHash(VPackSlice const definition,
 static int EnhanceJsonIndexSkiplist(VPackSlice const definition,
                                     VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 0, create);
-  ProcessIndexSparseFlag(definition, builder, create);
-  ProcessIndexUniqueFlag(definition, builder);
+  if (res == TRI_ERROR_NO_ERROR) {
+    ProcessIndexSparseFlag(definition, builder, create);
+    ProcessIndexUniqueFlag(definition, builder);
+  }
   return res;
 }
 
@@ -147,8 +151,10 @@ static int EnhanceJsonIndexSkiplist(VPackSlice const definition,
 static int EnhanceJsonIndexPersistent(VPackSlice const definition,
                                    VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 0, create);
-  ProcessIndexSparseFlag(definition, builder, create);
-  ProcessIndexUniqueFlag(definition, builder);
+  if (res == TRI_ERROR_NO_ERROR) {
+    ProcessIndexSparseFlag(definition, builder, create);
+    ProcessIndexUniqueFlag(definition, builder);
+  }
   return res;
 }
 
@@ -170,13 +176,15 @@ static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
 static int EnhanceJsonIndexGeo1(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 1, create);
-  if (ServerState::instance()->isCoordinator()) {
-    builder.add("ignoreNull", VPackValue(true));
-    builder.add("constraint", VPackValue(false));
+  if (res == TRI_ERROR_NO_ERROR) {
+    if (ServerState::instance()->isCoordinator()) {
+      builder.add("ignoreNull", VPackValue(true));
+      builder.add("constraint", VPackValue(false));
+    }
+    builder.add("sparse", VPackValue(true));
+    builder.add("unique", VPackValue(false));
+    ProcessIndexGeoJsonFlag(definition, builder);
   }
-  builder.add("sparse", VPackValue(true));
-  builder.add("unique", VPackValue(false));
-  ProcessIndexGeoJsonFlag(definition, builder);
   return res;
 }
 
@@ -187,13 +195,15 @@ static int EnhanceJsonIndexGeo1(VPackSlice const definition,
 static int EnhanceJsonIndexGeo2(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 2, create);
-  if (ServerState::instance()->isCoordinator()) {
-    builder.add("ignoreNull", VPackValue(true));
-    builder.add("constraint", VPackValue(false));
+  if (res == TRI_ERROR_NO_ERROR) {
+    if (ServerState::instance()->isCoordinator()) {
+      builder.add("ignoreNull", VPackValue(true));
+      builder.add("constraint", VPackValue(false));
+    }
+    builder.add("sparse", VPackValue(true));
+    builder.add("unique", VPackValue(false));
+    ProcessIndexGeoJsonFlag(definition, builder);
   }
-  builder.add("sparse", VPackValue(true));
-  builder.add("unique", VPackValue(false));
-  ProcessIndexGeoJsonFlag(definition, builder);
   return res;
 }
 
@@ -204,16 +214,17 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
 static int EnhanceJsonIndexFulltext(VPackSlice const definition,
                                     VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 1, create);
-
-  // handle "minLength" attribute
-  int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
-  VPackSlice minLength = definition.get("minLength");
-  if (minLength.isNumber()) {
-    minWordLength = minLength.getNumericValue<int>();
-  } else if (minLength.isNull()) {
-    return TRI_ERROR_BAD_PARAMETER;
+  if (res == TRI_ERROR_NO_ERROR) {
+    // handle "minLength" attribute
+    int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
+    VPackSlice minLength = definition.get("minLength");
+    if (minLength.isNumber()) {
+      minWordLength = minLength.getNumericValue<int>();
+    } else if (!minLength.isNull() && !minLength.isNone()) {
+      return TRI_ERROR_BAD_PARAMETER;
+    }
+    builder.add("minLength", VPackValue(minWordLength));
   }
-  builder.add("minLength", VPackValue(minWordLength));
   return res;
 }
 
@@ -266,7 +277,11 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
     } else if (current.isString()) {
       id = basics::StringUtils::uint64(current.copyString());
     }
+    if (id > 0) {
+      enhanced.add("id", VPackValue(id));
+    }
 
+    
     enhanced.add("type", VPackValue(Index::typeName(type)));
 
     switch (type) {
