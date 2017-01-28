@@ -926,14 +926,20 @@ void Agent::detectActiveAgentFailures() {
 void Agent::beginShutdown() {
   Thread::beginShutdown();
 
+  // Stop constituent and key value stores
+  _constituent.beginShutdown();
+
   // Stop supervision
   if (_config.supervision()) {
     _supervision.beginShutdown();
   }
 
-  // Stop constituent and key value stores
-  _constituent.beginShutdown();
+  // Stop inception process
+  if (size() > 1 && _inception != nullptr) {
+    _inception->beginShutdown();
+  }
 
+  // Stop key value stores
   _spearhead.beginShutdown();
   _readDB.beginShutdown();
 
@@ -942,7 +948,7 @@ void Agent::beginShutdown() {
     CONDITION_LOCKER(guardW, _waitForCV);
     guardW.broadcast();
   }
-
+  
   // Wake up run
   {
     CONDITION_LOCKER(guardA, _appendCV);

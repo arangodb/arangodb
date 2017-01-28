@@ -243,6 +243,10 @@ bool AddFollower::start() {
   pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
   pending.add("old", current);
   pending.close();
+  // --- Check that Plan servers are as we expect
+  pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Object));
+  pending.add("old", planned);
+  pending.close();
 
   // --- Check if shard is not blocked
   pending.add(_agencyPrefix + blockedShardsPrefix + _shard,

@@ -33,6 +33,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utils/TransactionHints.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -644,7 +645,7 @@ static void JS_GetIndexesVocbaseCol(
       V8TransactionContext::Create(collection->vocbase(), true),
       collection->cid(), AccessMode::Type::READ);
     
-  trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, false);
+  trx.addHint(TransactionHints::Hint::NO_USAGE_LOCK, false);
 
   int res = trx.begin();
 

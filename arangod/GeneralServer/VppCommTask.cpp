@@ -65,18 +65,14 @@ VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
   TRI_ASSERT(_authentication != nullptr);
 
   _protocol = "vst";
-  _readBuffer.reserve(
-      _bufferLength);  // ATTENTION <- this is required so we do not
-                       // lose information during a resize
-  auto agent = std::make_unique<RequestStatisticsAgent>(true);
-  agent->acquire();
-  MUTEX_LOCKER(lock, _agentsMutex);
-  _agents.emplace(std::make_pair(0UL, std::move(agent)));
+
+  // ATTENTION <- this is required so we do not lose information during a resize
+  _readBuffer.reserve(_bufferLength);
 }
 
-void VppCommTask::addResponse(VppResponse* response) {
+void VppCommTask::addResponse(VppResponse* response, RequestStatistics* stat) {
   VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
-  uint64_t& id = response_message._id;
+  uint64_t const id = response_message._id;
 
   std::vector<VPackSlice> slices;
   slices.push_back(response_message._header);
@@ -107,14 +103,28 @@ void VppCommTask::addResponse(VppResponse* response) {
       arangodb::application_features::ApplicationServer::getFeature<
           ServerFeature>("Server")
           ->vppMaxSize();
-  auto buffers = createChunkForNetwork(slices, id, chunkSize,
-                                       false);  // set some sensible maxchunk
-                                                // size and compression
 
-  double const totalTime = getAgent(id)->elapsedSinceReadStart();
+  // set some sensible maxchunk size and compression
+  auto buffers = createChunkForNetwork(slices, id, chunkSize, false);
+  double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
 
-  for (auto&& buffer : buffers) {
-    addWriteBuffer(std::move(buffer), getAgent(id));
+  if (buffers.empty()) {
+    stat->release();
+  } else {
+    size_t n = buffers.size() - 1;
+    size_t c = 0;
+
+    for (auto&& buffer : buffers) {
+      if (c == n) {
+        WriteBuffer b(buffer.release(), stat);
+        addWriteBuffer(b);
+      } else {
+        WriteBuffer b(buffer.release(), nullptr);
+        addWriteBuffer(b);
+      }
+
+      ++c;
+    }
   }
 
   // and give some request information
@@ -124,13 +134,6 @@ void VppCommTask::addResponse(VppResponse* response) {
       << VppRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response->responseCode()) << ","
       << "\"," << Logger::FIXED(totalTime, 6);
-
-  if (id) {
-    MUTEX_LOCKER(lock, _agentsMutex);
-    _agents.erase(id); //all ids except 0
-  } else {
-    getAgent(0UL)->acquire();
-  }
 }
 
 VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
@@ -139,7 +142,8 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
   auto cursor = _readBuffer.begin() + _processReadVariables._readBufferOffset;
 
   std::memcpy(&header._chunkLength, cursor, sizeof(header._chunkLength));
-  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunkLength: " << header._chunkLength;
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunkLength: "
+                                          << header._chunkLength;
   cursor += sizeof(header._chunkLength);
 
   uint32_t chunkX;
@@ -152,7 +156,8 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
   LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunk: " << header._chunk;
 
   std::memcpy(&header._messageID, cursor, sizeof(header._messageID));
-  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "message id: " << header._messageID;
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "message id: "
+                                          << header._messageID;
   cursor += sizeof(header._messageID);
 
   // extract total len of message
@@ -238,20 +243,17 @@ bool VppCommTask::processRead(double startTime) {
   VppInputMessage message;  // filled in CASE 1 or CASE 2b
 
   if (chunkHeader._isFirst) {
-    //create agent for new messages
-    auto agent = std::make_unique<RequestStatisticsAgent>(true);
-    agent->acquire();
-    agent->requestStatisticsAgentSetReadStart(startTime);
-    MUTEX_LOCKER(lock, _agentsMutex);
-    _agents.emplace(std::make_pair(chunkHeader._messageID, std::move(agent)));
+    // create agent for new messages
+    RequestStatistics* stat = acquireStatistics(chunkHeader._messageID);
+    RequestStatistics::SET_READ_START(stat, startTime);
   }
 
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
     // CASE 1: message is in one chunk
     if (auto rv = getMessageFromSingleChunk(chunkHeader, message, doExecute,
                                             vpackBegin, chunkEnd)) {
-      return *rv; // the optional will only contain false or boost::none
-                  // so the execution will contine if a message is complete
+      return *rv;  // the optional will only contain false or boost::none
+                   // so the execution will contine if a message is complete
     }
   } else {
     if (auto rv = getMessageFromMultiChunks(chunkHeader, message, doExecute,
@@ -259,8 +261,6 @@ bool VppCommTask::processRead(double startTime) {
       return *rv;
     }
   }
-
-  getAgent(chunkHeader._messageID)->requestStatisticsAgentSetQueueEnd();
 
   read_maybe_only_part_of_buffer = true;
   prv._currentChunkLength = 0;  // we have read a complete chunk
@@ -422,7 +422,6 @@ boost::optional<bool> VppCommTask::getMessageFromSingleChunk(
     char const* vpackBegin, char const* chunkEnd) {
   // add agent for this new message
 
-
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
                                           << "chunk contains single message";
   std::size_t payloads = 0;
@@ -433,9 +432,9 @@ boost::optional<bool> VppCommTask::getMessageFromSingleChunk(
     handleSimpleError(rest::ResponseCode::BAD,
                       TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                       chunkHeader._messageID);
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
-                                            << "VPack Validation failed: "
-                                            << e.what();
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        << "VppCommTask: "
+        << "VPack Validation failed: " << e.what();
     closeTask(rest::ResponseCode::BAD);
     return false;
   } catch (...) {
@@ -522,9 +521,9 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
         handleSimpleError(rest::ResponseCode::BAD,
                           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                           chunkHeader._messageID);
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
-                                                << "VPack Validation failed: "
-                                                << e.what();
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+            << "VppCommTask: "
+            << "VPack Validation failed: " << e.what();
         closeTask(rest::ResponseCode::BAD);
         return false;
       } catch (...) {

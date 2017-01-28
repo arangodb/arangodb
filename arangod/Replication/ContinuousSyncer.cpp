@@ -36,8 +36,9 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utils/TransactionHints.h"
+#include "Utils/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -572,7 +573,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
     // update the apply tick for all standalone operations
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                             cid, AccessMode::Type::WRITE);
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+    trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
 
     int res = trx.begin();
 

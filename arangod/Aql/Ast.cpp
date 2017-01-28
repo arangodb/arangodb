@@ -33,7 +33,6 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -892,8 +891,7 @@ AstNode* Ast::createNodeArray(size_t size) {
 }
 
 /// @brief create an AST unique array node, AND-merged from two other arrays
-AstNode* Ast::createNodeIntersectedArray(arangodb::Transaction* trx,
-                                         AstNode const* lhs,
+AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
                                          AstNode const* rhs) {
   TRI_ASSERT(lhs->isArray() && lhs->isConstant());
   TRI_ASSERT(rhs->isArray() && rhs->isConstant());
@@ -909,7 +907,7 @@ AstNode* Ast::createNodeIntersectedArray(arangodb::Transaction* trx,
 
   for (size_t i = 0; i < nl; ++i) {
     auto member = lhs->getMemberUnchecked(i);
-    VPackSlice slice = member->computeValue(trx);
+    VPackSlice slice = member->computeValue();
 
     cache.emplace(slice, member);
   }
@@ -931,8 +929,7 @@ AstNode* Ast::createNodeIntersectedArray(arangodb::Transaction* trx,
 }
 
 /// @brief create an AST unique array node, OR-merged from two other arrays
-AstNode* Ast::createNodeUnionizedArray(arangodb::Transaction* trx,
-                                       AstNode const* lhs, AstNode const* rhs) {
+AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lhs->isArray() && lhs->isConstant());
   TRI_ASSERT(rhs->isArray() && rhs->isConstant());
 
@@ -952,7 +949,7 @@ AstNode* Ast::createNodeUnionizedArray(arangodb::Transaction* trx,
     } else {
       member = rhs->getMemberUnchecked(i - nl);
     }
-    VPackSlice slice = member->computeValue(trx);
+    VPackSlice slice = member->computeValue();
 
     cache.emplace(slice, member);
   }

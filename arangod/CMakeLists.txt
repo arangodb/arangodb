@@ -300,8 +300,10 @@ SET(ARANGOD_SOURCES
   Scheduler/SocketTask.cpp
   Scheduler/SocketTcp.cpp
   Scheduler/Task.cpp
+  Statistics/ConnectionStatistics.cpp
+  Statistics/RequestStatistics.cpp
+  Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
-  Statistics/statistics.cpp
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/RocksDBEngine.cpp
   StorageEngine/RocksDBIndexFactory.cpp
@@ -316,7 +318,9 @@ SET(ARANGOD_SOURCES
   Utils/SingleCollectionTransaction.cpp
   Utils/StandaloneTransactionContext.cpp
   Utils/Transaction.cpp
+  Utils/TransactionCollection.cpp
   Utils/TransactionContext.cpp
+  Utils/TransactionState.cpp
   Utils/V8TransactionContext.cpp
   Utils/WorkMonitorArangod.cpp
   V8Server/FoxxQueuesFeature.cpp
@@ -353,7 +357,6 @@ SET(ARANGOD_SOURCES
   VocBase/replication-common.cpp
   VocBase/replication-dump.cpp
   VocBase/ticks.cpp
-  VocBase/transaction.cpp
   VocBase/vocbase.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )

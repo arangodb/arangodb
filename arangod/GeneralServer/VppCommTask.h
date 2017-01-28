@@ -46,12 +46,14 @@ class VppCommTask : public GeneralCommTask {
 
   // convert from GeneralResponse to vppResponse ad dispatch request to class
   // internal addResponse
-  void addResponse(GeneralResponse* response) override {
+  void addResponse(GeneralResponse* response, RequestStatistics* stat) override {
     VppResponse* vppResponse = dynamic_cast<VppResponse*>(response);
+
     if (vppResponse == nullptr) {
       throw std::logic_error("invalid response or response Type");
     }
-    addResponse(vppResponse);
+
+    addResponse(vppResponse, stat);
   };
 
   arangodb::Endpoint::TransportType transportType() override {
@@ -67,10 +69,12 @@ class VppCommTask : public GeneralCommTask {
       rest::ResponseCode, uint64_t messageId) override final;
 
   void handleAuthentication(VPackSlice const& header, uint64_t messageId);
+
   void handleSimpleError(rest::ResponseCode code, uint64_t id) override {
     VppResponse response(code, id);
-    addResponse(&response);
+    addResponse(&response, nullptr);
   }
+
   void handleSimpleError(rest::ResponseCode, int code,
                          std::string const& errorMessage,
                          uint64_t messageId) override;
@@ -80,7 +84,7 @@ class VppCommTask : public GeneralCommTask {
   // request handling aborts prematurely
   void closeTask(rest::ResponseCode code = rest::ResponseCode::SERVER_ERROR);
 
-  void addResponse(VppResponse*);
+  void addResponse(VppResponse*, RequestStatistics* stat);
   rest::ResponseCode authenticateRequest(GeneralRequest* request);
 
  private:

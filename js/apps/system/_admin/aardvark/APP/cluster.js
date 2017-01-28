@@ -53,7 +53,7 @@ if (cluster.isCluster()) {
   router.get('/DBServers', function(req, res) {
     const list = global.ArangoClusterInfo.getDBServers();
     res.json(list.map(n => { 
-      var r = { "name": n, "role": "primary" };
+      var r = { "id": n.serverId, "name": n.serverName, "role": "primary" };
       r.status = "ok";
       const endpoint = global.ArangoClusterInfo.getServerEndpoint(n);
       const proto = endpoint.substr(0, 6);

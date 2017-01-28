@@ -287,16 +287,12 @@ void TRI_GetBacktrace(std::string& btstr) {
 #if ARANGODB_ENABLE_BACKTRACE
 #ifdef _WIN32
   void* stack[100];
-  unsigned short frames;
-  SYMBOL_INFO* symbol;
-  HANDLE process;
-
-  process = GetCurrentProcess();
+  HANDLE process = GetCurrentProcess();
 
   SymInitialize(process, nullptr, true);
 
-  frames = CaptureStackBackTrace(0, 100, stack, nullptr);
-  symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+  unsigned short frames = CaptureStackBackTrace(0, 100, stack, nullptr);
+  SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
 
   if (symbol == nullptr) {
     // cannot allocate memory
@@ -389,6 +385,22 @@ void TRI_PrintBacktrace() {
   char buf[64];
   snprintf(buf, 64, "/usr/bin/pstack %i", getpid());
   system(buf);
+#endif
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a backtrace in log level warning
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_LogBacktrace() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
+  std::string bt;
+  TRI_GetBacktrace(bt);
+  if (!bt.empty()) {  
+    LOG(WARN) << bt;
+  }
 #endif
 #endif
 }

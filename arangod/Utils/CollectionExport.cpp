@@ -29,6 +29,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "Utils/TransactionHints.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -91,7 +92,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
         AccessMode::Type::READ);
 
     // already locked by guard above
-    trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, true);
+    trx.addHint(TransactionHints::Hint::NO_USAGE_LOCK, true);
     int res = trx.begin();
 
     if (res != TRI_ERROR_NO_ERROR) {

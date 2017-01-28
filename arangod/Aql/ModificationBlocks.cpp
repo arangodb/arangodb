@@ -33,6 +33,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterMethods.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::aql;

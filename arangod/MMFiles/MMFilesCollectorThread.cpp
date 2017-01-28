@@ -24,28 +24,28 @@
 #include "MMFilesCollectorThread.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/hashes.h"
-#include "Logger/Logger.h"
-#include "Basics/memory-map.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/hashes.h"
+#include "Basics/memory-map.h"
+#include "Logger/Logger.h"
+#include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesIndexElement.h"
+#include "MMFiles/MMFilesPersistentIndex.h"
+#include "MMFiles/MMFilesPrimaryIndex.h"
+#include "MMFiles/MMFilesWalLogfile.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "MMFiles/MMFilesIndexElement.h"
-#include "MMFiles/MMFilesPrimaryIndex.h"
-#include "MMFiles/MMFilesPersistentIndex.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "Utils/TransactionHints.h"
 #include "VocBase/CompactionLocker.h"
-#include "MMFiles/MMFilesDatafileHelper.h"
 #include "VocBase/LogicalCollection.h"
-#include "MMFiles/MMFilesWalLogfile.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-
 
 using namespace arangodb;
 
@@ -631,14 +631,14 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   arangodb::SingleCollectionTransaction trx(
       arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
       collection->cid(), AccessMode::Type::WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK,
+  trx.addHint(TransactionHints::Hint::NO_USAGE_LOCK,
               true);  // already locked by guard above
-  trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK,
+  trx.addHint(TransactionHints::Hint::NO_COMPACTION_LOCK,
               true);  // already locked above
-  trx.addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, true);
-  trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
-  trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
-  trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, true);
+  trx.addHint(TransactionHints::Hint::NO_THROTTLING, true);
+  trx.addHint(TransactionHints::Hint::NO_BEGIN_MARKER, true);
+  trx.addHint(TransactionHints::Hint::NO_ABORT_MARKER, true);
+  trx.addHint(TransactionHints::Hint::TRY_LOCK, true);
 
   int res = trx.begin();
 

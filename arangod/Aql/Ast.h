@@ -30,8 +30,8 @@
 #include "Aql/Scopes.h"
 #include "Aql/Variable.h"
 #include "Aql/VariableGenerator.h"
+#include "Utils/Transaction.h"
 #include "VocBase/AccessMode.h"
-#include "VocBase/transaction.h"
 
 #include <functional>
 
@@ -293,10 +293,10 @@ class Ast {
   AstNode* createNodeArray(size_t members);
 
   /// @brief create an AST unique array node, AND-merged from two other arrays
-  AstNode* createNodeIntersectedArray(arangodb::Transaction* trx, AstNode const*, AstNode const*);
+  AstNode* createNodeIntersectedArray(AstNode const*, AstNode const*);
 
   /// @brief create an AST unique array node, OR-merged from two other arrays
-  AstNode* createNodeUnionizedArray(arangodb::Transaction* trx, AstNode const*, AstNode const*);
+  AstNode* createNodeUnionizedArray(AstNode const*, AstNode const*);
 
   /// @brief create an AST object node
   AstNode* createNodeObject();

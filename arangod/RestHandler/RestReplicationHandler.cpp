@@ -34,26 +34,28 @@
 #include "GeneralServer/GeneralServer.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesEdgeIndex.h"
+#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesPrimaryIndex.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "MMFiles/MMFilesEdgeIndex.h"
-#include "MMFiles/MMFilesPrimaryIndex.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/OperationOptions.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/TransactionContext.h"
+#include "Utils/TransactionHints.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
 #include "VocBase/ticks.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -1528,7 +1530,7 @@ int RestReplicationHandler::processRestoreCollection(
         SingleCollectionTransaction trx(
             StandaloneTransactionContext::Create(_vocbase), col->cid(),
             AccessMode::Type::WRITE);
-        trx.addHint(TRI_TRANSACTION_HINT_RECOVERY,
+        trx.addHint(TransactionHints::Hint::RECOVERY,
                     false);  // to turn off waitForSync!
 
         res = trx.begin();
@@ -2335,7 +2337,7 @@ int RestReplicationHandler::processRestoreData(
   SingleCollectionTransaction trx(
       StandaloneTransactionContext::Create(_vocbase), colName,
       AccessMode::Type::WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_RECOVERY,
+  trx.addHint(TransactionHints::Hint::RECOVERY,
               false);  // to turn off waitForSync!
 
   int res = trx.begin();
@@ -3524,7 +3526,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
   auto trxContext = StandaloneTransactionContext::Create(_vocbase);
   SingleCollectionTransaction trx(trxContext, col->cid(), AccessMode::Type::READ);
-  trx.addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
+  trx.addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::SERVER_ERROR,

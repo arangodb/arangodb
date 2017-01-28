@@ -32,17 +32,18 @@
 #include "Rest/GeneralResponse.h"
 #include "Scheduler/EventLoop.h"
 #include "Scheduler/JobQueue.h"
-#include "Statistics/StatisticsAgent.h"
+#include "Statistics/RequestStatistics.h"
 
 namespace arangodb {
 class GeneralRequest;
+class RequestStatistics;
 class WorkMonitor;
 
 namespace rest {
+class GeneralCommTask;
 class RestHandlerFactory;
 
-class RestHandler : public RequestStatisticsAgent,
-                    public std::enable_shared_from_this<RestHandler> {
+class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RestHandler(RestHandler const&) = delete;
   RestHandler& operator=(RestHandler const&) = delete;
 
@@ -51,7 +52,7 @@ class RestHandler : public RequestStatisticsAgent,
 
  public:
   RestHandler(GeneralRequest*, GeneralResponse*);
-  ~RestHandler() = default;
+  virtual ~RestHandler();
 
  public:
   uint64_t handlerId() const { return _handlerId; }
@@ -66,8 +67,20 @@ class RestHandler : public RequestStatisticsAgent,
     return std::move(_response);
   }
 
-  std::shared_ptr<WorkContext> context() {
-    return _context;
+  std::shared_ptr<WorkContext> context() { return _context; }
+
+  RequestStatistics* statistics() const { return _statistics.load(); }
+
+  RequestStatistics* stealStatistics() {
+    return _statistics.exchange(nullptr);
+  }
+  
+  void setStatistics(RequestStatistics* stat) {
+    RequestStatistics* old = _statistics.exchange(stat);
+
+    if (old != nullptr) {
+      old->release();
+    }
   }
 
  public:
@@ -99,14 +112,16 @@ class RestHandler : public RequestStatisticsAgent,
 
   std::shared_ptr<WorkContext> _context;
 
+  std::atomic<RequestStatistics*> _statistics;
+
  private:
   bool _needsOwnThread = false;
 
  public:
-  void initEngine(EventLoop loop, RequestStatisticsAgent* agent,
+  void initEngine(EventLoop loop,
                   std::function<void(RestHandler*)> storeResult) {
     _storeResult = storeResult;
-    _engine.init(loop, agent);
+    _engine.init(loop);
   }
 
   int asyncRunEngine() { return _engine.asyncRun(shared_from_this()); }

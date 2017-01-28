@@ -28,16 +28,20 @@
 #include "Scheduler/Task.h"
 
 #include <boost/asio/ssl.hpp>
+#include <list>
 
 #include "Basics/Mutex.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/asio-helper.h"
+#include "Endpoint/ConnectionInfo.h"
 #include "Scheduler/Socket.h"
-#include "Statistics/StatisticsAgent.h"
+#include "Statistics/RequestStatistics.h"
 
 namespace arangodb {
+class ConnectionStatistics;
+
 namespace rest {
-class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
+class SocketTask : virtual public Task {
   friend class HttpCommTask;
   explicit SocketTask(SocketTask const&) = delete;
   SocketTask& operator=(SocketTask const&) = delete;
@@ -73,15 +77,39 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
   void addToReadBuffer(char const* data, std::size_t len);
 
  protected:
-  void addWriteBuffer(std::unique_ptr<basics::StringBuffer> buffer) {
-    addWriteBuffer(std::move(buffer), (RequestStatisticsAgent*)nullptr);
-  }
+  struct WriteBuffer {
+    basics::StringBuffer* _buffer;
+    RequestStatistics* _statistics;
 
-  void addWriteBuffer(std::unique_ptr<basics::StringBuffer>,
-                      RequestStatisticsAgent*);
+    WriteBuffer(basics::StringBuffer* buffer, RequestStatistics* statistics)
+        : _buffer(buffer), _statistics(statistics) {}
 
-  void addWriteBuffer(basics::StringBuffer*, TRI_request_statistics_t*);
+    ~WriteBuffer() { release(); }
 
+    bool empty() const {
+      return _buffer == nullptr;
+    }
+    
+    void clear() {
+      _buffer = nullptr;
+      _statistics = nullptr;
+    }
+
+    void release() {
+      if (_buffer != nullptr) {
+        delete _buffer;
+        _buffer = nullptr;
+      }
+
+      if (_statistics != nullptr) {
+        _statistics->release();
+        _statistics = nullptr;
+      }
+    }
+  };
+
+  void addWriteBuffer(WriteBuffer&);
+  void writeWriteBuffer();
 
   void closeStream();
 
@@ -89,18 +117,18 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
   void cancelKeepAlive();
 
  protected:
+  ConnectionStatistics* _connectionStatistics;
   ConnectionInfo _connectionInfo;
 
+  Mutex _readLock;
   basics::StringBuffer _readBuffer;
 
  private:
-  bool completedWriteBuffer(); //returns next buffer to write or none
-  Mutex _writeLock;
-  basics::StringBuffer* _writeBuffer = nullptr;
-  TRI_request_statistics_t* _writeBufferStatistics = nullptr;
+  bool completedWriteBuffer();
 
-  std::deque<basics::StringBuffer*> _writeBuffers;
-  std::deque<TRI_request_statistics_t*> _writeBuffersStats;
+  Mutex _writeLock;
+  WriteBuffer _writeBuffer;
+  std::list<WriteBuffer> _writeBuffers;
 
  protected:
   std::unique_ptr<Socket> _peer;
@@ -114,6 +142,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
  private:
   bool reserveMemory();
   bool trySyncRead();
+  bool processAll();
   void asyncReadSome();
   void closeReceiveStream();
 

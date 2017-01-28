@@ -33,8 +33,8 @@
 #include "MMFiles/MMFilesToken.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
+#include "Utils/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/transaction.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>

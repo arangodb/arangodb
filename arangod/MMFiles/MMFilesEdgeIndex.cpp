@@ -35,8 +35,8 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
+#include "Utils/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/transaction.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
