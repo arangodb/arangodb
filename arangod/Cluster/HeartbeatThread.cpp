@@ -77,6 +77,40 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
       _backgroundJobsLaunched(0),
       _backgroundJobRunning(false),
       _launchAnotherBackgroundJob(false) {
+
+  auto self = shared_from_this();
+  _backgroundJob = [self, this]() {
+    {
+      MUTEX_LOCKER(mutexLocker, *_statusLock);
+      _backgroundJobRunning = true;
+      _launchAnotherBackgroundJob = false;
+    }
+
+    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback started "
+      << ++_backgroundJobsLaunched;
+    {
+      DBServerAgencySync job(this);
+      job.work();
+    }
+    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback ended "
+      << _backgroundJobsLaunched.load();
+
+    bool startAnother = false;
+    {
+      MUTEX_LOCKER(mutexLocker, *_statusLock);
+      _backgroundJobRunning = false;
+      if (_launchAnotherBackgroundJob) {
+        startAnother = true;
+      }
+    }
+    if (startAnother) {
+      LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync tail "
+        << ++_backgroundJobsPosted;
+
+      _ioService->post(_backgroundJob);
+    }
+  };
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -734,43 +768,10 @@ void HeartbeatThread::syncDBServerStatusQuo() {
     return;
   }
 
-  // schedule a job for the change
-  auto self = shared_from_this();
-  std::function<void()> closureForJob = [self, this, &closureForJob]() {
-    {
-      MUTEX_LOCKER(mutexLocker, *_statusLock);
-      _backgroundJobRunning = true;
-      _launchAnotherBackgroundJob = false;
-    }
-
-    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback started "
-      << ++_backgroundJobsLaunched;
-    {
-      DBServerAgencySync job(this);
-      job.work();
-    }
-    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback ended "
-      << _backgroundJobsLaunched.load();
-
-    bool startAnother = false;
-    {
-      MUTEX_LOCKER(mutexLocker, *_statusLock);
-      _backgroundJobRunning = false;
-      if (_launchAnotherBackgroundJob) {
-        startAnother = true;
-      }
-    }
-    if (startAnother) {
-      LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync tail "
-        << ++_backgroundJobsPosted;
-
-      _ioService->post(closureForJob);
-    }
-  };
-
+  // schedule a job for the change:
   LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync "
     << ++_backgroundJobsPosted;
-  _ioService->post(closureForJob);
+  _ioService->post(_backgroundJob);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
