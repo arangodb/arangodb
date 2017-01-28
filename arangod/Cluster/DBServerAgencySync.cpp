@@ -54,6 +54,7 @@ void DBServerAgencySync::work() {
 DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
 
+  LOG(INFO) << "DBServerAgencySync::execute starting";
   DatabaseFeature* database = 
     ApplicationServer::getFeature<DatabaseFeature>("Database");
 
@@ -61,6 +62,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   DBServerAgencySyncResult result;
   if (vocbase == nullptr) {
+    LOG(INFO) << "DBServerAgencySync::execute no vocbase";
     return result;
   }
   
@@ -73,6 +75,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true);
 
   if (context == nullptr) {
+    LOG(INFO) << "DBServerAgencySync::execute no V8 context";
     return result;
   }
 
@@ -151,6 +154,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "handlePlanChange returned a non-object";
       return result;
     }
+    LOG(INFO) << "DBServerAgencySync::execute back from JS";
     // invalidate our local cache, even if an error occurred
     clusterInfo->flush();
   } catch (...) {
