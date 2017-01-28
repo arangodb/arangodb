@@ -87,6 +87,10 @@ const std::vector<std::string> ServerState::RoleStr ({
     "NONE", "SNGL", "PRMR", "SCND", "CRDN", "AGNT"
       });
 
+const std::vector<std::string> ServerState::RoleStrReadable ({
+    "none", "single", "dbserver", "secondary", "coordinator", "agent"
+      });
+
 std::string ServerState::roleToString(ServerState::RoleEnum role) {
   switch (role) {
     case ROLE_UNDEFINED:
@@ -247,8 +251,6 @@ bool ServerState::unregister() {
 bool ServerState::registerWithRole(ServerState::RoleEnum role,
                                    std::string const& myAddress) {
 
-  setLocalInfo(RoleStr.at(role) + ":" + myAddress);
-  
   if (!getId().empty()) {
     LOG_TOPIC(INFO, Logger::CLUSTER)
         << "Registering with role and localinfo. Supplied id is being ignored";
@@ -257,9 +259,12 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role,
 
   AgencyComm comm;
   AgencyCommResult result;
-  std::string localInfoEncoded = StringUtils::urlEncode(getLocalInfo());
+  std::string localInfoEncoded = StringUtils::replace(
+    StringUtils::urlEncode(getLocalInfo()),"%2E",".");
   result = comm.getValues("Target/MapLocalToID/" + localInfoEncoded);
 
+  LOG(WARN) << "Target/MapLocalToID/" + localInfoEncoded;
+  
   std::string id;
   bool found = true;
   if (!result.successful()) {
@@ -272,6 +277,8 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role,
       found = false;
     } else {
       id = idSlice.copyString();
+      LOG(WARN) << "Have ID: " + id;
+
     }
   }
   if (!found) {

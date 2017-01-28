@@ -43,6 +43,7 @@ class ServerState {
   };
 
   static const std::vector<std::string> RoleStr;
+  static const std::vector<std::string> RoleStrReadable;
 
   /// @brief an enum describing the possible states a server can have
   enum StateEnum {
