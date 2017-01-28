@@ -73,7 +73,9 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
       _currentVersions(0, 0),
       _desiredVersions(std::make_shared<AgencyVersions>(0, 0)),
       _wasNotified(false),
-      _strand(new boost::asio::io_service::strand(*ioService)) {
+      _strand(new boost::asio::io_service::strand(*ioService)),
+      _callbacksPosted(0),
+      _callbacksExecuted(0) {
   
 }
 
@@ -735,14 +737,19 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
 
     // only warn if the application server is still there and dispatching
     // should succeed
-    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync";
+    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync "
+      << ++_callbacksPosted;
 
     // schedule a job for the change
     auto self = shared_from_this();
     _strand->post([self, this]() {
+      LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback started "
+        << ++_callbacksExecuted;
       DBServerAgencySync job(this);
 
       job.work();
+      LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback ended "
+        << _callbacksExecuted.load();
     });
 
     MUTEX_LOCKER(mutexLocker, *_statusLock);
