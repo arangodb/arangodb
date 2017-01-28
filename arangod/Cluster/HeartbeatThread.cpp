@@ -551,7 +551,7 @@ bool HeartbeatThread::init() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
-  LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Dispatched job returned!";
+  LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Dispatched job returned!";
   bool doSleep = false;
   {
     MUTEX_LOCKER(mutexLocker, *_statusLock);
@@ -735,7 +735,7 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
 
     // only warn if the application server is still there and dispatching
     // should succeed
-    LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "dispatching sync";
+    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync";
 
     // schedule a job for the change
     auto self = shared_from_this();
