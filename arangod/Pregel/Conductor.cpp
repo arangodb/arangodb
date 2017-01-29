@@ -507,8 +507,8 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     b.add(Utils::algorithmKey, VPackValue(_algorithm->name()));
     b.add(Utils::userParametersKey, _userParams.slice());
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
-    b.add(Utils::asyncMode, VPackValue(_asyncMode));
-    b.add(Utils::lazyLoading, VPackValue(_lazyLoading));
+    b.add(Utils::asyncModeKey, VPackValue(_asyncMode));
+    b.add(Utils::lazyLoadingKey, VPackValue(_lazyLoading));
     if (additional.isObject()) {
       for (auto const& pair : VPackObjectIterator(additional)) {
         b.add(pair.key.copyString(), pair.value);

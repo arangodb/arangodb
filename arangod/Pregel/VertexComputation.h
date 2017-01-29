@@ -108,7 +108,7 @@ class VertexComputation : public VertexContext<V, E, M> {
     _cache->appendMessage(pid.shard, pid.key, data);
   }
   
-  // TODO optimize outgoing cache somehow
+  // TODO Multi-receiver messages
   void sendMessageToAllEdges(M const& data) {
     RangeIterator<Edge<E>> edges = this->getEdges();
     for (Edge<E> const* edge : edges) {
@@ -116,9 +116,12 @@ class VertexComputation : public VertexContext<V, E, M> {
     }
   }
 
-  // only valid in async mode
+  /// Causes messages to be available in GSS+1.
+  /// Only valid in async mode, a no-op otherwise
   void enterNextGlobalSuperstep() {
-    if (!_enterNextGSS) {// buffer this operation
+    // _enterNextGSS is true when we are not in async mode
+    // making this a no-op
+    if (!_enterNextGSS) {
       _enterNextGSS = true;
       _cache->sendToNextGSS(true);
     }

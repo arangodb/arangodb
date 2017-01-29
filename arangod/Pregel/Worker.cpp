@@ -347,6 +347,10 @@ bool Worker<V, E, M>::_processVertices(
   _initializeVertexContext(vertexComputation.get());
   vertexComputation->_workerAggregators = &workerAggregator;
   vertexComputation->_cache = outCache.get();
+  if (!_config.asynchronousMode()) {
+    // Should cause enterNextGlobalSuperstep to do nothing
+    vertexComputation->_enterNextGSS = true;
+  }
 
   size_t activeCount = 0;
   for (VertexEntry* vertexEntry : vertexIterator) {

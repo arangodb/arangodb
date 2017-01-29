@@ -62,8 +62,8 @@ class Utils {
   static std::string const edgeShardsKey;
   static std::string const globalShardListKey;
   static std::string const userParametersKey;
-  static std::string const asyncMode;
-  static std::string const lazyLoading;
+  static std::string const asyncModeKey;
+  static std::string const lazyLoadingKey;
 
   static std::string const globalSuperstepKey;
   static std::string const vertexCountKey;

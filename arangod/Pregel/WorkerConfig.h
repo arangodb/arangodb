@@ -93,13 +93,13 @@ class WorkerConfig {
     return _localEdgeShardIDs;
   };
   inline prgl_shard_t shardId(ShardID const& responsibleShard) const {
-    auto const& it = _shardIDs.find(responsibleShard);
-    return it != _shardIDs.end() ? *it ? (prgl_shard_t)-1;
+    auto const& it = _pregelShardIDs.find(responsibleShard);
+    return it != _pregelShardIDs.end() ? it->second : (prgl_shard_t)-1;
   }
   // index in globalShardIDs
   inline bool isLocalVertexShard(prgl_shard_t shardIndex) const {
     // TODO cache this? prob small
-    return _localShardIDs.find(shardIndex) != _localShardIDs.end();
+    return _localPregelShardIDs.find(shardIndex) != _localPregelShardIDs.end();
   }
 
   PregelID documentIdToPregel(std::string const& documentID) const;
@@ -108,10 +108,8 @@ class WorkerConfig {
   uint64_t _executionNumber = 0;
   uint64_t _globalSuperstep = 0;
   uint64_t _localSuperstep = 0;
-  
-  std::map<std::string, prgl_shard_t> _shardIDs;
-  std::set<prgl_shard_t> _localShardIDs;
 
+  /// Let async
   bool _asynchronousMode = false;
   /// load vertices on a lazy basis
   bool _lazyLoading = false;
@@ -122,9 +120,14 @@ class WorkerConfig {
   std::vector<ShardID> _globalShardIDs;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
 
+  // Map from edge collection to their shards
   std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards,
       _edgeCollectionShards;
   std::map<std::string, std::string> _collectionPlanIdMap;
+  
+  /// cache these ids as much as possible, since 
+  std::map<std::string, prgl_shard_t> _pregelShardIDs;
+  std::set<prgl_shard_t> _localPregelShardIDs;
 };
 }
 }

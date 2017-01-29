@@ -20,7 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SCC.h"
+#include "AsyncSCC.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/GraphStore.h"
@@ -60,6 +60,8 @@ struct ASCCComputation : public VertexComputation<SCCValue, int32_t, SenderMessa
         
       // let all our connected nodes know we are there
       case SCCPhase::TRANSPOSE: {
+        // only one step in this phase
+        enterNextGlobalSuperstep();
         
         vertexState->parents.clear();
         SenderMessage<uint64_t> message(pregelId(), 0);
@@ -72,6 +74,8 @@ struct ASCCComputation : public VertexComputation<SCCValue, int32_t, SenderMessa
       // that don't have any parent or outgoing edge, hence, they can't be
       // part of an SCC.
       case SCCPhase::TRIMMING:{
+        // only one step in this phase
+        enterNextGlobalSuperstep();
         
         for (SenderMessage<uint64_t> const* msg : messages) {
           vertexState->parents.push_back(msg->pregelId);
@@ -90,7 +94,8 @@ struct ASCCComputation : public VertexComputation<SCCValue, int32_t, SenderMessa
         }
         break;
       }
-        
+      
+        // converging phase
       case SCCPhase::FORWARD_TRAVERSAL:{
         uint64_t old = vertexState->color;
         for (SenderMessage<uint64_t> const* msg : messages) {
@@ -107,6 +112,8 @@ struct ASCCComputation : public VertexComputation<SCCValue, int32_t, SenderMessa
       }
         
       case SCCPhase::BACKWARD_TRAVERSAL_START:{
+        // only one step in this phase
+        enterNextGlobalSuperstep();
         
         // if I am the 'root' of a SCC start traversak
         if (vertexState->vertexID == vertexState->color) {
@@ -118,7 +125,8 @@ struct ASCCComputation : public VertexComputation<SCCValue, int32_t, SenderMessa
         }
         break;
       }
-        
+       
+        // converging phase
       case SCCPhase::BACKWARD_TRAVERSAL_REST:{
         
         for (SenderMessage<uint64_t> const* msg : messages) {
@@ -197,6 +205,7 @@ struct ASCCMasterContext : public MasterContext {
   ASCCMasterContext() {}// TODO use _threashold
   void preGlobalSuperstep() override {
     if (globalSuperstep() == 0) {
+      enterNextGlobalSuperstep();
       return;
     }
     
@@ -204,11 +213,13 @@ struct ASCCMasterContext : public MasterContext {
     switch (*phase) {
       case SCCPhase::TRANSPOSE:
         LOG(INFO) << "Phase: TRANSPOSE";
+        enterNextGlobalSuperstep();
         aggregate<uint32_t>(kPhase, SCCPhase::TRIMMING);
         break;
         
       case SCCPhase::TRIMMING:
         LOG(INFO) << "Phase: TRANSPOSE";
+        enterNextGlobalSuperstep();
         aggregate<uint32_t>(kPhase, SCCPhase::FORWARD_TRAVERSAL);
         break;
         
@@ -216,6 +227,7 @@ struct ASCCMasterContext : public MasterContext {
         LOG(INFO) << "Phase: FORWARD_TRAVERSAL";
         bool const* newMaxFound = getAggregatedValue<bool>(kFoundNewMax);
         if (*newMaxFound == false) {
+          enterNextGlobalSuperstep();
           aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_START);
         }
       }
@@ -223,6 +235,7 @@ struct ASCCMasterContext : public MasterContext {
         
       case SCCPhase::BACKWARD_TRAVERSAL_START:
         LOG(INFO) << "Phase: BACKWARD_TRAVERSAL_START";
+        enterNextGlobalSuperstep();
         aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_REST);
         break;
         
@@ -231,6 +244,7 @@ struct ASCCMasterContext : public MasterContext {
         bool const* converged = getAggregatedValue<bool>(kConverged);
         // continue until no more vertices are updated
         if (*converged == false) {
+          enterNextGlobalSuperstep();
           aggregate<uint32_t>(kPhase, SCCPhase::TRANSPOSE);
         }
         break;

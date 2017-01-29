@@ -57,8 +57,8 @@ std::string const Utils::vertexShardsKey = "vertexShards";
 std::string const Utils::edgeShardsKey = "edgeShards";
 std::string const Utils::globalShardListKey = "globalShardList";
 std::string const Utils::userParametersKey = "userparams";
-std::string const Utils::asyncMode = "asyncMode";
-std::string const Utils::lazyLoading = "lazyloading";
+std::string const Utils::asyncModeKey = "asyncMode";
+std::string const Utils::lazyLoadingKey = "lazyloading";
 
 std::string const Utils::globalSuperstepKey = "gss";
 std::string const Utils::vertexCountKey = "vertexCount";
