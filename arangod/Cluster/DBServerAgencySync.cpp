@@ -54,7 +54,7 @@ void DBServerAgencySync::work() {
 DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
 
-  LOG(INFO) << "DBServerAgencySync::execute starting";
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "DBServerAgencySync::execute starting";
   DatabaseFeature* database = 
     ApplicationServer::getFeature<DatabaseFeature>("Database");
 
@@ -62,7 +62,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   DBServerAgencySyncResult result;
   if (vocbase == nullptr) {
-    LOG(INFO) << "DBServerAgencySync::execute no vocbase";
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
+      << "DBServerAgencySync::execute no vocbase";
     return result;
   }
   
@@ -154,7 +155,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "handlePlanChange returned a non-object";
       return result;
     }
-    LOG(INFO) << "DBServerAgencySync::execute back from JS";
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
+      << "DBServerAgencySync::execute back from JS";
     // invalidate our local cache, even if an error occurred
     clusterInfo->flush();
   } catch (...) {

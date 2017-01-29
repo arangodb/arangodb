@@ -112,13 +112,13 @@ void HeartbeatThread::run() {
         _launchAnotherBackgroundJob = false;
       }
 
-      LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback started "
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback started "
         << ++_backgroundJobsLaunched;
       {
         DBServerAgencySync job(this);
         job.work();
       }
-      LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback ended "
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback ended "
         << _backgroundJobsLaunched.load();
 
       bool startAnother = false;
@@ -130,7 +130,7 @@ void HeartbeatThread::run() {
         }
       }
       if (startAnother) {
-        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync tail "
+        LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail "
           << ++_backgroundJobsPosted;
 
         _ioService->post(_backgroundJob);
@@ -585,7 +585,7 @@ bool HeartbeatThread::init() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
-  LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Dispatched job returned!";
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Dispatched job returned!";
   bool doSleep = false;
   {
     MUTEX_LOCKER(mutexLocker, *_statusLock);
@@ -769,7 +769,7 @@ void HeartbeatThread::syncDBServerStatusQuo() {
   }
 
   // schedule a job for the change:
-  LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync "
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync "
     << ++_backgroundJobsPosted;
   _ioService->post(_backgroundJob);
 }
