@@ -28,6 +28,7 @@
 #include "Pregel/Algos/LineRank.h"
 #include "Pregel/Algos/ConnectedComponents.h"
 #include "Pregel/Algos/SCC.h"
+#include "Pregel/Algos/AsyncSCC.h"
 #include "Pregel/Utils.h"
 
 using namespace arangodb;
@@ -49,6 +50,8 @@ IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm,
     return new algos::ConnectedComponents(userParams);
   } else if (algorithm == "scc") {
     return new algos::SCC(userParams);
+  } else if (algorithm == "asyncscc") {
+    return new algos::AsyncSCC(userParams);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
@@ -90,6 +93,8 @@ IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase,
     return createWorker(vocbase, new algos::ConnectedComponents(userParams), body);
   } else if (algorithm == "scc") {
     return createWorker(vocbase, new algos::SCC(userParams), body);
+  } else if (algorithm == "asyncscc") {
+    return createWorker(vocbase, new algos::AsyncSCC(userParams), body);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");

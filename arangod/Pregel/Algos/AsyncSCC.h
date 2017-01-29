@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_SCC_H
-#define ARANGODB_PREGEL_ALGOS_SCC_H 1
+#ifndef ARANGODB_PREGEL_ALGOS_ASCC_H
+#define ARANGODB_PREGEL_ALGOS_ASCC_H 1
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
@@ -45,7 +45,7 @@ struct AsyncSCC : public SimpleAlgorithm<SCCValue, int32_t, SenderMessage<uint64
   AsyncSCC(VPackSlice userParams)
     : SimpleAlgorithm<SCCValue, int32_t, SenderMessage<uint64_t>>("AsyncSCC", userParams) {}
   
-  bool supportsAsyncMode() const { return true; }
+  bool supportsAsyncMode() const override { return true; }
 
   GraphFormat<SCCValue, int32_t>* inputFormat() const override;
   MessageFormat<SenderMessage<uint64_t>>* messageFormat() const override {
