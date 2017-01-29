@@ -68,20 +68,21 @@ void GraphStore<V, E>::loadShards(WorkerConfig const& state) {
       if (_loadedShards.find(vertexShards[i]) != _loadedShards.end()) {
         continue;
       }
-
+      
+      std::vector<ShardID> edgeLookups;
       // distributeshardslike should cause the edges for a vertex to be
       // in the same shard index. x in vertexShard2 => E(x) in edgeShard2
       for (auto const& pair2 : edgeMap) {
         std::vector<ShardID> const& edgeShards = pair2.second;
-
         if (vertexShards.size() != edgeShards.size()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
               "Collections need to have the same number of shards");
         }
-        _loadVertices(state, vertexShards[i], edgeShards[i]);
-        _loadedShards.insert(vertexShards[i]);
+        edgeLookups.push_back(edgeShards[i]);
       }
+      _loadVertices(state, vertexShards[i], edgeLookups);
+      _loadedShards.insert(vertexShards[i]);
     }
   }
   cleanupTransactions();
@@ -226,7 +227,7 @@ void GraphStore<V, E>::cleanupTransactions() {
 template <typename V, typename E>
 void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
                                      ShardID const& vertexShard,
-                                     ShardID const& edgeShard) {
+                                     std::vector<ShardID> const& edgeShards) {
   //_graphFormat->willUseCollection(vocbase, vertexShard, false);
   TRI_voc_cid_t cid = _readTrx->addCollectionAtRuntime(vertexShard);
   _readTrx->orderDitch(cid);  // will throw when it fails
@@ -294,7 +295,9 @@ void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
           _graphFormat->copyVertexData(documentId, document,
                                        &data, sizeof(V));
         }
-        _loadEdges(state, edgeShard, entry, documentId);
+        for (auto const& it : edgeShards) {
+          _loadEdges(state, it, entry, documentId);
+        }
       }
     }
   }

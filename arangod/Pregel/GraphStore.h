@@ -66,8 +66,9 @@ class GraphStore {
   size_t _localEdgeCount = 0;
 
   void _createReadTransaction(WorkerConfig const& state);
-  void _loadVertices(WorkerConfig const& state, ShardID const& vertexShard,
-                     ShardID const& edgeShard);
+  void _loadVertices(WorkerConfig const& state,
+                     ShardID const& vertexShard,
+                     std::vector<ShardID> const& edgeShards);
   void _loadEdges(WorkerConfig const& state, ShardID const& shard,
                   VertexEntry& vertexEntry, std::string const& documentID);
   bool _destroyed = false;
