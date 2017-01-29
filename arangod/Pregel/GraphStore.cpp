@@ -56,7 +56,31 @@ GraphStore<V, E>::~GraphStore() {
 template <typename V, typename E>
 void GraphStore<V, E>::loadShards(WorkerConfig const& state) {
   _createReadTransaction(state);
+  
+  // Allocating some memory
+  uint64_t count = 0;
+  for (auto const& shard : state.localVertexShardIDs()) {
+    OperationResult res = _readTrx->count(shard, true);
+    if (res.failed()) {
+      return;
+    }
+    count += res.slice().getUInt();
+  }
+  _index.reserve(count);
+  if (_graphFormat->estimatedVertexSize() > 0) {
+    _vertexData.reserve(count);
+  }
+  count = 0;
+  for (auto const& shard : state.localEdgeShardIDs()) {
+    OperationResult res = _readTrx->count(shard, true);
+    if (res.failed()) {
+      return;
+    }
+    count += res.slice().getUInt();
+  }
+  _edges.reserve(count);
 
+  // Loading the data
   std::map<CollectionID, std::vector<ShardID>> const& vertexMap =
       state.vertexCollectionShards();
   std::map<CollectionID, std::vector<ShardID>> const& edgeMap =
@@ -252,20 +276,6 @@ void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
   uint64_t number = collection->numberDocuments();
   _graphFormat->willLoadVertices(number);
   
-  // reserve some space for our data
-  if (_index.capacity() < _index.size() + number) {
-    _index.reserve(_index.size() + number);
-  }
-  if (_graphFormat->estimatedVertexSize() > 0) {
-    if (_vertexData.capacity() < _vertexData.size() + number) {
-      _vertexData.reserve(_vertexData.size() + number);
-    }
-  }
-  // assuming more edges than nodes
-  if (_edges.capacity() < _edges.size() + number) {
-    _edges.reserve(_edges.size() + number);
-  }
-  
   std::vector<IndexLookupResult> result;
   result.reserve(1000);
   while (cursor->hasMore()) {
@@ -382,10 +392,10 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
   double start = TRI_microtime();
   
   std::vector<std::string> readColls, writeColls;
-  for (auto shard : state.localVertexShardIDs()) {
+  for (auto const& shard : state.localVertexShardIDs()) {
     writeColls.push_back(shard);
   }
-  for (auto shard : state.localEdgeShardIDs()) {
+  for (auto const& shard : state.localEdgeShardIDs()) {
     writeColls.push_back(shard);
   }
   // for (auto shard : state.localEdgeShardIDs() ) {
