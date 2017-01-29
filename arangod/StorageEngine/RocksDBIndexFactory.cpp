@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBIndexFactory.h"
+#include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
 #include <velocypack/Builder.h>
@@ -35,3 +36,14 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
+std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
+    VPackSlice info, bool generateKey, LogicalCollection* col,
+    bool isClusterConstructor) const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+void RocksDBIndexFactory::fillSystemIndexes(
+    arangodb::LogicalCollection* col,
+    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}

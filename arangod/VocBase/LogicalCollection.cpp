@@ -37,17 +37,13 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesEdgeIndex.h"
-#include "MMFiles/MMFilesFulltextIndex.h"
-#include "MMFiles/MMFilesGeoIndex.h"
-#include "MMFiles/MMFilesHashIndex.h"
-#include "MMFiles/MMFilesPersistentIndex.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
-#include "MMFiles/MMFilesSkiplistIndex.h"
+#include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesToken.h"
 #include "MMFiles/MMFilesWalMarker.h"
 #include "MMFiles/MMFilesWalSlots.h"
@@ -192,103 +188,6 @@ CopySliceValue(VPackSlice info, std::string const& name) {
   }
   return VPackBuilder::clone(info).steal();
 }
-
-// Creates an index object.
-// It does not modify anything and does not insert things into
-// the index.
-// Is also save to use in cluster case.
-static std::shared_ptr<Index> PrepareIndexFromSlice(
-    VPackSlice info, bool generateKey, LogicalCollection* col,
-    bool isClusterConstructor = false) {
-  if (!info.isObject()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
-
-  // extract type
-  VPackSlice value = info.get("type");
-
-  if (!value.isString()) {
-    // Compatibility with old v8-vocindex.
-    if (generateKey) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid index type definition");
-    }
-  }
-
-  std::string tmp = value.copyString();
-  arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
-
-  std::shared_ptr<Index> newIdx;
-
-  TRI_idx_iid_t iid = 0;
-  value = info.get("id");
-  if (value.isString()) {
-    iid = basics::StringUtils::uint64(value.copyString());
-  } else if (value.isNumber()) {
-    iid = Helper::getNumericValue<TRI_idx_iid_t>(info, "id", 0);
-  } else if (!generateKey) {
-    // In the restore case it is forbidden to NOT have id
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "cannot restore index without index identifier");
-  }
-
-  if (iid == 0 && !isClusterConstructor) {
-    // Restore is not allowed to generate in id
-    TRI_ASSERT(generateKey);
-    iid = arangodb::Index::generateId();
-  }
-
-  switch (type) {
-    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type");
-    }
-    case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
-      if (!isClusterConstructor) {
-        // this indexes cannot be created directly
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "cannot create primary index");
-      }
-      newIdx.reset(new arangodb::MMFilesPrimaryIndex(col));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
-      if (!isClusterConstructor) {
-        // this indexes cannot be created directly
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "cannot create edge index");
-      }
-      newIdx.reset(new arangodb::MMFilesEdgeIndex(iid, col));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
-      newIdx.reset(new arangodb::MMFilesGeoIndex(iid, col, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
-      newIdx.reset(new arangodb::MMFilesHashIndex(iid, col, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
-      newIdx.reset(new arangodb::MMFilesSkiplistIndex(iid, col, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX: {
-      newIdx.reset(new arangodb::PersistentIndex(iid, col, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
-      newIdx.reset(new arangodb::MMFilesFulltextIndex(iid, col, info));
-      break;
-    }
-  }
-  if (newIdx == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-  return newIdx;
-};
 }
 
 /// @brief This the "copy" constructor used in the cluster
@@ -557,6 +456,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
   auto indexesSlice = info.get("indexes");
   if (indexesSlice.isArray()) {
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    IndexFactory const* idxFactory = engine->indexFactory(); 
+    TRI_ASSERT(idxFactory != nullptr);
     for (auto const& v : VPackArrayIterator(indexesSlice)) {
       if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
                                                               false)) {
@@ -566,8 +468,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
         continue;
       }
 
-      auto idx = PrepareIndexFromSlice(v, false, this, true);
+      auto idx = idxFactory->prepareIndexFromSlice(v, false, this, true);
 
+      // TODO Mode IndexTypeCheck out
       if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
           idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
         continue;
@@ -721,6 +624,7 @@ void LogicalCollection::setCompactionStatus(char const* reason) {
 }
 
 uint64_t LogicalCollection::numberDocuments() const {
+  // TODO Ask StorageEngine instead
   return primaryIndex()->size();
 }
 
@@ -1504,11 +1408,15 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
     return idx;
   }
 
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  IndexFactory const* idxFactory = engine->indexFactory(); 
+  TRI_ASSERT(idxFactory != nullptr);
+
   // We are sure that we do not have an index of this type.
   // We also hold the lock.
   // Create it
 
-  idx = PrepareIndexFromSlice(info, true, this);
+  idx = idxFactory->prepareIndexFromSlice(info, true, this, false);
   TRI_ASSERT(idx != nullptr);
   if (ServerState::instance()->isCoordinator()) {
     // In the coordinator case we do not fill the index
@@ -1561,7 +1469,10 @@ int LogicalCollection::restoreIndex(Transaction* trx, VPackSlice const& info,
   // is not handed out except for a successful case.
   std::shared_ptr<Index> newIdx;
   try {
-    newIdx = PrepareIndexFromSlice(info, false, this);
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    IndexFactory const* idxFactory = engine->indexFactory(); 
+    TRI_ASSERT(idxFactory != nullptr);
+    newIdx = idxFactory->prepareIndexFromSlice(info, false, this, false);
   } catch (arangodb::basics::Exception const& e) {
     // Something with index creation went wrong.
     // Just report.
@@ -1741,15 +1652,14 @@ void LogicalCollection::createInitialIndexes() {
     return;
   }
 
-  // create primary index
-  auto primaryIndex = std::make_shared<arangodb::MMFilesPrimaryIndex>(this);
-  addIndex(primaryIndex);
+  std::vector<std::shared_ptr<arangodb::Index>> systemIndexes;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  IndexFactory const* idxFactory = engine->indexFactory(); 
+  TRI_ASSERT(idxFactory != nullptr);
 
-  // create edges index
-  if (_type == TRI_COL_TYPE_EDGE) {
-    auto edgeIndex = std::make_shared<arangodb::MMFilesEdgeIndex>(1, this);
-
-    addIndex(edgeIndex);
+  idxFactory->fillSystemIndexes(this, systemIndexes);
+  for (auto const& it : systemIndexes) {
+    addIndex(it);
   }
 }
 

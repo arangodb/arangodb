@@ -21,15 +21,13 @@ done
 - MMFiles reference removals from files:
   - arangod/V8Server/v8-query.cpp
 - StorageEngine specific IndexFactory:
-  - enhance/validate given VPack index definitions (set default values, reject illegal ones (v8-vocindex.cpp))
+  - create indexes from VPack
+  - enhance/validate given VPack index definitions (set default values, reject illegal ones)
 
 in progress
 -----------
 - move engine-specific parts of transaction.cpp into engine
 - transaction API
-- StorageEngine specific IndexFactory:
-  - create indexes from VPack (LogicalCollection)
-    - requires concept
 
 to do
 -----

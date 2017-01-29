@@ -24,7 +24,13 @@
 #ifndef ARANGOD_INDEXES_INDEX_FACTORY_H
 #define ARANGOD_INDEXES_INDEX_FACTORY_H 1
 
+#include "Basics/Common.h"
+
 namespace arangodb {
+
+  class Index;
+  class LogicalCollection;
+
   namespace velocypack {
     class Builder;
     class Slice;
@@ -39,6 +45,14 @@ namespace arangodb {
     virtual int enhanceIndexDefinition(
         arangodb::velocypack::Slice const definition,
         arangodb::velocypack::Builder& enhanced, bool isCreation) const = 0;
+
+    virtual std::shared_ptr<arangodb::Index> prepareIndexFromSlice(
+        arangodb::velocypack::Slice info, bool generateKey,
+        arangodb::LogicalCollection* col, bool isClusterConstructor) const = 0;
+
+    virtual void fillSystemIndexes(
+        arangodb::LogicalCollection* col,
+        std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const  = 0;
   };
 
 } // namespace arangodb

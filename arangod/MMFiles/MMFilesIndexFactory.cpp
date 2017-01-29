@@ -30,6 +30,14 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "MMFiles/fulltext-index.h"
+#include "MMFiles/MMFilesEdgeIndex.h"
+#include "MMFiles/MMFilesFulltextIndex.h"
+#include "MMFiles/MMFilesGeoIndex.h"
+#include "MMFiles/MMFilesHashIndex.h"
+#include "MMFiles/MMFilesPersistentIndex.h"
+#include "MMFiles/MMFilesPrimaryIndex.h"
+#include "MMFiles/MMFilesSkiplistIndex.h"
+#include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -326,4 +334,117 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
   }
 
   return res;
+}
+
+
+// Creates an index object.
+// It does not modify anything and does not insert things into
+// the index.
+// Is also save to use in cluster case.
+std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
+    VPackSlice info, bool generateKey, LogicalCollection* col,
+    bool isClusterConstructor) const {
+  if (!info.isObject()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+
+  // extract type
+  VPackSlice value = info.get("type");
+
+  if (!value.isString()) {
+    // Compatibility with old v8-vocindex.
+    if (generateKey) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid index type definition");
+    }
+  }
+
+  std::string tmp = value.copyString();
+  arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
+
+  std::shared_ptr<Index> newIdx;
+
+  TRI_idx_iid_t iid = 0;
+  value = info.get("id");
+  if (value.isString()) {
+    iid = basics::StringUtils::uint64(value.copyString());
+  } else if (value.isNumber()) {
+    iid =
+        basics::VelocyPackHelper::getNumericValue<TRI_idx_iid_t>(info, "id", 0);
+  } else if (!generateKey) {
+    // In the restore case it is forbidden to NOT have id
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot restore index without index identifier");
+  }
+
+  if (iid == 0 && !isClusterConstructor) {
+    // Restore is not allowed to generate in id
+    TRI_ASSERT(generateKey);
+    iid = arangodb::Index::generateId();
+  }
+
+  switch (type) {
+    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type");
+    }
+    case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
+      if (!isClusterConstructor) {
+        // this indexes cannot be created directly
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "cannot create primary index");
+      }
+      newIdx.reset(new arangodb::MMFilesPrimaryIndex(col));
+      break;
+    }
+    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
+      if (!isClusterConstructor) {
+        // this indexes cannot be created directly
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "cannot create edge index");
+      }
+      newIdx.reset(new arangodb::MMFilesEdgeIndex(iid, col));
+      break;
+    }
+    case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
+    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
+      newIdx.reset(new arangodb::MMFilesGeoIndex(iid, col, info));
+      break;
+    }
+    case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
+      newIdx.reset(new arangodb::MMFilesHashIndex(iid, col, info));
+      break;
+    }
+    case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
+      newIdx.reset(new arangodb::MMFilesSkiplistIndex(iid, col, info));
+      break;
+    }
+    case arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX: {
+      newIdx.reset(new arangodb::PersistentIndex(iid, col, info));
+      break;
+    }
+    case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
+      newIdx.reset(new arangodb::MMFilesFulltextIndex(iid, col, info));
+      break;
+    }
+  }
+  if (newIdx == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  return newIdx;
+}
+
+void MMFilesIndexFactory::fillSystemIndexes(
+    arangodb::LogicalCollection* col,
+    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
+  // create primary index
+  systemIndexes.emplace_back(
+      std::make_shared<arangodb::MMFilesPrimaryIndex>(col));
+
+  // create edges index
+  if (col->type() == TRI_COL_TYPE_EDGE) {
+    systemIndexes.emplace_back(
+        std::make_shared<arangodb::MMFilesEdgeIndex>(1, col));
+  }
 }
