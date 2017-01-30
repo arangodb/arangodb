@@ -1136,7 +1136,7 @@ function _install (serviceInfo, mount, options, runSetup) {
           collections: {
             write: collection.name()
           },
-          action () {
+          action() {
             var definition = collection.firstExample({mount: mount});
             if (definition !== null) {
               collection.remove(definition._key);
