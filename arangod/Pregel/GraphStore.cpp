@@ -104,7 +104,8 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       _config->vertexCollectionShards();
   std::map<CollectionID, std::vector<ShardID>> const& edgeCollMap =
       _config->edgeCollectionShards();
-
+  
+  _runningThreads = config->localVertexShardIDs().size();
   for (auto const& pair : vertexCollMap) {
     std::vector<ShardID> const& vertexShards = pair.second;
     for (size_t i = 0; i < vertexShards.size(); i++) {
@@ -130,7 +131,6 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       }
 
       _loadedShards.insert(vertexShard);
-      _runningThreads++;
       pool->enqueue([this, &vertexShard, edgeLookups, vertexOffset,
                      edgeOffset, callback] {
         
