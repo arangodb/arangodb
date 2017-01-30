@@ -10,18 +10,19 @@
 
 var graph_module = require("@arangodb/general-graph");
 
-module.exports = function (gname, repFac) {
+module.exports = function (gname, shards, repFac) {
   var vColl = gname+"_v", eColl = gname+"_e";
+  shards = shards || 4;
   repFac = repFac || 1;
   
   var graph;
   var exists = graph_module._list().indexOf(gname) != -1;
   if (!exists) {
     graph = graph_module._create(gname);
-    db._create(vColl, {numberOfShards: 2, replicationFactor:repFac});
+    db._create(vColl, {numberOfShards: shards, replicationFactor:repFac});
     graph._addVertexCollection(vColl);
     db._createEdgeCollection(eColl, {
-                             numberOfShards: 2,
+                             numberOfShards: shards,
                              replicationFactor: repFac,
                              shardKeys:["vertex"],
                              distributeShardsLike:vColl});
