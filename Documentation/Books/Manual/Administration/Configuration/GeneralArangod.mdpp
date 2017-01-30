@@ -329,6 +329,22 @@ directory as argument.
 @startDocuBlock databaseForceSyncProperties
 
 
+### Limiting memory for AQL queries
+
+`--query.memory-limit value`
+
+The default maximum amount of memory (in bytes) that a single AQL query can use.
+When a single AQL query reaches the specified limit value, the query will be
+aborted with a *resource limit exceeded* exception. In a cluster, the memory
+accounting is done per shard, so the limit value is effectively a memory limit per
+query per shard.
+
+The global limit value can be overriden per query by setting the *memoryLimit* 
+option value for individual queries when running an AQL query. 
+
+The default value is *0*, meaning that there is no memory limit.
+
+
 ### Enable/disable AQL query tracking
 
 `--query.tracking flag`
