@@ -1,5 +1,5 @@
-devel
------
+v3.1.10 (2017-XX-XX)
+--------------------
 
 * fixed wrong sorting order in cluster, if an index was used to sort with many
 shards.
@@ -9,8 +9,6 @@ shards.
 * turn on UTF-8 string validation for VelocyPack values received via VST connections
 
 * fixed issue #2257
-
-* upgraded Boost version to 1.62.0
 
 * added optional detail flag for db.<collection>.count()
   setting the flag to `true` will make the count operation returned the per-shard
@@ -70,10 +68,10 @@ edge attribute `label`.
 * process.stdout.isTTY now returns `true` in arangosh and when running arangod with the `--console` flag
 
 
-v3.1.9 (XXXX-XX-XX)
+v3.1.9 (2017-01-23)
 -------------------
 
-* macos CLI package: store databases and apps in the users home directory
+* MacOS CLI package: store databases and apps in the users home directory
 
 * ui: fixed re-login issue within a non system db, when tab was closed
 
