@@ -55,20 +55,20 @@ class ReplicationTransaction : public Transaction {
   inline TransactionCollection* trxCollection(TRI_voc_cid_t cid) {
     TRI_ASSERT(cid > 0);
 
-    TransactionCollection* trxCollection = _trx->collection(cid, AccessMode::Type::WRITE);
+    TransactionCollection* trxCollection = _state->collection(cid, AccessMode::Type::WRITE);
 
     if (trxCollection == nullptr) {
-      int res = _trx->addCollection(cid, AccessMode::Type::WRITE, 0, true, true);
+      int res = _state->addCollection(cid, AccessMode::Type::WRITE, 0, true, true);
 
       if (res == TRI_ERROR_NO_ERROR) {
-        res = _trx->ensureCollections();
+        res = _state->ensureCollections();
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
         return nullptr;
       }
 
-      trxCollection = _trx->collection(cid, AccessMode::Type::WRITE);
+      trxCollection = _state->collection(cid, AccessMode::Type::WRITE);
     }
 
     return trxCollection;

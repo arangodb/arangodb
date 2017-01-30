@@ -2060,7 +2060,7 @@ int LogicalCollection::insert(Transaction* trx, VPackSlice const slice,
   // create marker
   MMFilesCrudMarker insertMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
-      TRI_MarkerIdTransaction(trx->getInternals()), newSlice);
+      TRI_MarkerIdTransaction(trx->state()), newSlice);
 
   MMFilesWalMarker const* marker;
   if (options.recoveryMarker == nullptr) {
@@ -2257,7 +2257,7 @@ int LogicalCollection::update(Transaction* trx, VPackSlice const newSlice,
   // create marker
   MMFilesCrudMarker updateMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
-      TRI_MarkerIdTransaction(trx->getInternals()), builder->slice());
+      TRI_MarkerIdTransaction(trx->state()), builder->slice());
 
   MMFilesWalMarker const* marker;
   if (options.recoveryMarker == nullptr) {
@@ -2420,7 +2420,7 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
   // create marker
   MMFilesCrudMarker replaceMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
-      TRI_MarkerIdTransaction(trx->getInternals()), builder->slice());
+      TRI_MarkerIdTransaction(trx->state()), builder->slice());
 
   MMFilesWalMarker const* marker;
   if (options.recoveryMarker == nullptr) {
@@ -2518,7 +2518,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
 
   // create marker
   MMFilesCrudMarker removeMarker(
-      TRI_DF_MARKER_VPACK_REMOVE, TRI_MarkerIdTransaction(trx->getInternals()),
+      TRI_DF_MARKER_VPACK_REMOVE, TRI_MarkerIdTransaction(trx->state()),
       builder->slice());
 
   MMFilesWalMarker const* marker;
@@ -2604,7 +2604,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    res = trx->getInternals()->addOperation(revisionId, operation, marker, options.waitForSync);
+    res = trx->state()->addOperation(revisionId, operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -2649,7 +2649,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
 
   // create marker
   MMFilesCrudMarker removeMarker(
-      TRI_DF_MARKER_VPACK_REMOVE, TRI_MarkerIdTransaction(trx->getInternals()),
+      TRI_DF_MARKER_VPACK_REMOVE, TRI_MarkerIdTransaction(trx->state()),
       builder->slice());
 
   MMFilesWalMarker const* marker = &removeMarker;
@@ -2705,7 +2705,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    res = trx->getInternals()->addOperation(revisionId, operation, marker, options.waitForSync);
+    res = trx->state()->addOperation(revisionId, operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -3323,7 +3323,7 @@ int LogicalCollection::updateDocument(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  return trx->getInternals()->addOperation(newRevisionId, operation, marker, waitForSync);
+  return trx->state()->addOperation(newRevisionId, operation, marker, waitForSync);
 }
 
 /// @brief insert a document, low level worker
@@ -3357,7 +3357,7 @@ int LogicalCollection::insertDocument(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  return trx->getInternals()->addOperation(revisionId, operation, marker, waitForSync);
+  return trx->state()->addOperation(revisionId, operation, marker, waitForSync);
 }
 
 /// @brief creates a new entry in the primary index

@@ -1111,7 +1111,7 @@ void Query::enterContext() {
       auto ctx = static_cast<arangodb::V8TransactionContext*>(
           v8g->_transactionContext);
       if (ctx != nullptr) {
-        ctx->registerTransaction(_trx->getInternals());
+        ctx->registerTransaction(_trx->state());
       }
     }
 

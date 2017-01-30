@@ -185,7 +185,7 @@ class Transaction {
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 
   /// @brief return internals of transaction
-  inline TransactionState* getInternals() const { return _trx; }
+  inline TransactionState* state() const { return _state; }
   
   /// @brief return role of server in cluster
   inline ServerState::RoleEnum serverRole() const { return _serverRole; }
@@ -716,8 +716,8 @@ class Transaction {
   bool _isReal;
 
  protected:
-  /// @brief the C transaction struct
-  TransactionState* _trx;
+  /// @brief the state 
+  TransactionState* _state;
 
   /// @brief the vocbase
   TRI_vocbase_t* const _vocbase;

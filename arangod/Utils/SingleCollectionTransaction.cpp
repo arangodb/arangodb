@@ -79,7 +79,7 @@ TransactionCollection* SingleCollectionTransaction::trxCollection() {
   TRI_ASSERT(_cid > 0);
 
   if (_trxCollection == nullptr) {
-    _trxCollection = _trx->collection(_cid, _accessType);
+    _trxCollection = _state->collection(_cid, _accessType);
 
     if (_trxCollection != nullptr) {
       _documentCollection =
