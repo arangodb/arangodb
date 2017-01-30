@@ -56,8 +56,6 @@ Usage: `db.collection.ensureVertexCentricIndex("label", {type: "hash", direction
 That will create an index that can be used on OUTBOUND with filtering on the
 edge attribute `label`.
 
-* change default log output for tools to stdout (instead of stderr)
-
 * added option -D to define a configuration file environment key=value
 
 * Foxx request URL suffix is no longer unescaped

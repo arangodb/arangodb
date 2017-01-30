@@ -7,8 +7,5 @@ authentication = true
 # username = root
 # password = 
 
-[log]
-file = -
-
 [javascript]
 startup-directory = @PKGDATADIR@/js

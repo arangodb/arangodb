@@ -5,6 +5,3 @@ endpoint = tcp://127.0.0.1:8529
 authentication = true
 # username = root
 # password = 
-
-[log]
-file = -
