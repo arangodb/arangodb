@@ -248,11 +248,9 @@ module.exports =
       try {
         paths = this.tree.buildSwaggerPaths();
       } catch (e) {
-        if (this.isDevelopment) {
-          const frame = codeFrame(e, this.basePath);
-          if (frame) {
-            console.errorLines(frame);
-          }
+        const frame = codeFrame(e, this.basePath);
+        if (frame) {
+          console.errorLines(frame);
         }
         let err = e;
         while (err) {
