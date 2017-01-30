@@ -248,15 +248,10 @@ module.exports =
       try {
         paths = this.tree.buildSwaggerPaths();
       } catch (e) {
-        let err = e;
-        while (err) {
-          if (err.stack) {
-            console.errorLines(
-              err === e
-              ? err.stack
-              : `via ${err.stack}`
-            );
-          }
+        console.errorLines(e.stack);
+        let err = e.cause;
+        while (err && err.stack) {
+          console.errorLines(`via ${err.stack}`);
           err = err.cause;
         }
         console.warnLines(dd`
@@ -288,25 +283,16 @@ module.exports =
               handled = service.tree.dispatch(req, res);
             } catch (e) {
               const logLevel = (
-                !e.statusCode
-                ? 'error' // Unhandled
-                : (
-                  e.statusCode >= 500
-                  ? 'warn' // Internal
-                  : (
-                    this.isDevelopment
-                    ? 'info' // Debug
-                    : undefined
-                  )
-                )
+              !e.statusCode ? 'error' : // Unhandled
+                e.statusCode >= 500 ? 'warn' : // Internal
+                  service.isDevelopment ? 'info' : // Debug
+                    undefined
               );
-
               let error = e;
               if (!e.statusCode) {
                 error = new InternalServerError();
                 error.cause = e;
               }
-
               if (logLevel) {
                 console[logLevel](`Service "${
                   service.mount
@@ -317,27 +303,19 @@ module.exports =
                 } ${
                   req.absoluteUrl()
                 }`);
-
-                let err = e;
-                while (err) {
-                  if (err.stack) {
-                    console[`${logLevel}Lines`](
-                      err === e
-                      ? err.stack
-                      : `via ${err.stack}`
-                    );
-                  }
+                console[`${logLevel}Lines`](e.stack);
+                let err = e.cause;
+                while (err && err.stack) {
+                  console[`${logLevel}Lines`](`via ${err.stack}`);
                   err = err.cause;
                 }
               }
-
               const body = {
                 error: true,
                 errorNum: error.errorNum || error.statusCode,
                 errorMessage: error.message,
                 code: error.statusCode
               };
-
               if (error.statusCode === 405 && error.methods) {
                 if (!res.headers) {
                   res.headers = {};
@@ -347,8 +325,9 @@ module.exports =
               if (service.isDevelopment) {
                 const err = error.cause || error;
                 body.exception = String(err);
-                if (!err.stack) {
-                  body.stacktrace = 'no stacktrace available';
+
+                if (err.stack === undefined) {
+                  body.stacktrace = "no stacktrace available";
                 } else {
                   body.stacktrace = err.stack.replace(/\n+$/, '').split('\n');
                 }

@@ -40,17 +40,10 @@ function runJSUnityTests (tests) {
       if (!res.status) {
         failed.push(file);
       }
-    } catch (e) {
-      print(runenvironment + ": cannot run test file '" + file + "': " + e);
-      let err = e;
-      while (err) {
-        print(
-          err === e
-          ? err.stack
-          : `via ${err.stack}`
-        );
-        err = err.cause;
-      }
+    } catch (err) {
+      print(runenvironment + ": cannot run test file '" + file + "': " + err);
+      print(err.stack);
+      print(err.message);
       result = false;
     }
 
