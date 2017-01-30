@@ -79,44 +79,25 @@ exports.drain = function (generator) {
 
 exports.codeFrame = function (e, basePath, withColor = false) {
   try {
-    let ctx;
     let err = e;
     while (err) {
-      try {
-        if (err instanceof SyntaxError) {
-          const location = err.stack.split('\n')[0];
-          const [fileName, lineNo, colNo] = stackParser.extractLocation(location);
-          if (lineNo && colNo && (!basePath || fileName.indexOf(basePath) === 0)) {
-            ctx = {
-              fileName,
-              lineNumber: Number(lineNo),
-              columnNumber: Number(colNo)
-            };
-            break;
-          }
-        } else {
-          const stack = stackParser.parse(err);
-          for (const step of stack) {
-            if (!basePath || step.fileName.indexOf(basePath) === 0) {
-              ctx = step;
-              break;
-            }
-          }
+      const stack = stackParser.parse(e);
+      for (const step of stack) {
+        if (!basePath || step.fileName.indexOf(basePath) === 0) {
+          const source = fs.readFileSync(step.fileName, 'utf-8');
+          const frame = codeFrame(source, step.lineNumber, step.columnNumber, {
+            highlightCode: withColor,
+            forceColor: withColor
+          });
+          const location = `@ ${step.fileName}:${step.lineNumber}:${step.columnNumber}\n`;
+          return (withColor ? chalk.grey(location) : location) + frame;
         }
-      } catch (e) {}
+      }
       err = err.cause;
     }
-    if (ctx) {
-      const source = fs.readFileSync(ctx.fileName, 'utf-8');
-      const frame = codeFrame(source, ctx.lineNumber, ctx.columnNumber, {
-        highlightCode: withColor,
-        forceColor: withColor
-      });
-      const location = `@ ${ctx.fileName}:${ctx.lineNumber}:${ctx.columnNumber}\n`;
-      return (withColor ? chalk.grey(location) : location) + frame;
-    }
-  } catch (e) {}
-  return null;
+  } catch (e) {
+    return null;
+  }
 };
 
 exports.inline = function (strs) {
