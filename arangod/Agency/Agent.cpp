@@ -511,7 +511,7 @@ bool Agent::load() {
 
   if (size() > 1) {
     _inception->start();
-  }
+  } 
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Reassembling spearhead and read stores.";
   _spearhead.apply(
@@ -537,6 +537,7 @@ bool Agent::load() {
 
   if (size() == 1 || !this->isStopping()) {
     _constituent.start(vocbase, queryRegistry);
+    persistConfiguration(term());
   }
 
   if (size() == 1 || (!this->isStopping() && _config.supervision())) {
@@ -725,9 +726,10 @@ inquire_ret_t Agent::inquire(query_t const& query) {
 write_ret_t Agent::write(query_t const& query) {
   std::vector<bool> applied;
   std::vector<index_t> indices;
+  auto multihost = size()>1;
 
   auto leader = _constituent.leaderID();
-  if (leader != id()) {
+  if (multihost && leader != id()) {
     return write_ret_t(false, leader);
   }
   
@@ -736,7 +738,7 @@ write_ret_t Agent::write(query_t const& query) {
     MUTEX_LOCKER(mutexLocker, _ioLock);
     
     // Only leader else redirect
-    if (challengeLeadership()) {
+    if (multihost && challengeLeadership()) {
       _constituent.candidate();
       return write_ret_t(false, NO_LEADER);
     }
@@ -867,14 +869,14 @@ void Agent::persistConfiguration(term_t t) {
   agency->add("id", VPackValue(id()));
   agency->add("active", _config.activeToBuilder()->slice());
   agency->add("pool", _config.poolToBuilder()->slice());
+  agency->add("size", VPackValue(size()));
   agency->close();
   agency->close();
   agency->close();
   agency->close();
-
+  
   // In case we've lost leadership, no harm will arise as the failed write
   // prevents bogus agency configuration to be replicated among agents. ***
-  
   write(agency); 
 
 }
@@ -937,7 +939,7 @@ void Agent::beginShutdown() {
   // Stop inception process
   if (size() > 1 && _inception != nullptr) {
     _inception->beginShutdown();
-  }
+  } 
 
   // Stop key value stores
   _spearhead.beginShutdown();
