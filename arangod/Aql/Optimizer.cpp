@@ -485,10 +485,6 @@ void Optimizer::setupRules() {
   registerRule("patch-update-statements", patchUpdateStatementsRule,
                patchUpdateStatementsRule_pass9, DoesNotCreateAdditionalPlans, true);
 
-  // patch update statements
-  registerRule("geo-index-optimizer", geoIndexRule,
-               applyGeoIndexRule, DoesNotCreateAdditionalPlans, true);
-
   if (arangodb::ServerState::instance()->isCoordinator()) {
     // distribute operations in cluster
     registerRule("scatter-in-cluster", scatterInClusterRule,
@@ -512,11 +508,5 @@ void Optimizer::setupRules() {
     registerRule("undistribute-remove-after-enum-coll",
                  undistributeRemoveAfterEnumCollRule,
                  undistributeRemoveAfterEnumCollRule_pass10, DoesNotCreateAdditionalPlans, true);
-
-#ifdef USE_ENTERPRISE
-    registerRule("remove-satellite-joins",
-                 removeSatelliteJoinsRule,
-                 removeSatelliteJoinsRule_pass10, DoesNotCreateAdditionalPlans, true);
-#endif
   }
 }

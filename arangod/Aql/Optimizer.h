@@ -149,8 +149,6 @@ class Optimizer {
     // remove redundant OR conditions
     removeRedundantOrRule_pass6,
 
-    applyGeoIndexRule,
-
     useIndexesRule_pass6,
 
     // try to remove filters covered by index ranges
@@ -196,11 +194,6 @@ class Optimizer {
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies
     removeUnnecessaryRemoteScatterRule_pass10,
-
-    // remove any superflous satellite collection joins...
-    // put it after Scatter rule because we would do
-    // the work twice otherwise
-    removeSatelliteJoinsRule_pass10,
 
     // recognize that a RemoveNode can be moved to the shards
     undistributeRemoveAfterEnumCollRule_pass10

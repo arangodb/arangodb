@@ -463,12 +463,15 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       if (_replicationFactor > 0 && _replicationFactor <= 10) {
         isError = false;
 #ifdef USE_ENTERPRISE
+#if 0
       } else if (_replicationFactor == 0) {
         isError = false;
+#endif
 #endif
       }
     }
 #ifdef USE_ENTERPRISE
+#if 0
     else if (replicationFactorSlice.isString() &&
              replicationFactorSlice.copyString() == "satellite") {
       _replicationFactor = 0;
@@ -477,6 +480,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _avoidServers.clear();
       isError = false;
     }
+#endif
 #endif
     if (isError) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
