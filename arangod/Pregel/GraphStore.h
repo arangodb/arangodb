@@ -23,9 +23,11 @@
 #ifndef ARANGODB_PREGEL_GRAPH_STORE_H
 #define ARANGODB_PREGEL_GRAPH_STORE_H 1
 
+#include <atomic>
 #include <cstdint>
 #include <cstdio>
 #include <set>
+#include "Basics/Mutex.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
@@ -49,8 +51,8 @@ template <typename V, typename E>
 class GraphStore {
   VocbaseGuard _vocbaseGuard;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
-  Transaction* _readTrx = nullptr;  // temporary transaction
-
+  WorkerConfig *_config;
+  
   // int _indexFd, _vertexFd, _edgeFd;
   // void *_indexMapping, *_vertexMapping, *_edgeMapping;
   // size_t _indexSize, _vertexSize, _edgeSize;
@@ -62,28 +64,30 @@ class GraphStore {
   std::vector<Edge<E>> _edges;
 
   std::set<ShardID> _loadedShards;
-  size_t _localVerticeCount = 0;
-  size_t _localEdgeCount = 0;
+  std::atomic<uint64_t> _localVerticeCount;
+  std::atomic<uint64_t> _localEdgeCount;
+  std::atomic<uint32_t> _runningThreads;
+  mutable Mutex _threadMutex;
 
-  void _createReadTransaction(WorkerConfig const& state);
-  void _loadVertices(WorkerConfig const& state,
-                     ShardID const& vertexShard,
-                     std::vector<ShardID> const& edgeShards);
-  void _loadEdges(WorkerConfig const& state, ShardID const& shard,
+  void _loadVertices(ShardID const& vertexShard,
+                     std::vector<ShardID> const& edgeShards,
+                     uint64_t vertexOffset, uint64_t edgeOffset);
+  void _loadEdges(Transaction* trx, ShardID const& shard,
                   VertexEntry& vertexEntry, std::string const& documentID);
+  std::unique_ptr<Transaction> _createTransaction();
   bool _destroyed = false;
 
  public:
   GraphStore(TRI_vocbase_t* vocbase, GraphFormat<V, E>* graphFormat);
   ~GraphStore();
 
-  size_t localVertexCount() const { return _localVerticeCount; }
-  size_t localEdgeCount() const { return _localEdgeCount; }
+  uint64_t localVertexCount() const { return _localVerticeCount; }
+  uint64_t localEdgeCount() const { return _localEdgeCount; }
 
   // ====================== NOT THREAD SAFE ===========================
-  void loadShards(WorkerConfig const& state);
-  void loadDocument(WorkerConfig const& config, std::string const& documentID);
-  void loadDocument(WorkerConfig const& config, prgl_shard_t sourceShard,
+  void loadShards(WorkerConfig* state, std::function<void()> callback);
+  void loadDocument(WorkerConfig* config, std::string const& documentID);
+  void loadDocument(WorkerConfig* config, prgl_shard_t sourceShard,
                     std::string const& _key);
   // ======================================================================
 
@@ -92,10 +96,11 @@ class GraphStore {
   RangeIterator<VertexEntry> vertexIterator(size_t start, size_t count);
   RangeIterator<Edge<E>> edgeIterator(VertexEntry const* entry);
 
+  /// get the pointer to the vertex
   void* mutableVertexData(VertexEntry const* entry);
+  /// does nothing currently
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
 
-  void cleanupTransactions();
   /// Write results to database
   void storeResults(WorkerConfig const& state);
 };

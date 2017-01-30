@@ -59,11 +59,13 @@ PregelFeature::~PregelFeature() {
 
 PregelFeature* PregelFeature::instance() { return Instance; }
 
-static size_t _approxThreadNumber(){
+static size_t _approxThreadNumber() {
   const size_t procNum = TRI_numberProcessors();
-  if (procNum <= 1) return 1;
-  else return procNum / 2;
-  //else return procNum;// use full performance on cluster
+  if (procNum <= 1)
+    return 1;
+  else
+    return procNum / 2;
+  // else return procNum;// use full performance on cluster
 }
 
 void PregelFeature::start() {
@@ -75,18 +77,19 @@ void PregelFeature::start() {
   const size_t threadNum = _approxThreadNumber();
   LOG(INFO) << "Pregel uses " << threadNum << " threads";
   _threadPool.reset(new basics::ThreadPool(threadNum, "Pregel"));
-  
+
   if (ServerState::instance()->isCoordinator()) {
     _recoveryManager.reset(new RecoveryManager());
-//    ClusterFeature* cluster =
-//    application_features::ApplicationServer::getFeature<ClusterFeature>(
-//                                                                        "Cluster");
-//    if (cluster != nullptr) {
-//      AgencyCallbackRegistry* registry = cluster->agencyCallbackRegistry();
-//      if (registry != nullptr) {
-//        _recoveryManager.reset(new RecoveryManager(registry));
-//      }
-//    }
+    //    ClusterFeature* cluster =
+    //    application_features::ApplicationServer::getFeature<ClusterFeature>(
+    //                                                                        "Cluster");
+    //    if (cluster != nullptr) {
+    //      AgencyCallbackRegistry* registry =
+    //      cluster->agencyCallbackRegistry();
+    //      if (registry != nullptr) {
+    //        _recoveryManager.reset(new RecoveryManager(registry));
+    //      }
+    //    }
   }
 }
 

@@ -74,7 +74,6 @@ std::string const Utils::receivedCountKey = "receivedCount";
 std::string const Utils::sendCountKey = "sendCount";
 std::string const Utils::enterNextGSSKey = "nextGSS";
 
-
 std::string const Utils::compensate = "compensate";
 std::string const Utils::rollback = "rollback";
 

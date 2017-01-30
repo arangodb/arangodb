@@ -23,7 +23,6 @@
 #ifndef ARANGODB_PREGEL_MFORMAT_H
 #define ARANGODB_PREGEL_MFORMAT_H 1
 
-
 #include <cstddef>
 #include "Basics/Common.h"
 
@@ -71,7 +70,7 @@ struct FloatMessageFormat : public MessageFormat<float> {
     arrayBuilder.add(VPackValue(val));
   }
 };*/
-  
+
 template <typename M>
 struct NumberMessageFormat : public MessageFormat<M> {
   static_assert(std::is_arithmetic<M>::value, "Message type must be numeric");
@@ -83,7 +82,6 @@ struct NumberMessageFormat : public MessageFormat<M> {
     arrayBuilder.add(VPackValue(val));
   }
 };
-
 }
 }
 #endif

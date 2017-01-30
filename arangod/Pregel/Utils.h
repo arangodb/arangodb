@@ -78,7 +78,7 @@ class Utils {
   static std::string const receivedCountKey;
   static std::string const sendCountKey;
   static std::string const enterNextGSSKey;
-  
+
   static std::string const compensate;
   static std::string const rollback;
 

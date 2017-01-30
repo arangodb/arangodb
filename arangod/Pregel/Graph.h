@@ -39,9 +39,15 @@ struct PregelID {
   }
 };
 
+template <typename V, typename E>
+class GraphStore;
+
 /// @brief header entry for the edge file
 template <typename E>
 class Edge {
+  template <typename V, typename E2>
+  friend class GraphStore;
+
   prgl_shard_t _sourceShard;
   prgl_shard_t _targetShard;
   std::string _toKey;
@@ -49,6 +55,7 @@ class Edge {
 
  public:
   // EdgeEntry() : _nextEntryOffset(0), _dataSize(0), _vertexIDSize(0) {}
+  Edge() {}
   Edge(prgl_shard_t source, prgl_shard_t target, std::string const& key)
       : _sourceShard(source), _targetShard(target), _toKey(key) {}
 
@@ -66,14 +73,15 @@ class VertexEntry {
   template <typename V, typename E>
   friend class GraphStore;
 
-  const prgl_shard_t _shard;
-  const std::string _key;
+  prgl_shard_t _shard;
+  std::string _key;
   size_t _vertexDataOffset = 0;
   size_t _edgeDataOffset = 0;
   size_t _edgeCount = 0;
   bool _active = true;
 
  public:
+  VertexEntry() {}
   VertexEntry(prgl_shard_t shard, std::string const& key)
       : _shard(shard),
         _key(key),

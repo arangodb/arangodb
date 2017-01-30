@@ -41,29 +41,30 @@ class AggregatorHandler {
   const IAlgorithm* _algorithm;
   std::map<std::string, IAggregator*> _values;
   mutable basics::ReadWriteLock _lock;
-  
+
   IAggregator* _get(std::string const& name);
-public:
+
+ public:
   AggregatorHandler(IAlgorithm const* c) : _algorithm(c) {}
   ~AggregatorHandler();
-  
-  void registerAggregator(std::string const& name, IAggregator *aggregator);
-  
+
+  void registerAggregator(std::string const& name, IAggregator* aggregator);
+
   /// aggregate this value
   void aggregate(std::string const& name, const void* valuePtr);
-  
+
   /// get the pointer to an aggregator value
   const void* getAggregatedValue(std::string const& name);
-  
+
   /// calls reset on every aggregator
   void resetValues(bool force = false);
-  
+
   /// aggregates all values from this aggregator
   void aggregateValues(AggregatorHandler const& workerValues);
-  
+
   /// return true if there are values in this Slice
   bool parseValues(VPackSlice workerValues);
-  
+
   /// return true if there values in this aggregator which were serialized
   bool serializeValues(VPackBuilder& b, bool onlyConverging = false) const;
   size_t size() const;

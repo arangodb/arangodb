@@ -41,9 +41,12 @@ namespace pregel {
 class IWorker {
  public:
   virtual ~IWorker(){};
-  virtual void prepareGlobalStep(VPackSlice const& data, VPackBuilder& response) = 0;
-  virtual void startGlobalStep(VPackSlice const& data) = 0;   // called by coordinator
-  virtual void cancelGlobalStep(VPackSlice const& data) = 0;  // called by coordinator
+  virtual void prepareGlobalStep(VPackSlice const& data,
+                                 VPackBuilder& response) = 0;
+  virtual void startGlobalStep(
+      VPackSlice const& data) = 0;  // called by coordinator
+  virtual void cancelGlobalStep(
+      VPackSlice const& data) = 0;  // called by coordinator
   virtual void receivedMessages(VPackSlice const& data) = 0;
   virtual void finalizeExecution(VPackSlice const& data) = 0;
   virtual void startRecovery(VPackSlice const& data) = 0;
@@ -120,16 +123,17 @@ class Worker : public IWorker {
   void _finishedProcessing();
   void _continueAsync();
   void _callConductor(std::string const& path, VPackSlice const& message);
-  std::unique_ptr<ClusterCommResult> _callConductorWithResponse(std::string const& path,
-                                                                VPackSlice const& message);
-  
+  std::unique_ptr<ClusterCommResult> _callConductorWithResponse(
+      std::string const& path, VPackSlice const& message);
+
  public:
   Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algorithm,
          VPackSlice params);
   ~Worker();
 
   // ====== called by rest handler =====
-  void prepareGlobalStep(VPackSlice const& data, VPackBuilder& response) override;
+  void prepareGlobalStep(VPackSlice const& data,
+                         VPackBuilder& response) override;
   void startGlobalStep(VPackSlice const& data) override;
   void cancelGlobalStep(VPackSlice const& data) override;
   void receivedMessages(VPackSlice const& data) override;

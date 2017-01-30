@@ -47,23 +47,25 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
   _coordinatorId = coordID.copyString();
   _asynchronousMode = async.getBool();
   _lazyLoading = params.get(Utils::lazyLoadingKey).getBool();
-      
-  // list of all shards, equal on all workers. Used to avoid storing strings of shard names
+
+  // list of all shards, equal on all workers. Used to avoid storing strings of
+  // shard names
   // Instead we have an index identifying a shard name in this vector
   prgl_shard_t i = 0;
   for (VPackSlice shard : VPackArrayIterator(globalShards)) {
     ShardID s = shard.copyString();
     _globalShardIDs.push_back(s);
-    _pregelShardIDs.emplace(s, i++);// Cache these ids
+    _pregelShardIDs.emplace(s, i++);  // Cache these ids
   }
-  
+
   // To access information based on a user defined collection name we need the
   for (auto const& it : VPackObjectIterator(collectionPlanIdMap)) {
     _collectionPlanIdMap.emplace(it.key.copyString(), it.value.copyString());
   }
-  
+
   // Ordered list of shards for each vertex collection on the CURRENT db server
-  // Order matters because the for example the third vertex shard, will only every have
+  // Order matters because the for example the third vertex shard, will only
+  // every have
   // edges in the third edge shard. This should speed up the startup
   for (auto const& pair : VPackObjectIterator(vertexShardMap)) {
     std::vector<ShardID> shards;
@@ -75,7 +77,7 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
     }
     _vertexCollectionShards.emplace(pair.key.copyString(), shards);
   }
-  
+
   // Ordered list of edge shards for each collection
   for (auto const& pair : VPackObjectIterator(edgeShardMap)) {
     std::vector<ShardID> shards;
@@ -85,7 +87,7 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
       _localEdgeShardIDs.push_back(shard);
     }
     _edgeCollectionShards.emplace(pair.key.copyString(), shards);
-  }  
+  }
 }
 
 PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {

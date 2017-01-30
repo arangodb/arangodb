@@ -64,7 +64,7 @@ class Conductor {
   std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections;
   std::vector<std::shared_ptr<LogicalCollection>> _edgeCollections;
   std::vector<ServerID> _dbServers;
-  std::vector<ShardID> _allShards;// persistent shard list
+  std::vector<ShardID> _allShards;  // persistent shard list
 
   // initialized on startup
   std::unique_ptr<AggregatorHandler> _aggregators;
@@ -79,7 +79,7 @@ class Conductor {
   /// determines whether we support async execution
   bool _asyncMode = false;
   bool _lazyLoading = false;
-  
+
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;
   /// Current number of vertices
@@ -98,7 +98,7 @@ class Conductor {
 
   // === REST callbacks ===
   void finishedWorkerStartup(VPackSlice data);
-  void finishedWorkerStep(VPackSlice data, VPackBuilder &response);
+  void finishedWorkerStep(VPackSlice data, VPackBuilder& response);
   void finishedRecoveryStep(VPackSlice data);
 
  public:

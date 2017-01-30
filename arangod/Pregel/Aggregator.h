@@ -32,7 +32,7 @@
 
 namespace arangodb {
 namespace pregel {
-  
+
 typedef std::string AggregatorID;
 
 class IAggregator {
@@ -50,39 +50,41 @@ class IAggregator {
   virtual VPackValue vpackValue() const = 0;
   virtual void parse(VPackSlice slice) = 0;
 
-
   virtual void reset(bool force) = 0;
   virtual bool isConverging() const = 0;
 };
-  
-template<typename T>
+
+template <typename T>
 struct NumberAggregator : public IAggregator {
   static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
-  
+
   NumberAggregator(T init, bool perm = false, bool conv = false)
-  : _value(init), _initial(init), _permanent(perm), _converging(conv) {}
-  
+      : _value(init), _initial(init), _permanent(perm), _converging(conv) {}
+
   void const* getValue() const override { return &_value; };
   VPackValue vpackValue() const override { return VPackValue(_value); };
   void parse(VPackSlice slice) override {
     T f = slice.getNumber<T>();
     aggregate((void const*)(&f));
   }
-  
+
   void reset(bool force) override {
-    if (!_permanent || force) {_value = _initial; }
+    if (!_permanent || force) {
+      _value = _initial;
+    }
   }
-  
+
   bool isConverging() const override { return _converging; }
-  
-protected:
+
+ protected:
   T _value, _initial;
   bool _permanent, _converging;
 };
-  
+
 template <typename T>
 struct MaxAggregator : public NumberAggregator<T> {
-  MaxAggregator(T init, bool perm = false) : NumberAggregator<T>(init, perm, true) {}
+  MaxAggregator(T init, bool perm = false)
+      : NumberAggregator<T>(init, perm, true) {}
   void aggregate(void const* valuePtr) override {
     T other = *((T*)valuePtr);
     if (other > this->_value) this->_value = other;
@@ -91,7 +93,8 @@ struct MaxAggregator : public NumberAggregator<T> {
 
 template <typename T>
 struct MinAggregator : public NumberAggregator<T> {
-  MinAggregator(T init, bool perm = false) : NumberAggregator<T>(init, perm, true) {}
+  MinAggregator(T init, bool perm = false)
+      : NumberAggregator<T>(init, perm, true) {}
   void aggregate(void const* valuePtr) override {
     T other = *((T*)valuePtr);
     if (other < this->_value) this->_value = other;
@@ -100,43 +103,51 @@ struct MinAggregator : public NumberAggregator<T> {
 
 template <typename T>
 struct SumAggregator : public NumberAggregator<T> {
-  SumAggregator(T init, bool perm = false) : NumberAggregator<T>(init, perm, true) {}
-  
-  void aggregate(void const* valuePtr) override { this->_value += *((T*)valuePtr); };
-  void parse(VPackSlice slice) override { this->_value += slice.getNumber<T>(); }
+  SumAggregator(T init, bool perm = false)
+      : NumberAggregator<T>(init, perm, true) {}
+
+  void aggregate(void const* valuePtr) override {
+    this->_value += *((T*)valuePtr);
+  };
+  void parse(VPackSlice slice) override {
+    this->_value += slice.getNumber<T>();
+  }
 };
 
 template <typename T>
 struct ValueAggregator : public NumberAggregator<T> {
-  ValueAggregator(T val, bool perm = false) : NumberAggregator<T>(val, perm, true) {}
+  ValueAggregator(T val, bool perm = false)
+      : NumberAggregator<T>(val, perm, true) {}
 
-  void aggregate(void const* valuePtr) override { this->_value = *((T*)valuePtr); };
-  void parse(VPackSlice slice) override {this-> _value = slice.getNumber<T>(); }
+  void aggregate(void const* valuePtr) override {
+    this->_value = *((T*)valuePtr);
+  };
+  void parse(VPackSlice slice) override { this->_value = slice.getNumber<T>(); }
 };
 
 /// always initializes to true.
 struct BoolOrAggregator : public IAggregator {
-  
   BoolOrAggregator(bool perm = false) : _permanent(perm) {}
-  
+
   void const* getValue() const override { return &_value; };
   VPackValue vpackValue() const override { return VPackValue(_value); };
-  
-  void aggregate(void const* valuePtr) override { _value = _value || *((bool*)valuePtr); };
-  void parse(VPackSlice slice) override {
-    _value = _value || slice.getBool();
-  }
-  
+
+  void aggregate(void const* valuePtr) override {
+    _value = _value || *((bool*)valuePtr);
+  };
+  void parse(VPackSlice slice) override { _value = _value || slice.getBool(); }
+
   void reset(bool force) override {
-    if (!_permanent || force) {_value = false; }
+    if (!_permanent || force) {
+      _value = false;
+    }
   }
-  
+
   bool isConverging() const override { return false; }
-  
-protected:
+
+ protected:
   bool _value = false, _permanent;
 };
-
 }
 }
 #endif

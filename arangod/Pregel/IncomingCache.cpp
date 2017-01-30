@@ -21,8 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/IncomingCache.h"
-#include "Pregel/Utils.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/Utils.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -39,11 +39,11 @@ void InCache<M>::parseMessages(VPackSlice const& incomingData) {
   // every packet should contain one shard
   VPackSlice shardSlice = incomingData.get(Utils::shardIdKey);
   VPackSlice messages = incomingData.get(Utils::messagesKey);
-  
-  prgl_shard_t shard = (prgl_shard_t) shardSlice.getUInt();
+
+  prgl_shard_t shard = (prgl_shard_t)shardSlice.getUInt();
   std::string key;
   VPackValueLength i = 0;
-  
+
   for (VPackSlice current : VPackArrayIterator(messages)) {
     if (i % 2 == 0) {  // TODO support multiple recipients
       key = current.copyString();
@@ -133,7 +133,7 @@ template <typename M>
 void ArrayInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
   MUTEX_LOCKER(guard, this->_writeLock);
   HMap& vertexMap(_shardMap[shard]);
-  
+
   auto const& it = vertexMap.find(key);
   if (it != vertexMap.end()) {
     vertexMap.erase(it);
@@ -214,7 +214,7 @@ void CombiningInCache<M>::clear() {
 template <typename M>
 void CombiningInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
   MUTEX_LOCKER(guard, this->_writeLock);
-  
+
   HMap& vertexMap(_shardMap[shard]);
   auto const& it = vertexMap.find(key);
   if (it != vertexMap.end()) {

@@ -6,7 +6,6 @@
 
 #include "Pregel/MemoryMapped.h"
 
-
 #include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
@@ -16,8 +15,8 @@
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 
-#include <sstream>
 #include <iomanip>
+#include <sstream>
 
 #include <cstdio>
 #include <stdexcept>

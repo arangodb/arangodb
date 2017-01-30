@@ -23,13 +23,16 @@
 #include "GraphStore.h"
 
 #include <algorithm>
-#include "Basics/Exceptions.h"
+#include "Basics/Common.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/ThreadPool.h"
 #include "Cluster/ClusterInfo.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/Index.h"
-#include "Pregel/WorkerConfig.h"
-#include "Pregel/Utils.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/PregelFeature.h"
+#include "Pregel/Utils.h"
+#include "Pregel/WorkerConfig.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExplicitTransaction.h"
 #include "Utils/OperationCursor.h"
@@ -45,58 +48,77 @@ using namespace arangodb::pregel;
 
 template <typename V, typename E>
 GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, GraphFormat<V, E>* graphFormat)
-    : _vocbaseGuard(vb), _graphFormat(graphFormat) {}
+    : _vocbaseGuard(vb),
+      _graphFormat(graphFormat),
+      _localVerticeCount(0),
+      _localEdgeCount(0),
+      _runningThreads(0) {}
 
 template <typename V, typename E>
 GraphStore<V, E>::~GraphStore() {
   _destroyed = true;
-  cleanupTransactions();
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::loadShards(WorkerConfig const& state) {
-  _createReadTransaction(state);
+void GraphStore<V, E>::loadShards(WorkerConfig* config,
+                                  std::function<void()> callback) {
+  _config = config;
   
+  double t = TRI_microtime();
+  std::unique_ptr<Transaction> countTrx(_createTransaction());
+  std::map<ShardID, uint64_t> shardSizes;
   // Allocating some memory
   uint64_t count = 0;
-  for (auto const& shard : state.localVertexShardIDs()) {
-    OperationResult res = _readTrx->count(shard, true);
-    if (res.failed()) {
+  for (auto const& shard : _config->localVertexShardIDs()) {
+    OperationResult opResult = countTrx->count(shard, true);
+    if (opResult.failed()) {
       return;
     }
-    count += res.slice().getUInt();
+    shardSizes[shard] = opResult.slice().getUInt();
+    count += opResult.slice().getUInt();
   }
-  _index.reserve(count);
+  _index.resize(count);
   if (_graphFormat->estimatedVertexSize() > 0) {
-    _vertexData.reserve(count);
+    _vertexData.resize(count);
   }
   count = 0;
-  for (auto const& shard : state.localEdgeShardIDs()) {
-    OperationResult res = _readTrx->count(shard, true);
-    if (res.failed()) {
+  for (auto const& shard : _config->localEdgeShardIDs()) {
+    OperationResult opResult = countTrx->count(shard, true);
+    if (opResult.failed()) {
       return;
     }
-    count += res.slice().getUInt();
+    shardSizes[shard] = opResult.slice().getUInt();
+    count += opResult.slice().getUInt();
   }
-  _edges.reserve(count);
+  _edges.resize(count);
+  if (countTrx->commit() != TRI_ERROR_NO_ERROR) {
+    LOG(WARN) << "Pregel worker: Failed to commit on a read transaction";
+  }
+  LOG(INFO) << "Allocating memory took " << TRI_microtime() - t << "s";
+  
 
-  // Loading the data
-  std::map<CollectionID, std::vector<ShardID>> const& vertexMap =
-      state.vertexCollectionShards();
-  std::map<CollectionID, std::vector<ShardID>> const& edgeMap =
-      state.edgeCollectionShards();
-  for (auto const& pair : vertexMap) {
+  basics::ThreadPool* pool = PregelFeature::instance()->threadPool();
+  uint64_t vertexOffset = 0, edgeOffset = 0;
+  // Contains the shards located on this db server in the right order
+  std::map<CollectionID, std::vector<ShardID>> const& vertexCollMap =
+      _config->vertexCollectionShards();
+  std::map<CollectionID, std::vector<ShardID>> const& edgeCollMap =
+      _config->edgeCollectionShards();
+
+  for (auto const& pair : vertexCollMap) {
     std::vector<ShardID> const& vertexShards = pair.second;
     for (size_t i = 0; i < vertexShards.size(); i++) {
       // we might have already loaded these shards
       if (_loadedShards.find(vertexShards[i]) != _loadedShards.end()) {
         continue;
       }
-      
+      ShardID const& vertexShard(vertexShards[i]);
+
+      uint64_t nextEdgeOffset = edgeOffset;
       std::vector<ShardID> edgeLookups;
       // distributeshardslike should cause the edges for a vertex to be
       // in the same shard index. x in vertexShard2 => E(x) in edgeShard2
-      for (auto const& pair2 : edgeMap) {
+      for (auto const& pair2 : edgeCollMap) {
         std::vector<ShardID> const& edgeShards = pair2.second;
         if (vertexShards.size() != edgeShards.size()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -104,34 +126,49 @@ void GraphStore<V, E>::loadShards(WorkerConfig const& state) {
               "Collections need to have the same number of shards");
         }
         edgeLookups.push_back(edgeShards[i]);
+        nextEdgeOffset += shardSizes[edgeShards[i]];
       }
-      _loadVertices(state, vertexShards[i], edgeLookups);
-      _loadedShards.insert(vertexShards[i]);
+
+      _loadedShards.insert(vertexShard);
+      _runningThreads++;
+      pool->enqueue([this, &vertexShard, edgeLookups, vertexOffset,
+                     edgeOffset, callback] {
+        
+        _loadVertices(vertexShard, edgeLookups, vertexOffset,
+                      edgeOffset);
+        
+        MUTEX_LOCKER(guard, _threadMutex);
+        if (--_runningThreads == 0) {
+          if (_localEdgeCount < _edges.size()) {
+            _edges.resize(_localEdgeCount);
+          }
+          callback();
+        }
+      });
+      // update to next offset
+      vertexOffset += shardSizes[vertexShard];
+      edgeOffset = nextEdgeOffset;
     }
   }
-  cleanupTransactions();
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
+void GraphStore<V, E>::loadDocument(WorkerConfig* config,
                                     std::string const& documentID) {
-  
-  PregelID _id = config.documentIdToPregel(documentID);
-  if (config.isLocalVertexShard(_id.shard)) {
+  PregelID _id = config->documentIdToPregel(documentID);
+  if (config->isLocalVertexShard(_id.shard)) {
     loadDocument(config, _id.shard, _id.key);
   }
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
+void GraphStore<V, E>::loadDocument(WorkerConfig* config,
                                     prgl_shard_t sourceShard,
                                     std::string const& _key) {
-  if (_readTrx == nullptr) {
-    _createReadTransaction(config);
-  }
+  _config = config;
+  std::unique_ptr<Transaction> trx(_createTransaction());
 
-  ShardID const& vertexShard = config.globalShardIDs()[sourceShard];
-
+  ShardID const& vertexShard = _config->globalShardIDs()[sourceShard];
   VPackBuilder builder;
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(_key));
@@ -140,46 +177,48 @@ void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
   OperationOptions options;
   options.ignoreRevs = false;
 
-  TRI_voc_cid_t cid = _readTrx->addCollectionAtRuntime(vertexShard);
-  _readTrx->orderDitch(cid);  // will throw when it fails
-  OperationResult opResult =
-      _readTrx->document(vertexShard, builder.slice(), options);
+  TRI_voc_cid_t cid = trx->addCollectionAtRuntime(vertexShard);
+  trx->orderDitch(cid);  // will throw when it fails
+  OperationResult opResult = trx->document(vertexShard, builder.slice(), options);
   if (!opResult.successful()) {
-    cleanupTransactions();
     THROW_ARANGO_EXCEPTION(opResult.code);
   }
 
-  std::string documentId = _readTrx->extractIdString(opResult.slice());
+  std::string documentId = trx->extractIdString(opResult.slice());
   _index.emplace_back(sourceShard, _key);
   _localVerticeCount++;
 
-  VertexEntry &entry = _index.back();
+  VertexEntry& entry = _index.back();
   if (_graphFormat->estimatedVertexSize() > 0) {
     entry._vertexDataOffset = _vertexData.size();
-    
+    entry._edgeDataOffset = _edges.size();
+
     // allocate space
     _vertexData.push_back(V());
-    V &data = _vertexData.back();
-    _graphFormat->copyVertexData(documentId, opResult.slice(),
-                                 &data, sizeof(V));
+    V& data = _vertexData.back();
+    _graphFormat->copyVertexData(documentId, opResult.slice(), &data,
+                                 sizeof(V));
   }
-  
+
   // load edges
   std::map<CollectionID, std::vector<ShardID>> const& vertexMap =
-      config.vertexCollectionShards();
+      _config->vertexCollectionShards();
   std::map<CollectionID, std::vector<ShardID>> const& edgeMap =
-      config.edgeCollectionShards();
+      _config->edgeCollectionShards();
   for (auto const& pair : vertexMap) {
     std::vector<ShardID> const& vertexShards = pair.second;
     auto it = std::find(vertexShards.begin(), vertexShards.end(), vertexShard);
     if (it != vertexShards.end()) {
-      size_t pos = (size_t) (it - vertexShards.begin());
-
+      size_t pos = (size_t)(it - vertexShards.begin());
       for (auto const& pair2 : edgeMap) {
         std::vector<ShardID> const& edgeShards = pair2.second;
-        _loadEdges(config, edgeShards[pos], entry, documentId);
+        _loadEdges(trx.get(), edgeShards[pos], entry, documentId);
       }
+      break;
     }
+  }
+  if (trx->commit() != TRI_ERROR_NO_ERROR) {
+    LOG(WARN) << "Pregel worker: Failed to commit on a read transaction";
   }
 }
 
@@ -202,7 +241,7 @@ void* GraphStore<V, E>::mutableVertexData(VertexEntry const* entry) {
 template <typename V, typename E>
 void GraphStore<V, E>::replaceVertexData(VertexEntry const* entry, void* data,
                                          size_t size) {
-  //if (size <= entry->_vertexDataOffset)
+  // if (size <= entry->_vertexDataOffset)
   void* ptr = _vertexData.data() + entry->_vertexDataOffset;
   memcpy(ptr, data, size);
   LOG(WARN) << "Don't use this function with varying sizes";
@@ -216,55 +255,31 @@ RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::_createReadTransaction(WorkerConfig const& state) {
-  std::vector<std::string> readColls, writeColls;
-  for (auto shard : state.localVertexShardIDs()) {
-    readColls.push_back(shard);
-  }
-  for (auto shard : state.localEdgeShardIDs()) {
-    readColls.push_back(shard);
-  }
+std::unique_ptr<Transaction> GraphStore<V, E>::_createTransaction() {
   double lockTimeout =
       (double)(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
-  _readTrx = new ExplicitTransaction(
-      StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()), readColls,
-      writeColls, lockTimeout, false, false);
-  int res = _readTrx->begin();
+  std::unique_ptr<Transaction> trx (new ExplicitTransaction(StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()),
+  {}, {}, lockTimeout, false, true));
+  int res = trx->begin();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
+  return trx;
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::cleanupTransactions() {
-  if (_readTrx) {
-    if (_readTrx->getStatus() == TRI_TRANSACTION_RUNNING) {
-      if (_readTrx->commit() != TRI_ERROR_NO_ERROR) {
-        LOG(WARN) << "Pregel worker: Failed to commit on a read transaction";
-      }
-    }
-    delete _readTrx;
-    _readTrx = nullptr;
-  }
-}
+void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
+                                     std::vector<ShardID> const& edgeShards,
+                                     uint64_t vertexOffset,
+                                     uint64_t edgeOffset) {
+  
+  std::unique_ptr<Transaction> trx(_createTransaction());
+  TRI_voc_cid_t cid = trx->addCollectionAtRuntime(vertexShard);
+  trx->orderDitch(cid);  // will throw when it fails
+  prgl_shard_t sourceShard = (prgl_shard_t)_config->shardId(vertexShard);
 
-template <typename V, typename E>
-void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
-                                     ShardID const& vertexShard,
-                                     std::vector<ShardID> const& edgeShards) {
-  //_graphFormat->willUseCollection(vocbase, vertexShard, false);
-  TRI_voc_cid_t cid = _readTrx->addCollectionAtRuntime(vertexShard);
-  _readTrx->orderDitch(cid);  // will throw when it fails
-  prgl_shard_t sourceShard = (prgl_shard_t)state.shardId(vertexShard);
-
-  /*int res = _readTrx->lockRead();
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up vertices '%s'",
-                                  vertexShard.c_str());
-  }*/
-
-  ManagedDocumentResult mmdr(_readTrx);
-  std::unique_ptr<OperationCursor> cursor = _readTrx->indexScan(
+  ManagedDocumentResult mmdr(trx.get());
+  std::unique_ptr<OperationCursor> cursor = trx->indexScan(
       vertexShard, Transaction::CursorType::ALL, Transaction::IndexHandle(), {},
       &mmdr, 0, UINT64_MAX, 1000, false);
 
@@ -275,54 +290,58 @@ void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
   LogicalCollection* collection = cursor->collection();
   uint64_t number = collection->numberDocuments();
   _graphFormat->willLoadVertices(number);
-  
+
   std::vector<IndexLookupResult> result;
   result.reserve(1000);
   while (cursor->hasMore()) {
     cursor->getMoreMptr(result, 1000);
     for (auto const& element : result) {
       TRI_voc_rid_t revisionId = element.revisionId();
-      if (collection->readRevision(_readTrx, mmdr, revisionId)) {
+      if (collection->readRevision(trx.get(), mmdr, revisionId)) {
         VPackSlice document(mmdr.vpack());
         if (document.isExternal()) {
           document = document.resolveExternal();
         }
 
-        // LOG(INFO) << "Loaded Vertex: " << document.toJson();
-        std::string key = document.get(StaticStrings::KeyString).copyString();
-        std::string documentId = _readTrx->extractIdString(document);
-
-        _index.emplace_back(sourceShard, key);
+        VertexEntry& ventry = _index[vertexOffset];
+        ventry._shard = sourceShard;
+        ventry._key = document.get(StaticStrings::KeyString).copyString();
         _localVerticeCount++;
-        
-        VertexEntry &entry = _index.back();
+
+        // load vertex data
+        std::string documentId = trx->extractIdString(document);
         if (_graphFormat->estimatedVertexSize() > 0) {
-          entry._vertexDataOffset = _vertexData.size();
-          
-          // allocate space
-          _vertexData.push_back(V());
-          V &data = _vertexData.back();
-          _graphFormat->copyVertexData(documentId, document,
-                                       &data, sizeof(V));
+          ventry._vertexDataOffset = vertexOffset;
+          V& data = _vertexData.back();
+          _graphFormat->copyVertexData(documentId, document, &data, sizeof(V));
         }
-        for (auto const& it : edgeShards) {
-          _loadEdges(state, it, entry, documentId);
+        // load edges
+        for (ShardID const& it : edgeShards) {
+          ventry._edgeDataOffset = edgeOffset;
+          _loadEdges(trx.get(), it, ventry, documentId);
         }
+        vertexOffset++;
+        edgeOffset += ventry._edgeCount;
       }
     }
+  }
+
+  if (trx->commit() != TRI_ERROR_NO_ERROR) {
+    LOG(WARN) << "Pregel worker: Failed to commit on a read transaction";
   }
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
+void GraphStore<V, E>::_loadEdges(Transaction* trx,
                                   ShardID const& edgeShard,
                                   VertexEntry& vertexEntry,
                                   std::string const& documentID) {
-  
-  traverser::EdgeCollectionInfo info(_readTrx, edgeShard, TRI_EDGE_OUT,
+  size_t offset = vertexEntry._edgeDataOffset;
+
+  traverser::EdgeCollectionInfo info(trx, edgeShard, TRI_EDGE_OUT,
                                      StaticStrings::FromString, 0);
 
-  ManagedDocumentResult mmdr(_readTrx);
+  ManagedDocumentResult mmdr(trx);
   auto cursor = info.getEdges(documentID, &mmdr);
   if (cursor->failed()) {
     THROW_ARANGO_EXCEPTION_FORMAT(cursor->code,
@@ -338,7 +357,7 @@ void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
     cursor->getMoreMptr(result, 1000);
     for (auto const& element : result) {
       TRI_voc_rid_t revisionId = element.revisionId();
-      if (collection->readRevision(_readTrx, mmdr, revisionId)) {
+      if (collection->readRevision(trx, mmdr, revisionId)) {
         VPackSlice document(mmdr.vpack());
         if (document.isExternal()) {
           document = document.resolveExternal();
@@ -347,50 +366,44 @@ void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
         // LOG(INFO) << "Loaded Edge: " << document.toJson();
         std::string toValue =
             document.get(StaticStrings::ToString).copyString();
-
         std::size_t pos = toValue.find('/');
         std::string collectionName = toValue.substr(0, pos);
-        std::string _key = toValue.substr(pos + 1, toValue.length() - pos - 1);
+
+        // If this is called from loadDocument we didn't preallocate the vector
+        if (_edges.size() == offset) {
+          _edges.push_back(Edge<E>());
+        }
+        Edge<E>& edge = _edges[offset];
+        edge._toKey = toValue.substr(pos + 1, toValue.length() - pos - 1);
 
         auto collInfo = Utils::resolveCollection(
-            state.database(), collectionName, state.collectionPlanIdMap());
-
+            _config->database(), collectionName, _config->collectionPlanIdMap());
         // resolve the shard of the target vertex.
         ShardID responsibleShard;
-        Utils::resolveShard(collInfo.get(), StaticStrings::KeyString, _key,
-                            responsibleShard);
-        prgl_shard_t source = (prgl_shard_t)state.shardId(edgeShard);
-        prgl_shard_t target = (prgl_shard_t)state.shardId(responsibleShard);
-        if (source == (prgl_shard_t)-1 || target == (prgl_shard_t)-1) {
+        Utils::resolveShard(collInfo.get(), StaticStrings::KeyString,
+                            edge._toKey, responsibleShard);
+        edge._sourceShard = (prgl_shard_t)_config->shardId(edgeShard);
+        edge._targetShard = (prgl_shard_t)_config->shardId(responsibleShard);
+        if (edge._sourceShard == (prgl_shard_t)-1 ||
+            edge._targetShard == (prgl_shard_t)-1) {
           LOG(ERR) << "Unknown shard";
           continue;
         }
-        
-        //  store into the edge store, edgeCount and offset are 0 initally
-        if (vertexEntry._edgeCount == 0) {// initalize the start
-          vertexEntry._edgeDataOffset = _edges.size();
-        }
-        vertexEntry._edgeCount++;
-        _localEdgeCount++;
-        // TODO store size value at some point
-        
-        _edges.emplace_back(source, target, _key);
+
+        //  store into the edge store, edgeCount is 0 initally
+        offset++;
         _graphFormat->copyEdgeData(document, _edges.back().data(), sizeof(E));
       }
     }
+    vertexEntry._edgeCount = offset - vertexEntry._edgeDataOffset;
+    _localEdgeCount += vertexEntry._edgeCount;
   }
-
-  /*res = trx.finish(res);
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up edges from '%s'",
-                                  edgeShard.c_str());
-  }*/
 }
 
 template <typename V, typename E>
 void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
   double start = TRI_microtime();
-  
+
   std::vector<std::string> readColls, writeColls;
   for (auto const& shard : state.localVertexShardIDs()) {
     writeColls.push_back(shard);
@@ -411,11 +424,11 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
     THROW_ARANGO_EXCEPTION(res);
   }
   OperationOptions options;
-  
+
   auto it = _index.begin();
   while (it != _index.end()) {
     TransactionBuilderLeaser b(&writeTrx);
-    
+
     prgl_shard_t shardID = it->shard();
     b->openArray();
     size_t buffer = 1000;
@@ -423,32 +436,32 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
       if (it->shard() != shardID) {
         break;
       }
-      
+
       V* data = _vertexData.data() + it->_vertexDataOffset;
       b->openObject();
       b->add(StaticStrings::KeyString, VPackValue(it->key()));
-      //bool store =
+      // bool store =
       _graphFormat->buildVertexDocument(*(b.get()), data, sizeof(V));
       b->close();
-      
+
       ++it;
       buffer--;
     }
     b->close();
-    
+
     ShardID const& shard = state.globalShardIDs()[shardID];
     OperationResult result = writeTrx.update(shard, b->slice(), options);
     if (result.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(result.code);
     }
-    
+
     // TODO loop over edges
   }
   res = writeTrx.finish(res);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   LOG(INFO) << "Storing data took " << (TRI_microtime() - start) << "s";
 }
 
@@ -459,6 +472,3 @@ template class arangodb::pregel::GraphStore<double, double>;
 
 // specific algo combos
 template class arangodb::pregel::GraphStore<SCCValue, int32_t>;
-
-
-

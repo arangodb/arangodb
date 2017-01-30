@@ -36,14 +36,14 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-RecoveryManager::RecoveryManager() {}//(AgencyCallbackRegistry* registry){}
+RecoveryManager::RecoveryManager() {}  //(AgencyCallbackRegistry* registry){}
 // : _agencyCallbackRegistry(registry)
 
 RecoveryManager::~RecoveryManager() {
-//  for (auto const& call : _agencyCallbacks) {
-//    _agencyCallbackRegistry->unregisterCallback(call.second);
-//  }
-//  _agencyCallbacks.clear();
+  //  for (auto const& call : _agencyCallbacks) {
+  //    _agencyCallbackRegistry->unregisterCallback(call.second);
+  //  }
+  //  _agencyCallbacks.clear();
   _listeners.clear();
 }
 
@@ -54,11 +54,12 @@ void RecoveryManager::stopMonitoring(Conductor* listener) {
     if (pair.second.find(listener) != pair.second.end()) {
       pair.second.erase(listener);
     }
-//    if (pair.second.size() == 0) {
-//      std::shared_ptr<AgencyCallback> callback = _agencyCallbacks[pair.first];
-//      _agencyCallbackRegistry->unregisterCallback(callback);
-//      _agencyCallbacks.erase(pair.first);
-//    }
+    //    if (pair.second.size() == 0) {
+    //      std::shared_ptr<AgencyCallback> callback =
+    //      _agencyCallbacks[pair.first];
+    //      _agencyCallbackRegistry->unregisterCallback(callback);
+    //      _agencyCallbacks.erase(pair.first);
+    //    }
   }
 }
 
@@ -82,9 +83,9 @@ void RecoveryManager::monitorCollections(
       }
       conductors.insert(listener);
       //_monitorShard(coll->dbName(), cid, shard);
-      
+
       std::shared_ptr<std::vector<ServerID>> servers =
-      ClusterInfo::instance()->getResponsibleServer(shard);
+          ClusterInfo::instance()->getResponsibleServer(shard);
       if (servers->size() > 0) {
         // _lock is already held
         _primaryServers[shard] = servers->at(0);
@@ -93,59 +94,59 @@ void RecoveryManager::monitorCollections(
   }
 }
 
-  /*
+/*
 /// Only call while holding _lock
 void RecoveryManager::_monitorShard(DatabaseID const& databaseName,
-                                    CollectionID const& cid,
-                                    ShardID const& shard) {
-  
-  std::function<bool(VPackSlice const& result)> listener =
-      [this, shard](VPackSlice const& result) {
-        MUTEX_LOCKER(guard, _lock);  // we are editing _primaryServers
+                                  CollectionID const& cid,
+                                  ShardID const& shard) {
 
-        auto const& conductors = _listeners.find(shard);
-        if (conductors == _listeners.end()) {
-          return false;
-        }
+std::function<bool(VPackSlice const& result)> listener =
+    [this, shard](VPackSlice const& result) {
+      MUTEX_LOCKER(guard, _lock);  // we are editing _primaryServers
 
-        if (result.isArray()) {
-          if (result.length() > 0) {
-            ServerID nextPrimary = result.at(0).copyString();
-            auto const& currentPrimary = _primaryServers.find(shard);
-            if (currentPrimary != _primaryServers.end() &&
-                currentPrimary->second != nextPrimary) {
-              _primaryServers[shard] = nextPrimary;
-              for (Conductor* cc : conductors->second) {
-                cc->startRecovery();
-              }
-            }
-          } else {  // what a terrible failure
+      auto const& conductors = _listeners.find(shard);
+      if (conductors == _listeners.end()) {
+        return false;
+      }
+
+      if (result.isArray()) {
+        if (result.length() > 0) {
+          ServerID nextPrimary = result.at(0).copyString();
+          auto const& currentPrimary = _primaryServers.find(shard);
+          if (currentPrimary != _primaryServers.end() &&
+              currentPrimary->second != nextPrimary) {
+            _primaryServers[shard] = nextPrimary;
             for (Conductor* cc : conductors->second) {
-              cc->cancel();
+              cc->startRecovery();
             }
           }
+        } else {  // what a terrible failure
+          for (Conductor* cc : conductors->second) {
+            cc->cancel();
+          }
         }
+      }
 
-        LOG(INFO) << result.toString();
-        return true;
-      };
+      LOG(INFO) << result.toString();
+      return true;
+    };
 
-  std::string path = "Plan/Collections/" + databaseName + "/" + cid
-                     + "/shards/" + shard;
+std::string path = "Plan/Collections/" + databaseName + "/" + cid
+                   + "/shards/" + shard;
 
-  // first let's resolve the primary so we know if it has changed later
-  // AgencyCommResult result = _agency.getValues(path);
-  std::shared_ptr<std::vector<ServerID>> servers =
-      ClusterInfo::instance()->getResponsibleServer(shard);
-  if (servers->size() > 0) {
-    // _lock is already held
-    _primaryServers[shard] = servers->at(0);
+// first let's resolve the primary so we know if it has changed later
+// AgencyCommResult result = _agency.getValues(path);
+std::shared_ptr<std::vector<ServerID>> servers =
+    ClusterInfo::instance()->getResponsibleServer(shard);
+if (servers->size() > 0) {
+  // _lock is already held
+  _primaryServers[shard] = servers->at(0);
 
-    auto call =
-        std::make_shared<AgencyCallback>(_agency, path, listener, true, false);
-    _agencyCallbacks.emplace(shard, call);
-    _agencyCallbackRegistry->registerCallback(call);
-  }
+  auto call =
+      std::make_shared<AgencyCallback>(_agency, path, listener, true, false);
+  _agencyCallbacks.emplace(shard, call);
+  _agencyCallbackRegistry->registerCallback(call);
+}
 }*/
 
 int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
@@ -156,7 +157,7 @@ int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
     VPackSlice serversRegistered =
         result.slice()[0].get(std::vector<std::string>(
             {AgencyCommManager::path(), "Supervision", "Health"}));
-    
+
     LOG(INFO) << "Server Status: " << serversRegistered.toJson();
 
     if (serversRegistered.isObject()) {
@@ -203,7 +204,7 @@ void RecoveryManager::updatedFailedServers() {
 // affect the outcome.
 // don't call while holding _lock
 void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
-  MUTEX_LOCKER(guard, _lock);// editing
+  MUTEX_LOCKER(guard, _lock);  // editing
 
   ClusterInfo* ci = ClusterInfo::instance();
   auto const& conductors = _listeners.find(shard);
@@ -221,7 +222,6 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
     if (servers) {
       ServerID const& nextPrimary = servers->front();
       if (currentPrimary->second != nextPrimary) {
-        
         _primaryServers[shard] = nextPrimary;
         for (Conductor* cc : conductors->second) {
           cc->startRecovery();

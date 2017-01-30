@@ -124,8 +124,8 @@ class WorkerConfig {
   std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards,
       _edgeCollectionShards;
   std::map<std::string, std::string> _collectionPlanIdMap;
-  
-  /// cache these ids as much as possible, since 
+
+  /// cache these ids as much as possible, since
   std::map<std::string, prgl_shard_t> _pregelShardIDs;
   std::set<prgl_shard_t> _localPregelShardIDs;
 };

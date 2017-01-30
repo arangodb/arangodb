@@ -55,8 +55,8 @@ struct MessageStats {
     if (p.isInteger()) {
       receivedCount += p.getUInt();
     }
-    //p = statValues.get(Utils::superstepRuntimeKey);
-    //if (p.isNumber()) {
+    // p = statValues.get(Utils::superstepRuntimeKey);
+    // if (p.isNumber()) {
     //  superstepRuntimeSecs += p.getNumber<double>();
     //}
   }
@@ -76,7 +76,6 @@ struct MessageStats {
 };
 
 struct StatsManager {
-  
   void accumulateActiveCounts(VPackSlice data) {
     VPackSlice sender = data.get(Utils::senderKey);
     if (sender.isString()) {
@@ -86,7 +85,7 @@ struct StatsManager {
       }
     }
   }
-  
+
   void accumulateMessageStats(VPackSlice data) {
     VPackSlice sender = data.get(Utils::senderKey);
     if (sender.isString()) {

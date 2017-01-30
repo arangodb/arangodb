@@ -21,10 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/OutgoingCache.h"
+#include "Pregel/CommonFormats.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConfig.h"
-#include "Pregel/CommonFormats.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -87,7 +87,7 @@ void ArrayOutCache<M>::appendMessage(prgl_shard_t shard, std::string const& key,
 
 template <typename M>
 void ArrayOutCache<M>::flushMessages() {
-  //LOG(INFO) << "Beginning to send messages to other machines";
+  // LOG(INFO) << "Beginning to send messages to other machines";
   uint64_t gss = this->_config->globalSuperstep();
   if (this->_sendToNextGSS) {
     gss += 1;
@@ -109,13 +109,13 @@ void ArrayOutCache<M>::flushMessages() {
     data.openObject();
     data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     data.add(Utils::executionNumberKey,
-                VPackValue(this->_config->executionNumber()));
+             VPackValue(this->_config->executionNumber()));
     data.add(Utils::globalSuperstepKey, VPackValue(gss));
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
     for (auto const& vertexMessagePair : vertexMessageMap) {
-      data.add(VPackValue(vertexMessagePair.first));// key
-      data.add(VPackValue(VPackValueType::Array, true));// message array
+      data.add(VPackValue(vertexMessagePair.first));      // key
+      data.add(VPackValue(VPackValueType::Array, true));  // message array
       for (M const& val : vertexMessagePair.second) {
         this->_format->addValue(data, val);
         if (this->_sendToNextGSS) {
@@ -134,7 +134,7 @@ void ArrayOutCache<M>::flushMessages() {
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
 
-    //LOG(INFO) << "Worker: Sending data to other Shard: " << shardId;
+    // LOG(INFO) << "Worker: Sending data to other Shard: " << shardId;
     //<< ". Message: " << package.toJson();
   }
   size_t nrDone = 0;
@@ -193,7 +193,7 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
       _combiner->combine(vertexMap[key], data);
     } else {  // first message for this vertex
       vertexMap.emplace(key, data);
-      
+
       if (this->_containedMessages++ > this->_batchSize) {
         LOG(INFO) << "Hit buffer limit";
         flushMessages();
@@ -204,7 +204,7 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
 
 template <typename M>
 void CombiningOutCache<M>::flushMessages() {
-  //LOG(INFO) << "Beginning to send messages to other machines";
+  // LOG(INFO) << "Beginning to send messages to other machines";
   uint64_t gss = this->_config->globalSuperstep();
   if (this->_sendToNextGSS && this->_config->asynchronousMode()) {
     gss += 1;
@@ -225,14 +225,14 @@ void CombiningOutCache<M>::flushMessages() {
     data.openObject();
     data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     data.add(Utils::executionNumberKey,
-                VPackValue(this->_config->executionNumber()));
+             VPackValue(this->_config->executionNumber()));
     data.add(Utils::globalSuperstepKey, VPackValue(gss));
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
     for (auto const& vertexMessagePair : vertexMessageMap) {
-      data.add(VPackValue(vertexMessagePair.first));// key
-      this->_format->addValue(data, vertexMessagePair.second); // value
-      
+      data.add(VPackValue(vertexMessagePair.first));            // key
+      this->_format->addValue(data, vertexMessagePair.second);  // value
+
       if (this->_sendToNextGSS) {
         this->_sendCountNextGSS++;
       } else {
@@ -247,7 +247,7 @@ void CombiningOutCache<M>::flushMessages() {
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
 
-    //LOG(INFO) << "Worker: Sending data to other Shard: " << shardId;
+    // LOG(INFO) << "Worker: Sending data to other Shard: " << shardId;
     //          << ". Message: " << package.toJson();
   }
   size_t nrDone = 0;

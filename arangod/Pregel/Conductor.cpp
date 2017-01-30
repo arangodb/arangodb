@@ -67,7 +67,7 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
   } else {
     _userParams.add(userConfig);
   }
-  
+
   // Coloring based SCC algo tends to use a lot of steps
   if (algoName == "scc") {
     _maxSuperstep = 1000;
@@ -148,7 +148,8 @@ bool Conductor::_startGlobalStep() {
   // workers are done if all messages were processed and no active vertices
   // are left to process
   bool proceed = true;
-  if (_masterContext && _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
+  if (_masterContext &&
+      _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
     _masterContext->_globalSuperstep = _globalSuperstep - 1;
     _masterContext->_enterNextGSS = false;
     proceed = _masterContext->postGlobalSuperstep();
@@ -202,7 +203,7 @@ void Conductor::finishedWorkerStartup(VPackSlice data) {
     LOG(WARN) << "We are not in a state where we expect a response";
     return;
   }
-  
+
   _totalVerticesCount += data.get(Utils::vertexCountKey).getUInt();
   _totalEdgesCount += data.get(Utils::edgeCountKey).getUInt();
   if (_respondedServers.size() != _dbServers.size()) {
@@ -229,9 +230,10 @@ void Conductor::finishedWorkerStartup(VPackSlice data) {
   }
 }
 
-/// Will optionally send a response, to notify the worker of converging aggregator
+/// Will optionally send a response, to notify the worker of converging
+/// aggregator
 /// values which can be coninually updated (in async mode)
-void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder &response) {
+void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder& response) {
   MUTEX_LOCKER(guard, _callbackMutex);
   // this method can be called multiple times in a superstep depending on
   // whether we are in the async mode
@@ -247,14 +249,14 @@ void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder &response) {
   // In normal mode this will wait for a response from each worker,
   // in async mode this will wait until all messages were processed
   _statistics.accumulateMessageStats(data);
-  if (_asyncMode == false) {// in async mode we wait for all responded
+  if (_asyncMode == false) {  // in async mode we wait for all responded
     _ensureUniqueResponse(data);
     // wait for the last worker to respond
     if (_respondedServers.size() != _dbServers.size()) {
       return;
     }
   } else if (_statistics.clientCount() < _dbServers.size() ||  // no messages
-             !_statistics.allMessagesProcessed()) {  // haven't received msgs    
+             !_statistics.allMessagesProcessed()) {  // haven't received msgs
     if (_aggregators->parseValues(data)) {
       if (_masterContext) {
         _masterContext->postLocalSuperstep();
@@ -272,7 +274,7 @@ void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder &response) {
   LOG(INFO) << "Finished gss " << _globalSuperstep << " in "
             << (TRI_microtime() - _computationStartTimeSecs) << "s";
   _globalSuperstep++;
-  
+
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
   basics::ThreadPool* pool = PregelFeature::instance()->threadPool();
@@ -280,10 +282,10 @@ void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder &response) {
     MUTEX_LOCKER(cguard, _callbackMutex);
 
     if (_state == ExecutionState::RUNNING) {
-        _startGlobalStep();  // trigger next superstep
+      _startGlobalStep();  // trigger next superstep
     } else if (_state == ExecutionState::CANCELED) {
       LOG(WARN) << "Execution was canceled, results will be discarded.";
-      _finalizeWorkers();// tells workers to store / discard results
+      _finalizeWorkers();  // tells workers to store / discard results
     } else {  // this prop shouldn't occur unless we are recovering or in error
       LOG(WARN) << "No further action taken after receiving all responses";
     }
@@ -297,19 +299,19 @@ void Conductor::finishedRecoveryStep(VPackSlice data) {
     LOG(WARN) << "We are not in a state where we expect a recovery response";
     return;
   }
-  
+
   // the recovery mechanism might be gathering state information
   _aggregators->parseValues(data);
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
-  
+
   // only compensations supported
   bool proceed = false;
   if (_masterContext) {
     proceed = proceed || _masterContext->postCompensation();
   }
-  
+
   int res = TRI_ERROR_NO_ERROR;
   if (proceed) {
     // reset values which are calculated during the superstep
@@ -317,7 +319,7 @@ void Conductor::finishedRecoveryStep(VPackSlice data) {
     if (_masterContext) {
       _masterContext->preCompensation();
     }
-    
+
     VPackBuilder b;
     b.openObject();
     b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -325,10 +327,10 @@ void Conductor::finishedRecoveryStep(VPackSlice data) {
     b.close();
     // first allow all workers to run worker level operations
     res = _sendToAllDBServers(Utils::continueRecoveryPath, b.slice());
-    
+
   } else {
     LOG(INFO) << "Recovery finished. Proceeding normally";
-    
+
     // build the message, works for all cases
     VPackBuilder b;
     b.openObject();
@@ -348,9 +350,9 @@ void Conductor::finishedRecoveryStep(VPackSlice data) {
 }
 
 void Conductor::cancel() {
-  if (_state == ExecutionState::RUNNING
-      || _state == ExecutionState::RECOVERING
-      || _state == ExecutionState::IN_ERROR) {
+  if (_state == ExecutionState::RUNNING ||
+      _state == ExecutionState::RECOVERING ||
+      _state == ExecutionState::IN_ERROR) {
     _state = ExecutionState::CANCELED;
 
     LOG(INFO) << "Telling workers to discard results";
@@ -372,13 +374,13 @@ void Conductor::cancel() {
 void Conductor::startRecovery() {
   MUTEX_LOCKER(guard, _callbackMutex);
   if (_state != ExecutionState::RUNNING && _state != ExecutionState::IN_ERROR) {
-    return;// maybe we are already in recovery mode
+    return;  // maybe we are already in recovery mode
   } else if (_algorithm->supportsCompensation() == false) {
     LOG(ERR) << "Execution is not recoverable";
     cancel();
     return;
   }
-  
+
   // we lost a DBServer, we need to reconfigure all remainging servers
   // so they load the data for the lost machine
   _state = ExecutionState::RECOVERING;
@@ -392,9 +394,9 @@ void Conductor::startRecovery() {
     usleep(1000000);
     usleep(1000000);
     if (_state != ExecutionState::RECOVERING) {
-      return;// seems like we are canceled
+      return;  // seems like we are canceled
     }
-    
+
     std::vector<ServerID> goodServers;
     int res = PregelFeature::instance()->recoveryManager()->filterGoodServers(
         _dbServers, goodServers);
@@ -412,7 +414,7 @@ void Conductor::startRecovery() {
     b.close();
     _sendToAllDBServers(Utils::cancelGSSPath, b.slice());
     if (_state != ExecutionState::RECOVERING) {
-      return;// seems like we are canceled
+      return;  // seems like we are canceled
     }
 
     // Let's try recovery
@@ -423,7 +425,7 @@ void Conductor::startRecovery() {
       }
     }
 
-    b.clear();// start a new message
+    b.clear();  // start a new message
     b.openObject();
     b.add(Utils::recoveryMethodKey, VPackValue(Utils::compensate));
     _aggregators->serializeValues(b);
@@ -514,7 +516,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
         b.add(pair.key.copyString(), pair.value);
       }
     }
-    
+
     b.add(Utils::vertexShardsKey, VPackValue(VPackValueType::Object));
     for (auto const& pair : vertexShardMap) {
       b.add(pair.first, VPackValue(VPackValueType::Array));
@@ -560,7 +562,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
 
 int Conductor::_finalizeWorkers() {
   double compEnd = TRI_microtime();
-  
+
   bool storeResults = _state == ExecutionState::DONE;
   if (_masterContext) {
     _masterContext->postApplication();
@@ -592,7 +594,8 @@ int Conductor::_finalizeWorkers() {
   LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
   LOG(INFO) << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs
             << "s";
-  LOG(INFO) << "Computation Time: " << compEnd - _computationStartTimeSecs << "s";
+  LOG(INFO) << "Computation Time: " << compEnd - _computationStartTimeSecs
+            << "s";
   LOG(INFO) << "Storage Time: " << TRI_microtime() - compEnd << "s";
   LOG(INFO) << "Overall: " << totalRuntimeSecs() << "s";
   LOG(INFO) << "Stats: " << b.toString();

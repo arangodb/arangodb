@@ -32,23 +32,23 @@ namespace pregel {
 /// Portable read-only memory mapping (Windows and Linux)
 /** Filesize limited by size_t, usually 2^32 or 2^64 */
 class MemoryMapped {
-protected:
+ protected:
   /// open file, mappedBytes = 0 maps the whole file
-  MemoryMapped(std::string const& filename, int fd, void* mmHandle, TRI_voc_size_t maximalSize,
-               TRI_voc_size_t currentsize, TRI_voc_fid_t fid, char* data);
-  
+  MemoryMapped(std::string const& filename, int fd, void* mmHandle,
+               TRI_voc_size_t maximalSize, TRI_voc_size_t currentsize,
+               TRI_voc_fid_t fid, char* data);
+
  public:
-  
   /// close file (see close() )
   ~MemoryMapped();
 
   /// open file, mappedBytes = 0 maps the whole file
-  static TRI_datafile_t* openHelper(std::string const& filename, bool ignoreErrors);
-  
+  static TRI_datafile_t* openHelper(std::string const& filename,
+                                    bool ignoreErrors);
+
   /// @brief return whether the datafile is a physical file (true) or an
   /// anonymous mapped region (false)
   inline bool isPhysical() const { return !_filename.empty(); }
-
 
   /// close file
   void close();
@@ -77,7 +77,7 @@ protected:
   TRI_voc_size_t maximalSize() const { return _maximalSize; }
   TRI_voc_size_t currentSize() const { return _currentSize; }
   TRI_voc_size_t footerSize() const { return _footerSize; }
-  
+
  private:
   /// don't copy object
   MemoryMapped(const MemoryMapped&);

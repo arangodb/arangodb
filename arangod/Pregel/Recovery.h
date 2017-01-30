@@ -40,19 +40,19 @@ class Conductor;
 class RecoveryManager {
   Mutex _lock;
   AgencyComm _agency;
-  //AgencyCallbackRegistry* _agencyCallbackRegistry;  // weak
+  // AgencyCallbackRegistry* _agencyCallbackRegistry;  // weak
 
   std::map<ShardID, std::set<Conductor*>> _listeners;
   std::map<ShardID, ServerID> _primaryServers;
   std::map<ShardID, std::shared_ptr<AgencyCallback>> _agencyCallbacks;
 
-  //void _monitorShard(DatabaseID const& database,
+  // void _monitorShard(DatabaseID const& database,
   //                   CollectionID const& cid,
   //                   ShardID const& shard);
   void _renewPrimaryServer(ShardID const& shard);
 
  public:
-  RecoveryManager();//AgencyCallbackRegistry* registry
+  RecoveryManager();  // AgencyCallbackRegistry* registry
   ~RecoveryManager();
 
   void monitorCollections(

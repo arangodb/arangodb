@@ -21,10 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/AggregatorHandler.h"
-#include "Pregel/Aggregator.h"
-#include "Pregel/Algorithm.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Pregel/Aggregator.h"
+#include "Pregel/Algorithm.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -72,7 +72,7 @@ const void* AggregatorHandler::getAggregatedValue(AggregatorID const& name) {
 
 void AggregatorHandler::resetValues(bool force) {
   for (auto& it : _values) {
-      it.second->reset(force);
+    it.second->reset(force);
   }
 }
 
@@ -101,7 +101,8 @@ bool AggregatorHandler::parseValues(VPackSlice data) {
   return true;
 }
 
-bool AggregatorHandler::serializeValues(VPackBuilder& b, bool onlyConverging) const {
+bool AggregatorHandler::serializeValues(VPackBuilder& b,
+                                        bool onlyConverging) const {
   READ_LOCKER(guard, _lock);
   bool hasValues = false;
   b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));

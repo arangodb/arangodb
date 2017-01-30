@@ -52,13 +52,12 @@ class VertexContext {
   VertexEntry* _vertexEntry;
 
  public:
-
   template <typename T>
   inline void aggregate(std::string const& name, T const& value) {
     T const* ptr = &value;
     _workerAggregators->aggregate(name, ptr);
   }
-  
+
   template <typename T>
   inline const T* getAggregatedValue(std::string const& name) {
     return (const T*)_conductorAggregators->getAggregatedValue(name);
@@ -103,11 +102,11 @@ class VertexComputation : public VertexContext<V, E, M> {
   void sendMessage(Edge<E> const* edge, M const& data) {
     _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
   }
-  
+
   void sendMessage(PregelID const& pid, M const& data) {
     _cache->appendMessage(pid.shard, pid.key, data);
   }
-  
+
   // TODO Multi-receiver messages
   void sendMessageToAllEdges(M const& data) {
     RangeIterator<Edge<E>> edges = this->getEdges();

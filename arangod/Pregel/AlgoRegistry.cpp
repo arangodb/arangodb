@@ -21,14 +21,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/AlgoRegistry.h"
+#include "Pregel/Algos/AsyncSCC.h"
+#include "Pregel/Algos/ConnectedComponents.h"
+#include "Pregel/Algos/LineRank.h"
 #include "Pregel/Algos/PageRank.h"
 #include "Pregel/Algos/RecoveringPageRank.h"
+#include "Pregel/Algos/SCC.h"
 #include "Pregel/Algos/SSSP.h"
 #include "Pregel/Algos/ShortestPath.h"
-#include "Pregel/Algos/LineRank.h"
-#include "Pregel/Algos/ConnectedComponents.h"
-#include "Pregel/Algos/SCC.h"
-#include "Pregel/Algos/AsyncSCC.h"
 #include "Pregel/Utils.h"
 
 using namespace arangodb;
@@ -65,8 +65,7 @@ IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase,
   return new Worker<V, E, M>(vocbase, algo, body);
 }
 
-IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase,
-                                    VPackSlice body) {
+IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
   VPackSlice algoSlice = body.get(Utils::algorithmKey);
   if (!algoSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -75,22 +74,24 @@ IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase,
 
   VPackSlice userParams = body.get(Utils::userParametersKey);
   std::string algorithm = algoSlice.copyString();
-  std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(), ::tolower);
-  
+  std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(),
+                 ::tolower);
+
   if (algorithm == "sssp") {
     return createWorker(vocbase, new algos::SSSPAlgorithm(userParams), body);
   } else if (algorithm == "pagerank") {
-    return createWorker(vocbase, new algos::PageRank(userParams),
-                        body);
+    return createWorker(vocbase, new algos::PageRank(userParams), body);
   } else if (algorithm == "recoveringpagerank") {
-    return createWorker(vocbase, new algos::RecoveringPageRank(userParams), body);
+    return createWorker(vocbase, new algos::RecoveringPageRank(userParams),
+                        body);
   } else if (algorithm == "shortestpath") {
     return createWorker(vocbase, new algos::ShortestPathAlgorithm(userParams),
                         body);
   } else if (algorithm == "linerank") {
     return createWorker(vocbase, new algos::LineRank(userParams), body);
-  }  else if (algorithm == "connectedcomponents") {
-    return createWorker(vocbase, new algos::ConnectedComponents(userParams), body);
+  } else if (algorithm == "connectedcomponents") {
+    return createWorker(vocbase, new algos::ConnectedComponents(userParams),
+                        body);
   } else if (algorithm == "scc") {
     return createWorker(vocbase, new algos::SCC(userParams), body);
   } else if (algorithm == "asyncscc") {

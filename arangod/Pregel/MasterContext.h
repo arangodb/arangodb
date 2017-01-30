@@ -42,17 +42,16 @@ class MasterContext {
   AggregatorHandler* _aggregators;
 
  public:
-  
   MasterContext(){};
-  
+
   inline uint64_t globalSuperstep() const { return _globalSuperstep; }
-  
+
   /// current global vertex count, might change after each gss
   inline uint64_t vertexCount() const { return _vertexCount; }
-  
+
   /// current global edge count, might change after each gss
   inline uint64_t edgeCount() const { return _edgeCount; }
-  
+
   template <typename T>
   inline void aggregate(std::string const& name, T const& value) {
     T const* ptr = &value;
@@ -63,31 +62,28 @@ class MasterContext {
   inline const T* getAggregatedValue(std::string const& name) {
     return (const T*)_aggregators->getAggregatedValue(name);
   }
-  
-  inline void enterNextGlobalSuperstep() {
-    _enterNextGSS = true;
-  }
+
+  inline void enterNextGlobalSuperstep() { _enterNextGSS = true; }
 
   virtual void preApplication(){};
 
   /// @brief called before supersteps
   /// @return true to continue the computation
-  virtual void preGlobalSuperstep() {};
+  virtual void preGlobalSuperstep(){};
   /// @brief called after supersteps
   /// @return true to continue the computation
   virtual bool postGlobalSuperstep() { return true; };
   virtual void postApplication(){};
-  
+
   /// Called when a worker send updated aggregator values.
   /// Only called in async mode, never called after a global superstep
-  virtual void postLocalSuperstep() {};
+  virtual void postLocalSuperstep(){};
 
   /// should indicate if compensation is supposed to start by returning true
   virtual bool preCompensation() { return true; }
   /// should indicate if compensation is finished, by returning false.
   /// otherwise workers will be called again with the aggregated values
   virtual bool postCompensation() { return false; }
-
 };
 }
 }
