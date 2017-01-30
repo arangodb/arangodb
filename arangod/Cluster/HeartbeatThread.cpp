@@ -101,7 +101,7 @@ HeartbeatThread::~HeartbeatThread() { shutdown(); }
 class HeartbeatBackgroundJob {
   std::shared_ptr<HeartbeatThread> _heartbeatThread;
  public:
-  HeartbeatBackgroundJob(std::shared_ptr<HeartbeatThread> hbt)
+  explicit HeartbeatBackgroundJob(std::shared_ptr<HeartbeatThread> hbt)
     : _heartbeatThread(hbt) {}
 
   void operator()() {
