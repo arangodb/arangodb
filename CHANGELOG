@@ -1,6 +1,20 @@
 devel
 -----
 
+* removed IndexThreadFeature, made --database.index-threads option obsolete
+
+* changed index filling to make it more parallel, dispatch tasks to boost::asio
+
+* added shortcut for AQL ternary operator
+  instead of `condition ? true-part : false-part` it is now possible to also use a
+  shortcut variant `condition ? : false-part`, e.g.
+
+      FOR doc IN docs RETURN doc.value ?: 'not present'
+
+  instead of
+
+      FOR doc IN docs RETURN doc.value ? doc.value : 'not present'
+
 * fixed wrong sorting order in cluster, if an index was used to sort with many
 shards.
 
@@ -16,30 +30,40 @@ shards.
   setting the flag to `true` will make the count operation returned the per-shard
   counts for the collection:
 
-      db._create("test", { numberOfShards: 10 }); 
-      for (i = 0; i < 1000; ++i) { 
-        db.test.insert({value: i}); 
+      db._create("test", { numberOfShards: 10 });
+      for (i = 0; i < 1000; ++i) {
+        db.test.insert({value: i});
       }
       db.test.count(true);
 
-      { 
-	"s100058" : 99, 
-	"s100057" : 103, 
-	"s100056" : 100, 
-	"s100050" : 94, 
-	"s100055" : 90, 
-	"s100054" : 122, 
-	"s100051" : 109, 
-	"s100059" : 99, 
-	"s100053" : 95, 
-	"s100052" : 89 
+      {
+	"s100058" : 99,
+	"s100057" : 103,
+	"s100056" : 100,
+	"s100050" : 94,
+	"s100055" : 90,
+	"s100054" : 122,
+	"s100051" : 109,
+	"s100059" : 99,
+	"s100053" : 95,
+	"s100052" : 89
       }
 
 * added optional memory limit for AQL queries:
 
       db._query("FOR i IN 1..100000 SORT i RETURN i", {}, { options: { memoryLimit: 100000 } });
 
-* added startup option --query.memory-limit
+  This option limits the default maximum amount of memory (in bytes) that a single
+  AQL query can use.
+  When a single AQL query reaches the specified limit value, the query will be
+  aborted with a *resource limit exceeded* exception. In a cluster, the memory
+  accounting is done per shard, so the limit value is effectively a memory limit per
+  query per shard.
+
+  The global limit value can be overriden per query by setting the *memoryLimit*
+  option value for individual queries when running an AQL query.
+
+* added server startup option `--query.memory-limit`
 
 * added convenience function to create vertex-centric indexes.
 Usage: `db.collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"})`
@@ -160,7 +184,7 @@ v3.1.4 (2016-12-08)
 
 * agency RAFT timing estimates more conservative in waitForSync
   scenario
-  
+
 * agency RAFT timing estimates capped at maximum 2.0/10.0 for low/high
 
 
@@ -271,7 +295,7 @@ v3.1.1 (2016-11-15)
   produced an empty result
 
 * disallow updating `_from` and `_to` values of edges in Smart Graphs. Updating these
-  attributes would lead to potential redistribution of edges to other shards, which must be 
+  attributes would lead to potential redistribution of edges to other shards, which must be
   avoided.
 
 * fixed issue #2148
@@ -1159,7 +1183,7 @@ v2.8.12 (XXXX-XX-XX)
 v2.8.11 (2016-07-13)
 --------------------
 
-* fixed array index batch insertion issues for hash indexes that caused problems when 
+* fixed array index batch insertion issues for hash indexes that caused problems when
   no elements remained for insertion
 
 * fixed issue #1937
@@ -1601,9 +1625,9 @@ v2.8.0-beta7 (2016-01-06)
 * fixes for AQL optimizer and traversal
 
 * added `--create-collection-type` option to arangoimp
- 
-  This allows specifying the type of the collection to be created when 
-  `--create-collection` is set to `true`. 
+
+  This allows specifying the type of the collection to be created when
+  `--create-collection` is set to `true`.
 
 * Foxx export cache should no longer break if a broken app is loaded in the
   web admin interface.

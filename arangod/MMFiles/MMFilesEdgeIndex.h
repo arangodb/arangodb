@@ -24,24 +24,26 @@
 #ifndef ARANGOD_MMFILES_EDGE_INDEX_H
 #define ARANGOD_MMFILES_EDGE_INDEX_H 1
 
-#include "Basics/Common.h"
 #include "Basics/AssocMulti.h"
+#include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesIndexElement.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+namespace basics {
+class LocalTaskQueue;
+}
 
 class MMFilesEdgeIndex;
   
 typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice, MMFilesSimpleIndexElement,
                                      uint32_t, false> TRI_MMFilesEdgeIndexHash_t;
-
 
 class MMFilesEdgeIndexIterator final : public IndexIterator {
  public:
@@ -84,7 +86,7 @@ class AnyDirectionMMFilesEdgeIndexIterator final : public IndexIterator {
     delete _outbound;
     delete _inbound;
   }
-  
+
   char const* typeName() const override { return "any-edge-index-iterator"; }
 
   DocumentIdentifierToken next() override;
@@ -122,19 +124,18 @@ class MMFilesEdgeIndex final : public Index {
  public:
   /// @brief typedef for hash tables
  public:
-  IndexType type() const override {
-    return Index::TRI_IDX_TYPE_EDGE_INDEX;
-  }
+  IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }
 
   bool allowExpansion() const override { return false; }
-  
+
   bool canBeDropped() const override { return false; }
 
   bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimate(
+      arangodb::StringRef const* = nullptr) const override;
 
   size_t memory() const override;
 
@@ -142,12 +143,16 @@ class MMFilesEdgeIndex final : public Index {
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  int insert(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int insert(arangodb::Transaction*, TRI_voc_rid_t,
+             arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int remove(arangodb::Transaction*, TRI_voc_rid_t,
+             arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int batchInsert(arangodb::Transaction*, std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&, size_t) override;
-  
+  void batchInsert(arangodb::Transaction*,
+                   std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
+                   arangodb::basics::LocalTaskQueue*) override;
+
   int unload() override;
 
   int sizeHint(arangodb::Transaction*, size_t) override;
@@ -190,27 +195,26 @@ class MMFilesEdgeIndex final : public Index {
   ///        Reverse is not supported, hence ignored
   ///        NOTE: The iterator is only valid as long as the slice points to
   ///        a valid memory region.
-  IndexIterator* iteratorForSlice(arangodb::Transaction*, 
+  IndexIterator* iteratorForSlice(arangodb::Transaction*,
                                   ManagedDocumentResult*,
                                   arangodb::velocypack::Slice const,
                                   bool) const override;
 
  private:
   /// @brief create the iterator
-  IndexIterator* createEqIterator(
-      arangodb::Transaction*, 
-      ManagedDocumentResult*,
-      arangodb::aql::AstNode const*,
-      arangodb::aql::AstNode const*) const;
-  
-  IndexIterator* createInIterator(
-      arangodb::Transaction*, 
-      ManagedDocumentResult*,
-      arangodb::aql::AstNode const*,
-      arangodb::aql::AstNode const*) const;
+  IndexIterator* createEqIterator(arangodb::Transaction*,
+                                  ManagedDocumentResult*,
+                                  arangodb::aql::AstNode const*,
+                                  arangodb::aql::AstNode const*) const;
+
+  IndexIterator* createInIterator(arangodb::Transaction*,
+                                  ManagedDocumentResult*,
+                                  arangodb::aql::AstNode const*,
+                                  arangodb::aql::AstNode const*) const;
 
   /// @brief add a single value node to the iterator's keys
-  void handleValNode(VPackBuilder* keys, arangodb::aql::AstNode const* valNode) const;
+  void handleValNode(VPackBuilder* keys,
+                     arangodb::aql::AstNode const* valNode) const;
 
   MMFilesSimpleIndexElement buildFromElement(TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
   MMFilesSimpleIndexElement buildToElement(TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;

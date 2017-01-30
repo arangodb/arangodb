@@ -137,13 +137,11 @@ void SocketTask::addWriteBuffer(WriteBuffer& buffer) {
 
   if (!buffer.empty()) {
     if (!_writeBuffer.empty()) {
-      _writeBuffers.emplace_back(buffer);
-      buffer.clear();
+      _writeBuffers.emplace_back(std::move(buffer));
       return;
     }
 
-    _writeBuffer = buffer;
-    buffer.clear();
+    _writeBuffer = std::move(buffer);
   }
 
   writeWriteBuffer();
@@ -230,7 +228,7 @@ bool SocketTask::completedWriteBuffer() {
     return false;
   }
 
-  _writeBuffer = _writeBuffers.front();
+  _writeBuffer = std::move(_writeBuffers.front());
   _writeBuffers.pop_front();
 
   return true;

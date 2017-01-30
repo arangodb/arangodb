@@ -28,6 +28,7 @@
 #include "Logger/Logger.h"
 #include "MMFiles/fulltext-index.h"
 #include "MMFiles/MMFilesToken.h"
+#include "StorageEngine/DocumentIdentifierToken.h"
 #include "Utils/TransactionState.h"
 
 #include <velocypack/Iterator.h>

@@ -26,6 +26,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
+#include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
@@ -34,9 +35,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
-#include <ostream>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+#include <iostream>
+#include <ostream>
 
 using namespace arangodb;
 
@@ -53,7 +55,7 @@ Index::Index(
 }
 
 Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-             VPackSlice const& slice) 
+             VPackSlice const& slice)
     : _iid(iid),
       _collection(collection),
       _fields(),
@@ -61,9 +63,9 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
           slice, "unique", false)),
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "sparse", false)) {
-  
   VPackSlice const fields = slice.get("fields");
-  setFields(fields, Index::allowExpansion(Index::type(slice.get("type").copyString())));
+  setFields(fields,
+            Index::allowExpansion(Index::type(slice.get("type").copyString())));
 }
 
 /// @brief create an index stub with a hard-coded selectivity estimate
@@ -78,9 +80,9 @@ Index::Index(VPackSlice const& slice)
           slice, "unique", false)),
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "sparse", false)) {
-
   VPackSlice const fields = slice.get("fields");
-  setFields(fields, Index::allowExpansion(Index::type(slice.get("type").copyString())));
+  setFields(fields,
+            Index::allowExpansion(Index::type(slice.get("type").copyString())));
 }
 
 Index::~Index() {}
@@ -102,15 +104,17 @@ void Index::setFields(VPackSlice const& fields, bool allowExpansion) {
     }
 
     std::vector<arangodb::basics::AttributeName> parsedAttributes;
-    TRI_ParseAttributeString(name.copyString(), parsedAttributes, allowExpansion);
+    TRI_ParseAttributeString(name.copyString(), parsedAttributes,
+                             allowExpansion);
     _fields.emplace_back(std::move(parsedAttributes));
   }
 }
 
 /// @brief validate fields from slice
 void Index::validateFields(VPackSlice const& slice) {
-  bool const allowExpansion = Index::allowExpansion(Index::type(slice.get("type").copyString()));
-  
+  bool const allowExpansion =
+      Index::allowExpansion(Index::type(slice.get("type").copyString()));
+
   VPackSlice fields = slice.get("fields");
 
   if (!fields.isArray()) {
@@ -125,7 +129,8 @@ void Index::validateFields(VPackSlice const& slice) {
     }
 
     std::vector<arangodb::basics::AttributeName> parsedAttributes;
-    TRI_ParseAttributeString(name.copyString(), parsedAttributes, allowExpansion);
+    TRI_ParseAttributeString(name.copyString(), parsedAttributes,
+                             allowExpansion);
   }
 }
 
@@ -158,7 +163,7 @@ Index::IndexType Index::type(char const* type) {
 
   return TRI_IDX_TYPE_UNKNOWN;
 }
-    
+
 Index::IndexType Index::type(std::string const& type) {
   return Index::type(type.c_str());
 }
@@ -351,8 +356,8 @@ std::string Index::context() const {
 
   result << "index { id: " << id() << ", type: " << typeName()
          << ", collection: " << _collection->dbName() << "/"
-         << _collection->name()
-         << ", unique: " << (_unique ? "true" : "false") << ", fields: ";
+         << _collection->name() << ", unique: " << (_unique ? "true" : "false")
+         << ", fields: ";
   result << "[";
   for (size_t i = 0; i < _fields.size(); ++i) {
     if (i > 0) {
@@ -432,7 +437,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
   auto value = info.get("id");
   if (!value.isNone()) {
     // We already have an id.
-    if(!value.isString()) {
+    if (!value.isString()) {
       // Invalid ID
       return false;
     }
@@ -485,12 +490,21 @@ double Index::selectivityEstimate(StringRef const*) const {
 bool Index::implicitlyUnique() const {
   // simply return whether the index actually is unique
   // in this base class, we cannot do anything else
-  return _unique; 
+  return _unique;
 }
 
-/// @brief default implementation for selectivityEstimate
-int Index::batchInsert(arangodb::Transaction*, std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&, size_t) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+void Index::batchInsert(
+    arangodb::Transaction* trx,
+    std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&
+        documents,
+    arangodb::basics::LocalTaskQueue* queue) {
+  for (auto const& it : documents) {
+    int status = insert(trx, it.first, it.second, false);
+    if (status != TRI_ERROR_NO_ERROR) {
+      queue->setStatus(status);
+      break;
+    }
+  }
 }
 
 /// @brief default implementation for cleanup
@@ -528,8 +542,7 @@ bool Index::supportsFilterCondition(arangodb::aql::AstNode const*,
 /// @brief default implementation for supportsSortCondition
 bool Index::supportsSortCondition(arangodb::aql::SortCondition const*,
                                   arangodb::aql::Variable const*,
-                                  size_t itemsInIndex,
-                                  double& estimatedCost,
+                                  size_t itemsInIndex, double& estimatedCost,
                                   size_t& coveredAttributes) const {
   // by default, no sort conditions are supported
   coveredAttributes = 0;
@@ -559,12 +572,11 @@ arangodb::aql::AstNode* Index::specializeCondition(
 }
 
 /// @brief perform some base checks for an index condition part
-bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
-                                arangodb::aql::AstNode const* other,
-                                arangodb::aql::AstNode const* op,
-                                arangodb::aql::Variable const* reference,
-                                std::unordered_set<std::string>& nonNullAttributes,
-                                bool isExecution) const {
+bool Index::canUseConditionPart(
+    arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
+    arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
+    std::unordered_set<std::string>& nonNullAttributes,
+    bool isExecution) const {
   if (_sparse) {
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN) {
       return false;
@@ -600,19 +612,27 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
       if (!other->isConstant()) {
         return false;
       }
-  
 
       if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE &&
           other->isNullValue()) {
         // != null. now note that a certain attribute cannot become null
-        try { nonNullAttributes.emplace(access->toString()); } catch (...) {}
+        try {
+          nonNullAttributes.emplace(access->toString());
+        } catch (...) {
+        }
       } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT) {
         // > null. now note that a certain attribute cannot become null
-        try { nonNullAttributes.emplace(access->toString()); } catch (...) {}
+        try {
+          nonNullAttributes.emplace(access->toString());
+        } catch (...) {
+        }
       } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE &&
                  !other->isNullValue()) {
         // >= non-null. now note that a certain attribute cannot become null
-        try { nonNullAttributes.emplace(access->toString()); } catch (...) {}
+        try {
+          nonNullAttributes.emplace(access->toString());
+        } catch (...) {
+        }
       }
 
       if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
@@ -621,7 +641,8 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
         // null values
         try {
           // check if we've marked this attribute as being non-null already
-          if (nonNullAttributes.find(access->toString()) == nonNullAttributes.end()) {
+          if (nonNullAttributes.find(access->toString()) ==
+              nonNullAttributes.end()) {
             return false;
           }
         } catch (...) {
@@ -636,7 +657,8 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
         // reason
         try {
           // check if we've marked this attribute as being non-null already
-          if (nonNullAttributes.find(access->toString()) == nonNullAttributes.end()) {
+          if (nonNullAttributes.find(access->toString()) ==
+              nonNullAttributes.end()) {
             return false;
           }
         } catch (...) {
@@ -694,8 +716,8 @@ void Index::expandInSearchValues(VPackSlice const base,
                                  VPackBuilder& result) const {
   TRI_ASSERT(base.isArray());
 
-  VPackArrayBuilder baseGuard(&result); 
-  for (auto const& oneLookup: VPackArrayIterator(base)) {
+  VPackArrayBuilder baseGuard(&result);
+  for (auto const& oneLookup : VPackArrayIterator(base)) {
     TRI_ASSERT(oneLookup.isArray());
 
     bool usesIn = false;
@@ -720,11 +742,12 @@ void Index::expandInSearchValues(VPackSlice const base,
       if (current.hasKey(StaticStrings::IndexIn)) {
         VPackSlice inList = current.get(StaticStrings::IndexIn);
 
-        std::unordered_set<VPackSlice, 
-                           arangodb::basics::VelocyPackHelper::VPackHash, 
-                           arangodb::basics::VelocyPackHelper::VPackEqual> 
-          tmp(static_cast<size_t>(inList.length()), arangodb::basics::VelocyPackHelper::VPackHash(), 
-              arangodb::basics::VelocyPackHelper::VPackEqual());
+        std::unordered_set<VPackSlice,
+                           arangodb::basics::VelocyPackHelper::VPackHash,
+                           arangodb::basics::VelocyPackHelper::VPackEqual>
+            tmp(static_cast<size_t>(inList.length()),
+                arangodb::basics::VelocyPackHelper::VPackHash(),
+                arangodb::basics::VelocyPackHelper::VPackEqual());
 
         TRI_ASSERT(inList.isArray());
         if (inList.length() == 0) {
@@ -744,16 +767,16 @@ void Index::expandInSearchValues(VPackSlice const base,
     }
     // If there is an entry in elements for one depth it was an in,
     // all of them are now unique so we simply have to multiply
-    
+
     size_t level = n - 1;
     std::vector<size_t> positions(n, 0);
     bool done = false;
     while (!done) {
-      TRI_IF_FAILURE("Index::permutationIN")  {
+      TRI_IF_FAILURE("Index::permutationIN") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
       VPackArrayBuilder guard(&result);
-      for (size_t i = 0; i < n; ++i)  {
+      for (size_t i = 0; i < n; ++i) {
         auto list = elements.find(i);
         if (list == elements.end()) {
           // Insert
@@ -765,7 +788,8 @@ void Index::expandInSearchValues(VPackSlice const base,
       }
       while (true) {
         auto list = elements.find(level);
-        if (list != elements.end() && ++positions[level] < list->second.size()) {
+        if (list != elements.end() &&
+            ++positions[level] < list->second.size()) {
           level = n - 1;
           // abort inner iteration
           break;

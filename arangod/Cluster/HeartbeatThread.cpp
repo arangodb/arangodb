@@ -75,7 +75,7 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
       _ioService(ioService),
       _backgroundJobsPosted(0),
       _backgroundJobsLaunched(0),
-      _backgroundJobRunning(false),
+      _backgroundJobScheduledOrRunning(false),
       _launchAnotherBackgroundJob(false) {
 }
 
@@ -98,44 +98,44 @@ HeartbeatThread::~HeartbeatThread() { shutdown(); }
 /// watching the command key, it will wake up and apply the change locally.
 ////////////////////////////////////////////////////////////////////////////////
 
+class HeartbeatBackgroundJob {
+  std::shared_ptr<HeartbeatThread> _heartbeatThread;
+ public:
+  explicit HeartbeatBackgroundJob(std::shared_ptr<HeartbeatThread> hbt)
+    : _heartbeatThread(hbt) {}
+
+  void operator()() {
+    _heartbeatThread->runBackgroundJob();
+  }
+};
+
+void HeartbeatThread::runBackgroundJob() {
+  uint64_t jobNr = ++_backgroundJobsLaunched;
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
+  {
+    DBServerAgencySync job(this);
+    job.work();
+  }
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
+
+  {
+    MUTEX_LOCKER(mutexLocker, *_statusLock);
+    if (_launchAnotherBackgroundJob) {
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail "
+        << ++_backgroundJobsPosted;
+      _launchAnotherBackgroundJob = false;
+      _ioService->post(HeartbeatBackgroundJob(shared_from_this()));
+    } else {
+      _backgroundJobScheduledOrRunning = false;
+      _launchAnotherBackgroundJob = false;
+    }
+  }
+}
+
 void HeartbeatThread::run() {
   if (ServerState::instance()->isCoordinator()) {
     runCoordinator();
   } else {
-    // Set the member variable that holds a closure to run background
-    // jobs in JS:
-    auto self = shared_from_this();
-    _backgroundJob = [self, this]() {
-      {
-        MUTEX_LOCKER(mutexLocker, *_statusLock);
-        _backgroundJobRunning = true;
-        _launchAnotherBackgroundJob = false;
-      }
-
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback started "
-        << ++_backgroundJobsLaunched;
-      {
-        DBServerAgencySync job(this);
-        job.work();
-      }
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback ended "
-        << _backgroundJobsLaunched.load();
-
-      bool startAnother = false;
-      {
-        MUTEX_LOCKER(mutexLocker, *_statusLock);
-        _backgroundJobRunning = false;
-        if (_launchAnotherBackgroundJob) {
-          startAnother = true;
-        }
-      }
-      if (startAnother) {
-        LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail "
-          << ++_backgroundJobsPosted;
-
-        _ioService->post(_backgroundJob);
-      }
-    };
     runDBServer();
   }
 }
@@ -253,7 +253,7 @@ void HeartbeatThread::runDBServer() {
               agentPool.get("size").getUInt() > 1) {
             _agency.updateEndpoints(agentPool);
           } else {
-            LOG(DEBUG) << "Cannot find an agency persisted in RAFT 8|";
+            LOG(TRACE) << "Cannot find an agency persisted in RAFT 8|";
           }
           
           VPackSlice shutdownSlice =
@@ -347,18 +347,6 @@ void HeartbeatThread::runDBServer() {
   }
 
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
-  int count = 0;
-  while (++count < 3000) {
-    bool isInPlanChange;
-    {
-      MUTEX_LOCKER(mutexLocker, *_statusLock);
-      isInPlanChange = _backgroundJobRunning;
-    }
-    if (!isInPlanChange) {
-      break;
-    }
-    usleep(1000);
-  }
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "stopped heartbeat thread (DBServer version)";
 }
@@ -424,7 +412,7 @@ void HeartbeatThread::runCoordinator() {
               agentPool.get("size").getUInt() > 1) {
             _agency.updateEndpoints(agentPool);
           } else {
-            LOG(DEBUG) << "Cannot find an agency persisted in RAFT 8|";
+            LOG(TRACE) << "Cannot find an agency persisted in RAFT 8|";
           }
         
         VPackSlice shutdownSlice = result.slice()[0].get(
@@ -766,7 +754,7 @@ void HeartbeatThread::syncDBServerStatusQuo() {
     ci->invalidateCurrent();
   }
 
-  if (_backgroundJobRunning) {
+  if (_backgroundJobScheduledOrRunning) {
     _launchAnotherBackgroundJob = true;
     return;
   }
@@ -774,7 +762,8 @@ void HeartbeatThread::syncDBServerStatusQuo() {
   // schedule a job for the change:
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync "
     << ++_backgroundJobsPosted;
-  _ioService->post(_backgroundJob);
+  _backgroundJobScheduledOrRunning = true;
+  _ioService->post(HeartbeatBackgroundJob(shared_from_this()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

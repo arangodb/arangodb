@@ -34,6 +34,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+struct DocumentIdentifierToken;
 
 class MMFilesFulltextIndex final : public Index {
  public:
