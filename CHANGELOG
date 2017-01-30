@@ -1,6 +1,16 @@
 v3.1.10 (2017-XX-XX)
 --------------------
 
+* added shortcut for AQL ternary operator
+  instead of `condition ? true-part : false-part` it is now possible to also use a
+  shortcut variant `condition ? : false-part`, e.g.
+
+      FOR doc IN docs RETURN doc.value ?: 'not present'
+
+  instead of
+      
+      FOR doc IN docs RETURN doc.value ? doc.value : 'not present'
+
 * fixed wrong sorting order in cluster, if an index was used to sort with many
 shards.
 
