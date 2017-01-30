@@ -150,11 +150,13 @@ void LogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--wal.allow-oversize-entries",
       "allow entries that are bigger than '--wal.logfile-size'",
       new BooleanParameter(&_allowOversizeEntries));
-  
+ 
+  /* not a 3.1 option
   options->addHiddenOption(
       "--wal.use-mlock",
       "mlock WAL logfiles in memory (may require elevated privileges or limits)",
       new BooleanParameter(&_useMLock));
+  */
 
   options->addOption("--wal.directory", "logfile directory",
                      new StringParameter(&_directory));
