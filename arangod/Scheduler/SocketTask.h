@@ -83,6 +83,30 @@ class SocketTask : virtual public Task {
 
     WriteBuffer(basics::StringBuffer* buffer, RequestStatistics* statistics)
         : _buffer(buffer), _statistics(statistics) {}
+    
+    WriteBuffer(WriteBuffer const&) = delete;
+    WriteBuffer& operator=(WriteBuffer const&) = delete;
+
+    WriteBuffer(WriteBuffer&& other) 
+        : _buffer(other._buffer), _statistics(other._statistics) {
+      other._buffer = nullptr;
+      other._statistics = nullptr;
+    }
+
+    WriteBuffer& operator=(WriteBuffer&& other) {
+      if (this != &other) {
+        // release our own memory to prevent memleaks
+        release();
+
+        // take over ownership from other
+        _buffer = other._buffer;
+        _statistics = other._statistics;
+        // fix other
+        other._buffer = nullptr;
+        other._statistics = nullptr;
+      }
+      return *this;
+    }
 
     ~WriteBuffer() { release(); }
 
