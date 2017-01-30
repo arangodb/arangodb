@@ -132,16 +132,16 @@ daemon. This parameter must be specified if either the flag *daemon* or
 
 `--console`
 
-Runs the server in an exclusive emergency console mode. When 
+Runs the server in an exclusive emergency console mode. When
 starting the server with this option, the server is started with
 an interactive JavaScript emergency console, with all networking
 and HTTP interfaces of the server disabled.
 
 No requests can be made to the server in this mode, and the only
 way to work with the server in this mode is by using the emergency
-console. 
-Note that the server cannot be started in this mode if it is 
-already running in this or another mode. 
+console.
+Note that the server cannot be started in this mode if it is
+already running in this or another mode.
 
 
 ### Random Generator
@@ -419,21 +419,6 @@ This option only has an effect if the query cache mode is set to either *on* or
 *demand*.
 
 
-### Index threads
-
-`--database.index-threads`
-
-Specifies the *number* of background threads for index creation. When a
-collection contains extra indexes other than the primary index, these other
-indexes can be built by multiple threads in parallel. The index threads are
-shared among multiple collections and databases. Specifying a value of *0* will
-turn off parallel building, meaning that indexes for each collection are built
-sequentially by the thread that opened the collection.  If the number of index
-threads is greater than 1, it will also be used to built the edge index of a
-collection in parallel (this also requires the edge index in the collection to
-be split into multiple buckets).
-
-
 ### V8 contexts
 
 `--javascript.v8-contexts number`
@@ -491,4 +476,3 @@ might change in the future if a different version of V8 is being used in
 ArangoDB. Not all options offered by V8 might be sensible to use in the context
 of ArangoDB. Use the specific options only if you are sure that they are not
 harmful for the regular database operation.
-

@@ -3881,17 +3881,23 @@ testFuncs.upgrade = function (options) {
 
   result.upgrade.first = executeAndWait(ARANGOD_BIN, argv, options, 'upgrade');
 
-  if (result.upgrade.first !== 0 && !options.force) {
+  if (result.upgrade.first.status !== true) {
     print('not removing ' + tmpDataDir);
-    return result;
+    return result.upgrade;
   }
 
   ++result.upgrade.total;
 
   result.upgrade.second = executeAndWait(ARANGOD_BIN, argv, options, 'upgrade');
+  
+  if (result.upgrade.second.status !== true) {
+    print('not removing ' + tmpDataDir);
+    return result.upgrade;
+  }
 
   cleanupDirectories.push(tmpDataDir);
-
+ 
+  result.upgrade.status = true; 
   return result;
 };
 

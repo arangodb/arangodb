@@ -23,7 +23,6 @@
 #include "DatabaseFeature.h"
 
 #include "Agency/v8-agency.h"
-#include "Agency/v8-agency.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
@@ -83,7 +82,7 @@ void DatabaseManagerThread::run() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   while (true) {
-    try { 
+    try {
       // check if we have to drop some database
       TRI_vocbase_t* database = nullptr;
 
@@ -129,7 +128,8 @@ void DatabaseManagerThread::run() {
           databaseFeature->_databasesProtector.scan();
           delete oldLists;
 
-          // From now on no other thread can possibly see the old TRI_vocbase_t*,
+          // From now on no other thread can possibly see the old
+          // TRI_vocbase_t*,
           // note that there is only one DatabaseManager thread, so it is
           // not possible that another thread has seen this very database
           // and tries to free it at the same time!
@@ -143,8 +143,8 @@ void DatabaseManagerThread::run() {
           RocksDBFeature::dropDatabase(database->id());
 
           LOG(TRACE) << "physically removing database directory '"
-            << engine->databasePath(database) << "' of database '"
-            << database->name() << "'";
+                     << engine->databasePath(database) << "' of database '"
+                     << database->name() << "'";
 
           std::string path;
 
@@ -158,7 +158,7 @@ void DatabaseManagerThread::run() {
 
             if (TRI_IsDirectory(path.c_str())) {
               LOG(TRACE) << "removing app directory '" << path
-                << "' of database '" << database->name() << "'";
+                         << "' of database '" << database->name() << "'";
 
               TRI_RemoveDirectory(path.c_str());
             }
@@ -226,7 +226,7 @@ void DatabaseManagerThread::run() {
 
     } catch (...) {
     }
-    
+
     // next iteration
   }
 }
@@ -252,7 +252,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("EngineSelector");
   startsAfter("LogfileManager");
   startsAfter("InitDatabase");
-  startsAfter("IndexThread");
   startsAfter("RevisionCache");
 }
 
@@ -298,11 +297,17 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--database.replication-applier",
       "switch to enable or disable the replication applier",
       new BooleanParameter(&_replicationApplier));
-  
-  options->addHiddenOption("--database.check-30-revisions",
-                           "check _rev values in collections created before 3.1",
-                           new DiscreteValuesParameter<StringParameter>(&_check30Revisions, 
-                           std::unordered_set<std::string>{ "true", "false", "fail" }));
+
+  options->addHiddenOption(
+      "--database.check-30-revisions",
+      "check _rev values in collections created before 3.1",
+      new DiscreteValuesParameter<StringParameter>(
+          &_check30Revisions,
+          std::unordered_set<std::string>{"true", "false", "fail"}));
+
+  options->addObsoleteOption(
+      "--database.index-threads",
+      "threads to start for parallel background index creation");
 }
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -362,7 +367,7 @@ void DatabaseFeature::start() {
   }
 
   // TODO: handle _upgrade and _checkVersion here
-  
+
   // activate deadlock detection in case we're not running in cluster mode
   if (!arangodb::ServerState::instance()->isRunningInCluster()) {
     enableDeadlockDetection();
@@ -865,10 +870,9 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
 
-      auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-          "Authentication");
-      auto level = authentication->canUseDatabase(
-          username, vocbase->name());
+      auto authentication = application_features::ApplicationServer::getFeature<
+          AuthenticationFeature>("Authentication");
+      auto level = authentication->canUseDatabase(username, vocbase->name());
 
       if (level == AuthLevel::NONE) {
         continue;
@@ -1312,8 +1316,8 @@ int DatabaseFeature::writeCreateMarker(TRI_voc_tick_t id,
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    MMFilesDatabaseMarker marker(TRI_DF_MARKER_VPACK_CREATE_DATABASE,
-                                         id, slice);
+    MMFilesDatabaseMarker marker(TRI_DF_MARKER_VPACK_CREATE_DATABASE, id,
+                                 slice);
     MMFilesWalSlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
@@ -1347,7 +1351,7 @@ int DatabaseFeature::writeDropMarker(TRI_voc_tick_t id) {
     builder.close();
 
     MMFilesDatabaseMarker marker(TRI_DF_MARKER_VPACK_DROP_DATABASE, id,
-                                         builder.slice());
+                                 builder.slice());
 
     MMFilesWalSlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
