@@ -1690,6 +1690,7 @@ var handlePlanChange = function (plan, current) {
     current: current.Version
   };
 
+  console.debug('handlePlanChange:', plan.Version, current.Version);
   try {
     versions.success = handleChanges(plan, current);
 
@@ -1700,6 +1701,7 @@ var handlePlanChange = function (plan, current) {
     console.error('plan change handling failed');
     versions.success = false;
   }
+  console.debug('handlePlanChange: done');
   return versions;
 };
 
