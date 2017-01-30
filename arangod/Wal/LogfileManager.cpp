@@ -878,7 +878,7 @@ int LogfileManager::flush(bool waitForSync, bool waitForCollector,
       res = this->waitForCollector(lastOpenLogfileId, maxWaitTime);
 
       if (res == TRI_ERROR_LOCK_TIMEOUT) {
-        LOG(ERR) << "got lock timeout when waiting for WAL flush. lastOpenLogfileId: " << lastOpenLogfileId;
+        LOG(DEBUG) << "got lock timeout when waiting for WAL flush. lastOpenLogfileId: " << lastOpenLogfileId;
       }
     } else if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
       // current logfile is empty and cannot be collected
@@ -889,7 +889,7 @@ int LogfileManager::flush(bool waitForSync, bool waitForCollector,
         res = this->waitForCollector(lastSealedLogfileId, maxWaitTime);
       
         if (res == TRI_ERROR_LOCK_TIMEOUT) {
-          LOG(ERR) << "got lock timeout when waiting for WAL flush. lastSealedLogfileId: " << lastSealedLogfileId;
+          LOG(DEBUG) << "got lock timeout when waiting for WAL flush. lastSealedLogfileId: " << lastSealedLogfileId;
         }
       }
     }
@@ -1733,8 +1733,7 @@ int LogfileManager::waitForCollector(Logfile::IdType logfileId,
     // try again
   }
 
-  // TODO: remove debug info here
-  LOG(ERR) << "going into lock timeout. having waited for logfile: " << logfileId << ", maxWaitTime: " << maxWaitTime;
+  LOG(DEBUG) << "going into lock timeout. having waited for logfile: " << logfileId << ", maxWaitTime: " << maxWaitTime;
   logStatus();
 
   // waited for too long
@@ -1742,12 +1741,11 @@ int LogfileManager::waitForCollector(Logfile::IdType logfileId,
 }
   
 void LogfileManager::logStatus() {
-  // TODO: remove debug info here
-  LOG(ERR) << "logfile manager status report: lastCollectedId: " << _lastCollectedId.load() << ", lastSealedId: " << _lastSealedId.load();
+  LOG(DEBUG) << "logfile manager status report: lastCollectedId: " << _lastCollectedId.load() << ", lastSealedId: " << _lastSealedId.load();
   READ_LOCKER(locker, _logfilesLock);
   for (auto logfile : _logfiles) {
-    LOG(ERR) << "- logfile " << logfile.second->id() << ", filename '" << logfile.second->filename()
-              << "', status " << logfile.second->statusText();
+    LOG(DEBUG) << "- logfile " << logfile.second->id() << ", filename '" << logfile.second->filename()
+               << "', status " << logfile.second->statusText();
   }
 }
 
