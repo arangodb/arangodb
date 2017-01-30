@@ -239,7 +239,9 @@ void HeartbeatThread::runDBServer() {
           VPackSlice agentPool =
             result.slice()[0].get(
               std::vector<std::string>({".agency","pool"}));
-          if (agentPool.isObject()) {
+
+          if (agentPool.isObject() && agentPool.hasKey("size") &&
+              agentPool.get("size").getUInt() > 1) {
             _agency.updateEndpoints(agentPool);
           } else {
             LOG(TRACE) << "Cannot find an agency persisted in RAFT 8|";
@@ -407,7 +409,8 @@ void HeartbeatThread::runCoordinator() {
           VPackSlice agentPool =
             result.slice()[0].get(
               std::vector<std::string>({".agency","pool"}));
-          if (agentPool.isObject()) {
+          if (agentPool.isObject() && agentPool.hasKey("size") &&
+              agentPool.get("size").getUInt() > 1) {
             _agency.updateEndpoints(agentPool);
           } else {
             LOG(TRACE) << "Cannot find an agency persisted in RAFT 8|";
