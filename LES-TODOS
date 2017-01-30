@@ -18,6 +18,7 @@ done
 - GeoIndex hands out TRI_revision instead of Tokens
 - FulltextIndex hands out TRI_revision instead of Tokens
 - trx::InvokeOnAllElements : uses SimpleIndexLookupElements => Has to use Tokens instead?
+- remove TransactionState include from Transaction.h
 MMFiles reference removals from files:
 * arangod/V8Server/v8-query.cpp
 
@@ -32,6 +33,7 @@ MMFiles reference removals from files:
 
 to do
 -----
+- rename TRI_df_marker_* to something storage-engine specific
 - check for illegal includes
 - fix includes during API conversion
 - DML API
