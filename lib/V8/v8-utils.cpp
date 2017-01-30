@@ -412,10 +412,8 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
       v8::Local<v8::Object> exceptionObj = tryCatch.Exception().As<v8::Object>();
-      v8::Handle<v8::Message> message = tryCatch.Message();
-      exceptionObj->Set(TRI_V8_ASCII_STRING("lineNumber"), v8::Number::New(isolate, message->GetLineNumber()));
-      exceptionObj->Set(TRI_V8_ASCII_STRING("columnNumber"), v8::Number::New(isolate, message->GetStartColumn()));
-      exceptionObj->Set(TRI_V8_ASCII_STRING("fileName"), filename->ToString());
+      std::string stack = TRI_StringifyV8Exception(isolate, &tryCatch);
+      exceptionObj->Set(TRI_V8_ASCII_STRING("stack"), TRI_V8_STD_STRING(stack));
       tryCatch.ReThrow();
       return;
     } else {
@@ -481,10 +479,8 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
       v8::Local<v8::Object> exceptionObj = tryCatch.Exception().As<v8::Object>();
-      v8::Handle<v8::Message> message = tryCatch.Message();
-      exceptionObj->Set(TRI_V8_ASCII_STRING("lineNumber"), v8::Number::New(isolate, message->GetLineNumber()));
-      exceptionObj->Set(TRI_V8_ASCII_STRING("columnNumber"), v8::Number::New(isolate, message->GetStartColumn()));
-      exceptionObj->Set(TRI_V8_ASCII_STRING("fileName"), args[0]);
+      std::string stack = TRI_StringifyV8Exception(isolate, &tryCatch);
+      exceptionObj->Set(TRI_V8_ASCII_STRING("stack"), TRI_V8_STD_STRING(stack));
       tryCatch.ReThrow();
       return;
     } else {
@@ -1023,10 +1019,8 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
       if (tryCatch.CanContinue()) {
         v8::Local<v8::Object> exceptionObj = tryCatch.Exception().As<v8::Object>();
-        v8::Handle<v8::Message> message = tryCatch.Message();
-        exceptionObj->Set(TRI_V8_ASCII_STRING("lineNumber"), v8::Number::New(isolate, message->GetLineNumber()));
-        exceptionObj->Set(TRI_V8_ASCII_STRING("columnNumber"), v8::Number::New(isolate, message->GetStartColumn()));
-        exceptionObj->Set(TRI_V8_ASCII_STRING("fileName"), filename->ToString());
+        std::string stack = TRI_StringifyV8Exception(isolate, &tryCatch);
+        exceptionObj->Set(TRI_V8_ASCII_STRING("stack"), TRI_V8_STD_STRING(stack));
         tryCatch.ReThrow();
         return;
       } else {

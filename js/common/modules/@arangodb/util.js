@@ -83,18 +83,17 @@ exports.codeFrame = function (e, basePath, withColor = false) {
     let err = e;
     while (err) {
       try {
-        if (
-          err.fileName &&
-          err.lineNumber &&
-          err.columnNumber &&
-          (!basePath || err.fileName.indexOf(basePath) === 0)
-        ) {
-          ctx = {
-            fileName: err.fileName,
-            lineNumber: Number(err.lineNumber),
-            columnNumber: Number(err.columnNumber)
-          };
-          break;
+        if (err instanceof SyntaxError) {
+          const location = err.stack.split('\n')[0];
+          const [fileName, lineNo, colNo] = stackParser.extractLocation(location);
+          if (lineNo && colNo && (!basePath || fileName.indexOf(basePath) === 0)) {
+            ctx = {
+              fileName,
+              lineNumber: Number(lineNo),
+              columnNumber: Number(colNo)
+            };
+            break;
+          }
         } else {
           const stack = stackParser.parse(err);
           for (const step of stack) {
