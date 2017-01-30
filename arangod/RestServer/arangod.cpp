@@ -75,7 +75,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/MMFilesEngine.h"
 #include "StorageEngine/MMFilesWalRecoveryFeature.h"
-#include "StorageEngine/RocksDBEngine.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/IndexThreadFeature.h"
@@ -184,7 +183,6 @@ static int runServer(int argc, char** argv) {
   // storage engines
   server.addFeature(new MMFilesEngine(&server));
   server.addFeature(new MMFilesWalRecoveryFeature(&server));
-  server.addFeature(new RocksDBEngine(&server));
 
   try {
     server.run(argc, argv);

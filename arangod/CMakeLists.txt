@@ -305,7 +305,6 @@ SET(ARANGOD_SOURCES
   StorageEngine/MMFilesWalRecoveryFeature.cpp
   StorageEngine/MMFilesWalSlot.cpp
   StorageEngine/MMFilesWalSlots.cpp
-  StorageEngine/RocksDBEngine.cpp
   Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
