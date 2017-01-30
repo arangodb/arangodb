@@ -10,7 +10,7 @@
 
 ### fpconv_dtoa
 
-* GitHub: https://github.com/night-shift/fpconv/
+* GITHUB: https://github.com/night-shift/fpconv/
 * License: [MIT License](https://github.com/night-shift/fpconv/blob/master/license)
 
 ### fasthash
@@ -20,7 +20,7 @@
 
 ### xxHash
 
-* GitHub: https://github.com/Cyan4973/xxHash/
+* Project Home: https://github.com/Cyan4973/xxHash/
 * License: [BSD License](https://github.com/Cyan4973/xxHash/blob/master/LICENSE)
 
 ### short_alloc
@@ -30,7 +30,8 @@
 
 ### Google V8 5.0.71.39
 
-* GitHub: https://github.com/v8/v8
+* Project Home: https://github.com/v8/v8/
+* GITHUB: https://github.com/v8/v8
 * License: V8 [BSD-style 3-Clause License](https://github.com/v8/v8/blob/5.0.71.39/LICENSE.v8)
 * License: strongtalk [BSD-style 3-Clause License](https://github.com/v8/v8/blob/5.0.71.39/LICENSE.strongtalk)
 * License: valgrind [BSD-style 4-Clause license](https://github.com/v8/v8/blob/5.0.71.39/LICENSE.valgrind)
@@ -43,7 +44,7 @@
 
 ### RocksDB 4.8.0
 
-* GitHub: https://github.com/facebook/rocksdb
+* Project Home: https://github.com/facebook/rocksdb
 * License: [BSD License](https://github.com/facebook/rocksdb/blob/master/LICENSE)
 
 ### ICU 54.1
@@ -58,7 +59,7 @@
 
 ### linenoise-ng
 
-* GitHub: https://github.com/arangodb/linenoise-ng
+* GITHUB: https://github.com/arangodb/linenoise-ng
 * License: [BSD-style 2-Clause License](https://github.com/antirez/linenoise/blob/master/LICENSE)
 
 ### Valgrind
@@ -96,7 +97,7 @@
 ### Node core modules
 
 * Project Home: http://nodejs.org
-* GitHub: https://github.com/nodejs/node
+* GITHUB: https://github.com/nodejs/node
 * License: [MIT-style License](https://github.com/nodejs/node/blob/master/LICENSE) for the files _stream_duplex.js, _stream_passthrough.js, _stream_readable.js, _stream_transform.js, _stream_writable.js, event.js, querystring.js, stream.js, string_decoder.js, url.js
 * License: punycode.js [MIT License](https://github.com/bestiejs/punycode.js/blob/master/LICENSE-MIT.txt)
 
@@ -104,179 +105,164 @@
 
 #### accepts
 
-* GitHub: https://github.com/jshttp/accepts
+* GITHUB: https://github.com/jshttp/accepts
 * License: [MIT License](https://github.com/jshttp/accepts/blob/master/LICENSE)
 
 #### Ace
 
-* GitHub: https://github.com/ajaxorg/ace
+* GITHUB: https://github.com/ajaxorg/ace
 * License: [BSD-style 3-Clause License](https://github.com/ajaxorg/ace/blob/master/LICENSE)
-
-#### ansi-html
-
-* GitHub: https://github.com/Tjatse/ansi-html
-* License: [Apache 2 License](https://github.com/Tjatse/ansi-html/blob/master/LICENSE)
 
 #### ArangoDB Query Builder
 
-* GitHub: https://github.com/arangodb/aqbjs
+* Project Home: https://github.com/arangodb/aqbjs
 * License: [Apache 2 License](https://github.com/arangodb/aqbjs/blob/master/LICENSE)
-
-#### babel-code-frame
-
-* GitHub: https://github.com/babel/babel/tree/master/packages/babel-code-frame
-* License: [MIT License](https://github.com/babel/babel/blob/master/LICENSE)
 
 #### Chai
 
 * Project Home: http://chaijs.com
-* GitHub: https://github.com/chaijs/chai
+* GITHUB: https://github.com/chaijs/chai
 * License: [MIT License](https://github.com/chaijs/chai/blob/master/README.md)
-
-#### chalk
-
-* GitHub: https://github.com/chalk/chalk
-* License: [MIT License](https://github.com/chalk/chalk/blob/master/license)
 
 #### content-disposition
 
-* GitHub: https://github.com/jshttp/content-disposition
+* GITHUB: https://github.com/jshttp/content-disposition
 * License: [MIT License](https://github.com/jshttp/content-disposition/blob/master/LICENSE)
 
 #### dedent
 
-* GitHub: https://github.com/dmnd/dedent
+* GITHUB: https://github.com/dmnd/dedent
 * License: [MIT License](https://github.com/dmnd/dedent/blob/master/LICENSE)
 
 #### expect.js
 
-* GitHub: https://github.com/Automattic/expect.js
+* GITHUB: https://github.com/Automattic/expect.js
 * License: [MIT License](https://github.com/Automattic/expect.js/blob/master/README.md)
 
 #### extendible
 
-* GitHub: https://github.com/3rd-Eden/extendible
+* GITHUB: https://github.com/3rd-Eden/extendible
 * License: [MIT License](https://github.com/bigpipe/extendible/blob/master/README.md)
 
 #### graphql-sync
 
-* GitHub: https://github.com/arangodb/graphql-sync
+* GITHUB: https://github.com/arangodb/graphql-sync
 * License: [BSD-style 3-Clause License](https://github.com/arangodb/graphql-sync/blob/master/LICENSE)
 
 #### highlight.js
 
 * Project Home: https://highlightjs.org
-* GitHub: https://github.com/isagalaev/highlight.js
+* GITHUB: https://github.com/isagalaev/highlight.js
 * License: [BSD-style 3-Clause License](https://github.com/isagalaev/highlight.js/blob/master/LICENSE)
 
 #### http-errors
 
-* GitHub: https://github.com/jshttp/http-errors
+* GITHUB: https://github.com/jshttp/http-errors
 * License: [MIT License](https://github.com/jshttp/http-errors/blob/master/LICENSE)
 
 #### iconv-lite
 
-* GitHub: https://github.com/ashtuchkin/iconv-lite
+* GITHUB: https://github.com/ashtuchkin/iconv-lite
 * License: [MIT-style License](https://github.com/ashtuchkin/iconv-lite/blob/master/LICENSE)
 
 #### i (inflect)
 
-* GitHub: https://github.com/pksunkara/inflect
+* GITHUB: https://github.com/pksunkara/inflect
 * License: [MIT-style License](https://github.com/pksunkara/inflect/blob/master/LICENSE)
 
 #### Joi
 
-* GitHub: https://github.com/hapijs/joi
+* GITHUB: https://github.com/hapijs/joi
 * License: [BSD-style 3-Clause License](https://github.com/hapijs/joi/blob/master/LICENSE)
 
 ### joi-to-json-schema
 
-* GitHub: https://github.com/lightsofapollo/joi-to-json-schema
+* GITHUB: https://github.com/lightsofapollo/joi-to-json-schema
 * License: [Apache 2 License](https://github.com/lightsofapollo/joi-to-json-schema/blob/master/README.md#license)
 
 #### JS-YAML
 
-* GitHub: https://github.com/nodeca/js-yaml
+* GITHUB: https://github.com/nodeca/js-yaml
 * License: [MIT License](https://github.com/nodeca/js-yaml/blob/master/LICENSE)
 
 #### JSUnity
 
-* GitHub: https://github.com/atesgoral/jsunity
+* GITHUB: https://github.com/atesgoral/jsunity
 * License: [MIT License](https://github.com/atesgoral/jsunity/blob/master/LICENSE.txt)
 
 #### lodash
 
 * Project Home: https://lodash.com
-* GitHub: https://github.com/lodash/lodash
+* GITHUB: https://github.com/lodash/lodash
 * License: [MIT License](https://github.com/lodash/lodash/blob/master/LICENSE)
 
 #### media-typer
 
-* GitHub: https://github.com/jshttp/media-typer
+* GITHUB: https://github.com/jshttp/media-typer
 * License: [MIT License](https://github.com/jshttp/media-typer/blob/master/LICENSE)
 
 #### mime-types
 
-* GitHub: https://github.com/jshttp/mime-types
+* GITHUB: https://github.com/jshttp/mime-types
 * License: [MIT License](https://github.com/jshttp/mime-types/blob/master/LICENSE)
 
 #### minimatch
 
-* GitHub: https://github.com/isaacs/minimatch
+* GITHUB: https://github.com/isaacs/minimatch
 * License: [ISC License](https://github.com/isaacs/minimatch/blob/master/LICENSE)
 
 #### mocha
 
 * Project Home: http://mochajs.org
-* GitHub: https://github.com/mochajs/mocha
+* GITHUB: https://github.com/mochajs/mocha
 * License: [MIT License](https://github.com/mochajs/mocha/blob/master/LICENSE)
 
 #### qs
 
-* GitHub: https://github.com/hapijs/qs
+* GITHUB: https://github.com/hapijs/qs
 * License: [BSD-style 3-Clause License](https://github.com/hapijs/qs/blob/master/LICENSE)
 
 #### range-parser
 
-* GitHub: https://github.com/jshttp/range-parser
+* GITHUB: https://github.com/jshttp/range-parser
 * License: [MIT License](https://github.com/jshttp/range-parser/blob/master/LICENSE)
 
 #### Sinon.JS
 
 * Project Home: http://sinonjs.org
-* GitHub: https://github.com/sinonjs/sinon
+* GITHUB: https://github.com/sinonjs/sinon
 * License: [BSD 3-Clause License](https://github.com/sinonjs/sinon/blob/master/LICENSE)
 
 #### stacktrace.js
 
 * Project Home: https://www.stacktracejs.com
-* GitHub: https://github.com/stacktracejs/stacktrace.js
+* GITHUB: https://github.com/stacktracejs/stacktrace.js
 * License: [The Unlicense](https://github.com/stacktracejs/stacktrace.js/blob/master/LICENSE), see http://unlicense.org
 
 #### statuses
 
-* GitHub: https://github.com/jshttp/statuses
+* GITHUB: https://github.com/jshttp/statuses
 * License: [MIT License](https://github.com/jshttp/statuses/blob/master/LICENSE)
 
 #### timezone
 
-* GitHub: https://github.com/bigeasy/timezone
+* GITHUB: https://github.com/bigeasy/timezone
 * License: [MIT License](https://github.com/bigeasy/timezone/blob/master/LICENSE)
 
 #### type-is
 
-* GitHub: https://github.com/jshttp/type-is
+* GITHUB: https://github.com/jshttp/type-is
 * License: [MIT License](https://github.com/jshttp/type-is/blob/master/LICENSE)
 
 #### vary
 
-* GitHub: https://github.com/jshttp/vary
+* GITHUB: https://github.com/jshttp/vary
 * License: [MIT License](https://github.com/jshttp/vary/blob/master/LICENSE)
 
 #### underscore
 
 * Project Home: http://underscorejs.org
-* GitHub: https://github.com/jashkenas/underscore
+* GITHUB: https://github.com/jashkenas/underscore
 * License: [MIT-style License](https://github.com/jashkenas/underscore/blob/master/LICENSE)
 
 ### Frontend libraries
@@ -289,30 +275,30 @@
 #### Backbone.js
 
 * Project Home: http://backbonejs.org
-* GitHub: https://github.com/jashkenas/backbone
+* GITHUB: https://github.com/jashkenas/backbone
 * License: [MIT-style License](https://github.com/jashkenas/backbone/blob/master/LICENSE)
 
 #### Bootstrap
 
 * Project Home: http://getbootstrap.com
-* GitHub: https://github.com/twbs/bootstrap
+* GITHUB: https://github.com/twbs/bootstrap
 * License: [MIT License](https://github.com/twbs/bootstrap/blob/master/LICENSE)
 
 #### Crypto.js
 
-* GitHub: https://github.com/brix/crypto-js
+* GITHUB: https://github.com/brix/crypto-js
 * License: [MIT License](https://github.com/brix/crypto-js/blob/develop/README.md) under "License"
 
 #### D3js
 
 * Project Home: http://d3js.org
-* GitHub: https://github.com/mbostock/d3
+* GITHUB: https://github.com/mbostock/d3
 * License: [BSD-style 3-Clause License](https://github.com/mbostock/d3/blob/master/LICENSE)
 
 #### dygraph
 
 * Project Home: http://dygraphs.com
-* GitHub: https://github.com/danvk/dygraphs
+* GITHUB: https://github.com/danvk/dygraphs
 * License: [MIT-style License](https://github.com/danvk/dygraphs/blob/master/LICENSE.txt)
 
 #### Embedded JS
@@ -322,40 +308,40 @@
 
 #### prettyBytes.js
 
-* GitHub: https://github.com/sindresorhus/pretty-bytes
+* GITHUB: https://github.com/sindresorhus/pretty-bytes
 * License: [MIT License](https://github.com/sindresorhus/pretty-bytes/blob/master/license)
 
 #### Jasmine
 
 * Project Home: https://jasmine.github.io
-* GitHub: https://github.com/jasmine/jasmine
+* GITHUB: https://github.com/jasmine/jasmine
 * License: [MIT License](https://github.com/jasmine/jasmine/blob/master/MIT.LICENSE)
 
 #### jq-console
 
 * Project Home: http://replit.github.io/jq-console/
-* GitHub: https://github.com/replit/jq-console
+* GITHUB: https://github.com/replit/jq-console
 * License: [MIT License](https://github.com/replit/jq-console/blob/master/README.md)
 
 #### jQuery
 
 * Project Home: http://jquery.com
-* GitHub: https://github.com/jquery/jquery
+* GITHUB: https://github.com/jquery/jquery
 * License: [MIT-style License](https://github.com/jquery/jquery/blob/master/LICENSE.txt)
 
 #### jQuery Contextmenu
 
-* GitHub: https://github.com/swisnl/jQuery-contextMenu
+* GITHUB: https://github.com/swisnl/jQuery-contextMenu
 * License: [MIT License](https://github.com/swisnl/jQuery-contextMenu/blob/master/README.md) under "License"
 
 #### jQuery Form
 
-* GitHub: https://github.com/malsup/form/
+* GITHUB: https://github.com/malsup/form/
 * License: Dual License [MIT License](https://github.com/malsup/form/blob/master/README.md) under "Copyright and License"
 
 #### jQuery Hotkeys
 
-* GitHub: https://github.com/jeresig/jquery.hotkeys
+* GITHUB: https://github.com/jeresig/jquery.hotkeys
 * License: Dual License [MIT License](https://github.com/jeresig/jquery.hotkeys/blob/master/jquery.hotkeys.js)
 
 #### jQuery Snippet
@@ -365,33 +351,33 @@
 
 #### jQuery Strftime
 
-* GitHub: https://github.com/samsonjs/strftime
+* GITHUB: https://github.com/samsonjs/strftime
 * License: [MIT License](https://github.com/samsonjs/strftime/blob/master/Readme.md) under "License"
 
 #### jQuery Textfill
 
-* GitHub: https://github.com/jquery-textfill/jquery-textfill
+* GITHUB: https://github.com/jquery-textfill/jquery-textfill
 * Licensd: [MIT License](https://github.com/jquery-textfill/jquery-textfill/blob/master/README.md)
 
 #### jQuery UI
 
 * Project Home: http://jqueryui.com
-* GitHub: https://github.com/jquery/jquery-ui
+* GITHUB: https://github.com/jquery/jquery-ui
 * License: [MIT-style License](https://github.com/jquery/jquery-ui/blob/master/LICENSE.txt)
 
 #### jQuery UploadFile
 
-* GitHub: https://github.com/hayageek/jquery-upload-file/
+* GITHUB: https://github.com/hayageek/jquery-upload-file/
 * License: [MIT License](https://github.com/hayageek/jquery-upload-file/blob/master/MIT-License.txt)
 
 #### jsoneditor.js
 
-* GitHub: https://github.com/josdejong/jsoneditor/
+* GITHUB: https://github.com/josdejong/jsoneditor/
 * License: [Apache 2 License](https://github.com/josdejong/jsoneditor/blob/master/LICENSE)
 
 #### nvd3
 
-* GitHub: https://github.com/novus/nvd3
+* GITHUB: https://github.com/novus/nvd3
 * License: [Apache 2 License](https://github.com/novus/nvd3/blob/master/LICENSE.md) under "nvd3.js"
 
 #### Noty
@@ -401,26 +387,26 @@
 
 #### select2
 
-* GitHub: https://github.com/select2/select2
+* GITHUB: https://github.com/select2/select2
 * License: [MIT License](https://github.com/select2/select2/blob/master/LICENSE.md)
 
 #### Numeral.js
 
-* GitHub: https://github.com/adamwdraper/Numeral-js
+* GITHUB: https://github.com/adamwdraper/Numeral-js
 * License: [MIT License](https://github.com/adamwdraper/Numeral-js/blob/master/LICENSE)
 
 #### Swagger UI
 
 * Project Home: http://swagger.io
-* GitHub: https://github.com/swagger-api/swagger-ui
+* GITHUB: https://github.com/swagger-api/swagger-ui
 * License: [Apache 2 license](https://github.com/swagger-api/swagger-ui/blob/master/LICENSE)
 
 #### sigma.js
 
-* GitHub: https://github.com/jacomyal/sigma.js
+* GITHUB: https://github.com/jacomyal/sigma.js
 * License: [MIT License](https://github.com/jacomyal/sigma.js/blob/master/LICENSE.txt)
 
 #### wheelnav.js
 
-* GitHub: https://github.com/softwaretailoring/wheelnav
+* GITHUB: https://github.com/softwaretailoring/wheelnav
 * License: [MIT License](https://github.com/softwaretailoring/wheelnav/blob/master/LICENSE)

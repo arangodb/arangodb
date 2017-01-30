@@ -63,15 +63,7 @@
           try {
             require('@arangodb/foxx/manager').initializeFoxx();
           } catch (e) {
-            let err = e;
-            while (err) {
-              console.errorLines(
-                err === e
-                ? err.stack
-                : `via ${err.stack}`
-              );
-              err = err.cause;
-            }
+            console.errorLines(e.stack);
           }
         }
       } finally {

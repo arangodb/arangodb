@@ -541,7 +541,9 @@
       if (e.errorNum !== internal.errors.ERROR_MODULE_FAILURE.code) {
         const error = new internal.ArangoError({
           errorNum: internal.errors.ERROR_MODULE_FAILURE.code,
-          errorMessage: `${internal.errors.ERROR_MODULE_FAILURE.message}\nFile: ${filename}`
+          errorMessage: internal.errors.ERROR_MODULE_FAILURE.message
+            + '\nFile: ' + filename
+            + '\nCause: ' + e.stack
         });
         error.cause = e;
         throw error;
