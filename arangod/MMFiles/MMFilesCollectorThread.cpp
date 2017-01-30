@@ -358,6 +358,18 @@ bool MMFilesCollectorThread::hasQueuedOperations(TRI_voc_cid_t cid) {
   return (_operationsQueue.find(cid) != _operationsQueue.end());
 }
 
+// execute a callback during a phase in which the collector has nothing
+// queued. This is used in the DatabaseManagerThread when dropping
+// a database to avoid existence of ditches of type DOCUMENT.
+bool MMFilesCollectorThread::executeWhileNothingQueued(std::function<void()> const& cb) {
+  MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
+  if (!_operationsQueue.empty()) {
+    return false;
+  }
+  cb();
+  return true;
+}
+
 /// @brief step 1: perform collection of a logfile (if any)
 int MMFilesCollectorThread::collectLogfiles(bool& worked) {
   // always init result variable

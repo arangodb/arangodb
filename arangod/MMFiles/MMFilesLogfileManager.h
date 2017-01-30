@@ -368,6 +368,11 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   
   void waitForCollector();
 
+  // execute a callback during a phase in which the collector has nothing
+  // queued. This is used in the DatabaseManagerThread when dropping
+  // a database to avoid existence of ditches of type DOCUMENT.
+  bool executeWhileNothingQueued(std::function<void()> const& cb);
+
  private:
   // reserve space in a logfile
   MMFilesWalSlotInfo allocate(uint32_t);

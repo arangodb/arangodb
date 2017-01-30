@@ -1161,9 +1161,6 @@ void RestReplicationHandler::handleCommandInventory() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandClusterInventory() {
-  // TODO: This needs to be reworked, we ought to use the LogicalCollections
-  // data structures to produce the result rather than taking the plan from
-  // the agency.
   std::string const& dbName = _request->databaseName();
   bool found;
   bool includeSystem = true;
@@ -1174,51 +1171,23 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     includeSystem = StringUtils::boolean(value);
   }
 
-  AgencyComm _agency;
-  AgencyCommResult result;
+  ClusterInfo* ci = ClusterInfo::instance();
+  std::vector<std::shared_ptr<LogicalCollection>> cols = ci->getCollections(dbName);
 
-  std::string prefix("Plan/Collections/");
-  prefix.append(dbName);
-
-  result = _agency.getValues(prefix);
-  if (!result.successful()) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
-  } else {
-    VPackSlice colls = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Plan", "Collections", dbName}));
-
-    if (!colls.isObject()) {
-      generateError(rest::ResponseCode::SERVER_ERROR,
-                    TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
-    } else {
-      VPackBuilder resultBuilder;
-      {
-        VPackObjectBuilder b1(&resultBuilder);
-        resultBuilder.add(VPackValue("collections"));
-        {
-          VPackArrayBuilder b2(&resultBuilder);
-          for (auto const& p : VPackObjectIterator(colls)) {
-            VPackSlice const subResultSlice = p.value;
-            if (subResultSlice.isObject()) {
-              if (includeSystem ||
-                  !arangodb::basics::VelocyPackHelper::getBooleanValue(
-                      subResultSlice, "isSystem", true)) {
-                VPackObjectBuilder b3(&resultBuilder);
-                resultBuilder.add("indexes", subResultSlice.get("indexes"));
-                resultBuilder.add("parameters", subResultSlice);
-              }
-            }
-          }
-        }
-        TRI_voc_tick_t tick = TRI_CurrentTickServer();
-        auto tickString = std::to_string(tick);
-        resultBuilder.add("tick", VPackValue(tickString));
-        resultBuilder.add("state", VPackValue("unused"));
-      }
-      generateResult(rest::ResponseCode::OK, resultBuilder.slice());
-    }
+  VPackBuilder resultBuilder;
+  resultBuilder.openObject();
+  resultBuilder.add(VPackValue("collections"));
+  resultBuilder.openArray();
+  for (auto const& c : cols) {
+    c->toVelocyPackForClusterInventory(resultBuilder, includeSystem);
   }
+  resultBuilder.close(); // collections
+  TRI_voc_tick_t tick = TRI_CurrentTickServer();
+  auto tickString = std::to_string(tick);
+  resultBuilder.add("tick", VPackValue(tickString));
+  resultBuilder.add("state", VPackValue("unused"));
+  resultBuilder.close(); // base
+  generateResult(rest::ResponseCode::OK, resultBuilder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1652,11 +1621,20 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   // now re-create the collection
-  // dig out number of shards, explicit attribute takes precedence:
+
+  // Build up new information that we need to merge with the given one
+  VPackBuilder toMerge;
+  toMerge.openObject();
+
+  // We always need a new id
+  TRI_voc_tick_t newIdTick = ci->uniqid(1);
+  std::string newId = StringUtils::itoa(newIdTick);
+  toMerge.add("id", VPackValue(newId));
+
+  // Number of shards. Will be overwritten if not existent
   VPackSlice const numberOfShardsSlice = parameters.get("numberOfShards");
-  if (numberOfShardsSlice.isInteger()) {
-    numberOfShards = numberOfShardsSlice.getNumericValue<uint64_t>();
-  } else {
+  if (!numberOfShardsSlice.isInteger()) {
+    // The information does not contain numberOfShards. Overwrite it.
     VPackSlice const shards = parameters.get("shards");
     if (shards.isObject()) {
       numberOfShards = static_cast<uint64_t>(shards.length());
@@ -1668,70 +1646,20 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
         numberOfShards = 1;
       }
     }
+    TRI_ASSERT(numberOfShards > 0);
+    toMerge.add("numberOfShards", VPackValue(numberOfShards));
   }
 
-  TRI_ASSERT(numberOfShards > 0);
-
+  // Replication Factor. Will be overwritten if not existent
   VPackSlice const replFactorSlice = parameters.get("replicationFactor");
-  if (replFactorSlice.isInteger()) {
-    replicationFactor =
-        replFactorSlice.getNumericValue<decltype(replicationFactor)>();
-  }
-  if (replicationFactor == 0) {
-    replicationFactor = 1;
-  }
-
-  TRI_voc_tick_t newIdTick = ci->uniqid(1);
-  VPackBuilder toMerge;
-  std::string&& newId = StringUtils::itoa(newIdTick);
-  toMerge.openObject();
-  toMerge.add("id", VPackValue(newId));
-
-  // shard keys
-  VPackSlice const shardKeys = parameters.get("shardKeys");
-  if (!shardKeys.isObject()) {
-    // set default shard key
-    toMerge.add("shardKeys", VPackValue(VPackValueType::Array));
-    toMerge.add(VPackValue(StaticStrings::KeyString));
-    toMerge.close();  // end of shardKeys
-  }
-
-  // shards
-  std::vector<std::string> dbServers;  // will be filled
-  std::unordered_map<std::string, std::vector<std::string>> shardDistribution =
-      arangodb::distributeShards(numberOfShards, replicationFactor, dbServers);
-  if (shardDistribution.empty()) {
-    errorMsg = "no database servers found in cluster";
-    return TRI_ERROR_INTERNAL;
-  }
-
-  toMerge.add(VPackValue("shards"));
-  {
-    VPackObjectBuilder guard(&toMerge);
-    for (auto const& p : shardDistribution) {
-      toMerge.add(VPackValue(p.first));
-      {
-        VPackArrayBuilder guard2(&toMerge);
-        for (std::string const& s : p.second) {
-          toMerge.add(VPackValue(s));
-        }
-      }
+  if (!replFactorSlice.isInteger()) {
+    if (replicationFactor == 0) {
+      replicationFactor = 1;
     }
+    TRI_ASSERT(replicationFactor > 0);
+    toMerge.add("replicationFactor", VPackValue(replicationFactor));
   }
-  toMerge.add("replicationFactor", VPackValue(replicationFactor));
-
-  // Now put in the primary and an edge index if needed:
-  toMerge.add("indexes", VPackValue(VPackValueType::Array));
-
-  // create a dummy primary index
-  {
-    arangodb::LogicalCollection* collection = nullptr;
-    std::unique_ptr<arangodb::MMFilesPrimaryIndex> primaryIndex(
-        new arangodb::MMFilesPrimaryIndex(collection));
-    toMerge.openObject();
-    primaryIndex->toVelocyPack(toMerge, false);
-    toMerge.close();
-  }
+  toMerge.close();  // TopLevel
 
   VPackSlice const type = parameters.get("type");
   TRI_col_type_e collectionType;
@@ -1742,31 +1670,21 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  if (collectionType == TRI_COL_TYPE_EDGE) {
-    // create a dummy edge index
-    std::unique_ptr<arangodb::MMFilesEdgeIndex> edgeIndex(
-        new arangodb::MMFilesEdgeIndex(newIdTick, nullptr));
-    toMerge.openObject();
-    edgeIndex->toVelocyPack(toMerge, false);
-    toMerge.close();
-  }
-
-  toMerge.close();  // indexes
-  toMerge.close();  // TopLevel
   VPackSlice const sliceToMerge = toMerge.slice();
-
   VPackBuilder mergedBuilder =
       VPackCollection::merge(parameters, sliceToMerge, false);
   VPackSlice const merged = mergedBuilder.slice();
-
-  int res = ci->createCollectionCoordinator(
-    dbName, newId, numberOfShards, replicationFactor,  merged, errorMsg, 0.0);
-  if (res != TRI_ERROR_NO_ERROR) {
-    errorMsg =
-        "unable to create collection: " + std::string(TRI_errno_string(res));
+  try {
+    auto col = ClusterMethods::createCollectionOnCoordinator(collectionType,
+                                                             _vocbase, merged);
+    TRI_ASSERT(col != nullptr);
+  } catch (basics::Exception const& e) {
+    // Error, report it.
+    errorMsg = e.message();
+    return e.code();
   }
-
-  return res;
+  // All other errors are thrown to the outside.
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

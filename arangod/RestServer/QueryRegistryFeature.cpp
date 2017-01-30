@@ -38,6 +38,7 @@ aql::QueryRegistry* QueryRegistryFeature::QUERY_REGISTRY = nullptr;
 QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
     : ApplicationFeature(server, "QueryRegistry"),
       _queryTracking(true),
+      _queryMemoryLimit(0),
       _slowThreshold(10.0),
       _queryCacheMode("off"),
       _queryCacheEntries(128) {
@@ -56,6 +57,9 @@ void QueryRegistryFeature::collectOptions(
   options->addOldOption("database.query-cache-mode", "query.cache-mode");
   options->addOldOption("database.query-cache-max-results", "query.cache-entries");
   options->addOldOption("database.disable-query-tracking", "query.tracking");
+
+  options->addOption("--query.memory-limit", "memory threshold for AQL queries (in bytes)",
+                     new UInt64Parameter(&_queryMemoryLimit));
 
   options->addOption("--query.tracking", "whether to track slow AQL queries",
                      new BooleanParameter(&_queryTracking));
@@ -77,6 +81,9 @@ void QueryRegistryFeature::validateOptions(
 }
 
 void QueryRegistryFeature::prepare() {
+  // set query memory limit
+  arangodb::aql::Query::MemoryLimit(_queryMemoryLimit);
+
   // set global query tracking flag
   arangodb::aql::Query::DisableQueryTracking(!_queryTracking);
   

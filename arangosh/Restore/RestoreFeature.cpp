@@ -340,6 +340,19 @@ static bool SortCollections(VPackSlice const& l, VPackSlice const& r) {
   VPackSlice const left = l.get("parameters");
   VPackSlice const right = r.get("parameters");
 
+  // First we sort by distribution.
+  // We first have to create collections defining the distribution.
+  VPackSlice leftDist = left.get("distributeShardsLike");
+  VPackSlice rightDist = right.get("distributeShardsLike");
+  
+  if (leftDist.isNone() && !rightDist.isNone()) {
+    return true;
+  }
+
+  if (rightDist.isNone() && !leftDist.isNone()) {
+    return false;
+  }
+
   int leftType =
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(left, "type", 0);
   int rightType = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
@@ -458,7 +471,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
     }
 
     std::sort(collections.begin(), collections.end(), SortCollections);
-
+    
     StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
 
     // step2: run the actual import

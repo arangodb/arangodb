@@ -809,6 +809,47 @@ void LogicalCollection::getIndexesVPack(VPackBuilder& result,
   result.close();
 }
 
+void LogicalCollection::getPropertiesVPack(VPackBuilder& result, bool translateCids) const {
+  TRI_ASSERT(result.isOpenObject());
+  result.add("id", VPackValue(std::to_string(_cid)));
+  result.add("name", VPackValue(_name));
+  result.add("type", VPackValue(static_cast<int>(_type)));
+  result.add("status", VPackValue(_status));
+  result.add("deleted", VPackValue(_isDeleted));
+  result.add("doCompact", VPackValue(_doCompact));
+  result.add("isSystem", VPackValue(_isSystem));
+  result.add("isVolatile", VPackValue(_isVolatile));
+  result.add("waitForSync", VPackValue(_waitForSync));
+  result.add("journalSize", VPackValue(_journalSize));
+  result.add("indexBuckets", VPackValue(_indexBuckets));
+  result.add("replicationFactor", VPackValue(_replicationFactor));
+  if (!_distributeShardsLike.empty()) {
+    if (translateCids) {
+      CollectionNameResolver resolver(_vocbase);
+      result.add("distributeShardsLike",
+                 VPackValue(resolver.getCollectionNameCluster(
+                     static_cast<TRI_voc_cid_t>(
+                         basics::StringUtils::uint64(_distributeShardsLike)))));
+    } else {
+      result.add("distributeShardsLike", VPackValue(_distributeShardsLike));
+    }
+  }
+
+  if (_keyGenerator != nullptr) {
+    result.add(VPackValue("keyOptions"));
+    result.openObject();
+    _keyGenerator->toVelocyPack(result);
+    result.close();
+  }
+
+  result.add(VPackValue("shardKeys"));
+  result.openArray();
+  for (auto const& key : _shardKeys) {
+    result.add(VPackValue(key));
+  }
+  result.close();  // shardKeys
+}
+
 // SECTION: Replication
 int LogicalCollection::replicationFactor() const {
   return static_cast<int>(_replicationFactor);
@@ -974,15 +1015,30 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
 void LogicalCollection::toVelocyPackForAgency(VPackBuilder& result) {
   _status = TRI_VOC_COL_STATUS_LOADED;
   result.openObject();
-  toVelocyPackInObject(result);
+  toVelocyPackInObject(result, false);
 
   result.close();  // Base Object
+}
+
+void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
+                                                        bool useSystem) const {
+  if (_isSystem && !useSystem) {
+    return;
+  }
+  result.openObject();
+  result.add(VPackValue("parameters"));
+  result.openObject();
+  toVelocyPackInObject(result, true);
+  result.close();
+  result.add(VPackValue("indexes"));
+  getIndexesVPack(result, false);
+  result.close(); // CollectionInfo
 }
 
 void LogicalCollection::toVelocyPack(VPackBuilder& result,
                                      bool withPath) const {
   result.openObject();
-  toVelocyPackInObject(result);
+  toVelocyPackInObject(result, false);
   result.add(
       "cid",
       VPackValue(std::to_string(_cid)));  // export cid for compatibility, too
@@ -1001,23 +1057,9 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result,
 
 // Internal helper that inserts VPack info into an existing object and leaves
 // the object open
-void LogicalCollection::toVelocyPackInObject(VPackBuilder& result) const {
-  result.add("id", VPackValue(std::to_string(_cid)));
-  result.add("name", VPackValue(_name));
-  result.add("type", VPackValue(static_cast<int>(_type)));
-  result.add("status", VPackValue(_status));
-  result.add("deleted", VPackValue(_isDeleted));
-  result.add("doCompact", VPackValue(_doCompact));
-  result.add("isSystem", VPackValue(_isSystem));
-  result.add("isVolatile", VPackValue(_isVolatile));
-  result.add("waitForSync", VPackValue(_waitForSync));
-  result.add("journalSize", VPackValue(_journalSize));
-  result.add("indexBuckets", VPackValue(_indexBuckets));
-  result.add("replicationFactor", VPackValue(_replicationFactor));
+void LogicalCollection::toVelocyPackInObject(VPackBuilder& result, bool translateCids) const {
+  getPropertiesVPack(result, translateCids);
   result.add("numberOfShards", VPackValue(_numberOfShards));
-  if (!_distributeShardsLike.empty()) {
-    result.add("distributeShardsLike", VPackValue(_distributeShardsLike));
-  }
 
   if (!_avoidServers.empty()) {
     result.add(VPackValue("avoidServers"));
@@ -1026,20 +1068,6 @@ void LogicalCollection::toVelocyPackInObject(VPackBuilder& result) const {
       result.add(VPackValue(i));
     }
   }
-
-  if (_keyGenerator != nullptr) {
-    result.add(VPackValue("keyOptions"));
-    result.openObject();
-    _keyGenerator->toVelocyPack(result);
-    result.close();
-  }
-
-  result.add(VPackValue("shardKeys"));
-  result.openArray();
-  for (auto const& key : _shardKeys) {
-    result.add(VPackValue(key));
-  }
-  result.close();  // shardKeys
 
   result.add(VPackValue("shards"));
   result.openObject();

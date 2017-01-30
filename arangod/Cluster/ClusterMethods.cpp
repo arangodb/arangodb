@@ -31,6 +31,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Indexes/Index.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Traverser.h"
@@ -2107,6 +2108,93 @@ std::unordered_map<std::string, std::vector<std::string>> distributeShards(
   }
 
   return shards;
+}
+
+#ifndef USE_ENTERPRISE
+std::unique_ptr<LogicalCollection>
+ClusterMethods::createCollectionOnCoordinator(TRI_col_type_e collectionType,
+                                              TRI_vocbase_t* vocbase,
+                                              VPackSlice parameters) {
+    auto col = std::make_unique<LogicalCollection>(vocbase, parameters, false);
+    // Collection is a temporary collection object that undergoes sanity checks etc.
+    // It is not used anywhere and will be cleaned up after this call.
+    // Persist collection will return the real object.
+    return persistCollectionInAgency(col.get());
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Persist collection in Agency and trigger shard creation process
+////////////////////////////////////////////////////////////////////////////////
+
+std::unique_ptr<LogicalCollection>
+ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
+  std::string distributeShardsLike = col->distributeShardsLike();
+  std::vector<std::string> dbServers;
+
+  ClusterInfo* ci = ClusterInfo::instance();
+  if (!distributeShardsLike.empty()) {
+    CollectionNameResolver resolver(col->vocbase());
+    TRI_voc_cid_t otherCid =
+        resolver.getCollectionIdCluster(distributeShardsLike);
+    if (otherCid != 0) {
+      std::string otherCidString 
+          = arangodb::basics::StringUtils::itoa(otherCid);
+      try {
+        std::shared_ptr<LogicalCollection> collInfo =
+            ci->getCollection(col->dbName(), otherCidString);
+        auto shards = collInfo->shardIds();
+        auto shardList = ci->getShardList(otherCidString);
+        for (auto const& s : *shardList) {
+          auto it = shards->find(s);
+          if (it != shards->end()) {
+            for (auto const& s : it->second) {
+              dbServers.push_back(s);
+            }
+          }
+        }
+      } catch (...) {
+      }
+      col->distributeShardsLike(otherCidString);
+    }
+  }
+  
+  // If the list dbServers is still empty, it will be filled in
+  // distributeShards below.
+
+  // Now create the shards:
+  auto shards = std::make_shared<
+      std::unordered_map<std::string, std::vector<std::string>>>(
+      arangodb::distributeShards(col->numberOfShards(),
+                                 col->replicationFactor(), dbServers));
+  if (shards->empty() && !col->isSmart()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "no database servers found in cluster");
+  }
+  col->setShardMap(shards);
+
+  VPackBuilder velocy;
+  col->toVelocyPackForAgency(velocy);
+
+  std::string errorMsg;
+  int myerrno = ci->createCollectionCoordinator(
+      col->dbName(), col->cid_as_string(),
+      col->numberOfShards(), col->replicationFactor(), velocy.slice(), errorMsg, 240.0);
+
+  if (myerrno != TRI_ERROR_NO_ERROR) {
+    if (errorMsg.empty()) {
+      errorMsg = TRI_errno_string(myerrno);
+    }
+    THROW_ARANGO_EXCEPTION_MESSAGE(myerrno, errorMsg);
+  }
+  ci->loadPlan();
+
+  auto c = ci->getCollection(col->dbName(), col->cid_as_string());
+  // We never get a nullptr here because an exception is thrown if the
+  // collection does not exist. Also, the create collection should have
+  // failed before.
+  TRI_ASSERT(c != nullptr);
+  return c->clone();
 }
 
 }  // namespace arangodb

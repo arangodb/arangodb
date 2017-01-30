@@ -163,7 +163,21 @@ void DatabaseManagerThread::run() {
             }
           }
 
-          database->shutdown();
+          // To shutdown the database (which destroys all LogicalCollection
+          // objects of all collections) we need to make sure that the
+          // Collector does not interfere. Therefore we execute the shutdown
+          // in a phase in which the collector thread does not have any
+          // queued operations, a service which it offers:
+          auto callback = [&database]() {
+            database->shutdown();
+            usleep(10000);
+          };
+          while (!MMFilesLogfileManager::instance()
+                  ->executeWhileNothingQueued(callback)) {
+            LOG(TRACE) << "Trying to shutdown dropped database, waiting for phase in which the collector thread does not have queued operations.";
+            usleep(500000);
+          }
+
           engine->dropDatabase(database);
         }
 

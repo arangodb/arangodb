@@ -486,6 +486,7 @@ class Ast {
   /// @brief optimizes an object literal or an object expression
   AstNode* optimizeObject(AstNode*);
 
+public:
   /// @brief traverse the AST, using pre- and post-order visitors
   static AstNode* traverseAndModify(AstNode*,
                                     std::function<bool(AstNode const*, void*)>,
@@ -504,7 +505,7 @@ class Ast {
   static void traverseReadOnly(AstNode const*,
                                std::function<void(AstNode const*, void*)>,
                                void*);
-
+private:
   /// @brief normalize a function name
   std::pair<std::string, bool> normalizeFunctionName(char const*);
 

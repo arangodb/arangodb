@@ -235,6 +235,12 @@ class LogicalCollection {
   // is somehow protected. If it goes out of all scopes
   // or it's indexes are freed the pointer returned will get invalidated.
   arangodb::MMFilesPrimaryIndex* primaryIndex() const;
+
+  // Adds all properties to the builder (has to be an open object)
+  // Does not add Shards or Indexes
+  void getPropertiesVPack(arangodb::velocypack::Builder&,
+                          bool translateCids) const;
+  
   void getIndexesVPack(arangodb::velocypack::Builder&, bool) const;
 
   // SECTION: Replication
@@ -265,6 +271,8 @@ class LogicalCollection {
   // SECTION: Serialisation
   void toVelocyPack(arangodb::velocypack::Builder&, bool withPath) const;
   virtual void toVelocyPackForAgency(arangodb::velocypack::Builder&);
+  virtual void toVelocyPackForClusterInventory(arangodb::velocypack::Builder&,
+                                               bool useSystem) const;
 
   /// @brief transform the information for this collection to velocypack
   ///        The builder has to be an opened Type::Object
@@ -486,7 +494,7 @@ class LogicalCollection {
   void increaseInternalVersion();
 
  protected:
-  void toVelocyPackInObject(arangodb::velocypack::Builder& result) const;
+  void toVelocyPackInObject(arangodb::velocypack::Builder& result, bool translateCids) const;
 
   // SECTION: Meta Information
   //
