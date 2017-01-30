@@ -763,6 +763,7 @@ void HeartbeatThread::syncDBServerStatusQuo() {
   // schedule a job for the change:
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync "
     << ++_backgroundJobsPosted;
+  _backgroundJobScheduledOrRunning = true;
   _ioService->post(_backgroundJob);
 }
 
