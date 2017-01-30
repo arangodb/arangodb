@@ -127,7 +127,7 @@ indexes (e.g. primary index).
 @RESTSTRUCT{size,collection_figures_indexes,integer,required,int64}
 The total memory allocated for indexes in bytes.
 
-@RESTSTRUCT{maxTick,collection_figures,integer,required,int64}
+@RESTSTRUCT{lastTick,collection_figures,integer,required,int64}
 The tick of the last marker that was stored in a journal
 of the collection. This might be 0 if the collection does not yet have
 a journal.
