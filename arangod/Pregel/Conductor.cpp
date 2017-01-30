@@ -27,11 +27,11 @@
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
+#include "Pregel/ThreadPool.h"
 #include "Pregel/Utils.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
-#include "Basics/ThreadPool.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -277,7 +277,7 @@ void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder& response) {
 
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  basics::ThreadPool* pool = PregelFeature::instance()->threadPool();
+  ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this] {
     MUTEX_LOCKER(cguard, _callbackMutex);
 
@@ -386,7 +386,7 @@ void Conductor::startRecovery() {
   _state = ExecutionState::RECOVERING;
   _statistics.reset();
 
-  basics::ThreadPool* pool = PregelFeature::instance()->threadPool();
+  ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this] {
     // let's wait for a final state in the cluster
     // on some systems usleep does not

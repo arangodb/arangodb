@@ -25,7 +25,7 @@
 #include <algorithm>
 #include "Agency/Supervision.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/ThreadPool.h"
+#include "Pregel/ThreadPool.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
@@ -193,7 +193,7 @@ void RecoveryManager::updatedFailedServers() {
     if (it != failed.end()) {
       // found a failed server
       ShardID const& shard = pair.first;
-      basics::ThreadPool* pool = PregelFeature::instance()->threadPool();
+      ThreadPool* pool = PregelFeature::instance()->threadPool();
       pool->enqueue([this, shard] { _renewPrimaryServer(shard); });
     }
   }

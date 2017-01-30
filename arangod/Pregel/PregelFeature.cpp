@@ -23,11 +23,11 @@
 #include "PregelFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/ThreadPool.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/Recovery.h"
+#include "Pregel/ThreadPool.h"
 #include "Pregel/Worker.h"
 
 using namespace arangodb::pregel;
@@ -40,7 +40,7 @@ uint64_t PregelFeature::createExecutionNumber() {
 
 PregelFeature::PregelFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Pregel") {
-  setOptional(false);
+  setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
   startsAfter("Database");
@@ -76,7 +76,7 @@ void PregelFeature::start() {
 
   const size_t threadNum = _approxThreadNumber();
   LOG(INFO) << "Pregel uses " << threadNum << " threads";
-  _threadPool.reset(new basics::ThreadPool(threadNum, "Pregel"));
+  _threadPool.reset(new ThreadPool(threadNum, "Pregel"));
 
   if (ServerState::instance()->isCoordinator()) {
     _recoveryManager.reset(new RecoveryManager());

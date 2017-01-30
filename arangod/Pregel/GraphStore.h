@@ -66,7 +66,7 @@ class GraphStore {
   std::set<ShardID> _loadedShards;
   std::atomic<uint64_t> _localVerticeCount;
   std::atomic<uint64_t> _localEdgeCount;
-  std::atomic<uint32_t> _runningThreads;
+  uint32_t _runningThreads;
   mutable Mutex _threadMutex;
 
   void _loadVertices(ShardID const& vertexShard,
