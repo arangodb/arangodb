@@ -159,8 +159,7 @@ class V8Wrapper {
   /// @brief weak callback
   //////////////////////////////////////////////////////////////////////////////
 
-  static void weakCallback(const v8::WeakCallbackData<
-      v8::Object, v8::Persistent<v8::Object>>& data) {
+  static void weakCallback(const v8::WeakCallbackInfo<v8::Persistent<v8::Object>>& data) {
     auto isolate = data.GetIsolate();
     auto persistent = data.GetParameter();
     auto myPointer = v8::Local<v8::Object>::New(isolate, *persistent);
@@ -180,7 +179,7 @@ class V8Wrapper {
   /// @brief weakens the reference
   //////////////////////////////////////////////////////////////////////////////
 
-  void makeWeak() { _handle.SetWeak(&_handle, weakCallback); }
+  void makeWeak() { _handle.SetWeak(&_handle, weakCallback, v8::WeakCallbackType::kFinalizer); }
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

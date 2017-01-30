@@ -56,6 +56,10 @@ set(PROJECT_SOURCE_DIR @PROJECT_SOURCE_DIR@)
 set(CPACK_PACKAGE_NAME @CPACK_PACKAGE_NAME@)
 set(CPACKG_PACKAGE_CONFLICTS @CPACKG_PACKAGE_CONFLICTS@)
 
+set(ICU_DT "@ICU_DT@")
+set(ICU_DT_DEST "@ICU_DT_DEST@")
+set(INSTALL_ICU_DT_DEST "@INSTALL_ICU_DT_DEST@")
+
 ################################################################################
 # Get the final values for cpack:
 ################################################################################
@@ -109,6 +113,10 @@ set(INSTALL_MACROS_NO_TARGET_INSTALL TRUE)
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallMacros.cmake)
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallArangoDBJSClient.cmake)
 include(${ORIGINAL_SOURCE_DIR}/arangosh/install.cmake)
+
+install(FILES ${ICU_DT}
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
+  RENAME ${ICU_DT_DEST})
 
 include(CPack)
 

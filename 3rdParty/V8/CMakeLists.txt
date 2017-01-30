@@ -15,7 +15,7 @@ set(V8_VERSION 5.0.71.39)
 
 # create target directory
 
-set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-${V8_VERSION}")
+set(V8_DIR "${PROJECT_SOURCE_DIR}/v8")
 set(V8_TARGET_DIR "${CMAKE_CURRENT_BINARY_DIR}/v8")
 
 file(MAKE_DIRECTORY ${V8_TARGET_DIR})
@@ -57,7 +57,8 @@ list(APPEND V8_GYP_ARGS
   -Dv8_target_arch=${V8_PROC_ARCH}
   -Dv8_host_arch=${V8_PROC_ARCH}
   -Dbyteorder=${ENDIANESS}
-  -DPYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
+  -Dicu_use_data_file_flag=1
+  -Dv8_enable_i18n_support=1
 )
 
 if (CROSS_COMPILING)
@@ -110,7 +111,7 @@ set(V8_INCLUDE_DIR
 ################################################################################
 if (WIN32 AND ${CMAKE_GENERATOR} MATCHES "Ninja")
   message(STATUS "using generator NINJA on Windows! Still WIP be patient!")
-  set(GYP_MAIN ${V8_DIR}/build/gyp_v8)
+  set(GYP_MAIN ${V8_DIR}/gypfiles/gyp_v8)
 
   # try to find 2013 in 'Visual Studio 12 2013 Win64'
   #if (${CMAKE_GENERATOR} MATCHES "2013") 
@@ -130,7 +131,7 @@ if (WIN32 AND ${CMAKE_GENERATOR} MATCHES "Ninja")
   endif ()
 
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
-  list(APPEND V8_GYP_ARGS ${V8_DIR}/build/all.gyp)
+  list(APPEND V8_GYP_ARGS ${V8_DIR}/gypfiles/all.gyp)
 
   if ("${V8_TARGET_ARCHS}" STREQUAL "")
     set(V8_TARGET_ARCHS "Debug;Release" CACHE string "V8 targets to build")
@@ -161,14 +162,14 @@ if (WIN32 AND ${CMAKE_GENERATOR} MATCHES "Ninja")
     BUILD_COMMAND
       ${CMAKE_BUILD_TOOL} v8
     STEP_TARGETS
-      v8_base v8_libbase v8_libplatform v8_nosnapshot icui18n icuuc icudata
+      v8_base v8_libplatform v8_nosnapshot v8_libsampler v8_libbase icui18n icuuc
     INSTALL_COMMAND
       "")
 
-  list(APPEND LINK_DIRECTORIES "${NINJA_BUILD_DIR}/obj/tools/gyp")
+  list(APPEND LINK_DIRECTORIES "${NINJA_BUILD_DIR}/obj.target/src/")
 
   set(V8_LIBS
-    "v8_base;v8_libbase;v8_libplatform;v8_nosnapshot"
+    "v8_base;v8_libplatform;v8_nosnapshot;v8_libsampler;v8_libbase"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
@@ -176,7 +177,7 @@ if (WIN32 AND ${CMAKE_GENERATOR} MATCHES "Ninja")
   list(APPEND LINK_DIRECTORIES "${NINJA_BUILD_DIR}/obj/third_party/icu")
 
   set(ICU_LIBS
-    "icui18n;icuuc;icudata"
+    "icui18n;icuuc"
     CACHE INTERNAL
     "ICU: Libraries"
   )
@@ -203,17 +204,17 @@ elseif (${CMAKE_GENERATOR} MATCHES "Ninja")
   set(V8_LIBRARY_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}")
   set(ICU_LIBRARY_DIR "${V8_LIBRARY_DIR}")
 
-  set(GYP_MAIN "${V8_DIR}/build/gyp_v8")
+  set(GYP_MAIN "${V8_DIR}/gypfiles/gyp_v8")
 
-  list(APPEND V8_GYP_ARGS ${V8_DIR}/build/all.gyp)
+  list(APPEND V8_GYP_ARGS ${V8_DIR}/gypfiles/all.gyp)
   list(APPEND V8_GYP_ARGS --format ninja)
   list(APPEND V8_GYP_ARGS -S.${V8_TARGET_ARCH})
 
   if (LINUX)
-    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.target/tools/gyp")
+    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.target/src")
     set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.target/third_party/icu")
   elseif (SOLARIS)
-    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.host/tools/gyp")
+    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.host/src")
     set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.host/third_party/icu")
   endif ()
 
@@ -222,7 +223,7 @@ elseif (${CMAKE_GENERATOR} MATCHES "Ninja")
     -Dclang=0)
 
   list(APPEND V8_GYP_ARGS
-    -I${V8_DIR}/build/standalone.gypi
+    -I${V8_DIR}/gypfiles/standalone.gypi
     --depth=.
     -Dstandalone_static_library=1
     -Dlinux_use_bundled_gold=0
@@ -243,14 +244,14 @@ elseif (${CMAKE_GENERATOR} MATCHES "Ninja")
     BUILD_COMMAND
       ${CMAKE_BUILD_TOOL} v8
     STEP_TARGETS
-      v8_base v8_libbase v8_libplatform v8_nosnapshot icui18n icuuc icudata
+      v8_base v8_libplatform v8_nosnapshot v8_libsampler v8_libbase icui18n icuuc
     INSTALL_COMMAND
       "")
 
-  list(APPEND LINK_DIRECTORIES "${NINJA_BUILD_DIR}/obj/tools/gyp")
+  list(APPEND LINK_DIRECTORIES "${NINJA_BUILD_DIR}/obj/src")
 
   set(V8_LIBS
-    "v8_base;v8_libbase;v8_libplatform;v8_nosnapshot"
+    "v8_base;v8_libplatform;v8_nosnapshot;v8_libsampler;v8_libbase"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
@@ -258,7 +259,7 @@ elseif (${CMAKE_GENERATOR} MATCHES "Ninja")
   list(APPEND LINK_DIRECTORIES "${NINJA_BUILD_DIR}/obj/third_party/icu")
 
   set(ICU_LIBS
-    "icui18n;icuuc;icudata"
+    "icui18n;icuuc"
     CACHE INTERNAL
     "ICU: Libraries"
   )
@@ -271,7 +272,7 @@ elseif (${CMAKE_GENERATOR} MATCHES "Ninja")
 
 elseif (WIN32)
   MESSAGE("Building V8 for Windows with MSBUILD")
-  set(GYP_MAIN ${V8_DIR}/build/gyp_v8)
+  set(GYP_MAIN ${V8_DIR}/gypfiles/gyp_v8)
 
   # try to find 2013 in 'Visual Studio 12 2013 Win64'
   if (${CMAKE_GENERATOR} MATCHES "2013") 
@@ -290,7 +291,7 @@ elseif (WIN32)
   endif ()
 
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
-  list(APPEND V8_GYP_ARGS ${V8_DIR}/build/all.gyp)
+  list(APPEND V8_GYP_ARGS ${V8_DIR}/gypfiles/all.gyp)
 
   if ("${V8_TARGET_ARCHS}" STREQUAL "")
     set(V8_TARGET_ARCHS "Debug;Release" CACHE string "V8 targets to build")
@@ -316,7 +317,7 @@ elseif (WIN32)
       BUILD_IN_SOURCE
         TRUE
       WORKING_DIRECTORY
-        ${V8_DIR}/build
+        ${V8_DIR}/gypfiles
       SOURCE_DIR
         "${V8_DIR}"
       CONFIGURE_COMMAND
@@ -330,16 +331,6 @@ elseif (WIN32)
     add_dependencies(v8_build v8_build_${MS_TARGET_CONF_LOWER})
 
     # and now ICU...
-    ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} icu_build_icudata
-      WORKING_DIRECTORY
-        ${V8_DIR}/third_party/icu
-      COMMAND
-        msbuild icu.sln /t:icudata /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
-      DEPENDEES
-        configure
-      DEPENDERS
-        build
-    )
 
     ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} icu_build_icui18n
       WORKING_DIRECTORY
@@ -429,14 +420,17 @@ elseif (WIN32)
     debug "${V8_LIBRARY_DEBUG}/lib/v8_base_3.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_3.lib"
 
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib"
-
     debug "${V8_LIBRARY_DEBUG}/lib/v8_libplatform.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_libplatform.lib"
 
     debug "${V8_LIBRARY_DEBUG}/lib/v8_nosnapshot.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_nosnapshot.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_libsampler.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libsampler.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib"
 
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
@@ -472,22 +466,22 @@ else ()
   set(V8_LIBRARY_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}")
   set(ICU_LIBRARY_DIR "${V8_LIBRARY_DIR}")
 
-  set(GYP_MAIN ${V8_DIR}/build/gyp/gyp_main.py)
+  set(GYP_MAIN ${V8_DIR}/tools/gyp/gyp_main.py)
 
-  list(APPEND V8_GYP_ARGS build/all.gyp)
+  list(APPEND V8_GYP_ARGS gypfiles/all.gyp)
   list(APPEND V8_GYP_ARGS --format make)
   list(APPEND V8_GYP_ARGS -S.${V8_TARGET_ARCH})
 
   if (LINUX)
-    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.target/tools/gyp")
+    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.target/src")
     set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.target/third_party/icu")
   elseif (SOLARIS)
-    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.host/tools/gyp")
+    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.host/src")
     set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.host/third_party/icu")
   endif ()
 
   list(APPEND V8_GYP_ARGS
-    -Ibuild/standalone.gypi
+    -Igypfiles/standalone.gypi
     -Dmac_deployment_target=${CMAKE_OSX_DEPLOYMENT_TARGET}
     --depth=.
     -Dstandalone_static_library=1
@@ -525,10 +519,9 @@ else ()
     CFLAGS=${V8_CFLAGS}
     CXXFLAGS=${V8_CXXFLAGS}
     LDFLAGS=${V8_LDFLAGS}
-    PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
   )
 
-  list(APPEND V8_COMPILE_ARGS icui18n icuuc icudata)
+  list(APPEND V8_COMPILE_ARGS icui18n icuuc)
   list(APPEND V8_COMPILE_ARGS v8)
 
   ExternalProject_Add(v8_build
@@ -541,14 +534,14 @@ else ()
     BUILD_COMMAND
       $(MAKE) ${V8_COMPILE_ARGS}
     STEP_TARGETS
-      v8_base v8_libbase v8_libplatform v8_nosnapshot icui18n icuuc icudata
+      v8_base v8_libplatform v8_nosnapshot v8_libsampler v8_libbase icui18n icuuc
     INSTALL_COMMAND
       "")
 
   list(APPEND LINK_DIRECTORIES "${V8_LIBRARY_DIR}")
 
   set(V8_LIBS
-    "v8_base;v8_libbase;v8_libplatform;v8_nosnapshot"
+    "v8_base;v8_libplatform;v8_nosnapshot;v8_libsampler;v8_libbase"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
@@ -556,7 +549,7 @@ else ()
   list(APPEND LINK_DIRECTORIES "${ICU_LIBRARY_DIR}")
 
   set(ICU_LIBS
-    "icui18n;icuuc;icudata"
+    "icui18n;icuuc"
     CACHE INTERNAL
     "ICU: Libraries"
   )
@@ -564,19 +557,26 @@ else ()
   set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
 endif()
 
-if (WIN32)
-  set(ICU_DT "${ICU_BASEDIR}/data/in/icudtl.dat" PARENT_SCOPE)
-  set(ICU_DT_DEST "icudt${ICU_COMPACT_VERSION}l.dat" PARENT_SCOPE)
-  # other platforms link the file into the binary
-  install(FILES ${ICU_DT}
-    DESTINATION "share/arangodb/"
-    RENAME ${ICU_DT_DEST})
-  install(FILES ${ICU_DT}
-    DESTINATION "bin/share/arangodb/"
-    RENAME ${ICU_DT_DEST})
-else()
-  # other platforms don't install ICU:
-  set(ICU_DT_DEST "" PARENT_SCOPE)
+set(ICU_DT "${ICU_BASEDIR}/data/in/icudtl.dat")
+set(ICU_DT ${ICU_DT} PARENT_SCOPE)
+set(ICU_DT_DEST "icudtl.dat" )
+set(ICU_DT_DEST ${ICU_DT_DEST} PARENT_SCOPE)
+
+configure_file(
+  "${ICU_DT}"
+  "${CMAKE_BINARY_DIR}/bin/${CONFIGURATION}/${ICU_DT_DEST}"
+  COPYONLY)
+configure_file(
+  "${ICU_DT}"
+  "${CMAKE_BINARY_DIR}/tests/${CONFIGURATION}/${ICU_DT_DEST}"
+  COPYONLY)
+install(FILES ${ICU_DT}
+  DESTINATION "share/arangodb/"
+  RENAME ${ICU_DT_DEST})
+install(FILES ${ICU_DT}
+  DESTINATION "bin/share/arangodb/"
+  RENAME ${ICU_DT_DEST})
+if (NOT WIN32)
   add_custom_target(nonthinV8
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../Installation/archive-de-thinner.sh ${V8_REL_TARGET_PATH}
     COMMENT de-thins V8 .a files)

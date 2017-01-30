@@ -33,7 +33,7 @@ if (USE_PRECOMPILED_V8)
   set(V8_TARGET_ARCH "${V8_PROC_ARCH}.release")
 
   set(V8_TARGET_DIR "${V8_DIR}/${V8_TARGET_ARCH}/obj.target")
-  set(V8_BIN_DIR "${V8_TARGET_DIR}/tools/gyp")
+  set(V8_BIN_DIR "${V8_TARGET_DIR}/src/")
   set(ICU_BIN_DIR "${V8_TARGET_DIR}/third_party/icu")
 
   set(ICU_VERSION
@@ -51,7 +51,7 @@ if (USE_PRECOMPILED_V8)
   )
 
   set(ICU_LIBS
-    "${ICU_BIN_DIR}/libicui18n.a;${ICU_BIN_DIR}/libicuuc.a;${ICU_BIN_DIR}/libicudata.a"
+    "${ICU_BIN_DIR}/libicui18n.a;${ICU_BIN_DIR}/libicuuc.a"
     ${libev_BINARY_DIR}/libev.a
     CACHE INTERNAL
     "ICU: Libraries"

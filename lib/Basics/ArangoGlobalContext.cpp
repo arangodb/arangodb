@@ -135,6 +135,7 @@ ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
                                          char const* InstallDirectory)
     : _binaryName(TRI_BinaryName(argv[0])),
+      _binaryPath(TRI_LocateBinaryPath(argv[0])),
       _runRoot(
           TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), InstallDirectory)),
       _ret(EXIT_FAILURE),

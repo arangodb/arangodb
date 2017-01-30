@@ -311,43 +311,6 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fixes the ICU_DATA environment path
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FixIcuDataEnv(char const* binaryPath) {
-  if (getenv("ICU_DATA") != nullptr) {
-    return;
-  }
-
-  std::string p = TRI_LocateInstallDirectory(binaryPath);
-
-  if (!p.empty()) {
-    std::string e = "ICU_DATA=" + p + ICU_DESTINATION_DIRECTORY;
-    e = StringUtils::replace(e, "\\", "\\\\");
-    putenv(e.c_str());
-  } else {
-#ifdef _SYSCONFDIR_
-    std::string SCDIR(_SYSCONFDIR_);
-    SCDIR = StringUtils::replace(SCDIR, "/", "\\\\");
-    std::string e = "ICU_DATA=" + SCDIR + "..\\..\\bin";
-    e = StringUtils::replace(e, "\\", "\\\\");
-    putenv(e.c_str());
-#else
-
-    p = TRI_LocateBinaryPath(nullptr);
-
-    if (!p.empty()) {
-      std::string e = "ICU_DATA=" + p + "\\";
-      e = StringUtils::replace(e, "\\", "\\\\");
-      putenv(e.c_str());
-    } else {
-      putenv("ICU_DATA=.\\\\");
-    }
-#endif
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a Windows error to a *nix system error
 ////////////////////////////////////////////////////////////////////////////////
 
