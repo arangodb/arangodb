@@ -306,6 +306,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
         VertexEntry& ventry = _index[vertexOffset];
         ventry._shard = sourceShard;
         ventry._key = document.get(StaticStrings::KeyString).copyString();
+        ventry._edgeDataOffset = edgeOffset;
         _localVerticeCount++;
 
         // load vertex data
@@ -317,7 +318,6 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
         }
         // load edges
         for (ShardID const& it : edgeShards) {
-          ventry._edgeDataOffset = edgeOffset;
           _loadEdges(trx.get(), it, ventry, documentId);
         }
         vertexOffset++;
