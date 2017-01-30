@@ -105,9 +105,9 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "supervision time, after which a server is considered to have failed [s]",
       new DoubleParameter(&_supervisionGracePeriod));
 
-  options->addOption("--agency.compaction-step-size",
-                     "step size between state machine compactions",
-                     new UInt64Parameter(&_compactionStepSize));
+  options->addHiddenOption("--agency.compaction-step-size",
+                           "step size between state machine compactions",
+                           new UInt64Parameter(&_compactionStepSize));
 
   options->addOption("--agency.compaction-keep-size",
                      "keep as many indices before compaction point",
