@@ -1293,7 +1293,7 @@ function shutdownInstance (instanceInfo, options) {
           analyzeServerCrash(arangod, options, 'instance Shutdown - ' + arangod.exitStatus.signal);
         }
       } else {
-        print('Server shutdown: Success.');
+        print('Server shutdown: Success: pid', arangod.pid);
         return false;
       }
     });
