@@ -54,7 +54,7 @@ if (MSVC)
     VERSION_REVISION ${BUILD_ID}
   )
 endif ()
-  
+
 set(ROCKSDB_FILES
   Indexes/RocksDBFeature.cpp
   Indexes/RocksDBIndex.cpp
@@ -343,7 +343,6 @@ SET(ARANGOD_SOURCES
   VocBase/Ditch.cpp
   VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp
-  VocBase/IndexThreadFeature.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
   VocBase/ManagedDocumentResult.cpp

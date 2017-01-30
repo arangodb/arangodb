@@ -1293,7 +1293,7 @@ function shutdownInstance (instanceInfo, options) {
           analyzeServerCrash(arangod, options, 'instance Shutdown - ' + arangod.exitStatus.signal);
         }
       } else {
-        print('Server shutdown: Success.');
+        print('Server shutdown: Success: pid', arangod.pid);
         return false;
       }
     });
@@ -1490,8 +1490,8 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     usedPorts.push(port);
     instanceArgs['server.endpoint'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.my-address'] = protocol + '://127.0.0.1:' + port;
-    instanceArgs['agency.supervision-grace-period'] = '5.0';
-    instanceArgs['agency.supervision-frequency'] = '0.05'; 
+    instanceArgs['agency.supervision-grace-period'] = '10.0';
+    instanceArgs['agency.supervision-frequency'] = '1.0'; 
 
     if (i === N - 1) {
       let l = [];
@@ -3881,17 +3881,23 @@ testFuncs.upgrade = function (options) {
 
   result.upgrade.first = executeAndWait(ARANGOD_BIN, argv, options, 'upgrade');
 
-  if (result.upgrade.first !== 0 && !options.force) {
+  if (result.upgrade.first.status !== true) {
     print('not removing ' + tmpDataDir);
-    return result;
+    return result.upgrade;
   }
 
   ++result.upgrade.total;
 
   result.upgrade.second = executeAndWait(ARANGOD_BIN, argv, options, 'upgrade');
+  
+  if (result.upgrade.second.status !== true) {
+    print('not removing ' + tmpDataDir);
+    return result.upgrade;
+  }
 
   cleanupDirectories.push(tmpDataDir);
-
+ 
+  result.upgrade.status = true; 
   return result;
 };
 

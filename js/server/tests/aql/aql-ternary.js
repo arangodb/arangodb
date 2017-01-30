@@ -221,7 +221,27 @@ function ahuacatlTernaryTestSuite () {
       assertEqual([ 2 ], getQueryResults("RETURN NOOPT([ ] ? 2 : 3)"));
       assertEqual([ 2 ], getQueryResults("RETURN NOOPT([ 0 ] ? 2 : 3)"));
       assertEqual([ 2 ], getQueryResults("RETURN NOOPT({ } ? 2 : 3)"));
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ternary operator shortcut
+////////////////////////////////////////////////////////////////////////////////
+    
+    testTernaryShortcut : function () {
+      var expected = [ 'foo', 'foo', 1, 2 ];
+
+      var actual = getQueryResults("FOR i IN [ null, 0, 1, 2 ] RETURN i ? : 'foo'");
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("FOR i IN [ null, 0, 1, 2 ] RETURN i ?: 'foo'");
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("FOR i IN [ null, 0, 1, 2 ] RETURN NOOPT(i ? : 'foo')");
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("FOR i IN [ null, 0, 1, 2 ] RETURN NOOPT(i ?: 'foo')");
+      assertEqual(expected, actual);
+    },
 
   };
 }

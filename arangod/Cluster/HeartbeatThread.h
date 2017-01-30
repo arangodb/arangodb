@@ -238,12 +238,13 @@ class HeartbeatThread : public Thread,
   std::atomic<uint64_t> _backgroundJobsLaunched;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief flag indicates whether or not a background job is running, this
-  /// and the next one about having to start another background job when
-  /// the current one is finished are protected by the statusLock.
+  /// @brief flag indicates whether or not a background job is either
+  /// scheduled with boost::asio or is already running, this and the
+  /// next one about having to start another background job when the
+  /// current one is finished are protected by the statusLock.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool _backgroundJobRunning;
+  bool _backgroundJobScheduledOrRunning;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief flag indicates whether or not a new background job needs

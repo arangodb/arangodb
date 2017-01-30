@@ -97,7 +97,10 @@ You also will find warnings in here; If you're designing queries on the shell be
 
 To set a memory limit for the query, pass *options* to the *_query* method.
 The memory limit specifies the maximum number of bytes that the query is
-allowed to use:
+allowed to use. When a single AQL query reaches the specified limit value, 
+the query will be aborted with a *resource limit exceeded* exception. In a 
+cluster, the memory accounting is done per shard, so the limit value is 
+effectively a memory limit per query per shard.
 
     @startDocuBlockInline 02_workWithAQL_memoryLimit
     @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_memoryLimit}
@@ -108,6 +111,10 @@ allowed to use:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 02_workWithAQL_memoryLimit
 
+If no memory limit is specified, then the server default value (controlled by
+startup option *--query.memory-limit* will be used for restricting the maximum amount 
+of memory the query can use. A memory limit value of *0* means that the maximum
+amount of memory for the query is not restricted. 
 
 ### with _createStatement (ArangoStatement)
 

@@ -79,7 +79,6 @@
 #include "StorageEngine/RocksDBEngine.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/IndexThreadFeature.h"
 #include "Wal/LogfileManager.h"
 
 #include "Indexes/RocksDBFeature.h"
@@ -113,9 +112,8 @@ static int runServer(int argc, char** argv) {
       "Cluster",       "Daemon",
       "Dispatcher",    "FoxxQueues",
       "GeneralServer", "LoggerBufferFeature",
-      "Server",        "Scheduler",
-      "SslServer",     "Statistics",
-      "Supervisor"};
+      "Server",        "SslServer",
+      "Statistics",    "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
@@ -137,7 +135,6 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new FrontendFeature(&server));
   server.addFeature(new GeneralServerFeature(&server));
   server.addFeature(new GreetingsFeature(&server, "arangod"));
-  server.addFeature(new IndexThreadFeature(&server));
   server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new LockfileFeature(&server));
@@ -248,5 +245,5 @@ int main(int argc, char* argv[]) {
     }
   } else
 #endif
-  return runServer(argc, argv);
+    return runServer(argc, argv);
 }
