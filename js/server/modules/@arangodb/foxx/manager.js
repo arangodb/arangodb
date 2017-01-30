@@ -488,6 +488,7 @@ function validateManifestFile (filename, mount, isDevelopment) {
         errorMessage: dd`
           ${errors.ERROR_MALFORMED_MANIFEST_FILE.message}
           File: ${filename}
+          Cause: ${e.stack}
         `
       }), {cause: e}
     );
@@ -501,6 +502,7 @@ function validateManifestFile (filename, mount, isDevelopment) {
         errorMessage: dd`
           ${errors.ERROR_INVALID_SERVICE_MANIFEST.message}
           File: ${filename}
+          Cause: ${e.stack}
         `
       }), {cause: e}
     );
@@ -832,6 +834,7 @@ function patchManifestFile (servicePath, patchData) {
         errorMessage: dd`
           ${errors.ERROR_MALFORMED_MANIFEST_FILE.message}
           File: ${filename}
+          Cause: ${e.stack}
         `
       }), {cause: e}
     );
@@ -1127,8 +1130,8 @@ function _install (serviceInfo, mount, options, runSetup) {
   } catch (e) {
     try {
       fs.removeDirectoryRecursive(targetPath, true);
-    } catch (e) {
-      console.errorLines(e.stack);
+    } catch (err) {
+      console.errorLines(err.stack);
     }
     try {
       if (!options.__clusterDistribution) {
@@ -1136,7 +1139,7 @@ function _install (serviceInfo, mount, options, runSetup) {
           collections: {
             write: collection.name()
           },
-          action () {
+          action() {
             var definition = collection.firstExample({mount: mount});
             if (definition !== null) {
               collection.remove(definition._key);
@@ -1144,8 +1147,8 @@ function _install (serviceInfo, mount, options, runSetup) {
           }
         });
       }
-    } catch (e) {
-      console.errorLines(e.stack);
+    } catch (err) {
+      console.errorLines(err.stack);
     }
     throw e;
   }

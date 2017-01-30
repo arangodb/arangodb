@@ -45,6 +45,7 @@ var console = require('console');
 var arangodb = require('@arangodb');
 var foxxManager = require('@arangodb/foxx/manager');
 var shallowCopy = require('@arangodb/util').shallowCopy;
+var ErrorStackParser = require('error-stack-parser');
 
 const MIME_DEFAULT = 'text/plain; charset=utf-8';
 
@@ -131,15 +132,7 @@ function createCallbackFromActionCallbackString (callback, parentModule, route) 
   try {
     actionModule._compile(`module.exports = ${callback}`, route.name);
   } catch (e) {
-    let err = e;
-    while (err) {
-      console.errorLines(
-        err === e
-        ? err.stack
-        : `via ${err.stack}`
-      );
-      err = err.cause;
-    }
+    console.errorLines(e.stack);
     return notImplementedFunction(route, util.format(
       "could not generate callback for '%s'",
       callback
@@ -347,6 +340,8 @@ function lookupCallbackActionPrefixController (route, action, parentModule) {
 
   return {
     controller: function (req, res, options, next) {
+      var func;
+
       // determine path
       var path;
 
@@ -1686,7 +1681,7 @@ function resultCursor (req, res, cursor, code, options) {
     cursorId = null;
   } else if (typeof cursor === 'object' && cursor.hasOwnProperty('json')) {
     // cursor is a regular JS object (performance optimisation)
-    hasCount = Boolean(options && options.countRequested);
+    hasCount = ((options && options.countRequested) ? true : false);
     count = cursor.json.length;
     rows = cursor.json;
     extra = {};
@@ -1829,6 +1824,7 @@ function arangoErrorToHttpCode (num) {
     case arangodb.ERROR_ARANGO_COLLECTION_NOT_UNLOADED:
     case arangodb.ERROR_ARANGO_COLLECTION_TYPE_INVALID:
     case arangodb.ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED:
+    case arangodb.ERROR_ARANGO_DOCUMENT_KEY_BAD:
     case arangodb.ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
     case arangodb.ERROR_ARANGO_DOCUMENT_KEY_MISSING:
     case arangodb.ERROR_ARANGO_DOCUMENT_TYPE_INVALID:

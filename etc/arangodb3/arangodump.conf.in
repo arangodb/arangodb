@@ -2,9 +2,6 @@
 
 progress = true
 
-[log]
-file = -
-
 [server]
 endpoint = tcp://127.0.0.1:8529
 authentication = true
