@@ -39,7 +39,17 @@ shards.
 
       db._query("FOR i IN 1..100000 SORT i RETURN i", {}, { options: { memoryLimit: 100000 } });
 
-* added startup option --query.memory-limit
+  This option limits the default maximum amount of memory (in bytes) that a single 
+  AQL query can use.
+  When a single AQL query reaches the specified limit value, the query will be
+  aborted with a *resource limit exceeded* exception. In a cluster, the memory
+  accounting is done per shard, so the limit value is effectively a memory limit per
+  query per shard.
+
+  The global limit value can be overriden per query by setting the *memoryLimit* 
+  option value for individual queries when running an AQL query. 
+
+* added server startup option `--query.memory-limit`
 
 * added convenience function to create vertex-centric indexes.
 Usage: `db.collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"})`
