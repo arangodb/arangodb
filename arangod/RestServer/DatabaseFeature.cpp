@@ -174,8 +174,10 @@ void DatabaseManagerThread::run() {
             usleep(10000);
           };
           while (!arangodb::wal::LogfileManager::instance()
-                  ->executeWhileNothingQueued(callback)) {
-            LOG(DEBUG) << "Trying to shutdown dropped database, waiting for phase in which the collector thread does not have queued operations.";
+                      ->executeWhileNothingQueued(callback)) {
+            LOG(DEBUG) << "Trying to shutdown dropped database, waiting for "
+                          "phase in which the collector thread does not have "
+                          "queued operations.";
             usleep(500000);
           }
 
@@ -307,7 +309,7 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addObsoleteOption(
       "--database.index-threads",
-      "threads to start for parallel background index creation");
+      "threads to start for parallel background index creation", true);
 }
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
