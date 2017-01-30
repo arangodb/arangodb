@@ -86,16 +86,18 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
 HeartbeatThread::~HeartbeatThread() { shutdown(); }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat main loop
-/// the heartbeat thread constantly reports the current server status to the
-/// agency. it does so by sending the current state string to the key
-/// "Sync/ServerStates/" + my-id.
-/// after transferring the current state to the agency, the heartbeat thread
-/// will wait for changes on the "Sync/Commands/" + my-id key. If no changes
-/// occur,
-/// then the request it aborted and the heartbeat thread will go on with
-/// reporting its state to the agency again. If it notices a change when
-/// watching the command key, it will wake up and apply the change locally.
+/// @brief running of heartbeat background jobs (in JavaScript), we run
+/// these by instantiating an object in class HeartbeatBackgroundJob,
+/// which is a std::function<void()> and holds a shared_ptr to the
+/// HeartbeatThread singleton itself. This instance is then posted to
+/// the io_service for execution in the thread pool. Should the heartbeat
+/// thread itself terminate during shutdown, then the HeartbeatThread
+/// singleton itself is still kept alive by the shared_ptr in the instance
+/// of HeartbeatBackgroundJob. The operator() method simply calls the
+/// runBackgroundJob() method of the heartbeat thread. Should this have
+/// to schedule another background job, then it can simply create a new
+/// HeartbeatBackgroundJob instance, again using shared_from_this() to
+/// create a new shared_ptr keeping the HeartbeatThread object alive.
 ////////////////////////////////////////////////////////////////////////////////
 
 class HeartbeatBackgroundJob {
@@ -108,6 +110,10 @@ class HeartbeatBackgroundJob {
     _heartbeatThread->runBackgroundJob();
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief method runBackgroundJob()
+////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runBackgroundJob() {
   uint64_t jobNr = ++_backgroundJobsLaunched;
@@ -131,6 +137,19 @@ void HeartbeatThread::runBackgroundJob() {
     }
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief heartbeat main loop
+/// the heartbeat thread constantly reports the current server status to the
+/// agency. it does so by sending the current state string to the key
+/// "Sync/ServerStates/" + my-id.
+/// after transferring the current state to the agency, the heartbeat thread
+/// will wait for changes on the "Sync/Commands/" + my-id key. If no changes
+/// occur,
+/// then the request it aborted and the heartbeat thread will go on with
+/// reporting its state to the agency again. If it notices a change when
+/// watching the command key, it will wake up and apply the change locally.
+////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::run() {
   if (ServerState::instance()->isCoordinator()) {
