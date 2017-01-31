@@ -66,7 +66,7 @@
   }
 
   if (internal.threadNumber === 0) {
-    console.info('bootstraped coordinator %s', global.ArangoServerState.id());
+    console.info('bootstrapped coordinator %s', global.ArangoServerState.id());
   }
 
   return true;

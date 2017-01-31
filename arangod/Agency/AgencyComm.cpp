@@ -1279,7 +1279,7 @@ void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
   for (const auto& i : VPackObjectIterator(current)) {
     auto const endpoint = Endpoint::unifiedForm(i.value.copyString());
     if (std::find(stored.begin(), stored.end(), endpoint) == stored.end()) {
-      LOG_TOPIC(INFO, Logger::CLUSTER)
+      LOG_TOPIC(DEBUG, Logger::CLUSTER)
         << "Adding endpoint " << endpoint << " to agent pool";
       AgencyCommManager::MANAGER->addEndpoint(endpoint);
     }
@@ -1390,7 +1390,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
         b.add(VPackValue(clientId));
       }
       
-      LOG_TOPIC(INFO, Logger::AGENCYCOMM) <<
+      LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) <<
         "Failed agency comm (" << result._statusCode << ")! " <<
         "Inquiring about clientId " << clientId << ".";
       
@@ -1409,25 +1409,25 @@ AgencyCommResult AgencyComm::sendWithFailover(
               for (auto const& i : VPackArrayIterator(inner)) {
                 if (i.isUInt()) {
                   if (i.getUInt() == 0) {
-                    LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+                    LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
                       << body << " failed: " << outer.toJson();
                     return result;
                   } else {
                     success = true;
                   }
                 } else {
-                  LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+                  LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
                     << body << " failed with " << outer.toJson();
                 }
               }
             }
           }
           if (success) {
-            LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+            LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
               << body << " succeeded (" << outer.toJson() << ")";
             return inq;
           } else {
-            LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+            LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
               << body << " failed (" << outer.toJson() << ")";
             return result;
           }
@@ -1436,7 +1436,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
         }
         return inq;
       } else {
-        LOG_TOPIC(INFO, Logger::AGENCYCOMM) <<
+        LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) <<
           "Inquiry failed (" << inq._statusCode << "). Keep trying ...";
         continue;
       }

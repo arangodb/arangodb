@@ -59,6 +59,6 @@
     }
   }
 
-  console.info('bootstraped DB server %s', global.ArangoServerState.id());
+  console.info('bootstrapped DB server %s', global.ArangoServerState.id());
   return true;
 }());
