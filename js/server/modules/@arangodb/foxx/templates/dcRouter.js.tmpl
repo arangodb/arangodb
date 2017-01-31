@@ -21,9 +21,6 @@ const router = createRouter();
 module.exports = router;
 
 
-router.tag('<%= document %>');
-
-
 router.get(function (req, res) {
   res.send(<%= documents %>.all());
 }, 'list')
