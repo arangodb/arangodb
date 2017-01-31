@@ -40,6 +40,9 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Scheduler/JobGuard.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-globals.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/vocbase.h"
@@ -119,6 +122,10 @@ void HeartbeatThread::runBackgroundJob() {
   uint64_t jobNr = ++_backgroundJobsLaunched;
   LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback started " << jobNr;
   {
+    // First tell the scheduler that this thread is working:
+    JobGuard guard(SchedulerFeature::SCHEDULER);
+    guard.work();
+    // Now get to work:
     DBServerAgencySync job(this);
     job.work();
   }
