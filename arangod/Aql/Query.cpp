@@ -1294,25 +1294,6 @@ bool Query::canUseQueryCache() const {
   return false;
 }
 
-/// @brief fetch a numeric value from the options
-double Query::getNumericOption(char const* option, double defaultValue) const {
-  if (_options == nullptr) {
-    return defaultValue;
-  }
-
-  VPackSlice options = _options->slice();
-  if (!options.isObject()) {
-    return defaultValue;
-  }
-
-  VPackSlice value = options.get(option);
-  if (!value.isNumber()) {
-    return defaultValue;
-  }
-
-  return value.getNumericValue<double>();
-}
-
 /// @brief neatly format transaction error to the user.
 QueryResult Query::transactionError(int errorCode) const {
   std::string err(TRI_errno_string(errorCode));

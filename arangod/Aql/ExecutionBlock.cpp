@@ -34,7 +34,7 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _exeNode(ep),
       _pos(0),
       _done(false),
-      _tracing(engine->getQuery()->getNumericOption("tracing", 0)) {}
+      _tracing(engine->getQuery()->getNumericOption<double>("tracing", 0.0)) {}
 
 ExecutionBlock::~ExecutionBlock() {
   for (auto& it : _buffer) {

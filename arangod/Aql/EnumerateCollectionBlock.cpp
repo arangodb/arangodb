@@ -123,7 +123,7 @@ int EnumerateCollectionBlock::initialize() {
     auto dbName = logicalCollection->dbName();
     auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(dbName, std::to_string(cid));
 
-    double maxWait = _engine->getQuery()->getNumericOption("satelliteSyncWait", 60.0);
+    double maxWait = _engine->getQuery()->getNumericOption<double>("satelliteSyncWait", 60.0);
     bool inSync = false;
     unsigned long waitInterval = 10000;
     double startTime = TRI_microtime();
