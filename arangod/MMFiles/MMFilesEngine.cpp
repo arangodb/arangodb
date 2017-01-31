@@ -625,12 +625,12 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
 
   // create a temporary file (.tmp)
   std::string const tmpfile(
-      arangodb::basics::FileUtils::buildFilename(tmpname.c_str(), ".tmp"));
+      arangodb::basics::FileUtils::buildFilename(tmpname, ".tmp"));
   res = TRI_WriteFile(tmpfile.c_str(), "", 0);
 
   // this file will be renamed to this filename later...
   std::string const tmpfile2(
-      arangodb::basics::FileUtils::buildFilename(dirname.c_str(), ".tmp"));
+      arangodb::basics::FileUtils::buildFilename(dirname, ".tmp"));
 
   TRI_IF_FAILURE("CreateCollection::tempFile") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
 
