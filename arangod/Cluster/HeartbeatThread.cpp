@@ -120,7 +120,7 @@ class HeartbeatBackgroundJob {
 
 void HeartbeatThread::runBackgroundJob() {
   uint64_t jobNr = ++_backgroundJobsLaunched;
-  LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback started " << jobNr;
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
   {
     // First tell the scheduler that this thread is working:
     JobGuard guard(SchedulerFeature::SCHEDULER);
@@ -129,14 +129,14 @@ void HeartbeatThread::runBackgroundJob() {
     DBServerAgencySync job(this);
     job.work();
   }
-  LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
 
   {
     MUTEX_LOCKER(mutexLocker, *_statusLock);
     TRI_ASSERT(_backgroundJobScheduledOrRunning);
     if (_launchAnotherBackgroundJob) {
       jobNr = ++_backgroundJobsPosted;
-      LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
       _launchAnotherBackgroundJob = false;
       _ioService->post(HeartbeatBackgroundJob(shared_from_this()));
     } else {
@@ -603,7 +603,7 @@ bool HeartbeatThread::init() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
-  LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Dispatched job returned!";
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Dispatched job returned!";
   bool doSleep = false;
   {
     MUTEX_LOCKER(mutexLocker, *_statusLock);
@@ -788,7 +788,7 @@ void HeartbeatThread::syncDBServerStatusQuo() {
 
   // schedule a job for the change:
   uint64_t jobNr = ++_backgroundJobsPosted;
-  LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
   _backgroundJobScheduledOrRunning = true;
   _ioService->post(HeartbeatBackgroundJob(shared_from_this()));
 }
