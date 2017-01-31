@@ -2749,6 +2749,12 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
         return createNodeFunctionCall("COLLECTION_COUNT", countArgs);
       }
     }
+  } else if (func->externalName == "IS_NULL") {
+    auto args = node->getMember(0);
+    if (args->numMembers() == 1) {
+      // replace IS_NULL(x) function call with `x == null`
+      return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, args->getMemberUnchecked(0), createNodeValueNull()); 
+    }
   }
 
   if (!func->isDeterministic) {

@@ -29,6 +29,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"

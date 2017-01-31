@@ -5,6 +5,18 @@ devel
 
 * changed index filling to make it more parallel, dispatch tasks to boost::asio
 
+* more detailed stacktraces in Foxx apps
+
+
+v3.1.10 (2017-XX-XX)
+--------------------
+
+* updated versions of bundled node modules:
+  - joi: from 8.4.2 to 9.2.0
+  - joi-to-json-schema: from 2.2.0 to 2.3.0
+  - sinon: from 1.17.4 to 1.17.6
+  - lodash: from 4.13.1 to 4.16.6
+
 * added shortcut for AQL ternary operator
   instead of `condition ? true-part : false-part` it is now possible to also use a
   shortcut variant `condition ? : false-part`, e.g.
@@ -73,6 +85,13 @@ edge attribute `label`.
 * change default log output for tools to stdout (instead of stderr)
 
 * added option -D to define a configuration file environment key=value
+
+* changed encoding behavior for URLs encoded in the C++ code of ArangoDB:
+  previously the special characters `-`, `_`, `~` and `.` were returned as-is 
+  after URL-encoding, now `.` will be encoded to be `%2e`. 
+  This also changes the behavior of how incoming URIs are processed: previously
+  occurrences of `..` in incoming request URIs were collapsed (e.g. `a/../b/` was 
+  collapsed to a plain `b/`). Now `..` in incoming request URIs are not collapsed.
 
 * Foxx request URL suffix is no longer unescaped
 

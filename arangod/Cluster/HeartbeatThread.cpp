@@ -88,6 +88,60 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
 HeartbeatThread::~HeartbeatThread() { shutdown(); }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief running of heartbeat background jobs (in JavaScript), we run
+/// these by instantiating an object in class HeartbeatBackgroundJob,
+/// which is a std::function<void()> and holds a shared_ptr to the
+/// HeartbeatThread singleton itself. This instance is then posted to
+/// the io_service for execution in the thread pool. Should the heartbeat
+/// thread itself terminate during shutdown, then the HeartbeatThread
+/// singleton itself is still kept alive by the shared_ptr in the instance
+/// of HeartbeatBackgroundJob. The operator() method simply calls the
+/// runBackgroundJob() method of the heartbeat thread. Should this have
+/// to schedule another background job, then it can simply create a new
+/// HeartbeatBackgroundJob instance, again using shared_from_this() to
+/// create a new shared_ptr keeping the HeartbeatThread object alive.
+////////////////////////////////////////////////////////////////////////////////
+
+class HeartbeatBackgroundJob {
+  std::shared_ptr<HeartbeatThread> _heartbeatThread;
+ public:
+  explicit HeartbeatBackgroundJob(std::shared_ptr<HeartbeatThread> hbt)
+    : _heartbeatThread(hbt) {}
+
+  void operator()() {
+    _heartbeatThread->runBackgroundJob();
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief method runBackgroundJob()
+////////////////////////////////////////////////////////////////////////////////
+
+void HeartbeatThread::runBackgroundJob() {
+  uint64_t jobNr = ++_backgroundJobsLaunched;
+  LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback started " << jobNr;
+  {
+    DBServerAgencySync job(this);
+    job.work();
+  }
+  LOG_TOPIC(INFO, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
+
+  {
+    MUTEX_LOCKER(mutexLocker, *_statusLock);
+    TRI_ASSERT(_backgroundJobScheduledOrRunning);
+    if (_launchAnotherBackgroundJob) {
+      jobNr = ++_backgroundJobsPosted;
+      LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
+      _launchAnotherBackgroundJob = false;
+      _ioService->post(HeartbeatBackgroundJob(shared_from_this()));
+    } else {
+      _backgroundJobScheduledOrRunning = false;
+      _launchAnotherBackgroundJob = false;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop
 /// the heartbeat thread constantly reports the current server status to the
 /// agency. it does so by sending the current state string to the key
@@ -104,31 +158,6 @@ void HeartbeatThread::run() {
   if (ServerState::instance()->isCoordinator()) {
     runCoordinator();
   } else {
-    // Set the member variable that holds a closure to run background
-    // jobs in JS:
-    auto self = shared_from_this();
-    _backgroundJob = [self, this]() {
-      uint64_t jobNr = ++_backgroundJobsLaunched;
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
-      {
-        DBServerAgencySync job(this);
-        job.work();
-      }
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
-
-      {
-        MUTEX_LOCKER(mutexLocker, *_statusLock);
-        if (_launchAnotherBackgroundJob) {
-          LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail "
-            << ++_backgroundJobsPosted;
-          _launchAnotherBackgroundJob = false;
-          _ioService->post(_backgroundJob);
-        } else {
-          _backgroundJobScheduledOrRunning = false;
-          _launchAnotherBackgroundJob = false;
-        }
-      }
-    };
     runDBServer();
   }
 }
@@ -340,16 +369,6 @@ void HeartbeatThread::runDBServer() {
   }
 
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
-  int count = 0;
-  while (++count < 3000) {
-    {
-      MUTEX_LOCKER(mutexLocker, *_statusLock);
-      if (!_backgroundJobScheduledOrRunning) {
-        break;
-      }
-    }
-    usleep(100000);
-  }
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "stopped heartbeat thread (DBServer version)";
 }
@@ -593,7 +612,7 @@ bool HeartbeatThread::init() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
-  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Dispatched job returned!";
+  LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Dispatched job returned!";
   bool doSleep = false;
   {
     MUTEX_LOCKER(mutexLocker, *_statusLock);
@@ -777,10 +796,10 @@ void HeartbeatThread::syncDBServerStatusQuo() {
   }
 
   // schedule a job for the change:
-  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync "
-    << ++_backgroundJobsPosted;
+  uint64_t jobNr = ++_backgroundJobsPosted;
+  LOG_TOPIC(INFO, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
   _backgroundJobScheduledOrRunning = true;
-  _ioService->post(_backgroundJob);
+  _ioService->post(HeartbeatBackgroundJob(shared_from_this()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
