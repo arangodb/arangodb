@@ -23,44 +23,44 @@ describe('Foxx service path handling', () => {
   });
 
   it('supports plain URLs', () => {
-    const res = request.get(`${baseUrl}/${mount}/hello/world`);
+    const res = request.get(`${baseUrl}/${mount}/hello/world`, {json: true});
     expect(res).to.have.property('status', 200);
     expect(res.json).to.eql({name: 'world'});
   });
 
   it('decodes encoded parts', () => {
-    const res = request.get(`${baseUrl}/${mount}/${encodeURIComponent('hello')}/world`);
+    const res = request.get(`${baseUrl}/${mount}/${encodeURIComponent('hello')}/world`, {json: true});
     expect(res).to.have.property('status', 200);
     expect(res.json).to.eql({name: 'world'});
   });
 
   it('decodes encoded path params', () => {
-    const res = request.get(`${baseUrl}/${mount}/hello/${encodeURIComponent('world')}`);
+    const res = request.get(`${baseUrl}/${mount}/hello/${encodeURIComponent('world')}`, {json: true});
     expect(res).to.have.property('status', 200);
     expect(res.json).to.eql({name: 'world'});
   });
 
   it('distinguishes between real slashes and encoded slashes', () => {
-    const res = request.get(`${baseUrl}/${mount}/hello/${encodeURIComponent('not/slash')}`);
+    const res = request.get(`${baseUrl}/${mount}/hello/${encodeURIComponent('not/slash')}`, {json: true});
     expect(res).to.have.property('status', 200);
     expect(res.json).to.eql({name: 'not/slash'});
   });
 
-  it('does not decode suffixes', () => {
-    const res = request.get(`${baseUrl}/${mount}/suffix/${encodeURIComponent('hello/world')}`);
+  it('decodes suffixes', () => {
+    const res = request.get(`${baseUrl}/${mount}/suffix/${encodeURIComponent('hello/world')}`, {json: true});
     expect(res).to.have.property('status', 200);
-    expect(res.json).not.to.eql({suffix: 'hello/world'});
-    expect(res.json).to.eql({suffix: encodeURIComponent('hello/world')});
+    expect(res.json).not.to.eql({suffix: encodeURIComponent('hello/world')});
+    expect(res.json).to.eql({suffix: 'hello/world'});
   });
 
   it('does not try to resolve dots in suffixes', () => {
-    const res = request.get(`${baseUrl}/${mount}/suffix/../..`);
+    const res = request.get(`${baseUrl}/${mount}/suffix/../..`, {json: true});
     expect(res).to.have.property('status', 200);
     expect(res.json).to.eql({suffix: '../..'});
   });
 
   it('does not try to resolve dots during routing', () => {
-    const res = request.get(`${baseUrl}/${mount}/../${mount}/hello`);
+    const res = request.get(`${baseUrl}/${mount}/../${mount}/hello`, {json: true});
     expect(res).to.have.property('status', 404);
   });
 
