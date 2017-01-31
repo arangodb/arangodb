@@ -126,9 +126,10 @@ void HeartbeatThread::runBackgroundJob() {
 
   {
     MUTEX_LOCKER(mutexLocker, *_statusLock);
+    TRI_assert(_backgroundJobScheduledOrRunning);
     if (_launchAnotherBackgroundJob) {
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail "
-        << ++_backgroundJobsPosted;
+      jobNr = ++_backgroundJobsPosted;
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
       _launchAnotherBackgroundJob = false;
       _ioService->post(HeartbeatBackgroundJob(shared_from_this()));
     } else {
@@ -779,8 +780,8 @@ void HeartbeatThread::syncDBServerStatusQuo() {
   }
 
   // schedule a job for the change:
-  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync "
-    << ++_backgroundJobsPosted;
+  uint64_t jobNr = ++_backgroundJobsPosted;
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
   _backgroundJobScheduledOrRunning = true;
   _ioService->post(HeartbeatBackgroundJob(shared_from_this()));
 }
