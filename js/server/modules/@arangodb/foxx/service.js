@@ -612,7 +612,5 @@ function createDependencies (definitions, options) {
       }
     });
   }
-  Object.freeze(deps);
-  Object.seal(deps);
   return deps;
 }

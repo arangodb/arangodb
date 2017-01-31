@@ -86,8 +86,6 @@ edge attribute `label`.
 
 * Foxx configuration values for unknown options will be discarded when saving the configuration in production mode using the web interface
 
-* module.context.dependencies is now immutable
-
 * improve cluster stability in various ways
 
 
