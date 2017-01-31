@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_BLOCK_COLLECTOR_H 1
 
 #include "Basics/Common.h"
+#include "Aql/types.h"
 
 namespace arangodb {
 namespace aql {
@@ -42,7 +43,7 @@ class BlockCollector {
   ~BlockCollector();
 
   size_t totalSize() const;
-  size_t nrRegs() const;
+  RegisterId nrRegs() const;
 
   void clear();
   
