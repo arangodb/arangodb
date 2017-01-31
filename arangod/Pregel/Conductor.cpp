@@ -46,6 +46,9 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
+const char* arangodb::pregel::ExecutionStateNames[6] = {
+  "none", "running", "done", "canceled", "in error", "recovering"};
+
 Conductor::Conductor(
     uint64_t executionNumber, TRI_vocbase_t* vocbase,
     std::vector<std::shared_ptr<LogicalCollection>> const& vertexCollections,

@@ -44,8 +44,7 @@ enum ExecutionState {
   IN_ERROR,     // after an error which should allow recovery
   RECOVERING    // during recovery
 };
-const char* ExecutionStateNames[] = {
-    "none", "running", "done", "canceled", "in error", "recovering"};
+extern const char* ExecutionStateNames[6];
 
 class MasterContext;
 class AggregatorHandler;
