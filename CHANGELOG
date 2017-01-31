@@ -90,6 +90,7 @@ edge attribute `label`.
 
 * process.stdout.isTTY now returns `true` in arangosh and when running arangod with the `--console` flag
 
+* improve cluster stability in various ways
 
 v3.1.9 (2017-01-23)
 -------------------
