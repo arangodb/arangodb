@@ -53,11 +53,8 @@ exports.hmac = function (key, message, algorithm) {
 // / @brief apply a PBKDF2
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.pbkdf2 = function (salt, password, iterations, keyLength, algorithm) {
-  if (algorithm === undefined || algorithm === null) {
-    return internal.pbkdf2hs1(salt, password, iterations, keyLength);
-  }
-  return internal.pbkdf2(salt, password, iterations, keyLength, algorithm);
+exports.pbkdf2 = function (salt, password, iterations, keyLength) {
+  return internal.pbkdf2(salt, password, iterations, keyLength);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
