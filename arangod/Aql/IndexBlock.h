@@ -25,6 +25,7 @@
 #ifndef ARANGOD_AQL_INDEX_BLOCK_H
 #define ARANGOD_AQL_INDEX_BLOCK_H 1
 
+#include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexNode.h"
@@ -155,6 +156,8 @@ class IndexBlock : public ExecutionBlock {
   bool _hasV8Expression;
   
   std::unique_ptr<ManagedDocumentResult> _mmdr;
+
+  BlockCollector _collector;
 };
 
 }  // namespace arangodb::aql

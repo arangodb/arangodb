@@ -22,11 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BasicBlocks.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::aql;
+  
+void SingletonBlock::deleteInputVariables() {
+  delete _inputRegisterValues;
+  _inputRegisterValues = nullptr;
+}
 
 void SingletonBlock::buildWhitelist() {
   if (!_whitelistBuilt) {
@@ -154,6 +160,11 @@ FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
 }
 
 FilterBlock::~FilterBlock() {}
+  
+/// @brief internal function to actually decide if the document should be used
+bool FilterBlock::takeItem(AqlItemBlock* items, size_t index) const {
+  return items->getValueReference(index, _inReg).toBoolean();
+}
 
 /// @brief internal function to get another block
 bool FilterBlock::getBlock(size_t atLeast, size_t atMost) {

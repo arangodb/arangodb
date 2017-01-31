@@ -53,23 +53,8 @@ function optimizerRuleTestSuite() {
     sorted : true
   };
 
-  var ruleName = "use-geoindex";
-  var secondRuleName = "use-geoindexes";
-  var removeCalculationNodes = "remove-unnecessary-calculations-2";
+  var ruleName = "geoindex";
   var colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");
-  var colNameOther = colName + "_XX";
-
-  // various choices to control the optimizer: 
-  var paramNone = { optimizer: { rules: [ "-all" ] } };
-  var paramIndexFromSort  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var paramIndexRange   = { optimizer: { rules: [ "-all", "+" + secondRuleName ] } };
-  var paramIndexFromSort_IndexRange = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + secondRuleName ] } };
-  var paramIndexFromSort_IndexRange_RemoveCalculations = {
-    optimizer: { rules: [ "-all", "+" + ruleName, "+" + secondRuleName, "+" + removeCalculationNodes ] }
-  };
-  var paramIndexFromSort_RemoveCalculations = {
-    optimizer: { rules: [ "-all", "+" + ruleName, "+" + removeCalculationNodes ] }
-  };
 
   var geocol;
   var sortArray = function (l, r) {
@@ -113,19 +98,6 @@ function optimizerRuleTestSuite() {
   };
 
   var geodistance = function(latitude1, longitude1, latitude2, longitude2) {
-    //if (TYPEWEIGHT(latitude1) !== TYPEWEIGHT_NUMBER ||
-    //  TYPEWEIGHT(longitude1) !== TYPEWEIGHT_NUMBER ||
-    //  TYPEWEIGHT(latitude2) !== TYPEWEIGHT_NUMBER ||
-    //  TYPEWEIGHT(longitude2) !== TYPEWEIGHT_NUMBER) {
-    //  WARN('DISTANCE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    //  return null;
-    //}
-
-    //var p1 = AQL_TO_NUMBER(latitude1) * (Math.PI / 180.0);
-    //var p2 = AQL_TO_NUMBER(latitude2) * (Math.PI / 180.0);
-    //var d1 = AQL_TO_NUMBER(latitude2 - latitude1) * (Math.PI / 180.0);
-    //var d2 = AQL_TO_NUMBER(longitude2 - longitude1) * (Math.PI / 180.0);
-
     var p1 = (latitude1) * (Math.PI / 180.0);
     var p2 = (latitude2) * (Math.PI / 180.0);
     var d1 = (latitude2 - latitude1) * (Math.PI / 180.0);
@@ -165,7 +137,6 @@ function optimizerRuleTestSuite() {
 
     tearDown : function () {
       internal.db._drop(colName);
-      internal.db._drop(colNameOther);
       geocol = null;
     },
 
@@ -215,14 +186,6 @@ function optimizerRuleTestSuite() {
         queries.forEach(function(query) {
           var result = AQL_EXPLAIN(query.string);
 
-          // //optimized on cluster
-          // if (query[1]) {
-          //   assertNotEqual(-1, removeAlwaysOnClusterRules(result.plan.rules).indexOf(ruleName), query[0]);
-          // }
-          // else {
-          //   assertEqual(-1, removeAlwaysOnClusterRules(result.plan.rules).indexOf(ruleName), query[0]);
-          // }
-
           //sort nodes
           if (query.sort) {
             hasSortNode(result,query);
@@ -268,7 +231,6 @@ function optimizerRuleTestSuite() {
           var pairs = result.json.map(function(res){
               return [res.lat,res.lon];
           });
-          //internal.print(pairs)
           assertEqual(expected[qindex].sort(),pairs.sort());
           //expect(expected[qindex].sort()).to.be.equal(result.json.sort())
         });

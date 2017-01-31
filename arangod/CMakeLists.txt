@@ -108,6 +108,7 @@ SET(ARANGOD_SOURCES
   Aql/BaseExpressionContext.cpp
   Aql/BasicBlocks.cpp
   Aql/BindParameters.cpp
+  Aql/BlockCollector.cpp
   Aql/CalculationBlock.cpp
   Aql/ClusterBlocks.cpp
   Aql/ClusterNodes.cpp
