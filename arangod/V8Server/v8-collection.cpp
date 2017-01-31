@@ -2001,7 +2001,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (argLength < 3 || !args[2]->IsString()) {
       // TODO extend this for named graphs, use the Graph class
       TRI_V8_THROW_EXCEPTION_USAGE(
-                                   "_pregelStart(<vertexCollection>, <edgeCollection>, <algorithm>[, "
+                                   "_pregelStart(<vertexCollections>, <edgeCollections>, <algorithm>[, "
                                    "{steps:100, ...}]");
   }
   auto parse = [](v8::Local<v8::Value> const& value, std::vector<std::string> &out) {
