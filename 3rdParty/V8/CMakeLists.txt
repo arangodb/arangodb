@@ -83,10 +83,10 @@ set(ICU_VERSION
   "ICU: Version"
   )
 
-set(ICU_BASEDIR ${V8_DIR}/third_party/icu/source)
+set(ICU_BASEDIR ${V8_DIR}/third_party/icu)
 
 set(ICU_INCLUDE_DIR
-  ${ICU_BASEDIR}/common;${ICU_BASEDIR}/i18n;${ICU_BASEDIR}/io
+  ${ICU_BASEDIR}/source/common;${ICU_BASEDIR}/source/i18n;${ICU_BASEDIR}/source/io
   CACHE INTERNAL
   "ICU: include path"
   FORCE
@@ -557,7 +557,7 @@ else ()
   set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
 endif()
 
-set(ICU_DT "${ICU_BASEDIR}/data/in/icudtl.dat")
+set(ICU_DT "${ICU_BASEDIR}/common/icudtl.dat")
 set(ICU_DT ${ICU_DT} PARENT_SCOPE)
 set(ICU_DT_DEST "icudtl.dat" )
 set(ICU_DT_DEST ${ICU_DT_DEST} PARENT_SCOPE)
