@@ -47,6 +47,7 @@ class BlockCollector {
   void clear();
   
   void add(std::unique_ptr<AqlItemBlock> block);
+  void add(AqlItemBlock* block);
 
   AqlItemBlock* steal(ResourceMonitor*);
 

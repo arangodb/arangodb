@@ -31,6 +31,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
+#include "Aql/BlockCollector.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -881,74 +882,48 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
 
   std::deque<std::pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
 
-  std::vector<AqlItemBlock*> collector;
+  BlockCollector collector;
 
-  auto freeCollector = [&collector]() {
-    for (auto& x : collector) {
-      delete x;
-    }
-    collector.clear();
-  };
-
-  try {
-    if (buf.empty()) {
-      if (!getBlockForClient(atLeast, atMost, clientId)) {
-        _doneForClient.at(clientId) = true;
-        traceGetSomeEnd(result);
-        return TRI_ERROR_NO_ERROR;
-      }
-    }
-
-    skipped = (std::min)(buf.size(), atMost);
-
-    if (skipping) {
-      for (size_t i = 0; i < skipped; i++) {
-        buf.pop_front();
-      }
-      freeCollector();
+  if (buf.empty()) {
+    if (!getBlockForClient(atLeast, atMost, clientId)) {
+      _doneForClient.at(clientId) = true;
       traceGetSomeEnd(result);
       return TRI_ERROR_NO_ERROR;
     }
+  }
 
-    size_t i = 0;
-    while (i < skipped) {
-      std::vector<size_t> chosen;
-      size_t const n = buf.front().first;
-      while (buf.front().first == n && i < skipped) {
-        chosen.emplace_back(buf.front().second);
-        buf.pop_front();
-        i++;
+  skipped = (std::min)(buf.size(), atMost);
 
-        // make sure we are not overreaching over the end of the buffer
-        if (buf.empty()) {
-          break;
-        }
-      }
-
-      std::unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
-      collector.emplace_back(more.get());
-      more.release();  // do not delete it!
+  if (skipping) {
+    for (size_t i = 0; i < skipped; i++) {
+      buf.pop_front();
     }
-  } catch (...) {
-    freeCollector();
-    throw;
+    traceGetSomeEnd(result);
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  size_t i = 0;
+  while (i < skipped) {
+    std::vector<size_t> chosen;
+    size_t const n = buf.front().first;
+    while (buf.front().first == n && i < skipped) {
+      chosen.emplace_back(buf.front().second);
+      buf.pop_front();
+      i++;
+
+      // make sure we are not overreaching over the end of the buffer
+      if (buf.empty()) {
+        break;
+      }
+    }
+
+    std::unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
+    collector.add(std::move(more));
   }
 
   if (!skipping) {
-    if (collector.size() == 1) {
-      result = collector[0];
-      collector.clear();
-    } else if (!collector.empty()) {
-      try {
-        result = AqlItemBlock::concatenate(_engine->getQuery()->resourceMonitor(), collector);
-      } catch (...) {
-        freeCollector();
-        throw;
-      }
-    }
+    result = collector.steal(_engine->getQuery()->resourceMonitor());
   }
-
-  freeCollector();
 
   // _buffer is left intact, deleted and cleared at shutdown
 
