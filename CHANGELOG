@@ -5,6 +5,12 @@ devel
 
 * changed index filling to make it more parallel, dispatch tasks to boost::asio
 
+* more detailed stacktraces in Foxx apps
+
+
+v3.1.10 (2017-XX-XX)
+--------------------
+
 * updated versions of bundled node modules:
   - joi: from 8.4.2 to 9.2.0
   - joi-to-json-schema: from 2.2.0 to 2.3.0
