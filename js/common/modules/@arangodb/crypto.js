@@ -1,10 +1,14 @@
-'use strict';
+/* jshint strict: false */
+/* global Buffer */
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief Some crypto functions
+// /
+// / @file
+// /
 // / DISCLAIMER
 // /
-// / Copyright 2012-2014 triAGENS GmbH, Cologne, Germany
-// / Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2012 triagens GmbH, Cologne, Germany
 // /
 // / Licensed under the Apache License, Version 2.0 (the "License")
 // / you may not use this file except in compliance with the License.
@@ -18,13 +22,13 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
 // /
 // / @author Jan Steemann
-// / @author Alan Plum
+// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-const internal = require('internal');
+var internal = require('internal');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief generate a random number
@@ -149,9 +153,11 @@ exports.checkAndMarkNonce = function (value) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.constantEquals = function (a, b) {
-  const length = a.length > b.length ? a.length : b.length;
-  let result = true;
-  for (let i = 0; i < length; i++) {
+  'use strict';
+  var length, result, i;
+  length = a.length > b.length ? a.length : b.length;
+  result = true;
+  for (i = 0; i < length; i++) {
     if (a.charCodeAt(i) !== b.charCodeAt(i)) {
       result = false;
     }
@@ -164,19 +170,19 @@ exports.constantEquals = function (a, b) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function jwtUrlEncode (str) {
-  return str.replace(/[+]/g, '-').replace(/[/]/g, '_').replace(/[=]/g, '');
+  'use strict';
+  return str.replace(/[+]/g, '-').replace(/[\/]/g, '_').replace(/[=]/g, '');
 }
 
 function jwtHmacSigner (algorithm) {
+  'use strict';
   return function (key, segments) {
-    return new Buffer(
-      exports.hmac(key, segments.join('.'), algorithm),
-      'hex'
-    ).toString('base64');
+    return new Buffer(exports.hmac(key, segments.join('.'), algorithm), 'hex').toString('base64');
   };
 }
 
 function jwtHmacVerifier (algorithm) {
+  'use strict';
   return function (key, segments) {
     return exports.constantEquals(
       exports.hmac(key, segments.slice(0, 2).join('.'), algorithm),
@@ -200,12 +206,14 @@ exports.jwtAlgorithms = {
   },
   none: {
     sign: function (key) {
+      'use strict';
       if (key) {
         throw new Error('Can not sign message with key using algorithm "none"!');
       }
       return '';
     },
     verify: function (key) {
+      'use strict';
       // see https://auth0.com/blog/2015/03/31/critical-vulnerabilities-in-json-web-token-libraries/
       return !key;
     }
@@ -213,6 +221,7 @@ exports.jwtAlgorithms = {
 };
 
 exports.jwtCanonicalAlgorithmName = function (algorithm) {
+  'use strict';
   if (algorithm && typeof algorithm === 'string') {
     if (exports.jwtAlgorithms.hasOwnProperty(algorithm.toLowerCase())) {
       return algorithm.toLowerCase();
@@ -222,18 +231,17 @@ exports.jwtCanonicalAlgorithmName = function (algorithm) {
     }
   }
   throw new Error(
-    `Unknown algorithm "${
-      algorithm
-    }". Only the following algorithms are supported at this time: ${
-      Object.keys(exports.jwtAlgorithms).join(', ')
-    }`
+    'Unknown algorithm "'
+    + algorithm
+    + '". Only the following algorithms are supported at this time: '
+    + Object.keys(exports.jwtAlgorithms).join(', ')
   );
 };
 
 exports.jwtEncode = function (key, message, algorithm) {
+  'use strict';
   algorithm = algorithm ? exports.jwtCanonicalAlgorithmName(algorithm) : 'HS256';
-  const header = {typ: 'JWT', alg: algorithm};
-  const segments = [];
+  var header = {typ: 'JWT', alg: algorithm}, segments = [];
   segments.push(jwtUrlEncode(new Buffer(JSON.stringify(header)).toString('base64')));
   segments.push(jwtUrlEncode(new Buffer(JSON.stringify(message)).toString('base64')));
   segments.push(jwtUrlEncode(exports.jwtAlgorithms[algorithm].sign(key, segments)));
@@ -245,27 +253,29 @@ exports.jwtEncode = function (key, message, algorithm) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function jwtUrlDecode (str) {
+  'use strict';
   while ((str.length % 4) !== 0) {
     str += '=';
   }
-  return str.replace(/-/g, '+').replace(/_/g, '/');
+  return str.replace(/\-/g, '+').replace(/_/g, '/');
 }
 
 exports.jwtDecode = function (key, token, noVerify) {
+  'use strict';
   if (!token) {
     return null;
   }
 
-  const segments = token.split('.');
+  var segments = token.split('.');
   if (segments.length !== 3) {
     throw new Error('Wrong number of JWT segments!');
   }
-  const headerSeg = new Buffer(jwtUrlDecode(segments[0]), 'base64').toString();
-  const messageSeg = new Buffer(jwtUrlDecode(segments[1]), 'base64').toString();
+  var headerSeg = new Buffer(jwtUrlDecode(segments[0]), 'base64').toString();
+  var messageSeg = new Buffer(jwtUrlDecode(segments[1]), 'base64').toString();
   segments[2] = new Buffer(jwtUrlDecode(segments[2]), 'base64').toString('hex');
 
   if (!noVerify) {
-    const header = JSON.parse(headerSeg);
+    var header = JSON.parse(headerSeg);
     header.alg = exports.jwtCanonicalAlgorithmName(header.alg);
     if (!exports.jwtAlgorithms[header.alg].verify(key, segments)) {
       throw new Error('Signature verification failed!');
