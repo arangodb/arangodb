@@ -76,7 +76,7 @@ void * LanguageFeature::prepareIcu(std::string const& binaryPath, std::string co
     }
     else {
 # if _WIN32
-      path = TRI_LocateInstallDirectory(binaryPath);
+      path = TRI_LocateInstallDirectory(binaryPath.c_str());
 #else
       path = TRI_DIR_SEPARATOR_STR;
 # endif
