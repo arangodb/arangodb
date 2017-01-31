@@ -1833,7 +1833,7 @@ static double chooseTimeout(size_t count) {
   // We usually assume that a server can process at least 5000 documents
   // per second (this is a low estimate), and use a low limit of 0.5s
   // and a high timeout of 120s
-  double timeout = count / 5000;
+  double timeout = static_cast<double>(count / 5000);
   if (timeout < 0.5) {
     return 0.5;
   } else if (timeout > 120) {
