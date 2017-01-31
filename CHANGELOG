@@ -1,6 +1,12 @@
 v3.1.10 (2017-XX-XX)
 --------------------
 
+* updated versions of bundled node modules:
+  - joi: from 8.4.2 to 9.2.0
+  - joi-to-json-schema: from 2.2.0 to 2.3.0
+  - sinon: from 1.17.4 to 1.17.6
+  - lodash: from 4.13.1 to 4.16.6
+
 * added shortcut for AQL ternary operator
   instead of `condition ? true-part : false-part` it is now possible to also use a
   shortcut variant `condition ? : false-part`, e.g.
