@@ -574,7 +574,7 @@ ClusterCommResult const ClusterComm::wait(
   ResponseIterator i;
   AsyncResponse response;
 
-  // tell Dispatcher that we are waiting:
+  // tell scheduler that we are waiting:
   JobGuard guard{SchedulerFeature::SCHEDULER};
   guard.block();
 
