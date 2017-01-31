@@ -44,7 +44,7 @@ enum ExecutionState {
   IN_ERROR,     // after an error which should allow recovery
   RECOVERING    // during recovery
 };
-static const char* ExecutionStateNames[] = {
+const char* ExecutionStateNames[] = {
     "none", "running", "done", "canceled", "in error", "recovering"};
 
 class MasterContext;

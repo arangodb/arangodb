@@ -112,12 +112,11 @@ MessageIterator<M> ArrayInCache<M>::getMessages(prgl_shard_t shard,
   HMap const& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {
-    LOG(INFO) << "Got a message for " << key;
-
+    //LOG(INFO) << "Got a message for " << key;
     M const* ptr = vmsg->second.data();
     return MessageIterator<M>(ptr, vmsg->second.size());
   } else {
-    LOG(INFO) << "No message for " << key;
+    //LOG(INFO) << "No message for " << key;
     return MessageIterator<M>();
   }
 }
