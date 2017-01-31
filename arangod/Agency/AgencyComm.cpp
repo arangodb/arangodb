@@ -612,7 +612,7 @@ std::string AgencyCommManager::redirect(
     << specification << ", url = " << rest;
   
   if (endpoint == specification) {
-    LOG_TOPIC(WARN, Logger::AGENCYCOMM)
+    LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
       << "got an agency redirect back to the old agency '" << endpoint << "'";
     failedNonLocking(std::move(connection), endpoint);
     return "";
@@ -632,7 +632,7 @@ std::string AgencyCommManager::redirect(
     std::remove(_endpoints.begin(), _endpoints.end(), specification),
     _endpoints.end());
   
-  LOG_TOPIC(WARN, Logger::AGENCYCOMM)
+  LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
     << "Got an agency redirect from '" << endpoint
     << "' to '" << specification << "'";
   
@@ -1359,17 +1359,11 @@ AgencyCommResult AgencyComm::sendWithFailover(
       LOG_TOPIC(ERR, Logger::AGENCYCOMM) << result._message;
       return result;
     }
-    
-    if (1 < tries) {
-      LOG_TOPIC(WARN, Logger::AGENCYCOMM)
-        << "Retrying agency communication at '" << endpoint
-        << "', tries: " << tries << " ("
-        << 1.e-2 * (
-          std::round(
-            1.e+2 * std::chrono::duration<double>(
-              std::chrono::steady_clock::now() - started).count())) << "s)";
-    }
-    
+
+    double elapsed = 1.e-2 * (
+      std::round(1.e+2 * std::chrono::duration<double>(
+                   std::chrono::steady_clock::now() - started).count()));
+
     // try to send; if we fail completely, do not retry
     try {
       result = send(connection.get(), method, conTimeout, url, body, clientId);
@@ -1379,7 +1373,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
       connection = AgencyCommManager::MANAGER->acquire(endpoint);
       continue;
     }
-
+    
     // got a result, we are done
     if (result.successful()) {
       AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
@@ -1389,7 +1383,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     // break on a watch timeout (drop connection)
     if (!clientId.empty() && result._sent &&
         (result._statusCode == 0 || result._statusCode == 503)) {
-
+      
       VPackBuilder b;
       {
         VPackArrayBuilder ab(&b);
@@ -1470,6 +1464,26 @@ AgencyCommResult AgencyComm::sendWithFailover(
       break;
     }
 
+    if (tries%50 == 0) {
+      LOG_TOPIC(WARN, Logger::AGENCYCOMM)
+        << "Bad agency communiction! Unsuccessful consecutive tries:"
+        << tries << " (" << elapsed << "s). Network checks needed!";
+    } else if (tries%15 == 0) {
+      LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+        << "Flaky agency communication. Unsuccessful consecutive tries: "
+        << tries << " (" << elapsed << "s). Network checks advised.";
+    } 
+    
+    if (1 < tries) {
+      LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
+        << "Retrying agency communication at '" << endpoint
+        << "', tries: " << tries << " ("
+        << 1.e-2 * (
+          std::round(
+            1.e+2 * std::chrono::duration<double>(
+              std::chrono::steady_clock::now() - started).count())) << "s)";
+    }
+    
     // here we have failed and want to try next endpoint
     AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
     endpoint.clear();
