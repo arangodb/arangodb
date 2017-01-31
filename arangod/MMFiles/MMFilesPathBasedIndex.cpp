@@ -125,7 +125,7 @@ int MMFilesPathBasedIndex::fillElement(std::vector<T*>& elements,
     auto slices = buildIndexValue(doc);
 
     if (slices.size() == n) {
-      // if shapes.size() != n, then the value is not inserted into the index
+      // if slices.size() != n, then the value is not inserted into the index
       // because of index sparsity!
       T* element = static_cast<T*>(_allocator->allocate());
       TRI_ASSERT(element != nullptr);
