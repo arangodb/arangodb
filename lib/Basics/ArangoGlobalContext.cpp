@@ -289,6 +289,23 @@ void ArangoGlobalContext::runStartupChecks() {
              "necessary to set the value in '"
           << filename << "' to 2";
     }
+    std::string const proc_cpuinfo_filename("/proc/cpuinfo");
+    try {
+      std::string const cpuInfo =
+          arangodb::basics::FileUtils::slurp(proc_cpuinfo_filename);
+      auto start = cpuInfo.find("ARMv6");
+
+      if (start != std::string::npos) {
+          LOG(FATAL)
+              << "possibly incompatible ARMv6 CPU detected.";
+          FATAL_ERROR_EXIT();
+        }
+    } catch (...) {
+      // ignore that we cannot detect the alignment
+      LOG(TRACE)
+          << "unable to detect CPU type '"
+          << filename << "'";
+    }
   }
 #endif
 }
