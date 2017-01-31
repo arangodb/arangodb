@@ -474,7 +474,6 @@ describe('Rule optimize-traversals', () => {
   });
 
   describe('various filter optimizations', () => {
-
     const multiplyArray = (left, right) => {
       // Only works if both are arrays
       let res = [];
@@ -503,7 +502,7 @@ describe('Rule optimize-traversals', () => {
       ` == `, ` < `, ` <= `, ` != `
     ];
     const asymetricOperators = [
-      ` IN `, ` NOT IN ` 
+      ` IN `, ` NOT IN `
     ];
 
     const modifiers = [
@@ -523,7 +522,7 @@ describe('Rule optimize-traversals', () => {
     ];
 
     const valuePostFixes = [
-      `` , `.foo`, `.foo[*]`, `.foo.bar`, `.foo[0]`
+      ``, `.foo`, `.foo[*]`, `.foo.bar`, `.foo[0]`
     ];
 
     const constValues = [
@@ -543,7 +542,7 @@ describe('Rule optimize-traversals', () => {
     const queryEnd = ` RETURN {v,e,p}`;
 
     const symOperatorsWithModifiers = multiplyArray(modifiers, symetricOperators);
-    const noOptSymOperators = multiplyArray([ ` ANY`], symetricOperators);
+    const noOptSymOperators = multiplyArray([` ANY`], symetricOperators);
 
     const checkDoesOptimize = (conditions, shouldOptimize) => {
       for (let c of conditions) {
@@ -566,7 +565,6 @@ describe('Rule optimize-traversals', () => {
       }
     };
 
-
     const arrayStarts = multiplyArray(arrayCmpStart, valuePostFixes);
     const singleStarts = multiplyArray(singleCompStart, valuePostFixes);
 
@@ -578,43 +576,42 @@ describe('Rule optimize-traversals', () => {
       });
 
       it('array modifiers with path array access left', () => {
-        const conditions = multiplyArrays(arrayStarts, symOperatorsWithModifiers, constValues)
+        const conditions = multiplyArrays(arrayStarts, symOperatorsWithModifiers, constValues);
         checkDoesOptimize(conditions, true);
       });
 
       it('array modifiers with point access left', () => {
-        const conditions = multiplyArrays(constValues, noOptSymOperators, singleStarts)
+        const conditions = multiplyArrays(constValues, noOptSymOperators, singleStarts);
         checkDoesOptimize(conditions, true);
       });
 
       it('asymetric operators with path array access left (NOT ANY)', () => {
         const ops = multiplyArray(modifiers.concat([``]), asymetricOperators);
-        const conditions = multiplyArrays(arrayStarts, ops, constValues)
+        const conditions = multiplyArrays(arrayStarts, ops, constValues);
         checkDoesOptimize(conditions, true);
       });
-
     });
 
     describe('should not optimize', () => {
       it('ANY array modifiers with path array access left', () => {
-        const conditions = multiplyArrays(arrayStarts, noOptSymOperators, constValues)
+        const conditions = multiplyArrays(arrayStarts, noOptSymOperators, constValues);
         checkDoesOptimize(conditions, false);
       });
 
       it('array modifiers with path array access right', () => {
-        const conditions = multiplyArrays(constValues, noOptSymOperators, arrayStarts)
+        const conditions = multiplyArrays(constValues, noOptSymOperators, arrayStarts);
         checkDoesOptimize(conditions, false);
       });
 
       it('asymetric operators with path array access right', () => {
-        const ops = multiplyArray(([``, ` ANY`].concat(modifiers)), asymetricOperators)
-        const conditions = multiplyArrays(constValues, noOptSymOperators, arrayStarts)
+        const ops = multiplyArray(([``, ` ANY`].concat(modifiers)), asymetricOperators);
+        const conditions = multiplyArrays(constValues, ops, arrayStarts);
         checkDoesOptimize(conditions, false);
       });
 
       it('asymetric operators with ANY and path array access left', () => {
         const ops = multiplyArray([` ANY`], asymetricOperators);
-        const conditions = multiplyArrays(arrayStarts, ops, constValues)
+        const conditions = multiplyArrays(arrayStarts, ops, constValues);
         checkDoesOptimize(conditions, false);
       });
 
@@ -650,7 +647,12 @@ describe('Rule optimize-traversals', () => {
         checkDoesOptimize(conditions, false);
       });
 
+      it('other access referencing traversal output', () => {
+        // Build all combinations of v,e,p
+        const starters = multiplyArray(outputStart.concat(arrayCmpStart).concat(singleCompStart), valuePostFixes);
+        const conditions = multiplyArrays(starters, symetricOperators, starters);
+        checkDoesOptimize(conditions, false);
+      });
     });
-
   });
 });
