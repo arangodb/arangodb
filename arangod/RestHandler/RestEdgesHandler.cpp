@@ -24,7 +24,7 @@
 #include "RestEdgesHandler.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterMethods.h"
-#include "Indexes/EdgeIndex.h"
+#include "MMFiles/MMFilesEdgeIndex.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -72,6 +72,7 @@ bool RestEdgesHandler::getEdgesForVertexList(
     VPackSlice const ids,
     TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
     VPackBuilder& result, size_t& scannedIndex, size_t& filtered) {
+  TRI_ASSERT(result.isOpenArray());
   TRI_ASSERT(ids.isArray());
   trx.orderDitch(trx.cid());  // will throw when it fails
 
@@ -80,7 +81,7 @@ bool RestEdgesHandler::getEdgesForVertexList(
   Transaction::IndexHandle indexId = trx.edgeIndexHandle(collectionName);
 
   VPackBuilder searchValueBuilder;
-  EdgeIndex::buildSearchValueFromArray(direction, ids, searchValueBuilder);
+  MMFilesEdgeIndex::buildSearchValueFromArray(direction, ids, searchValueBuilder);
   VPackSlice search = searchValueBuilder.slice();
 
   std::unique_ptr<OperationCursor> cursor =
@@ -90,20 +91,17 @@ bool RestEdgesHandler::getEdgesForVertexList(
     THROW_ARANGO_EXCEPTION(cursor->code);
   }
 
-  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  std::vector<DocumentIdentifierToken> batch;
+  ManagedDocumentResult mmdr;
+  auto collection = trx.documentCollection();
   while (cursor->hasMore()) {
-    cursor->getMore(opRes);
-    if (opRes->failed()) {
-      THROW_ARANGO_EXCEPTION(opRes->code);
-    }
-    VPackSlice edges = opRes->slice();
-    TRI_ASSERT(edges.isArray());
+    cursor->getMoreTokens(batch, 1000);
+    scannedIndex += batch.size();
 
-    // generate result
-    scannedIndex += static_cast<size_t>(edges.length());
-
-    for (auto const& edge : VPackArrayIterator(edges)) {
-      result.add(edge);
+    for (auto const& it : batch) {
+      if (collection->readDocument(&trx, mmdr, it)) {
+        result.add(VPackSlice(mmdr.vpack()));
+      }
     }
   }
 
@@ -114,12 +112,13 @@ bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id, std::string const& collectionName,
     TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
     VPackBuilder& result, size_t& scannedIndex, size_t& filtered) {
+  TRI_ASSERT(result.isOpenArray());
   trx.orderDitch(trx.cid());  // will throw when it fails
 
   Transaction::IndexHandle indexId = trx.edgeIndexHandle(collectionName);
 
   VPackBuilder searchValueBuilder;
-  EdgeIndex::buildSearchValue(direction, id, searchValueBuilder);
+  MMFilesEdgeIndex::buildSearchValue(direction, id, searchValueBuilder);
   VPackSlice search = searchValueBuilder.slice();
 
   std::unique_ptr<OperationCursor> cursor =
@@ -129,20 +128,17 @@ bool RestEdgesHandler::getEdgesForVertex(
     THROW_ARANGO_EXCEPTION(cursor->code);
   }
 
-  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  std::vector<DocumentIdentifierToken> batch;
+  ManagedDocumentResult mmdr;
+  auto collection = trx.documentCollection();
   while (cursor->hasMore()) {
-    cursor->getMore(opRes);
-    if (opRes->failed()) {
-      THROW_ARANGO_EXCEPTION(opRes->code);
-    }
-    VPackSlice edges = opRes->slice();
-    TRI_ASSERT(edges.isArray());
+    cursor->getMoreTokens(batch, 1000);
+    scannedIndex += batch.size();
 
-    // generate result
-    scannedIndex += static_cast<size_t>(edges.length());
-
-    for (auto const& edge : VPackArrayIterator(edges)) {
-      result.add(edge);
+    for (auto const& it : batch) {
+      if (collection->readDocument(&trx, mmdr, it)) {
+        result.add(VPackSlice(mmdr.vpack()));
+      }
     }
   }
 
@@ -235,7 +231,7 @@ bool RestEdgesHandler::readEdges() {
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
       StandaloneTransactionContext::Create(_vocbase), collectionName,
-      TRI_TRANSACTION_READ);
+      AccessMode::Type::READ);
 
   // .............................................................................
   // inside read transaction
@@ -391,7 +387,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
       StandaloneTransactionContext::Create(_vocbase), collectionName,
-      TRI_TRANSACTION_READ);
+      AccessMode::Type::READ);
 
   // .............................................................................
   // inside read transaction

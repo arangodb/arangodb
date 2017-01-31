@@ -38,7 +38,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     ExecutionEngine* engine, EnumerateCollectionNode const* ep)
     : ExecutionBlock(engine, ep),
       _collection(ep->_collection),
-      _mmdr(new ManagedDocumentResult(transaction())),
+      _mmdr(new ManagedDocumentResult),
       _scanner(_trx, _mmdr.get(), _collection->getName(), ep->_random),
       _position(0),
       _mustStoreResult(true) {
@@ -250,8 +250,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
       // The result is in the first variable of this depth,
       // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
       // but can just take cur->getNrRegs() as registerId:
-      TRI_voc_rid_t revisionId = _documents[_position].revisionId();
-      if (c->readRevision(_trx, *_mmdr, revisionId)) {
+      if (c->readDocument(_trx, *_mmdr, _documents[_position])) {
         uint8_t const* vpack = _mmdr->vpack(); 
         res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), AqlValue(vpack, AqlValueFromManagedDocument()));
       }

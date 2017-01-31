@@ -26,6 +26,7 @@
 #include "BlockCollector.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ResourceUsage.h"
+#include "Basics/Exceptions.h"
 
 using namespace arangodb::aql;
 
@@ -58,6 +59,14 @@ void BlockCollector::add(std::unique_ptr<AqlItemBlock> block) {
   block.release();
 }
 
+void BlockCollector::add(AqlItemBlock* block) {
+  TRI_ASSERT(block != nullptr);
+  TRI_ASSERT(block->size() > 0);
+
+  _blocks.push_back(block);
+  _totalSize += block->size();
+}
+
 AqlItemBlock* BlockCollector::steal(ResourceMonitor* resourceMonitor) {
   if (_blocks.empty()) {
     return nullptr;
@@ -65,6 +74,10 @@ AqlItemBlock* BlockCollector::steal(ResourceMonitor* resourceMonitor) {
 
   TRI_ASSERT(_totalSize > 0);
   AqlItemBlock* result = nullptr;
+        
+  TRI_IF_FAILURE("BlockCollector::getOrSkipSomeConcatenate") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   if (_blocks.size() == 1) {
     // only got a single result. return it as it is

@@ -24,7 +24,7 @@
 #include "Ditch.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
-#include "StorageEngine/MMFilesDatafile.h"
+#include "MMFiles/MMFilesDatafile.h"
 
 using namespace arangodb;
 

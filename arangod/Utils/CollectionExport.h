@@ -35,7 +35,6 @@ namespace arangodb {
 
 class CollectionGuard;
 class DocumentDitch;
-class RevisionCacheChunk;
 
 class CollectionExport {
   friend class ExportCursor;
@@ -69,7 +68,6 @@ class CollectionExport {
   arangodb::CollectionNameResolver _resolver;
   Restrictions _restrictions;
   std::vector<uint8_t const*> _vpack;
-  std::unordered_set<RevisionCacheChunk*> _chunks;
 };
 }
 

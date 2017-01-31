@@ -60,10 +60,10 @@
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/LockfileFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/RevisionCacheFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RestServer/TransactionManagerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UnitTestsFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -73,14 +73,13 @@
 #include "Ssl/SslServerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/MMFilesEngine.h"
-#include "StorageEngine/MMFilesWalRecoveryFeature.h"
+#include "MMFiles/MMFilesEngine.h"
+#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesPersistentIndexFeature.h"
+#include "MMFiles/MMFilesWalRecoveryFeature.h"
 #include "StorageEngine/RocksDBEngine.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
-#include "Wal/LogfileManager.h"
-
-#include "Indexes/RocksDBFeature.h"
 
 #ifdef _WIN32
 #include "ApplicationFeatures/WindowsServiceFeature.h"
@@ -137,7 +136,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new LockfileFeature(&server));
-  server.addFeature(new wal::LogfileManager(&server));
+  server.addFeature(new MMFilesLogfileManager(&server));
   server.addFeature(new LoggerBufferFeature(&server));
   server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new NonceFeature(&server));
@@ -146,7 +145,6 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new QueryRegistryFeature(&server));
   server.addFeature(new TraverserEngineRegistryFeature(&server));
   server.addFeature(new RandomFeature(&server));
-  server.addFeature(new RevisionCacheFeature(&server));
   server.addFeature(new RocksDBFeature(&server));
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ScriptFeature(&server, &ret));
@@ -156,6 +154,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new SslFeature(&server));
   server.addFeature(new StatisticsFeature(&server));
   server.addFeature(new TempFeature(&server, name));
+  server.addFeature(new TransactionManagerFeature(&server));
   server.addFeature(new UnitTestsFeature(&server, &ret));
   server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new V8DealerFeature(&server));

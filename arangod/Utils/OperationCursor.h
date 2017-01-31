@@ -102,33 +102,13 @@ struct OperationCursor {
   void reset();
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements.
-///        Defaults to _batchSize
-///        Check hasMore()==true before using this
-///        NOTE: This will throw on OUT_OF_MEMORY
-//////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<OperationResult> getMore(uint64_t batchSize = UINT64_MAX,
-                                           bool useExternals = true);
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements.
-///        Defaults to _batchSize
-///        Check hasMore()==true before using this
-///        NOTE: This will throw on OUT_OF_MEMORY
-//////////////////////////////////////////////////////////////////////////////
-
-  void getMore(std::shared_ptr<OperationResult>&, uint64_t batchSize = UINT64_MAX,
-               bool useExternals = true);
-
-//////////////////////////////////////////////////////////////////////////////
 /// @brief Get next batchSize many elements. mptr variant
 ///        Defaults to _batchSize
 ///        Check hasMore()==true before using this
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
   
-  std::vector<IndexLookupResult> getMoreMptr(uint64_t batchSize = UINT64_MAX);
+  std::vector<DocumentIdentifierToken> getMoreTokens(uint64_t batchSize);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Get next batchSize many elements. mptr variant
@@ -138,7 +118,7 @@ struct OperationCursor {
 ///        NOTE: The result vector handed in will be cleared.
 //////////////////////////////////////////////////////////////////////////////
 
-  void getMoreMptr(std::vector<IndexLookupResult>& result, uint64_t batchSize = UINT64_MAX);
+  void getMoreTokens(std::vector<DocumentIdentifierToken>& result, uint64_t batchSize);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Skip the next toSkip many elements.

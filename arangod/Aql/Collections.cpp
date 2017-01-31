@@ -47,7 +47,7 @@ Collection* Collections::get(std::string const& name) const {
 }
 
 Collection* Collections::add(std::string const& name,
-                             TRI_transaction_type_e accessType) {
+                             AccessMode::Type accessType) {
   // check if collection already is in our map
   TRI_ASSERT(!name.empty());
   auto it = _collections.find(name);
@@ -68,9 +68,9 @@ Collection* Collections::add(std::string const& name,
     }
 
     // change access type from read to write
-    if (accessType == TRI_TRANSACTION_WRITE &&
-        (*it).second->accessType == TRI_TRANSACTION_READ) {
-      (*it).second->accessType = TRI_TRANSACTION_WRITE;
+    if (accessType == AccessMode::Type::WRITE &&
+        (*it).second->accessType == AccessMode::Type::READ) {
+      (*it).second->accessType = AccessMode::Type::WRITE;
     }
   }
   return (*it).second;

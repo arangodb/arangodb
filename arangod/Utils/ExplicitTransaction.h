@@ -27,13 +27,13 @@
 #include "Basics/Common.h"
 
 #include "Utils/Transaction.h"
+#include "Utils/TransactionState.h"
 #include "Utils/V8TransactionContext.h"
 #include "VocBase/ticks.h"
-#include "VocBase/transaction.h"
 
 namespace arangodb {
 
-class ExplicitTransaction : public Transaction {
+class ExplicitTransaction final : public Transaction {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
@@ -42,10 +42,11 @@ class ExplicitTransaction : public Transaction {
   ExplicitTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
                       std::vector<std::string> const& readCollections,
                       std::vector<std::string> const& writeCollections,
+                      std::vector<std::string> const& exclusiveCollections,
                       double lockTimeout, bool waitForSync,
                       bool allowImplicitCollections)
       : Transaction(transactionContext) {
-    this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
+    this->addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
 
     if (lockTimeout >= 0.0) {
       this->setTimeout(lockTimeout);
@@ -54,13 +55,17 @@ class ExplicitTransaction : public Transaction {
     if (waitForSync) {
       this->setWaitForSync();
     }
+    
+    for (auto const& it : exclusiveCollections) {
+      this->addCollection(it, AccessMode::Type::EXCLUSIVE);
+    }
 
     for (auto const& it : writeCollections) {
-      this->addCollection(it, TRI_TRANSACTION_WRITE);
+      this->addCollection(it, AccessMode::Type::WRITE);
     }
 
     for (auto const& it : readCollections) {
-      this->addCollection(it, TRI_TRANSACTION_READ);
+      this->addCollection(it, AccessMode::Type::READ);
     }
     
     this->setAllowImplicitCollections(allowImplicitCollections);

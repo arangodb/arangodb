@@ -29,13 +29,15 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
-#include "Indexes/PrimaryIndex.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"
-#include "StorageEngine/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesIndexElement.h"
+#include "MMFiles/MMFilesPrimaryIndex.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -773,7 +775,7 @@ int InitialSyncer::handleCollectionDump(
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
+      SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
       
       res = trx.begin();
 
@@ -977,7 +979,7 @@ int InitialSyncer::handleCollectionSync(
 
   if (count.getNumber<size_t>() <= 0) {
     // remote collection has no documents. now truncate our local collection
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
 
     int res = trx.begin();
 
@@ -1037,7 +1039,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
   // acquire a replication ditch so no datafiles are thrown away from now on
   // note: the ditch also protects against unloading the collection
   {    
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_READ);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
   
     int res = trx.begin();
   
@@ -1057,14 +1059,8 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 
   TRI_DEFER(col->ditches()->freeDitch(ditch));
 
-  std::unordered_set<RevisionCacheChunk*> chunks;
-  auto cleanupChunks = [&chunks]() {
-    for (auto& chunk : chunks) { chunk->release(); }
-  };
-  TRI_DEFER(cleanupChunks());
-
   {
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_READ);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
   
     int res = trx.begin();
   
@@ -1080,9 +1076,9 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     markers.reserve(idx->size());
 
     uint64_t iterations = 0;
-    ManagedDocumentResult mmdr(&trx);
-    trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations, &idx](SimpleIndexElement const& element) {
-      if (idx->collection()->readRevision(&trx, mmdr, element.revisionId())) {
+    ManagedDocumentResult mmdr;
+    trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations, &idx](DocumentIdentifierToken const& token) {
+      if (idx->collection()->readDocument(&trx, mmdr, token)) {
         markers.emplace_back(mmdr.vpack());
         
         if (++iterations % 10000 == 0) {
@@ -1093,8 +1089,6 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       }
       return true;
     });
-
-    trx.transactionContext()->stealChunks(chunks);
 
     if (checkAborted()) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
@@ -1206,7 +1200,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
   // remove all keys that are below first remote key or beyond last remote key
   if (n > 0) {
     // first chunk
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
   
     int res = trx.begin();
   
@@ -1277,7 +1271,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
     
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
   
     int res = trx.begin();
   
@@ -1480,7 +1474,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
           }
         }
 
-        SimpleIndexElement element = idx->lookupKey(&trx, keySlice);
+        MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
 
         if (!element) {
           // key not found locally
@@ -1603,7 +1597,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
           }
 
-          SimpleIndexElement element = idx->lookupKey(&trx, keySlice);
+          MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
 
           if (!element) {
             // INSERT
@@ -1653,7 +1647,7 @@ int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,
 ////////////////////////////////////////////////////////////////////////////////
 
 int64_t InitialSyncer::getSize(arangodb::LogicalCollection* col) {
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_READ);
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
 
   int res = trx.begin();
 
@@ -1741,7 +1735,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
           // system collection
           setProgress("truncating " + collectionMsg);
 
-          SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
+          SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
 
           int res = trx.begin();
 
@@ -1856,7 +1850,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
           setProgress(progress);
 
           try {
-            SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
+            SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
       
             res = trx.begin();
 

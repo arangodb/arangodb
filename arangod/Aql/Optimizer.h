@@ -149,7 +149,7 @@ class Optimizer {
     // remove redundant OR conditions
     removeRedundantOrRule_pass6,
 
-    applyGeoIndexRule,
+    applyMMFilesGeoIndexRule,
 
     useIndexesRule_pass6,
 

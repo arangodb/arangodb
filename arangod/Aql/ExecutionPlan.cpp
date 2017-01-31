@@ -43,8 +43,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "VocBase/AccessMode.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
@@ -231,7 +231,7 @@ void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast,
     ast->query()->collections()->add(
         arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
                                                                    "name"),
-        TRI_GetTransactionTypeFromStr(
+        AccessMode::fromString(
             arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
                 collection, "type")
                 .c_str()));
@@ -336,7 +336,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
     builder.openObject();
     builder.add("name", VPackValue(c.first));
     builder.add("type",
-                VPackValue(TRI_TransactionTypeGetStr(c.second->accessType)));
+                VPackValue(AccessMode::typeString(c.second->accessType)));
     builder.close();
   }
   builder.close();

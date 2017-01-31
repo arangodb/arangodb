@@ -33,7 +33,6 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -41,7 +40,7 @@ using namespace arangodb::aql;
 
 /// @brief create a collection wrapper
 Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
-                       TRI_transaction_type_e accessType)
+                       AccessMode::Type accessType)
     : collection(nullptr),
       currentShard(),
       name(name),
@@ -128,6 +127,10 @@ bool Collection::usesDefaultSharding() const {
   return getCollection()->usesDefaultShardKeys();
 }
 
+void Collection::setCollection(arangodb::LogicalCollection* coll) {
+  collection = coll;
+}
+
 /// @brief either use the set collection or get one from ClusterInfo:
 std::shared_ptr<LogicalCollection> Collection::getCollection() const {
   if (collection == nullptr) {
@@ -137,4 +140,14 @@ std::shared_ptr<LogicalCollection> Collection::getCollection() const {
   std::shared_ptr<LogicalCollection> dummy;   // intentionally empty
   // Use the aliasing constructor:
   return std::shared_ptr<LogicalCollection>(dummy, collection);
+}
+
+/// @brief check smartness of the underlying collection
+bool Collection::isSmart() const {
+  return getCollection()->isSmart();
+}
+
+/// @brief check if collection is a satellite collection
+bool Collection::isSatellite() const {
+  return getCollection()->isSatellite();
 }

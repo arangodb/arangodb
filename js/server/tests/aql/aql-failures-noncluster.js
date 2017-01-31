@@ -296,7 +296,7 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFilterBlock4 : function () {
-      internal.debugSetFailAt("FilterBlock::getOrSkipSomeConcatenate");
+      internal.debugSetFailAt("BlockCollector::getOrSkipSomeConcatenate");
       assertFailingQuery("FOR c IN " + c.name() + " FILTER c.value >= 20 && c.value < 30 LIMIT 0, 10 SORT c.value RETURN c");
     },
 

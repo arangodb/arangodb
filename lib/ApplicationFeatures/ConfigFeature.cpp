@@ -94,7 +94,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   if (_file.empty()) {
     files.emplace_back(progname);
   } else {
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "using user supplied conifg file '"
+    LOG_TOPIC(DEBUG, Logger::CONFIG) << "using user supplied config file '"
                                      << _file << "'";
 
     IniFileParser parser(options.get());
@@ -113,7 +113,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     auto name = files[i];
 
     if (seen.find(name) != seen.end()) {
-      LOG(FATAL) << "circluar includes, seen '" << name << "' twice";
+      LOG(FATAL) << "circular includes, seen '" << name << "' twice";
       FATAL_ERROR_EXIT();
     }
 
@@ -145,13 +145,12 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
     if (filename.length() == 0 || !FileUtils::exists(filename)) {
       filename =  FileUtils::buildFilename(FileUtils::currentDirectory(), basename);
-
+    
       LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
 
       if (!FileUtils::exists(filename)) {
         filename = FileUtils::buildFilename(FileUtils::currentDirectory(),
                                             "etc/relative/" + basename);
-
         LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
 
         if (!FileUtils::exists(filename)) {
@@ -168,7 +167,6 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
             if (!FileUtils::exists(filename)) {
               LOG_TOPIC(DEBUG, Logger::CONFIG) << "cannot find any config file";
-              return;
             }
           }
         }

@@ -55,12 +55,6 @@ if (MSVC)
   )
 endif ()
 
-set(ROCKSDB_FILES
-  Indexes/RocksDBFeature.cpp
-  Indexes/RocksDBIndex.cpp
-  Indexes/RocksDBKeyComparator.cpp
-)
-
 if (USE_ENTERPRISE)
   set(ENTERPRISE_FILES "")
 else ()
@@ -71,7 +65,6 @@ endif ()
 
 SET(ARANGOD_SOURCES
   ${ProductVersionFiles}
-  ${ROCKSDB_FILES}
   ${ENTERPRISE_FILES}
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
@@ -191,11 +184,6 @@ SET(ARANGOD_SOURCES
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
   Cluster/v8-cluster.cpp
-  FulltextIndex/fulltext-handles.cpp
-  FulltextIndex/fulltext-index.cpp
-  FulltextIndex/fulltext-list.cpp
-  FulltextIndex/fulltext-query.cpp
-  FulltextIndex/fulltext-result.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
   GeneralServer/GeneralCommTask.cpp
@@ -208,19 +196,46 @@ SET(ARANGOD_SOURCES
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/RestStatus.cpp
   GeneralServer/VppCommTask.cpp
-  GeoIndex/GeoIndex.cpp
-  Indexes/EdgeIndex.cpp
-  Indexes/FulltextIndex.cpp
-  Indexes/GeoIndex.cpp
-  Indexes/HashIndex.cpp
   Indexes/Index.cpp
-  Indexes/IndexElement.cpp
   Indexes/IndexIterator.cpp
-  Indexes/PathBasedIndex.cpp
-  Indexes/PrimaryIndex.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
-  Indexes/SkiplistIndex.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
+  MMFiles/fulltext-handles.cpp
+  MMFiles/fulltext-index.cpp
+  MMFiles/fulltext-list.cpp
+  MMFiles/fulltext-query.cpp
+  MMFiles/fulltext-result.cpp
+  MMFiles/geo-index.cpp
+  MMFiles/MMFilesAllocatorThread.cpp
+  MMFiles/MMFilesCleanupThread.cpp
+  MMFiles/MMFilesCollection.cpp
+  MMFiles/MMFilesCollectorThread.cpp
+  MMFiles/MMFilesCompactorThread.cpp
+  MMFiles/MMFilesDatafile.cpp
+  MMFiles/MMFilesDatafileStatistics.cpp
+  MMFiles/MMFilesDocumentOperation.cpp
+  MMFiles/MMFilesEdgeIndex.cpp
+  MMFiles/MMFilesEngine.cpp
+  MMFiles/MMFilesIndexElement.cpp
+  MMFiles/MMFilesIndexFactory.cpp
+  MMFiles/MMFilesLogfileManager.cpp
+  MMFiles/MMFilesFulltextIndex.cpp
+  MMFiles/MMFilesGeoIndex.cpp
+  MMFiles/MMFilesHashIndex.cpp
+  MMFiles/MMFilesPathBasedIndex.cpp
+  MMFiles/MMFilesPersistentIndexFeature.cpp
+  MMFiles/MMFilesPersistentIndex.cpp
+  MMFiles/MMFilesPersistentIndexKeyComparator.cpp
+  MMFiles/MMFilesPrimaryIndex.cpp
+  MMFiles/MMFilesRemoverThread.cpp
+  MMFiles/MMFilesRevisionsCache.cpp
+  MMFiles/MMFilesSkiplistIndex.cpp
+  MMFiles/MMFilesSynchronizerThread.cpp
+  MMFiles/MMFilesWalLogfile.cpp
+  MMFiles/MMFilesWalRecoverState.cpp
+  MMFiles/MMFilesWalRecoveryFeature.cpp
+  MMFiles/MMFilesWalSlot.cpp
+  MMFiles/MMFilesWalSlots.cpp
   Replication/ContinuousSyncer.cpp
   Replication/InitialSyncer.cpp
   Replication/Syncer.cpp
@@ -263,10 +278,10 @@ SET(ARANGOD_SOURCES
   RestServer/InitDatabaseFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/QueryRegistryFeature.cpp
-  RestServer/RevisionCacheFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
+  RestServer/TransactionManagerFeature.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/UnitTestsFeature.cpp
   RestServer/UpgradeFeature.cpp
@@ -290,23 +305,8 @@ SET(ARANGOD_SOURCES
   Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
   StorageEngine/EngineSelectorFeature.cpp
-  StorageEngine/MMFilesAllocatorThread.cpp
-  StorageEngine/MMFilesCleanupThread.cpp
-  StorageEngine/MMFilesCollection.cpp
-  StorageEngine/MMFilesCollectorThread.cpp
-  StorageEngine/MMFilesCompactorThread.cpp
-  StorageEngine/MMFilesDatafile.cpp
-  StorageEngine/MMFilesDatafileStatistics.cpp
-  StorageEngine/MMFilesDocumentOperation.cpp
-  StorageEngine/MMFilesEngine.cpp
-  StorageEngine/MMFilesRemoverThread.cpp
-  StorageEngine/MMFilesRevisionsCache.cpp
-  StorageEngine/MMFilesSynchronizerThread.cpp
-  StorageEngine/MMFilesWalRecoverState.cpp
-  StorageEngine/MMFilesWalRecoveryFeature.cpp
-  StorageEngine/MMFilesWalSlot.cpp
-  StorageEngine/MMFilesWalSlots.cpp
   StorageEngine/RocksDBEngine.cpp
+  StorageEngine/RocksDBIndexFactory.cpp
   Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
@@ -318,7 +318,9 @@ SET(ARANGOD_SOURCES
   Utils/SingleCollectionTransaction.cpp
   Utils/StandaloneTransactionContext.cpp
   Utils/Transaction.cpp
+  Utils/TransactionCollection.cpp
   Utils/TransactionContext.cpp
+  Utils/TransactionState.cpp
   Utils/V8TransactionContext.cpp
   Utils/WorkMonitorArangod.cpp
   V8Server/FoxxQueuesFeature.cpp
@@ -338,19 +340,15 @@ SET(ARANGOD_SOURCES
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
   VocBase/AuthInfo.cpp
-  VocBase/CollectionRevisionsCache.cpp
   VocBase/DatafileStatisticsContainer.cpp
   VocBase/Ditch.cpp
   VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
-  VocBase/ManagedDocumentResult.cpp
   VocBase/PathEnumerator.cpp
-  VocBase/ReadCache.cpp
-  VocBase/RevisionCacheChunk.cpp
-  VocBase/RevisionCacheChunkAllocator.cpp
   VocBase/SingleServerTraverser.cpp
+  VocBase/TransactionManager.cpp
   VocBase/Traverser.cpp
   VocBase/TraverserOptions.cpp
   VocBase/modes.cpp
@@ -358,10 +356,7 @@ SET(ARANGOD_SOURCES
   VocBase/replication-common.cpp
   VocBase/replication-dump.cpp
   VocBase/ticks.cpp
-  VocBase/transaction.cpp
   VocBase/vocbase.cpp
-  Wal/Logfile.cpp
-  Wal/LogfileManager.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 

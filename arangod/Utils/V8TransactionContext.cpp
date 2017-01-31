@@ -23,7 +23,7 @@
 
 #include "V8TransactionContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/transaction.h"
+#include "Utils/TransactionState.h"
 
 #include <v8.h>
 #include "V8/v8-globals.h"
@@ -94,7 +94,7 @@ CollectionNameResolver const* V8TransactionContext::getResolver() {
 /// @brief get parent transaction (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_transaction_t* V8TransactionContext::getParentTransaction() const {
+TransactionState* V8TransactionContext::getParentTransaction() const {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   return _sharedTransactionContext->_currentTransaction;
 }
@@ -103,7 +103,7 @@ TRI_transaction_t* V8TransactionContext::getParentTransaction() const {
 /// @brief register the transaction in the context
 ////////////////////////////////////////////////////////////////////////////////
 
-int V8TransactionContext::registerTransaction(TRI_transaction_t* trx) {
+int V8TransactionContext::registerTransaction(TransactionState* trx) {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   TRI_ASSERT(_sharedTransactionContext->_currentTransaction == nullptr);
   TRI_ASSERT(_sharedTransactionContext->_mainScope == nullptr);

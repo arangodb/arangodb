@@ -28,17 +28,17 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
-//#include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/RocksDBIndexFactory.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "Wal/LogfileManager.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 
-#include "Indexes/RocksDBFeature.h"
-#include "Indexes/RocksDBIndex.h"
+#include "MMFiles/MMFilesPersistentIndexFeature.h"
+#include "MMFiles/MMFilesPersistentIndex.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -52,7 +52,7 @@ std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
-    : StorageEngine(server, EngineName, FeatureName) {
+    : StorageEngine(server, EngineName, FeatureName, new RocksDBIndexFactory()) {
 }
 
 RocksDBEngine::~RocksDBEngine() {

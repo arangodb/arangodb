@@ -81,13 +81,21 @@ void normalizePath(std::string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string buildFilename(char const* path, char const* name) {
+  TRI_ASSERT(path != nullptr);
+  TRI_ASSERT(name != nullptr);
+
   std::string result(path);
 
   if (!result.empty()) {
     result = removeTrailingSeparator(result) + TRI_DIR_SEPARATOR_CHAR;
   }
 
-  result.append(name);
+  if (!result.empty() && *name == TRI_DIR_SEPARATOR_CHAR) {
+    // skip initial forward slash in name to avoid having two forward slashes in result
+    result.append(name + 1);
+  } else {
+    result.append(name);
+  }
   normalizePath(result);  // in place
 
   return result;
@@ -100,7 +108,12 @@ std::string buildFilename(std::string const& path, std::string const& name) {
     result = removeTrailingSeparator(result) + TRI_DIR_SEPARATOR_CHAR;
   }
 
-  result.append(name);
+  if (!result.empty() && !name.empty() && name[0] == TRI_DIR_SEPARATOR_CHAR) {
+    // skip initial forward slash in name to avoid having two forward slashes in result
+    result.append(name.c_str() + 1, name.size() - 1);
+  } else {
+    result.append(name);
+  }
   normalizePath(result);  // in place
 
   return result;

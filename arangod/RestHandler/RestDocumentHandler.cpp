@@ -27,8 +27,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "Utils/TransactionHints.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -123,10 +125,10 @@ bool RestDocumentHandler::createDocument() {
   // find and load collection given by name or identifier
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_WRITE);
+                                  AccessMode::Type::WRITE);
   bool const isMultiple = body.isArray();
   if (!isMultiple) {
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+    trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
   }
 
   int res = trx.begin();
@@ -234,8 +236,8 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   // find and load collection given by name or identifier
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collection,
-                                  TRI_TRANSACTION_READ);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+                                  AccessMode::Type::READ);
+  trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
 
   // ...........................................................................
   // inside read transaction
@@ -423,9 +425,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   // find and load collection given by name or identifier
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_WRITE);
+                                  AccessMode::Type::WRITE);
   if (!isArrayCase) {
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+    trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
   }
 
   // ...........................................................................
@@ -550,9 +552,9 @@ bool RestDocumentHandler::deleteDocument() {
   }
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_WRITE);
+                                  AccessMode::Type::WRITE);
   if (suffixes.size() == 2 || !search.isArray()) {
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+    trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
   }
 
   int res = trx.begin();
@@ -604,7 +606,7 @@ bool RestDocumentHandler::readManyDocuments() {
 
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_READ);
+                                  AccessMode::Type::READ);
 
   // ...........................................................................
   // inside read transaction

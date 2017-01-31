@@ -25,7 +25,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "Wal/LogfileManager.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -75,7 +75,7 @@ RestStatus RestWalHandler::execute() {
 }
 
 void RestWalHandler::properties() {
-  auto l = arangodb::wal::LogfileManager::instance();
+  auto l = MMFilesLogfileManager::instance();
 
   if (_request->requestType() == rest::RequestType::PUT) {
     std::shared_ptr<VPackBuilder> parsedRequest;
@@ -191,7 +191,7 @@ void RestWalHandler::flush() {
   if (ServerState::instance()->isCoordinator()) {
     res = flushWalOnAllDBServers(waitForSync, waitForCollector);
   } else {
-    res = arangodb::wal::LogfileManager::instance()->flush(
+    res = MMFilesLogfileManager::instance()->flush(
         waitForSync, waitForCollector, false);
   }
 
@@ -204,7 +204,7 @@ void RestWalHandler::flush() {
 
 void RestWalHandler::transactions() {
   auto const& info =
-      arangodb::wal::LogfileManager::instance()->runningTransactions();
+      MMFilesLogfileManager::instance()->runningTransactions();
  
   VPackBuilder builder;
   builder.openObject();

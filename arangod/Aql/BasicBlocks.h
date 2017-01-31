@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_BASIC_BLOCKS_H
 #define ARANGOD_AQL_BASIC_BLOCKS_H 1
 
+#include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 
@@ -107,6 +108,8 @@ class FilterBlock : public ExecutionBlock {
   /// @brief vector of indices of those documents in the current block
   /// that are chosen
   std::vector<size_t> _chosen;
+
+  BlockCollector _collector;
 };
 
 class LimitBlock : public ExecutionBlock {
