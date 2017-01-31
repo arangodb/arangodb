@@ -35,7 +35,7 @@ const helper = require('@arangodb/aql-helper');
 const isEqual = helper.isEqual;
 const graphModule = require('@arangodb/general-graph');
 const graphName = 'myUnittestGraph';
-
+const db = require('internal').db;
 let graph;
 let edgeKey;
 
@@ -471,5 +471,186 @@ describe('Rule optimize-traversals', () => {
       result = AQL_EXECUTE(query, bindVars).json;
       expect(result.length).to.equal(4);
     });
+  });
+
+  describe('various filter optimizations', () => {
+
+    const multiplyArray = (left, right) => {
+      // Only works if both are arrays
+      let res = [];
+      for (let l of left) {
+        for (let r of right) {
+          res.push(l + r);
+        }
+      }
+      return res;
+    };
+
+    const multiplyArrays = (left, middle, right) => {
+      // Only works if both are arrays
+      let res = [];
+      for (let l of left) {
+        for (let m of middle) {
+          for (let r of right) {
+            res.push(l + m + r);
+          }
+        }
+      }
+      return res;
+    };
+
+    const symetricOperators = [
+      ` == `, ` < `, ` <= `, ` != `
+    ];
+    const asymetricOperators = [
+      ` IN `, ` NOT IN ` 
+    ];
+
+    const modifiers = [
+      ` ALL`, ` NONE`
+    ];
+    const arrayCmpStart = [
+      `p.edges[*]`,
+      `p.vertices[*]`
+    ];
+    const singleCompStart = [
+      `p.edges[0]`,
+      `p.vertices[1]`
+    ];
+
+    const outputStart = [
+      `v`, `e`, `p`
+    ];
+
+    const valuePostFixes = [
+      `` , `.foo`, `.foo[*]`, `.foo.bar`, `.foo[0]`
+    ];
+
+    const constValues = [
+      `1`,
+      `'test'`,
+      `null`,
+      `2 + 1`,
+      `['foo', 'bar']`,
+      `{foo: 'bar'}`
+    ];
+
+    const functValues = [
+      `NOOPT(V8(3+2))`,
+      `APPEND(['foo'], ['bar'], false)`
+    ];
+    const queryStart = `FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH '${graphName}' FILTER `;
+    const queryEnd = ` RETURN {v,e,p}`;
+
+    const symOperatorsWithModifiers = multiplyArray(modifiers, symetricOperators);
+    const noOptSymOperators = multiplyArray([ ` ANY`], symetricOperators);
+
+    const checkDoesOptimize = (conditions, shouldOptimize) => {
+      for (let c of conditions) {
+        const q = queryStart + c + queryEnd;
+        try {
+          const expl = AQL_EXPLAIN(q, { });
+          if (shouldOptimize) {
+            expect(expl.plan.rules.indexOf(ruleName)).to.not.equal(-1, c);
+          } else {
+            expect(expl.plan.rules.indexOf(ruleName)).to.equal(-1, c);
+          }
+          const result = db._query(q);
+          // This is just to validate that the server does not crash!
+          expect(result.count()).to.be.at.least(0, c);
+        } catch (e) {
+          // if sth throws an error we should see it
+          expect(e.errorMessage).to.equal(undefined, c);
+          expect(e.errorNum).to.equal(undefined, c);
+        }
+      }
+    };
+
+
+    const arrayStarts = multiplyArray(arrayCmpStart, valuePostFixes);
+    const singleStarts = multiplyArray(singleCompStart, valuePostFixes);
+
+    describe('should optimize', () => {
+      it('symetric operators for point access vs constants', () => {
+        const conditions = multiplyArrays(singleStarts, symetricOperators, constValues)
+          .concat(multiplyArrays(constValues, symetricOperators, singleStarts));
+        checkDoesOptimize(conditions, true);
+      });
+
+      it('array modifiers with path array access left', () => {
+        const conditions = multiplyArrays(arrayStarts, symOperatorsWithModifiers, constValues)
+        checkDoesOptimize(conditions, true);
+      });
+
+      it('array modifiers with point access left', () => {
+        const conditions = multiplyArrays(constValues, noOptSymOperators, singleStarts)
+        checkDoesOptimize(conditions, true);
+      });
+
+      it('asymetric operators with path array access left (NOT ANY)', () => {
+        const ops = multiplyArray(modifiers.concat([``]), asymetricOperators);
+        const conditions = multiplyArrays(arrayStarts, ops, constValues)
+        checkDoesOptimize(conditions, true);
+      });
+
+    });
+
+    describe('should not optimize', () => {
+      it('ANY array modifiers with path array access left', () => {
+        const conditions = multiplyArrays(arrayStarts, noOptSymOperators, constValues)
+        checkDoesOptimize(conditions, false);
+      });
+
+      it('array modifiers with path array access right', () => {
+        const conditions = multiplyArrays(constValues, noOptSymOperators, arrayStarts)
+        checkDoesOptimize(conditions, false);
+      });
+
+      it('asymetric operators with path array access right', () => {
+        const ops = multiplyArray(([``, ` ANY`].concat(modifiers)), asymetricOperators)
+        const conditions = multiplyArrays(constValues, noOptSymOperators, arrayStarts)
+        checkDoesOptimize(conditions, false);
+      });
+
+      it('asymetric operators with ANY and path array access left', () => {
+        const ops = multiplyArray([` ANY`], asymetricOperators);
+        const conditions = multiplyArrays(arrayStarts, ops, constValues)
+        checkDoesOptimize(conditions, false);
+      });
+
+      it('functions symetric operators with array access', () => {
+        let ops = multiplyArray([``, ` ANY`].concat(modifiers), symetricOperators);
+        let conditions = multiplyArrays(arrayStarts, ops, functValues);
+        checkDoesOptimize(conditions, false);
+        conditions = multiplyArrays(functValues, ops, arrayStarts);
+        checkDoesOptimize(conditions, false);
+      });
+
+      it('functions asymetric operators with array access', () => {
+        let ops = multiplyArray([``, ` ANY`].concat(modifiers), asymetricOperators);
+        let conditions = multiplyArrays(arrayStarts, ops, functValues);
+        checkDoesOptimize(conditions, false);
+        conditions = multiplyArrays(functValues, ops, arrayStarts);
+        checkDoesOptimize(conditions, false);
+      });
+
+      it('functions symetric operators with point access', () => {
+        let ops = multiplyArray([``, ` ANY`].concat(modifiers), symetricOperators);
+        let conditions = multiplyArrays(singleStarts, ops, functValues);
+        checkDoesOptimize(conditions, false);
+        conditions = multiplyArrays(functValues, ops, singleStarts);
+        checkDoesOptimize(conditions, false);
+      });
+
+      it('functions asymetric operators with point access', () => {
+        let ops = multiplyArray([``, ` ANY`].concat(modifiers), asymetricOperators);
+        let conditions = multiplyArrays(singleStarts, ops, functValues);
+        checkDoesOptimize(conditions, false);
+        conditions = multiplyArrays(functValues, ops, singleStarts);
+        checkDoesOptimize(conditions, false);
+      });
+
+    });
+
   });
 });
