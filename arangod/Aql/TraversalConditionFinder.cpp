@@ -97,7 +97,9 @@ static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition, As
   // This is the part appended to each element in the expansion.
   lhs = lhs->getMemberUnchecked(1);
 
-  Ast::traverseAndModify(lhs, replaceReference, unused);
+  // We have to take the return-value if LHS already is the refence.
+  // otherwise the point will not be relocated.
+  lhs = Ast::traverseAndModify(lhs, replaceReference, unused);
   return ast->createNodeBinaryOperator(type, lhs, rhs);
 }
 
@@ -241,6 +243,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
             break;
           }
           case NODE_TYPE_ITERATOR:
+          case NODE_TYPE_REFERENCE:
             // This Node type is ok. it does not convey any information
             break;
           default:
