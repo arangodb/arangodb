@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlock.h"
+#include "Aql/BlockCollector.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Basics/VelocyPackHelper.h"
 
@@ -430,6 +432,37 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from
   return res.release();
 }
 
+/// @brief concatenate multiple blocks
+AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
+    BlockCollector* collector) {
+  
+  size_t totalSize = collector->totalSize();
+  RegisterId nrRegs = collector->nrRegs();
+
+  TRI_ASSERT(totalSize > 0);
+  TRI_ASSERT(nrRegs > 0);
+
+  auto res = std::make_unique<AqlItemBlock>(resourceMonitor, totalSize, nrRegs);
+
+  size_t pos = 0;
+  for (auto& it : collector->_blocks) {
+    size_t const n = it->size();
+    for (size_t row = 0; row < n; ++row) {
+      for (RegisterId col = 0; col < nrRegs; ++col) {
+        // copy over value
+        AqlValue const& a = it->getValueReference(row, col);
+        if (!a.isEmpty()) {
+          res->setValue(pos + row, col, a);
+        }
+      }
+    }
+    it->eraseAll();
+    pos += n;
+  }
+
+  return res.release();
+}
+
 /// @brief concatenate multiple blocks, note that the new block now owns all
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.
@@ -455,7 +488,6 @@ AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
 
   size_t pos = 0;
   for (auto& it : blocks) {
-    TRI_ASSERT(it != res.get());
     size_t const n = it->size();
     for (size_t row = 0; row < n; ++row) {
       for (RegisterId col = 0; col < nrRegs; ++col) {
@@ -467,7 +499,7 @@ AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
       }
     }
     it->eraseAll();
-    pos += it->size();
+    pos += n;
   }
 
   return res.release();

@@ -23,11 +23,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionBlock.h"
-#include "Aql/ExecutionEngine.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
+#include "Aql/ExecutionEngine.h"
 
 using namespace arangodb::aql;
-
+  
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
       _trx(engine->getQuery()->trx()),
