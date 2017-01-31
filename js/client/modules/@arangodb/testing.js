@@ -2766,7 +2766,7 @@ testFuncs.config = function (options) {
 
 testFuncs.dfdb = function (options) {
   const dataDir = fs.getTempFile();
-  const args = ['-c', 'etc/relative/arango-dfdb.conf', dataDir];
+  const args = ['-c', 'etc/testing/arango-dfdb.conf', dataDir];
 
   fs.makeDirectoryRecursive(dataDir);
   let results = {};
@@ -2971,12 +2971,12 @@ testFuncs.foxx_manager = function (options) {
   let results = {};
 
   results.update = runArangoshCmd(options, instanceInfo, {
-    'configuration': 'etc/relative/foxx-manager.conf'
+    'configuration': 'etc/testing/foxx-manager.conf'
   }, ['update']);
 
   if (results.update.status === true || options.force) {
     results.search = runArangoshCmd(options, instanceInfo, {
-      'configuration': 'etc/relative/foxx-manager.conf'
+      'configuration': 'etc/testing/foxx-manager.conf'
     }, ['search', 'itzpapalotl']);
   }
 
@@ -4372,7 +4372,7 @@ exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
 //   }
 //   var results = {}
 //   results.install = runArangoshCmd(options, instanceInfo, {
-//     "configuration": "etc/relative/foxx-manager.conf"
+//     "configuration": "etc/testing/foxx-manager.conf"
 //   }, [
 //     "install",
 //     "js/common/test-data/apps/queue-legacy-test",
@@ -4467,7 +4467,7 @@ exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
 //   results.final.duration = time() - startTime
 
 //   results.uninstall = runArangoshCmd(options, instanceInfo, {
-//     "configuration": "etc/relative/foxx-manager.conf"
+//     "configuration": "etc/testing/foxx-manager.conf"
 //   }, [
 //     "uninstall",
 //     queueAppMountPath
