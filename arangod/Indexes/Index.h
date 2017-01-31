@@ -1,3 +1,4 @@
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -24,16 +25,19 @@
 #ifndef ARANGOD_INDEXES_INDEX_H
 #define ARANGOD_INDEXES_INDEX_H 1
 
-#include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Indexes/IndexElement.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <iosfwd>
 
 namespace arangodb {
+namespace basics {
+class LocalTaskQueue;
+}
 
 class LogicalCollection;
 class ManagedDocumentResult;
@@ -154,9 +158,7 @@ class Index {
   }
 
   /// @brief return the underlying collection
-  inline LogicalCollection* collection() const {
-    return _collection;
-  }
+  inline LogicalCollection* collection() const { return _collection; }
 
   /// @brief return a contextual string for logging
   std::string context() const;
@@ -216,13 +218,15 @@ class Index {
 
   /// @brief whether or not the index has a selectivity estimate
   virtual bool hasSelectivityEstimate() const = 0;
-  
+
   /// @brief return the selectivity estimate of the index
   /// must only be called if hasSelectivityEstimate() returns true
-  virtual double selectivityEstimate(arangodb::StringRef const* = nullptr) const;
-  
+  virtual double selectivityEstimate(
+      arangodb::StringRef const* = nullptr) const;
+
   /// @brief whether or not the index is implicitly unique
-  /// this can be the case if the index is not declared as unique, but contains a 
+  /// this can be the case if the index is not declared as unique, but contains
+  /// a
   /// unique attribute such as _key
   virtual bool implicitlyUnique() const;
 
@@ -234,11 +238,16 @@ class Index {
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
-  virtual int insert(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&, bool isRollback) = 0;
-  virtual int remove(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&, bool isRollback) = 0;
-  
-  virtual int batchInsert(arangodb::Transaction*, std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&, size_t);
-  
+  virtual int insert(arangodb::Transaction*, TRI_voc_rid_t revisionId,
+                     arangodb::velocypack::Slice const&, bool isRollback) = 0;
+  virtual int remove(arangodb::Transaction*, TRI_voc_rid_t revisionId,
+                     arangodb::velocypack::Slice const&, bool isRollback) = 0;
+
+  virtual void batchInsert(
+      arangodb::Transaction*,
+      std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
+      arangodb::basics::LocalTaskQueue* queue = nullptr);
+
   virtual int unload() = 0;
 
   // a garbage collection function for the index

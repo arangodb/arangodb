@@ -24,22 +24,26 @@
 #ifndef ARANGOD_INDEXES_EDGE_INDEX_H
 #define ARANGOD_INDEXES_EDGE_INDEX_H 1
 
-#include "Basics/Common.h"
 #include "Basics/AssocMulti.h"
+#include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-class EdgeIndex;
-  
-typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice, SimpleIndexElement,
-                                     uint32_t, false> TRI_EdgeIndexHash_t;
+namespace basics {
+class LocalTaskQueue;
+}
 
+class EdgeIndex;
+
+typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice,
+                                     SimpleIndexElement, uint32_t, false>
+    TRI_EdgeIndexHash_t;
 
 class EdgeIndexIterator final : public IndexIterator {
  public:
@@ -50,7 +54,7 @@ class EdgeIndexIterator final : public IndexIterator {
                     std::unique_ptr<VPackBuilder>& keys);
 
   ~EdgeIndexIterator();
-  
+
   char const* typeName() const override { return "edge-index-iterator"; }
 
   IndexLookupResult next() override;
@@ -82,7 +86,7 @@ class AnyDirectionEdgeIndexIterator final : public IndexIterator {
     delete _outbound;
     delete _inbound;
   }
-  
+
   char const* typeName() const override { return "any-edge-index-iterator"; }
 
   IndexLookupResult next() override;
@@ -120,19 +124,18 @@ class EdgeIndex final : public Index {
  public:
   /// @brief typedef for hash tables
  public:
-  IndexType type() const override {
-    return Index::TRI_IDX_TYPE_EDGE_INDEX;
-  }
+  IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }
 
   bool allowExpansion() const override { return false; }
-  
+
   bool canBeDropped() const override { return false; }
 
   bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimate(
+      arangodb::StringRef const* = nullptr) const override;
 
   size_t memory() const override;
 
@@ -140,12 +143,16 @@ class EdgeIndex final : public Index {
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  int insert(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int insert(arangodb::Transaction*, TRI_voc_rid_t,
+             arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int remove(arangodb::Transaction*, TRI_voc_rid_t,
+             arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int batchInsert(arangodb::Transaction*, std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&, size_t) override;
-  
+  void batchInsert(arangodb::Transaction*,
+                   std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
+                   arangodb::basics::LocalTaskQueue*) override;
+
   int unload() override;
 
   int sizeHint(arangodb::Transaction*, size_t) override;
@@ -188,30 +195,31 @@ class EdgeIndex final : public Index {
   ///        Reverse is not supported, hence ignored
   ///        NOTE: The iterator is only valid as long as the slice points to
   ///        a valid memory region.
-  IndexIterator* iteratorForSlice(arangodb::Transaction*, 
+  IndexIterator* iteratorForSlice(arangodb::Transaction*,
                                   ManagedDocumentResult*,
                                   arangodb::velocypack::Slice const,
                                   bool) const override;
 
  private:
   /// @brief create the iterator
-  IndexIterator* createEqIterator(
-      arangodb::Transaction*, 
-      ManagedDocumentResult*,
-      arangodb::aql::AstNode const*,
-      arangodb::aql::AstNode const*) const;
-  
-  IndexIterator* createInIterator(
-      arangodb::Transaction*, 
-      ManagedDocumentResult*,
-      arangodb::aql::AstNode const*,
-      arangodb::aql::AstNode const*) const;
+  IndexIterator* createEqIterator(arangodb::Transaction*,
+                                  ManagedDocumentResult*,
+                                  arangodb::aql::AstNode const*,
+                                  arangodb::aql::AstNode const*) const;
+
+  IndexIterator* createInIterator(arangodb::Transaction*,
+                                  ManagedDocumentResult*,
+                                  arangodb::aql::AstNode const*,
+                                  arangodb::aql::AstNode const*) const;
 
   /// @brief add a single value node to the iterator's keys
-  void handleValNode(VPackBuilder* keys, arangodb::aql::AstNode const* valNode) const;
+  void handleValNode(VPackBuilder* keys,
+                     arangodb::aql::AstNode const* valNode) const;
 
-  SimpleIndexElement buildFromElement(TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
-  SimpleIndexElement buildToElement(TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
+  SimpleIndexElement buildFromElement(
+      TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
+  SimpleIndexElement buildToElement(
+      TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
 
  private:
   /// @brief the hash table for _from

@@ -239,7 +239,8 @@ void SchedulerFeature::buildScheduler() {
 
   _scheduler->setMinimal(_nrMinimalThreads);
   _scheduler->setRealMaximum(_nrMaximalThreads);
-  
+ 
+  TRI_ASSERT(SCHEDULER == nullptr); 
   SCHEDULER = _scheduler.get();
 }
 

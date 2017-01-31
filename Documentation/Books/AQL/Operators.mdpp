@@ -270,6 +270,17 @@ evaluates to true, and the third operand otherwise.
 u.age > 15 || u.active == true ? u.userId : null
 ```
 
+There is also a shortcut variant of the ternary operator with just two
+operands. This variant can be used when the expression for the boolean
+condition and the return value should be the same:
+
+*Examples*
+
+```js
+u.value ? : 'value is null, 0 or not present'
+```
+
+
 #### Range operator
 
 AQL supports expressing simple numeric ranges with the *..* operator.
