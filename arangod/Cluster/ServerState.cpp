@@ -394,7 +394,7 @@ std::string ServerState::createIdForRole(AgencyComm comm,
   if (ifs.is_open()) {
     std::getline(ifs, id);
     ifs.close();
-    LOG_TOPIC(INFO, Logger::CLUSTER)
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
       << "Restarting with persisted UUID " << id;
   } else {
     mkdir (dbpath->directory());
