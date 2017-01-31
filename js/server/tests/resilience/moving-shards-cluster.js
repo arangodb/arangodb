@@ -163,7 +163,7 @@ function MovingShardsSuite () {
       }
 
       if (!ok) {
-        console.info(
+        console.error(
           "Failed: Server " + id + " was not cleaned out. List of cleaned servers: ["
             + obj.cleanedServers + "]");
       }
