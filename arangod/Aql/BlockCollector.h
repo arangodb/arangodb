@@ -29,7 +29,7 @@
 namespace arangodb {
 namespace aql {
 class AqlItemBlock;
-class ResourceMonitor;
+struct ResourceMonitor;
 
 class BlockCollector {
   friend class AqlItemBlock;
