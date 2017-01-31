@@ -79,8 +79,6 @@ edge attribute `label`.
   occurrences of `..` in incoming request URIs were collapsed (e.g. `a/../b/` was 
   collapsed to a plain `b/`). Now `..` in incoming request URIs are not collapsed.
 
-* Foxx request URL suffix is no longer unescaped
-
 * improve cluster stability in various ways
 
 
