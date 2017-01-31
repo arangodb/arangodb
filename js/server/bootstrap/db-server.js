@@ -57,8 +57,8 @@
     if (internal.enableStatistics) {
       require('@arangodb/statistics').startup();
     }
+    console.info('bootstrapped DB server %s', global.ArangoServerState.id());
   }
-
-  console.info('bootstrapped DB server %s', global.ArangoServerState.id());
+  
   return true;
 }());
