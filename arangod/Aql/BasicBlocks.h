@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_BASIC_BLOCKS_H
 #define ARANGOD_AQL_BASIC_BLOCKS_H 1
 
+#include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 
@@ -59,10 +60,7 @@ class SingletonBlock : public ExecutionBlock {
   int64_t remaining() override final { return _done ? 0 : 1; }
 
  private:
-  void deleteInputVariables() {
-    delete _inputRegisterValues;
-    _inputRegisterValues = nullptr;
-  }
+  void deleteInputVariables();
 
   void buildWhitelist();
 
@@ -85,9 +83,7 @@ class FilterBlock : public ExecutionBlock {
 
  private:
   /// @brief internal function to actually decide if the document should be used
-  inline bool takeItem(AqlItemBlock* items, size_t index) const {
-    return items->getValueReference(index, _inReg).toBoolean();
-  }
+  bool takeItem(AqlItemBlock* items, size_t index) const;
 
   /// @brief internal function to get another block
   bool getBlock(size_t atLeast, size_t atMost);
@@ -112,6 +108,8 @@ class FilterBlock : public ExecutionBlock {
   /// @brief vector of indices of those documents in the current block
   /// that are chosen
   std::vector<size_t> _chosen;
+
+  BlockCollector _collector;
 };
 
 class LimitBlock : public ExecutionBlock {

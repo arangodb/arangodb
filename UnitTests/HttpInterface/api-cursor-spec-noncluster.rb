@@ -48,7 +48,7 @@ describe ArangoDB do
       doc.parsed_response['extra'].should have_key('stats')
     end
 
-    it "testing explicitly disable cache" do
+    it "testing explicitly disabled cache" do
       cmd = api
       body = "{ \"query\" : \"FOR i IN 1..5 RETURN i\", \"cache\" : false }"
       doc = ArangoDB.log_post("#{prefix}-query-cache-disabled", cmd, :body => body)

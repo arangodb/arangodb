@@ -199,8 +199,9 @@ class ProgramOptions {
 
   // adds an obsolete and hidden option to the program options
   void addObsoleteOption(std::string const& name,
-                         std::string const& description) {
-    addOption(Option(name, description, new ObsoleteParameter(), true, true));
+                         std::string const& description,
+                         bool requiresValue) {
+    addOption(Option(name, description, new ObsoleteParameter(requiresValue), true, true));
   }
 
   // prints usage information

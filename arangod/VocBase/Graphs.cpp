@@ -26,6 +26,7 @@
 #include "Aql/Graphs.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterMethods.h"
+#include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 
@@ -41,7 +42,7 @@ std::string const GRAPHS = "_graphs";
 arangodb::aql::Graph* arangodb::lookupGraphByName(TRI_vocbase_t* vocbase,
                                                   std::string const& name) {
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
-                                          GRAPHS, TRI_TRANSACTION_READ);
+                                          GRAPHS, AccessMode::Type::READ);
 
   int res = trx.begin();
 

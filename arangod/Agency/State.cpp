@@ -91,7 +91,7 @@ bool State::persist(arangodb::consensus::index_t index, term_t term,
   auto transactionContext =
     std::make_shared<StandaloneTransactionContext>(_vocbase);
   SingleCollectionTransaction trx(transactionContext, "log",
-                                  TRI_TRANSACTION_WRITE);
+                                  AccessMode::Type::WRITE);
   
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -551,7 +551,7 @@ bool State::loadOrPersistConfiguration() {
     auto transactionContext =
         std::make_shared<StandaloneTransactionContext>(_vocbase);
     SingleCollectionTransaction trx(transactionContext, "configuration",
-                                    TRI_TRANSACTION_WRITE);
+                                    AccessMode::Type::WRITE);
 
     int res = trx.begin();
     OperationResult result;
@@ -750,7 +750,7 @@ bool State::persistReadDB(arangodb::consensus::index_t cind) {
     auto transactionContext =
         std::make_shared<StandaloneTransactionContext>(_vocbase);
     SingleCollectionTransaction trx(transactionContext, "compact",
-                                    TRI_TRANSACTION_WRITE);
+                                    AccessMode::Type::WRITE);
 
     int res = trx.begin();
 

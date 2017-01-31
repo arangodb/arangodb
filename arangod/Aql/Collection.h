@@ -25,9 +25,8 @@
 #define ARANGOD_AQL_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/transaction.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
 namespace aql {
@@ -38,7 +37,7 @@ struct Collection {
   Collection(Collection const&) = delete;
   Collection() = delete;
 
-  Collection(std::string const&, TRI_vocbase_t*, TRI_transaction_type_e);
+  Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type);
 
   ~Collection();
 
@@ -82,20 +81,16 @@ struct Collection {
   bool usesDefaultSharding() const;
 
   /// @brief set the underlying collection
-  void setCollection(arangodb::LogicalCollection* coll) { collection = coll; }
+  void setCollection(arangodb::LogicalCollection* coll);
 
   /// @brief either use the set collection or get one from ClusterInfo:
   std::shared_ptr<arangodb::LogicalCollection> getCollection() const;
 
   /// @brief check smartness of the underlying collection
-  bool isSmart() const {
-    return getCollection()->isSmart();
-  }
+  bool isSmart() const;
 
   /// @brief check if collection is a satellite collection
-  bool isSatellite() const {
-    return getCollection()->isSatellite();
-  }
+  bool isSatellite() const;
 
  private:
 
@@ -108,7 +103,7 @@ struct Collection {
  public:
   std::string const name;
   TRI_vocbase_t* vocbase;
-  TRI_transaction_type_e accessType;
+  AccessMode::Type accessType;
   bool isReadWrite;
   int64_t mutable numDocuments = UNINITIALIZED;
 

@@ -198,3 +198,32 @@ Content-type: application/json; charset=utf-8
   "code" : 201
 }
 ```
+
+### Setting a memory limit
+
+To set a memory limit for the query, the *memoryLimit* option can be passed to
+the server.
+The memory limit specifies the maximum number of bytes that the query is
+allowed to use. When a single AQL query reaches the specified limit value, 
+the query will be aborted with a *resource limit exceeded* exception. In a 
+cluster, the memory accounting is done per shard, so the limit value is 
+effectively a memory limit per query per shard.
+
+```js
+> curl --data @- -X POST --dump - http://localhost:8529/_api/cursor
+{ "query" : "FOR i IN 1..100000 SORT i RETURN i", "memoryLimit" : 100000 }
+
+HTTP/1.1 500 Internal Server Error
+Server: ArangoDB
+Connection: Keep-Alive
+Content-Type: application/json; charset=utf-8
+Content-Length: 115
+
+{"error":true,"errorMessage":"query would use more memory than allowed (while executing)","code":500,"errorNum":32}
+```
+
+If no memory limit is specified, then the server default value (controlled by
+startup option *--query.memory-limit* will be used for restricting the maximum amount 
+of memory the query can use. A memory limit value of *0* means that the maximum
+amount of memory for the query is not restricted. 
+

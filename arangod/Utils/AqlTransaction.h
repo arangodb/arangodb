@@ -29,12 +29,12 @@
 #include "Cluster/ServerState.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
-#include "VocBase/transaction.h"
+#include "Utils/TransactionState.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
 
-class AqlTransaction : public Transaction {
+class AqlTransaction final : public Transaction {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction and add all collections from the query
@@ -48,9 +48,9 @@ class AqlTransaction : public Transaction {
       : Transaction(transactionContext),
         _collections(*collections) {
     if (!isMainTransaction) {
-      this->addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, true);
+      this->addHint(TransactionHints::Hint::LOCK_NEVER, true);
     } else {
-      this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
+      this->addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
     }
 
     for (auto it : *collections) {

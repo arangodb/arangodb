@@ -32,6 +32,7 @@
 #include "Scheduler/EventLoop.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/StatisticsFeature.h"
 
@@ -128,6 +129,10 @@ void SocketTask::addWriteBuffer(WriteBuffer& buffer) {
     auto self = shared_from_this();
 
     _loop._ioService->post([self, this]() {
+      // tell the scheduler that this thread is busy:
+      JobGuard guard(SchedulerFeature::SCHEDULER);
+      guard.busy();
+      // now try to process already read requests:
       MUTEX_LOCKER(locker, _readLock);
       processAll();
     });
@@ -137,13 +142,11 @@ void SocketTask::addWriteBuffer(WriteBuffer& buffer) {
 
   if (!buffer.empty()) {
     if (!_writeBuffer.empty()) {
-      _writeBuffers.emplace_back(buffer);
-      buffer.clear();
+      _writeBuffers.emplace_back(std::move(buffer));
       return;
     }
 
-    _writeBuffer = buffer;
-    buffer.clear();
+    _writeBuffer = std::move(buffer);
   }
 
   writeWriteBuffer();
@@ -212,7 +215,13 @@ void SocketTask::writeWriteBuffer() {
           closeStream();
         } else {
           if (completedWriteBuffer()) {
-            _loop._ioService->post([self, this]() { writeWriteBuffer(); });
+            _loop._ioService->post([self, this]() {
+                // tell the scheduler that we are busy:
+                JobGuard guard(SchedulerFeature::SCHEDULER);
+                guard.busy();
+                // Now write some:
+                writeWriteBuffer();
+              });
           }
         }
       });
@@ -230,7 +239,7 @@ bool SocketTask::completedWriteBuffer() {
     return false;
   }
 
-  _writeBuffer = _writeBuffers.front();
+  _writeBuffer = std::move(_writeBuffers.front());
   _writeBuffers.pop_front();
 
   return true;

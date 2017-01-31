@@ -29,13 +29,12 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "StorageEngine/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesDatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/RevisionCacheChunk.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "Wal/LogfileManager.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -76,10 +75,6 @@ CollectionKeys::~CollectionKeys() {
   if (_ditch != nullptr) {
     _ditch->ditches()->freeDocumentDitch(_ditch, false);
   }
-  
-  for (auto& chunk : _chunks) {
-    chunk->release();
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,7 +82,7 @@ CollectionKeys::~CollectionKeys() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionKeys::create(TRI_voc_tick_t maxTick) {
-  arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
+  MMFilesLogfileManager::instance()->waitForCollectorQueue(
       _collection->cid(), 30.0);
   
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -107,7 +102,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   {
     SingleCollectionTransaction trx(
         StandaloneTransactionContext::Create(_collection->vocbase()), _name,
-        TRI_TRANSACTION_READ);
+        AccessMode::Type::READ);
 
     int res = trx.begin();
 
@@ -115,16 +110,14 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    ManagedDocumentResult mmdr(&trx);
+    ManagedDocumentResult mmdr;
     trx.invokeOnAllElements(
-        _collection->name(), [this, &trx, &maxTick, &mmdr](SimpleIndexElement const& element) {
-          if (_collection->readRevisionConditional(&trx, mmdr, element.revisionId(), maxTick, true)) {
+        _collection->name(), [this, &trx, &maxTick, &mmdr](DocumentIdentifierToken const& token) {
+          if (_collection->readDocumentConditional(&trx, mmdr, token, maxTick, true)) {
             _vpack.emplace_back(mmdr.vpack());
           }
           return true;
         });
-
-    trx.transactionContext()->stealChunks(_chunks);
 
     trx.finish(res);
   }

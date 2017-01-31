@@ -24,7 +24,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "StorageEngine/MMFilesEngine.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "StorageEngine/RocksDBEngine.h"
 #include "StorageEngine/StorageEngine.h"
 

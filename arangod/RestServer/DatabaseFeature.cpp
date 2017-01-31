@@ -23,7 +23,6 @@
 #include "DatabaseFeature.h"
 
 #include "Agency/v8-agency.h"
-#include "Agency/v8-agency.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
@@ -42,8 +41,10 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/MMFilesWalMarker.h"
-#include "StorageEngine/MMFilesWalSlots.h"
+#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesPersistentIndex.h"
+#include "MMFiles/MMFilesWalMarker.h"
+#include "MMFiles/MMFilesWalSlots.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
@@ -54,9 +55,6 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/vocbase.h"
-#include "Wal/LogfileManager.h"
-
-#include "Indexes/RocksDBIndex.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -83,7 +81,7 @@ void DatabaseManagerThread::run() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   while (true) {
-    try { 
+    try {
       // check if we have to drop some database
       TRI_vocbase_t* database = nullptr;
 
@@ -129,7 +127,8 @@ void DatabaseManagerThread::run() {
           databaseFeature->_databasesProtector.scan();
           delete oldLists;
 
-          // From now on no other thread can possibly see the old TRI_vocbase_t*,
+          // From now on no other thread can possibly see the old
+          // TRI_vocbase_t*,
           // note that there is only one DatabaseManager thread, so it is
           // not possible that another thread has seen this very database
           // and tries to free it at the same time!
@@ -143,8 +142,8 @@ void DatabaseManagerThread::run() {
           RocksDBFeature::dropDatabase(database->id());
 
           LOG(TRACE) << "physically removing database directory '"
-            << engine->databasePath(database) << "' of database '"
-            << database->name() << "'";
+                     << engine->databasePath(database) << "' of database '"
+                     << database->name() << "'";
 
           std::string path;
 
@@ -158,7 +157,7 @@ void DatabaseManagerThread::run() {
 
             if (TRI_IsDirectory(path.c_str())) {
               LOG(TRACE) << "removing app directory '" << path
-                << "' of database '" << database->name() << "'";
+                         << "' of database '" << database->name() << "'";
 
               TRI_RemoveDirectory(path.c_str());
             }
@@ -173,9 +172,9 @@ void DatabaseManagerThread::run() {
             database->shutdown();
             usleep(10000);
           };
-          while (!arangodb::wal::LogfileManager::instance()
+          while (!MMFilesLogfileManager::instance()
                   ->executeWhileNothingQueued(callback)) {
-            LOG(INFO) << "Trying to shutdown dropped database, waiting for phase in which the collector thread does not have queued operations.";
+            LOG(TRACE) << "Trying to shutdown dropped database, waiting for phase in which the collector thread does not have queued operations.";
             usleep(500000);
           }
 
@@ -226,7 +225,7 @@ void DatabaseManagerThread::run() {
 
     } catch (...) {
     }
-    
+
     // next iteration
   }
 }
@@ -250,10 +249,8 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("Authentication");
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
-  startsAfter("LogfileManager");
+  startsAfter("MMFilesLogfileManager");
   startsAfter("InitDatabase");
-  startsAfter("IndexThread");
-  startsAfter("RevisionCache");
 }
 
 DatabaseFeature::~DatabaseFeature() {
@@ -298,11 +295,17 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--database.replication-applier",
       "switch to enable or disable the replication applier",
       new BooleanParameter(&_replicationApplier));
-  
-  options->addHiddenOption("--database.check-30-revisions",
-                           "check _rev values in collections created before 3.1",
-                           new DiscreteValuesParameter<StringParameter>(&_check30Revisions, 
-                           std::unordered_set<std::string>{ "true", "false", "fail" }));
+
+  options->addHiddenOption(
+      "--database.check-30-revisions",
+      "check _rev values in collections created before 3.1",
+      new DiscreteValuesParameter<StringParameter>(
+          &_check30Revisions,
+          std::unordered_set<std::string>{"true", "false", "fail"}));
+
+  options->addObsoleteOption(
+      "--database.index-threads",
+      "threads to start for parallel background index creation", true);
 }
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -362,7 +365,7 @@ void DatabaseFeature::start() {
   }
 
   // TODO: handle _upgrade and _checkVersion here
-  
+
   // activate deadlock detection in case we're not running in cluster mode
   if (!arangodb::ServerState::instance()->isRunningInCluster()) {
     enableDeadlockDetection();
@@ -391,7 +394,7 @@ void DatabaseFeature::beginShutdown() {
 }
 
 void DatabaseFeature::stop() {
-  auto logfileManager = arangodb::wal::LogfileManager::instance();
+  auto logfileManager = MMFilesLogfileManager::instance();
   logfileManager->flush(true, true, false);
   logfileManager->waitForCollector();
 }
@@ -591,7 +594,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     // create app directory for database if it does not exist
     int res = createApplicationDirectory(name, appPath);
 
-    if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
+    if (!MMFilesLogfileManager::instance()->isInRecovery()) {
       // starts compactor etc.
       engine->recoveryDone(vocbase.get());
 
@@ -865,10 +868,9 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
 
-      auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-          "Authentication");
-      auto level = authentication->canUseDatabase(
-          username, vocbase->name());
+      auto authentication = application_features::ApplicationServer::getFeature<
+          AuthenticationFeature>("Authentication");
+      auto level = authentication->canUseDatabase(username, vocbase->name());
 
       if (level == AuthLevel::NONE) {
         continue;
@@ -1120,7 +1122,7 @@ int DatabaseFeature::createApplicationDirectory(std::string const& name,
     res = TRI_CreateRecursiveDirectory(path.c_str(), systemError, errorMessage);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
+      if (MMFilesLogfileManager::instance()->isInRecovery()) {
         LOG(TRACE) << "created application directory '" << path
                    << "' for database '" << name << "'";
       } else {
@@ -1312,10 +1314,10 @@ int DatabaseFeature::writeCreateMarker(TRI_voc_tick_t id,
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    MMFilesDatabaseMarker marker(TRI_DF_MARKER_VPACK_CREATE_DATABASE,
-                                         id, slice);
+    MMFilesDatabaseMarker marker(TRI_DF_MARKER_VPACK_CREATE_DATABASE, id,
+                                 slice);
     MMFilesWalSlotInfoCopy slotInfo =
-        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -1347,10 +1349,10 @@ int DatabaseFeature::writeDropMarker(TRI_voc_tick_t id) {
     builder.close();
 
     MMFilesDatabaseMarker marker(TRI_DF_MARKER_VPACK_DROP_DATABASE, id,
-                                         builder.slice());
+                                 builder.slice());
 
     MMFilesWalSlotInfoCopy slotInfo =
-        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {

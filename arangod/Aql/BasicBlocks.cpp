@@ -22,11 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BasicBlocks.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::aql;
+  
+void SingletonBlock::deleteInputVariables() {
+  delete _inputRegisterValues;
+  _inputRegisterValues = nullptr;
+}
 
 void SingletonBlock::buildWhitelist() {
   if (!_whitelistBuilt) {
@@ -154,6 +160,11 @@ FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
 }
 
 FilterBlock::~FilterBlock() {}
+  
+/// @brief internal function to actually decide if the document should be used
+bool FilterBlock::takeItem(AqlItemBlock* items, size_t index) const {
+  return items->getValueReference(index, _inReg).toBoolean();
+}
 
 /// @brief internal function to get another block
 bool FilterBlock::getBlock(size_t atLeast, size_t atMost) {
@@ -210,100 +221,74 @@ int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   }
 
   // if _buffer.size() is > 0 then _pos is valid
-  std::vector<AqlItemBlock*> collector;
+  _collector.clear();
 
-  try {
-    while (skipped < atLeast) {
-      if (_buffer.empty()) {
-        if (!getBlock(atLeast - skipped, atMost - skipped)) {
-          _done = true;
-          break;
-        }
-        _pos = 0;
+  while (skipped < atLeast) {
+    if (_buffer.empty()) {
+      if (!getBlock(atLeast - skipped, atMost - skipped)) {
+        _done = true;
+        break;
       }
+      _pos = 0;
+    }
 
-      // If we get here, then _buffer.size() > 0 and _pos points to a
-      // valid place in it.
-      AqlItemBlock* cur = _buffer.front();
-      if (_chosen.size() - _pos + skipped > atMost) {
-        // The current block of chosen ones is too large for atMost:
-        if (!skipping) {
-          std::unique_ptr<AqlItemBlock> more(
-              cur->slice(_chosen, _pos, _pos + (atMost - skipped)));
+    // If we get here, then _buffer.size() > 0 and _pos points to a
+    // valid place in it.
+    AqlItemBlock* cur = _buffer.front();
+    if (_chosen.size() - _pos + skipped > atMost) {
+      // The current block of chosen ones is too large for atMost:
+      if (!skipping) {
+        std::unique_ptr<AqlItemBlock> more(
+            cur->slice(_chosen, _pos, _pos + (atMost - skipped)));
 
-          TRI_IF_FAILURE("FilterBlock::getOrSkipSome1") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-
-          collector.emplace_back(more.get());
-          more.release();
+        TRI_IF_FAILURE("FilterBlock::getOrSkipSome1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        _pos += atMost - skipped;
-        skipped = atMost;
-      } else if (_pos > 0 || _chosen.size() < cur->size()) {
-        // The current block fits into our result, but it is already
-        // half-eaten or needs to be copied anyway:
-        if (!skipping) {
-          std::unique_ptr<AqlItemBlock> more(
-              cur->steal(_chosen, _pos, _chosen.size()));
 
-          TRI_IF_FAILURE("FilterBlock::getOrSkipSome2") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
+        _collector.add(std::move(more));
+      }
+      _pos += atMost - skipped;
+      skipped = atMost;
+    } else if (_pos > 0 || _chosen.size() < cur->size()) {
+      // The current block fits into our result, but it is already
+      // half-eaten or needs to be copied anyway:
+      if (!skipping) {
+        std::unique_ptr<AqlItemBlock> more(
+            cur->steal(_chosen, _pos, _chosen.size()));
 
-          collector.emplace_back(more.get());
-          more.release();
+        TRI_IF_FAILURE("FilterBlock::getOrSkipSome2") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        skipped += _chosen.size() - _pos;
-        delete cur;
-        _buffer.pop_front();
-        _chosen.clear();
-        _pos = 0;
+
+        _collector.add(std::move(more));
+      }
+      skipped += _chosen.size() - _pos;
+      delete cur;
+      _buffer.pop_front();
+      _chosen.clear();
+      _pos = 0;
+    } else {
+      // The current block fits into our result and is fresh and
+      // takes them all, so we can just hand it on:
+      skipped += cur->size();
+      if (!skipping) {
+        // if any of the following statements throw, then cur is not lost,
+        // as it is still contained in _buffer
+        TRI_IF_FAILURE("FilterBlock::getOrSkipSome3") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        _collector.add(cur);
       } else {
-        // The current block fits into our result and is fresh and
-        // takes them all, so we can just hand it on:
-        skipped += cur->size();
-        if (!skipping) {
-          // if any of the following statements throw, then cur is not lost,
-          // as it is still contained in _buffer
-          TRI_IF_FAILURE("FilterBlock::getOrSkipSome3") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-          collector.emplace_back(cur);
-        } else {
-          delete cur;
-        }
-        _buffer.pop_front();
-        _chosen.clear();
-        _pos = 0;
+        delete cur;
       }
+      _buffer.pop_front();
+      _chosen.clear();
+      _pos = 0;
     }
-  } catch (...) {
-    for (auto& c : collector) {
-      delete c;
-    }
-    throw;
   }
 
   if (!skipping) {
-    if (collector.size() == 1) {
-      result = collector[0];
-    } else if (collector.size() > 1) {
-      try {
-        TRI_IF_FAILURE("FilterBlock::getOrSkipSomeConcatenate") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        result = AqlItemBlock::concatenate(_engine->getQuery()->resourceMonitor(), collector);
-      } catch (...) {
-        for (auto& x : collector) {
-          delete x;
-        }
-        throw;
-      }
-      for (auto& x : collector) {
-        delete x;
-      }
-    }
+    result = _collector.steal(_engine->getQuery()->resourceMonitor());
   }
   return TRI_ERROR_NO_ERROR;
 

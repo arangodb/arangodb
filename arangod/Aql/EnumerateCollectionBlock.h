@@ -81,7 +81,7 @@ class EnumerateCollectionBlock : public ExecutionBlock {
   CollectionScanner _scanner;
   
   /// @brief document buffer
-  std::vector<IndexLookupResult> _documents;
+  std::vector<DocumentIdentifierToken> _documents;
   
   /// @brief iterator over documents
   size_t _position;

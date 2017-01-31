@@ -31,7 +31,6 @@
 
 #include <velocypack/Options.h>
 
-struct TRI_transaction_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -47,8 +46,8 @@ struct CustomTypeHandler;
 class CollectionNameResolver;
 class DocumentDitch;
 class LogicalCollection;
-class RevisionCacheChunk;
 class Transaction;
+struct TransactionState;
 
 class TransactionContext {
  public:
@@ -99,11 +98,6 @@ class TransactionContext {
   //////////////////////////////////////////////////////////////////////////////
   
   DocumentDitch* ditch(TRI_voc_cid_t) const;
-
-  void addChunk(RevisionCacheChunk*);
-  void clearChunks(size_t threshold);
-
-  void stealChunks(std::unordered_set<RevisionCacheChunk*>&); 
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief temporarily lease a StringBuffer object
@@ -164,7 +158,7 @@ class TransactionContext {
   /// @brief get parent transaction (if any)
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual struct TRI_transaction_t* getParentTransaction() const = 0;
+  virtual TransactionState* getParentTransaction() const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the transaction is embeddable
@@ -176,7 +170,7 @@ class TransactionContext {
   /// @brief register the transaction in the context
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual int registerTransaction(struct TRI_transaction_t*) = 0;
+  virtual int registerTransaction(TransactionState*) = 0;
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the transaction
@@ -202,9 +196,6 @@ class TransactionContext {
   
   std::unordered_map<TRI_voc_cid_t, DocumentDitch*> _ditches;
 
-  Mutex _chunksLock;  
-  std::unordered_set<RevisionCacheChunk*> _chunks;
-  
   SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
   SmallVector<arangodb::velocypack::Builder*, 32> _builders;
   

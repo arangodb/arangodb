@@ -30,6 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
+#include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-conv.h"
@@ -242,7 +243,13 @@ V8Task::callbackFunction() {
       return;
     }
 
-    work();
+    {
+      // First tell the scheduler that this thread is working:
+      JobGuard guard(SchedulerFeature::SCHEDULER);
+      guard.work();
+      // Now do the work:
+      work();
+    }
 
     if (_periodic) {
       _timer->expires_from_now(_interval);

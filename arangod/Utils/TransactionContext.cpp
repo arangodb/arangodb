@@ -24,14 +24,14 @@
 #include "TransactionContext.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
+#include "RestServer/TransactionManagerFeature.h"
+#include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
-#include "StorageEngine/MMFilesDatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/RevisionCacheChunk.h"
-#include "Wal/LogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -85,16 +85,9 @@ TransactionContext::TransactionContext(TRI_vocbase_t* vocbase)
 //////////////////////////////////////////////////////////////////////////////
 
 TransactionContext::~TransactionContext() {
-  {
-    MUTEX_LOCKER(locker, _chunksLock);
-    for (auto& chunk : _chunks) {
-      chunk->release();
-    }
-  }
-
   // unregister the transaction from the logfile manager
   if (_transaction.id > 0) {
-    arangodb::wal::LogfileManager::instance()->unregisterTransaction(_transaction.id, _transaction.hasFailedOperations);
+    TransactionManagerFeature::MANAGER->unregisterTransaction(_transaction.id, _transaction.hasFailedOperations);
   }
 
   for (auto& it : _ditches) {
@@ -174,38 +167,6 @@ DocumentDitch* TransactionContext::ditch(TRI_voc_cid_t cid) const {
   return (*it).second;
 }
   
-void TransactionContext::addChunk(RevisionCacheChunk* chunk) {
-  TRI_ASSERT(chunk != nullptr);
-
-  {
-    MUTEX_LOCKER(locker, _chunksLock);
-    if (_chunks.emplace(chunk).second) {
-      // we're the first ones to insert this chunk
-      return;
-    }
-  }
-    
-  // another thread had inserted the same chunk already
-  // now need to keep track of it twice
-  chunk->release();
-}
-
-// clear chunks if they use too much memory
-void TransactionContext::clearChunks(size_t threshold) {
-  MUTEX_LOCKER(locker, _chunksLock);
-  if (_chunks.size() > threshold) {
-    for (auto& chunk : _chunks) {
-      chunk->release();
-    }
-    _chunks.clear();
-  }
-}
-  
-void TransactionContext::stealChunks(std::unordered_set<RevisionCacheChunk*>& target) {
-  target.clear();
-  _chunks.swap(target);
-} 
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief temporarily lease a StringBuffer object
 //////////////////////////////////////////////////////////////////////////////

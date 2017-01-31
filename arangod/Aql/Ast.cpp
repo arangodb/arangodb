@@ -33,7 +33,6 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -552,7 +551,7 @@ AstNode* Ast::createNodeVariable(char const* name, size_t nameLength,
 
 /// @brief create an AST collection node
 AstNode* Ast::createNodeCollection(char const* name,
-                                   TRI_transaction_type_e accessType) {
+                                   AccessMode::Type accessType) {
   if (name == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -892,8 +891,7 @@ AstNode* Ast::createNodeArray(size_t size) {
 }
 
 /// @brief create an AST unique array node, AND-merged from two other arrays
-AstNode* Ast::createNodeIntersectedArray(arangodb::Transaction* trx,
-                                         AstNode const* lhs,
+AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
                                          AstNode const* rhs) {
   TRI_ASSERT(lhs->isArray() && lhs->isConstant());
   TRI_ASSERT(rhs->isArray() && rhs->isConstant());
@@ -909,7 +907,7 @@ AstNode* Ast::createNodeIntersectedArray(arangodb::Transaction* trx,
 
   for (size_t i = 0; i < nl; ++i) {
     auto member = lhs->getMemberUnchecked(i);
-    VPackSlice slice = member->computeValue(trx);
+    VPackSlice slice = member->computeValue();
 
     cache.emplace(slice, member);
   }
@@ -931,8 +929,7 @@ AstNode* Ast::createNodeIntersectedArray(arangodb::Transaction* trx,
 }
 
 /// @brief create an AST unique array node, OR-merged from two other arrays
-AstNode* Ast::createNodeUnionizedArray(arangodb::Transaction* trx,
-                                       AstNode const* lhs, AstNode const* rhs) {
+AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lhs->isArray() && lhs->isConstant());
   TRI_ASSERT(rhs->isArray() && rhs->isConstant());
 
@@ -952,7 +949,7 @@ AstNode* Ast::createNodeUnionizedArray(arangodb::Transaction* trx,
     } else {
       member = rhs->getMemberUnchecked(i - nl);
     }
-    VPackSlice slice = member->computeValue(trx);
+    VPackSlice slice = member->computeValue();
 
     cache.emplace(slice, member);
   }
@@ -1007,7 +1004,7 @@ AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
 
     if (c->isStringValue()) {
       std::string name = c->getString();
-      _query->collections()->add(name, TRI_TRANSACTION_READ);
+      _query->collections()->add(name, AccessMode::Type::READ);
       if (ServerState::instance()->isCoordinator()) {
         auto ci = ClusterInfo::instance();
         // We want to tolerate that a collection name is given here
@@ -1016,7 +1013,7 @@ AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
           auto coll = ci->getCollection(_query->vocbase()->name(), name);
           auto names = coll->realNames();
           for (auto const& n : names) {
-            _query->collections()->add(n, TRI_TRANSACTION_READ);
+            _query->collections()->add(n, AccessMode::Type::READ);
           }
         }
         catch (...) {
@@ -1043,13 +1040,13 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections) {
   auto ss = ServerState::instance();
 
   auto doTheAdd = [&](std::string const& name) {
-    _query->collections()->add(name, TRI_TRANSACTION_READ);
+    _query->collections()->add(name, AccessMode::Type::READ);
     if (ss->isCoordinator()) {
       try {
         auto c = ci->getCollection(_query->vocbase()->name(), name);
         auto const& names = c->realNames();
         for (auto const& n : names) {
-          _query->collections()->add(n, TRI_TRANSACTION_READ);
+          _query->collections()->add(n, AccessMode::Type::READ);
         }
       }
       catch (...) {
@@ -1404,8 +1401,8 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         TRI_ASSERT(name != nullptr);
 
         node = createNodeCollection(name, isWriteCollection
-                                              ? TRI_TRANSACTION_WRITE
-                                              : TRI_TRANSACTION_READ);
+                                              ? AccessMode::Type::WRITE
+                                              : AccessMode::Type::READ);
 
         if (isWriteCollection) {
           // must update AST info now for all nodes that contained this
@@ -1488,11 +1485,11 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         TRI_ASSERT(graph != nullptr);
         auto vColls = graph->vertexCollections();
         for (const auto& n : vColls) {
-          _query->collections()->add(n, TRI_TRANSACTION_READ);
+          _query->collections()->add(n, AccessMode::Type::READ);
         }
         auto eColls = graph->edgeCollections();
         for (const auto& n : eColls) {
-          _query->collections()->add(n, TRI_TRANSACTION_READ);
+          _query->collections()->add(n, AccessMode::Type::READ);
         }
         if (ServerState::instance()->isCoordinator()) {
           auto ci = ClusterInfo::instance();
@@ -1501,7 +1498,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
               auto c = ci->getCollection(_query->vocbase()->name(), n);
               auto names = c->realNames();
               for (auto const& name : names) {
-                _query->collections()->add(name, TRI_TRANSACTION_READ);
+                _query->collections()->add(name, AccessMode::Type::READ);
               }
             } catch (...) {
             }
@@ -1517,11 +1514,11 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         TRI_ASSERT(graph != nullptr);
         auto vColls = graph->vertexCollections();
         for (const auto& n : vColls) {
-          _query->collections()->add(n, TRI_TRANSACTION_READ);
+          _query->collections()->add(n, AccessMode::Type::READ);
         }
         auto eColls = graph->edgeCollections();
         for (const auto& n : eColls) {
-          _query->collections()->add(n, TRI_TRANSACTION_READ);
+          _query->collections()->add(n, AccessMode::Type::READ);
         }
         if (ServerState::instance()->isCoordinator()) {
           auto ci = ClusterInfo::instance();
@@ -1530,7 +1527,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
               auto c = ci->getCollection(_query->vocbase()->name(), n);
               auto names = c->realNames();
               for (auto const& name : names) {
-                _query->collections()->add(name, TRI_TRANSACTION_READ);
+                _query->collections()->add(name, AccessMode::Type::READ);
               }
             } catch (...) {
             }
@@ -1548,7 +1545,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
   for (auto& it : _writeCollections) {
     if (it->type == NODE_TYPE_COLLECTION) {
       std::string name = it->getString();
-      _query->collections()->add(name, TRI_TRANSACTION_WRITE);
+      _query->collections()->add(name, AccessMode::Type::WRITE);
       if (ServerState::instance()->isCoordinator()) {
         auto ci = ClusterInfo::instance();
         // We want to tolerate that a collection name is given here
@@ -1557,7 +1554,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           auto coll = ci->getCollection(_query->vocbase()->name(), name);
           auto names = coll->realNames();
           for (auto const& n : names) {
-            _query->collections()->add(n, TRI_TRANSACTION_WRITE);
+            _query->collections()->add(n, AccessMode::Type::WRITE);
           }
         } catch (...) {
         }
@@ -2748,6 +2745,12 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
                                                    arg->getStringLength()));
         return createNodeFunctionCall("COLLECTION_COUNT", countArgs);
       }
+    }
+  } else if (func->externalName == "IS_NULL") {
+    auto args = node->getMember(0);
+    if (args->numMembers() == 1) {
+      // replace IS_NULL(x) function call with `x == null`
+      return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, args->getMemberUnchecked(0), createNodeValueNull()); 
     }
   }
 

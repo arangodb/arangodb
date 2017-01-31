@@ -78,7 +78,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
-#include "Wal/LogfileManager.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -156,8 +156,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // extract the properties from the object
 
   // "lockTimeout"
-  double lockTimeout =
-      (double) TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT;
+  double lockTimeout = Transaction::DefaultLockTimeout;
 
   if (object->Has(TRI_V8_ASCII_STRING("lockTimeout"))) {
     static std::string const timeoutError =
@@ -209,6 +208,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool isValid = true;
   std::vector<std::string> readCollections;
   std::vector<std::string> writeCollections;
+  std::vector<std::string> exclusiveCollections;
 
   bool allowImplicitCollections = true;
   if (collections->Has(TRI_V8_ASCII_STRING("allowImplicit"))) {
@@ -257,6 +257,29 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     } else if (collections->Get(TRI_V8_ASCII_STRING("write"))->IsString()) {
       writeCollections.emplace_back(
           TRI_ObjectToString(collections->Get(TRI_V8_ASCII_STRING("write"))));
+    } else {
+      isValid = false;
+    }
+  }
+  
+  // collections.exclusive
+  if (collections->Has(TRI_V8_ASCII_STRING("exclusive"))) {
+    if (collections->Get(TRI_V8_ASCII_STRING("exclusive"))->IsArray()) {
+      v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(
+          collections->Get(TRI_V8_ASCII_STRING("exclusive")));
+
+      for (uint32_t i = 0; i < names->Length(); ++i) {
+        v8::Handle<v8::Value> collection = names->Get(i);
+        if (!collection->IsString()) {
+          isValid = false;
+          break;
+        }
+
+        exclusiveCollections.emplace_back(TRI_ObjectToString(collection));
+      }
+    } else if (collections->Get(TRI_V8_ASCII_STRING("exclusive"))->IsString()) {
+      exclusiveCollections.emplace_back(
+          TRI_ObjectToString(collections->Get(TRI_V8_ASCII_STRING("exclusive"))));
     } else {
       isValid = false;
     }
@@ -342,7 +365,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
       std::make_shared<V8TransactionContext>(vocbase, embed);
 
   // start actual transaction
-  ExplicitTransaction trx(transactionContext, readCollections, writeCollections,
+  ExplicitTransaction trx(transactionContext, readCollections, writeCollections, exclusiveCollections,
                           lockTimeout, waitForSync, allowImplicitCollections);
 
   int res = trx.begin();
@@ -404,7 +427,7 @@ static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("properties(<object>)");
   }
 
-  auto l = arangodb::wal::LogfileManager::instance();
+  auto l = MMFilesLogfileManager::instance();
 
   if (args.Length() == 1) {
     // set the properties
@@ -517,7 +540,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_RETURN_TRUE();
   }
 
-  res = arangodb::wal::LogfileManager::instance()->flush(
+  res = MMFilesLogfileManager::instance()->flush(
       waitForSync, waitForCollector, writeShutdownFile);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -570,7 +593,7 @@ static void JS_WaitCollectorWal(
     timeout = TRI_ObjectToDouble(args[1]);
   }
 
-  int res = arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
+  int res = MMFilesLogfileManager::instance()->waitForCollectorQueue(
       col->cid(), timeout);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -591,7 +614,7 @@ static void JS_TransactionsWal(
   v8::HandleScope scope(isolate);
 
   auto const& info =
-      arangodb::wal::LogfileManager::instance()->runningTransactions();
+      MMFilesLogfileManager::instance()->runningTransactions();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 

@@ -32,10 +32,11 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "GeneralServer/GeneralServer.h"
-#include "Indexes/EdgeIndex.h"
 #include "Indexes/Index.h"
-#include "Indexes/PrimaryIndex.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesEdgeIndex.h"
+#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesPrimaryIndex.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
@@ -47,13 +48,14 @@
 #include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/OperationOptions.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/TransactionContext.h"
+#include "Utils/TransactionHints.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
 #include "VocBase/ticks.h"
-#include "Wal/LogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -416,9 +418,9 @@ void RestReplicationHandler::handleCommandLoggerState() {
   VPackBuilder builder;
   builder.add(VPackValue(VPackValueType::Object));  // Base
 
-  arangodb::wal::LogfileManager::instance()->waitForSync(10.0);
-  arangodb::wal::LogfileManagerState const s =
-      arangodb::wal::LogfileManager::instance()->state();
+  MMFilesLogfileManager::instance()->waitForSync(10.0);
+  MMFilesLogfileManagerState const s =
+      MMFilesLogfileManager::instance()->state();
 
   // "state" part
   builder.add("state", VPackValue(VPackValueType::Object));
@@ -464,7 +466,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerTickRanges() {
-  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
+  auto const& ranges = MMFilesLogfileManager::instance()->ranges();
   VPackBuilder b;
   b.add(VPackValue(VPackValueType::Array));
 
@@ -486,7 +488,7 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerFirstTick() {
-  auto const& ranges = arangodb::wal::LogfileManager::instance()->ranges();
+  auto const& ranges = MMFilesLogfileManager::instance()->ranges();
 
   VPackBuilder b;
   b.add(VPackValue(VPackValueType::Object));
@@ -649,7 +651,7 @@ void RestReplicationHandler::handleCommandBarrier() {
     }
 
     TRI_voc_tick_t id =
-        arangodb::wal::LogfileManager::instance()->addLogfileBarrier(minTick,
+        MMFilesLogfileManager::instance()->addLogfileBarrier(minTick,
                                                                      ttl);
 
     VPackBuilder b;
@@ -687,7 +689,7 @@ void RestReplicationHandler::handleCommandBarrier() {
       minTick = v.getNumber<TRI_voc_tick_t>();
     }
 
-    if (arangodb::wal::LogfileManager::instance()->extendLogfileBarrier(
+    if (MMFilesLogfileManager::instance()->extendLogfileBarrier(
             id, ttl, minTick)) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
@@ -701,7 +703,7 @@ void RestReplicationHandler::handleCommandBarrier() {
     // delete an existing barrier
     TRI_voc_tick_t id = StringUtils::uint64(suffixes[1]);
 
-    if (arangodb::wal::LogfileManager::instance()->removeLogfileBarrier(id)) {
+    if (MMFilesLogfileManager::instance()->removeLogfileBarrier(id)) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
       int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -712,7 +714,7 @@ void RestReplicationHandler::handleCommandBarrier() {
 
   if (type == rest::RequestType::GET) {
     // fetch all barriers
-    auto ids = arangodb::wal::LogfileManager::instance()->getLogfileBarriers();
+    auto ids = MMFilesLogfileManager::instance()->getLogfileBarriers();
 
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Array));
@@ -854,8 +856,8 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   }
 
   // determine start and end tick
-  arangodb::wal::LogfileManagerState const state =
-      arangodb::wal::LogfileManager::instance()->state();
+  MMFilesLogfileManagerState const state =
+      MMFilesLogfileManager::instance()->state();
   TRI_voc_tick_t tickStart = 0;
   TRI_voc_tick_t tickEnd = UINT64_MAX;
   TRI_voc_tick_t firstRegularTick = 0;
@@ -951,7 +953,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 
   if (barrierId > 0) {
     // extend the WAL logfile barrier
-    arangodb::wal::LogfileManager::instance()->extendLogfileBarrier(
+    MMFilesLogfileManager::instance()->extendLogfileBarrier(
         barrierId, 180, tickStart);
   }
 
@@ -1034,8 +1036,8 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 
 void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
   // determine start and end tick
-  arangodb::wal::LogfileManagerState const state =
-      arangodb::wal::LogfileManager::instance()->state();
+  MMFilesLogfileManagerState const state =
+      MMFilesLogfileManager::instance()->state();
   TRI_voc_tick_t tickStart = 0;
   TRI_voc_tick_t tickEnd = state.lastCommittedTick;
 
@@ -1136,8 +1138,8 @@ void RestReplicationHandler::handleCommandInventory() {
   // "state"
   builder.add("state", VPackValue(VPackValueType::Object));
 
-  arangodb::wal::LogfileManagerState const s =
-      arangodb::wal::LogfileManager::instance()->state();
+  MMFilesLogfileManagerState const s =
+      MMFilesLogfileManager::instance()->state();
 
   builder.add("running", VPackValue(true));
   builder.add("lastLogTick", VPackValue(std::to_string(s.lastCommittedTick)));
@@ -1496,8 +1498,8 @@ int RestReplicationHandler::processRestoreCollection(
         // instead, truncate them
         SingleCollectionTransaction trx(
             StandaloneTransactionContext::Create(_vocbase), col->cid(),
-            TRI_TRANSACTION_WRITE);
-        trx.addHint(TRI_TRANSACTION_HINT_RECOVERY,
+            AccessMode::Type::WRITE);
+        trx.addHint(TransactionHints::Hint::RECOVERY,
                     false);  // to turn off waitForSync!
 
         res = trx.begin();
@@ -1626,7 +1628,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // We always need a new id
   TRI_voc_tick_t newIdTick = ci->uniqid(1);
-  std::string&& newId = StringUtils::itoa(newIdTick);
+  std::string newId = StringUtils::itoa(newIdTick);
   toMerge.add("id", VPackValue(newId));
 
   // Number of shards. Will be overwritten if not existent
@@ -1746,7 +1748,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
 
     SingleCollectionTransaction trx(
         StandaloneTransactionContext::Create(_vocbase), collection->cid(),
-        TRI_TRANSACTION_WRITE);
+        AccessMode::Type::WRITE);
 
     int res = trx.begin();
 
@@ -2252,8 +2254,8 @@ int RestReplicationHandler::processRestoreData(
 
   SingleCollectionTransaction trx(
       StandaloneTransactionContext::Create(_vocbase), colName,
-      TRI_TRANSACTION_WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_RECOVERY,
+      AccessMode::Type::WRITE);
+  trx.addHint(TransactionHints::Hint::RECOVERY,
               false);  // to turn off waitForSync!
 
   int res = trx.begin();
@@ -2693,11 +2695,11 @@ void RestReplicationHandler::handleCommandDump() {
              << "', tickStart: " << tickStart << ", tickEnd: " << tickEnd;
 
   if (flush) {
-    arangodb::wal::LogfileManager::instance()->flush(true, true, false);
+    MMFilesLogfileManager::instance()->flush(true, true, false);
 
     // additionally wait for the collector
     if (flushWait > 0) {
-      arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
+      MMFilesLogfileManager::instance()->waitForCollectorQueue(
           c->cid(), static_cast<double>(flushWait));
     }
   }
@@ -3012,7 +3014,7 @@ void RestReplicationHandler::handleCommandSync() {
   config._useCollectionId = useCollectionId;
 
   // wait until all data in current logfile got synced
-  arangodb::wal::LogfileManager::instance()->waitForSync(5.0);
+  MMFilesLogfileManager::instance()->waitForSync(5.0);
 
   InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
                        verbose);
@@ -3441,8 +3443,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   auto trxContext = StandaloneTransactionContext::Create(_vocbase);
-  SingleCollectionTransaction trx(trxContext, col->cid(), TRI_TRANSACTION_READ);
-  trx.addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
+  SingleCollectionTransaction trx(trxContext, col->cid(), AccessMode::Type::READ);
+  trx.addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::SERVER_ERROR,

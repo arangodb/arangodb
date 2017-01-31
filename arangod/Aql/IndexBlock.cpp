@@ -52,7 +52,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _condition(en->_condition->root()),
       _hasV8Expression(false) {
     
-  _mmdr.reset(new ManagedDocumentResult(transaction()));
+  _mmdr.reset(new ManagedDocumentResult);
  
   if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a 
@@ -412,7 +412,7 @@ bool IndexBlock::readIndex(size_t atMost) {
     }
 
     LogicalCollection* collection = _cursor->collection();
-    _cursor->getMoreMptr(_result, atMost);
+    _cursor->getMoreTokens(_result, atMost);
 
     size_t length = _result.size();
 
@@ -430,18 +430,17 @@ bool IndexBlock::readIndex(size_t atMost) {
 
     if (hasMultipleIndexes) {
       for (auto const& element : _result) {
-        TRI_voc_rid_t revisionId = element.revisionId();
-        if (collection->readRevision(_trx, *_mmdr, revisionId)) {
+        if (collection->readDocument(_trx, *_mmdr, element)) {
           uint8_t const* vpack = _mmdr->vpack(); //back();
           // uniqueness checks
           if (!isLastIndex) {
             // insert & check for duplicates in one go
-            if (_alreadyReturned.emplace(revisionId).second) {
+            if (_alreadyReturned.emplace(element).second) {
               _documents.emplace_back(vpack);
             }
           } else {
             // only check for duplicates
-            if (_alreadyReturned.find(revisionId) == _alreadyReturned.end()) {
+            if (_alreadyReturned.find(element) == _alreadyReturned.end()) {
               _documents.emplace_back(vpack);
             }
           }
@@ -449,8 +448,7 @@ bool IndexBlock::readIndex(size_t atMost) {
       }
     } else {
       for (auto const& element : _result) {
-        TRI_voc_rid_t revisionId = element.revisionId();
-        if (collection->readRevision(_trx, *_mmdr, revisionId)) {
+        if (collection->readDocument(_trx, *_mmdr, element)) {
           uint8_t const* vpack = _mmdr->vpack(); //back();
           _documents.emplace_back(vpack);
         }
@@ -470,6 +468,7 @@ bool IndexBlock::readIndex(size_t atMost) {
 
 int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
+  _collector.clear();
   int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -492,9 +491,9 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   traceGetSomeBegin();
   if (_done) {
     traceGetSomeEnd(nullptr);
-    return nullptr;
+    return _collector.steal(_engine->getQuery()->resourceMonitor());
   }
-
+ 
   std::unique_ptr<AqlItemBlock> res;
 
   do {
@@ -508,7 +507,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
       if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
         _done = true;
         traceGetSomeEnd(nullptr);
-        return nullptr;
+        return _collector.steal(_engine->getQuery()->resourceMonitor());
       }
       _pos = 0;  // this is in the first block
 
@@ -530,7 +529,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
           if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
             _done = true;
             traceGetSomeEnd(nullptr);
-            return nullptr;
+            return _collector.steal(_engine->getQuery()->resourceMonitor());
           }
           _pos = 0;  // this is in the first block
         }
@@ -538,7 +537,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         if (!initIndexes()) {
           _done = true;
           traceGetSomeEnd(nullptr);
-          return nullptr;
+          return _collector.steal(_engine->getQuery()->resourceMonitor());
         }
         readIndex(atMost);
       }
@@ -581,6 +580,13 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
           res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
         }
       }
+
+      _collector.add(std::move(res));
+      TRI_ASSERT(res.get() == nullptr);
+
+      if (_collector.totalSize() >= atMost) {
+        res.reset(_collector.steal(_engine->getQuery()->resourceMonitor()));
+      }
     }
 
   } while (res.get() == nullptr);
@@ -588,6 +594,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   traceGetSomeEnd(res.get());
+  
   return res.release();
 
   // cppcheck-suppress style

@@ -632,7 +632,7 @@ AqlValue Expression::executeSimpleExpressionArray(
   mustDestroy = false;
   if (node->isConstant()) {
     // this will not create a copy
-    return AqlValue(node->computeValue(trx).begin()); 
+    return AqlValue(node->computeValue().begin()); 
   }
 
   size_t const n = node->numMembers();
@@ -666,7 +666,7 @@ AqlValue Expression::executeSimpleExpressionObject(
   mustDestroy = false;
   if (node->isConstant()) {
     // this will not create a copy
-    return AqlValue(node->computeValue(trx).begin()); 
+    return AqlValue(node->computeValue().begin()); 
   }
   
   size_t const n = node->numMembers();
@@ -803,7 +803,7 @@ AqlValue Expression::executeSimpleExpressionValue(AstNode const* node,
                                                   bool& mustDestroy) {
   // this will not create a copy
   mustDestroy = false;
-  return AqlValue(node->computeValue(trx).begin()); 
+  return AqlValue(node->computeValue().begin()); 
 }
 
 /// @brief execute an expression of type SIMPLE with REFERENCE

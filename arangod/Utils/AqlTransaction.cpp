@@ -24,12 +24,13 @@
 #include "AqlTransaction.h"
 #include "CollectionNameResolver.h"
 #include "Logger/Logger.h"
+#include "Utils/TransactionCollection.h"
+#include "Utils/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 
 /// @brief add a collection to the transaction
-
 int AqlTransaction::processCollection(aql::Collection* collection) {
   int state = setupState();
 
@@ -87,10 +88,10 @@ int AqlTransaction::processCollectionNormal(aql::Collection* collection) {
 }
 
 LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
-  TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
+  TransactionCollection* trxColl = this->trxCollection(cid);
   TRI_ASSERT(trxColl != nullptr);
   return trxColl->_collection;
-  }
+}
 
 
 /// @brief lockCollections, this is needed in a corner case in AQL: we need
@@ -101,10 +102,10 @@ LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
 /// order via an HTTP call. This method is used to implement that HTTP action.
 
 int AqlTransaction::lockCollections() {
-  auto trx = getInternals();
+  auto trx = state();
   for (auto& trxCollection : trx->_collections) {
-    int res = TRI_LockCollectionTransaction(trxCollection,
-                                            trxCollection->_accessType, 0);
+    int res = trxCollection->lock(trxCollection->_accessType, 0);
+
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
