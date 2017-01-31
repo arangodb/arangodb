@@ -24,7 +24,6 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_H 1
 
-#include "AqlItemBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Variable.h"
 
@@ -61,6 +60,7 @@ namespace arangodb {
 class Transaction;
 
 namespace aql {
+class AqlItemBlock;
 
 /// @brief sort element for block, consisting of register, sort direction, 
 /// and a possible attribute path to dig into the document

@@ -43,6 +43,7 @@ class ServerState {
   };
 
   static const std::vector<std::string> RoleStr;
+  static const std::vector<std::string> RoleStrReadable;
 
   /// @brief an enum describing the possible states a server can have
   enum StateEnum {
@@ -269,7 +270,7 @@ class ServerState {
   bool checkCoordinatorState(StateEnum);
   
   /// @brief create an id for a specified role
-  std::string createIdForRole(AgencyComm, RoleEnum);
+  std::string createIdForRole(AgencyComm, RoleEnum, std::string = std::string());
   
   /// @brief get the key for a role in the agency
   static std::string roleToAgencyKey(RoleEnum);

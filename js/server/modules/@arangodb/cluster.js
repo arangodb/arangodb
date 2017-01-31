@@ -745,7 +745,7 @@ function executePlanForCollections(plannedCollections) {
               let collection;
               if (!localCollections.hasOwnProperty(shardName)) {
                 // must create this shard
-                console.info("creating local shard '%s/%s' for central '%s/%s'",
+                console.debug("creating local shard '%s/%s' for central '%s/%s'",
                   database,
                   shardName,
                   database,
@@ -813,7 +813,7 @@ function executePlanForCollections(plannedCollections) {
                 }, {});
 
                 if (Object.keys(properties).length > 0) {
-                  console.info("updating properties for local shard '%s/%s'",
+                  console.debug("updating properties for local shard '%s/%s'",
                     database,
                     shardName);
 
@@ -831,17 +831,17 @@ function executePlanForCollections(plannedCollections) {
 
               // Now check whether the status is OK:
               if (collectionStatus !== collectionInfo.status) {
-                console.info("detected status change for local shard '%s/%s'",
+                console.debug("detected status change for local shard '%s/%s'",
                   database,
                   shardName);
 
                 if (collectionInfo.status === ArangoCollection.STATUS_UNLOADED) {
-                  console.info("unloading local shard '%s/%s'",
+                  console.debug("unloading local shard '%s/%s'",
                     database,
                     shardName);
                   collection.unload();
                 } else if (collectionInfo.status === ArangoCollection.STATUS_LOADED) {
-                  console.info("loading local shard '%s/%s'",
+                  console.debug("loading local shard '%s/%s'",
                     database,
                     shardName);
                   collection.load();
@@ -1264,7 +1264,7 @@ function executePlanForDatabases(plannedDatabases) {
     if (!plannedDatabases.hasOwnProperty(name) && name.substr(0, 1) !== '_') {
       // must drop database
 
-      console.info("dropping local database '%s'", name);
+      console.debug("dropping local database '%s'", name);
 
       // Do we have to stop a replication applier first?
       if (ArangoServerState.role() === 'SECONDARY') {
@@ -1273,7 +1273,7 @@ function executePlanForDatabases(plannedDatabases) {
           var rep = require('@arangodb/replication');
           var state = rep.applier.state();
           if (state.state.running === true) {
-            console.info('stopping replication applier first');
+            console.debug('stopping replication applier first');
             rep.applier.stop();
           }
         }
@@ -1690,6 +1690,7 @@ var handlePlanChange = function (plan, current) {
     current: current.Version
   };
 
+  console.debug('handlePlanChange:', plan.Version, current.Version);
   try {
     versions.success = handleChanges(plan, current);
 
@@ -1700,6 +1701,7 @@ var handlePlanChange = function (plan, current) {
     console.error('plan change handling failed');
     versions.success = false;
   }
+  console.debug('handlePlanChange: done');
   return versions;
 };
 

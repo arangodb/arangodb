@@ -124,8 +124,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
   if (!_restServer) {
     ApplicationServer::disableFeatures({"Daemon", "Endpoint", "GeneralServer",
-                                        "Scheduler", "SslServer",
-                                        "Supervisor"});
+                                        "SslServer", "Supervisor"});
 
     DatabaseFeature* database =
         ApplicationServer::getFeature<DatabaseFeature>("Database");
@@ -158,7 +157,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void ServerFeature::start() {
-  if (_operationMode != OperationMode::MODE_CONSOLE && _restServer) {
+  if (_operationMode != OperationMode::MODE_CONSOLE) {
     auto scheduler =
         ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
 

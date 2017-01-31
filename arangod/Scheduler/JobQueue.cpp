@@ -70,7 +70,7 @@ class JobQueueThread final : public Thread {
 
           idleTries = 0;
 
-          _ioService->dispatch([jobQueue, job]() {
+          _ioService->post([jobQueue, job]() {
             std::unique_ptr<Job> guard(job);
 
             job->_callback(std::move(job->_handler));

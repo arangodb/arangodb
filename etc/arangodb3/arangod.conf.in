@@ -27,7 +27,7 @@ directory = @LOCALSTATEDIR@/lib/arangodb3
 #
 endpoint = tcp://127.0.0.1:8529
 
-# resuse a port on restart or wait until it is freed by the operating system
+# reuse a port on restart or wait until it is freed by the operating system
 # reuse-address = false
 
 authentication = true

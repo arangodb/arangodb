@@ -40,6 +40,9 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Scheduler/JobGuard.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-globals.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/vocbase.h"
@@ -67,14 +70,16 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
       _maxFailsBeforeWarning(maxFailsBeforeWarning),
       _numFails(0),
       _lastSuccessfulVersion(0),
-      _isDispatchingChange(false),
       _currentPlanVersion(0),
       _ready(false),
       _currentVersions(0, 0),
       _desiredVersions(std::make_shared<AgencyVersions>(0, 0)),
       _wasNotified(false),
-      _strand(new boost::asio::io_service::strand(*ioService)) {
-  
+      _ioService(ioService),
+      _backgroundJobsPosted(0),
+      _backgroundJobsLaunched(0),
+      _backgroundJobScheduledOrRunning(false),
+      _launchAnotherBackgroundJob(false) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,6 +87,64 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
 ////////////////////////////////////////////////////////////////////////////////
 
 HeartbeatThread::~HeartbeatThread() { shutdown(); }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief running of heartbeat background jobs (in JavaScript), we run
+/// these by instantiating an object in class HeartbeatBackgroundJob,
+/// which is a std::function<void()> and holds a shared_ptr to the
+/// HeartbeatThread singleton itself. This instance is then posted to
+/// the io_service for execution in the thread pool. Should the heartbeat
+/// thread itself terminate during shutdown, then the HeartbeatThread
+/// singleton itself is still kept alive by the shared_ptr in the instance
+/// of HeartbeatBackgroundJob. The operator() method simply calls the
+/// runBackgroundJob() method of the heartbeat thread. Should this have
+/// to schedule another background job, then it can simply create a new
+/// HeartbeatBackgroundJob instance, again using shared_from_this() to
+/// create a new shared_ptr keeping the HeartbeatThread object alive.
+////////////////////////////////////////////////////////////////////////////////
+
+class HeartbeatBackgroundJob {
+  std::shared_ptr<HeartbeatThread> _heartbeatThread;
+ public:
+  explicit HeartbeatBackgroundJob(std::shared_ptr<HeartbeatThread> hbt)
+    : _heartbeatThread(hbt) {}
+
+  void operator()() {
+    _heartbeatThread->runBackgroundJob();
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief method runBackgroundJob()
+////////////////////////////////////////////////////////////////////////////////
+
+void HeartbeatThread::runBackgroundJob() {
+  uint64_t jobNr = ++_backgroundJobsLaunched;
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
+  {
+    // First tell the scheduler that this thread is working:
+    JobGuard guard(SchedulerFeature::SCHEDULER);
+    guard.work();
+    // Now get to work:
+    DBServerAgencySync job(this);
+    job.work();
+  }
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
+
+  {
+    MUTEX_LOCKER(mutexLocker, *_statusLock);
+    TRI_ASSERT(_backgroundJobScheduledOrRunning);
+    if (_launchAnotherBackgroundJob) {
+      jobNr = ++_backgroundJobsPosted;
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
+      _launchAnotherBackgroundJob = false;
+      _ioService->post(HeartbeatBackgroundJob(shared_from_this()));
+    } else {
+      _backgroundJobScheduledOrRunning = false;
+      _launchAnotherBackgroundJob = false;
+    }
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop
@@ -102,8 +165,6 @@ void HeartbeatThread::run() {
   } else {
     runDBServer();
   }
-
-  _strand.reset();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -214,10 +275,12 @@ void HeartbeatThread::runDBServer() {
           VPackSlice agentPool =
             result.slice()[0].get(
               std::vector<std::string>({".agency","pool"}));
-          if (agentPool.isObject()) {
+
+          if (agentPool.isObject() && agentPool.hasKey("size") &&
+              agentPool.get("size").getUInt() > 1) {
             _agency.updateEndpoints(agentPool);
           } else {
-            LOG(DEBUG) << "Cannot find an agency persisted in RAFT 8|";
+            LOG(TRACE) << "Cannot find an agency persisted in RAFT 8|";
           }
           
           VPackSlice shutdownSlice =
@@ -311,18 +374,6 @@ void HeartbeatThread::runDBServer() {
   }
 
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
-  int count = 0;
-  while (++count < 3000) {
-    bool isInPlanChange;
-    {
-      MUTEX_LOCKER(mutexLocker, *_statusLock);
-      isInPlanChange = _isDispatchingChange;
-    }
-    if (!isInPlanChange) {
-      break;
-    }
-    usleep(1000);
-  }
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "stopped heartbeat thread (DBServer version)";
 }
@@ -384,10 +435,11 @@ void HeartbeatThread::runCoordinator() {
           VPackSlice agentPool =
             result.slice()[0].get(
               std::vector<std::string>({".agency","pool"}));
-          if (agentPool.isObject()) {
+          if (agentPool.isObject() && agentPool.hasKey("size") &&
+              agentPool.get("size").getUInt() > 1) {
             _agency.updateEndpoints(agentPool);
           } else {
-            LOG(DEBUG) << "Cannot find an agency persisted in RAFT 8|";
+            LOG(TRACE) << "Cannot find an agency persisted in RAFT 8|";
           }
         
         VPackSlice shutdownSlice = result.slice()[0].get(
@@ -551,7 +603,7 @@ bool HeartbeatThread::init() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
-  LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Dispatched job returned!";
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Dispatched job returned!";
   bool doSleep = false;
   {
     MUTEX_LOCKER(mutexLocker, *_statusLock);
@@ -565,7 +617,6 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
       // mop: we will retry immediately so wait at least a LITTLE bit
       doSleep = true;
     }
-    _isDispatchingChange = false;
   }
   if (doSleep) {
     // Sleep a little longer, since this might be due to some synchronisation
@@ -695,61 +746,51 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 /// and every few heartbeats if the Current/Version has changed.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HeartbeatThread::syncDBServerStatusQuo() {
+void HeartbeatThread::syncDBServerStatusQuo() {
   bool shouldUpdate = false;
   bool becauseOfPlan = false;
   bool becauseOfCurrent = false;
-  {
-    MUTEX_LOCKER(mutexLocker, *_statusLock);
-    // mop: only dispatch one at a time
-    if (_isDispatchingChange) {
-      return false;
-    }
 
-    if (_desiredVersions->plan > _currentVersions.plan) {
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-          << "Plan version " << _currentVersions.plan
-          << " is lower than desired version " << _desiredVersions->plan;
-      _isDispatchingChange = true;
-      becauseOfPlan = true;
-    }
-    if (_desiredVersions->current > _currentVersions.current) {
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-          << "Current version " << _currentVersions.current
-          << " is lower than desired version " << _desiredVersions->current;
-      _isDispatchingChange = true;
-      becauseOfCurrent = true;
-    }
-    shouldUpdate = _isDispatchingChange;
+  MUTEX_LOCKER(mutexLocker, *_statusLock);
+
+  if (_desiredVersions->plan > _currentVersions.plan) {
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
+        << "Plan version " << _currentVersions.plan
+        << " is lower than desired version " << _desiredVersions->plan;
+    shouldUpdate = true;
+    becauseOfPlan = true;
+  }
+  if (_desiredVersions->current > _currentVersions.current) {
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
+        << "Current version " << _currentVersions.current
+        << " is lower than desired version " << _desiredVersions->current;
+    shouldUpdate = true;
+    becauseOfCurrent = true;
   }
 
-  if (shouldUpdate) {
-    // First invalidate the caches in ClusterInfo:
-    auto ci = ClusterInfo::instance();
-    if (becauseOfPlan) {
-      ci->invalidatePlan();
-    }
-    if (becauseOfCurrent) {
-      ci->invalidateCurrent();
-    }
-
-    // only warn if the application server is still there and dispatching
-    // should succeed
-    LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "dispatching sync";
-
-    // schedule a job for the change
-    auto self = shared_from_this();
-    _strand->post([self, this]() {
-      DBServerAgencySync job(this);
-
-      job.work();
-    });
-
-    MUTEX_LOCKER(mutexLocker, *_statusLock);
-    _isDispatchingChange = false;
+  if (!shouldUpdate) {
+    return;
   }
 
-  return false;
+  // First invalidate the caches in ClusterInfo:
+  auto ci = ClusterInfo::instance();
+  if (becauseOfPlan) {
+    ci->invalidatePlan();
+  }
+  if (becauseOfCurrent) {
+    ci->invalidateCurrent();
+  }
+
+  if (_backgroundJobScheduledOrRunning) {
+    _launchAnotherBackgroundJob = true;
+    return;
+  }
+
+  // schedule a job for the change:
+  uint64_t jobNr = ++_backgroundJobsPosted;
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
+  _backgroundJobScheduledOrRunning = true;
+  _ioService->post(HeartbeatBackgroundJob(shared_from_this()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

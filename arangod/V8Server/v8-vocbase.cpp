@@ -157,7 +157,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // "lockTimeout"
   double lockTimeout =
-      (double)(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
+      (double) TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT;
 
   if (object->Has(TRI_V8_ASCII_STRING("lockTimeout"))) {
     static std::string const timeoutError =

@@ -46,6 +46,11 @@ not present, it will be created.
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileSyncInterval
 
+### Flush timeout
+
+<!-- arangod/Wal/LogfileManager.h -->
+@startDocuBlock WalLogfileFlushTimeout
+
 ### Throttling
 
 <!-- arangod/Wal/LogfileManager.h -->

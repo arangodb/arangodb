@@ -42,7 +42,7 @@ memory.
   document revision ids to storage engine datafile positions.
 * *indexes.count*: The total number of indexes defined for the
 * *indexes.size*: The total memory allocated for indexes in bytes.
-* *maxTick*: The tick of the last marker that was stored in a journal
+* *lastTick*: The tick of the last marker that was stored in a journal
   of the collection. This might be 0 if the collection does not yet have
   a journal.
 * *uncollectedLogfileEntries*: The number of markers in the write-ahead

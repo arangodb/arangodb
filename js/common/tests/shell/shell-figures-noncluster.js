@@ -70,7 +70,7 @@ function FiguresSuite () {
       internal.wal.flush(true, true);
 
       var tries = 0;
-      while (++tries < 20) {
+      while (++tries < 50) {
         f = c1.figures();
         if (f.alive.count === 1) {
           break;

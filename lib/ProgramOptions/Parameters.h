@@ -418,13 +418,16 @@ struct VectorParameter : public Parameter {
 
 // a type that's useful for obsolete parameters that do nothing
 struct ObsoleteParameter : public Parameter {
-  bool requiresValue() const override { return false; }
+  explicit ObsoleteParameter(bool requiresValue) : required(requiresValue) {}
+  bool requiresValue() const override { return required; }
   std::string name() const override { return "obsolete"; }
   std::string valueString() const override { return "-"; }
   std::string set(std::string const&) override { return ""; }
   void toVPack(VPackBuilder& builder) const override {
     builder.add(VPackValue(VPackValueType::Null));
   }
+
+  bool required;
 };
 }
 }

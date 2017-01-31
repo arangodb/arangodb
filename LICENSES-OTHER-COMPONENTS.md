@@ -51,11 +51,6 @@
 * Project Home: http://site.icu-project.org/
 * License: [ICU License](http://source.icu-project.org/repos/icu/icu/trunk/license.html)
 
-### libev 4.11
-
-* Project Home: http://software.schmorp.de/pkg/libev.html
-* License: Dual-License [BSD-style 2-Clause License](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
-
 ### linenoise-ng
 
 * GitHub: https://github.com/arangodb/linenoise-ng

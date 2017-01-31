@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,32 +21,41 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_INDEX_THREAD_FEATURE_H
-#define APPLICATION_FEATURES_INDEX_THREAD_FEATURE_H 1
+#ifndef ARANGOD_AQL_BLOCK_COLLECTOR_H
+#define ARANGOD_AQL_BLOCK_COLLECTOR_H 1
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
-namespace basics {
-class ThreadPool;
-}
+namespace aql {
+class AqlItemBlock;
+class ResourceMonitor;
 
-class IndexThreadFeature final : public application_features::ApplicationFeature {
+class BlockCollector {
+  friend class AqlItemBlock;
+
  public:
-  explicit IndexThreadFeature(application_features::ApplicationServer* server);
+  BlockCollector(BlockCollector const&) = delete;
+  BlockCollector& operator=(BlockCollector const&) = delete;
 
- public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
-  void unprepare() override final;
+  BlockCollector();
+  ~BlockCollector();
 
-  basics::ThreadPool* getThreadPool() const { return _indexPool.get(); }
+  size_t totalSize() const;
+  size_t nrRegs() const;
+
+  void clear();
+  
+  void add(std::unique_ptr<AqlItemBlock> block);
+
+  AqlItemBlock* steal(ResourceMonitor*);
 
  private:
-  uint64_t _indexThreads;
-  std::unique_ptr<basics::ThreadPool> _indexPool;
+  std::vector<AqlItemBlock*> _blocks;
+  size_t _totalSize;
 };
-}
+
+}  // namespace arangodb::aql
+}  // namespace arangodb
 
 #endif
