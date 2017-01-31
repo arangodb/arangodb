@@ -799,6 +799,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     for (auto const& it : _globalVertexConditions) {
       it->toVelocyPack(nodes, verbose);
     }
+    nodes.close();
   }
 
   if (!_vertexConditions.empty()) {
