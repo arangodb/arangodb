@@ -69,6 +69,7 @@ class GraphStore {
   uint32_t _runningThreads;
   mutable Mutex _threadMutex;
 
+  std::map<ShardID, uint64_t> _allocateMemory();
   void _loadVertices(ShardID const& vertexShard,
                      std::vector<ShardID> const& edgeShards,
                      uint64_t vertexOffset, uint64_t edgeOffset);

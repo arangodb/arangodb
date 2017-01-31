@@ -64,6 +64,7 @@
     * [Using Traversal Objects](Graphs/Traversals/UsingTraversalObjects.md)
     * [Example Data](Graphs/Traversals/ExampleData.md)
   * [Working with Edges](Graphs/Edges/README.md)
+  * [Pregel]((Graphs/Pregel/README.md))
 #
 * [Foxx Microservices](Foxx/README.md)
   * [At a glance](Foxx/AtAGlance.md)

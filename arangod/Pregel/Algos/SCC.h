@@ -56,6 +56,10 @@ struct SCC : public SimpleAlgorithm<SCCValue, int32_t, SenderMessage<uint64_t>> 
   MasterContext* masterContext(VPackSlice userParams) const override;
     
   IAggregator* aggregator(std::string const& name) const override;
+  
+  virtual uint64_t maxGlobalSuperstep() const {
+    return 1000;
+  }
 };
 }
 }

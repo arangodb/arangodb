@@ -60,19 +60,17 @@ GraphStore<V, E>::~GraphStore() {
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::loadShards(WorkerConfig* config,
-                                  std::function<void()> callback) {
-  _config = config;
-
+std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
   double t = TRI_microtime();
   std::unique_ptr<Transaction> countTrx(_createTransaction());
   std::map<ShardID, uint64_t> shardSizes;
+  
   // Allocating some memory
   uint64_t count = 0;
   for (auto const& shard : _config->localVertexShardIDs()) {
     OperationResult opResult = countTrx->count(shard, true);
     if (opResult.failed()) {
-      return;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
     shardSizes[shard] = opResult.slice().getUInt();
     count += opResult.slice().getUInt();
@@ -85,7 +83,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
   for (auto const& shard : _config->localEdgeShardIDs()) {
     OperationResult opResult = countTrx->count(shard, true);
     if (opResult.failed()) {
-      return;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
     shardSizes[shard] = opResult.slice().getUInt();
     count += opResult.slice().getUInt();
@@ -95,7 +93,16 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
     LOG(WARN) << "Pregel worker: Failed to commit on a read transaction";
   }
   LOG(INFO) << "Allocating memory took " << TRI_microtime() - t << "s";
+  
+  return shardSizes;
+}
 
+template <typename V, typename E>
+void GraphStore<V, E>::loadShards(WorkerConfig* config,
+                                  std::function<void()> callback) {
+  _config = config;
+  std::map<ShardID, uint64_t> shardSizes(_allocateMemory());
+  
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   uint64_t vertexOffset = 0, edgeOffset = 0;
   // Contains the shards located on this db server in the right order

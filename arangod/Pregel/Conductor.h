@@ -75,7 +75,7 @@ class Conductor {
   std::set<ServerID> _respondedServers;
   uint64_t _globalSuperstep = 0;
   /// adjustable maximum gss for some algorithms
-  uint64_t _maxSuperstep = 100;
+  uint64_t _maxSuperstep = 500;
   /// determines whether we support async execution
   bool _asyncMode = false;
   bool _lazyLoading = false;

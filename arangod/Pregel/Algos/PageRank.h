@@ -53,6 +53,10 @@ struct PageRank : public SimpleAlgorithm<float, float, float> {
   IAggregator* aggregator(std::string const& name) const override;
   
   MasterContext* masterContext(VPackSlice userParams) const override;
+  
+  uint64_t maxGlobalSuperstep() const override  {
+    return 250;
+  }
 };
 }
 }

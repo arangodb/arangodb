@@ -65,6 +65,10 @@ struct IAlgorithm {
   virtual MasterContext* masterContext(VPackSlice userParams) const {
     return nullptr;
   }
+  
+  virtual uint64_t maxGlobalSuperstep() const {
+    return 500;
+  }
 
   std::string const& name() const { return _name; }
 

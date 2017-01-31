@@ -68,10 +68,6 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
     _userParams.add(userConfig);
   }
 
-  // Coloring based SCC algo tends to use a lot of steps
-  if (algoName == "scc") {
-    _maxSuperstep = 1000;
-  }
   VPackSlice maxGSS = userConfig.get("maxGSS");
   if (maxGSS.isInteger()) {
     _maxSuperstep = maxGSS.getUInt();
@@ -85,6 +81,7 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Algorithm not found");
   }
+  _maxSuperstep = _algorithm->maxGlobalSuperstep();
   _masterContext.reset(_algorithm->masterContext(userConfig));
   _aggregators.reset(new AggregatorHandler(_algorithm.get()));
   // configure the async mode as optional
