@@ -87,7 +87,7 @@ class IndexFillerTask : public basics::LocalTask {
 
     try {
       _idx->batchInsert(_trx, _documents, _queue);
-    } catch (std::exception& e) {
+    } catch (std::exception const&) {
       _queue->setStatus(TRI_ERROR_INTERNAL);
     }
 
