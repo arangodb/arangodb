@@ -22,9 +22,10 @@
 
 #include "AuthenticationFeature.h"
 
+#include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::options;

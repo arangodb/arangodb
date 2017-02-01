@@ -40,8 +40,9 @@
 #include <iomanip>
 #include <regex>
 
-using namespace arangodb::consensus;
 using namespace arangodb::basics;
+using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 /// Non-Emptyness of string
 struct NotEmpty {

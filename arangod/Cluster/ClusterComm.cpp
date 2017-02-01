@@ -38,6 +38,7 @@
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
+using namespace arangodb::communicator;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief routine to set the destination

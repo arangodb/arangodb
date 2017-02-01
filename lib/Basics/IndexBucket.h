@@ -214,6 +214,8 @@ struct IndexBucket {
   int allocateTempfile(char*& filename, size_t filesize) {
     TRI_ASSERT(filename == nullptr);
 
+    return -1;
+#if 0
     if (filesize < FileBackedThreshold) {
       // use new/malloc
       return -1;
@@ -238,9 +240,11 @@ struct IndexBucket {
     } 
     
     return fd;
+#endif
   }
 
   void deallocateTempfile() {
+#if 0
     if (_file >= 0) {
       // close file pointer and reset fd
       TRI_CLOSE(_file);
@@ -252,6 +256,7 @@ struct IndexBucket {
       _filename = nullptr;
     }
     TRI_ASSERT(_file == -1);
+#endif
   }
 };
 

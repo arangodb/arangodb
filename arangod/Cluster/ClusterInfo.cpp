@@ -1515,6 +1515,8 @@ int ClusterInfo::ensureIndexCoordinator(
   if (idxSlice.isString()) {
     // use predefined index id
     iid = arangodb::basics::StringUtils::uint64(idxSlice.copyString());
+  } else if (idxSlice.isNumber()) {
+    iid = idxSlice.getNumber<uint64_t>();
   }
 
   if (iid == 0) {

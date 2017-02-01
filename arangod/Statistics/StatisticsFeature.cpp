@@ -22,6 +22,8 @@
 
 #include "StatisticsFeature.h"
 
+
+#include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Statistics/ConnectionStatistics.h"

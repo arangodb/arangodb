@@ -425,6 +425,9 @@ Dependencies to build documentation:
 
         npm install gitbook-cli -g
 
+- [ditaa (DIagrams Through Ascii Art)](http://ditaa.sourceforge.net/) to build the 
+  ascii art diagrams (optional)
+
 - Calibre2 (optional, only required if you want to build the e-book version)
 
   http://calibre-ebook.com/download
@@ -807,9 +810,9 @@ Deploying a locally changed version
 
 Create local docker images using the following repositories:
 
-https://github.com/arangodb/arangodb-docker
-https://github.com/arangodb/arangodb-mesos-docker
-https://github.com/arangodb/arangodb-mesos-framework
+ - https://github.com/arangodb/arangodb-docker
+ - https://github.com/arangodb/arangodb-mesos-docker
+ - https://github.com/arangodb/arangodb-mesos-framework
 
 Then adjust the docker images in the config (`arangodb3.json`) and redeploy it using the curl command above.
 

@@ -22,6 +22,7 @@
 
 #include "EngineSelectorFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "MMFiles/MMFilesEngine.h"

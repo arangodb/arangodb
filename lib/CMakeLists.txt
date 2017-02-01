@@ -126,7 +126,6 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/VersionFeature.cpp
   Basics/ArangoGlobalContext.cpp
   Basics/AttributeNameParser.cpp
-  Basics/Barrier.cpp
   Basics/ConditionLocker.cpp
   Basics/ConditionVariable.cpp
   Basics/DataProtector.cpp

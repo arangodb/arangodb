@@ -25,7 +25,7 @@
 
 using namespace arangodb::consensus;
 
-bool arangodb::consensus::compareServerLists(Slice plan, Slice current) {
+bool arangodb::consensus::compareServerLists(velocypack::Slice plan, velocypack::Slice current) {
   if (!plan.isArray() || !current.isArray()) {
     return false;
   }
@@ -80,7 +80,7 @@ JOB_STATUS Job::exists() const {
 bool Job::finish(std::string const& type, bool success,
                  std::string const& reason) const {
   
-  Builder pending, finished;
+  velocypack::Builder pending, finished;
   
   // Get todo entry
   pending.openArray();
