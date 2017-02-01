@@ -92,6 +92,10 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--log.line-number",
                            "append line number and file name",
                            new BooleanParameter(&_lineNumber));
+  
+  options->addHiddenOption("--log.shorten-filenames",
+                           "shorten filenames in log output (use with --log.line-number)",
+                           new BooleanParameter(&_shortenFilenames));
 
   options->addHiddenOption("--log.thread",
                            "show thread identifier in log message",
@@ -152,6 +156,7 @@ void LoggerFeature::prepare() {
   Logger::setUseLocalTime(_useLocalTime);
   Logger::setUseMicrotime(_useMicrotime);
   Logger::setShowLineNumber(_lineNumber);
+  Logger::setShortenFilenames(_shortenFilenames);
   Logger::setShowThreadIdentifier(_thread);
   Logger::setOutputPrefix(_prefix);
   Logger::setKeepLogrotate(_keepLogRotate);

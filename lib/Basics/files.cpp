@@ -575,19 +575,14 @@ int TRI_RemoveDirectory(char const* filename) {
     LOG(TRACE) << "removing symbolic link '" << filename << "'";
     return TRI_UnlinkFile(filename);
   } else if (TRI_IsDirectory(filename)) {
-    int res;
-
     LOG(TRACE) << "removing directory '" << filename << "'";
 
-    res = TRI_ERROR_NO_ERROR;
+    int res = TRI_ERROR_NO_ERROR;
     std::vector<std::string> files = TRI_FilesDirectory(filename);
     for (auto const& dir : files) {
-      char* full;
-      int subres;
+      char* full = TRI_Concatenate2File(filename, dir.c_str());
 
-      full = TRI_Concatenate2File(filename, dir.c_str());
-
-      subres = TRI_RemoveDirectory(full);
+      int subres = TRI_RemoveDirectory(full);
       TRI_FreeString(TRI_CORE_MEM_ZONE, full);
 
       if (subres != TRI_ERROR_NO_ERROR) {
@@ -608,8 +603,51 @@ int TRI_RemoveDirectory(char const* filename) {
     LOG(TRACE) << "attempt to remove non-existing file/directory '" << filename
                << "'";
 
+    // TODO: why do we actually return "no error" here?
     return TRI_ERROR_NO_ERROR;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a directory recursively
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RemoveDirectoryDeterministic(char const* filename) {
+  std::vector<std::string> files = TRI_FullTreeDirectory(filename);
+  // start removing files from long names to short names
+  std::sort(files.begin(), files.end(), [](std::string const& lhs, std::string const& rhs) -> bool {
+    if (lhs.size() == rhs.size()) {
+      // equal lengths. now compare the file/directory names
+      return lhs < rhs;
+    }
+    return lhs.size() > rhs.size();
+  });
+
+  // LOG(TRACE) << "removing files in directory '" << filename << "' in this order: " << files;
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  for (auto const& it : files) {
+    if (it.empty()) {
+      // TRI_FullTreeDirectory returns "" as its first member
+      continue;
+    }
+
+    char* full = TRI_Concatenate2File(filename, it.c_str());
+    int subres = TRI_RemoveDirectory(full);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, full);
+
+    if (subres != TRI_ERROR_NO_ERROR) {
+      res = subres;
+    }
+  }
+
+  int subres = TRI_RemoveDirectory(filename);
+  if (subres != TRI_ERROR_NO_ERROR) {
+    res = subres;
+  }
+  
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -617,12 +655,8 @@ int TRI_RemoveDirectory(char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Dirname(char const* path) {
-  size_t n;
-  size_t m;
-  char const* p;
-
-  n = strlen(path);
-  m = 0;
+  size_t n = strlen(path);
+  size_t m = 0;
 
   if (1 < n) {
     if (path[n - 1] == TRI_DIR_SEPARATOR_CHAR) {
@@ -640,6 +674,7 @@ char* TRI_Dirname(char const* path) {
     return TRI_DuplicateString("..");
   }
 
+  char const* p;
   for (p = path + (n - m - 1); path < p; --p) {
     if (*p == TRI_DIR_SEPARATOR_CHAR) {
       break;
@@ -782,28 +817,29 @@ std::vector<std::string> TRI_FilesDirectory(char const* path) {
 std::vector<std::string> TRI_FilesDirectory(char const* path) {
   std::vector<std::string> result;
 
-  DIR* d;
-  struct dirent* de;
+  DIR* d = opendir(path);
 
-  d = opendir(path);
-
-  if (d == 0) {
+  if (d == nullptr) {
     return result;
   }
 
-  de = readdir(d);
+  struct dirent* de = readdir(d);
 
-  while (de != 0) {
-    if (strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0) {
-      result.emplace_back(de->d_name);
+  try {
+    while (de != nullptr) {
+      if (strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0) {
+        // may throw
+        result.emplace_back(std::string(de->d_name));
+      }
+
+      de = readdir(d);
     }
-
-    de = readdir(d);
+    closedir(d);
+    return result;
+  } catch (...) {
+    closedir(d);
+    throw;
   }
-
-  closedir(d);
-
-  return result;
 }
 
 #endif

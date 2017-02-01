@@ -485,7 +485,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
       planned[0] !== leader) {
       // Things have changed again, simply terminate:
       terminateAndStartOther();
-      console.info('synchronizeOneShard: cancelled, %s/%s, %s/%s',
+      console.debug('synchronizeOneShard: cancelled, %s/%s, %s/%s',
         database, shard, database, planId);
       return;
     }
@@ -500,11 +500,11 @@ function synchronizeOneShard (database, shard, planId, leader) {
       }
       // We are already there, this is rather strange, but never mind:
       terminateAndStartOther();
-      console.info('synchronizeOneShard: already done, %s/%s, %s/%s',
+      console.debug('synchronizeOneShard: already done, %s/%s, %s/%s',
         database, shard, database, planId);
       return;
     }
-    console.info('synchronizeOneShard: waiting for leader, %s/%s, %s/%s',
+    console.debug('synchronizeOneShard: waiting for leader, %s/%s, %s/%s',
       database, shard, database, planId);
     wait(1.0);
   }
@@ -574,7 +574,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
             shard);
         }
         if (ok) {
-          console.info('synchronizeOneShard: synchronization worked for shard',
+          console.debug('synchronizeOneShard: synchronization worked for shard',
             shard);
         } else {
           throw 'Did not work for shard ' + shard + '.';
@@ -1410,13 +1410,13 @@ function setupReplication () {
         var config = { 'endpoint': endpoint, 'includeSystem': false,
           'incremental': false, 'autoStart': true,
         'requireFromPresent': true};
-        console.info('Starting synchronization...');
+        console.debug('Starting synchronization...');
         var res = rep.sync(config);
-        console.info('Last log tick: ' + res.lastLogTick +
+        console.debug('Last log tick: ' + res.lastLogTick +
           ', starting replication...');
         rep.applier.properties(config);
         var res2 = rep.applier.start(res.lastLogTick);
-        console.info('Result of replication start: ' + res2);
+        console.debug('Result of replication start: ' + res2);
       }
     } catch (err) {
       console.error('Could not set up replication for database ', database, JSON.stringify(err));
@@ -1753,7 +1753,7 @@ var bootstrapDbServers = function (isRelaunch) {
     var r = global.ArangoClusterComm.wait(ops[i]);
 
     if (r.status === 'RECEIVED') {
-      console.info('bootstraped DB server %s', dbServers[i]);
+      console.debug('bootstraped DB server %s', dbServers[i]);
     } else if (r.status === 'TIMEOUT') {
       console.error('cannot bootstrap DB server %s: operation timed out', dbServers[i]);
       result = false;
@@ -1898,9 +1898,9 @@ function rebalanceShards () {
     }
   }
   
-  console.info("Rebalancing shards");
-  console.info(shardMap);
-  console.info(dbTab);
+  console.debug("Rebalancing shards");
+  console.debug(shardMap);
+  console.debug(dbTab);
 
   // Compute total weight for each DBServer:
   var totalWeight = [];
@@ -1937,7 +1937,7 @@ function rebalanceShards () {
       toServer: emptiest };
       var msg = moveShard(todo);
       if (msg === '') {
-        console.info('rebalanceShards: moveShard(', todo, ')');
+        console.debug('rebalanceShards: moveShard(', todo, ')');
         totalWeight[last].weight -= shardInfo.weight;
         totalWeight[0].weight += shardInfo.weight;
         totalWeight = _.sortBy(totalWeight, x => x.weight);

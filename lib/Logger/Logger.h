@@ -154,26 +154,34 @@ class Logger {
     double _value;
     int _precision;
   };
+  
+  struct BINARY {
+    BINARY(void const* baseAddress, size_t size)
+        : baseAddress(baseAddress), size(size){}
+    explicit BINARY(std::string const& data) : BINARY(data.c_str(), data.size()) {} 
+    void const* baseAddress;
+    size_t size;
+  };
 
   struct RANGE {
     RANGE(void const* baseAddress, size_t size)
-        : baseAddress(baseAddress), size(size){};
+        : baseAddress(baseAddress), size(size){}
     void const* baseAddress;
     size_t size;
   };
 
   struct LINE {
-    explicit LINE(long int line) : _line(line){};
+    explicit LINE(long int line) : _line(line){}
     long int _line;
   };
 
   struct FILE {
-    explicit FILE(char const* file) : _file(file){};
+    explicit FILE(char const* file) : _file(file){}
     char const* _file;
   };
 
   struct FUNCTION {
-    explicit FUNCTION(char const* function) : _function(function){};
+    explicit FUNCTION(char const* function) : _function(function){}
     char const* _function;
   };
 
@@ -186,6 +194,7 @@ class Logger {
 
   static void setOutputPrefix(std::string const&);
   static void setShowLineNumber(bool);
+  static void setShortenFilenames(bool);
   static void setShowThreadIdentifier(bool);
   static void setUseLocalTime(bool);
   static bool getUseLocalTime() {return _useLocalTime;};
@@ -222,6 +231,7 @@ class Logger {
 
   // these variables must be set before calling initialized
   static bool _showLineNumber;
+  static bool _shortenFilenames;
   static bool _showThreadIdentifier;
   static bool _threaded;
   static bool _useLocalTime;

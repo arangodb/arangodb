@@ -42,6 +42,7 @@ std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 
 bool Logger::_showLineNumber(false);
+bool Logger::_shortenFilenames(true);
 bool Logger::_showThreadIdentifier(false);
 bool Logger::_threaded(false);
 bool Logger::_useLocalTime(false);
@@ -139,6 +140,16 @@ void Logger::setShowLineNumber(bool show) {
   }
 
   _showLineNumber = show;
+}
+
+// NOTE: this function should not be called if the logging is active.
+void Logger::setShortenFilenames(bool shorten) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot change shorten filenames if logging is active");
+  }
+
+  _shortenFilenames = shorten;
 }
 
 // NOTE: this function should not be called if the logging is active.
@@ -284,7 +295,16 @@ void Logger::log(char const* function, char const* file, long int line,
 
   // check if we must display the line number
   if (_showLineNumber) {
-    out << "[" << file << ":" << line << "] ";
+    char const* filename = file;
+
+    if (_shortenFilenames) {
+      // shorten file names from `/home/.../file.cpp` to just `file.cpp`
+      char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
+      if (shortened != nullptr) {
+        filename = shortened + 1;
+      }
+    }
+    out << "[" << filename << ":" << line << "] ";
   }
 
   // generate the complete message

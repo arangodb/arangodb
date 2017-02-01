@@ -51,7 +51,7 @@ class LogAppenderFile : public LogAppender {
   ssize_t _pos;
 
   /// @brief a reusable buffer for log messages
-  char* _buffer;
+  std::unique_ptr<char[]> _buffer;
   /// @brief allocation size of the buffer
   size_t _bufferSize;
 };
