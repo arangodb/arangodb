@@ -105,11 +105,24 @@ HeartbeatThread::~HeartbeatThread() { shutdown(); }
 
 class HeartbeatBackgroundJob {
   std::shared_ptr<HeartbeatThread> _heartbeatThread;
+  double _startTime;
+  std::string _schedulerInfo;
  public:
-  explicit HeartbeatBackgroundJob(std::shared_ptr<HeartbeatThread> hbt)
-    : _heartbeatThread(hbt) {}
+  explicit HeartbeatBackgroundJob(std::shared_ptr<HeartbeatThread> hbt,
+                                  double startTime)
+    : _heartbeatThread(hbt), _startTime(startTime) {
+    _schedulerInfo = SchedulerFeature::SCHEDULER->infoStatus();
+  }
 
   void operator()() {
+    double now = TRI_microtime();
+    if (now > _startTime + 5.0) {
+      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "ALARM: Scheduling background job "
+        "took " << now - _startTime
+        << " seconds, scheduler info at schedule time: " << _schedulerInfo
+        << ", scheduler info now: "
+        << SchedulerFeature::SCHEDULER->infoStatus();
+    }
     _heartbeatThread->runBackgroundJob();
   }
 };
@@ -138,7 +151,8 @@ void HeartbeatThread::runBackgroundJob() {
       jobNr = ++_backgroundJobsPosted;
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
       _launchAnotherBackgroundJob = false;
-      _ioService->post(HeartbeatBackgroundJob(shared_from_this()));
+      _ioService->post(HeartbeatBackgroundJob(shared_from_this(),
+                                              TRI_microtime()));
     } else {
       _backgroundJobScheduledOrRunning = false;
       _launchAnotherBackgroundJob = false;
@@ -790,7 +804,7 @@ void HeartbeatThread::syncDBServerStatusQuo() {
   uint64_t jobNr = ++_backgroundJobsPosted;
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
   _backgroundJobScheduledOrRunning = true;
-  _ioService->post(HeartbeatBackgroundJob(shared_from_this()));
+  _ioService->post(HeartbeatBackgroundJob(shared_from_this(), TRI_microtime()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
