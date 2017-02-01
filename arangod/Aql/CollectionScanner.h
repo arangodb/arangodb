@@ -25,12 +25,12 @@
 #define ARANGOD_AQL_COLLECTION_SCANNER_H 1
 
 #include "Basics/Common.h"
-#include "Indexes/IndexIterator.h"
 
 namespace arangodb {
 class ManagedDocumentResult;
 struct OperationCursor;
 class Transaction;
+struct DocumentIdentifierToken;
 
 namespace aql {
 

@@ -29,6 +29,8 @@
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/FollowerInfo.h"
+#include "StorageEngine/DocumentIdentifierToken.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
