@@ -110,8 +110,7 @@ class HeartbeatBackgroundJob {
  public:
   explicit HeartbeatBackgroundJob(std::shared_ptr<HeartbeatThread> hbt,
                                   double startTime)
-    : _heartbeatThread(hbt), _startTime(startTime) {
-    _schedulerInfo = SchedulerFeature::SCHEDULER->infoStatus();
+    : _heartbeatThread(hbt), _startTime(startTime),_schedulerInfo(SchedulerFeature::SCHEDULER->infoStatus()) {
   }
 
   void operator()() {
