@@ -24,7 +24,6 @@
 #ifndef ARANGOD_AQL_ENUMERATE_COLLECTION_BLOCK_H
 #define ARANGOD_AQL_ENUMERATE_COLLECTION_BLOCK_H 1
 
-#include "Aql/CollectionScanner.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 
@@ -33,12 +32,13 @@
 
 namespace arangodb {
 
+struct DocumentIdentifierToken;
 class ManagedDocumentResult;
+struct OperationCursor;
 
 namespace aql {
 class AqlItemBlock;
 struct Collection;
-class CollectionScanner;
 class ExecutionEngine;
 
 class EnumerateCollectionBlock : public ExecutionBlock {
@@ -77,8 +77,8 @@ class EnumerateCollectionBlock : public ExecutionBlock {
   
   std::unique_ptr<ManagedDocumentResult> _mmdr;
 
-  /// @brief collection scanner
-  CollectionScanner _scanner;
+  /// @brief cursor
+  std::unique_ptr<OperationCursor> _cursor;
   
   /// @brief document buffer
   std::vector<DocumentIdentifierToken> _documents;

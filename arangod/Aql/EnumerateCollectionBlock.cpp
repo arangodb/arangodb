@@ -25,11 +25,11 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
-#include "Aql/CollectionScanner.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/FollowerInfo.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
+#include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
@@ -41,14 +41,20 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     : ExecutionBlock(engine, ep),
       _collection(ep->_collection),
       _mmdr(new ManagedDocumentResult),
-      _scanner(_trx, _mmdr.get(), _collection->getName(), ep->_random),
+      _cursor(_trx->indexScan(
+          _collection->getName(),
+          (ep->_random ? arangodb::Transaction::CursorType::ANY
+                       : arangodb::Transaction::CursorType::ALL),
+          Transaction::IndexHandle(), VPackSlice(), _mmdr.get(), 0, UINT64_MAX,
+          1000, false)),
       _position(0),
       _mustStoreResult(true) {
+  TRI_ASSERT(_cursor->successful());
 }
 
 /// @brief initialize fetching of documents
 void EnumerateCollectionBlock::initializeDocuments() {
-  _scanner.reset();
+  _cursor->reset();
   _documents.clear();
   _position = 0;
 }
@@ -59,7 +65,7 @@ bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
   throwIfKilled();  // check if we were aborted
   uint64_t skippedHere = 0;
 
-  int res = _scanner.forward(toSkip, skippedHere);
+  int res = _cursor->skip(toSkip, skippedHere);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -73,10 +79,10 @@ bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
   _engine->_stats.scannedFull += static_cast<int64_t>(skippedHere);
 
   if (skippedHere < toSkip) {
-    // We could not skip enough _scanner is exhausted
+    // We could not skip enough _cursor is exhausted
     return false;
   }
-  // _scanner might have more elements
+  // _cursor might have more elements
   return true;
 
   // cppcheck-suppress style
@@ -96,9 +102,14 @@ bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  _scanner.scan(_documents, hint);
-
+  
+  _documents.clear();
   _position = 0;
+  if (!_cursor->hasMore()) {
+    return false;
+  }
+
+  _cursor->getMoreTokens(_documents, hint); 
 
   size_t count = _documents.size();
 
@@ -306,7 +317,7 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
   }
 
   // No _documents buffer. But could Skip more
-  // Fastforward the _scanner
+  // Fastforward the _cursor
   TRI_ASSERT(_documents.empty());
 
   while (skipped < atLeast) {
