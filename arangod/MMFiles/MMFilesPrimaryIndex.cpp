@@ -108,6 +108,17 @@ MMFilesPrimaryIndexIterator::~MMFilesPrimaryIndexIterator() {
   }
 }
 
+void MMFilesPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  while (_iterator.valid() && limit > 0) {
+    MMFilesSimpleIndexElement result = _index->lookupKey(_trx, _iterator.value());
+    _iterator.next();
+    if (result) {
+      cb(MMFilesToken{result.revisionId()});
+      --limit;
+    }
+  }
+}
+
 DocumentIdentifierToken MMFilesPrimaryIndexIterator::next() {
   while (_iterator.valid()) {
     MMFilesSimpleIndexElement result = _index->lookupKey(_trx, _iterator.value());
@@ -133,6 +144,23 @@ AllIndexIterator::AllIndexIterator(LogicalCollection* collection,
                    MMFilesPrimaryIndexImpl const* indexImpl,
                    bool reverse)
     : IndexIterator(collection, trx, mmdr, index), _index(indexImpl), _reverse(reverse), _total(0) {}
+
+void AllIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  while (limit > 0) {
+    MMFilesSimpleIndexElement element;
+    if (_reverse) {
+      element = _index->findSequentialReverse(&_context, _position);
+    } else {
+      element = _index->findSequential(&_context, _position, _total);
+    }
+    if (element) {
+      cb(MMFilesToken{element.revisionId()});
+      --limit;
+    } else {
+      return;
+    }
+  }
+}
 
 DocumentIdentifierToken AllIndexIterator::next() {
   MMFilesSimpleIndexElement element;
@@ -174,6 +202,19 @@ AnyIndexIterator::AnyIndexIterator(LogicalCollection* collection, arangodb::Tran
                                    MMFilesPrimaryIndex const* index,
                                    MMFilesPrimaryIndexImpl const* indexImpl)
     : IndexIterator(collection, trx, mmdr, index), _index(indexImpl), _step(0), _total(0) {}
+
+void AnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  while (limit > 0) {
+    MMFilesSimpleIndexElement element =
+        _index->findRandom(&_context, _initial, _position, _step, _total);
+    if (element) {
+      cb(MMFilesToken{element.revisionId()});
+      --limit;
+    } else {
+      return;
+    }
+  }
+}
 
 DocumentIdentifierToken AnyIndexIterator::next() {
   MMFilesSimpleIndexElement element = _index->findRandom(&_context, _initial, _position, _step, _total);

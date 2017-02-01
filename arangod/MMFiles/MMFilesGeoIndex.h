@@ -56,6 +56,8 @@ class MMFilesGeoIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "geo-index-iterator"; }
 
+  void next(TokenCallback const& cb, size_t limit) override;
+
   DocumentIdentifierToken next() override;
 
   void nextBabies(std::vector<DocumentIdentifierToken>&, size_t) override;
@@ -63,6 +65,7 @@ class MMFilesGeoIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
+  size_t findLastIndex(GeoCoordinates* coords) const;
   void replaceCursor(::GeoCursor* c);
   void createCursor(double lat, double lon);
   void evaluateCondition(); //called in constructor

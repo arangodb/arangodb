@@ -57,6 +57,8 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
   
   char const* typeName() const override { return "edge-index-iterator"; }
 
+  void next(TokenCallback const& cb, size_t limit) override;
+
   DocumentIdentifierToken next() override;
 
   void nextBabies(std::vector<DocumentIdentifierToken>&, size_t) override;
@@ -88,6 +90,8 @@ class AnyDirectionMMFilesEdgeIndexIterator final : public IndexIterator {
   }
 
   char const* typeName() const override { return "any-edge-index-iterator"; }
+
+  void next(TokenCallback const& cb, size_t limit) override;
 
   DocumentIdentifierToken next() override;
 

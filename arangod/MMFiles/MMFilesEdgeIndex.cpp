@@ -127,6 +127,40 @@ MMFilesEdgeIndexIterator::~MMFilesEdgeIndexIterator() {
   }
 }
 
+
+void MMFilesEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  while (_iterator.valid() && limit > 0) {
+    if (_buffer.empty()) {
+      // We start a new lookup
+      _posInBuffer = 0;
+
+      VPackSlice tmp = _iterator.value();
+      if (tmp.isObject()) {
+        tmp = tmp.get(StaticStrings::IndexEq);
+      }
+      _index->lookupByKey(&_context, &tmp, _buffer, _batchSize);
+    } else if (_posInBuffer >= _buffer.size()) {
+      // We have to refill the buffer
+      _buffer.clear();
+
+      _posInBuffer = 0;
+      _index->lookupByKeyContinue(&_context, _lastElement, _buffer, _batchSize);
+    }
+
+    if (_buffer.empty()) {
+      _lastElement = MMFilesSimpleIndexElement();
+    } else {
+      _lastElement = _buffer.back();
+      // found something
+      cb(MMFilesToken{_buffer[_posInBuffer++].revisionId()});
+      limit--;
+    }
+
+    // found no result. now go to next lookup value in _keys
+    _iterator.next();
+  }
+}
+
 DocumentIdentifierToken MMFilesEdgeIndexIterator::next() {
   while (_iterator.valid()) {
     if (_buffer.empty()) {
@@ -223,6 +257,40 @@ AnyDirectionMMFilesEdgeIndexIterator::AnyDirectionMMFilesEdgeIndexIterator(Logic
       _outbound(outboundIterator),
       _inbound(inboundIterator),
       _useInbound(false) {}
+
+void AnyDirectionMMFilesEdgeIndexIterator::next(TokenCallback const& cb,
+                                                size_t limit) {
+  bool wasCalled = false;
+  auto inWrapper = [&](DocumentIdentifierToken const& res) {
+    wasCalled = true;
+    if (_seen.find(res) == _seen.end()) {
+      --limit;
+      cb(res);
+    }
+  };
+
+  auto outWrapper = [&](DocumentIdentifierToken const& res) {
+    _seen.emplace(res);
+    --limit;
+    cb(res);
+  };
+
+  while (limit > 0) {
+    if (_useInbound) {
+      wasCalled = false;
+      _inbound->next(inWrapper, limit);
+      if (!wasCalled) {
+        // We did not find anything
+        return;
+      }
+    } else {
+      _outbound->next(outWrapper, limit);
+      if (limit > 0) {
+        _useInbound = true;
+      }
+    }
+  }
+}
 
 DocumentIdentifierToken AnyDirectionMMFilesEdgeIndexIterator::next() {
   DocumentIdentifierToken res;

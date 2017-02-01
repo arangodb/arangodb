@@ -138,6 +138,70 @@ void PersistentIndexIterator::reset() {
   }
 }
 
+void PersistentIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  auto comparator = RocksDBFeature::instance()->comparator();
+  while (limit > 0) {
+    if (!_cursor->Valid()) {
+      // We are exhausted already, sorry
+      return;
+    }
+  
+    rocksdb::Slice key = _cursor->key();
+    // LOG(TRACE) << "cursor key: " << VPackSlice(key.data() + PersistentIndex::keyPrefixSize()).toJson();
+  
+    int res = comparator->Compare(key, rocksdb::Slice(_leftEndpoint->data(), _leftEndpoint->size()));
+    // LOG(TRACE) << "comparing: " << VPackSlice(key.data() + PersistentIndex::keyPrefixSize()).toJson() << " with " << VPackSlice((char const*) _leftEndpoint->data() + PersistentIndex::keyPrefixSize()).toJson() << " - res: " << res;
+
+    if (res < 0) {
+      if (_reverse) {
+        // We are done
+        return;
+      } else {
+        _cursor->Next();
+      }
+      continue;
+    } 
+  
+    res = comparator->Compare(key, rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
+    // LOG(TRACE) << "comparing: " << VPackSlice(key.data() + PersistentIndex::keyPrefixSize()).toJson() << " with " << VPackSlice((char const*) _rightEndpoint->data() + PersistentIndex::keyPrefixSize()).toJson() << " - res: " << res;
+   
+     
+    if (res <= 0) {
+      // get the value for _key, which is the last entry in the key array
+      VPackSlice const keySlice = comparator->extractKeySlice(key);
+      TRI_ASSERT(keySlice.isArray());
+      VPackValueLength const n = keySlice.length();
+      TRI_ASSERT(n > 1); // one value + _key
+    
+      // LOG(TRACE) << "looking up document with key: " << keySlice.toJson();
+      // LOG(TRACE) << "looking up document with primary key: " << keySlice[n - 1].toJson();
+
+      // use primary index to lookup the document
+      MMFilesSimpleIndexElement element = _primaryIndex->lookupKey(_trx, keySlice[n - 1]);
+      if (element) {
+        MMFilesToken doc = MMFilesToken{element.revisionId()};
+        if (doc != 0) {
+          cb(doc);
+          --limit;
+        }
+      }
+    }
+    
+    if (_reverse) {
+      _cursor->Prev();
+    } else {
+      _cursor->Next();
+    }
+
+    if (res > 0) {
+      if (!_probe) {
+        return;
+      }
+      _probe = false;
+    }
+  }
+}
+
 /// @brief Get the next element in the index
 DocumentIdentifierToken PersistentIndexIterator::next() {
   auto comparator = RocksDBFeature::instance()->comparator();

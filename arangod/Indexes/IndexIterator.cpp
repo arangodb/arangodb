@@ -50,8 +50,26 @@ IndexIterator::~IndexIterator() {
   }
 }
 
+bool IndexIterator::hasExtra() const {
+  // The default index has no extra information
+  return false;
+}
+
 /// @brief default implementation for next
-DocumentIdentifierToken IndexIterator::next() { return DocumentIdentifierToken(); }
+void IndexIterator::nextExtra(ExtraCallback const&, size_t) {
+  TRI_ASSERT(!hasExtra());
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                 "Request extra values from an index that "
+                                 "does not support it. This seems to be a bug "
+                                 "in ArangoDB. Please report the query you are "
+                                 "using + the indexes you have defined on the "
+                                 "relevant collections to arangodb.com");
+}
+
+/// @brief default implementation for next
+DocumentIdentifierToken IndexIterator::next() {
+  return DocumentIdentifierToken();
+}
 
 /// @brief default implementation for nextBabies
 void IndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& result, size_t batchSize) {
@@ -78,11 +96,19 @@ void IndexIterator::reset() {}
 /// @brief default implementation for skip
 void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
   // Skip the first count-many entries
+  auto cb = [&skipped] (DocumentIdentifierToken const& ) {
+    ++skipped;
+  };
   // TODO: Can be improved
-  while (count > 0 && next() != 0) {
-    --count;
-    skipped++;
-  }
+  next(cb, count);
+}
+
+/// @brief Get the next elements
+///        If one iterator is exhausted, the next one is used.
+///        If callback is called less than limit many times
+///        all iterators are exhausted
+void MultiIndexIterator::next(TokenCallback const& callback, size_t limit) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief Get the next element

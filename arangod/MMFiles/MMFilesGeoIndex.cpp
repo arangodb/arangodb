@@ -85,6 +85,120 @@ void MMFilesGeoIndexIterator::evaluateCondition() {
   }
 }
 
+size_t MMFilesGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
+  TRI_ASSERT(coords != nullptr);
+
+  // determine which documents to return...
+  size_t numDocs = coords->length;
+
+  if (!_near) {
+    // WITHIN
+    // only return those documents that are within the specified radius
+    TRI_ASSERT(numDocs > 0);
+    
+    // linear scan for the first document outside the specified radius
+    // scan backwards because documents with higher distances are more interesting
+    int iterations = 0;
+    while ((_inclusive && coords->distances[numDocs - 1] > _radius) ||
+          (!_inclusive && coords->distances[numDocs - 1] >= _radius)) {
+      // document is outside the specified radius!
+      --numDocs;
+
+      if (numDocs == 0) {
+        break;
+      }
+
+      if (++iterations == 8 && numDocs >= 10) {
+        // switch to a binary search for documents inside/outside the specified radius
+        size_t l = 0;
+        size_t r = numDocs - 1;
+
+        while (true) {
+          // determine midpoint
+          size_t m = l + ((r - l) / 2);
+          if ((_inclusive && coords->distances[m] > _radius) ||
+              (!_inclusive && coords->distances[m] >= _radius)) {
+            // document is outside the specified radius!
+            if (m == 0) {
+              numDocs = 0;
+              break;
+            }
+            r = m - 1;
+          } else {
+            // still inside the radius
+            numDocs = m + 1;
+            l = m + 1;
+          }
+
+          if (r < l) {
+            break;
+          }
+        }
+        break;
+      }
+    }
+  }
+  return numDocs;
+}
+
+void MMFilesGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  if (!_cursor) { 
+    createCursor(_lat, _lon);
+    
+    if (!_cursor) {
+      // actually validate that we got a valid cursor
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+  }
+
+  TRI_ASSERT(_cursor != nullptr);
+
+  if (_done) {
+    // we already know that no further results will be returned by the index
+    return;
+  }
+
+  TRI_ASSERT(limit > 0);
+  if (limit > 0) {
+    // only need to calculate distances for WITHIN queries, but not for NEAR queries
+    bool withDistances;
+    double maxDistance;
+    if (_near) {
+      withDistances = false;
+      maxDistance = -1.0;
+    } else {
+      withDistances = true;
+      maxDistance = _radius;
+    }
+    auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(
+        _cursor, static_cast<int>(limit), withDistances, maxDistance));
+
+    size_t const length = coords ? coords->length : 0;
+    
+    if (length == 0) {
+      // Nothing Found
+      // TODO validate
+      _done = true;
+      return;
+    }
+
+    size_t numDocs = findLastIndex(coords.get());
+    if (numDocs == 0) {
+      // we are done
+      _done = true;
+      return;
+    }
+  
+    for (size_t i = 0; i < numDocs; ++i) {
+      cb(::MMFilesGeoIndex::toDocumentIdentifierToken(
+          coords->coordinates[i].data));
+    }
+    // If we return less then limit many docs we are done.
+    _done = numDocs < limit;
+  }
+
+}
+
 DocumentIdentifierToken MMFilesGeoIndexIterator::next() {
   if (!_cursor) {
     createCursor(_lat, _lon);
@@ -144,56 +258,7 @@ void MMFilesGeoIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& r
       return;
     }
 
-    // determine which documents to return...
-    size_t numDocs = length;
-
-    if (!_near) {
-      // WITHIN
-      // only return those documents that are within the specified radius
-      TRI_ASSERT(numDocs > 0);
-      
-      // linear scan for the first document outside the specified radius
-      // scan backwards because documents with higher distances are more interesting
-      int iterations = 0;
-      while ((_inclusive && coords->distances[numDocs - 1] > _radius) ||
-            (!_inclusive && coords->distances[numDocs - 1] >= _radius)) {
-        // document is outside the specified radius!
-        --numDocs;
-
-        if (numDocs == 0) {
-          break;
-        }
-
-        if (++iterations == 8 && numDocs >= 10) {
-          // switch to a binary search for documents inside/outside the specified radius
-          size_t l = 0;
-          size_t r = numDocs - 1;
-
-          while (true) {
-            // determine midpoint
-            size_t m = l + ((r - l) / 2);
-            if ((_inclusive && coords->distances[m] > _radius) ||
-                (!_inclusive && coords->distances[m] >= _radius)) {
-              // document is outside the specified radius!
-              if (m == 0) {
-                numDocs = 0;
-                break;
-              }
-              r = m - 1;
-            } else {
-              // still inside the radius
-              numDocs = m + 1;
-              l = m + 1;
-            }
-
-            if (r < l) {
-              break;
-            }
-          }
-          break;
-        }
-      }
-    }
+    size_t numDocs = findLastIndex(coords.get());
   
     result.reserve(numDocs);
         

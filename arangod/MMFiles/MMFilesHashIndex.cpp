@@ -298,6 +298,29 @@ MMFilesHashIndexIterator::MMFilesHashIndexIterator(LogicalCollection* collection
   _index->lookup(_trx, _lookups.lookup(), _buffer);
 }
 
+void MMFilesHashIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  while (limit > 0) {
+    if (_posInBuffer >= _buffer.size()) {
+      if (!_lookups.hasAndGetNext()) {
+        // we're at the end of the lookup values
+        return;
+      }
+
+      // We have to refill the buffer
+      _buffer.clear();
+      _posInBuffer = 0;
+
+      _index->lookup(_trx, _lookups.lookup(), _buffer);
+    }
+
+    if (!_buffer.empty()) {
+      // found something
+      cb(MMFilesToken{_buffer[_posInBuffer++]->revisionId()});
+      --limit;
+    }
+  }
+}
+
 DocumentIdentifierToken MMFilesHashIndexIterator::next() {
   while (true) {
     if (_posInBuffer >= _buffer.size()) {
@@ -384,6 +407,35 @@ MMFilesHashIndexIteratorVPack::~MMFilesHashIndexIteratorVPack() {
   if (_searchValues != nullptr) {
     // return the VPackBuilder to the transaction context
     _trx->transactionContextPtr()->returnBuilder(_searchValues.release());
+  }
+}
+
+void MMFilesHashIndexIteratorVPack::next(TokenCallback const& cb, size_t limit) {
+  while (limit > 0) {
+    if (_posInBuffer >= _buffer.size()) {
+      if (!_iterator.valid()) {
+        // we're at the end of the lookup values
+        return;
+      }
+
+      // We have to refill the buffer
+      _buffer.clear();
+      _posInBuffer = 0;
+
+      int res = TRI_ERROR_NO_ERROR;
+      _index->lookup(_trx, _iterator.value(), _buffer);
+      _iterator.next();
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+
+    if (!_buffer.empty()) {
+      // found something
+      cb(MMFilesToken{_buffer[_posInBuffer++]->revisionId()});
+      --limit;
+    }
   }
 }
 

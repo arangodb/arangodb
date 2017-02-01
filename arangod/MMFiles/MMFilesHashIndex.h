@@ -93,6 +93,8 @@ class MMFilesHashIndexIterator final : public IndexIterator {
   
   char const* typeName() const override { return "hash-index-iterator"; }
 
+  void next(TokenCallback const& cb, size_t limit) override;
+
   DocumentIdentifierToken next() override;
 
   void nextBabies(std::vector<DocumentIdentifierToken>&, size_t) override;
@@ -119,6 +121,8 @@ class MMFilesHashIndexIteratorVPack final : public IndexIterator {
   ~MMFilesHashIndexIteratorVPack();
   
   char const* typeName() const override { return "hash-index-iterator-vpack"; }
+
+  void next(TokenCallback const& cb, size_t limit) override;
 
   DocumentIdentifierToken next() override;
 

@@ -29,6 +29,20 @@ in progress
 -----------
 - move engine-specific parts of transaction.cpp into engine
 - transaction API
+- Implement new IndexIterator API next(callback, limit)
+  - Primary
+  - Hash
+  - Skiplist
+  - Persistent
+  - Geo
+  - Fulltext
+- Implement new IndexIterator API nextExtra(callback, limit)
+  - Primary
+  - Hash
+  - Skiplist
+  - Persistent
+  - Geo
+  - Fulltext
 
 to do
 -----
@@ -52,6 +66,7 @@ to do
   - Register for specific function names => branches to StorageEngine impl
   - Storage Engine can implement these functions with specific code and interna
     - e.g.: Geo, Fulltext
+- Replace Usage of new callback-based IndexIterator
 
 MMFiles are known to the following files:
 * arangod/Aql/Functions.cpp
@@ -93,5 +108,11 @@ MMFiles are known to the following files:
 
 Questions
 ---------
-
 * For GeoIndex `ignoreNull: true` and `constraint: false` are only set in Cluster mode. Is that art or can it go away?
+
+OpenIssues Hacki
+----------------
+* validate geoIndex shortcut. It now sets _done = true earlier => test if break.
+* batchSize == 0 ? What Happens? ASSERT ok? React gracefully?
+* Should next(cb) return bool hasMore?
+* HashIndex Lookup into a still local buffer, could be replaced by callback as well.
