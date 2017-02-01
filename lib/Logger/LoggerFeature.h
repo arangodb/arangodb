@@ -51,6 +51,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   std::string _prefix;
   std::string _file;
   bool _lineNumber = false;
+  bool _shortenFilenames = true;
   bool _thread = false;
   bool _performance = false;
   bool _keepLogRotate = false;

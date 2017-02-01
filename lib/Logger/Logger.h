@@ -194,6 +194,7 @@ class Logger {
 
   static void setOutputPrefix(std::string const&);
   static void setShowLineNumber(bool);
+  static void setShortenFilenames(bool);
   static void setShowThreadIdentifier(bool);
   static void setUseLocalTime(bool);
   static bool getUseLocalTime() {return _useLocalTime;};
@@ -230,6 +231,7 @@ class Logger {
 
   // these variables must be set before calling initialized
   static bool _showLineNumber;
+  static bool _shortenFilenames;
   static bool _showThreadIdentifier;
   static bool _threaded;
   static bool _useLocalTime;
