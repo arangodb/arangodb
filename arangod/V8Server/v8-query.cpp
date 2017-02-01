@@ -258,13 +258,13 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ManagedDocumentResult mmdr;
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
-  while (opCursor->hasMore()) {
-    opCursor->getMoreTokens(batch, 1000);
-    for (auto const& it : batch) {
-      if (collection->readDocument(&trx, mmdr, it)) {
-        resultBuilder.add(VPackSlice(mmdr.vpack()));
-      }
+  auto cb = [&resultBuilder, &mmdr, &trx, &collection](DocumentIdentifierToken const& tkn) {
+   if (collection->readDocument(&trx, mmdr, tkn)) {
+      resultBuilder.add(VPackSlice(mmdr.vpack()));
     }
+  };
+  while (opCursor->getMore(cb, 1000)) {
+    // Noop all done in cb
   }
   resultBuilder.close();
 
