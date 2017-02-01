@@ -425,6 +425,9 @@ Dependencies to build documentation:
 
         npm install gitbook-cli -g
 
+- [ditaa (DIagrams Through Ascii Art)](http://ditaa.sourceforge.net/) to build the 
+  ascii art diagrams (optional)
+
 - Calibre2 (optional, only required if you want to build the e-book version)
 
   http://calibre-ebook.com/download
