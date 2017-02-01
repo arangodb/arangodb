@@ -61,8 +61,6 @@
 
 #include "Basics/Common.h"
 
-#include <boost/lockfree/queue.hpp>
-
 #include "Basics/Mutex.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
