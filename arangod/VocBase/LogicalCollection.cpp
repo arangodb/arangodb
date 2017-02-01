@@ -25,7 +25,6 @@
 #include "LogicalCollection.h"
 
 #include "Aql/QueryCache.h"
-#include "Basics/Barrier.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
@@ -1861,7 +1860,7 @@ int LogicalCollection::fillIndexes(
             insertInAllIndexes();
             if (queue.status() != TRI_ERROR_NO_ERROR) {
               break;
-            };
+            }
             documents.clear();
           }
         }
@@ -1876,6 +1875,7 @@ int LogicalCollection::fillIndexes(
     // TODO: fix perf logging?
   } catch (arangodb::basics::Exception const& ex) {
     queue.setStatus(ex.code());
+    LOG(WARN) << "caught exception while filling indexes: " << ex.what();
   } catch (std::bad_alloc const&) {
     queue.setStatus(TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
