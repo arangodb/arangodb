@@ -30,6 +30,11 @@
 
 using namespace arangodb;
 
+LogicalCollection* OperationCursor::collection() const {
+  TRI_ASSERT(_indexIterator != nullptr);
+  return _indexIterator->collection();
+}
+
 void OperationCursor::reset() {
   code = TRI_ERROR_NO_ERROR;
 
@@ -41,16 +46,37 @@ void OperationCursor::reset() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many DocumentTokens.
-///        Defaults to _batchSize
+/// @brief Calls cb for the next batchSize many elements 
 ///        Check hasMore()==true before using this
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
 
-std::vector<DocumentIdentifierToken> OperationCursor::getMoreTokens(uint64_t batchSize) {
-  std::vector<DocumentIdentifierToken> res;
-  getMoreTokens(res, batchSize);
-  return res;
+bool OperationCursor::getMore(
+    std::function<void(DocumentIdentifierToken const& token)> const& callback,
+    uint64_t batchSize) {
+  if (!hasMore()) {
+    TRI_ASSERT(false);
+    // You requested more even if you should have checked it before.
+    return false;
+  }
+
+  if (batchSize == UINT64_MAX) {
+    batchSize = _batchSize;
+  }
+
+  size_t atMost = static_cast<size_t>(batchSize > _limit ? _limit : batchSize);
+
+  _hasMore = _indexIterator->next(callback, atMost);
+
+  if (_hasMore) {
+    // We got atMost many callbacks
+    TRI_ASSERT(_limit >= atMost);
+    _limit -= atMost;
+  } else {
+    // Well we are done anyways
+    _limit = 0;
+  }
+  return _hasMore;
 }
 
 //////////////////////////////////////////////////////////////////////////////

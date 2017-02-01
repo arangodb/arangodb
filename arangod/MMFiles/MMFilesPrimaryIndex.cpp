@@ -108,15 +108,19 @@ MMFilesPrimaryIndexIterator::~MMFilesPrimaryIndexIterator() {
   }
 }
 
-void MMFilesPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
   while (_iterator.valid() && limit > 0) {
     MMFilesSimpleIndexElement result = _index->lookupKey(_trx, _iterator.value());
     _iterator.next();
     if (result) {
       cb(MMFilesToken{result.revisionId()});
       --limit;
+    } else {
+      // We are done
+      return false;
     }
   }
+  return true;
 }
 
 DocumentIdentifierToken MMFilesPrimaryIndexIterator::next() {
@@ -145,7 +149,7 @@ AllIndexIterator::AllIndexIterator(LogicalCollection* collection,
                    bool reverse)
     : IndexIterator(collection, trx, mmdr, index), _index(indexImpl), _reverse(reverse), _total(0) {}
 
-void AllIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool AllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     MMFilesSimpleIndexElement element;
     if (_reverse) {
@@ -157,9 +161,10 @@ void AllIndexIterator::next(TokenCallback const& cb, size_t limit) {
       cb(MMFilesToken{element.revisionId()});
       --limit;
     } else {
-      return;
+      return false;
     }
   }
+  return true;
 }
 
 DocumentIdentifierToken AllIndexIterator::next() {
@@ -203,7 +208,7 @@ AnyIndexIterator::AnyIndexIterator(LogicalCollection* collection, arangodb::Tran
                                    MMFilesPrimaryIndexImpl const* indexImpl)
     : IndexIterator(collection, trx, mmdr, index), _index(indexImpl), _step(0), _total(0) {}
 
-void AnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool AnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     MMFilesSimpleIndexElement element =
         _index->findRandom(&_context, _initial, _position, _step, _total);
@@ -211,9 +216,10 @@ void AnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
       cb(MMFilesToken{element.revisionId()});
       --limit;
     } else {
-      return;
+      return false;
     }
   }
+  return true;
 }
 
 DocumentIdentifierToken AnyIndexIterator::next() {

@@ -128,7 +128,7 @@ MMFilesEdgeIndexIterator::~MMFilesEdgeIndexIterator() {
 }
 
 
-void MMFilesEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
   while (_iterator.valid() && limit > 0) {
     if (_buffer.empty()) {
       // We start a new lookup
@@ -149,6 +149,7 @@ void MMFilesEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
     if (_buffer.empty()) {
       _lastElement = MMFilesSimpleIndexElement();
+      return false;
     } else {
       _lastElement = _buffer.back();
       // found something
@@ -159,6 +160,7 @@ void MMFilesEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     // found no result. now go to next lookup value in _keys
     _iterator.next();
   }
+  return true;
 }
 
 DocumentIdentifierToken MMFilesEdgeIndexIterator::next() {
@@ -258,7 +260,7 @@ AnyDirectionMMFilesEdgeIndexIterator::AnyDirectionMMFilesEdgeIndexIterator(Logic
       _inbound(inboundIterator),
       _useInbound(false) {}
 
-void AnyDirectionMMFilesEdgeIndexIterator::next(TokenCallback const& cb,
+bool AnyDirectionMMFilesEdgeIndexIterator::next(TokenCallback const& cb,
                                                 size_t limit) {
   bool wasCalled = false;
   auto inWrapper = [&](DocumentIdentifierToken const& res) {
@@ -281,7 +283,7 @@ void AnyDirectionMMFilesEdgeIndexIterator::next(TokenCallback const& cb,
       _inbound->next(inWrapper, limit);
       if (!wasCalled) {
         // We did not find anything
-        return;
+        return false;
       }
     } else {
       _outbound->next(outWrapper, limit);
@@ -290,6 +292,7 @@ void AnyDirectionMMFilesEdgeIndexIterator::next(TokenCallback const& cb,
       }
     }
   }
+  return true;
 }
 
 DocumentIdentifierToken AnyDirectionMMFilesEdgeIndexIterator::next() {

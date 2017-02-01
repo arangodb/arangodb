@@ -82,8 +82,8 @@ class IndexIterator {
 
   virtual bool hasExtra() const;
 
-  virtual void next(TokenCallback const& callback, size_t limit) = 0;
-  virtual void nextExtra(ExtraCallback const& callback, size_t limit);
+  virtual bool next(TokenCallback const& callback, size_t limit) = 0;
+  virtual bool nextExtra(ExtraCallback const& callback, size_t limit);
 
   virtual DocumentIdentifierToken next();
 
@@ -111,7 +111,9 @@ class EmptyIndexIterator final : public IndexIterator {
 
     char const* typeName() const override { return "empty-index-iterator"; }
 
-    void next(TokenCallback const&, size_t) override {}
+    bool next(TokenCallback const&, size_t) override {
+      return false;
+    }
 
     DocumentIdentifierToken next() override { return DocumentIdentifierToken(); }
 
@@ -155,7 +157,7 @@ class MultiIndexIterator final : public IndexIterator {
     ///        If one iterator is exhausted, the next one is used.
     ///        If callback is called less than limit many times
     ///        all iterators are exhausted
-    void next(TokenCallback const& callback, size_t limit) override;
+    bool next(TokenCallback const& callback, size_t limit) override;
 
     /// @brief Get the next element
     ///        If one iterator is exhausted, the next one is used.

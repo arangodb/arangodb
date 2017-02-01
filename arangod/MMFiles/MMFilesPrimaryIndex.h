@@ -55,7 +55,7 @@ class MMFilesPrimaryIndexIterator final : public IndexIterator {
     
   char const* typeName() const override { return "primary-index-iterator"; }
 
-  void next(TokenCallback const& cb, size_t limit) override;
+  bool next(TokenCallback const& cb, size_t limit) override;
   DocumentIdentifierToken next() override;
 
   void reset() override;
@@ -79,7 +79,7 @@ class AllIndexIterator final : public IndexIterator {
     
   char const* typeName() const override { return "all-index-iterator"; }
 
-  void next(TokenCallback const& cb, size_t limit) override;
+  bool next(TokenCallback const& cb, size_t limit) override;
 
   DocumentIdentifierToken next() override;
   
@@ -105,7 +105,7 @@ class AnyIndexIterator final : public IndexIterator {
   
   char const* typeName() const override { return "any-index-iterator"; }
 
-  void next(TokenCallback const& cb, size_t limit) override;
+  bool next(TokenCallback const& cb, size_t limit) override;
 
   DocumentIdentifierToken next() override;
 

@@ -37,7 +37,6 @@
 namespace arangodb {
 
 // FORWARD declaration
-class IndexIterator;
 class LogicalCollection;
 struct OperationResult;
 
@@ -80,10 +79,7 @@ struct OperationCursor {
     return _indexIterator.get();
   }
   
-  LogicalCollection* collection() const {
-    TRI_ASSERT(_indexIterator != nullptr);
-    return _indexIterator->collection();
-  }
+  LogicalCollection* collection() const;
 
   inline bool hasMore() const { return _hasMore; }
 
@@ -102,21 +98,22 @@ struct OperationCursor {
   void reset();
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements. mptr variant
-///        Defaults to _batchSize
+/// @brief Calls cb for the next batchSize many elements 
 ///        Check hasMore()==true before using this
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
-  
-  std::vector<DocumentIdentifierToken> getMoreTokens(uint64_t batchSize);
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements. mptr variant
-///        Defaults to _batchSize
-///        Check hasMore()==true before using this
-///        NOTE: This will throw on OUT_OF_MEMORY
-///        NOTE: The result vector handed in will be cleared.
-//////////////////////////////////////////////////////////////////////////////
+  bool getMore(
+      std::function<void(DocumentIdentifierToken const& token)> const& callback,
+      uint64_t batchSize);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Get next batchSize many elements.
+  ///        Defaults to _batchSize
+  ///        Check hasMore()==true before using this
+  ///        NOTE: This will throw on OUT_OF_MEMORY
+  ///        NOTE: The result vector handed in will be cleared.
+  //////////////////////////////////////////////////////////////////////////////
 
   void getMoreTokens(std::vector<DocumentIdentifierToken>& result, uint64_t batchSize);
 

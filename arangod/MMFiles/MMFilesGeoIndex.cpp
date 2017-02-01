@@ -141,7 +141,7 @@ size_t MMFilesGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
   return numDocs;
 }
 
-void MMFilesGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
   if (!_cursor) { 
     createCursor(_lat, _lon);
     
@@ -155,7 +155,7 @@ void MMFilesGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
   if (_done) {
     // we already know that no further results will be returned by the index
-    return;
+    return false;
   }
 
   TRI_ASSERT(limit > 0);
@@ -179,14 +179,14 @@ void MMFilesGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
       // Nothing Found
       // TODO validate
       _done = true;
-      return;
+      return false;
     }
 
     size_t numDocs = findLastIndex(coords.get());
     if (numDocs == 0) {
       // we are done
       _done = true;
-      return;
+      return false;
     }
   
     for (size_t i = 0; i < numDocs; ++i) {
@@ -196,7 +196,7 @@ void MMFilesGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
     // If we return less then limit many docs we are done.
     _done = numDocs < limit;
   }
-
+  return true;
 }
 
 DocumentIdentifierToken MMFilesGeoIndexIterator::next() {

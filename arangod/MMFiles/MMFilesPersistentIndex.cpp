@@ -138,12 +138,12 @@ void PersistentIndexIterator::reset() {
   }
 }
 
-void PersistentIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool PersistentIndexIterator::next(TokenCallback const& cb, size_t limit) {
   auto comparator = RocksDBFeature::instance()->comparator();
   while (limit > 0) {
     if (!_cursor->Valid()) {
       // We are exhausted already, sorry
-      return;
+      return false;
     }
   
     rocksdb::Slice key = _cursor->key();
@@ -155,7 +155,7 @@ void PersistentIndexIterator::next(TokenCallback const& cb, size_t limit) {
     if (res < 0) {
       if (_reverse) {
         // We are done
-        return;
+        return false;
       } else {
         _cursor->Next();
       }
@@ -195,11 +195,12 @@ void PersistentIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
     if (res > 0) {
       if (!_probe) {
-        return;
+        return false;
       }
       _probe = false;
     }
   }
+  return true;
 }
 
 /// @brief Get the next element in the index

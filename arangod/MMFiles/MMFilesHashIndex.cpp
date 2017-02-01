@@ -298,12 +298,12 @@ MMFilesHashIndexIterator::MMFilesHashIndexIterator(LogicalCollection* collection
   _index->lookup(_trx, _lookups.lookup(), _buffer);
 }
 
-void MMFilesHashIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesHashIndexIterator::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     if (_posInBuffer >= _buffer.size()) {
       if (!_lookups.hasAndGetNext()) {
         // we're at the end of the lookup values
-        return;
+        return false;
       }
 
       // We have to refill the buffer
@@ -319,6 +319,7 @@ void MMFilesHashIndexIterator::next(TokenCallback const& cb, size_t limit) {
       --limit;
     }
   }
+  return true;
 }
 
 DocumentIdentifierToken MMFilesHashIndexIterator::next() {
@@ -410,12 +411,12 @@ MMFilesHashIndexIteratorVPack::~MMFilesHashIndexIteratorVPack() {
   }
 }
 
-void MMFilesHashIndexIteratorVPack::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesHashIndexIteratorVPack::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     if (_posInBuffer >= _buffer.size()) {
       if (!_iterator.valid()) {
         // we're at the end of the lookup values
-        return;
+        return false;
       }
 
       // We have to refill the buffer
@@ -437,6 +438,7 @@ void MMFilesHashIndexIteratorVPack::next(TokenCallback const& cb, size_t limit) 
       --limit;
     }
   }
+  return true;
 }
 
 DocumentIdentifierToken MMFilesHashIndexIteratorVPack::next() {

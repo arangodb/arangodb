@@ -56,7 +56,7 @@ bool IndexIterator::hasExtra() const {
 }
 
 /// @brief default implementation for next
-void IndexIterator::nextExtra(ExtraCallback const&, size_t) {
+bool IndexIterator::nextExtra(ExtraCallback const&, size_t) {
   TRI_ASSERT(!hasExtra());
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                  "Request extra values from an index that "
@@ -107,7 +107,7 @@ void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
 ///        If one iterator is exhausted, the next one is used.
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
-void MultiIndexIterator::next(TokenCallback const& callback, size_t limit) {
+bool MultiIndexIterator::next(TokenCallback const& callback, size_t limit) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

@@ -196,7 +196,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
   char const* typeName() const override { return "skiplist-index-iterator"; }
 
   /// @brief Get the next elements in the skiplist
-  void next(TokenCallback const& cb, size_t limit) override;
+  bool next(TokenCallback const& cb, size_t limit) override;
 
   /// @brief Get the next element in the skiplist
   DocumentIdentifierToken next() override;
@@ -260,7 +260,7 @@ class MMFilesSkiplistIterator2 final : public IndexIterator {
   char const* typeName() const override { return "skiplist-index-iterator2"; }
 
   /// @brief Get the next elements in the skiplist
-  void next(TokenCallback const& cb, size_t limit) override;
+  bool next(TokenCallback const& cb, size_t limit) override;
 
   /// @brief Get the next element in the skiplist
   DocumentIdentifierToken next() override;

@@ -522,10 +522,10 @@ void MMFilesSkiplistIterator::reset() {
 
 
 /// @brief Get the next elements in the skiplist
-void MMFilesSkiplistIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesSkiplistIterator::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     if (_cursor == nullptr) {
-      return;
+      return false;
     }
     Node* tmp = _cursor;
     if (_reverse) {
@@ -546,6 +546,7 @@ void MMFilesSkiplistIterator::next(TokenCallback const& cb, size_t limit) {
     cb(MMFilesToken{tmp->document()->revisionId()});
     --limit;
   }
+  return true;
 }
 
 /// @brief Get the next element in the skiplist
@@ -630,11 +631,11 @@ void MMFilesSkiplistIterator2::reset() {
   }
 }
 
-void MMFilesSkiplistIterator2::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesSkiplistIterator2::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     if (_cursor == nullptr) {
       // We are exhausted already, sorry
-      return;
+      return false;
     }
     TRI_ASSERT(_currentInterval < _intervals.size());
     auto const& interval = _intervals[_currentInterval];
@@ -657,6 +658,7 @@ void MMFilesSkiplistIterator2::next(TokenCallback const& cb, size_t limit) {
     cb(MMFilesToken{tmp->document()->revisionId()});
     limit--;
   }
+  return true;
 }
 
 /// @brief Get the next element in the skiplist
