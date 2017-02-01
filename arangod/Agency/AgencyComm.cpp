@@ -54,6 +54,7 @@
 
 using namespace arangodb;
 using namespace arangodb::application_features;
+using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 

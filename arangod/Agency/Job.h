@@ -28,6 +28,7 @@
 #include "Node.h"
 #include "Supervision.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -41,7 +42,7 @@ namespace consensus {
 // and all others followers. Both arguments must be arrays. Returns true, 
 // if the first items in both slice are equal and if both arrays contain
 // the same set of strings.
-bool compareServerLists(Slice plan, Slice current);
+bool compareServerLists(velocypack::Slice plan, velocypack::Slice current);
 
 enum JOB_STATUS { TODO, PENDING, FINISHED, FAILED, NOTFOUND };
 const std::vector<std::string> pos({"/Target/ToDo/", "/Target/Pending/",
@@ -63,9 +64,9 @@ static std::string const plannedServers = "/Plan/DBServers";
 static std::string const healthPrefix = "/Supervision/Health/";
 
 inline arangodb::consensus::write_ret_t transact(Agent* _agent,
-                                                 Builder const& transaction,
+                                                 velocypack::Builder const& transaction,
                                                  bool waitForCommit = true) {
-  query_t envelope = std::make_shared<Builder>();
+  query_t envelope = std::make_shared<velocypack::Builder>();
 
   try {
     envelope->openArray();
@@ -137,7 +138,7 @@ struct Job {
   std::string _creator;
   std::string _agencyPrefix;
 
-  std::shared_ptr<Builder> _jb;
+  std::shared_ptr<velocypack::Builder> _jb;
   
 };
 

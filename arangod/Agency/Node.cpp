@@ -33,8 +33,9 @@
 #include <deque>
 #include <regex>
 
-using namespace arangodb::consensus;
+using namespace arangodb;
 using namespace arangodb::basics;
+using namespace arangodb::consensus;
 
 struct NotEmpty {
   bool operator()(const std::string& s) { return !s.empty(); }
@@ -88,16 +89,16 @@ Node::Node(std::string const& name, Store* store)
 Node::~Node() {}
 
 /// Get slice to value buffer
-Slice Node::slice() const {
+velocypack::Slice Node::slice() const {
   // Some array
   if (_isArray) {
     rebuildVecBuf();
-    return Slice(_vecBuf.data());
+    return velocypack::Slice(_vecBuf.data());
   }
 
   // Some value
   if (!_value.empty()) {
-    return Slice(_value.front().data());
+    return velocypack::Slice(_value.front().data());
   }
 
   // Empty object
@@ -106,10 +107,10 @@ Slice Node::slice() const {
 
 void Node::rebuildVecBuf() const {
   if (_vecBufDirty) {  // Dirty vector buffer
-    Builder tmp;
+    velocypack::Builder tmp;
     tmp.openArray();
     for (auto const& i : _value) {
-      tmp.add(Slice(i.data()));
+      tmp.add(velocypack::Slice(i.data()));
     }
     tmp.close();
     _vecBuf = *tmp.steal();
@@ -323,7 +324,7 @@ Store& Node::store() { return *(root()._store); }
 Store const& Node::store() const { return *(root()._store); }
 
 // velocypack value type of this node
-ValueType Node::valueType() const { return slice().type(); }
+velocypack::ValueType Node::valueType() const { return slice().type(); }
 
 // file time to live entry for this node to now + millis
 bool Node::addTimeToLive(long millis) {
@@ -358,7 +359,7 @@ namespace consensus {
 /// Set value
 template <>
 bool Node::handle<SET>(VPackSlice const& slice) {
-  Slice val = slice.get("new");
+  VPackSlice val = slice.get("new");
 
   if (val.isObject()) {
     if (val.hasKey("op")) {  // No longer a keyword but a regular key "op"
@@ -393,12 +394,12 @@ bool Node::handle<SET>(VPackSlice const& slice) {
 /// Increment integer value or set 1
 template <>
 bool Node::handle<INCREMENT>(VPackSlice const& slice) {
-  Builder tmp;
+  velocypack::Builder tmp;
   tmp.openObject();
   try {
-    tmp.add("tmp", Value(this->slice().getInt() + 1));
+    tmp.add("tmp", velocypack::Value(this->slice().getInt() + 1));
   } catch (std::exception const&) {
-    tmp.add("tmp", Value(1));
+    tmp.add("tmp", velocypack::Value(1));
   }
   tmp.close();
   *this = tmp.slice().get("tmp");
@@ -408,12 +409,12 @@ bool Node::handle<INCREMENT>(VPackSlice const& slice) {
 /// Decrement integer value or set -1
 template <>
 bool Node::handle<DECREMENT>(VPackSlice const& slice) {
-  Builder tmp;
+  velocypack::Builder tmp;
   tmp.openObject();
   try {
-    tmp.add("tmp", Value(this->slice().getInt() - 1));
+    tmp.add("tmp", velocypack::Value(this->slice().getInt() - 1));
   } catch (std::exception const&) {
-    tmp.add("tmp", Value(-1));
+    tmp.add("tmp", velocypack::Value(-1));
   }
   tmp.close();
   *this = tmp.slice().get("tmp");
@@ -428,7 +429,7 @@ bool Node::handle<PUSH>(VPackSlice const& slice) {
                                     << slice.toJson();
     return false;
   }
-  Builder tmp;
+  velocypack::Builder tmp;
   tmp.openArray();
   if (this->slice().isArray()) {
     for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
@@ -447,7 +448,7 @@ bool Node::handle<ERASE>(VPackSlice const& slice) {
         << "Operator erase without value to be erased: " << slice.toJson();
     return false;
   }
-  Builder tmp;
+  velocypack::Builder tmp;
   tmp.openArray();
   if (this->slice().isArray()) {
     for (auto const& old : VPackArrayIterator(this->slice())) {
@@ -474,7 +475,7 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
                                     << slice.toJson();
     return false;
   }
-  Builder tmp;
+  velocypack::Builder tmp;
   tmp.openArray();
   if (this->slice().isArray()) {
     for (auto const& old : VPackArrayIterator(this->slice())) {
@@ -493,7 +494,7 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
 /// Remove element from end of array.
 template <>
 bool Node::handle<POP>(VPackSlice const& slice) {
-  Builder tmp;
+  velocypack::Builder tmp;
   tmp.openArray();
   if (this->slice().isArray()) {
     VPackArrayIterator it(this->slice());
@@ -518,7 +519,7 @@ bool Node::handle<PREPEND>(VPackSlice const& slice) {
                                     << slice.toJson();
     return false;
   }
-  Builder tmp;
+  velocypack::Builder tmp;
   tmp.openArray();
   tmp.add(slice.get("new"));
   if (this->slice().isArray()) {
@@ -532,7 +533,7 @@ bool Node::handle<PREPEND>(VPackSlice const& slice) {
 /// Remove element from front of array
 template <>
 bool Node::handle<SHIFT>(VPackSlice const& slice) {
-  Builder tmp;
+  velocypack::Builder tmp;
   tmp.openArray();
   if (this->slice().isArray()) {  // If a
     VPackArrayIterator it(this->slice());
@@ -677,7 +678,7 @@ bool Node::applies(VPackSlice const& slice) {
   return true;
 }
 
-void Node::toBuilder(Builder& builder, bool showHidden) const {
+void Node::toBuilder(velocypack::Builder& builder, bool showHidden) const {
   try {
     if (type() == NODE) {
       VPackObjectBuilder guard(&builder);
@@ -728,7 +729,7 @@ Node::Children& Node::children() { return _children; }
 Node::Children const& Node::children() const { return _children; }
 
 std::string Node::toJson() const {
-  Builder builder;
+  velocypack::Builder builder;
   builder.openArray();
   toBuilder(builder);
   builder.close();
@@ -795,7 +796,7 @@ std::string Node::getString() const {
   return slice().copyString();
 }
 
-Slice Node::getArray() const {
+velocypack::Slice Node::getArray() const {
   if (type() == NODE) {
     throw StoreException("Must not convert NODE type to array");
   }
@@ -803,6 +804,6 @@ Slice Node::getArray() const {
     throw StoreException("Not an array type");
   }
   rebuildVecBuf();
-  return Slice(_vecBuf.data());
+  return velocypack::Slice(_vecBuf.data());
 }
 

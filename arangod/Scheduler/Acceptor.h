@@ -28,8 +28,6 @@
 #include "Scheduler/Socket.h"
 #include "Ssl/SslServerFeature.h"
 
-using namespace arangodb;
-
 namespace arangodb {
 class Acceptor {
   public:

@@ -30,6 +30,12 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::communicator;
+
+namespace {
+
 #ifdef _WIN32
 /* socketpair.c
 Copyright 2007, 2010 by Nathan C. Myers <ncm@cantrip.org>
@@ -119,10 +125,6 @@ static int dumb_socketpair(SOCKET socks[2], int make_overlapped) {
 }
 #endif
 
-using namespace arangodb;
-using namespace arangodb::communicator;
-
-namespace {
 std::atomic_uint_fast64_t NEXT_TICKET_ID(static_cast<uint64_t>(0));
 std::vector<char> urlDotSeparators{'/', '#', '?'};
 }

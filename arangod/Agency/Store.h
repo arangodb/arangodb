@@ -28,6 +28,9 @@
 #include "Basics/Thread.h"
 #include "Node.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
 namespace arangodb {
 namespace consensus {
 
@@ -58,10 +61,10 @@ class Store : public arangodb::Thread {
   std::vector<bool> apply(query_t const& query, bool verbose = false);
 
   /// @brief Apply single entry in query
-  bool apply(Slice const& query, bool verbose = false);
+  bool apply(velocypack::Slice const& query, bool verbose = false);
 
   /// @brief Apply entry in query
-  std::vector<bool> apply(std::vector<Slice> const& query,
+  std::vector<bool> apply(std::vector<velocypack::Slice> const& query,
                           index_t lastCommitIndex, term_t term,
                           bool inform = true);
 
@@ -79,7 +82,7 @@ class Store : public arangodb::Thread {
   bool start();
 
   /// @brief Dump everything to builder
-  void dumpToBuilder(Builder&) const;
+  void dumpToBuilder(velocypack::Builder&) const;
 
   /// @brief Notify observers
   void notifyObservers() const;
@@ -90,7 +93,7 @@ class Store : public arangodb::Thread {
   Store& operator=(VPackSlice const& slice);
 
   /// @brief Create Builder representing this store
-  void toBuilder(Builder&, bool showHidden = false) const;
+  void toBuilder(velocypack::Builder&, bool showHidden = false) const;
 
   /// @brief Copy out a node
   Node get(std::string const& path) const;
