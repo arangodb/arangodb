@@ -90,6 +90,23 @@ Create a geo index for a hash array attribute:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock geoIndexCreateForArrayAttribute2
 
+Use GeoIndex with AQL SORT statement:
+
+    @startDocuBlockInline geoIndexSortOptimization
+    @EXAMPLE_ARANGOSH_OUTPUT{geoIndexSortOptimization}
+    ~db._create("geo3")
+    db.geo2.ensureIndex({ type: "geo", fields: [ "location.latitude", "location.longitude" ] });
+    | for (i = -90;  i <= 90;  i += 10) {
+    |     for (j = -180; j <= 180; j += 10) {
+    |         db.geo2.save({ name : "Name/" + i + "/" + j, location: { latitude : i, longitude : j } });
+    |     }
+      }	
+    var query = "FOR doc in geo3 SORT distance(doc.location.latitude, doc.location.longitude,0,0) LIMIT 100 RETURN doc"
+    db._explain(query);
+    db._execute(query);
+    ~db._drop("geo3")
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock geoIndexSortOptimization
 
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionGeo

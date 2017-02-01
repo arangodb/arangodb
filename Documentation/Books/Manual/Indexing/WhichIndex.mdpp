@@ -71,7 +71,10 @@ different usage scenarios:
 
       { "coords": [ 50.9406645, 6.9599115 ] }
 
-  Geo indexes will only be invoked via special functions.
+  Geo indexes will be invoked via special functions or AQL optimization. The
+  optimization can be triggered when a collection with geo index is enumerated
+  and a SORT or FILTER statement is used in conjunction with the distance
+  function.
 
 - fulltext index: a fulltext index can be used to index all words contained in 
   a specific attribute of all documents in a collection. Only words with a 
