@@ -24,6 +24,7 @@
 #define ARANGODB_APPLICATION_FEATURES_SUPERVISOR_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/threads.h"
 
 namespace arangodb {
 class SupervisorFeature final
