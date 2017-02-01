@@ -262,7 +262,8 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role,
   AgencyCommResult result;
   std::string localInfoEncoded = StringUtils::replace(
     StringUtils::urlEncode(getLocalInfo()),"%2E",".");
-  std::string roleName = ((role == ROLE_COORDINATOR) ? "Coordinators":"DBServers");
+  std::string roleName =
+    ((role == ROLE_COORDINATOR) ? "Coordinators":"DBServers");
 
   std::string locinf = "Target/MapLocalToID/" + localInfoEncoded;
   std::string idinf  = "Plan/" + roleName + "/" + _id;
@@ -309,14 +310,7 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role,
 
   }
 
-  if (!found) {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER)
-      << "Determining id from localinfo failed."
-      << "Continuing with registering ourselves for the first time";
-    id = createIdForRole(comm, role);
-  } else {
-    createIdForRole(comm, role, id);
-  }
+  id = createIdForRole(comm, role, id);
 
   const std::string agencyKey = roleToAgencyKey(role);
   const std::string planKey = "Plan/" + agencyKey + "/" + id;
