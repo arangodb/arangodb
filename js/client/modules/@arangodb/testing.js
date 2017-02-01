@@ -3250,6 +3250,7 @@ const recoveryTests = [
   'empty-datafiles',
   'flush-drop-database-and-fail',
   'drop-database-flush-and-fail',
+  'drop-database-only-tmp',
   'create-databases',
   'recreate-databases',
   'drop-databases',
