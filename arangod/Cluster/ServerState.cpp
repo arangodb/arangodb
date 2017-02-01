@@ -377,6 +377,7 @@ std::string ServerState::createIdForRole(AgencyComm comm,
   
   typedef std::pair<AgencyOperation,AgencyPrecondition> operationType;
   std::string const agencyKey = roleToAgencyKey(role);
+  size_t shortNum(0);
 
   VPackBuilder builder;
   builder.add(VPackValue("none"));
@@ -390,6 +391,18 @@ std::string ServerState::createIdForRole(AgencyComm comm,
 
   auto filePath = dbpath->directory() + "/UUID";
   std::ifstream ifs(filePath);
+
+  if (!id.empty()) {
+    if (id.compare(
+          0, RoleStrReadable.at(role).size(), RoleStrReadable.at(role)) == 0) {
+      try {
+        shortNum = std::stoul(id.substr(RoleStrReadable.at(role).size(),3));
+      } catch(...) {
+        LOG_TOPIC(DEBUG, Logger::CLUSTER) <<
+          "Old id cannot be parsed for number.";
+      }
+    }
+  }
   
   if (ifs.is_open()) {
     std::getline(ifs, id);
@@ -449,7 +462,7 @@ std::string ServerState::createIdForRole(AgencyComm comm,
   reg.operations.push_back( // Get shortID
     operationType(AgencyOperation(targetIdStr), AgencyPrecondition()));
   result = comm.sendTransactionWithFailover(reg, 0.0);
-
+  
   VPackSlice latestId = result.slice()[2].get(
     std::vector<std::string>(
       {AgencyCommManager::path(), "Target",
@@ -462,7 +475,8 @@ std::string ServerState::createIdForRole(AgencyComm comm,
     localIdBuilder.add("TransactionID", latestId);
     std::stringstream ss; // ShortName
     ss << ((role == ROLE_COORDINATOR) ? "Coordinator" : "DBServer")
-       << std::setw(4) << std::setfill('0') << latestId.getNumber<uint32_t>();
+       << std::setw(4) << std::setfill('0')
+       << (shortNum ==0 ? latestId.getNumber<uint32_t>() : shortNum);
     std::string shortName = ss.str();
     localIdBuilder.add("ShortName", VPackValue(shortName));
   }
