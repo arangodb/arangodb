@@ -1463,7 +1463,6 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
   int res = fillIndexes(trx, indexListLocal, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    usleep(1000000);
     THROW_ARANGO_EXCEPTION(res);
   }
 
