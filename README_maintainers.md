@@ -810,9 +810,9 @@ Deploying a locally changed version
 
 Create local docker images using the following repositories:
 
-https://github.com/arangodb/arangodb-docker
-https://github.com/arangodb/arangodb-mesos-docker
-https://github.com/arangodb/arangodb-mesos-framework
+ - https://github.com/arangodb/arangodb-docker
+ - https://github.com/arangodb/arangodb-mesos-docker
+ - https://github.com/arangodb/arangodb-mesos-framework
 
 Then adjust the docker images in the config (`arangodb3.json`) and redeploy it using the curl command above.
 
