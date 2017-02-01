@@ -180,9 +180,9 @@ class Query {
 
   /// @brief maximum number of plans to produce
   size_t maxNumberOfPlans() const {
-    double value = getNumericOption("maxNumberOfPlans", 0.0);
-    if (value > 0.0) {
-      return static_cast<size_t>(value);
+    size_t value = getNumericOption<size_t>("maxNumberOfPlans", 0);
+    if (value > 0) {
+      return value;
     }
     return 0;
   }
@@ -206,8 +206,8 @@ class Query {
   
   /// @brief memory limit for query
   size_t memoryLimit() const {
-    double value = getNumericOption("memoryLimit", MemoryLimitValue);
-    if (value > 0.0) {
+    uint64_t value = getNumericOption<decltype(MemoryLimitValue)>("memoryLimit", MemoryLimitValue);
+    if (value > 0) {
       return static_cast<size_t>(value);
     }
     return 0;
@@ -215,9 +215,9 @@ class Query {
 
   /// @brief maximum number of plans to produce
   int64_t literalSizeThreshold() const {
-    double value = getNumericOption("literalSizeThreshold", 0.0);
-    if (value > 0.0) {
-      return static_cast<int64_t>(value);
+    int64_t value = getNumericOption<int64_t>("literalSizeThreshold", 0);
+    if (value > 0) {
+      return value;
     }
     return -1;
   }
@@ -344,9 +344,25 @@ class Query {
   /// @brief whether or not the query cache can be used for the query
   bool canUseQueryCache() const;
 
-  /// @brief fetch a numeric value from the options
  public:
-  double getNumericOption(char const*, double) const;
+  /// @brief fetch a numeric value from the options
+  template<typename T> T getNumericOption(char const* option, T defaultValue) const {
+    if (_options == nullptr) {
+      return defaultValue;
+    }
+
+    VPackSlice options = _options->slice();
+    if (!options.isObject()) {
+      return defaultValue;
+    }
+
+    VPackSlice value = options.get(option);
+    if (!value.isNumber()) {
+      return defaultValue;
+    }
+
+    return value.getNumericValue<T>();
+  }
 
  private:
   /// @brief read the "optimizer.inspectSimplePlans" section from the options

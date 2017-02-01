@@ -565,9 +565,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     result.add(VPackValue("-all"));
     result.close(); // options.optimizer.rules
     result.close(); // options.optimizer
-    double tracing = query->getNumericOption("tracing", 0);
+    double tracing = query->getNumericOption<double>("tracing", 0.0);
     result.add("tracing", VPackValue(tracing));
-    double satelliteSyncWait = query->getNumericOption("satelliteSyncWait", 60.0);
+    double satelliteSyncWait = query->getNumericOption<double>("satelliteSyncWait", 60.0);
     result.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
     result.close(); // options
 

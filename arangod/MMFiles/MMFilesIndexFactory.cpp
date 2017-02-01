@@ -286,7 +286,7 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       id = basics::StringUtils::uint64(current.copyString());
     }
     if (id > 0) {
-      enhanced.add("id", VPackValue(id));
+      enhanced.add("id", VPackValue(std::to_string(id)));
     }
 
     

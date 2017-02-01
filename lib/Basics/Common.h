@@ -174,6 +174,11 @@ typedef long suseconds_t;
 #include "Basics/system-functions.h"
 #undef TRI_WITHIN_COMMON
 
+#ifdef _WIN32
+// some Windows header defines a macro named free, leading to follow-up compile errors
+#undef free
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper macro for calculating strlens for static strings at
 /// a compile-time (unless compiled with fno-builtin-strlen etc.)

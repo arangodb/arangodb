@@ -25,6 +25,7 @@
 #include "Aql/Collection.h"
 #include "Basics/Exceptions.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 Collections::Collections(TRI_vocbase_t* vocbase)
