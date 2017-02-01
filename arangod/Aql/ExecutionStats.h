@@ -56,8 +56,9 @@ struct ExecutionStats {
     writesIgnored += summand.writesIgnored;
     scannedFull += summand.scannedFull;
     scannedIndex += summand.scannedIndex;
-    fullCount += summand.fullCount;
     filtered += summand.filtered;
+    httpRequests += summand.httpRequests;
+    fullCount += summand.fullCount;
     // intentionally no modification of executionTime
   }
 
@@ -68,8 +69,9 @@ struct ExecutionStats {
     writesIgnored += newStats.writesIgnored - lastStats.writesIgnored;
     scannedFull += newStats.scannedFull - lastStats.scannedFull;
     scannedIndex += newStats.scannedIndex - lastStats.scannedIndex;
-    fullCount += newStats.fullCount - lastStats.fullCount;
     filtered += newStats.filtered - lastStats.filtered;
+    httpRequests += newStats.httpRequests - lastStats.httpRequests;
+    fullCount += newStats.fullCount - lastStats.fullCount;
     // intentionally no modification of executionTime
   }
 
@@ -87,6 +89,9 @@ struct ExecutionStats {
 
   /// @brief number of documents filtered away
   int64_t filtered;
+  /// @brief total number of HTTP requests made
+
+  int64_t httpRequests;
 
   /// @brief total number of results, before applying last limit
   int64_t fullCount;
