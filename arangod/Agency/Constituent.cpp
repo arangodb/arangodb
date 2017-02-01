@@ -185,6 +185,8 @@ void Constituent::lead(term_t term) {
   {
     MUTEX_LOCKER(guard, _castLock);
 
+    _leaderID = _id;
+
     // if we already have a higher term, ignore this request
     if (term < _term) {
       followNoLock(_term);
@@ -201,7 +203,6 @@ void Constituent::lead(term_t term) {
     _role = LEADER;
 
     LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": leading in term " << _term;
-    _leaderID = _id;
   }
 
   // we need to start work as leader
