@@ -54,6 +54,8 @@ class LoggerStream {
     _out << "{" + topic.name() << "} ";
     return *this;
   }
+  
+  LoggerStream& operator<<(Logger::BINARY binary);
 
   LoggerStream& operator<<(Logger::RANGE range);
 

@@ -30,7 +30,7 @@
 
 using namespace arangodb::aql;
 
-BlockCollector::BlockCollector() : _totalSize(0) {}
+BlockCollector::BlockCollector() : _blocks{_arena}, _totalSize(0) {}
 
 BlockCollector::~BlockCollector() { clear(); }
 
