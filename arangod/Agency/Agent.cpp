@@ -594,9 +594,10 @@ query_t Agent::lastAckedAgo() const {
 trans_ret_t Agent::transact(query_t const& queries) {
   arangodb::consensus::index_t maxind = 0; // maximum write index
 
-  auto leader = _constituent.leaderID();
-  if (leader != id()) {
-    return trans_ret_t(false, leader);
+  auto multihost = size()>1;
+
+  if (multihost && !leading()) {
+    return trans_ret_t(false, _constituent.leaderID());
   }
 
   // Apply to spearhead and get indices for log entries
@@ -609,7 +610,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
     MUTEX_LOCKER(mutexLocker, _ioLock);
     
     // Only leader else redirect
-    if (challengeLeadership()) {
+    if (multihost && challengeLeadership()) {
       _constituent.candidate();
       return trans_ret_t(false, NO_LEADER);
     }
@@ -657,9 +658,9 @@ trans_ret_t Agent::transact(query_t const& queries) {
 trans_ret_t Agent::transient(query_t const& queries) {
 
   auto ret = std::make_shared<arangodb::velocypack::Builder>();
-  auto leader = _constituent.leaderID();
-  if (leader != id()) {
-    return trans_ret_t(false, leader);
+
+  if (leading()) {
+    return trans_ret_t(false, _constituent.leaderID());
   }
   
   // Apply to spearhead and get indices for log entries
@@ -728,9 +729,8 @@ write_ret_t Agent::write(query_t const& query) {
   std::vector<index_t> indices;
   auto multihost = size()>1;
 
-  auto leader = _constituent.leaderID();
-  if (multihost && leader != id()) {
-    return write_ret_t(false, leader);
+  if (multihost && !leading()) {
+    return write_ret_t(false, _constituent.leaderID());
   }
   
   // Apply to spearhead and get indices for log entries
@@ -763,15 +763,16 @@ write_ret_t Agent::write(query_t const& query) {
 /// Read from store
 read_ret_t Agent::read(query_t const& query) {
 
-  auto leader = _constituent.leaderID();
-  if (leader != id()) {
-    return read_ret_t(false, leader);
+  auto multihost = size()>1;
+
+  if (multihost && !leading()) {
+    return read_ret_t(false, _constituent.leaderID());
   }
   
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
   // Only leader else redirect
-  if (challengeLeadership()) {
+  if (multihost && challengeLeadership()) {
     _constituent.candidate();
     return read_ret_t(false, NO_LEADER);
   }
