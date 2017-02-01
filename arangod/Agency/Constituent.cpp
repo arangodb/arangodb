@@ -269,7 +269,7 @@ bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
     << ", prev-log-index: " << prevLogIndex << ", prev-log-term: "
     << prevLogTerm << ") in term " << _term;
 
-  if (term > _term) {
+  if (term >= _term) {
     _lastHeartbeatSeen = TRI_microtime();
     LOG_TOPIC(TRACE, Logger::AGENCY)
       << "setting last heartbeat: " << _lastHeartbeatSeen;
