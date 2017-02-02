@@ -114,5 +114,6 @@ OpenIssues Hacki
 ----------------
 * validate geoIndex shortcut. It now sets _done = true earlier => test if break.
 * batchSize == 0 ? What Happens? ASSERT ok? React gracefully?
-* Should next(cb) return bool hasMore?
 * HashIndex Lookup into a still local buffer, could be replaced by callback as well.
+* SingleServerTraverser API does NOT takeover responsibility for slice data. getMore() hapes slices to not go away
+  * This API can be improved if we make better use of those callbacks.
