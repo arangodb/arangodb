@@ -133,7 +133,7 @@ global.DEFINE_MODULE('console', (function () {
       msg = msg = `${e}: ${args}`;
     }
 
-    logGroup('error', msg);
+    logGroup('=error', msg);
 
     require('assert').ok(condition, msg);
   };
@@ -151,7 +151,7 @@ global.DEFINE_MODULE('console', (function () {
       msg = `${e}: ${arguments}`;
     }
 
-    logGroup('debug', msg);
+    logGroup('=debug', msg);
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -170,7 +170,7 @@ global.DEFINE_MODULE('console', (function () {
     var a = msg.split('\n');
 
     for (let i = 0; i < a.length; ++i) {
-      logGroup('debug', a[i]);
+      logGroup('=debug', a[i]);
     }
   };
 
@@ -179,7 +179,7 @@ global.DEFINE_MODULE('console', (function () {
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.dir = function (object) {
-    logGroup('info', inspect(object));
+    logGroup('=info', inspect(object));
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -195,7 +195,7 @@ global.DEFINE_MODULE('console', (function () {
       msg = `${e}: ${arguments}`;
     }
 
-    logGroup('error', msg);
+    logGroup('=error', msg);
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -213,7 +213,7 @@ global.DEFINE_MODULE('console', (function () {
 
     var a = msg.split('\n');
     for (let i = 0; i < a.length; ++i) {
-      logGroup('error', a[i]);
+      logGroup('=error', a[i]);
     }
   };
 
@@ -240,7 +240,7 @@ global.DEFINE_MODULE('console', (function () {
     }
 
     groupLevel = groupLevel + '  ';
-    logGroup('info', msg);
+    logGroup('=info', msg);
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -256,7 +256,7 @@ global.DEFINE_MODULE('console', (function () {
       msg = `${e}: ${arguments}`;
     }
 
-    logGroup('info', msg);
+    logGroup('=info', msg);
     groupLevel = groupLevel + '  ';
   };
 
@@ -266,6 +266,21 @@ global.DEFINE_MODULE('console', (function () {
 
   exports.groupEnd = function () {
     groupLevel = groupLevel.substr(2);
+  };
+
+  // logs with a given topic
+  exports.topic = function () {
+    var msg;
+
+    var topic = Array.prototype.shift.apply(arguments);
+
+    try {
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
+    } catch (e) {
+      msg = `${e}: ${arguments}`;
+    }
+
+    logGroup(topic, msg);
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -280,7 +295,7 @@ global.DEFINE_MODULE('console', (function () {
     } catch (e) {
       msg = `${e}: ${arguments}`;
     }
-    logGroup('info', msg);
+    logGroup('=info', msg);
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -299,7 +314,7 @@ global.DEFINE_MODULE('console', (function () {
     var a = msg.split('\n');
 
     for (let i = 0; i < a.length; ++i) {
-      logGroup('info', a[i]);
+      logGroup('=info', a[i]);
     }
   };
 
@@ -346,7 +361,7 @@ global.DEFINE_MODULE('console', (function () {
 
     delete timers[symbol];
 
-    logGroup('info', sprintf('%s: %dms', label, duration));
+    logGroup('=info', sprintf('%s: %dms', label, duration));
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -363,7 +378,7 @@ global.DEFINE_MODULE('console', (function () {
       a.pop();
     }
     for (let i = 0; i < a.length; ++i) {
-      logGroup('info', a[i]);
+      logGroup('=info', a[i]);
     }
   };
 
@@ -380,7 +395,7 @@ global.DEFINE_MODULE('console', (function () {
       msg = `${e}: ${arguments}`;
     }
 
-    logGroup('warning', msg);
+    logGroup('=warning', msg);
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -400,7 +415,7 @@ global.DEFINE_MODULE('console', (function () {
     var i;
 
     for (i = 0; i < a.length; ++i) {
-      logGroup('warning', a[i]);
+      logGroup('=warning', a[i]);
     }
   };
 
