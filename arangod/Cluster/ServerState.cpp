@@ -258,21 +258,20 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role,
   std::string roleName =
     ((role == ROLE_COORDINATOR) ? "Coordinators":"DBServers");
 
-  std::string locinf = "Target/MapLocalToID/" + localInfoEncoded;
-  std::string idinf  = "Plan/" + roleName + "/" + _id;
+  std::string locinf = "Target/MapLocalToID/" +
+    (localInfoEncoded.empty() ? "bogus_hass_hund" : localInfoEncoded);
+  std::string idinf  = "Plan/" + roleName + "/" + 
+    (_id.empty() ? "bogus_hass_hund" : _id);
 
   typedef std::pair<AgencyOperation,AgencyPrecondition> operationType;
   AgencyGeneralTransaction reg;
   reg.operations.push_back( // my-local-info
     operationType(AgencyOperation(locinf), AgencyPrecondition()));
-  if (!_id.empty()) {
-    reg.operations.push_back( // my-id
-      operationType(AgencyOperation(idinf), AgencyPrecondition()));
-  }
+  reg.operations.push_back( // my-id
+    operationType(AgencyOperation(idinf), AgencyPrecondition()));
   result = comm.sendTransactionWithFailover(reg, 0.0);
-  std::string id;
-  bool found = false;
 
+  std::string id;
   if (result.slice().isArray()) {
     
     VPackSlice targetSlice, planSlice;
@@ -282,33 +281,31 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role,
           std::vector<std::string>({AgencyCommManager::path(), "Plan",
                 roleName, _id}));
       } catch (...) {}
+    } else if (!localInfoEncoded.empty()) {
+      try {
+        targetSlice = result.slice()[0].get(
+          std::vector<std::string>({AgencyCommManager::path(), "Target",
+                "MapLocalToID", localInfoEncoded}));
+      } catch (...) {}
     }
     
-    try {
-      targetSlice = result.slice()[0].get(
-        std::vector<std::string>({AgencyCommManager::path(), "Target",
-              "MapLocalToID", localInfoEncoded}));
-    } catch (...) {}
-
     if (planSlice.isString()) {
       id = _id;
-      found = true;
     } else if (targetSlice.isString()) {
       id = targetSlice.copyString();
-      found = true;
     } 
-
+    
   }
-
+  
   id = createIdForRole(comm, role, id);
-
+  
   const std::string agencyKey = roleToAgencyKey(role);
   const std::string planKey = "Plan/" + agencyKey + "/" + id;
   const std::string currentKey = "Current/" + agencyKey + "/" + id;
 
   auto builder = std::make_shared<VPackBuilder>();
   result = comm.getValues(planKey);
-  found = true;
+  bool found = true;
   if (!result.successful()) {
     found = false;
   } else {
