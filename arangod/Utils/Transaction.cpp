@@ -2565,9 +2565,9 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
 
   LogicalCollection* collection = cursor->collection();
   auto cb = [&] (DocumentIdentifierToken const& token) {
-    if (collection->readDocument(this, mmdr, element)) {
+    if (collection->readDocument(this, mmdr, token)) {
       uint8_t const* vpack = mmdr.vpack();
-      resultBuilder.addExternal(vpack);
+      resultBuilder.add(VPackSlice(vpack));
     }
   };
   
