@@ -47,7 +47,7 @@ LogTopic Logger::COMMUNICATION("communication", LogLevel::INFO);
 LogTopic Logger::COMPACTOR("compactor");
 LogTopic Logger::CONFIG("config");
 LogTopic Logger::DATAFILES("datafiles", LogLevel::INFO);
-LogTopic Logger::DEVEL("development", LogLevel::DEBUG);
+LogTopic Logger::DEVEL("development", LogLevel::FATAL);
 LogTopic Logger::GRAPHS("graphs", LogLevel::INFO);
 LogTopic Logger::HEARTBEAT("heartbeat", LogLevel::INFO);
 LogTopic Logger::MEMORY("memory", LogLevel::FATAL);  // suppress
