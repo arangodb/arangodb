@@ -68,9 +68,6 @@ struct ConstDistanceExpanderLocal {
   /// @brief Defines if this expander follows the edges in reverse
   bool _isReverse;
 
-  /// @brief Local cursor vector
-  std::vector<DocumentIdentifierToken> _cursor;
-
  public:
   ConstDistanceExpanderLocal(ShortestPathBlock const* block,
                              bool isReverse)
@@ -88,31 +85,25 @@ struct ConstDistanceExpanderLocal {
         edgeCursor = edgeCollection->getEdges(v, mmdr);
       }
     
-      // Clear the local cursor before using the
-      // next edge cursor.
-      // While iterating over the edge cursor, _cursor
-      // has to stay intact.
-      _cursor.clear();
       LogicalCollection* collection = edgeCursor->collection();
-      while (edgeCursor->hasMore()) {
-        edgeCursor->getMoreTokens(_cursor, 1000);
-        for (auto const& element : _cursor) {
-          if (collection->readDocument(_block->transaction(), *mmdr, element)) {
-            VPackSlice edge(mmdr->vpack());
-            VPackSlice from =
-                arangodb::Transaction::extractFromFromDocument(edge);
-            if (from == v) {
-              VPackSlice to = arangodb::Transaction::extractToFromDocument(edge);
-              if (to != v) {
-                resEdges.emplace_back(edge);
-                neighbors.emplace_back(to);
-              }
-            } else {
+      auto cb = [&] (DocumentIdentifierToken const& element) {
+        if (collection->readDocument(_block->transaction(), *mmdr, element)) {
+          VPackSlice edge(mmdr->vpack());
+          VPackSlice from =
+              arangodb::Transaction::extractFromFromDocument(edge);
+          if (from == v) {
+            VPackSlice to = arangodb::Transaction::extractToFromDocument(edge);
+            if (to != v) {
               resEdges.emplace_back(edge);
-              neighbors.emplace_back(from);
+              neighbors.emplace_back(to);
             }
+          } else {
+            resEdges.emplace_back(edge);
+            neighbors.emplace_back(from);
           }
         }
+      };
+      while (edgeCursor->getMore(cb, 1000)) {
       }
     }
   }
@@ -218,7 +209,6 @@ struct EdgeWeightExpanderLocal {
   void operator()(VPackSlice const& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
     ManagedDocumentResult* mmdr = _block->_mmdr.get();
-    std::vector<DocumentIdentifierToken> cursor;
     std::unique_ptr<arangodb::OperationCursor> edgeCursor;
     std::unordered_map<VPackSlice, size_t> candidates;
     for (auto const& edgeCollection : _block->_collectionInfos) {
@@ -231,28 +221,23 @@ struct EdgeWeightExpanderLocal {
       
       candidates.clear();
 
-      // Clear the local cursor before using the
-      // next edge cursor.
-      // While iterating over the edge cursor, _cursor
-      // has to stay intact.
-      cursor.clear();
       LogicalCollection* collection = edgeCursor->collection();
-      while (edgeCursor->hasMore()) {
-        edgeCursor->getMoreTokens(cursor, 1000);
-        for (auto const& element : cursor) {
-          if (collection->readDocument(_block->transaction(), *mmdr, element)) {
-            VPackSlice edge(mmdr->vpack());
-            VPackSlice from =
-                arangodb::Transaction::extractFromFromDocument(edge);
-            VPackSlice to = arangodb::Transaction::extractToFromDocument(edge);
-            double currentWeight = edgeCollection->weightEdge(edge);
-            if (from == source) {
-              inserter(candidates, result, from, to, currentWeight, edge);
-            } else {
-              inserter(candidates, result, to, from, currentWeight, edge);
-            }
+      auto cb = [&] (DocumentIdentifierToken const& element) {
+        if (collection->readDocument(_block->transaction(), *mmdr, element)) {
+          VPackSlice edge(mmdr->vpack());
+          VPackSlice from =
+              arangodb::Transaction::extractFromFromDocument(edge);
+          VPackSlice to = arangodb::Transaction::extractToFromDocument(edge);
+          double currentWeight = edgeCollection->weightEdge(edge);
+          if (from == source) {
+            inserter(candidates, result, from, to, currentWeight, edge);
+          } else {
+            inserter(candidates, result, to, from, currentWeight, edge);
           }
         }
+      };
+ 
+      while (edgeCursor->getMore(cb, 1000)) {
       }
     }
   }

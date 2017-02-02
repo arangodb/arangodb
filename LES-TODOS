@@ -117,3 +117,4 @@ OpenIssues Hacki
 * HashIndex Lookup into a still local buffer, could be replaced by callback as well.
 * SingleServerTraverser API does NOT takeover responsibility for slice data. getMore() hapes slices to not go away
   * This API can be improved if we make better use of those callbacks.
+* ShortestPathBlock does assume that slices do not walk away.
