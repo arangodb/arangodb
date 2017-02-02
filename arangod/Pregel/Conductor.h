@@ -97,7 +97,7 @@ class Conductor {
 
   // === REST callbacks ===
   void finishedWorkerStartup(VPackSlice data);
-  void finishedWorkerStep(VPackSlice data, VPackBuilder& response);
+  VPackBuilder finishedWorkerStep(VPackSlice data);
   void finishedRecoveryStep(VPackSlice data);
 
  public:

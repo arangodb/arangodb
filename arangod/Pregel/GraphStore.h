@@ -86,7 +86,7 @@ class GraphStore {
   uint64_t localEdgeCount() const { return _localEdgeCount; }
 
   // ====================== NOT THREAD SAFE ===========================
-  void loadShards(WorkerConfig* state, std::function<void()> const& callback);
+  void loadShards(WorkerConfig* state, std::function<void()> callback);
   void loadDocument(WorkerConfig* config, std::string const& documentID);
   void loadDocument(WorkerConfig* config, prgl_shard_t sourceShard,
                     std::string const& _key);

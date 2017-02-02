@@ -233,7 +233,7 @@ void Conductor::finishedWorkerStartup(VPackSlice data) {
 /// Will optionally send a response, to notify the worker of converging
 /// aggregator
 /// values which can be coninually updated (in async mode)
-void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder& response) {
+VPackBuilder Conductor::finishedWorkerStep(VPackSlice data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   // this method can be called multiple times in a superstep depending on
   // whether we are in the async mode
@@ -242,7 +242,7 @@ void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder& response) {
       !(_state == ExecutionState::RUNNING ||
         _state == ExecutionState::CANCELED)) {
     LOG(WARN) << "Conductor did received a callback from the wrong superstep";
-    return;
+    return VPackBuilder();
   }
 
   // track message counts to decide when to halt or add global barriers.
@@ -253,10 +253,11 @@ void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder& response) {
     _ensureUniqueResponse(data);
     // wait for the last worker to respond
     if (_respondedServers.size() != _dbServers.size()) {
-      return;
+      return VPackBuilder();
     }
   } else if (_statistics.clientCount() < _dbServers.size() ||  // no messages
              !_statistics.allMessagesProcessed()) {  // haven't received msgs
+    VPackBuilder response;
     if (_aggregators->parseValues(data)) {
       if (_masterContext) {
         _masterContext->postLocalSuperstep();
@@ -268,7 +269,7 @@ void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder& response) {
       }
       response.close();
     }
-    return;
+    return response;
   }
 
   LOG(INFO) << "Finished gss " << _globalSuperstep << " in "
@@ -290,6 +291,7 @@ void Conductor::finishedWorkerStep(VPackSlice data, VPackBuilder& response) {
       LOG(WARN) << "No further action taken after receiving all responses";
     }
   });
+  return VPackBuilder();
 }
 
 void Conductor::finishedRecoveryStep(VPackSlice data) {

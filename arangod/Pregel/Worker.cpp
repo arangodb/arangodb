@@ -109,7 +109,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
     // initialization of the graphstore might take an undefined amount
     // of time. Therefore this is performed asynchronous
     ThreadPool* pool = PregelFeature::instance()->threadPool();
-    pool->enqueue([this, &callback] {
+    pool->enqueue([this, callback] {
       _graphStore->loadShards(&_config, callback);
     });
   }
@@ -130,8 +130,7 @@ Worker<V, E, M>::~Worker() {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
-                                        VPackBuilder& response) {
+VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
@@ -191,6 +190,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
 
   // responds with info which allows the conductor to decide whether
   // to start the next GSS or end the execution
+  VPackBuilder response;
   response.openObject();
   response.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
   response.add(Utils::activeCountKey, VPackValue(_activeCount));
@@ -201,6 +201,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
   response.close();
 
   LOG(INFO) << "Responded: " << response.toJson();
+  return response;
 }
 
 template <typename V, typename E, typename M>

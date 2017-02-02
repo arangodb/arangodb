@@ -41,8 +41,7 @@ namespace pregel {
 class IWorker {
  public:
   virtual ~IWorker(){};
-  virtual void prepareGlobalStep(VPackSlice const& data,
-                                 VPackBuilder& response) = 0;
+  virtual VPackBuilder prepareGlobalStep(VPackSlice const& data) = 0;
   virtual void startGlobalStep(
       VPackSlice const& data) = 0;  // called by coordinator
   virtual void cancelGlobalStep(
@@ -132,8 +131,7 @@ class Worker : public IWorker {
   ~Worker();
 
   // ====== called by rest handler =====
-  void prepareGlobalStep(VPackSlice const& data,
-                         VPackBuilder& response) override;
+  VPackBuilder prepareGlobalStep(VPackSlice const& data) override;
   void startGlobalStep(VPackSlice const& data) override;
   void cancelGlobalStep(VPackSlice const& data) override;
   void receivedMessages(VPackSlice const& data) override;
