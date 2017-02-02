@@ -257,7 +257,7 @@ bool Agent::recvAppendEntriesRPC(
   term_t term, std::string const& leaderId, index_t prevIndex, term_t prevTerm,
   index_t leaderCommitIndex, query_t const& queries) {
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Got AppendEntriesRPC from "
+  LOG_TOPIC(TRACE, Logger::AGENCY) << "Got AppendEntriesRPC from "
     << leaderId << " with term " << term;
 
   // Update commit index
