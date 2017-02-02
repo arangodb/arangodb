@@ -525,9 +525,16 @@ function synchronizeOneShard (database, shard, planId, leader) {
     if (isStopping()) {
       throw 'server is shutting down';
     }
+    let startTime = new Date();
     sy = rep.syncCollection(shard,
       { endpoint: ep, incremental: true,
       keepBarrier: true, useCollectionId: false });
+    let endTime = new Date();
+    let vorsicht = false;
+    if (endTime - startTime > 5000) {
+      console.error('synchronizeOneShard: long call to syncCollection for shard', shard, JSON.stringify(sy), "start time: ", startTime.toString(), "end time: ", endTime.toString());
+      vorsicht = true;
+    }
     if (sy.error) {
       console.error('synchronizeOneShard: could not initially synchronize',
         'shard ', shard, sy);
@@ -535,7 +542,13 @@ function synchronizeOneShard (database, shard, planId, leader) {
     } else {
       if (sy.collections.length === 0 ||
         sy.collections[0].name !== shard) {
+        if (vorsicht) {
+          console.error(new Date().toString());
+        }
         cancelBarrier(ep, database, sy.barrierId);
+        if (vorsicht) {
+          console.error(new Date().toString());
+        }
         throw 'Shard ' + shard + ' seems to be gone from leader!';
       } else {
         // Now start a read transaction to stop writes:
