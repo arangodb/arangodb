@@ -25,11 +25,13 @@
 #define ARANGOD_AQL_BLOCK_COLLECTOR_H 1
 
 #include "Basics/Common.h"
+#include "Basics/SmallVector.h"
+#include "Aql/types.h"
 
 namespace arangodb {
 namespace aql {
 class AqlItemBlock;
-class ResourceMonitor;
+struct ResourceMonitor;
 
 class BlockCollector {
   friend class AqlItemBlock;
@@ -42,16 +44,18 @@ class BlockCollector {
   ~BlockCollector();
 
   size_t totalSize() const;
-  size_t nrRegs() const;
+  RegisterId nrRegs() const;
 
   void clear();
   
   void add(std::unique_ptr<AqlItemBlock> block);
+  void add(AqlItemBlock* block);
 
   AqlItemBlock* steal(ResourceMonitor*);
 
  private:
-  std::vector<AqlItemBlock*> _blocks;
+  SmallVector<AqlItemBlock*>::allocator_type::arena_type _arena;
+  SmallVector<AqlItemBlock*> _blocks;
   size_t _totalSize;
 };
 

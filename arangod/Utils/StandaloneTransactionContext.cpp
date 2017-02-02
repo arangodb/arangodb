@@ -23,7 +23,7 @@
 
 #include "StandaloneTransactionContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/transaction.h"
+#include "Utils/TransactionState.h"
 
 using namespace arangodb;
 
@@ -66,7 +66,7 @@ CollectionNameResolver const* StandaloneTransactionContext::getResolver() {
 /// @brief get parent transaction (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_transaction_t* StandaloneTransactionContext::getParentTransaction() const {
+TransactionState* StandaloneTransactionContext::getParentTransaction() const {
   return nullptr;
 }
 
@@ -74,7 +74,7 @@ TRI_transaction_t* StandaloneTransactionContext::getParentTransaction() const {
 /// @brief register the transaction in the context
 ////////////////////////////////////////////////////////////////////////////////
 
-int StandaloneTransactionContext::registerTransaction(TRI_transaction_t* trx) {
+int StandaloneTransactionContext::registerTransaction(TransactionState* trx) {
   return TRI_ERROR_NO_ERROR;
 }
 

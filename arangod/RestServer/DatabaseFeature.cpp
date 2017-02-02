@@ -41,8 +41,10 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/MMFilesWalMarker.h"
-#include "StorageEngine/MMFilesWalSlots.h"
+#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesPersistentIndex.h"
+#include "MMFiles/MMFilesWalMarker.h"
+#include "MMFiles/MMFilesWalSlots.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
@@ -53,9 +55,6 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/vocbase.h"
-#include "Wal/LogfileManager.h"
-
-#include "Indexes/RocksDBIndex.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -173,11 +172,9 @@ void DatabaseManagerThread::run() {
             database->shutdown();
             usleep(10000);
           };
-          while (!arangodb::wal::LogfileManager::instance()
-                      ->executeWhileNothingQueued(callback)) {
-            LOG(DEBUG) << "Trying to shutdown dropped database, waiting for "
-                          "phase in which the collector thread does not have "
-                          "queued operations.";
+          while (!MMFilesLogfileManager::instance()
+                  ->executeWhileNothingQueued(callback)) {
+            LOG(TRACE) << "Trying to shutdown dropped database, waiting for phase in which the collector thread does not have queued operations.";
             usleep(500000);
           }
 
@@ -252,9 +249,8 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("Authentication");
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
-  startsAfter("LogfileManager");
+  startsAfter("MMFilesLogfileManager");
   startsAfter("InitDatabase");
-  startsAfter("RevisionCache");
 }
 
 DatabaseFeature::~DatabaseFeature() {
@@ -398,7 +394,7 @@ void DatabaseFeature::beginShutdown() {
 }
 
 void DatabaseFeature::stop() {
-  auto logfileManager = arangodb::wal::LogfileManager::instance();
+  auto logfileManager = MMFilesLogfileManager::instance();
   logfileManager->flush(true, true, false);
   logfileManager->waitForCollector();
 }
@@ -598,7 +594,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     // create app directory for database if it does not exist
     int res = createApplicationDirectory(name, appPath);
 
-    if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
+    if (!MMFilesLogfileManager::instance()->isInRecovery()) {
       // starts compactor etc.
       engine->recoveryDone(vocbase.get());
 
@@ -1126,7 +1122,7 @@ int DatabaseFeature::createApplicationDirectory(std::string const& name,
     res = TRI_CreateRecursiveDirectory(path.c_str(), systemError, errorMessage);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
+      if (MMFilesLogfileManager::instance()->isInRecovery()) {
         LOG(TRACE) << "created application directory '" << path
                    << "' for database '" << name << "'";
       } else {
@@ -1321,7 +1317,7 @@ int DatabaseFeature::writeCreateMarker(TRI_voc_tick_t id,
     MMFilesDatabaseMarker marker(TRI_DF_MARKER_VPACK_CREATE_DATABASE, id,
                                  slice);
     MMFilesWalSlotInfoCopy slotInfo =
-        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -1356,7 +1352,7 @@ int DatabaseFeature::writeDropMarker(TRI_voc_tick_t id) {
                                  builder.slice());
 
     MMFilesWalSlotInfoCopy slotInfo =
-        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {

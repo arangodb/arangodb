@@ -25,7 +25,7 @@
 #define ARANGOD_SINGLE_SERVER_TRAVERSER_H 1
 
 #include "Aql/AqlValue.h"
-#include "Indexes/IndexElement.h"
+#include "Indexes/IndexIterator.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/Traverser.h"
 #include "VocBase/TraverserOptions.h"
@@ -33,7 +33,7 @@
 
 namespace arangodb {
 
-class EdgeIndex;
+class MMFilesEdgeIndex;
 class LogicalCollection;
 class ManagedDocumentResult;
 
@@ -48,7 +48,7 @@ class SingleServerEdgeCursor : public EdgeCursor {
   std::vector<std::vector<OperationCursor*>> _cursors;
   size_t _currentCursor;
   size_t _currentSubCursor;
-  std::vector<IndexLookupResult> _cache;
+  std::vector<DocumentIdentifierToken> _cache;
   size_t _cachePos;
   std::vector<size_t> const* _internalCursorMapping;
 

@@ -1,4 +1,7 @@
 #!/bin/bash
+# To install the build libraries needed by this script run:
+# `sudo apt-get install cmake libjemalloc-dev libssl-dev libreadline-dev`
+# After the packages are built you will find them in /var/tmp
 
 set -e
 

@@ -36,14 +36,14 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ClusterMethods.h"
-#include "Indexes/PrimaryIndex.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/MMFilesEngine.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utils/TransactionHints.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -54,10 +54,10 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
-#include "Wal/LogfileManager.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/AggregatorHandler.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HexDump.h>
@@ -333,8 +333,8 @@ static void ExistsVocbaseVPack(
   VPackSlice search = builder.slice();
   TRI_ASSERT(search.isObject());
 
-  SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_READ);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  SingleCollectionTransaction trx(transactionContext, collectionName, AccessMode::Type::READ);
+  trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
 
   res = trx.begin();
 
@@ -432,9 +432,9 @@ static void DocumentVocbaseCol(
   auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
 
   SingleCollectionTransaction trx(transactionContext, collectionName, 
-                                  TRI_TRANSACTION_READ);
+                                  AccessMode::Type::READ);
   if (!args[0]->IsArray()) {
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+    trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
   }
   
   TIMER_STOP(JS_DOCUMENT_CREATE_TRX);
@@ -519,8 +519,8 @@ static void DocumentVocbase(
   options.ignoreRevs = false;
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_READ);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+                                  AccessMode::Type::READ);
+  trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
 
   int res = trx.begin();
 
@@ -610,9 +610,9 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
 
-  SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_WRITE);
+  SingleCollectionTransaction trx(transactionContext, collectionName, AccessMode::Type::WRITE);
   if (!args[0]->IsArray()) {
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+    trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
   }
 
   int res = trx.begin();
@@ -754,8 +754,8 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(toRemove.isObject());
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+                                  AccessMode::Type::WRITE);
+  trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
 
   int res = trx.begin();
 
@@ -927,7 +927,7 @@ static void JS_FiguresVocbaseCol(
   }
     
   SingleCollectionTransaction trx(V8TransactionContext::Create(collection->vocbase(), true), collection->cid(), 
-                                  TRI_TRANSACTION_READ);
+                                  AccessMode::Type::READ);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1155,7 +1155,7 @@ static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   SingleCollectionTransaction trx(
     V8TransactionContext::Create(collection->vocbase(), true),
-    collection->cid(), TRI_TRANSACTION_READ);
+    collection->cid(), AccessMode::Type::READ);
   
   int res = trx.begin();
   
@@ -1390,10 +1390,10 @@ static void JS_PropertiesVocbaseCol(
   SingleCollectionTransaction trx(
       V8TransactionContext::Create(collection->vocbase(), true),
       collection->cid(),
-      isModification ? TRI_TRANSACTION_WRITE : TRI_TRANSACTION_READ);
+      isModification ? AccessMode::Type::WRITE : AccessMode::Type::READ);
 
   if (!isModification) {
-    trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, false);
+    trx.addHint(TransactionHints::Hint::NO_USAGE_LOCK, false);
   }
   
   int res = trx.begin();
@@ -1433,7 +1433,7 @@ static void JS_PropertiesVocbaseCol(
 
         MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, collection->vocbase()->id(), collection->cid(), infoBuilder.slice());
         MMFilesWalSlotInfoCopy slotInfo =
-            arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+            MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
 
         if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
@@ -1802,9 +1802,9 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   
   // Now start the transaction:
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_WRITE);
+                                  AccessMode::Type::WRITE);
   if (!args[0]->IsArray()) {
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+    trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
   }
 
   int res = trx.begin();
@@ -1930,8 +1930,8 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   LocalCollectionGuard g(const_cast<LogicalCollection*>(col));
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  TRI_TRANSACTION_WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+                                  AccessMode::Type::WRITE);
+  trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2156,7 +2156,7 @@ static int GetRevision(arangodb::LogicalCollection* collection, TRI_voc_rid_t& r
 
   SingleCollectionTransaction trx(
       V8TransactionContext::Create(collection->vocbase(), true),
-      collection->cid(), TRI_TRANSACTION_READ);
+      collection->cid(), AccessMode::Type::READ);
 
   int res = trx.begin();
 
@@ -2248,7 +2248,7 @@ static void JS_RotateVocbaseCol(
 
   SingleCollectionTransaction trx(
       V8TransactionContext::Create(collection->vocbase(), true),
-      collection->cid(), TRI_TRANSACTION_READ);
+      collection->cid(), AccessMode::Type::READ);
 
   int res = trx.begin();
   
@@ -2334,8 +2334,8 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // load collection
   auto transactionContext(V8TransactionContext::Create(vocbase, true));
   SingleCollectionTransaction trx(transactionContext,
-                                  collectionName, TRI_TRANSACTION_WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+                                  collectionName, AccessMode::Type::WRITE);
+  trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
 
   res = trx.begin();
 
@@ -2496,9 +2496,9 @@ static void JS_InsertVocbaseCol(
       std::make_shared<V8TransactionContext>(collection->vocbase(), true);
 
   SingleCollectionTransaction trx(transactionContext, collection->cid(),
-                                  TRI_TRANSACTION_WRITE);
+                                  AccessMode::Type::WRITE);
   if (!payloadIsArray) {
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+    trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
   }
   TIMER_STOP(JS_INSERT_CREATE_TRX);
 
@@ -2595,7 +2595,7 @@ static void JS_TruncateVocbaseCol(
 
   SingleCollectionTransaction trx(
       V8TransactionContext::Create(collection->vocbase(), true),
-      collection->cid(), TRI_TRANSACTION_WRITE);
+      collection->cid(), AccessMode::Type::WRITE);
 
   int res = trx.begin();
 
@@ -3097,7 +3097,7 @@ static void JS_CountVocbaseCol(
   
   std::string collectionName(col->name());
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true), collectionName, TRI_TRANSACTION_READ);
+  SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true), collectionName, AccessMode::Type::READ);
 
   int res = trx.begin();
 

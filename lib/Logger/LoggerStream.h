@@ -54,6 +54,8 @@ class LoggerStream {
     _out << "{" + topic.name() << "} ";
     return *this;
   }
+  
+  LoggerStream& operator<<(Logger::BINARY binary);
 
   LoggerStream& operator<<(Logger::RANGE range);
 
@@ -75,20 +77,51 @@ class LoggerStream {
   }
 
   template <typename T>
-  LoggerStream& operator<<(T obj) {
+  LoggerStream& operator<<(T const& obj) {
     _out << obj;
     return *this;
   }
 
   template <typename T>
-  LoggerStream& operator<<(std::vector<T> const& v) {
-    for (auto const& i : v) _out << i << " ";
+  LoggerStream& operator<<(std::vector<T> const& obj) {
+    _out << '[';
+    size_t i = 0;
+    size_t const n = obj.size();
+    for (auto const& it : obj) {
+      if (++i < n) {
+        _out << it << ", ";
+      }
+    }
+    _out << ']';
     return *this;
   }
 
   template <typename T>
-  LoggerStream& operator<<(std::unordered_set<T> const& us) {
-    for (auto const& i : us) _out << i;
+  LoggerStream& operator<<(std::unordered_set<T> const& obj) {
+    _out << '{';
+    size_t i = 0;
+    size_t const n = obj.size();
+    for (auto const& it : obj) {
+      if (++i < n) {
+        _out << it << ", ";
+      }
+    }
+    _out << '}';
+    return *this;
+  }
+  
+  template <typename K, typename V>
+  LoggerStream& operator<<(std::unordered_map<K, V> const& obj) {
+    _out << '{';
+    size_t i = 0;
+    size_t n = obj.size();
+    for (auto const& it : obj) {
+      if (++i < n) {
+        _out << it << ", ";
+      }
+      _out << it.first << " => " << it.second;
+    }
+    _out << '}';
     return *this;
   }
 

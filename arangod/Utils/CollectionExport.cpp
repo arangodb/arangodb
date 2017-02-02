@@ -23,15 +23,15 @@
 
 #include "CollectionExport.h"
 #include "Basics/WriteLocker.h"
-#include "Indexes/PrimaryIndex.h"
+#include "MMFiles/MMFilesPrimaryIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "Utils/TransactionHints.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/RevisionCacheChunk.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -55,10 +55,6 @@ CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
 CollectionExport::~CollectionExport() {
   if (_ditch != nullptr) {
     _ditch->ditches()->freeDocumentDitch(_ditch, false);
-  }
-
-  for (auto& chunk : _chunks) {
-    chunk->release();
   }
 }
 
@@ -93,10 +89,10 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   {
     SingleCollectionTransaction trx(
         StandaloneTransactionContext::Create(_collection->vocbase()), _name,
-        TRI_TRANSACTION_READ);
+        AccessMode::Type::READ);
 
     // already locked by guard above
-    trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, true);
+    trx.addHint(TransactionHints::Hint::NO_USAGE_LOCK, true);
     int res = trx.begin();
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -112,19 +108,17 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
 
     _vpack.reserve(limit);
 
-    ManagedDocumentResult mmdr(&trx);
-    trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr](SimpleIndexElement const& element) {
+    ManagedDocumentResult mmdr;
+    trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr](DocumentIdentifierToken const& token) {
       if (limit == 0) {
         return false;
       }
-      if (_collection->readRevisionConditional(&trx, mmdr, element.revisionId(), 0, true)) {
+      if (_collection->readDocumentConditional(&trx, mmdr, token, 0, true)) {
         _vpack.emplace_back(mmdr.vpack());
         --limit;
       }
       return true;
     });
-
-    trx.transactionContext()->stealChunks(_chunks);
 
     trx.finish(res);
   }

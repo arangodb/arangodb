@@ -43,8 +43,6 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-using namespace communicator;
-
 class ClusterCommThread;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +61,7 @@ typedef TRI_voc_tick_t CoordTransactionID;
 /// @brief trype of an operation ID
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef Ticket OperationID;
+typedef communicator::Ticket OperationID;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief status of an (a-)synchronous cluster operation
@@ -561,8 +559,8 @@ class ClusterComm {
     std::shared_ptr<ClusterCommResult> result;
   };
 
-  typedef std::unordered_map<Ticket, AsyncResponse>::iterator ResponseIterator;
-  std::unordered_map<Ticket, AsyncResponse> responses;
+  typedef std::unordered_map<communicator::Ticket, AsyncResponse>::iterator ResponseIterator;
+  std::unordered_map<communicator::Ticket, AsyncResponse> responses;
 
   // Receiving answers:
   std::list<ClusterCommOperation*> received;

@@ -23,11 +23,13 @@
 
 #include "SingleCollectionTransaction.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/OperationResult.h"
 #include "Utils/Transaction.h"
+#include "Utils/TransactionCollection.h"
 #include "Utils/TransactionContext.h"
+#include "Utils/TransactionState.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/transaction.h"
 
 using namespace arangodb;
 
@@ -37,7 +39,7 @@ using namespace arangodb;
 
 SingleCollectionTransaction::SingleCollectionTransaction(
   std::shared_ptr<TransactionContext> transactionContext, TRI_voc_cid_t cid, 
-  TRI_transaction_type_e accessType)
+  AccessMode::Type accessType)
       : Transaction(transactionContext),
         _cid(cid),
         _trxCollection(nullptr),
@@ -56,7 +58,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 
 SingleCollectionTransaction::SingleCollectionTransaction(
   std::shared_ptr<TransactionContext> transactionContext,
-  std::string const& name, TRI_transaction_type_e accessType)
+  std::string const& name, AccessMode::Type accessType)
       : Transaction(transactionContext),
         _cid(0),
         _trxCollection(nullptr),
@@ -73,12 +75,11 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 /// @brief get the underlying transaction collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_transaction_collection_t* SingleCollectionTransaction::trxCollection() {
+TransactionCollection* SingleCollectionTransaction::trxCollection() {
   TRI_ASSERT(_cid > 0);
 
   if (_trxCollection == nullptr) {
-    _trxCollection =
-        TRI_GetCollectionTransaction(_trx, _cid, _accessType);
+    _trxCollection = _state->collection(_cid, _accessType);
 
     if (_trxCollection != nullptr) {
       _documentCollection =
@@ -146,7 +147,7 @@ std::string SingleCollectionTransaction::name() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int SingleCollectionTransaction::lockRead() {
-  return lock(trxCollection(), TRI_TRANSACTION_READ);
+  return lock(trxCollection(), AccessMode::Type::READ);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -154,7 +155,7 @@ int SingleCollectionTransaction::lockRead() {
 //////////////////////////////////////////////////////////////////////////////
 
 int SingleCollectionTransaction::unlockRead() {
-  return unlock(trxCollection(), TRI_TRANSACTION_READ);
+  return unlock(trxCollection(), AccessMode::Type::READ);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -162,6 +163,6 @@ int SingleCollectionTransaction::unlockRead() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int SingleCollectionTransaction::lockWrite() {
-  return lock(trxCollection(), TRI_TRANSACTION_WRITE);
+  return lock(trxCollection(), AccessMode::Type::WRITE);
 }
 

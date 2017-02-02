@@ -534,7 +534,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     result.add("collections", VPackValue(VPackValueType::Array));
     result.openObject();
     result.add("name", VPackValue(shardId));
-    result.add("type", VPackValue(TRI_TransactionTypeGetStr(collection->accessType)));
+    result.add("type", VPackValue(AccessMode::typeString(collection->accessType)));
     result.close();
 
     // mop: this is currently only working for satellites and hardcoded to their structure
@@ -545,7 +545,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       result.openObject();
       auto auxiliaryShards = auxiliaryCollection->shardIds();
       result.add("name", VPackValue((*auxiliaryShards)[0]));
-      result.add("type", VPackValue(TRI_TransactionTypeGetStr(collection->accessType)));
+      result.add("type", VPackValue(AccessMode::typeString(collection->accessType)));
       result.close();
     }
     result.close(); // collections
@@ -565,9 +565,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     result.add(VPackValue("-all"));
     result.close(); // options.optimizer.rules
     result.close(); // options.optimizer
-    double tracing = query->getNumericOption("tracing", 0);
+    double tracing = query->getNumericOption<double>("tracing", 0.0);
     result.add("tracing", VPackValue(tracing));
-    double satelliteSyncWait = query->getNumericOption("satelliteSyncWait", 60.0);
+    double satelliteSyncWait = query->getNumericOption<double>("satelliteSyncWait", 60.0);
     result.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
     result.close(); // options
 

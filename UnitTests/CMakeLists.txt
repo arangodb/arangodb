@@ -56,7 +56,7 @@ endif ()
 add_executable(${TEST_GEO_SUITE}
   Geo/georeg.cpp
   ../lib/Basics/WorkMonitorDummy.cpp
-  ../arangod/GeoIndex/GeoIndex.cpp
+  ../arangod/MMFiles/geo-index.cpp
 )
 
 target_link_libraries(${TEST_GEO_SUITE}

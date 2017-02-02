@@ -27,7 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
-#include "Indexes/GeoIndex.h"
+#include "Indexes/Index.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"
@@ -189,7 +189,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("ALL(<skip>, <limit>)");
   }
 
-  arangodb::LogicalCollection const* collection =
+  arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
                                                    TRI_GetVocBaseColType());
 
@@ -214,7 +214,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::shared_ptr<V8TransactionContext> transactionContext =
       V8TransactionContext::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, collection->cid(),
-                                  TRI_TRANSACTION_READ);
+                                  AccessMode::Type::READ);
 
   int res = trx.begin();
 
@@ -254,11 +254,21 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackOptions resultOptions = VPackOptions::Defaults;
   resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler().get();
 
-  auto batch = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
-  opCursor->getMore(batch);
-  // We only need this one call, limit == batchsize
+  std::vector<DocumentIdentifierToken> batch;
+  ManagedDocumentResult mmdr;
+  VPackBuilder resultBuilder;
+  resultBuilder.openArray();
+  while (opCursor->hasMore()) {
+    opCursor->getMoreTokens(batch, 1000);
+    for (auto const& it : batch) {
+      if (collection->readDocument(&trx, mmdr, it)) {
+        resultBuilder.add(VPackSlice(mmdr.vpack()));
+      }
+    }
+  }
+  resultBuilder.close();
 
-  VPackSlice docs = batch->slice();
+  VPackSlice docs = resultBuilder.slice();
   TRI_ASSERT(docs.isArray());
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -299,7 +309,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::shared_ptr<V8TransactionContext> transactionContext =
       V8TransactionContext::Create(col->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, col->cid(),
-                                  TRI_TRANSACTION_READ);
+                                  AccessMode::Type::READ);
 
   int res = trx.begin();
 
@@ -363,7 +373,7 @@ static void JS_ChecksumCollection(
   }
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->vocbase(), true),
-                                          col->cid(), TRI_TRANSACTION_READ);
+                                          col->cid(), AccessMode::Type::READ);
 
   int res = trx.begin();
 
@@ -380,9 +390,9 @@ static void JS_ChecksumCollection(
   std::string const revisionId = TRI_RidToString(physical->revision());
   uint64_t hash = 0;
         
-  ManagedDocumentResult mmdr(&trx);
-  trx.invokeOnAllElements(col->name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](SimpleIndexElement const& element) {
-    collection->readRevision(&trx, mmdr, element.revisionId());
+  ManagedDocumentResult mmdr;
+  trx.invokeOnAllElements(col->name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](DocumentIdentifierToken const& token) {
+    collection->readDocument(&trx, mmdr, token);
     VPackSlice const slice(mmdr.vpack());
 
     uint64_t localHash = Transaction::extractKeyFromDocument(slice).hashString(); 
@@ -495,7 +505,7 @@ static void JS_FulltextQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   {
     SingleCollectionTransaction trx(
         V8TransactionContext::Create(collection->vocbase(), true),
-        collection->cid(), TRI_TRANSACTION_READ);
+        collection->cid(), AccessMode::Type::READ);
 
     int res = trx.begin();
 
@@ -569,30 +579,6 @@ static void JS_NearQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "NEAR(<index-handle>, <latitude>, <longitude>, <limit>, <distance>)");
   }
   
-  {
-    SingleCollectionTransaction trx(
-        V8TransactionContext::Create(collection->vocbase(), true),
-        collection->cid(), TRI_TRANSACTION_READ);
-
-    int res = trx.begin();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-
-    // extract the index
-    auto idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection,
-                                       args[0], false);
-
-    if (idx == nullptr ||
-        (idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX &&
-         idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
-    }
-    
-    trx.finish(TRI_ERROR_NO_ERROR);
-  }
-  
   // extract latitude, longitude, limit, distance etc.
   std::string queryString;
 
@@ -643,30 +629,6 @@ static void JS_WithinQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 4) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "WITHIN(<index-handle>, <latitude>, <longitude>, <radius>, <distance>)");
-  }
-  
-  {
-    SingleCollectionTransaction trx(
-        V8TransactionContext::Create(collection->vocbase(), true),
-        collection->cid(), TRI_TRANSACTION_READ);
-
-    int res = trx.begin();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-
-    // extract the index
-    auto idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection,
-                                       args[0], false);
-
-    if (idx == nullptr ||
-        (idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX &&
-         idx->type() != arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX)) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
-    }
-    
-    trx.finish(TRI_ERROR_NO_ERROR);
   }
   
   // extract latitude, longitude, radius, distance etc.

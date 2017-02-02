@@ -43,7 +43,7 @@
 #define BOOST_TEST_MODULE "C Unit Tests for Cambridge"
 #include <boost/test/included/unit_test.hpp>
 
-#include "GeoIndex/GeoIndex.h"
+#include "MMFiles/geo-index.h"
 #include "Basics/StringUtils.h"
 
 using namespace arangodb::basics;

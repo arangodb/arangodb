@@ -38,14 +38,14 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
-#include "FulltextIndex/fulltext-index.h"
-#include "FulltextIndex/fulltext-query.h"
-#include "FulltextIndex/fulltext-result.h"
-#include "Indexes/FulltextIndex.h"
-#include "Indexes/GeoIndex.h"
 #include "Indexes/Index.h"
 #include "Random/UniformCharacter.h"
 #include "Ssl/SslInterface.h"
+#include "MMFiles/fulltext-index.h"
+#include "MMFiles/fulltext-query.h"
+#include "MMFiles/fulltext-result.h"
+#include "MMFiles/MMFilesFulltextIndex.h"
+#include "MMFiles/MMFilesGeoIndex.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
@@ -607,7 +607,7 @@ static void GetDocumentByIdentifier(arangodb::Transaction* trx,
     }
     if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
       // special error message to indicate which collection was undeclared
-      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + collectionName + " [" + TRI_TransactionTypeGetStr(TRI_TRANSACTION_READ) + "]");
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + collectionName + " [" + AccessMode::typeString(AccessMode::Type::READ) + "]");
     }
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -692,7 +692,7 @@ static AqlValue MergeParameters(arangodb::aql::Query* query,
 }
 
 /// @brief Load geoindex for collection name
-static arangodb::GeoIndex* getGeoIndex(
+static arangodb::MMFilesGeoIndex* getGeoIndex(
     arangodb::Transaction* trx, TRI_voc_cid_t const& cid,
     std::string const& collectionName) {
   // NOTE:
@@ -709,12 +709,12 @@ static arangodb::GeoIndex* getGeoIndex(
                                   "'%s'", collectionName.c_str());
   }
 
-  arangodb::GeoIndex* index = nullptr;
+  arangodb::MMFilesGeoIndex* index = nullptr;
 
   for (auto const& idx : document->getIndexes()) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
         idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX) {
-      index = static_cast<arangodb::GeoIndex*>(idx.get());
+      index = static_cast<arangodb::MMFilesGeoIndex*>(idx.get());
       break;
     }
   }
@@ -746,11 +746,11 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
   }
 
   struct geo_coordinate_distance_t {
-    geo_coordinate_distance_t(double distance, TRI_voc_rid_t revisionId)
-        : _distance(distance), _revisionId(revisionId) {}
+    geo_coordinate_distance_t(double distance, DocumentIdentifierToken token)
+        : _distance(distance), _token(token) {}
 
     double _distance;
-    TRI_voc_rid_t _revisionId;
+    DocumentIdentifierToken _token;
   };
 
   std::vector<geo_coordinate_distance_t> distances;
@@ -761,7 +761,8 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
     for (size_t i = 0; i < nCoords; ++i) {
       distances.emplace_back(geo_coordinate_distance_t(
           cors->distances[i],
-          arangodb::GeoIndex::toRevision(cors->coordinates[i].data)));
+          arangodb::MMFilesGeoIndex::toDocumentIdentifierToken(
+              cors->coordinates[i].data)));
     }
   } catch (...) {
     GeoIndex_CoordinatesFree(cors);
@@ -778,7 +779,7 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
             });
 
   try {
-    ManagedDocumentResult mmdr(trx);
+    ManagedDocumentResult mmdr;
     TransactionBuilderLeaser builder(trx);
     builder->openArray();
     if (!attributeName.empty()) {
@@ -786,8 +787,7 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
       for (auto& it : distances) {
         VPackObjectBuilder docGuard(builder.get());
         builder->add(attributeName, VPackValue(it._distance));
-        TRI_voc_rid_t revisionId = it._revisionId;
-        if (collection->readRevision(trx, mmdr, revisionId)) {
+        if (collection->readDocument(trx, mmdr, it._token)) {
           VPackSlice doc(mmdr.vpack());
           for (auto const& entry : VPackObjectIterator(doc)) {
             std::string key = entry.key.copyString();
@@ -800,7 +800,7 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
 
     } else {
       for (auto& it : distances) {
-        if (collection->readRevision(trx, mmdr, it._revisionId)) {
+        if (collection->readDocument(trx, mmdr, it._token)) {
           builder->addExternal(mmdr.vpack());
         }
       }
@@ -2318,7 +2318,7 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
   }
 
   TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
-  arangodb::GeoIndex* index = getGeoIndex(trx, cid, collectionName);
+  arangodb::MMFilesGeoIndex* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->hasDitch(cid));
@@ -2369,7 +2369,7 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
   }
 
   TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
-  arangodb::GeoIndex* index = getGeoIndex(trx, cid, collectionName);
+  arangodb::MMFilesGeoIndex* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->hasDitch(cid));
@@ -3967,7 +3967,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
   // NOTE: The shared_ptr is protected by trx lock.
   // It is save to use the raw pointer directly.
   // We are NOT allowed to delete the index.
-  arangodb::FulltextIndex* fulltextIndex = nullptr;
+  arangodb::MMFilesFulltextIndex* fulltextIndex = nullptr;
 
   // split requested attribute name on '.' character to create a proper
   // vector of AttributeNames
@@ -3983,7 +3983,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
       if (arangodb::basics::AttributeName::isIdentical(idx->fields(), search,
                                                        false)) {
         // match!
-        fulltextIndex = static_cast<arangodb::FulltextIndex*>(idx.get());
+        fulltextIndex = static_cast<arangodb::MMFilesFulltextIndex*>(idx.get());
         break;
       }
     }
@@ -3998,7 +3998,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
   trx->orderDitch(cid);
 
   TRI_fulltext_query_t* ft =
-      TRI_CreateQueryFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS, maxResults);
+      TRI_CreateQueryMMFilesFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS, maxResults);
 
   if (ft == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -4006,16 +4006,16 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
 
   bool isSubstringQuery = false;
   int res =
-      TRI_ParseQueryFulltextIndex(ft, queryString.c_str(), &isSubstringQuery);
+      TRI_ParseQueryMMFilesFulltextIndex(ft, queryString.c_str(), &isSubstringQuery);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeQueryFulltextIndex(ft);
+    TRI_FreeQueryMMFilesFulltextIndex(ft);
     THROW_ARANGO_EXCEPTION(res);
   }
 
   // note: the following call will free "ft"!
   TRI_fulltext_result_t* queryResult =
-      TRI_QueryFulltextIndex(fulltextIndex->internals(), ft);
+      TRI_QueryMMFilesFulltextIndex(fulltextIndex->internals(), ft);
 
   if (queryResult == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -4027,19 +4027,18 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
   try {
     builder->openArray();
 
-    ManagedDocumentResult mmdr(trx);
+    ManagedDocumentResult mmdr;
     size_t const numResults = queryResult->_numDocuments;
     for (size_t i = 0; i < numResults; ++i) {
-      TRI_voc_rid_t revisionId = FulltextIndex::toRevision(queryResult->_documents[i]);
-      if (collection->readRevision(trx, mmdr, revisionId)) {
+      if (collection->readDocument(trx, mmdr, queryResult->_documents[i])) {
         builder->addExternal(mmdr.vpack());
       }
     }
     builder->close();
-    TRI_FreeResultFulltextIndex(queryResult);
+    TRI_FreeResultMMFilesFulltextIndex(queryResult);
     return AqlValue(builder.get());
   } catch (...) {
-    TRI_FreeResultFulltextIndex(queryResult);
+    TRI_FreeResultMMFilesFulltextIndex(queryResult);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 }

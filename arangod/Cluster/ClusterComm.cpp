@@ -38,6 +38,7 @@
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
+using namespace arangodb::communicator;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief routine to set the destination
@@ -574,7 +575,7 @@ ClusterCommResult const ClusterComm::wait(
   ResponseIterator i;
   AsyncResponse response;
 
-  // tell Dispatcher that we are waiting:
+  // tell scheduler that we are waiting:
   JobGuard guard{SchedulerFeature::SCHEDULER};
   guard.block();
 

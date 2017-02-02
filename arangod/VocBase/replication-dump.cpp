@@ -27,15 +27,15 @@
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
-#include "StorageEngine/MMFilesDatafile.h"
-#include "StorageEngine/MMFilesDatafileHelper.h"
-#include "StorageEngine/MMFilesWalMarker.h"
+#include "MMFiles/MMFilesDatafile.h"
+#include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesWalMarker.h"
 #include "VocBase/CompactionLocker.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
-#include "Wal/Logfile.h"
-#include "Wal/LogfileManager.h"
+#include "MMFiles/MMFilesWalLogfile.h"
 
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
@@ -653,8 +653,8 @@ int TRI_DumpLogReplication(
 
   // ask the logfile manager which datafiles qualify
   bool fromTickIncluded = false;
-  std::vector<arangodb::wal::Logfile*> logfiles =
-      arangodb::wal::LogfileManager::instance()->getLogfilesForTickRange(
+  std::vector<arangodb::MMFilesWalLogfile*> logfiles =
+      MMFilesLogfileManager::instance()->getLogfilesForTickRange(
           tickMin, tickMax, fromTickIncluded);
 
   // setup some iteration state
@@ -675,11 +675,11 @@ int TRI_DumpLogReplication(
     size_t const n = logfiles.size();
 
     for (size_t i = 0; i < n; ++i) {
-      arangodb::wal::Logfile* logfile = logfiles[i];
+      arangodb::MMFilesWalLogfile* logfile = logfiles[i];
 
       char const* ptr;
       char const* end;
-      arangodb::wal::LogfileManager::instance()->getActiveLogfileRegion(
+      MMFilesLogfileManager::instance()->getActiveLogfileRegion(
           logfile, ptr, end);
 
       while (ptr < end) {
@@ -808,7 +808,7 @@ int TRI_DumpLogReplication(
   }
 
   // always return the logfiles we have used
-  arangodb::wal::LogfileManager::instance()->returnLogfiles(logfiles);
+  MMFilesLogfileManager::instance()->returnLogfiles(logfiles);
 
   dump->_fromTickIncluded = fromTickIncluded;
 
@@ -844,8 +844,8 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
 
   // ask the logfile manager which datafiles qualify
   bool fromTickIncluded = false;
-  std::vector<arangodb::wal::Logfile*> logfiles =
-      arangodb::wal::LogfileManager::instance()->getLogfilesForTickRange(
+  std::vector<arangodb::MMFilesWalLogfile*> logfiles =
+      MMFilesLogfileManager::instance()->getLogfilesForTickRange(
           tickMin, tickMax, fromTickIncluded);
 
   // setup some iteration state
@@ -858,11 +858,11 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
     // iterate over the datafiles found
     size_t const n = logfiles.size();
     for (size_t i = 0; i < n; ++i) {
-      arangodb::wal::Logfile* logfile = logfiles[i];
+      arangodb::MMFilesWalLogfile* logfile = logfiles[i];
 
       char const* ptr;
       char const* end;
-      arangodb::wal::LogfileManager::instance()->getActiveLogfileRegion(
+      MMFilesLogfileManager::instance()->getActiveLogfileRegion(
           logfile, ptr, end);
 
       // LOG(INFO) << "scanning logfile " << i;
@@ -982,7 +982,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
   }
 
   // always return the logfiles we have used
-  arangodb::wal::LogfileManager::instance()->returnLogfiles(logfiles);
+  MMFilesLogfileManager::instance()->returnLogfiles(logfiles);
 
   return res;
 }

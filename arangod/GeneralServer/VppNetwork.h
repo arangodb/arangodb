@@ -36,7 +36,7 @@
 #include <memory>
 #include <stdexcept>
 
-using namespace arangodb;
+namespace arangodb {
 
 inline std::size_t validateAndCount(char const* vpStart,
                                     char const* vpEnd) {
@@ -344,6 +344,8 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
               uncompressedPayloadLength);
   }
   return rv;
+}
+
 }
 
 #endif

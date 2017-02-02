@@ -3953,10 +3953,10 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 // GEO RULE ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-struct GeoIndexInfo{
+struct MMFilesGeoIndexInfo{
   operator bool() const { return distanceNode && valid; }
   void invalidate() { valid = false; }
-  GeoIndexInfo()
+  MMFilesGeoIndexInfo()
     : collectionNode(nullptr)
     , executionNode(nullptr)
     , indexNode(nullptr)
@@ -3998,9 +3998,9 @@ AstNode* isValueOrRefNode(AstNode* node){
   return node;
 }
 
-GeoIndexInfo isDistanceFunction(AstNode* distanceNode, AstNode* expressionParent){
+MMFilesGeoIndexInfo isDistanceFunction(AstNode* distanceNode, AstNode* expressionParent){
   // the expression must exist and it must be a function call
-  auto rv = GeoIndexInfo{};
+  auto rv = MMFilesGeoIndexInfo{};
   if(distanceNode->type != NODE_TYPE_FCALL) {
     return rv;
   }
@@ -4019,11 +4019,11 @@ GeoIndexInfo isDistanceFunction(AstNode* distanceNode, AstNode* expressionParent
   return rv;
 }
 
-GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent){
+MMFilesGeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent){
   // binary compare must be on top
   bool dist_first = true;
   bool lessEqual = true;
-  auto rv = GeoIndexInfo{};
+  auto rv = MMFilesGeoIndexInfo{};
   if(  node->type != NODE_TYPE_OPERATOR_BINARY_GE
     && node->type != NODE_TYPE_OPERATOR_BINARY_GT
     && node->type != NODE_TYPE_OPERATOR_BINARY_LE
@@ -4045,7 +4045,7 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent){
   AstNode* first = node->getMember(0);
   AstNode* second = node->getMember(1);
 
-  auto eval_stuff = [](bool dist_first, bool lessEqual, GeoIndexInfo&& dist_fun, AstNode* value_node){
+  auto eval_stuff = [](bool dist_first, bool lessEqual, MMFilesGeoIndexInfo&& dist_fun, AstNode* value_node){
     if (dist_first && dist_fun && value_node) {
       dist_fun.within = true;
       dist_fun.range = value_node;
@@ -4069,10 +4069,10 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent){
   return rv;
 }
 
-GeoIndexInfo iterativePreorderWithCondition(EN::NodeType type, AstNode* root, GeoIndexInfo(*condition)(AstNode*, AstNode*)){
+MMFilesGeoIndexInfo iterativePreorderWithCondition(EN::NodeType type, AstNode* root, MMFilesGeoIndexInfo(*condition)(AstNode*, AstNode*)){
   // returns on first hit
   if (!root){
-    return GeoIndexInfo{};
+    return MMFilesGeoIndexInfo{};
   }
   std::vector<std::pair<AstNode*,AstNode*>> nodestack;
   nodestack.push_back({root, nullptr});
@@ -4080,7 +4080,7 @@ GeoIndexInfo iterativePreorderWithCondition(EN::NodeType type, AstNode* root, Ge
   while(nodestack.size()){
     auto current = nodestack.back();
     nodestack.pop_back();
-    GeoIndexInfo rv = condition(current.first,current.second);
+    MMFilesGeoIndexInfo rv = condition(current.first,current.second);
     if (rv) {
       return rv;
     }
@@ -4095,10 +4095,10 @@ GeoIndexInfo iterativePreorderWithCondition(EN::NodeType type, AstNode* root, Ge
       // must be the only sort condition
     }
   }
-  return GeoIndexInfo{};
+  return MMFilesGeoIndexInfo{};
 }
 
-GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionPlan* plan, GeoIndexInfo info){
+MMFilesGeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionPlan* plan, MMFilesGeoIndexInfo info){
   using SV = std::vector<std::string>;
   // first and second should be based on the same document - need to provide the document
   // in order to see which collection is bound to it and if that collections supports geo-index
@@ -4147,7 +4147,7 @@ GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pai
   return info;
 }
 
-bool checkDistanceArguments(GeoIndexInfo& info, ExecutionPlan* plan){
+bool checkDistanceArguments(MMFilesGeoIndexInfo& info, ExecutionPlan* plan){
   if(!info){
     return false;
   }
@@ -4160,8 +4160,8 @@ bool checkDistanceArguments(GeoIndexInfo& info, ExecutionPlan* plan){
   std::pair<AstNode*,AstNode*> argPair1 = { functionArguments->getMember(0), functionArguments->getMember(1) };
   std::pair<AstNode*,AstNode*> argPair2 = { functionArguments->getMember(2), functionArguments->getMember(3) };
 
-  GeoIndexInfo result1 = geoDistanceFunctionArgCheck(argPair1, plan, info /*copy*/);
-  GeoIndexInfo result2 = geoDistanceFunctionArgCheck(argPair2, plan, info /*copy*/);
+  MMFilesGeoIndexInfo result1 = geoDistanceFunctionArgCheck(argPair1, plan, info /*copy*/);
+  MMFilesGeoIndexInfo result2 = geoDistanceFunctionArgCheck(argPair2, plan, info /*copy*/);
   //info now conatins access path to collection
 
   // xor only one argument pair shall have a geoIndex
@@ -4170,7 +4170,7 @@ bool checkDistanceArguments(GeoIndexInfo& info, ExecutionPlan* plan){
     return false;
   }
 
-  GeoIndexInfo res;
+  MMFilesGeoIndexInfo res;
   if(result1){
     info = std::move(result1);
     info.constantPair = std::move(argPair2);
@@ -4183,9 +4183,9 @@ bool checkDistanceArguments(GeoIndexInfo& info, ExecutionPlan* plan){
 }
 
 //checks a single sort or filter node
-GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, ExecutionPlan* plan, ExecutionNode* n){
+MMFilesGeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, ExecutionPlan* plan, ExecutionNode* n){
   ExecutionNode* setter = nullptr;
-  auto rv = GeoIndexInfo{};
+  auto rv = MMFilesGeoIndexInfo{};
   switch(type){
     case EN::SORT: {
       auto node = static_cast<SortNode*>(n);
@@ -4268,8 +4268,8 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
 //modify plan
 
 // builds a condition that can be used with the index interface and
-// contains all parameters required by the GeoIndex 
-std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info) {
+// contains all parameters required by the MMFilesGeoIndex 
+std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, MMFilesGeoIndexInfo& info) {
   AstNode* lat = info.constantPair.first;
   AstNode* lon = info.constantPair.second;
   auto ast = plan->getAst();
@@ -4300,7 +4300,7 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& 
   return condition;
 }
 
-void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
+void replaceGeoCondition(ExecutionPlan* plan, MMFilesGeoIndexInfo& info){
   if (info.expressionParent && info.executionNodeType == EN::FILTER) {
     auto ast = plan->getAst();
     CalculationNode* newNode = nullptr;
@@ -4370,7 +4370,7 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
 }
 
 // applys the optimization for a candidate
-bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& first, GeoIndexInfo& second) {
+bool applyGeoOptimization(bool near, ExecutionPlan* plan, MMFilesGeoIndexInfo& first, MMFilesGeoIndexInfo& second) {
   if (!first && !second) {
     return false;
   }
@@ -4402,7 +4402,7 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& first, G
 
   // if executionNode is sort OR a filter without further sub conditions
   // the node can be unlinked
-  auto unlinkNode = [&](GeoIndexInfo& info) {
+  auto unlinkNode = [&](MMFilesGeoIndexInfo& info) {
     if (info && !info.expressionParent) {
       if (!arangodb::ServerState::instance()->isCoordinator() || info.executionNodeType == EN::FILTER) {
         plan->unlinkNode(info.executionNode);
@@ -4431,8 +4431,8 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
   plan->findEndNodes(nodes, true);
   //ExecutionPlan* newPlan = nullptr;
   for (auto& node : nodes) {
-    GeoIndexInfo sortInfo{};
-    GeoIndexInfo filterInfo{};
+    MMFilesGeoIndexInfo sortInfo{};
+    MMFilesGeoIndexInfo filterInfo{};
     auto current = node;
 
     while (current) {

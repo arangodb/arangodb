@@ -22,10 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RequestStatistics.h"
+#include "Basics/MutexLocker.h"
+#include "Logger/Logger.h"
 
 #include <iomanip>
-
-#include "Basics/MutexLocker.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

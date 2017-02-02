@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/transaction.h"
 
 namespace arangodb {
 

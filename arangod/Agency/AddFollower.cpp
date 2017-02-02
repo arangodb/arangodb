@@ -25,7 +25,11 @@
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 AddFollower::AddFollower(Node const& snapshot, Agent* agent,
                          std::string const& jobId, std::string const& creator,

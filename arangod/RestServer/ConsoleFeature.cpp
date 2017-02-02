@@ -23,6 +23,7 @@
 #include "ConsoleFeature.h"
 
 #include "Basics/messages.h"
+#include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/ConsoleThread.h"

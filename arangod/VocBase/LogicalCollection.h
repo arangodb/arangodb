@@ -25,6 +25,7 @@
 #define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -48,9 +49,9 @@ typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
-class CollectionRevisionsCache;
 struct DatafileStatisticsContainer;
 class Ditches;
+struct DocumentIdentifierToken;
 class FollowerInfo;
 class Index;
 class KeyGenerator;
@@ -59,7 +60,7 @@ struct MMFilesDocumentOperation;
 class MMFilesWalMarker;
 struct OperationOptions;
 class PhysicalCollection;
-class PrimaryIndex;
+class MMFilesPrimaryIndex;
 class StringRef;
 class Transaction;
 
@@ -67,7 +68,7 @@ class LogicalCollection {
   friend struct ::TRI_vocbase_t;
 
  public:
-  LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice const&,
+  LogicalCollection(TRI_vocbase_t*, velocypack::Slice const&,
                     bool isPhysical);
 
   virtual ~LogicalCollection();
@@ -101,10 +102,8 @@ class LogicalCollection {
     return name[0] == '_';
   }
 
-  static bool IsAllowedName(arangodb::velocypack::Slice parameters);
+  static bool IsAllowedName(velocypack::Slice parameters);
   static bool IsAllowedName(bool isSystem, std::string const& name);
-
-  void ensureRevisionsCache();
 
   void isInitialIteration(bool value) { _isInitialIteration = value; }
 
@@ -208,7 +207,7 @@ class LogicalCollection {
 
   void waitForSync(bool value) { _waitForSync = value; }
 
-  std::unique_ptr<arangodb::FollowerInfo> const& followers() const;
+  std::unique_ptr<FollowerInfo> const& followers() const;
 
   void setDeleted(bool);
 
@@ -217,11 +216,11 @@ class LogicalCollection {
   void setRevision(TRI_voc_rid_t, bool);
 
   // SECTION: Key Options
-  arangodb::velocypack::Slice keyOptions() const;
+  velocypack::Slice keyOptions() const;
 
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
-  inline arangodb::KeyGenerator* keyGenerator() const {
+  inline KeyGenerator* keyGenerator() const {
     return _keyGenerator.get();
   }
 
@@ -230,18 +229,19 @@ class LogicalCollection {
   // SECTION: Indexes
   uint32_t indexBuckets() const;
 
-  std::vector<std::shared_ptr<arangodb::Index>> const& getIndexes() const;
+  std::vector<std::shared_ptr<Index>> const& getIndexes() const;
 
   // WARNING: Make sure that this LogicalCollection Instance
   // is somehow protected. If it goes out of all scopes
   // or it's indexes are freed the pointer returned will get invalidated.
-  arangodb::PrimaryIndex* primaryIndex() const;
+  MMFilesPrimaryIndex* primaryIndex() const;
 
   // Adds all properties to the builder (has to be an open object)
   // Does not add Shards or Indexes
-  void getPropertiesVPack(arangodb::velocypack::Builder&,
+  void getPropertiesVPack(velocypack::Builder&,
                           bool translateCids) const;
-  void getIndexesVPack(arangodb::velocypack::Builder&, bool) const;
+  
+  void getIndexesVPack(velocypack::Builder&, bool) const;
 
   // SECTION: Replication
   int replicationFactor() const;
@@ -257,7 +257,7 @@ class LogicalCollection {
 
   /// @brief a method to skip certain documents in AQL write operations,
   /// this is only used in the enterprise edition for smart graphs
-  virtual bool skipForAqlWrite(arangodb::velocypack::Slice document,
+  virtual bool skipForAqlWrite(velocypack::Slice document,
                                std::string const& key) const;
 
   // SECTION: Modification Functions
@@ -268,22 +268,22 @@ class LogicalCollection {
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialisation
-  void toVelocyPack(arangodb::velocypack::Builder&, bool withPath) const;
-  virtual void toVelocyPackForAgency(arangodb::velocypack::Builder&);
-  virtual void toVelocyPackForClusterInventory(arangodb::velocypack::Builder&,
+  void toVelocyPack(velocypack::Builder&, bool withPath) const;
+  virtual void toVelocyPackForAgency(velocypack::Builder&);
+  virtual void toVelocyPackForClusterInventory(velocypack::Builder&,
                                                bool useSystem) const;
 
   /// @brief transform the information for this collection to velocypack
   ///        The builder has to be an opened Type::Object
-  void toVelocyPack(arangodb::velocypack::Builder&, bool, TRI_voc_tick_t);
+  void toVelocyPack(velocypack::Builder&, bool, TRI_voc_tick_t);
 
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 
   // Update this collection.
-  virtual int update(arangodb::velocypack::Slice const&, bool);
+  virtual int update(velocypack::Slice const&, bool);
 
   /// @brief return the figures for a collection
-  virtual std::shared_ptr<arangodb::velocypack::Builder> figures();
+  virtual std::shared_ptr<velocypack::Builder> figures();
 
   /// @brief opens an existing collection
   void open(bool ignoreErrors);
@@ -320,16 +320,16 @@ class LogicalCollection {
   bool tryLockForCompaction() { return getPhysical()->tryLockForCompaction(); }
   void finishCompaction() { getPhysical()->finishCompaction(); }
 
-  void sizeHint(arangodb::Transaction* trx, int64_t hint);
+  void sizeHint(Transaction* trx, int64_t hint);
 
   // SECTION: Indexes
 
   /// @brief Create a new Index based on VelocyPack description
-  virtual std::shared_ptr<arangodb::Index> createIndex(
-      arangodb::Transaction*, arangodb::velocypack::Slice const&, bool&);
+  virtual std::shared_ptr<Index> createIndex(
+      Transaction*, velocypack::Slice const&, bool&);
 
   /// @brief Find index by definition
-  std::shared_ptr<Index> lookupIndex(arangodb::velocypack::Slice const&) const;
+  std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const;
 
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
@@ -337,22 +337,22 @@ class LogicalCollection {
   // SECTION: Indexes (local only)
 
   /// @brief Detect all indexes form file
-  int detectIndexes(arangodb::Transaction* trx);
+  int detectIndexes(Transaction* trx);
 
   /// @brief Restores an index from VelocyPack.
-  int restoreIndex(arangodb::Transaction*, arangodb::velocypack::Slice const&,
-                   std::shared_ptr<arangodb::Index>&);
+  int restoreIndex(Transaction*, velocypack::Slice const&,
+                   std::shared_ptr<Index>&);
 
   /// @brief Exposes a pointer to index list
-  std::vector<std::shared_ptr<arangodb::Index>> const* indexList() const;
+  std::vector<std::shared_ptr<Index>> const* indexList() const;
 
   /// @brief Fill indexes used in recovery
-  int fillIndexes(arangodb::Transaction*,
-                  std::vector<std::shared_ptr<arangodb::Index>> const&,
+  int fillIndexes(Transaction*,
+                  std::vector<std::shared_ptr<Index>> const&,
                   bool skipPersistent = true);
 
   /// @brief Saves Index to file
-  int saveIndex(arangodb::Index* idx, bool writeMarker);
+  int saveIndex(Index* idx, bool writeMarker);
 
   bool dropIndex(TRI_idx_iid_t iid, bool writeMarker);
 
@@ -360,48 +360,50 @@ class LogicalCollection {
 
   // SECTION: Index access (local only)
 
-  int read(arangodb::Transaction*, std::string const&,
+  int read(Transaction*, std::string const&,
            ManagedDocumentResult& result, bool);
-  int read(arangodb::Transaction*, arangodb::StringRef const&,
+  int read(Transaction*, StringRef const&,
            ManagedDocumentResult& result, bool);
 
   /// @brief processes a truncate operation (note: currently this only clears
   /// the read-cache
   int truncate(Transaction* trx);
-  int insert(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             ManagedDocumentResult& result, arangodb::OperationOptions&,
+  int insert(Transaction*, velocypack::Slice const,
+             ManagedDocumentResult& result, OperationOptions&,
              TRI_voc_tick_t&, bool);
-  int update(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             ManagedDocumentResult& result, arangodb::OperationOptions&,
+  int update(Transaction*, velocypack::Slice const,
+             ManagedDocumentResult& result, OperationOptions&,
              TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
              ManagedDocumentResult& previous);
-  int replace(arangodb::Transaction*, arangodb::velocypack::Slice const,
-              ManagedDocumentResult& result, arangodb::OperationOptions&,
+  int replace(Transaction*, velocypack::Slice const,
+              ManagedDocumentResult& result, OperationOptions&,
               TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
               ManagedDocumentResult& previous);
-  int remove(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             arangodb::OperationOptions&, TRI_voc_tick_t&, bool,
+  int remove(Transaction*, velocypack::Slice const,
+             OperationOptions&, TRI_voc_tick_t&, bool,
              TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
   /// @brief removes a document or edge, fast path function for database
   /// documents
-  int remove(arangodb::Transaction*, TRI_voc_rid_t oldRevisionId,
-             arangodb::velocypack::Slice const, arangodb::OperationOptions&,
+  int remove(Transaction*, TRI_voc_rid_t oldRevisionId,
+             velocypack::Slice const, OperationOptions&,
              TRI_voc_tick_t&, bool);
 
-  int rollbackOperation(arangodb::Transaction*, TRI_voc_document_operation_e,
+  int rollbackOperation(Transaction*, TRI_voc_document_operation_e,
                         TRI_voc_rid_t oldRevisionId,
-                        arangodb::velocypack::Slice const& oldDoc,
+                        velocypack::Slice const& oldDoc,
                         TRI_voc_rid_t newRevisionId,
-                        arangodb::velocypack::Slice const& newDoc);
+                        velocypack::Slice const& newDoc);
 
   int beginReadTimed(bool useDeadlockDetector, double timeout = 0.0);
   int beginWriteTimed(bool useDeadlockDetector, double timeout = 0.0);
   int endRead(bool useDeadlockDetector);
   int endWrite(bool useDeadlockDetector);
+  bool readDocument(Transaction*, ManagedDocumentResult& result, DocumentIdentifierToken const& token);
+  bool readDocumentConditional(Transaction*, ManagedDocumentResult& result, DocumentIdentifierToken const& token, TRI_voc_tick_t maxTick, bool excludeWal);
 
-  bool readRevision(arangodb::Transaction*, ManagedDocumentResult& result,
+  bool readRevision(Transaction*, ManagedDocumentResult& result,
                     TRI_voc_rid_t revisionId);
-  bool readRevisionConditional(arangodb::Transaction*,
+  bool readRevisionConditional(Transaction*,
                                ManagedDocumentResult& result,
                                TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick,
                                bool excludeWal);
@@ -415,7 +417,6 @@ class LogicalCollection {
                                  TRI_df_marker_t const* newPosition,
                                  TRI_voc_fid_t newFid, bool isInWal);
   void removeRevision(TRI_voc_rid_t revisionId, bool updateStats);
-  void removeRevisionCacheEntry(TRI_voc_rid_t revisionId);
 
  private:
   // SECTION: Index creation
@@ -427,91 +428,91 @@ class LogicalCollection {
 
   bool removeIndex(TRI_idx_iid_t iid);
 
-  void addIndex(std::shared_ptr<arangodb::Index>);
-  void addIndexCoordinator(std::shared_ptr<arangodb::Index>, bool);
+  void addIndex(std::shared_ptr<Index>);
+  void addIndexCoordinator(std::shared_ptr<Index>, bool);
 
   // SECTION: Indexes (local only)
 
   // TODO Make Private and IndexFiller as friend
   /// @brief initializes an index with all existing documents
-  void fillIndex(arangodb::basics::LocalTaskQueue*, arangodb::Transaction*,
-                 arangodb::Index*,
+  void fillIndex(basics::LocalTaskQueue*, Transaction*,
+                 Index*,
                  std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
                  bool);
 
   // @brief create index with the given definition.
-  bool openIndex(arangodb::velocypack::Slice const&, arangodb::Transaction*);
+  bool openIndex(velocypack::Slice const&, Transaction*);
 
   // SECTION: Index access (local only)
-  int lookupDocument(arangodb::Transaction*, VPackSlice const,
+  int lookupDocument(Transaction*, VPackSlice const,
                      ManagedDocumentResult& result);
 
-  int checkRevision(arangodb::Transaction*, TRI_voc_rid_t expected,
+  int checkRevision(Transaction*, TRI_voc_rid_t expected,
                     TRI_voc_rid_t found);
 
-  int updateDocument(arangodb::Transaction*, TRI_voc_rid_t oldRevisionId,
-                     arangodb::velocypack::Slice const& oldDoc,
+  int updateDocument(Transaction*, TRI_voc_rid_t oldRevisionId,
+                     velocypack::Slice const& oldDoc,
                      TRI_voc_rid_t newRevisionId,
-                     arangodb::velocypack::Slice const& newDoc,
+                     velocypack::Slice const& newDoc,
                      MMFilesDocumentOperation&, MMFilesWalMarker const*,
                      bool& waitForSync);
-  int insertDocument(arangodb::Transaction*, TRI_voc_rid_t revisionId,
-                     arangodb::velocypack::Slice const&,
+  int insertDocument(Transaction*, TRI_voc_rid_t revisionId,
+                     velocypack::Slice const&,
                      MMFilesDocumentOperation&, MMFilesWalMarker const*,
                      bool& waitForSync);
 
-  int insertPrimaryIndex(arangodb::Transaction*, TRI_voc_rid_t revisionId,
-                         arangodb::velocypack::Slice const&);
+  int insertPrimaryIndex(Transaction*, TRI_voc_rid_t revisionId,
+                         velocypack::Slice const&);
 
-  int deletePrimaryIndex(arangodb::Transaction*, TRI_voc_rid_t revisionId,
-                         arangodb::velocypack::Slice const&);
+  int deletePrimaryIndex(Transaction*, TRI_voc_rid_t revisionId,
+                         velocypack::Slice const&);
 
-  int insertSecondaryIndexes(arangodb::Transaction*, TRI_voc_rid_t revisionId,
-                             arangodb::velocypack::Slice const&,
+  int insertSecondaryIndexes(Transaction*, TRI_voc_rid_t revisionId,
+                             velocypack::Slice const&,
                              bool isRollback);
 
-  int deleteSecondaryIndexes(arangodb::Transaction*, TRI_voc_rid_t revisionId,
-                             arangodb::velocypack::Slice const&,
+  int deleteSecondaryIndexes(Transaction*, TRI_voc_rid_t revisionId,
+                             velocypack::Slice const&,
                              bool isRollback);
 
   // SECTION: Document pre commit preperation (only local)
 
   /// @brief new object for insert, value must have _key set correctly.
-  int newObjectForInsert(arangodb::Transaction* trx,
-                         arangodb::velocypack::Slice const& value,
-                         arangodb::velocypack::Slice const& fromSlice,
-                         arangodb::velocypack::Slice const& toSlice,
+  int newObjectForInsert(Transaction* trx,
+                         velocypack::Slice const& value,
+                         velocypack::Slice const& fromSlice,
+                         velocypack::Slice const& toSlice,
                          bool isEdgeCollection,
-                         arangodb::velocypack::Builder& builder,
+                         velocypack::Builder& builder,
                          bool isRestore);
 
   /// @brief new object for replace
-  void newObjectForReplace(arangodb::Transaction* trx,
-                           arangodb::velocypack::Slice const& oldValue,
-                           arangodb::velocypack::Slice const& newValue,
-                           arangodb::velocypack::Slice const& fromSlice,
-                           arangodb::velocypack::Slice const& toSlice,
+  void newObjectForReplace(Transaction* trx,
+                           velocypack::Slice const& oldValue,
+                           velocypack::Slice const& newValue,
+                           velocypack::Slice const& fromSlice,
+                           velocypack::Slice const& toSlice,
                            bool isEdgeCollection, std::string const& rev,
-                           arangodb::velocypack::Builder& builder);
+                           velocypack::Builder& builder);
 
   /// @brief merge two objects for update
-  void mergeObjectsForUpdate(arangodb::Transaction* trx,
-                             arangodb::velocypack::Slice const& oldValue,
-                             arangodb::velocypack::Slice const& newValue,
+  void mergeObjectsForUpdate(Transaction* trx,
+                             velocypack::Slice const& oldValue,
+                             velocypack::Slice const& newValue,
                              bool isEdgeCollection, std::string const& rev,
                              bool mergeObjects, bool keepNull,
-                             arangodb::velocypack::Builder& b);
+                             velocypack::Builder& b);
 
   /// @brief new object for remove, must have _key set
-  void newObjectForRemove(arangodb::Transaction* trx,
-                          arangodb::velocypack::Slice const& oldValue,
+  void newObjectForRemove(Transaction* trx,
+                          velocypack::Slice const& oldValue,
                           std::string const& rev,
-                          arangodb::velocypack::Builder& builder);
+                          velocypack::Builder& builder);
 
   void increaseInternalVersion();
 
  protected:
-  void toVelocyPackInObject(arangodb::velocypack::Builder& result,
+  void toVelocyPackInObject(velocypack::Builder& result,
                             bool translateCids) const;
 
   // SECTION: Meta Information
@@ -543,7 +544,7 @@ class LogicalCollection {
   // the following contains in the cluster/DBserver case the information
   // which other servers are in sync with this shard. It is unset in all
   // other cases.
-  std::unique_ptr<arangodb::FollowerInfo> _followers;
+  std::unique_ptr<FollowerInfo> _followers;
 
   // @brief Current state of this colletion
   TRI_vocbase_col_status_e _status;
@@ -559,7 +560,7 @@ class LogicalCollection {
 
   // SECTION: Key Options
   // TODO Really VPack?
-  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>
+  std::shared_ptr<velocypack::Buffer<uint8_t> const>
       _keyOptions;  // options for key creation
 
   uint32_t _version;
@@ -567,7 +568,7 @@ class LogicalCollection {
   // SECTION: Indexes
   uint32_t _indexBuckets;
 
-  std::vector<std::shared_ptr<arangodb::Index>> _indexes;
+  std::vector<std::shared_ptr<Index>> _indexes;
 
   // SECTION: Replication
   size_t _replicationFactor;
@@ -589,25 +590,24 @@ class LogicalCollection {
   std::string _path;
 
   std::unique_ptr<PhysicalCollection> _physical;
-  std::unique_ptr<CollectionRevisionsCache> _revisionsCache;
 
   // whether or not secondary indexes should be filled
   bool _useSecondaryIndexes;
 
   TRI_voc_tick_t _maxTick;
 
-  std::unique_ptr<arangodb::KeyGenerator> _keyGenerator;
+  std::unique_ptr<KeyGenerator> _keyGenerator;
 
-  mutable arangodb::basics::ReadWriteLock
+  mutable basics::ReadWriteLock
       _lock;  // lock protecting the status and name
 
-  mutable arangodb::basics::ReadWriteLock
+  mutable basics::ReadWriteLock
       _idxLock;  // lock protecting the indexes
 
-  mutable arangodb::basics::ReadWriteLock
+  mutable basics::ReadWriteLock
       _infoLock;  // lock protecting the info
 
-  arangodb::Mutex _compactionStatusLock;
+  Mutex _compactionStatusLock;
   size_t _nextCompactionStartIndex;
   char const* _lastCompactionStatus;
   double _lastCompactionStamp;

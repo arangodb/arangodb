@@ -58,7 +58,7 @@ bool FailedServer::start() {
       << "Start FailedServer job " + _jobId + " for server " + _server;
 
   // Copy todo to pending
-  Builder todo, pending;
+  velocypack::Builder todo, pending;
   
   // Get todo entry
   todo.openArray();
@@ -210,7 +210,7 @@ bool FailedServer::create() {
 
   std::string path = _agencyPrefix + toDoPrefix + _jobId;
 
-  _jb = std::make_shared<Builder>();
+  _jb = std::make_shared<velocypack::Builder>();
   _jb->openArray();
   _jb->openObject();
 
@@ -271,7 +271,7 @@ JOB_STATUS FailedServer::status() {
     // mop: ohhh...server is healthy again!
     bool serverHealthy = serverHealth == Supervision::HEALTH_STATUS_GOOD;
 
-    std::shared_ptr<Builder> deleteTodos;
+    std::shared_ptr<velocypack::Builder> deleteTodos;
 
     Node::Children const todos = _snapshot(toDoPrefix).children();
     Node::Children const pends = _snapshot(pendingPrefix).children();
@@ -281,7 +281,7 @@ JOB_STATUS FailedServer::status() {
       if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
         if (serverHealthy) {
           if (!deleteTodos) {
-            deleteTodos.reset(new Builder());
+            deleteTodos.reset(new velocypack::Builder());
             deleteTodos->openArray();
             deleteTodos->openObject();
           }

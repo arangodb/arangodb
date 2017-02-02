@@ -495,7 +495,7 @@ void ApplicationServer::prepare() {
         feature->prepare();
         feature->state(FeatureState::PREPARED);
       } catch (std::exception const& ex) {
-        LOG(ERR) << "caught exception during prepare of feature '"
+        LOG_TOPIC(ERR, Logger::STARTUP) << "caught exception during prepare of feature '"
                  << feature->name() << "': " << ex.what();
         // restore original privileges
         if (!privilegesElevated) {
@@ -503,7 +503,7 @@ void ApplicationServer::prepare() {
         }
         throw;
       } catch (...) {
-        LOG(ERR) << "caught unknown exception during preparation of feature '"
+        LOG_TOPIC(ERR, Logger::STARTUP) << "caught unknown exception during preparation of feature '"
                  << feature->name() << "'";
         // restore original privileges
         if (!privilegesElevated) {
@@ -520,7 +520,7 @@ void ApplicationServer::prepare() {
 void ApplicationServer::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::start";
 
-  bool abortStartup = false;
+  int res = TRI_ERROR_NO_ERROR;
 
   for (auto feature : _orderedFeatures) {
     if (!feature->isEnabled()) {
@@ -533,18 +533,26 @@ void ApplicationServer::start() {
       feature->start();
       feature->state(FeatureState::STARTED);
       reportFeatureProgress(_state, feature->name());
-      
-    } catch (std::exception const& ex) {
-      LOG(ERR) << "caught exception during start of feature '" << feature->name()
+    } catch (basics::Exception const& ex) {
+      LOG_TOPIC(ERR, Logger::STARTUP) << "caught exception during start of feature '" << feature->name()
                << "': " << ex.what() << ". shutting down";
-      abortStartup = true;
+      res = ex.code();
+    } catch (std::bad_alloc const& ex) {
+      LOG_TOPIC(ERR, Logger::STARTUP) << "caught exception during start of feature '" << feature->name()
+               << "': " << ex.what() << ". shutting down";
+      res = TRI_ERROR_OUT_OF_MEMORY;
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, Logger::STARTUP) << "caught exception during start of feature '" << feature->name()
+               << "': " << ex.what() << ". shutting down";
+      res = TRI_ERROR_INTERNAL;
     } catch (...) {
-      LOG(ERR) << "caught unknown exception during start of feature '"
+      LOG_TOPIC(ERR, Logger::STARTUP) << "caught unknown exception during start of feature '"
                << feature->name() << "'. shutting down";
-      abortStartup = true;
+      res = TRI_ERROR_INTERNAL;
     }
 
-    if (abortStartup) {
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(TRACE, Logger::STARTUP) << "aborting startup, now stopping and unpreparing all features";
       // try to stop all feature that we just started
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
            ++it) {
@@ -553,31 +561,35 @@ void ApplicationServer::start() {
           continue;
         }
         if (feature->state() == FeatureState::STARTED) {
-          LOG(TRACE) << "forcefully stopping feature '" << feature->name() << "'";
+          LOG_TOPIC(TRACE, Logger::STARTUP) << "forcefully stopping feature '" << feature->name() << "'";
           try {
             feature->stop();
+            feature->state(FeatureState::STOPPED);
           } catch (...) {
             // ignore errors on shutdown
+            LOG_TOPIC(TRACE, Logger::STARTUP) << "caught exception while stopping feature '" << feature->name() << "'";
           }
         }
       }
-      
+
       // try to unprepare all feature that we just started
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
            ++it) {
         auto feature = *it;
         if (feature->state() == FeatureState::STOPPED) {
-          LOG(TRACE) << "forcefully unpreparing feature '" << feature->name() << "'";
+          LOG_TOPIC(TRACE, Logger::STARTUP) << "forcefully unpreparing feature '" << feature->name() << "'";
           try {
             feature->unprepare();
+            feature->state(FeatureState::UNPREPARED);
           } catch (...) {
             // ignore errors on shutdown
+            LOG_TOPIC(TRACE, Logger::STARTUP) << "caught exception while unpreparing feature '" << feature->name() << "'";
           }
         }
       }
-
+      
       // throw exception so the startup aborts
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "startup aborted");
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("startup aborted: ") + TRI_errno_string(res));
     }
   }
 }
