@@ -95,10 +95,10 @@ Use GeoIndex with AQL SORT statement:
     @startDocuBlockInline geoIndexSortOptimization
     @EXAMPLE_ARANGOSH_OUTPUT{geoIndexSortOptimization}
     ~db._create("geo3")
-    db.geo2.ensureIndex({ type: "geo", fields: [ "location.latitude", "location.longitude" ] });
+    db.geo3.ensureIndex({ type: "geo", fields: [ "location.latitude", "location.longitude" ] });
     | for (i = -90;  i <= 90;  i += 10) {
     |     for (j = -180; j <= 180; j += 10) {
-    |         db.geo2.save({ name : "Name/" + i + "/" + j, location: { latitude : i, longitude : j } });
+    |         db.geo3.save({ name : "Name/" + i + "/" + j, location: { latitude : i, longitude : j } });
     |     }
       }	
     var query = "FOR doc in geo3 SORT distance(doc.location.latitude, doc.location.longitude,0,0) LIMIT 100 RETURN doc"
