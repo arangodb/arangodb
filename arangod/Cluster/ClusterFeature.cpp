@@ -284,20 +284,11 @@ void ClusterFeature::prepare() {
 
   if (!_myId.empty()) {
     ServerState::instance()->setId(_myId);
-    if (_requestedRole == ServerState::RoleEnum::ROLE_UNDEFINED) {
-      if (_myId.compare(0,8,std::string("DBServer"))==0) {
-        _requestedRole = ServerState::RoleEnum::ROLE_PRIMARY;
-      } else {
-        _requestedRole = ServerState::RoleEnum::ROLE_COORDINATOR;        
-      }
-    }
   }
 
-  if (_requestedRole != ServerState::RoleEnum::ROLE_UNDEFINED) {
-    if (!ServerState::instance()->registerWithRole(_requestedRole, _myAddress)) {
-      LOG(FATAL) << "Couldn't register at agency.";
-      FATAL_ERROR_EXIT();
-    }
+  if (!ServerState::instance()->registerWithRole(_requestedRole, _myAddress)) {
+    LOG(FATAL) << "Couldn't register at agency.";
+    FATAL_ERROR_EXIT();
   }
 
   auto role = ServerState::instance()->getRole();

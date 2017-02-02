@@ -257,7 +257,7 @@ bool Agent::recvAppendEntriesRPC(
   term_t term, std::string const& leaderId, index_t prevIndex, term_t prevTerm,
   index_t leaderCommitIndex, query_t const& queries) {
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got AppendEntriesRPC from "
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Got AppendEntriesRPC from "
     << leaderId << " with term " << term;
 
   // Update commit index
@@ -279,10 +279,13 @@ bool Agent::recvAppendEntriesRPC(
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
   if (nqs > 0) {
+
+    //LOG(WARN) << id() << " received " << queries->toJson(); 
+    
     size_t ndups = _state.removeConflicts(queries);
 
     if (nqs > ndups) {
-      LOG_TOPIC(TRACE, Logger::AGENCY)
+      LOG_TOPIC(INFO, Logger::AGENCY)
         << "Appending " << nqs - ndups << " entries to state machine. ("
         << nqs << ", " << ndups << ")";
 

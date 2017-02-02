@@ -255,20 +255,22 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role,
   AgencyCommResult result;
   std::string localInfoEncoded = StringUtils::replace(
     StringUtils::urlEncode(getLocalInfo()),"%2E",".");
-  std::string roleName =
-    ((role == ROLE_COORDINATOR) ? "Coordinators":"DBServers");
 
   std::string locinf = "Target/MapLocalToID/" +
     (localInfoEncoded.empty() ? "bogus_hass_hund" : localInfoEncoded);
-  std::string idinf  = "Plan/" + roleName + "/" + 
+  std::string dbidinf  = "Plan/DBServers/" + 
+    (_id.empty() ? "bogus_hass_hund" : _id);
+  std::string coidinf  = "Plan/Coordinators/" + 
     (_id.empty() ? "bogus_hass_hund" : _id);
 
   typedef std::pair<AgencyOperation,AgencyPrecondition> operationType;
   AgencyGeneralTransaction reg;
   reg.operations.push_back( // my-local-info
     operationType(AgencyOperation(locinf), AgencyPrecondition()));
-  reg.operations.push_back( // my-id
-    operationType(AgencyOperation(idinf), AgencyPrecondition()));
+  reg.operations.push_back( // db my-id
+    operationType(AgencyOperation(dbidinf), AgencyPrecondition()));
+  reg.operations.push_back( // cooord my-id
+    operationType(AgencyOperation(coidinf), AgencyPrecondition()));
   result = comm.sendTransactionWithFailover(reg, 0.0);
 
   std::string id;
@@ -277,24 +279,31 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role,
     VPackSlice targetSlice, planSlice;
     if (!_id.empty()) {
       try {
-        planSlice = result.slice()[1].get(
-          std::vector<std::string>({AgencyCommManager::path(), "Plan",
-                roleName, _id}));
+        if (
+          result.slice()[1].get(
+            std::vector<std::string>({AgencyCommManager::path(), "Plan",
+                  "DBServers", _id})).isString()) {
+          id = _id;
+          if (role == ServerState::ROLE_UNDEFINED) {
+            role = ServerState::ROLE_PRIMARY;
+          }
+        } else if (
+          result.slice()[2].get(
+            std::vector<std::string>({AgencyCommManager::path(), "Plan",
+                  "Coordinators", _id})).isString()) {
+          id = _id;
+          if (role == ServerState::ROLE_UNDEFINED) {
+            role = ServerState::ROLE_COORDINATOR;
+          }
+        } 
       } catch (...) {}
     } else if (!localInfoEncoded.empty()) {
       try {
-        targetSlice = result.slice()[0].get(
+        id = result.slice()[0].get(
           std::vector<std::string>({AgencyCommManager::path(), "Target",
-                "MapLocalToID", localInfoEncoded}));
+                "MapLocalToID", localInfoEncoded})).copyString();
       } catch (...) {}
     }
-    
-    if (planSlice.isString()) {
-      id = _id;
-    } else if (targetSlice.isString()) {
-      id = targetSlice.copyString();
-    } 
-    
   }
   
   id = createIdForRole(comm, role, id);
