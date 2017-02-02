@@ -1231,6 +1231,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     headers.emplace("Shard-Id", _ownName);
   }
 
+  ++_engine->_stats.httpRequests;
   {
     JobGuard guard(SchedulerFeature::SCHEDULER);
     guard.block();
