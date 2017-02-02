@@ -79,7 +79,7 @@ void ExportFeature::collectOptions(
 
   std::unordered_set<std::string> exportsWithUpperCase = {"csv", "json", "jsonl", "xgmml",
                                                           "CSV", "JSON", "JSONL", "XGMML"};
-  std::unordered_set<std::string> exports = {"csv", "json", "xgmml"};
+  std::unordered_set<std::string> exports = {"csv", "json", "jsonl", "xgmml"};
   std::vector<std::string> exportsVector(exports.begin(), exports.end());
   std::string exportsJoined = StringUtils::join(exportsVector, ", ");
   options->addOption(
@@ -239,7 +239,7 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
 
     _firstLine = true;
     if (_typeExport == "json") {
-      std::string const openingBracket = "[\n";
+      std::string openingBracket = "[\n";
       writeToFile(fd, openingBracket, fileName);
     }
 
@@ -256,7 +256,7 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
       writeCollectionBatch(fd, VPackArrayIterator(body.get("result")), fileName);
     }
     if (_typeExport == "json") {
-      std::string const closingBracket = "]";
+      std::string closingBracket = "]";
       writeToFile(fd, closingBracket , fileName);
     }
   }
