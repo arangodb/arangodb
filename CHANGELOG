@@ -1,4 +1,4 @@
-v3.1.10 (2017-XX-XX)
+v3.1.10 (2017-02-02)
 --------------------
 
 * updated versions of bundled node modules:
@@ -14,7 +14,7 @@ v3.1.10 (2017-XX-XX)
       FOR doc IN docs RETURN doc.value ?: 'not present'
 
   instead of
-      
+
       FOR doc IN docs RETURN doc.value ? doc.value : 'not present'
 
 * fixed wrong sorting order in cluster, if an index was used to sort with many
