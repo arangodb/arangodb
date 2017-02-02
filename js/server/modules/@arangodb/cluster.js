@@ -597,14 +597,14 @@ function synchronizeOneShard (database, shard, planId, leader) {
       }
       let endTime = new Date();
       console[logLevel]("synchronization of local shard '%s/%s' for central '%s/%s' failed: %s, started: %s, ended: %s",
-        database, shard, database, planId, startTime.toString(),
-        endTime.toString(), JSON.stringify(err2));
+        database, shard, database, planId, JSON.stringify(err2),
+        startTime.toString(), endTime.toString());
     }
   }
   // Tell others that we are done:
   terminateAndStartOther();
   let endTime = new Date();
-  console.debug('synchronizeOneShard: done, %s/%s, %s/%s, started: %s, ended: %s',
+  console.info('synchronizeOneShard: done, %s/%s, %s/%s, started: %s, ended: %s',
     database, shard, database, planId, startTime.toString(), endTime.toString());
 }
 
@@ -1696,7 +1696,7 @@ var handlePlanChange = function (plan, current) {
     current: current.Version
   };
 
-  console.debug('handlePlanChange:', plan.Version, current.Version);
+  console.info('handlePlanChange:', plan.Version, current.Version);
   try {
     versions.success = handleChanges(plan, current);
 
@@ -1707,7 +1707,7 @@ var handlePlanChange = function (plan, current) {
     console.error('plan change handling failed');
     versions.success = false;
   }
-  console.debug('handlePlanChange: done');
+  console.info('handlePlanChange: done');
   return versions;
 };
 
