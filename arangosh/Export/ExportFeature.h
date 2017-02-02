@@ -25,6 +25,9 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "V8Client/ArangoClientHelper.h"
+#include "lib/Rest/CommonDefines.h"
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace httpclient {
@@ -48,7 +51,11 @@ class ExportFeature final : public application_features::ApplicationFeature,
 
  private:
   void collectionExport(httpclient::SimpleHttpClient* httpClient);
+  void writeCollectionBatch(int fd, VPackArrayIterator it, std::string const& fileName);
   void graphExport(httpclient::SimpleHttpClient* httpClient);
+
+  void writeToFile(int fd, std::string& string, std::string const& fileName);
+  std::shared_ptr<VPackBuilder> httpCall(httpclient::SimpleHttpClient* httpClient, std::string const& url, arangodb::rest::RequestType);
 
  private:
   std::vector<std::string> _collections;
@@ -58,6 +65,8 @@ class ExportFeature final : public application_features::ApplicationFeature,
   std::string _outputDirectory;
   bool _overwrite;
   bool _progress;
+
+  bool _firstLine;
 
   int* _result;
 };

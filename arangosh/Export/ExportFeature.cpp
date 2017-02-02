@@ -31,8 +31,6 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -48,6 +46,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer* server,
       _outputDirectory(),
       _overwrite(false),
       _progress(true),
+      _firstLine(true),
       _result(result) {
   requiresElevatedPrivileges(false);
   setOptional(false);
@@ -78,8 +77,8 @@ void ExportFeature::collectOptions(
   options->addOption("--progress", "show progress",
                      new BooleanParameter(&_progress));
 
-  std::unordered_set<std::string> exportsWithUpperCase = {"csv", "json", "xgmml",
-                                                          "CSV", "JSON", "XGMML"};
+  std::unordered_set<std::string> exportsWithUpperCase = {"csv", "json", "jsonl", "xgmml",
+                                                          "CSV", "JSON", "JSONL", "XGMML"};
   std::unordered_set<std::string> exports = {"csv", "json", "xgmml"};
   std::vector<std::string> exportsVector(exports.begin(), exports.end());
   std::string exportsJoined = StringUtils::join(exportsVector, ", ");
@@ -199,7 +198,7 @@ void ExportFeature::start() {
     graphExport(httpClient.get());
   }
 
-  if (_typeExport == "json" || _typeExport == "csv") {
+  if (_typeExport == "json" || _typeExport == "jsonl" || _typeExport == "csv") {
     if (_collections.size()) {
       collectionExport(httpClient.get());
     } else if (_graphName.size()) {
@@ -217,11 +216,11 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
 
   for (auto const& collection : _collections) {
     if (_progress) {
-      std::cout << "export collection " << collection << std::endl;
+      std::cout << "# Exporting collection '" << collection << "'..." << std::endl;
     }
 
     std::string fileName =
-        _outputDirectory + TRI_DIR_SEPARATOR_STR + collection + ".json";
+        _outputDirectory + TRI_DIR_SEPARATOR_STR + collection + "." + _typeExport;
 
     // remove an existing file first
     if (TRI_ExistsFile(fileName.c_str())) {
@@ -238,88 +237,96 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
     TRI_DEFER(TRI_CLOSE(fd));
     std::string const url = "/_api/export?collection="+StringUtils::urlEncode(collection);
 
-    std::unique_ptr<SimpleHttpResult> response(
-      httpClient->request(rest::RequestType::POST, url, "" , 0));
-
-    if (response == nullptr || !response->isComplete()) {
-      errorMsg =
-          "got invalid response from server: " + httpClient->getErrorMessage();
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+    _firstLine = true;
+    if (_typeExport == "json") {
+      std::string const openingBracket = "[\n";
+      writeToFile(fd, openingBracket, fileName);
     }
 
-    if (response->wasHttpError()) {
-      // TODO 404
+    std::shared_ptr<VPackBuilder> parsedBody = httpCall(httpClient, url, rest::RequestType::POST);
+    VPackSlice body = parsedBody->slice();
+
+    writeCollectionBatch(fd, VPackArrayIterator(body.get("result")), fileName);
+
+    while (body.hasKey("id")) {
+      std::string const url = "/_api/export/"+body.get("id").copyString();
+      parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
+      body = parsedBody->slice();
+
+      writeCollectionBatch(fd, VPackArrayIterator(body.get("result")), fileName);
+    }
+    if (_typeExport == "json") {
+      std::string const closingBracket = "]";
+      writeToFile(fd, closingBracket , fileName);
+    }
+  }
+}
+
+void ExportFeature::writeCollectionBatch(int fd, VPackArrayIterator it, std::string const& fileName) {
+  std::string line;
+
+  for (auto const& doc : it) {
+    line.clear();
+
+    if (_firstLine && _typeExport == "json") {
+      _firstLine = false;
+    } else if(!_firstLine && _typeExport == "json") {
+      line.push_back(',');
+    }
+
+    line += doc.toJson();
+    line.push_back('\n');
+    writeToFile(fd, line, fileName);
+  }
+}
+
+void ExportFeature::writeToFile(int fd, std::string& line, std::string const& fileName) {
+    if (!TRI_WritePointer(fd, line.c_str(), line.size())) {
+      std::string errorMsg = "cannot write to file '" + fileName + "'";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
+    }
+}
+
+std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClient, std::string const& url, rest::RequestType requestType) {
+  std::string errorMsg;
+
+  std::unique_ptr<SimpleHttpResult> response(
+      httpClient->request(requestType, url, "", 0));
+
+  if (response == nullptr || !response->isComplete()) {
+    errorMsg =
+        "got invalid response from server: " + httpClient->getErrorMessage();
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+  }
+
+  if (response->wasHttpError()) {
+
+    if (response->getHttpReturnCode() == 404) {
+      LOG(FATAL) << "Collection not found.";
+    } else {
       errorMsg = "got invalid response from server: HTTP " +
                 StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                 response->getHttpReturnMessage();
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
     }
-
-    std::shared_ptr<VPackBuilder> parsedBody;
-    try {
-      parsedBody = response->getBodyVelocyPack();
-    } catch (...) {
-      errorMsg = "got malformed JSON response from server";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
-    }
-    VPackSlice body = parsedBody->slice();
-
-    if (!body.isObject()) {
-      errorMsg = "got malformed JSON response from server";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
-    }
-
-    std::string json;
-    bool firstLine = true;
-    // TODO: first line
-
-      for (auto const& doc : VPackArrayIterator(body.get("result"))) {
-        json = doc.toJson();
-        json.push_back('\n');
-        if (!TRI_WritePointer(fd, json.c_str(), json.size())) {
-          errorMsg = "cannot write to file '" + fileName + "'";
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
-        }
-      }
-
-    while (body.hasKey("id")) {
-      std::string const url = "/_api/export/"+body.get("id").copyString();
-
-      std::unique_ptr<SimpleHttpResult> response(
-        httpClient->request(rest::RequestType::PUT, url, "" , 0));
-
-      if (response == nullptr || !response->isComplete()) {
-        errorMsg =
-            "got invalid response from server: " + httpClient->getErrorMessage();
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
-      }
-
-      if (response->wasHttpError()) {
-        errorMsg = "got invalid response from server: HTTP " +
-                  StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-                  response->getHttpReturnMessage();
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
-      }
-
-      try {
-        parsedBody = response->getBodyVelocyPack();
-      } catch (...) {
-        errorMsg = "got malformed JSON response from server";
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
-      }
-
-      body = parsedBody->slice();
-
-      for (auto const& doc : VPackArrayIterator(body.get("result"))) {
-        json = doc.toJson();
-        json.push_back('\n');
-        if (!TRI_WritePointer(fd, json.c_str(), json.size())) {
-          errorMsg = "cannot write to file '" + fileName + "'";
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
-        }
-      }
-    }
   }
+
+  std::shared_ptr<VPackBuilder> parsedBody;
+  try {
+    parsedBody = response->getBodyVelocyPack();
+  } catch (...) {
+    errorMsg = "got malformed JSON response from server";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+  }
+
+  VPackSlice body = parsedBody->slice();
+
+  if (!body.isObject()) {
+    errorMsg = "got malformed JSON response from server";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+  }
+
+  return parsedBody;
 }
 
 void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
