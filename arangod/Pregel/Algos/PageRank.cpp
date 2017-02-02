@@ -95,7 +95,7 @@ struct PRMasterContext : public MasterContext {
 
   bool postGlobalSuperstep() override {
     float const* diff = getAggregatedValue<float>(kConvergence);
-    return *diff > _threshold;
+    return globalSuperstep() > 1 && *diff > _threshold;
   };
 };
 
