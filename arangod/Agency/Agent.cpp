@@ -276,43 +276,42 @@ bool Agent::recvAppendEntriesRPC(
   size_t nqs = queries->slice().length();
 
   // State machine, _lastCommitIndex to advance atomically
-  MUTEX_LOCKER(mutexLocker, _ioLock);
-
   if (nqs > 0) {
-
-    //LOG(WARN) << id() << " received " << queries->toJson(); 
     
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+  
     size_t ndups = _state.removeConflicts(queries);
-
+    
     if (nqs > ndups) {
-      LOG_TOPIC(TRACE, Logger::AGENCY)
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Appending " << nqs - ndups << " entries to state machine. ("
         << nqs << ", " << ndups << ")";
-
+      
       try {
-        _state.log(queries, ndups);
+        
+        auto last = _state.log(queries, ndups);
+
+        _spearhead.apply(
+          _state.slices(last-ndups, last), last, _constituent.term());
+        
+        _readDB.apply(
+          _state.slices(last-ndups, last), last, _constituent.term());
+        
+        _lastCommitIndex = last;
+        
+        if (_lastCommitIndex >= _nextCompationAfter) {
+          _state.compact(_lastCommitIndex);
+          _nextCompationAfter += _config.compactionStepSize();
+        }
+
       } catch (std::exception const&) {
         LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Malformed query: " << __FILE__ << __LINE__;
       }
+      
     }
   }
-
-
-  _spearhead.apply(
-    _state.slices(_lastCommitIndex + 1, leaderCommitIndex), _lastCommitIndex,
-    _constituent.term());
   
-  _readDB.apply(
-    _state.slices(_lastCommitIndex + 1, leaderCommitIndex), _lastCommitIndex,
-    _constituent.term());
-
-  _lastCommitIndex = leaderCommitIndex;
-
-  if (_lastCommitIndex >= _nextCompationAfter) {
-    _state.compact(_lastCommitIndex);
-    _nextCompationAfter += _config.compactionStepSize();
-  }
 
   return true;
 }
