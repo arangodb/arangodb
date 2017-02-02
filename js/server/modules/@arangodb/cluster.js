@@ -530,10 +530,10 @@ function synchronizeOneShard (database, shard, planId, leader) {
       { endpoint: ep, incremental: true,
       keepBarrier: true, useCollectionId: false });
     let endTime = new Date();
-    let vorsicht = false;
+    let longSync = false;
     if (endTime - startTime > 5000) {
       console.error('synchronizeOneShard: long call to syncCollection for shard', shard, JSON.stringify(sy), "start time: ", startTime.toString(), "end time: ", endTime.toString());
-      vorsicht = true;
+      longSync = true;
     }
     if (sy.error) {
       console.error('synchronizeOneShard: could not initially synchronize',
@@ -542,12 +542,14 @@ function synchronizeOneShard (database, shard, planId, leader) {
     } else {
       if (sy.collections.length === 0 ||
         sy.collections[0].name !== shard) {
-        if (vorsicht) {
-          console.error(new Date().toString());
+        if (longSync) {
+          console.error('synchronizeOneShard: long sync, before cancelBarrier',
+                        new Date().toString());
         }
         cancelBarrier(ep, database, sy.barrierId);
-        if (vorsicht) {
-          console.error(new Date().toString());
+        if (longSync) {
+          console.error('synchronizeOneShard: long sync, after cancelBarrier',
+                        new Date().toString());
         }
         throw 'Shard ' + shard + ' seems to be gone from leader!';
       } else {
@@ -617,7 +619,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
   // Tell others that we are done:
   terminateAndStartOther();
   let endTime = new Date();
-  console.info('synchronizeOneShard: done, %s/%s, %s/%s, started: %s, ended: %s',
+  console.debug('synchronizeOneShard: done, %s/%s, %s/%s, started: %s, ended: %s',
     database, shard, database, planId, startTime.toString(), endTime.toString());
 }
 
@@ -1709,7 +1711,7 @@ var handlePlanChange = function (plan, current) {
     current: current.Version
   };
 
-  console.info('handlePlanChange:', plan.Version, current.Version);
+  console.debug('handlePlanChange:', plan.Version, current.Version);
   try {
     versions.success = handleChanges(plan, current);
 
@@ -1720,7 +1722,7 @@ var handlePlanChange = function (plan, current) {
     console.error('plan change handling failed');
     versions.success = false;
   }
-  console.info('handlePlanChange: done');
+  console.debug('handlePlanChange: done');
   return versions;
 };
 
