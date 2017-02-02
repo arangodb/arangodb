@@ -82,14 +82,20 @@ IAggregator* PageRank::aggregator(std::string const& name) const {
 }
 
 struct PRMasterContext : public MasterContext {
+  
   float _threshold = EPS;
   PRMasterContext(VPackSlice params) {
     VPackSlice t = params.get("threshold");
     _threshold = t.isNumber() ? t.getNumber<float>() : EPS;
-  }// TODO use _threashold
+  }
+  
+  void preApplication() override {
+    LOG(INFO) << "Using threshold " << _threshold;
+  };
+
   bool postGlobalSuperstep() override {
     float const* diff = getAggregatedValue<float>(kConvergence);
-    return *diff > EPS;
+    return *diff > _threshold;
   };
 };
 
