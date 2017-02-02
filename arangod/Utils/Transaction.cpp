@@ -1232,17 +1232,14 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
                 {}, &mmdr, skip, limit, 1000, false);
 
   LogicalCollection* collection = cursor->collection();
-  std::vector<DocumentIdentifierToken> result;
-  
-  while (cursor->hasMore()) {
-    result.clear();
-    cursor->getMoreTokens(result, 1000);
-    for (auto const& element : result) {
-      if (collection->readDocument(this, mmdr, element)) {
-        uint8_t const* vpack = mmdr.vpack();
-        resultBuilder.add(VPackSlice(vpack));
-      }
+  auto cb = [&] (DocumentIdentifierToken const& token) {
+    if (collection->readDocument(this, mmdr, token)) {
+      uint8_t const* vpack = mmdr.vpack();
+      resultBuilder.add(VPackSlice(vpack));
     }
+  };
+
+  while (cursor->getMore(cb, 1000)) {
   }
 
   resultBuilder.close();
@@ -2567,17 +2564,14 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   }
 
   LogicalCollection* collection = cursor->collection();
-  std::vector<DocumentIdentifierToken> result;
-  result.reserve(1000);
-  
-  while (cursor->hasMore()) {
-    cursor->getMoreTokens(result, 1000);
-    for (auto const& element : result) {
-      if (collection->readDocument(this, mmdr, element)) {
-        uint8_t const* vpack = mmdr.vpack();
-        resultBuilder.addExternal(vpack);
-      }
+  auto cb = [&] (DocumentIdentifierToken const& token) {
+    if (collection->readDocument(this, mmdr, element)) {
+      uint8_t const* vpack = mmdr.vpack();
+      resultBuilder.addExternal(vpack);
     }
+  };
+  
+  while (cursor->getMore(cb, 1000)) {
   }
 
   resultBuilder.close();
