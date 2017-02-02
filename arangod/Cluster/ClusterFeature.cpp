@@ -284,6 +284,13 @@ void ClusterFeature::prepare() {
 
   if (!_myId.empty()) {
     ServerState::instance()->setId(_myId);
+    if (_requestedRole == ServerState::RoleEnum::ROLE_UNDEFINED) {
+      if (_myId.compare(0,8,std::string("DBServer"))==0) {
+        _requestedRole = ServerState::RoleEnum::ROLE_PRIMARY;
+      } else {
+        _requestedRole = ServerState::RoleEnum::ROLE_COORDINATOR;        
+      }
+    }
   }
 
   if (_requestedRole != ServerState::RoleEnum::ROLE_UNDEFINED) {
