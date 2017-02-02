@@ -270,6 +270,7 @@ class ServerState {
   bool checkCoordinatorState(StateEnum);
   
   /// @brief create an id for a specified role
+  /// TODO: why are the parameters passed by value here?
   std::string createIdForRole(AgencyComm, RoleEnum, std::string = std::string());
   
   /// @brief get the key for a role in the agency
