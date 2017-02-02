@@ -232,7 +232,7 @@ void AgencyFeature::start() {
 
   _agent.reset(new consensus::Agent(consensus::config_t(
       _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
-      _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
+      _agencyEndpoints, _supervision, false, _supervisionFrequency,
       _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
       _cmdLineTimings)));
 
