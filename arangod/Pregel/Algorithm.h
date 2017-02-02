@@ -66,6 +66,8 @@ struct IAlgorithm {
     return nullptr;
   }
   
+  // ============= Configure runtime parameters ============
+  
   virtual uint64_t maxGlobalSuperstep() const {
     return 500;
   }
@@ -97,6 +99,20 @@ struct Algorithm : IAlgorithm {
   }
   virtual std::set<std::string> initialActiveSet() {
     return std::set<std::string>();
+  }
+  
+  virtual uint32_t messageBatchSize(uint64_t gss,
+                                    uint64_t sendCount,
+                                    uint64_t threadCount,
+                                    double superstepDuration) const {
+    if (gss == 0) {
+      return 500;
+    } else {
+      double msgsPerSec = sendCount / superstepDuration;
+      msgsPerSec /= threadCount;  // per thread
+      msgsPerSec *= 0.06;
+      return msgsPerSec > 250.0 ? (uint32_t)msgsPerSec : 250;
+    }
   }
 
  protected:

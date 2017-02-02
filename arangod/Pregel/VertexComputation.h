@@ -52,6 +52,9 @@ class VertexContext {
   VertexEntry* _vertexEntry;
 
  public:
+  
+  ~VertexContext(){}
+  
   template <typename T>
   inline void aggregate(std::string const& name, T const& value) {
     T const* ptr = &value;

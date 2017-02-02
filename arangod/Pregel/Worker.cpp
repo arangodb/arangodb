@@ -62,6 +62,8 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   _workerAggregators.reset(new AggregatorHandler(algo));
   _graphStore.reset(new GraphStore<V, E>(vocbase, _algorithm->inputFormat()));
   _nextGSSSendMessageCount = 0;
+  _messageBatchSize = _algorithm->messageBatchSize(0, 0, 0, 0);
+      
   if (_messageCombiner) {
     _readCache =
         new CombiningInCache<M>(_messageFormat.get(), _messageCombiner.get());
@@ -106,7 +108,10 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   } else {
     // initialization of the graphstore might take an undefined amount
     // of time. Therefore this is performed asynchronous
-    _graphStore->loadShards(&_config, callback);
+    ThreadPool* pool = PregelFeature::instance()->threadPool();
+    pool->enqueue([this, &callback] {
+      _graphStore->loadShards(&_config, callback);
+    });
   }
 }
 
@@ -150,6 +155,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
         _expectedGSS, data.toJson().c_str());
   }
 
+  // initialize worker context
   if (_workerContext && gss == 0 && _config.localSuperstep() == 0) {
     _workerContext->_conductorAggregators = _conductorAggregators.get();
     _workerContext->_workerAggregators = _workerAggregators.get();
@@ -177,6 +183,8 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
     _config._localSuperstep = gss;
   }
 
+  // only place where is makes sense to call this, since startGlobalSuperstep
+  // might not be called again
   if (_workerContext && gss > 0) {
     _workerContext->postGlobalSuperstep(gss - 1);
   }
@@ -386,6 +394,7 @@ bool Worker<V, E, M>::_processVertices(
   stats.sendCount = outCache->sendCount();
   stats.superstepRuntimeSecs = TRI_microtime() - start;
 
+  bool lastThread = false;
   {  // only one thread at a time
     MUTEX_LOCKER(guard, _threadMutex);
     // merge the thread local stats and aggregators
@@ -393,13 +402,20 @@ bool Worker<V, E, M>::_processVertices(
     _messageStats.accumulate(stats);
     _activeCount += activeCount;
     _runningThreads--;
-    return _runningThreads == 0;  // should work like a join operation
+    lastThread = _runningThreads == 0;  // should work like a join operation
   }
+  return lastThread;
 }
 
 // called at the end of a worker thread, needs mutex
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_finishedProcessing() {
+  MUTEX_LOCKER(guard, _threadMutex);
+  if (_runningThreads != 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "only one thread should ever enter this region");
+  }
+  
   VPackBuilder package;
   {  // only lock after there are no more processing threads
     MUTEX_LOCKER(guard, _commandMutex);
@@ -462,13 +478,12 @@ void Worker<V, E, M>::_finishedProcessing() {
 
     // adaptive message buffering
     ThreadPool* pool = PregelFeature::instance()->threadPool();
-    double msgsPerSec =
-        _messageStats.sendCount / _messageStats.superstepRuntimeSecs;
-    msgsPerSec /= pool->numThreads();  // per thread
     _messageBatchSize =
-        (uint32_t)fmax(0.06 * msgsPerSec, 250);  // 80ms time window,
+    _algorithm->messageBatchSize(_expectedGSS-1,
+                                 _messageStats.sendCount,
+                                 pool->numThreads(),
+                                 _messageStats.superstepRuntimeSecs);
     _messageStats.resetTracking();
-
     LOG(INFO) << "Batch size: " << _messageBatchSize;
   }
 

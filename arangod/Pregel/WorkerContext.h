@@ -58,7 +58,8 @@ class WorkerContext {
   virtual void postApplication(){};
 
  public:
-  WorkerContext(VPackSlice params){};
+  WorkerContext(VPackSlice params){}
+  virtual ~WorkerContext() {}
 
   inline uint64_t vertexCount() const { return _vertexCount; }
 

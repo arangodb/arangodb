@@ -98,7 +98,7 @@ std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
 
 template <typename V, typename E>
 void GraphStore<V, E>::loadShards(WorkerConfig* config,
-                                  std::function<void()> callback) {
+                                  std::function<void()> const& callback) {
   _config = config;
   std::map<ShardID, uint64_t> shardSizes(_allocateMemory());
   
