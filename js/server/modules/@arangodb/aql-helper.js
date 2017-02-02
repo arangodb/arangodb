@@ -445,6 +445,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     delete results[i].stats.scannedIndex;
     delete results[i].stats.filtered;
     delete results[i].stats.executionTime;
+    delete results[i].stats.httpRequests;
 
     if (debug) {
       require('internal').print('\n' + i + ' DONE\n');
