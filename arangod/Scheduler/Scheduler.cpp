@@ -168,9 +168,20 @@ Scheduler::Scheduler(size_t nrThreads, size_t maxQueueSize)
 
 Scheduler::~Scheduler() {
   if (_threadManager != nullptr) {
-    _threadManager->cancel();
+    try {
+      _threadManager->cancel();
+    } catch (...) {
+      // must not throw in the dtor
+    }
   }
-  deleteOldThreads();
+
+  try {
+    deleteOldThreads();
+  } catch (...) {
+    // probably out of memory here...
+    // must not throw in the dtor
+    LOG(ERR) << "unable to delete old scheduler threads";
+  }
 }
 
 // -----------------------------------------------------------------------------
