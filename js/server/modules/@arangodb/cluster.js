@@ -453,6 +453,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
   // synchronize this shard from the leader
   // this function will throw if anything goes wrong
 
+  var startTime = new Date();
   var isStopping = require('internal').isStopping;
   var ourselves = global.ArangoServerState.id();
 
@@ -485,8 +486,9 @@ function synchronizeOneShard (database, shard, planId, leader) {
       planned[0] !== leader) {
       // Things have changed again, simply terminate:
       terminateAndStartOther();
-      console.debug('synchronizeOneShard: cancelled, %s/%s, %s/%s',
-        database, shard, database, planId);
+      let endTime = new Date();
+      console.debug('synchronizeOneShard: cancelled, %s/%s, %s/%s, started %s, ended %s',
+        database, shard, database, planId, startTime.toString(), endTime.toString());
       return;
     }
     var current = [];
@@ -500,8 +502,9 @@ function synchronizeOneShard (database, shard, planId, leader) {
       }
       // We are already there, this is rather strange, but never mind:
       terminateAndStartOther();
-      console.debug('synchronizeOneShard: already done, %s/%s, %s/%s',
-        database, shard, database, planId);
+      let endTime = new Date();
+      console.debug('synchronizeOneShard: already done, %s/%s, %s/%s, started %s, ended %s',
+        database, shard, database, planId, startTime.toString(), endTime.toString());
       return;
     }
     console.debug('synchronizeOneShard: waiting for leader, %s/%s, %s/%s',
@@ -592,14 +595,17 @@ function synchronizeOneShard (database, shard, planId, leader) {
       } else if (err2 && err2.errorNum === 1402 && err2.errorMessage.match(/HTTP 404/)) {
         logLevel = 'debug';
       }
-      console[logLevel]("synchronization of local shard '%s/%s' for central '%s/%s' failed: %s",
-        database, shard, database, planId, JSON.stringify(err2));
+      let endTime = new Date();
+      console[logLevel]("synchronization of local shard '%s/%s' for central '%s/%s' failed: %s, started: %s, ended: %s",
+        database, shard, database, planId, JSON.stringify(err2),
+        startTime.toString(), endTime.toString());
     }
   }
   // Tell others that we are done:
   terminateAndStartOther();
-  console.debug('synchronizeOneShard: done, %s/%s, %s/%s',
-    database, shard, database, planId);
+  let endTime = new Date();
+  console.info('synchronizeOneShard: done, %s/%s, %s/%s, started: %s, ended: %s',
+    database, shard, database, planId, startTime.toString(), endTime.toString());
 }
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -1690,7 +1696,7 @@ var handlePlanChange = function (plan, current) {
     current: current.Version
   };
 
-  console.debug('handlePlanChange:', plan.Version, current.Version);
+  console.info('handlePlanChange:', plan.Version, current.Version);
   try {
     versions.success = handleChanges(plan, current);
 
@@ -1701,7 +1707,7 @@ var handlePlanChange = function (plan, current) {
     console.error('plan change handling failed');
     versions.success = false;
   }
-  console.debug('handlePlanChange: done');
+  console.info('handlePlanChange: done');
   return versions;
 };
 
