@@ -251,13 +251,6 @@ bool ServerState::unregister() {
 bool ServerState::registerWithRole(ServerState::RoleEnum role,
                                    std::string const& myAddress) {
 
-  if (!getId().empty()) {
-    LOG_TOPIC(INFO, Logger::CLUSTER)
-        << "Registering with role and localinfo. Supplied id is being ignored";
-    return false;
-  }
-
-
   AgencyComm comm;
   AgencyCommResult result;
   std::string localInfoEncoded = StringUtils::replace(
@@ -279,14 +272,13 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role,
   result = comm.sendTransactionWithFailover(reg, 0.0);
   std::string id;
   bool found = false;
+
+  if (result.slice().isArray()) {
     
-  if (result.successful()) {
-
     VPackSlice targetSlice, planSlice;
-
     if (!_id.empty()) {
       try {
-        planSlice = result.slice()[0].get(
+        planSlice = result.slice()[1].get(
           std::vector<std::string>({AgencyCommManager::path(), "Plan",
                 roleName, _id}));
       } catch (...) {}
@@ -297,14 +289,12 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role,
         std::vector<std::string>({AgencyCommManager::path(), "Target",
               "MapLocalToID", localInfoEncoded}));
     } catch (...) {}
-    
+
     if (planSlice.isString()) {
       id = _id;
-      LOG(WARN) << "Have ID: " + id;
       found = true;
     } else if (targetSlice.isString()) {
       id = targetSlice.copyString();
-      LOG(WARN) << "Have ID: " + id;
       found = true;
     } 
 
