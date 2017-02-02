@@ -48,15 +48,6 @@ class EnumerateCollectionBlock : public ExecutionBlock {
 
   ~EnumerateCollectionBlock() = default;
 
-  /// @brief initialize fetching of documents
-  void initializeDocuments();
-
-  /// @brief skip instead of fetching
-  bool skipDocuments(size_t toSkip, size_t& skipped);
-
-  /// @brief continue fetching of documents
-  bool moreDocuments(size_t hint);
-
   /// @brief initialize, here we fetch all docs from the database
   int initialize() override final;
 
@@ -80,12 +71,6 @@ class EnumerateCollectionBlock : public ExecutionBlock {
   /// @brief cursor
   std::unique_ptr<OperationCursor> _cursor;
   
-  /// @brief document buffer
-  std::vector<DocumentIdentifierToken> _documents;
-  
-  /// @brief iterator over documents
-  size_t _position;
-
   /// @brief whether or not the enumerated documents need to be stored
   bool _mustStoreResult;
 };
