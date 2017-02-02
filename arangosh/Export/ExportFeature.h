@@ -43,15 +43,21 @@ class ExportFeature final : public application_features::ApplicationFeature,
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
-  void start() override;
+  void prepare() override final;
+  void start() override final;
 
  private:
-    void collectionExport(httpclient::SimpleHttpClient* httpClient);
-    void graphExport(httpclient::SimpleHttpClient* httpClient);
-
+  void collectionExport(httpclient::SimpleHttpClient* httpClient);
+  void graphExport(httpclient::SimpleHttpClient* httpClient);
 
  private:
-  // ...
+  std::vector<std::string> _collections;
+  std::string _graphName;
+  std::string _typeExport;
+
+  std::string _outputDirectory;
+  bool _overwrite;
+  bool _progress;
 
   int* _result;
 };
