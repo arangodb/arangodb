@@ -274,7 +274,7 @@ comparison coordinate, and to find documents with coordinates that are within a 
 radius around a comparison coordinate.
 
 The geo index is used via dedicated functions in AQL, the simple queries
-functions, and it is implicitly applied when in AQL a SORT or FILTER is used with
+functions and it is implicitly applied when in AQL a SORT or FILTER is used with
 the distance function. Otherwise it will not be used for other types of queries
 or conditions.
 
