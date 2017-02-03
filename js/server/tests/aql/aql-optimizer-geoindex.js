@@ -125,8 +125,9 @@ function optimizerRuleTestSuite() {
         internal.db._drop(colName);
         geocol = internal.db._create(colName);
         geocol.ensureIndex({type:"geo", fields:["lat","lon"]});
-        for (var lat=-40; lat <=40 ; ++lat){
-            for (var lon=-40; lon <= 40; ++lon){
+        var lat, lon;
+        for (lat=-40; lat <=40 ; ++lat) {
+            for (lon=-40; lon <= 40; ++lon) {
                 geocol.insert({lat,lon});
             }
         }
@@ -134,8 +135,8 @@ function optimizerRuleTestSuite() {
         internal.db._drop(colName2);
         geocol = internal.db._create(colName2);
         geocol.ensureIndex({type:"geo", fields:["loca.tion.lat","loca.tion.lon"]});
-        for (var lat=-40; lat <=40 ; ++lat){
-            for (var lon=-40; lon <= 40; ++lon){
+        for (lat=-40; lat <=40 ; ++lat) {
+            for (lon=-40; lon <= 40; ++lon) {
                 geocol.insert({ loca : { tion : { lat , lon } } });
             }
         }
@@ -238,7 +239,7 @@ function optimizerRuleTestSuite() {
           
         var queries2 = [ 
           [ "FOR d IN " + colName2 + " SORT distance(d.loca.tion.lat,d.loca.tion.lon, 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false ]
-        ]
+        ];
 
         var expected = [
           [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
