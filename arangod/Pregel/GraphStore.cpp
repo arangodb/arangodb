@@ -111,6 +111,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       _config->edgeCollectionShards();
 
   _runningThreads = config->localVertexShardIDs().size();
+  LOG(INFO) << "Using " << _runningThreads << " threads to load data";
   for (auto const& pair : vertexCollMap) {
     std::vector<ShardID> const& vertexShards = pair.second;
     for (size_t i = 0; i < vertexShards.size(); i++) {
@@ -392,6 +393,9 @@ void GraphStore<V, E>::_loadEdges(Transaction* trx,
         auto collInfo =
             Utils::resolveCollection(_config->database(), collectionName,
                                      _config->collectionPlanIdMap());
+        if (!collInfo) {
+          continue;
+        }
         // resolve the shard of the target vertex.
         ShardID responsibleShard;
         Utils::resolveShard(collInfo.get(), StaticStrings::KeyString,
@@ -401,7 +405,6 @@ void GraphStore<V, E>::_loadEdges(Transaction* trx,
         _graphFormat->copyEdgeData(document, edge.data(), sizeof(E));
         if (edge._sourceShard == (prgl_shard_t)-1 ||
             edge._targetShard == (prgl_shard_t)-1) {
-          LOG(ERR) << "Unknown shard";
           continue;
         }
         offset++;
