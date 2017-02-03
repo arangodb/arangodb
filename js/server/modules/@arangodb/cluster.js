@@ -120,14 +120,12 @@ function startReadLockOnLeader (endpoint, database, collName, timeout) {
   const id = r.id;
 
   var body = { 'id': id, 'collection': collName, 'ttl': timeout };
-  r = request({ url: url + '/_api/replication/holdReadLockCollection',
-                body: JSON.stringify(body),
-                method: 'POST', headers: {'x-arango-async': true} });
-  if (r.status !== 202) {
-    console.error('startReadLockOnLeader: Could not start read lock for shard',
-      collName, r);
-    return false;
-  }
+  request({ url: url + '/_api/replication/holdReadLockCollection',
+            body: JSON.stringify(body),
+            method: 'POST', headers: {'x-arango-async': true} });
+  // Intentionally do not look at the outcome, even in case of an error
+  // we must make sure that the read lock on the leader is not active!
+  // This is done automatically below.
 
   var count = 0;
   while (++count < 20) { // wait for some time until read lock established:
@@ -170,7 +168,10 @@ function startReadLockOnLeader (endpoint, database, collName, timeout) {
 // /////////////////////////////////////////////////////////////////////////////
 
 function cancelReadLockOnLeader (endpoint, database, lockJobId) {
-  var url = endpointToURL(endpoint) + '/_db/' + database +
+  // Note that we always use the _system database here because the actual
+  // database might be gone already on the leader and we need to cancel
+  // the read lock under all circumstances.
+  var url = endpointToURL(endpoint) + '/_db/_system' +
     '/_api/replication/holdReadLockCollection';
   var r;
   var body = {'id': lockJobId};
@@ -181,7 +182,8 @@ function cancelReadLockOnLeader (endpoint, database, lockJobId) {
     return false;
   }
   if (r.status !== 200) {
-    console.error('cancelReadLockOnLeader: error', r);
+    console.error('cancelReadLockOnLeader: error', lockJobId, r.status,
+                  r.message, r.body, r.json);
     return false;
   }
   console.debug('cancelReadLockOnLeader: success');
