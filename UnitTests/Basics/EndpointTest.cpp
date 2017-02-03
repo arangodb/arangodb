@@ -49,8 +49,6 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(arangodb::Endpoint::EndpointType)
 // --SECTION--                                                            macros
 // -----------------------------------------------------------------------------
 
-#define DELETE_ENDPOINT(e) if (e != 0) delete e;
-
 #define FACTORY_NAME(name) name ## Factory  
 
 #define FACTORY(name, specification) arangodb::Endpoint::FACTORY_NAME(name)(specification)
@@ -58,12 +56,12 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(arangodb::Endpoint::EndpointType)
 #define CHECK_ENDPOINT_FEATURE(type, specification, feature, expected) \
   e = FACTORY(type, specification); \
   BOOST_CHECK_EQUAL((expected), (e->feature())); \
-  DELETE_ENDPOINT(e);
+  delete e;
 
 #define CHECK_ENDPOINT_SERVER_FEATURE(type, specification, feature, expected) \
   e = arangodb::Endpoint::serverFactory(specification, 1, true); \
   BOOST_CHECK_EQUAL((expected), (e->feature())); \
-  DELETE_ENDPOINT(e);
+  delete e;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -118,6 +116,11 @@ BOOST_AUTO_TEST_CASE (EndpointInvalid) {
   BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("ssl@tcp://127.0.0.1:8529"));
   BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("https@tcp://127.0.0.1:8529"));
   BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("https@tcp://127.0.0.1:"));
+  
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("tcp://127.0.0.1:65536"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("tcp://127.0.0.1:65537"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("tcp://127.0.0.1:-1"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("tcp://127.0.0.1:6555555555"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -491,7 +494,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer1) {
 
   e = arangodb::Endpoint::serverFactory("tcp://127.0.0.1", 1, true);
   BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  delete e;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -503,7 +506,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer2) {
 
   e = arangodb::Endpoint::serverFactory("ssl://127.0.0.1", 1, true);
   BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  delete e;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -516,7 +519,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer3) {
 
   e = arangodb::Endpoint::serverFactory("unix:///tmp/socket", 1, true);
   BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  delete e;
 }
 #endif
 
@@ -529,7 +532,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient1) {
 
   e = arangodb::Endpoint::clientFactory("tcp://127.0.0.1");
   BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  delete e;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -541,7 +544,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient2) {
 
   e = arangodb::Endpoint::clientFactory("ssl://127.0.0.1");
   BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  delete e;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -554,7 +557,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient3) {
 
   e = arangodb::Endpoint::clientFactory("unix:///tmp/socket");
   BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  delete e;
 }
 #endif
 
@@ -575,7 +578,7 @@ BOOST_AUTO_TEST_CASE (EndpointServerTcpIpv4WithPort) {
   BOOST_CHECK_EQUAL(667, e->port());
   BOOST_CHECK_EQUAL("127.0.0.1:667", e->hostAndPort());
   BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  delete e;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -596,7 +599,7 @@ BOOST_AUTO_TEST_CASE (EndpointServerUnix) {
   BOOST_CHECK_EQUAL(0, e->port());
   BOOST_CHECK_EQUAL("localhost", e->hostAndPort());
   BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  delete e;
 }
 #endif
 
@@ -617,7 +620,7 @@ BOOST_AUTO_TEST_CASE (EndpointClientSslIpV6WithPortHttp) {
   BOOST_CHECK_EQUAL(43425, e->port());
   BOOST_CHECK_EQUAL("[0001:0002:0003:0004:0005:0006:0007:0008]:43425", e->hostAndPort());
   BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  delete e;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -637,7 +640,7 @@ BOOST_AUTO_TEST_CASE (EndpointClientTcpIpv6WithoutPort) {
   BOOST_CHECK_EQUAL(8529, e->port());
   BOOST_CHECK_EQUAL("[::]:8529", e->hostAndPort());
   BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  delete e;
 }
 
 BOOST_AUTO_TEST_SUITE_END()

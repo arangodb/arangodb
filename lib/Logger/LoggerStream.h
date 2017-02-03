@@ -88,8 +88,9 @@ class LoggerStream {
     size_t i = 0;
     size_t const n = obj.size();
     for (auto const& it : obj) {
+      _out << it;
       if (++i < n) {
-        _out << it << ", ";
+        _out << ", ";
       }
     }
     _out << ']';
@@ -102,8 +103,9 @@ class LoggerStream {
     size_t i = 0;
     size_t const n = obj.size();
     for (auto const& it : obj) {
+      _out << it;
       if (++i < n) {
-        _out << it << ", ";
+        _out << ", ";
       }
     }
     _out << '}';
@@ -116,8 +118,9 @@ class LoggerStream {
     size_t i = 0;
     size_t n = obj.size();
     for (auto const& it : obj) {
+      _out << it;
       if (++i < n) {
-        _out << it << ", ";
+        _out << ", ";
       }
       _out << it.first << " => " << it.second;
     }

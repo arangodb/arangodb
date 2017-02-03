@@ -75,7 +75,7 @@ bool FailedFollower::create() {
     }
   }
    
-  _jb = std::make_shared<velocypack::Builder>();
+  _jb = std::make_shared<Builder>();
   _jb->openArray();
   _jb->openObject();
 
@@ -128,7 +128,7 @@ bool FailedFollower::start() {
 
 
   // Copy todo to pending
-  velocypack::Builder todo, pending;
+  Builder todo, pending;
 
   // Get todo entry
   todo.openArray();
@@ -254,7 +254,7 @@ JOB_STATUS FailedFollower::status() {
 
     if (compareServerLists(planned.slice(), current.slice())) {
       // Remove shard from /arango/Target/FailedServers/<server> array
-      velocypack::Builder del;
+      Builder del;
       del.openArray();
       del.openObject();
       std::string path = _agencyPrefix + failedServersPrefix + "/" + _from;

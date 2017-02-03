@@ -28,7 +28,6 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutionStats.h"
 #include "Rest/GeneralRequest.h"
 
 namespace arangodb {
@@ -338,9 +337,6 @@ class RemoteBlock : public ExecutionBlock {
 
   /// @brief the ID of the query on the server as a string
   std::string _queryId;
-
-  /// @brief the ID of the query on the server as a string
-  ExecutionStats _deltaStats;
 
   /// @brief whether or not this block will forward initialize, 
   /// initializeCursor or shutDown requests

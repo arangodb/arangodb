@@ -41,7 +41,7 @@ struct Collection;
 class CollectionScanner;
 class ExecutionEngine;
 
-class EnumerateCollectionBlock : public ExecutionBlock {
+class EnumerateCollectionBlock final : public ExecutionBlock {
  public:
   EnumerateCollectionBlock(ExecutionEngine* engine,
                            EnumerateCollectionNode const* ep);

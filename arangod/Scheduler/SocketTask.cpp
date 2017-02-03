@@ -49,7 +49,7 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
                        double keepAliveTimeout, bool skipInit = false)
     : Task(loop, "SocketTask"),
       _connectionStatistics(nullptr),
-      _connectionInfo(connectionInfo),
+      _connectionInfo(std::move(connectionInfo)),
       _readBuffer(TRI_UNKNOWN_MEM_ZONE, READ_BLOCK_SIZE + 1, false),
       _writeBuffer(nullptr, nullptr),
       _peer(std::move(socket)),

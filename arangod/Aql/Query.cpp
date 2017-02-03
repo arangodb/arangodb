@@ -731,14 +731,12 @@ QueryResult Query::execute(QueryRegistry* registry) {
     }
 
     _trx->commit();
+    
+    result.context = _trx->transactionContext();
 
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     auto stats = std::make_shared<VPackBuilder>();
-    _engine->_stats.toVelocyPack(*(stats.get()));
-
-    result.context = _trx->transactionContext();
-
-    cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
+    cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, stats.get());
 
     enterState(FINALIZATION);
 
@@ -913,18 +911,15 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
     _trx->commit();
 
-    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
-    auto stats = std::make_shared<VPackBuilder>();
-    _engine->_stats.toVelocyPack(*(stats.get()));
-
-    result.context = _trx->transactionContext();
-
     LOG_TOPIC(DEBUG, Logger::QUERIES)
         << TRI_microtime() - _startTime << " "
         << "Query::executeV8: before cleanupPlanAndEngine"
         << " this: " << (uintptr_t) this;
 
-    cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
+    result.context = _trx->transactionContext();
+    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    auto stats = std::make_shared<VPackBuilder>();
+    cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, stats.get());
 
     enterState(FINALIZATION);
 
@@ -1387,10 +1382,13 @@ std::string Query::getStateString() const {
 }
 
 /// @brief cleanup plan and engine for current query
-void Query::cleanupPlanAndEngine(int errorCode) {
+void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
   if (_engine != nullptr) {
     try {
       _engine->shutdown(errorCode);
+      if (statsBuilder != nullptr) {
+        _engine->_stats.toVelocyPack(*statsBuilder);
+      }
     } catch (...) {
       // shutdown may fail but we must not throw here
       // (we're also called from the destructor)

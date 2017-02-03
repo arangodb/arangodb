@@ -184,7 +184,7 @@ class State {
   size_t _cur;
 
   /// @brief Operation options
-  OperationOptions _options;
+  arangodb::OperationOptions _options;
 
   /// @brief Empty log entry;
   static log_t emptyLog;
