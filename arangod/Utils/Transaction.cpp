@@ -3062,8 +3062,10 @@ std::unique_ptr<OperationCursor> Transaction::indexScan(
     return std::make_unique<OperationCursor>(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  uint64_t unused = 0;
-  iterator->skip(skip, unused);
+  if (skip > 0) {
+    uint64_t unused = 0;
+    iterator->skip(skip, unused);
+  }
 
   return std::make_unique<OperationCursor>(iterator.release(), limit, batchSize);
 }

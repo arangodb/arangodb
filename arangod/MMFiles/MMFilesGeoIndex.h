@@ -58,10 +58,6 @@ class MMFilesGeoIndexIterator final : public IndexIterator {
 
   bool next(TokenCallback const& cb, size_t limit) override;
 
-  DocumentIdentifierToken next() override;
-
-  void nextBabies(std::vector<DocumentIdentifierToken>&, size_t) override;
-
   void reset() override;
 
  private:

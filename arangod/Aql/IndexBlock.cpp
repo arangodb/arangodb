@@ -412,7 +412,14 @@ bool IndexBlock::readIndex(size_t atMost) {
     }
 
     LogicalCollection* collection = _cursor->collection();
-    _cursor->getMoreTokens(_result, atMost);
+    _result.clear();
+    auto cb = [&] (DocumentIdentifierToken const& token) {
+      _result.emplace_back(token);
+    };
+    // TODO We can optimize this place by allowing the
+    // index to directly write into AQLItemBlock
+    // instead of the local _result cache.
+    _cursor->getMore(cb, atMost);
 
     size_t length = _result.size();
 

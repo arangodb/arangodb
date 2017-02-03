@@ -109,6 +109,10 @@ MMFilesPrimaryIndexIterator::~MMFilesPrimaryIndexIterator() {
 }
 
 bool MMFilesPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  TRI_ASSERT(limit > 0);
+  if (!_iterator.valid() || limit == 0) {
+    return false;
+  }
   while (_iterator.valid() && limit > 0) {
     MMFilesSimpleIndexElement result = _index->lookupKey(_trx, _iterator.value());
     _iterator.next();
@@ -121,22 +125,6 @@ bool MMFilesPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
     }
   }
   return true;
-}
-
-DocumentIdentifierToken MMFilesPrimaryIndexIterator::next() {
-  while (_iterator.valid()) {
-    MMFilesSimpleIndexElement result = _index->lookupKey(_trx, _iterator.value());
-    _iterator.next();
-
-    if (result) {
-      // found a result
-      return MMFilesToken{result.revisionId()};
-    }
-
-    // found no result. now go to next lookup value in _keys
-  }
-
-  return MMFilesToken{};
 }
 
 void MMFilesPrimaryIndexIterator::reset() { _iterator.reset(); }
@@ -167,39 +155,6 @@ bool AllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   return true;
 }
 
-DocumentIdentifierToken AllIndexIterator::next() {
-  MMFilesSimpleIndexElement element;
-  if (_reverse) {
-    element = _index->findSequentialReverse(&_context, _position);
-  } else {
-    element = _index->findSequential(&_context, _position, _total);
-  }
-  if (element) {
-    return MMFilesToken{element.revisionId()};
-  }
-  return MMFilesToken{};
-}
-
-void AllIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& buffer, size_t limit) {
-  size_t atMost = limit;
-
-  buffer.clear();
-  if (atMost > 0) {
-    buffer.reserve(atMost);
-  }
-
-  while (atMost > 0) {
-    DocumentIdentifierToken result = next();
-
-    if (result == 0) {
-      return;
-    }
-
-    buffer.emplace_back(result);
-    --atMost;
-  }
-}
-
 void AllIndexIterator::reset() { _position.reset(); }
   
 AnyIndexIterator::AnyIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, 
@@ -220,14 +175,6 @@ bool AnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
     }
   }
   return true;
-}
-
-DocumentIdentifierToken AnyIndexIterator::next() {
-  MMFilesSimpleIndexElement element = _index->findRandom(&_context, _initial, _position, _step, _total);
-  if (element) {
-    return MMFilesToken{element.revisionId()};
-  }
-  return MMFilesToken{};
 }
 
 void AnyIndexIterator::reset() {

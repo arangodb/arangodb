@@ -66,30 +66,6 @@ bool IndexIterator::nextExtra(ExtraCallback const&, size_t) {
                                  "relevant collections to arangodb.com");
 }
 
-/// @brief default implementation for next
-DocumentIdentifierToken IndexIterator::next() {
-  return DocumentIdentifierToken();
-}
-
-/// @brief default implementation for nextBabies
-void IndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& result, size_t batchSize) {
-  result.clear();
-
-  if (batchSize > 0) {
-    while (true) {
-      DocumentIdentifierToken element = next();
-      if (element == 0) {
-        return;
-      }
-      result.emplace_back(element);
-      batchSize--;
-      if (batchSize == 0) {
-        return;
-      }
-    }
-  }
-}
-
 /// @brief default implementation for reset
 void IndexIterator::reset() {}
 
@@ -108,48 +84,23 @@ void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
 bool MultiIndexIterator::next(TokenCallback const& callback, size_t limit) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-/// @brief Get the next element
-///        If one iterator is exhausted, the next one is used.
-///        A nullptr indicates that all iterators are exhausted
-DocumentIdentifierToken MultiIndexIterator::next() {
-  if (_current == nullptr) {
-    return DocumentIdentifierToken();
-  }
-  DocumentIdentifierToken next = _current->next();
-  while (next == 0) {
-    _currentIdx++;
-    if (_currentIdx >= _iterators.size()) {
-      _current = nullptr;
-      return DocumentIdentifierToken();
+  auto cb = [&limit, &callback] (DocumentIdentifierToken const& token) {
+    --limit;
+    callback(token);
+  };
+  while (limit > 0) {
+    if (_current == nullptr) {
+      return false;
     }
-    _current = _iterators.at(_currentIdx);
-    next = _current->next();
-  }
-  return next;
-}
-
-/// @brief Get the next limit many elements
-///        If one iterator is exhausted, the next one will be used.
-///        An empty result vector indicates that all iterators are exhausted
-void MultiIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& result, size_t limit) {
-  result.clear();
-
-  if (_current == nullptr) {
-    return;
-  }
-  _current->nextBabies(result, limit);
-  while (result.empty()) {
-    _currentIdx++;
-    if (_currentIdx >= _iterators.size()) {
-      _current = nullptr;
-      return;
+    if (!_current->next(cb, limit)) {
+      _currentIdx++;
+      if (_currentIdx >= _iterators.size()) {
+        _current = nullptr;
+        return false;
+      }
     }
-    _current = _iterators.at(_currentIdx);
-    _current->nextBabies(result, limit);
   }
+  return true;
 }
 
 /// @brief Reset the cursor

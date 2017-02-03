@@ -198,9 +198,6 @@ class MMFilesSkiplistIterator final : public IndexIterator {
   /// @brief Get the next elements in the skiplist
   bool next(TokenCallback const& cb, size_t limit) override;
 
-  /// @brief Get the next element in the skiplist
-  DocumentIdentifierToken next() override;
-
   /// @brief Reset the cursor
   void reset() override;
 };
@@ -261,9 +258,6 @@ class MMFilesSkiplistIterator2 final : public IndexIterator {
 
   /// @brief Get the next elements in the skiplist
   bool next(TokenCallback const& cb, size_t limit) override;
-
-  /// @brief Get the next element in the skiplist
-  DocumentIdentifierToken next() override;
 
   /// @brief Reset the cursor
   void reset() override;

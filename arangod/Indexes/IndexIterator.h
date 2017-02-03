@@ -85,9 +85,7 @@ class IndexIterator {
   virtual bool next(TokenCallback const& callback, size_t limit) = 0;
   virtual bool nextExtra(ExtraCallback const& callback, size_t limit);
 
-  virtual DocumentIdentifierToken next();
-
-  virtual void nextBabies(std::vector<DocumentIdentifierToken>&, size_t);
+//  virtual DocumentIdentifierToken next();
 
   virtual void reset();
 
@@ -114,10 +112,6 @@ class EmptyIndexIterator final : public IndexIterator {
     bool next(TokenCallback const&, size_t) override {
       return false;
     }
-
-    DocumentIdentifierToken next() override { return DocumentIdentifierToken(); }
-
-    void nextBabies(std::vector<DocumentIdentifierToken>&, size_t) override {}
 
     void reset() override {}
 
@@ -158,16 +152,6 @@ class MultiIndexIterator final : public IndexIterator {
     ///        If callback is called less than limit many times
     ///        all iterators are exhausted
     bool next(TokenCallback const& callback, size_t limit) override;
-
-    /// @brief Get the next element
-    ///        If one iterator is exhausted, the next one is used.
-    ///        A nullptr indicates that all iterators are exhausted
-    DocumentIdentifierToken next() override;
-
-    /// @brief Get at most the next limit many elements
-    ///        If one iterator is exhausted, the next one will be used.
-    ///        An empty result vector indicates that all iterators are exhausted
-    void nextBabies(std::vector<DocumentIdentifierToken>&, size_t) override;
 
     /// @brief Reset the cursor
     ///        This will reset ALL internal iterators and start all over again

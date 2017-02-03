@@ -35,6 +35,13 @@ LogicalCollection* OperationCursor::collection() const {
   return _indexIterator->collection();
 }
 
+bool OperationCursor::hasMore() {
+  if (_hasMore && _limit == 0) {
+    _hasMore = false;
+  }
+  return _hasMore;
+}
+
 void OperationCursor::reset() {
   code = TRI_ERROR_NO_ERROR;
 
@@ -47,7 +54,6 @@ void OperationCursor::reset() {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Calls cb for the next batchSize many elements 
-///        Check hasMore()==true before using this
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
 
@@ -55,8 +61,6 @@ bool OperationCursor::getMore(
     std::function<void(DocumentIdentifierToken const& token)> const& callback,
     uint64_t batchSize) {
   if (!hasMore()) {
-    TRI_ASSERT(false);
-    // You requested more even if you should have checked it before.
     return false;
   }
 
@@ -66,51 +70,31 @@ bool OperationCursor::getMore(
 
   size_t atMost = static_cast<size_t>(batchSize > _limit ? _limit : batchSize);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // We add wrapper around Callback that validates that
+  // the callback has been called at least once.
+  bool called = false;
+  auto cb = [&](DocumentIdentifierToken const& token) {
+    called = true;
+    callback(token);
+  };
+  _hasMore = _indexIterator->next(cb, atMost);
+  if (_hasMore) {
+    // If the index says it has more elements than it need
+    // to call callback at least once.
+    // Otherweise progress is not guaranteed.
+    TRI_ASSERT(called);
+  }
+#else
   _hasMore = _indexIterator->next(callback, atMost);
+#endif
 
   if (_hasMore) {
     // We got atMost many callbacks
     TRI_ASSERT(_limit >= atMost);
     _limit -= atMost;
-  } else {
-    // Well we are done anyways
-    _limit = 0;
   }
   return _hasMore;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many DocumentTokens.
-///        Defaults to _batchSize
-///        Check hasMore()==true before using this
-///        NOTE: This will throw on OUT_OF_MEMORY
-///        NOTE: The result vector handed in is used to continue index lookups
-///              The caller shall NOT modify it.
-//////////////////////////////////////////////////////////////////////////////
-
-void OperationCursor::getMoreTokens(std::vector<DocumentIdentifierToken>& result,
-                                  uint64_t batchSize) {
-  if (!hasMore()) {
-    TRI_ASSERT(false);
-    // You requested more even if you should have checked it before.
-    return;
-  }
-  if (batchSize == UINT64_MAX) {
-    batchSize = _batchSize;
-  }
-
-  size_t atMost = static_cast<size_t>(batchSize > _limit ? _limit : batchSize);
-
-  _indexIterator->nextBabies(result, atMost);
-
-  TRI_ASSERT(_limit >= atMost);
-  _limit -= atMost;
-
-  if (result.empty()) {
-    // Index is empty
-    _hasMore = false;
-    return;
-  }
 }
 
 //////////////////////////////////////////////////////////////////////////////

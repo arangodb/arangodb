@@ -81,7 +81,7 @@ struct OperationCursor {
   
   LogicalCollection* collection() const;
 
-  inline bool hasMore() const { return _hasMore; }
+  bool hasMore();
 
   bool successful() const {
     return code == TRI_ERROR_NO_ERROR;
@@ -99,23 +99,11 @@ struct OperationCursor {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Calls cb for the next batchSize many elements 
-///        Check hasMore()==true before using this
-///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
 
   bool getMore(
       std::function<void(DocumentIdentifierToken const& token)> const& callback,
       uint64_t batchSize);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Get next batchSize many elements.
-  ///        Defaults to _batchSize
-  ///        Check hasMore()==true before using this
-  ///        NOTE: This will throw on OUT_OF_MEMORY
-  ///        NOTE: The result vector handed in will be cleared.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void getMoreTokens(std::vector<DocumentIdentifierToken>& result, uint64_t batchSize);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Skip the next toSkip many elements.

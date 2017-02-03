@@ -549,31 +549,6 @@ bool MMFilesSkiplistIterator::next(TokenCallback const& cb, size_t limit) {
   return true;
 }
 
-/// @brief Get the next element in the skiplist
-DocumentIdentifierToken MMFilesSkiplistIterator::next() {
-  if (_cursor == nullptr) {
-    // We are exhausted already, sorry
-    return MMFilesToken{};
-  }
-  Node* tmp = _cursor;
-  if (_reverse) {
-    if (_cursor == _leftEndPoint) {
-      _cursor = nullptr;
-    } else {
-      _cursor = _cursor->prevNode();
-    }
-  } else {
-    if (_cursor == _rightEndPoint) {
-      _cursor = nullptr;
-    } else {
-      _cursor = _cursor->nextNode();
-    }
-  }
-  TRI_ASSERT(tmp != nullptr);
-  TRI_ASSERT(tmp->document() != nullptr);
-  return MMFilesToken{tmp->document()->revisionId()};
-}
-  
 MMFilesSkiplistIterator2::MMFilesSkiplistIterator2(LogicalCollection* collection, arangodb::Transaction* trx,
     ManagedDocumentResult* mmdr,
     arangodb::MMFilesSkiplistIndex const* index,
@@ -659,33 +634,6 @@ bool MMFilesSkiplistIterator2::next(TokenCallback const& cb, size_t limit) {
     limit--;
   }
   return true;
-}
-
-/// @brief Get the next element in the skiplist
-DocumentIdentifierToken MMFilesSkiplistIterator2::next() {
-  if (_cursor == nullptr) {
-    // We are exhausted already, sorry
-    return MMFilesToken{};
-  }
-  TRI_ASSERT(_currentInterval < _intervals.size());
-  auto const& interval = _intervals[_currentInterval];
-  Node* tmp = _cursor;
-  if (_reverse) {
-    if (_cursor == interval.first) {
-      forwardCursor();
-    } else {
-      _cursor = _cursor->prevNode();
-    }
-  } else {
-    if (_cursor == interval.second) {
-      forwardCursor();
-    } else {
-      _cursor = _cursor->nextNode();
-    }
-  }
-  TRI_ASSERT(tmp != nullptr);
-  TRI_ASSERT(tmp->document() != nullptr);
-  return MMFilesToken{tmp->document()->revisionId()};
 }
 
 void MMFilesSkiplistIterator2::forwardCursor() {

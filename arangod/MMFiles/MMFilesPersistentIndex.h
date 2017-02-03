@@ -77,9 +77,6 @@ class PersistentIndexIterator final : public IndexIterator {
   /// @brief Get the next limit many element in the index
   bool next(TokenCallback const& cb, size_t limit) override;
 
-  /// @brief Get the next element in the index
-  DocumentIdentifierToken next() override;
-
   /// @brief Reset the cursor
   void reset() override;
  

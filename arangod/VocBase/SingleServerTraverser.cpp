@@ -121,10 +121,12 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
       // If we switch the cursor. We have to clear the cache.
       _cache.clear();
     } else {
+      _cache.clear();
       auto cb = [&] (DocumentIdentifierToken const& token) {
         _cache.emplace_back(token);
       };
-      cursor->getMore(cb, 1000);
+      bool tmp = cursor->getMore(cb, 1000);
+      TRI_ASSERT(tmp == cursor->hasMore());
     }
   } while (_cache.empty());
 

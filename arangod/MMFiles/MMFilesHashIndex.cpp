@@ -322,67 +322,6 @@ bool MMFilesHashIndexIterator::next(TokenCallback const& cb, size_t limit) {
   return true;
 }
 
-DocumentIdentifierToken MMFilesHashIndexIterator::next() {
-  while (true) {
-    if (_posInBuffer >= _buffer.size()) {
-      if (!_lookups.hasAndGetNext()) {
-        // we're at the end of the lookup values
-        return MMFilesToken{};
-      }
-
-      // We have to refill the buffer
-      _buffer.clear();
-      _posInBuffer = 0;
-
-      _index->lookup(_trx, _lookups.lookup(), _buffer);
-    }
-
-    if (!_buffer.empty()) {
-      // found something
-      return MMFilesToken{_buffer[_posInBuffer++]->revisionId()};
-    }
-  }
-}
-
-void MMFilesHashIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& result, size_t atMost) {
-  result.clear();
-
-  if (atMost == 0) {
-    return;
-  }
-
-  while (true) {
-    if (_posInBuffer >= _buffer.size()) {
-      if (!_lookups.hasAndGetNext()) {
-        // we're at the end of the lookup values
-        return;
-      }
-
-      // TODO maybe we can hand in result directly and remove the buffer
-
-      // We have to refill the buffer
-      _buffer.clear();
-      _posInBuffer = 0;
-
-      _index->lookup(_trx, _lookups.lookup(), _buffer);
-    }
-
-    if (!_buffer.empty()) {
-      // found something
-      // TODO OPTIMIZE THIS
-      if (_buffer.size() - _posInBuffer < atMost) {
-        atMost = _buffer.size() - _posInBuffer;
-      }
-
-      for (size_t i = _posInBuffer; i < atMost + _posInBuffer; ++i) {
-        result.emplace_back(MMFilesToken{_buffer[i]->revisionId()});
-      }
-      _posInBuffer += atMost;
-      return;
-    }
-  }
-}
-
 void MMFilesHashIndexIterator::reset() {
   _buffer.clear();
   _posInBuffer = 0;
@@ -439,34 +378,6 @@ bool MMFilesHashIndexIteratorVPack::next(TokenCallback const& cb, size_t limit) 
     }
   }
   return true;
-}
-
-DocumentIdentifierToken MMFilesHashIndexIteratorVPack::next() {
-  while (true) {
-    if (_posInBuffer >= _buffer.size()) {
-      if (!_iterator.valid()) {
-        // we're at the end of the lookup values
-        return MMFilesToken{};
-      }
-
-      // We have to refill the buffer
-      _buffer.clear();
-      _posInBuffer = 0;
-
-      int res = TRI_ERROR_NO_ERROR;
-      _index->lookup(_trx, _iterator.value(), _buffer);
-      _iterator.next();
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-    }
-
-    if (!_buffer.empty()) {
-      // found something
-      return MMFilesToken{_buffer[_posInBuffer++]->revisionId()};
-    }
-  }
 }
 
 void MMFilesHashIndexIteratorVPack::reset() {

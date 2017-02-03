@@ -129,7 +129,13 @@ MMFilesEdgeIndexIterator::~MMFilesEdgeIndexIterator() {
 
 
 bool MMFilesEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  while (_iterator.valid() && limit > 0) {
+  if (limit == 0 || (_buffer.empty() && !_iterator.valid())) {
+    // No limit no data, or we are actually done. The last call should have returned false
+    TRI_ASSERT(limit > 0); // Someone called with limit == 0. Api broken
+    TRI_ASSERT(false);
+    return false;
+  }
+  while (limit > 0) {
     if (_buffer.empty()) {
       // We start a new lookup
       _posInBuffer = 0;
@@ -148,98 +154,19 @@ bool MMFilesEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     }
 
     if (_buffer.empty()) {
+      _iterator.next();
       _lastElement = MMFilesSimpleIndexElement();
-      return false;
+      if (!_iterator.valid()) {
+        return false;
+      }
     } else {
       _lastElement = _buffer.back();
       // found something
       cb(MMFilesToken{_buffer[_posInBuffer++].revisionId()});
       limit--;
     }
-
-    // found no result. now go to next lookup value in _keys
-    _iterator.next();
   }
   return true;
-}
-
-DocumentIdentifierToken MMFilesEdgeIndexIterator::next() {
-  while (_iterator.valid()) {
-    if (_buffer.empty()) {
-      // We start a new lookup
-      _posInBuffer = 0;
-
-      VPackSlice tmp = _iterator.value();
-      if (tmp.isObject()) {
-        tmp = tmp.get(StaticStrings::IndexEq);
-      }
-      _index->lookupByKey(&_context, &tmp, _buffer, _batchSize);
-    } else if (_posInBuffer >= _buffer.size()) {
-      // We have to refill the buffer
-      _buffer.clear();
-
-      _posInBuffer = 0;
-      _index->lookupByKeyContinue(&_context, _lastElement, _buffer, _batchSize);
-    }
-
-    if (_buffer.empty()) {
-      _lastElement = MMFilesSimpleIndexElement();
-    } else {
-      _lastElement = _buffer.back();
-      // found something
-      return MMFilesToken{_buffer[_posInBuffer++].revisionId()};
-    }
-
-    // found no result. now go to next lookup value in _keys
-    _iterator.next();
-  }
-
-  return MMFilesToken{};
-}
-
-void MMFilesEdgeIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& buffer, size_t limit) {
-  size_t atMost = _batchSize > limit ? limit : _batchSize;
-
-  if (atMost == 0) {
-    // nothing to do
-    buffer.clear();
-    _lastElement = MMFilesSimpleIndexElement();
-    return;
-  }
-
-  while (_iterator.valid()) {
-    _buffer.clear();
-    if (buffer.empty()) {
-      VPackSlice tmp = _iterator.value();
-      if (tmp.isObject()) {
-        tmp = tmp.get(StaticStrings::IndexEq);
-      }
-      _index->lookupByKey(&_context, &tmp, _buffer, atMost);
-      // fallthrough intentional
-    } else {
-      // Continue the lookup
-      buffer.clear();
-
-      _index->lookupByKeyContinue(&_context, _lastElement, _buffer, atMost);
-    }
-
-    for (auto& it : _buffer) {
-      buffer.emplace_back(MMFilesToken(it.revisionId()));
-    }
-
-    if (_buffer.empty()) {
-      _lastElement = MMFilesSimpleIndexElement();
-    } else {
-      _lastElement = _buffer.back();
-      // found something
-      return;
-    }
-
-    // found no result. now go to next lookup value in _keys
-    _iterator.next();
-  }
-
-  buffer.clear();
 }
 
 void MMFilesEdgeIndexIterator::reset() {
@@ -262,9 +189,7 @@ AnyDirectionMMFilesEdgeIndexIterator::AnyDirectionMMFilesEdgeIndexIterator(Logic
 
 bool AnyDirectionMMFilesEdgeIndexIterator::next(TokenCallback const& cb,
                                                 size_t limit) {
-  bool wasCalled = false;
   auto inWrapper = [&](DocumentIdentifierToken const& res) {
-    wasCalled = true;
     if (_seen.find(res) == _seen.end()) {
       --limit;
       cb(res);
@@ -279,12 +204,7 @@ bool AnyDirectionMMFilesEdgeIndexIterator::next(TokenCallback const& cb,
 
   while (limit > 0) {
     if (_useInbound) {
-      wasCalled = false;
-      _inbound->next(inWrapper, limit);
-      if (!wasCalled) {
-        // We did not find anything
-        return false;
-      }
+      return _inbound->next(inWrapper, limit);
     } else {
       _outbound->next(outWrapper, limit);
       if (limit > 0) {
@@ -293,34 +213,6 @@ bool AnyDirectionMMFilesEdgeIndexIterator::next(TokenCallback const& cb,
     }
   }
   return true;
-}
-
-DocumentIdentifierToken AnyDirectionMMFilesEdgeIndexIterator::next() {
-  DocumentIdentifierToken res;
-  if (_useInbound) {
-    do {
-      res = _inbound->next();
-    } while (res != 0 && _seen.find(res) != _seen.end());
-    return res;
-  }
-  res = _outbound->next();
-  if (res == 0) {
-    _useInbound = true;
-    return next();
-  }
-  _seen.emplace(res);
-  return res;
-}
-
-void AnyDirectionMMFilesEdgeIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& result, size_t limit) {
-  result.clear();
-  for (size_t i = 0; i < limit; ++i) {
-    DocumentIdentifierToken res = next();
-    if (res == 0) {
-      return;
-    }
-    result.emplace_back(res);
-  }
 }
 
 void AnyDirectionMMFilesEdgeIndexIterator::reset() {
