@@ -116,7 +116,6 @@ SET(ARANGOD_SOURCES
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
   Aql/Collection.cpp
-  Aql/CollectionScanner.cpp
   Aql/Collections.cpp
   Aql/Condition.cpp
   Aql/ConditionFinder.cpp

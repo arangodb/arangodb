@@ -25,11 +25,11 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
-#include "Aql/CollectionScanner.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/FollowerInfo.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
+#include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
@@ -41,77 +41,14 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     : ExecutionBlock(engine, ep),
       _collection(ep->_collection),
       _mmdr(new ManagedDocumentResult),
-      _scanner(_trx, _mmdr.get(), _collection->getName(), ep->_random),
-      _position(0),
+      _cursor(_trx->indexScan(
+          _collection->getName(),
+          (ep->_random ? arangodb::Transaction::CursorType::ANY
+                       : arangodb::Transaction::CursorType::ALL),
+          Transaction::IndexHandle(), VPackSlice(), _mmdr.get(), 0, UINT64_MAX,
+          1000, false)),
       _mustStoreResult(true) {
-}
-
-/// @brief initialize fetching of documents
-void EnumerateCollectionBlock::initializeDocuments() {
-  _scanner.reset();
-  _documents.clear();
-  _position = 0;
-}
-
-/// @brief skip instead of fetching
-bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK();  
-  throwIfKilled();  // check if we were aborted
-  uint64_t skippedHere = 0;
-
-  int res = _scanner.forward(toSkip, skippedHere);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  skipped += skippedHere;
-
-  _documents.clear();
-  _position = 0;
-
-  _engine->_stats.scannedFull += static_cast<int64_t>(skippedHere);
-
-  if (skippedHere < toSkip) {
-    // We could not skip enough _scanner is exhausted
-    return false;
-  }
-  // _scanner might have more elements
-  return true;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
-}
-
-/// @brief continue fetching of documents
-bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
-  DEBUG_BEGIN_BLOCK(); 
-  // if (hint < DefaultBatchSize()) {
-  //   hint = DefaultBatchSize();
-  // }
-
-  throwIfKilled();  // check if we were aborted
-
-  TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  _scanner.scan(_documents, hint);
-
-  _position = 0;
-
-  size_t count = _documents.size();
-
-  if (count == 0) {
-    return false;
-  }
-
-  _engine->_stats.scannedFull += static_cast<int64_t>(count);
-
-  return true;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  TRI_ASSERT(_cursor->successful());
 }
 
 int EnumerateCollectionBlock::initialize() {
@@ -168,7 +105,7 @@ int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
   }
 
   DEBUG_BEGIN_BLOCK();  
-  initializeDocuments();
+  _cursor->reset();
   DEBUG_END_BLOCK();  
 
   return TRI_ERROR_NO_ERROR;
@@ -182,6 +119,8 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
                                                 size_t atMost) {
   DEBUG_BEGIN_BLOCK();  
   traceGetSomeBegin();
+
+  TRI_ASSERT(_cursor.get() != nullptr);
   // Invariants:
   //   As soon as we notice that _totalCount == 0, we set _done = true.
   //   Otherwise, outside of this method (or skipSome), _documents is
@@ -194,79 +133,105 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   
   bool needMore;
   AqlItemBlock* cur = nullptr;
-
+  size_t send = 0;
+  std::unique_ptr<AqlItemBlock> res;
   do {
-    needMore = false;
+    do {
+      needMore = false;
 
-    if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
-        _done = true;
-        return nullptr;
+      if (_buffer.empty()) {
+        size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+        if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+          _done = true;
+          return nullptr;
+        }
+        _pos = 0;  // this is in the first block
+        _cursor->reset();
       }
-      _pos = 0;  // this is in the first block
-      initializeDocuments();
-    }
 
-    // If we get here, we do have _buffer.front()
-    cur = _buffer.front();
-    
-    // Advance read position:
-    if (_position >= _documents.size()) {
-      // we have exhausted our local documents buffer
-      // fetch more documents into our buffer
-      if (!moreDocuments(atMost)) {
-        // nothing more to read, re-initialize fetching of documents
+      // If we get here, we do have _buffer.front()
+      cur = _buffer.front();
+
+      if (!_cursor->hasMore()) {
         needMore = true;
-        initializeDocuments();
-
+        // we have exhausted this cursor
+        // re-initialize fetching of documents
+        _cursor->reset();
         if (++_pos >= cur->size()) {
           _buffer.pop_front();  // does not throw
           returnBlock(cur);
           _pos = 0;
         }
       }
-    }
-  } while (needMore);
+    } while (needMore);
 
-  TRI_ASSERT(cur != nullptr);
-  size_t curRegs = cur->getNrRegs();
-  
-  size_t available = static_cast<size_t>(_documents.size() - _position);
-  size_t toSend = (std::min)(atMost, available);
-  RegisterId nrRegs =
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+    TRI_ASSERT(cur != nullptr);
+    TRI_ASSERT(_cursor->hasMore());
 
-  std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
-  // automatically freed if we throw
-  TRI_ASSERT(curRegs <= res->getNrRegs());
-
-  // only copy 1st row of registers inherited from previous frame(s)
-  inheritRegisters(cur, res.get(), _pos);
+    size_t curRegs = cur->getNrRegs();
     
-  auto col = _collection->getCollection();
-  LogicalCollection* c = col.get();
+    RegisterId nrRegs =
+        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
 
-  for (size_t j = 0; j < toSend; j++) {
+    res.reset(requestBlock(atMost, nrRegs));
+    // automatically freed if we throw
+    TRI_ASSERT(curRegs <= res->getNrRegs());
+
+    // only copy 1st row of registers inherited from previous frame(s)
+    inheritRegisters(cur, res.get(), _pos);
+      
+    auto col = _collection->getCollection();
+    LogicalCollection* c = col.get();
+    std::function<void(DocumentIdentifierToken const& tkn)> cb;
     if (_mustStoreResult) {
-      // The result is in the first variable of this depth,
-      // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
-      // but can just take cur->getNrRegs() as registerId:
-      if (c->readDocument(_trx, *_mmdr, _documents[_position])) {
-        uint8_t const* vpack = _mmdr->vpack(); 
-        res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), AqlValue(vpack, AqlValueFromManagedDocument()));
-      }
-      // No harm done, if the setValue throws!
-    }
-    
-    if (j > 0) {
-      // re-use already copied AQLValues
-      res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
+      cb = [&] (DocumentIdentifierToken const& tkn) {
+        if (c->readDocument(_trx, *_mmdr, tkn)) {
+          // The result is in the first variable of this depth,
+          // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
+          // but can just take cur->getNrRegs() as registerId:
+          uint8_t const* vpack = _mmdr->vpack();
+          res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
+                        AqlValue(vpack, AqlValueFromManagedDocument()));
+          // No harm done, if the setValue throws!
+        }
+
+        if (send > 0) {
+          // re-use already copied AQLValues
+          res->copyValuesFromFirstRow(send, static_cast<RegisterId>(curRegs));
+        }
+        ++send;
+      };
+    } else {
+      cb = [&] (DocumentIdentifierToken const& tkn) {
+        if (send > 0) {
+          // re-use already copied AQLValues
+          res->copyValuesFromFirstRow(send, static_cast<RegisterId>(curRegs));
+        }
+        ++send;
+      };
     }
 
-    ++_position;
+    throwIfKilled();  // check if we were aborted
+
+    TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    bool tmp = _cursor->getMore(cb, atMost);
+    if (!tmp) {
+      TRI_ASSERT(!_cursor->hasMore());
+    }
+
+    // If the collection is actually empty we cannot forward an empty block
+  } while (send == 0);
+  _engine->_stats.scannedFull += static_cast<int64_t>(send);
+  TRI_ASSERT(res != nullptr);
+
+  if (send < atMost) {
+    // The collection did not have enough results
+    res->shrink(send);
   }
-  
+
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
 
@@ -281,33 +246,11 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
 size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();  
   size_t skipped = 0;
+  TRI_ASSERT(_cursor != nullptr);
 
   if (_done) {
     return skipped;
   }
-
-  if (!_documents.empty()) {
-    if (_position < _documents.size()) {
-      // We still have unread documents in the _documents buffer
-      // Just skip them
-      size_t couldSkip = static_cast<size_t>(_documents.size() - _position);
-      if (atMost <= couldSkip) {
-        // More in buffer than to skip.
-
-        // move forward the iterator
-        _position += atMost;
-        return atMost;
-      }
-      // Skip entire buffer
-      _documents.clear();
-      _position = 0;
-      skipped += couldSkip;
-    }
-  }
-
-  // No _documents buffer. But could Skip more
-  // Fastforward the _scanner
-  TRI_ASSERT(_documents.empty());
 
   while (skipped < atLeast) {
     if (_buffer.empty()) {
@@ -317,15 +260,27 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
         return skipped;
       }
       _pos = 0;  // this is in the first block
-      initializeDocuments();
+      _cursor->reset();
     }
 
     // if we get here, then _buffer.front() exists
     AqlItemBlock* cur = _buffer.front();
+    uint64_t skippedHere = 0;
 
-    if (!skipDocuments(atMost - skipped, skipped)) {
-      // nothing more to read, re-initialize fetching of documents
-      initializeDocuments();
+    if (_cursor->hasMore()) {
+      int res = _cursor->skip(atMost - skipped, skippedHere);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+
+    skipped += skippedHere;
+
+    if (skipped < atLeast) {
+      TRI_ASSERT(!_cursor->hasMore());
+      // not skipped enough re-initialize fetching of documents
+      _cursor->reset();
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
         delete cur;
@@ -333,6 +288,8 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
       }
     }
   }
+
+  _engine->_stats.scannedFull += static_cast<int64_t>(skipped);
   // We skipped atLeast documents
   return skipped;
 
