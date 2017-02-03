@@ -119,12 +119,9 @@ bool MMFilesPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
     if (result) {
       cb(MMFilesToken{result.revisionId()});
       --limit;
-    } else {
-      // We are done
-      return false;
     }
   }
-  return true;
+  return _iterator.valid();
 }
 
 void MMFilesPrimaryIndexIterator::reset() { _iterator.reset(); }

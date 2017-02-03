@@ -75,10 +75,9 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
   if (_currentCursor == _cursors.size()) {
     return false;
   }
-  _cachePos++;
   if (_cachePos < _cache.size()) {
     LogicalCollection* collection = _cursors[_currentCursor][_currentSubCursor]->collection();
-    if (collection->readDocument(_trx, *_mmdr, _cache[_cachePos])) {
+    if (collection->readDocument(_trx, *_mmdr, _cache[_cachePos++])) {
       result.emplace_back(_mmdr->vpack());
     }
     if (_internalCursorMapping != nullptr) {
@@ -132,7 +131,7 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
 
   TRI_ASSERT(_cachePos < _cache.size());
   LogicalCollection* collection = cursor->collection();
-  if (collection->readDocument(_trx, *_mmdr, _cache[_cachePos])) {
+  if (collection->readDocument(_trx, *_mmdr, _cache[_cachePos++])) {
     result.emplace_back(_mmdr->vpack());
   }
   if (_internalCursorMapping != nullptr) {
