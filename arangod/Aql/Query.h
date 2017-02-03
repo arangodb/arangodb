@@ -378,7 +378,7 @@ class Query {
   void enterState(ExecutionState);
 
   /// @brief cleanup plan and engine for current query
-  void cleanupPlanAndEngine(int);
+  void cleanupPlanAndEngine(int, VPackBuilder* statsBuilder = nullptr);
 
   /// @brief create a TransactionContext
   std::shared_ptr<arangodb::TransactionContext> createTransactionContext();

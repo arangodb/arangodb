@@ -33,6 +33,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionStats.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -1328,7 +1329,7 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
         responseBodyBuf.c_str(), responseBodyBuf.length());
 
     VPackSlice slice = builder->slice();
-
+  
     if (slice.hasKey("code")) {
       return slice.get("code").getNumericValue<int>();
     }
@@ -1362,9 +1363,14 @@ int RemoteBlock::shutdown(int errorCode) {
   std::shared_ptr<VPackBuilder> builder =
       VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
   VPackSlice slice = builder->slice();
-
-  // read "warnings" attribute if present and add it to our query
+   
   if (slice.isObject()) {
+    if (slice.hasKey("stats")) { 
+      ExecutionStats newStats(slice.get("stats"));
+      _engine->_stats.add(newStats);
+    }
+
+    // read "warnings" attribute if present and add it to our query
     VPackSlice warnings = slice.get("warnings");
     if (warnings.isArray()) {
       auto query = _engine->getQuery();
@@ -1415,19 +1421,14 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
       res->result->getBodyVelocyPack();
   VPackSlice responseBody = responseBodyBuilder->slice();
 
-  ExecutionStats newStats(responseBody.get("stats"));
-
-  _engine->_stats.addDelta(_deltaStats, newStats);
-  _deltaStats = newStats;
-
   if (VelocyPackHelper::getBooleanValue(responseBody, "exhausted", true)) {
     traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
-  auto r = new arangodb::aql::AqlItemBlock(_engine->getQuery()->resourceMonitor(), responseBody);
-  traceGetSomeEnd(r);
-  return r;
+  auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), responseBody);
+  traceGetSomeEnd(r.get());
+  return r.release();
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
