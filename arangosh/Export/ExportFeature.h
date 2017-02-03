@@ -53,6 +53,7 @@ class ExportFeature final : public application_features::ApplicationFeature,
   void collectionExport(httpclient::SimpleHttpClient* httpClient);
   void writeCollectionBatch(int fd, VPackArrayIterator it, std::string const& fileName);
   void graphExport(httpclient::SimpleHttpClient* httpClient);
+  void writeGraphBatch(int fd, VPackArrayIterator it, std::string const& fileName);
 
   void writeToFile(int fd, std::string& string, std::string const& fileName);
   std::shared_ptr<VPackBuilder> httpCall(httpclient::SimpleHttpClient* httpClient, std::string const& url, arangodb::rest::RequestType, std::string postBody = "");

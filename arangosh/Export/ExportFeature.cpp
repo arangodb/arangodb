@@ -317,7 +317,8 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClie
   if (response->wasHttpError()) {
 
     if (response->getHttpReturnCode() == 404) {
-      LOG(FATAL) << "Collection not found.";
+      LOG(FATAL) << "Collection or graph not found.";
+      FATAL_ERROR_EXIT();
     } else {
       parsedBody = response->getBodyVelocyPack();
       std::cout << parsedBody->toJson() << std::endl;
@@ -352,16 +353,33 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
 
   std::string errorMsg;
 
-  // filename is immer graphname
+  if (_collections.empty()) {
+    std::cout << "export graph '" << _graphName << "'" << std::endl;
+    std::string const url = "/_api/gharial/" + _graphName;
+    std::shared_ptr<VPackBuilder> parsedBody = httpCall(httpClient, url, rest::RequestType::GET);
+    VPackSlice body = parsedBody->slice();
 
 
-  // if collections yeah
-  // graphname only -> get all collection for the graph
+    std::unordered_set<std::string> collections;
 
+    for(auto const& edgeDefs : VPackArrayIterator(body.get("graph").get("edgeDefinitions"))) {
+      collections.insert(edgeDefs.get("collection").copyString());
 
+      for(auto const& from : VPackArrayIterator(edgeDefs.get("from"))) {
+        collections.insert(from.copyString());
+      }
 
+      for(auto const& to : VPackArrayIterator(edgeDefs.get("to"))) {
+        collections.insert(to.copyString());
+      }
+    }
 
-
+    for (auto const& cn : collections) {
+      _collections.push_back(cn);
+    }
+  } else {
+    std::cout << "export graph with collections " << StringUtils::join(_collections, ", ") << " as '" << _graphName << "'" << std::endl;
+  }
 
   std::string fileName = _outputDirectory + TRI_DIR_SEPARATOR_STR + _graphName + "." + _typeExport;
 
@@ -378,11 +396,64 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
   }
   TRI_DEFER(TRI_CLOSE(fd));
 
+  std::string xmlHeader = R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<graph label="small example" 
+xmlns:dc="http://purl.org/dc/elements/1.1/" 
+xmlns:xlink="http://www.w3.org/1999/xlink" 
+xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" 
+xmlns:cy="http://www.cytoscape.org" 
+xmlns="http://www.cs.rpi.edu/XGMML" 
+directed="1">
+)";
 
+  writeToFile(fd, xmlHeader, fileName);
 
+  for (auto const& collection : _collections) {
+    if (_progress) {
+      std::cout << "# Exporting collection '" << collection << "'..." << std::endl;
+    }
 
+    std::string const url = "_api/cursor";
 
+    VPackBuilder post;
+    post.openObject();
+    post.add("query", VPackValue("FOR doc IN @@collection RETURN doc"));
+    post.add("bindVars", VPackValue(VPackValueType::Object));
+    post.add("@collection", VPackValue(collection));
+    post.close();
+    post.close();
 
+    std::shared_ptr<VPackBuilder> parsedBody = httpCall(httpClient, url, rest::RequestType::POST, post.toJson());
+    VPackSlice body = parsedBody->slice();
 
+    writeGraphBatch(fd, VPackArrayIterator(body.get("result")), fileName);
 
+    while (body.hasKey("id")) {
+      std::string const url = "/_api/cursor/"+body.get("id").copyString();
+      parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
+      body = parsedBody->slice();
+
+      writeGraphBatch(fd, VPackArrayIterator(body.get("result")), fileName);
+    }
+  }
+  std::string closingGraphTag = "</graph>\n";
+  writeToFile(fd, closingGraphTag, fileName);
+}
+
+void ExportFeature::writeGraphBatch(int fd, VPackArrayIterator it, std::string const& fileName) {
+
+  // todos:
+  // insert actual label, options to have also attributes
+  for(auto const& doc : it) {
+    if (doc.hasKey("_from")) {
+      // <edge label="B-C" source="2" target="3">
+      std::string edge = "<edge label=\"MYLABEL\" source=\"" + doc.get("_from").copyString() + "\" target=\"" + doc.get("_to").copyString() + "\" />\n";
+      writeToFile(fd, edge, fileName);
+
+    } else {
+      // <node label="C" id="3">
+      std::string node = "<node label=\"MYNODELABEL\" id=\"" + doc.get("_id").copyString() + "\" />\n";
+      writeToFile(fd, node, fileName);
+    }
+  }
 }
