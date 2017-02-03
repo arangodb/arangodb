@@ -552,6 +552,8 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     auto body = std::make_shared<std::string const>(b.toJson());
     requests.emplace_back("server:" + server, rest::RequestType::POST, path,
                           body);
+    LOG(INFO) << "Initializing Server " << server;
+    LOG(INFO) << body.get();
   }
 
   ClusterComm* cc = ClusterComm::instance();
