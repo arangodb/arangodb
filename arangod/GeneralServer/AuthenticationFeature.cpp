@@ -107,23 +107,26 @@ std::string AuthenticationFeature::generateNewJwtSecret() {
 }
 
 void AuthenticationFeature::start() {
-  LOG(INFO) << "Authentication is turned " << (_active ? "on" : "off");
+  std::ostringstream out;
 
-  if (!isEnabled()) {
-    return;
-  }
-  auto queryRegistryFeature =
-    application_features::ApplicationServer::getFeature<QueryRegistryFeature>("QueryRegistry");
-  authInfo()->setQueryRegistry(queryRegistryFeature->queryRegistry());
+  out << "Authentication is turned " << (_active ? "on" : "off");
 
-  if (_authenticationSystemOnly) {
-    LOG(INFO) << "Authentication system only";
-  }
+  if (isEnabled()) {
+    auto queryRegistryFeature =
+      application_features::ApplicationServer::getFeature<QueryRegistryFeature>("QueryRegistry");
+    authInfo()->setQueryRegistry(queryRegistryFeature->queryRegistry());
+
+    if (_active && _authenticationSystemOnly) {
+      out << " (system only)";
+    }
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-  LOG(INFO) << "Authentication for unix sockets is turned "
-    << (_authenticationUnixSockets ? "on" : "off");
+    out << ", authentication for unix sockets is turned "
+        << (_authenticationUnixSockets ? "on" : "off");
 #endif
+  }
+
+  LOG(INFO) << out.str();
 }
 
 AuthLevel AuthenticationFeature::canUseDatabase(std::string const& username,

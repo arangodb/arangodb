@@ -1140,15 +1140,16 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const modeStr = TRI_ObjectToString(isolate, args[1]);
+  size_t const length = modeStr.length();
 
-  if ((modeStr.length() > 5) || (modeStr.length() == 0)) {
+  if (length == 0 || length > 5) {
     TRI_V8_THROW_TYPE_ERROR(
         "<mode> must be a string with up to 4 octal digits in it plus a "
         "leading zero.");
   }
 
   long mode = 0;
-  for (uint32_t i = 0; i < modeStr.length(); i++) {
+  for (uint32_t i = 0; i < length; ++i) {
     if (!isdigit(modeStr[i])) {
       TRI_V8_THROW_TYPE_ERROR(
           "<mode> must be a string with up to 4 octal digits in it plus a "
@@ -1163,7 +1164,7 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "<mode> must be a string with up to 4 octal digits in it plus a "
           "leading zero.");
     }
-    mode = mode | digit << ((modeStr.length() - i - 1) * 3);
+    mode = mode | digit << ((length - i - 1) * 3);
   }
   std::string err;
   int rc = TRI_ChMod(*name, mode, err);
@@ -1732,20 +1733,47 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<message> must be a string");
   }
 
-  if (TRI_CaseEqualString(*level, "fatal")) {
-    LOG(ERR) << "(FATAL) " << *message;
-  } else if (TRI_CaseEqualString(*level, "error")) {
-    LOG(ERR) << "" << *message;
-  } else if (TRI_CaseEqualString(*level, "warning")) {
-    LOG(WARN) << "" << *message;
-  } else if (TRI_CaseEqualString(*level, "info")) {
-    LOG(INFO) << "" << *message;
-  } else if (TRI_CaseEqualString(*level, "debug")) {
-    LOG(DEBUG) << "" << *message;
-  } else if (TRI_CaseEqualString(*level, "trace")) {
-    LOG(TRACE) << "" << *message;
+  std::vector<std::string> splitted = StringUtils::split(*level, '=');
+
+  std::string ls = "info";
+  std::string ts = "";
+
+  if (splitted.size() == 1) {
+    ts = splitted[0];
+  } else if (splitted.size() >= 2) {
+    ts = splitted[0];
+    ls = splitted[1];
+  }
+
+  std::string msg = *message;
+  LogLevel ll = LogLevel::WARN;
+
+  StringUtils::tolowerInPlace(&ls);
+  StringUtils::tolowerInPlace(&ts);
+
+  if (ls == "fatal") {
+    msg = "FATAL! " + msg;
+    ll = LogLevel::ERR;
+  } else if (ls == "error") {
+    ll = LogLevel::ERR;
+  } else if (ls == "warning" || ls == "warn") {
+    ll = LogLevel::WARN;
+  } else if (ls == "info") {
+    ll = LogLevel::INFO;
+  } else if (ls == "debug") {
+    ll = LogLevel::DEBUG;
+  } else if (ls == "trace") {
+    ll = LogLevel::TRACE;
   } else {
-    LOG(ERR) << "(unknown log level '" << *level << "') " << *message;
+    msg = ls + "!" + msg;
+  }
+
+  LogTopic* topic = ts.empty() ? nullptr : LogTopic::lookup(ts);
+
+  if (topic == nullptr) {
+    LOG_RAW(ll) << msg;
+  } else {
+    LOG_TOPIC_RAW(ll, *topic) << msg;
   }
 
   TRI_V8_RETURN_UNDEFINED();

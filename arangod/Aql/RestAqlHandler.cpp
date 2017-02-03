@@ -697,7 +697,6 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           try {
             res = query->trx()->lockCollections();
           } catch (...) {
-            LOG(ERR) << "lock lead to an exception";
             generateError(rest::ResponseCode::SERVER_ERROR,
                           TRI_ERROR_HTTP_SERVER_ERROR,
                           "lock lead to an exception");
@@ -726,15 +725,10 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         if (items.get() == nullptr) {
           answerBuilder.add("exhausted", VPackValue(true));
           answerBuilder.add("error", VPackValue(false));
-          answerBuilder.add(VPackValue("stats"));
-          query->getStats(answerBuilder);
         } else {
           try {
             items->toVelocyPack(query->trx(), answerBuilder);
-            answerBuilder.add(VPackValue("stats"));
-            query->getStats(answerBuilder);
           } catch (...) {
-            LOG(ERR) << "cannot transform AqlItemBlock to VelocyPack";
             generateError(rest::ResponseCode::SERVER_ERROR,
                           TRI_ERROR_HTTP_SERVER_ERROR,
                           "cannot transform AqlItemBlock to VelocyPack");
@@ -760,7 +754,6 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             skipped = block->skipSomeForShard(atLeast, atMost, shardId);
           }
         } catch (...) {
-          LOG(ERR) << "skipSome lead to an exception";
           generateError(rest::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_HTTP_SERVER_ERROR,
                         "skipSome lead to an exception");
@@ -768,8 +761,6 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         }
         answerBuilder.add("skipped", VPackValue(static_cast<double>(skipped)));
         answerBuilder.add("error", VPackValue(false));
-        answerBuilder.add(VPackValue("stats"));
-        query->getStats(answerBuilder);
       } else if (operation == "skip") {
         auto number =
             VelocyPackHelper::getNumericValue<size_t>(querySlice, "number", 1);
@@ -789,10 +780,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           }
           answerBuilder.add("exhausted", VPackValue(exhausted));
           answerBuilder.add("error", VPackValue(false));
-          answerBuilder.add(VPackValue("stats"));
-          query->getStats(answerBuilder);
         } catch (...) {
-          LOG(ERR) << "skip lead to an exception";
           generateError(rest::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_HTTP_SERVER_ERROR,
                         "skip lead to an exception");
@@ -803,7 +791,6 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         try {
           res = query->engine()->initialize();
         } catch (...) {
-          LOG(ERR) << "initialize lead to an exception";
           generateError(rest::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_HTTP_SERVER_ERROR,
                         "initialize lead to an exception");
@@ -825,7 +812,6 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             res = query->engine()->initializeCursor(items.get(), pos);
           }
         } catch (...) {
-          LOG(ERR) << "initializeCursor lead to an exception";
           generateError(rest::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_HTTP_SERVER_ERROR,
                         "initializeCursor lead to an exception");
@@ -833,8 +819,6 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         }
         answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
         answerBuilder.add("code", VPackValue(static_cast<double>(res)));
-        answerBuilder.add(VPackValue("stats"));
-        query->getStats(answerBuilder);
       } else if (operation == "shutdown") {
         int res = TRI_ERROR_INTERNAL;
         int errorCode = VelocyPackHelper::getNumericValue<int>(
@@ -854,7 +838,6 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           _queryRegistry->destroy(_vocbase, _qId, errorCode);
           _qId = 0;
         } catch (...) {
-          LOG(ERR) << "shutdown lead to an exception";
           generateError(rest::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_HTTP_SERVER_ERROR,
                         "shutdown lead to an exception");
@@ -863,7 +846,6 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
         answerBuilder.add("code", VPackValue(res));
       } else {
-        LOG(ERR) << "Unknown operation!";
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
         return;
@@ -875,7 +857,6 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
     generateError(rest::ResponseCode::BAD, e.code());
     return;
   } catch (...) {
-    LOG(ERR) << "OUT OF MEMORY when handling query.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }

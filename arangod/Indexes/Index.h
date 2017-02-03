@@ -105,6 +105,7 @@ class Index {
 
     for (auto const& it : _fields) {
       std::vector<std::string> parts;
+      parts.reserve(it.size());
       for (auto const& it2 : it) {
         parts.emplace_back(it2.name);
       }

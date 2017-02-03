@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Aql/Collection.h"
-#include "Cluster/ServerState.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionState.h"

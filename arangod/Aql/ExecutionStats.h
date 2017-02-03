@@ -58,21 +58,22 @@ struct ExecutionStats {
     scannedIndex += summand.scannedIndex;
     filtered += summand.filtered;
     httpRequests += summand.httpRequests;
-    fullCount += summand.fullCount;
+    if (summand.fullCount > 0) {
+      // fullCount may be negative, don't add it then
+      fullCount += summand.fullCount;
+    }
     // intentionally no modification of executionTime
   }
 
-  /// @brief sumarize the delta of two other sets of ExecutionStats to us
-  void addDelta(ExecutionStats const& lastStats,
-                ExecutionStats const& newStats) {
-    writesExecuted += newStats.writesExecuted - lastStats.writesExecuted;
-    writesIgnored += newStats.writesIgnored - lastStats.writesIgnored;
-    scannedFull += newStats.scannedFull - lastStats.scannedFull;
-    scannedIndex += newStats.scannedIndex - lastStats.scannedIndex;
-    filtered += newStats.filtered - lastStats.filtered;
-    httpRequests += newStats.httpRequests - lastStats.httpRequests;
-    fullCount += newStats.fullCount - lastStats.fullCount;
-    // intentionally no modification of executionTime
+  void clear() {
+    writesExecuted = 0;
+    writesIgnored = 0;
+    scannedFull = 0;
+    scannedIndex = 0;
+    filtered = 0;
+    httpRequests = 0;
+    fullCount = -1;
+    executionTime = 0.0;
   }
 
   /// @brief number of successfully executed write operations

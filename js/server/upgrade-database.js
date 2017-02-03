@@ -108,7 +108,7 @@
     // special logger with database name
     const logger = {
       info: function (msg) {
-        console.log("In database '%s': %s", db._name(), msg);
+        console.debug("In database '%s': %s", db._name(), msg);
       },
 
       error: function (msg) {
@@ -237,14 +237,14 @@
       }
 
       if (0 < activeTasks.length) {
-        logger.log('Found ' + allTasks.length + ' defined task(s), ' +
+        logger.info('Found ' + allTasks.length + ' defined task(s), ' +
           activeTasks.length + ' task(s) to run');
-        logger.log('state ' + constant2name[cluster] + '/' +
+        logger.info('state ' + constant2name[cluster] + '/' +
           constant2name[database] + ', tasks ' + activeTasks.map(function (a) {
             return a.name;
           }).join(', '));
       } else {
-        logger.log('Database is up-to-date (' + (lastVersion || '-') +
+        logger.info('Database is up-to-date (' + (lastVersion || '-') +
           '/' + constant2name[cluster] + '/' + constant2name[database] + ')');
       }
 
@@ -310,7 +310,7 @@
       }
 
       if (0 < activeTasks.length) {
-        logger.log(procedure + ' successfully finished');
+        logger.info(procedure + ' successfully finished');
       }
 
       // successfully finished

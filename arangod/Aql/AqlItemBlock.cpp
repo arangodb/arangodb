@@ -68,10 +68,11 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
                                    "exhausted must be false");
   }
 
-  _nrItems = VelocyPackHelper::getNumericValue<size_t>(slice, "nrItems", 0);
-  if (_nrItems == 0) {
+  int64_t nrItems = VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
+  if (nrItems <= 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
   }
+  _nrItems = static_cast<size_t>(nrItems);
 
   _nrRegs = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
 
