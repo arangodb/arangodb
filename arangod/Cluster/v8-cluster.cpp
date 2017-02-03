@@ -754,7 +754,11 @@ static void JS_GetCollectionInfoClusterInfo(
     uint32_t pos = 0;
     for (auto const& s : p.second) {
       try{
-        shorts->Set(pos, TRI_V8_STD_STRING(serverAliases.at(s)));
+        std::string t = s;
+        if (s.at(0) == '_') {
+          t = s.substr(1);
+        }
+        shorts->Set(pos, TRI_V8_STD_STRING(serverAliases.at(t)));
       } catch (...) {}
       list->Set(pos++, TRI_V8_STD_STRING(s));
     }

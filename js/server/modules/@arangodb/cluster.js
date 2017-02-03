@@ -1810,8 +1810,7 @@ function shardDistribution () {
   var result = {};
   for (var i = 0; i < colls.length; ++i) {
     var collName = colls[i].name();
-    var collInfo = global.ArangoClusterInfo.getCollectionInfo(dbName,
-      collName);
+    var collInfo = global.ArangoClusterInfo.getCollectionInfo(dbName, collName);
     var shards = collInfo.shards;
     var collInfoCurrent = {};
     var shardNames = Object.keys(shards);
