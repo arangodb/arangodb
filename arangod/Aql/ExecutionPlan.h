@@ -75,6 +75,8 @@ class ExecutionPlan {
 
   /// @brief check if the plan is empty
   inline bool empty() const { return (_root == nullptr); }
+  
+  bool isResponsibleForInitialize() const { return _isResponsibleForInitialize; }
 
   /// @brief note that an optimizer rule was applied
   inline void addAppliedRule(int level) { _appliedRules.emplace_back(level); }
@@ -298,6 +300,8 @@ class ExecutionPlan {
 
   /// @brief flag to indicate whether the variable usage is computed
   bool _varUsageComputed;
+
+  bool _isResponsibleForInitialize;
 
   /// @brief auto-increment sequence for node ids
   size_t _nextId;

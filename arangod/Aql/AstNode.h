@@ -418,7 +418,6 @@ struct AstNode {
   bool isAttributeAccessForVariable(Variable const* variable, bool allowIndexedAccess) const {
     auto node = getAttributeAccessForVariable(allowIndexedAccess);
 
-
     if (node == nullptr) {
       return false;
     }

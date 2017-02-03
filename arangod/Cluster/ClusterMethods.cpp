@@ -2033,6 +2033,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
   }
 
   if (nrok != (int)DBservers.size()) {
+    LOG(WARN) << "could not flush WAL on all servers. confirmed: " << nrok << ", expected: " << DBservers.size();
     return TRI_ERROR_INTERNAL;
   }
 
