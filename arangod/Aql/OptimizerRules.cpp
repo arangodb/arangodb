@@ -2350,13 +2350,15 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, ExecutionPlan* plan,
 
         // Using Index for sort only works if all indexes are equal.
         auto first = allIndexes[0].getIndex();
-        for (auto const& path : first->fieldNames()) {
-          elements.emplace_back(sortVariable, !isSortReverse, path);
-        }
-        for (auto const& it : allIndexes) {
-          if (first != it.getIndex()) {
-            elements.clear();
-            break;
+        if (first->isSorted()) {
+          for (auto const& path : first->fieldNames()) {
+            elements.emplace_back(sortVariable, !isSortReverse, path);
+          }
+          for (auto const& it : allIndexes) {
+            if (first != it.getIndex()) {
+              elements.clear();
+              break;
+            }
           }
         }
       } else if (nodeType == ExecutionNode::INSERT ||
