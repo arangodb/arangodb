@@ -411,10 +411,12 @@ bool Worker<V, E, M>::_processVertices(
 // called at the end of a worker thread, needs mutex
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_finishedProcessing() {
-  MUTEX_LOCKER(guard, _threadMutex);
-  if (_runningThreads != 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "only one thread should ever enter this region");
+  {
+    MUTEX_LOCKER(guard, _threadMutex);
+    if (_runningThreads != 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "only one thread should ever enter this region");
+    }
   }
   
   VPackBuilder package;
