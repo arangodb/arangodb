@@ -1,12 +1,17 @@
-devel
------
+3.2.0-alpha1 (XXXX-XX-XX)
+-------------------------
+  
+* removed revisions cache intermediate layer implementation
+ 
+* obsoleted startup options `--database.revision-cache-chunk-size` and
+  `--database.revision-cache-target-size` 
 
 * fix potential port number over-/underruns
 
 * added startup option `--log.shorten-filenames` for controlling whether filenames
   in log message should be shortened to just the filename with the absolute path
 
-* removed IndexThreadFeature, made --database.index-threads option obsolete
+* removed IndexThreadFeature, made `--database.index-threads` option obsolete
 
 * changed index filling to make it more parallel, dispatch tasks to boost::asio
 
