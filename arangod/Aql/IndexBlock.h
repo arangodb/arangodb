@@ -59,7 +59,7 @@ struct NonConstExpression {
   ~NonConstExpression() { delete expression; }
 };
 
-class IndexBlock : public ExecutionBlock {
+class IndexBlock final : public ExecutionBlock {
  public:
   IndexBlock(ExecutionEngine* engine, IndexNode const* ep);
 
