@@ -114,6 +114,11 @@ void ExportFeature::validateOptions(
   }
 
   std::transform(_typeExport.begin(), _typeExport.end(), _typeExport.begin(), ::tolower);
+
+  if (_typeExport == "xgmml" && _graphName.empty() ) {
+    LOG(FATAL) << "expecting a graph name to dump a graph";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void ExportFeature::prepare() {
@@ -235,7 +240,15 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
     }
     TRI_DEFER(TRI_CLOSE(fd));
-    std::string const url = "/_api/export?collection="+StringUtils::urlEncode(collection);
+    std::string const url = "_api/cursor";
+
+    VPackBuilder post;
+    post.openObject();
+    post.add("query", VPackValue("FOR doc IN @@collection RETURN doc"));
+    post.add("bindVars", VPackValue(VPackValueType::Object));
+    post.add("@collection", VPackValue(collection));
+    post.close();
+    post.close();
 
     _firstLine = true;
     if (_typeExport == "json") {
@@ -243,13 +256,13 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
       writeToFile(fd, openingBracket, fileName);
     }
 
-    std::shared_ptr<VPackBuilder> parsedBody = httpCall(httpClient, url, rest::RequestType::POST);
+    std::shared_ptr<VPackBuilder> parsedBody = httpCall(httpClient, url, rest::RequestType::POST, post.toJson());
     VPackSlice body = parsedBody->slice();
 
     writeCollectionBatch(fd, VPackArrayIterator(body.get("result")), fileName);
 
     while (body.hasKey("id")) {
-      std::string const url = "/_api/export/"+body.get("id").copyString();
+      std::string const url = "/_api/cursor/"+body.get("id").copyString();
       parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
       body = parsedBody->slice();
 
@@ -287,11 +300,11 @@ void ExportFeature::writeToFile(int fd, std::string& line, std::string const& fi
     }
 }
 
-std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClient, std::string const& url, rest::RequestType requestType) {
+std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClient, std::string const& url, rest::RequestType requestType, std::string postBody) {
   std::string errorMsg;
 
   std::unique_ptr<SimpleHttpResult> response(
-      httpClient->request(requestType, url, "", 0));
+      httpClient->request(requestType, url, postBody.c_str(), postBody.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
@@ -299,11 +312,15 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClie
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
   }
 
+  std::shared_ptr<VPackBuilder> parsedBody;
+
   if (response->wasHttpError()) {
 
     if (response->getHttpReturnCode() == 404) {
       LOG(FATAL) << "Collection not found.";
     } else {
+      parsedBody = response->getBodyVelocyPack();
+      std::cout << parsedBody->toJson() << std::endl;
       errorMsg = "got invalid response from server: HTTP " +
                 StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                 response->getHttpReturnMessage();
@@ -311,7 +328,6 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClie
     }
   }
 
-  std::shared_ptr<VPackBuilder> parsedBody;
   try {
     parsedBody = response->getBodyVelocyPack();
   } catch (...) {
@@ -333,4 +349,40 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
   if (_progress) {
     std::cout << "graph export" << std::endl;
   }
+
+  std::string errorMsg;
+
+  // filename is immer graphname
+
+
+  // if collections yeah
+  // graphname only -> get all collection for the graph
+
+
+
+
+
+
+  std::string fileName = _outputDirectory + TRI_DIR_SEPARATOR_STR + _graphName + "." + _typeExport;
+
+  // remove an existing file first
+  if (TRI_ExistsFile(fileName.c_str())) {
+    TRI_UnlinkFile(fileName.c_str());
+  }
+
+  int fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR);
+
+  if (fd < 0) {
+    errorMsg = "cannot write to file '" + fileName + "'";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
+  }
+  TRI_DEFER(TRI_CLOSE(fd));
+
+
+
+
+
+
+
+
 }
