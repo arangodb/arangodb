@@ -121,7 +121,7 @@ friend class MMFilesGeoIndexIterator;
   
   bool canBeDropped() const override { return true; }
 
-  bool isSorted() const override { return false; }
+  bool isSorted() const override { return true; }
 
   bool hasSelectivityEstimate() const override { return false; }
 
