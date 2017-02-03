@@ -468,11 +468,13 @@ void Constituent::callElection() {
 void Constituent::update(std::string const& leaderID, term_t t) {
   MUTEX_LOCKER(guard, _castLock);
   _term = t;
+
   if (_leaderID != leaderID) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Constituent::update: setting _leaderID to " << leaderID
       << " in term " << _term;
     _leaderID = leaderID;
+    _role = FOLLOWER;
   }
 }
 
@@ -546,6 +548,11 @@ void Constituent::run() {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to " << _leaderID
       << " in term " << _term;
   } else {
+
+    {
+      MUTEX_LOCKER(guard, _castLock);
+      _role = FOLLOWER;
+    }
     while (!this->isStopping()) {
       if (_role == FOLLOWER) {
         static double const M = 1.0e6;

@@ -490,6 +490,8 @@ if (USE_MAINTAINER_MODE)
   find_program(AWK_EXECUTABLE awk)
 endif ()
 
+find_program(FILE_EXECUTABLE file)
+
 ################################################################################
 ## FAILURE TESTS
 ################################################################################

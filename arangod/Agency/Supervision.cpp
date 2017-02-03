@@ -41,9 +41,9 @@
 #include "Basics/MutexLocker.h"
 
 using namespace arangodb;
-using namespace arangodb::application_features;
+
 using namespace arangodb::consensus;
-using namespace arangodb::velocypack;
+using namespace arangodb::application_features;
 
 std::string Supervision::_agencyPrefix = "/arango";
 

@@ -2350,13 +2350,15 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, ExecutionPlan* plan,
 
         // Using Index for sort only works if all indexes are equal.
         auto first = allIndexes[0].getIndex();
-        for (auto const& path : first->fieldNames()) {
-          elements.emplace_back(sortVariable, !isSortReverse, path);
-        }
-        for (auto const& it : allIndexes) {
-          if (first != it.getIndex()) {
-            elements.clear();
-            break;
+        if (first->isSorted()) {
+          for (auto const& path : first->fieldNames()) {
+            elements.emplace_back(sortVariable, !isSortReverse, path);
+          }
+          for (auto const& it : allIndexes) {
+            if (first != it.getIndex()) {
+              elements.clear();
+              break;
+            }
           }
         }
       } else if (nodeType == ExecutionNode::INSERT ||
@@ -4098,47 +4100,54 @@ MMFilesGeoIndexInfo iterativePreorderWithCondition(EN::NodeType type, AstNode* r
   return MMFilesGeoIndexInfo{};
 }
 
-MMFilesGeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionPlan* plan, MMFilesGeoIndexInfo info){
-  using SV = std::vector<std::string>;
+MMFilesGeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode const*, AstNode const*> const& pair, 
+                                                ExecutionPlan* plan, MMFilesGeoIndexInfo info){
+  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> attributeAccess1;
+  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> attributeAccess2;
+   
   // first and second should be based on the same document - need to provide the document
   // in order to see which collection is bound to it and if that collections supports geo-index
-  if( !pair.first->isAttributeAccessForVariable() || !pair.second->isAttributeAccessForVariable()){
+  if (!pair.first->isAttributeAccessForVariable(attributeAccess1) || 
+      !pair.second->isAttributeAccessForVariable(attributeAccess2)) {
     info.invalidate();
     return info;
   }
 
+  TRI_ASSERT(attributeAccess1.first != nullptr);
+  TRI_ASSERT(attributeAccess2.first != nullptr);
+
   // expect access of the for doc.attribute
-  // TODO: more complex access path have to be added: loop until REFERENCE TYPE IS FOUND
-  auto setter1 = plan->getVarSetBy(static_cast<Variable const*>(pair.first->getMember(0)->getData())->id);
-  auto setter2 = plan->getVarSetBy(static_cast<Variable const*>(pair.second->getMember(0)->getData())->id);
-  SV accessPath1{pair.first->getString()};
-  SV accessPath2{pair.second->getString()};
+  auto setter1 = plan->getVarSetBy(attributeAccess1.first->id);
+  auto setter2 = plan->getVarSetBy(attributeAccess2.first->id);
 
-  if(setter1 == setter2){
-    if(setter1->getType() == EN::ENUMERATE_COLLECTION){
-      auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter1);
+  if (setter1 != nullptr &&
+      setter2 != nullptr &&
+      setter1 == setter2 &&
+      setter1->getType() == EN::ENUMERATE_COLLECTION) {
+    auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter1);
+    auto coll = collNode->collection(); //what kind of indexes does it have on what attributes
+    auto lcoll = coll->getCollection();
+    // TODO - check collection for suitable geo-indexes
+    for(auto indexShardPtr : lcoll->getIndexes()){
+      // get real index
+      arangodb::Index& index = *indexShardPtr.get();
 
-      auto coll = collNode->collection(); //what kind of indexes does it have on what attributes
-      auto lcoll = coll->getCollection();
-      // TODO - check collection for suitable geo-indexes
-      for(auto indexShardPtr : lcoll->getIndexes()){
-        // get real index
-        arangodb::Index& index = *indexShardPtr.get();
+      // check if current index is a geo-index
+      if(  index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX
+        && index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) {
+        continue;
+      }
 
-        // check if current index is a geo-index
-        if(  index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX
-          && index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX){
-          continue;
-        }
+      TRI_ASSERT(index.fields().size() == 2);
 
-        //check access paths of attributes in ast and those in index match
-        if( index.fieldNames()[0] == accessPath1 && index.fieldNames()[1] == accessPath2 ){
-          info.collectionNode = collNode;
-          info.index = indexShardPtr;
-          info.longitude = std::move(accessPath1);
-          info.latitude = std::move(accessPath2);
-          return info;
-        }
+      //check access paths of attributes in ast and those in index match
+      if (index.fields()[0] == attributeAccess1.second && 
+          index.fields()[1] == attributeAccess2.second) {
+        info.collectionNode = collNode;
+        info.index = indexShardPtr;
+        TRI_AttributeNamesJoinNested(attributeAccess1.second, info.longitude, true);
+        TRI_AttributeNamesJoinNested(attributeAccess2.second, info.latitude, true);
+        return info;
       }
     }
   }
