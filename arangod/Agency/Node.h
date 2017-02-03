@@ -50,6 +50,8 @@ enum Operation {
   REPLACE
 };
 
+using namespace arangodb::velocypack;
+
 class StoreException : public std::exception {
  public:
   explicit StoreException(std::string const& message) : _message(message) {}
@@ -159,7 +161,7 @@ class Node {
   bool handle(arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
-  void toBuilder(velocypack::Builder&, bool showHidden = false) const;
+  void toBuilder(Builder&, bool showHidden = false) const;
 
   /// @brief Access children
   Children& children();
@@ -168,10 +170,10 @@ class Node {
   Children const& children() const;
 
   /// @brief Create slice from value
-  velocypack::Slice slice() const;
+  Slice slice() const;
 
   /// @brief Get value type
-  velocypack::ValueType valueType() const;
+  ValueType valueType() const;
 
   /// @brief Add observer for this node
   bool addObserver(std::string const&);
@@ -216,7 +218,7 @@ class Node {
   std::string getString() const;
 
   /// @brief Get array value
-  velocypack::Slice getArray() const;
+  Slice getArray() const;
 
  protected:
   /// @brief Add time to live entry
@@ -232,8 +234,8 @@ class Node {
   Store* _store;           ///< @brief Store
   Children _children;      ///< @brief child nodes
   TimePoint _ttl;          ///< @brief my expiry
-  std::vector<velocypack::Buffer<uint8_t>> _value; ///< @brief my value
-  mutable velocypack::Buffer<uint8_t> _vecBuf;
+  std::vector<Buffer<uint8_t>> _value; ///< @brief my value
+  mutable Buffer<uint8_t> _vecBuf;
   mutable bool _vecBufDirty;
   bool _isArray;
 };
