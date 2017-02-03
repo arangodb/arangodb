@@ -69,6 +69,10 @@
       return shortName;
     },
 
+    getDatabaseShortName: function (id) {
+      return this.getCoordinatorShortName(id);
+    },
+
     getDatabaseServerId: function (shortname) {
       var id;
       if (window.clusterHealth) {
