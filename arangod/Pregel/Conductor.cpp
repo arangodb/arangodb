@@ -553,7 +553,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     requests.emplace_back("server:" + server, rest::RequestType::POST, path,
                           body);
     LOG(INFO) << "Initializing Server " << server;
-    LOG(INFO) << body.get();
+    LOG(INFO) << body;
   }
 
   ClusterComm* cc = ClusterComm::instance();
