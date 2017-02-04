@@ -35,7 +35,7 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-class SingletonBlock : public ExecutionBlock {
+class SingletonBlock final : public ExecutionBlock {
  public:
   SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
       : ExecutionBlock(engine, ep), _inputRegisterValues(nullptr), _whitelistBuilt(false) {}
@@ -75,7 +75,7 @@ class SingletonBlock : public ExecutionBlock {
   bool _whitelistBuilt;
 };
 
-class FilterBlock : public ExecutionBlock {
+class FilterBlock final : public ExecutionBlock {
  public:
   FilterBlock(ExecutionEngine*, FilterNode const*);
 
@@ -112,7 +112,7 @@ class FilterBlock : public ExecutionBlock {
   BlockCollector _collector;
 };
 
-class LimitBlock : public ExecutionBlock {
+class LimitBlock final : public ExecutionBlock {
  public:
   LimitBlock(ExecutionEngine* engine, LimitNode const* ep)
       : ExecutionBlock(engine, ep),
@@ -145,7 +145,7 @@ class LimitBlock : public ExecutionBlock {
   bool const _fullCount;
 };
 
-class ReturnBlock : public ExecutionBlock {
+class ReturnBlock final : public ExecutionBlock {
  public:
   ReturnBlock(ExecutionEngine* engine, ReturnNode const* ep)
       : ExecutionBlock(engine, ep), _returnInheritedResults(false) {}
@@ -168,7 +168,7 @@ class ReturnBlock : public ExecutionBlock {
   bool _returnInheritedResults;
 };
 
-class NoResultsBlock : public ExecutionBlock {
+class NoResultsBlock final : public ExecutionBlock {
  public:
   NoResultsBlock(ExecutionEngine* engine, NoResultsNode const* ep)
       : ExecutionBlock(engine, ep) {}

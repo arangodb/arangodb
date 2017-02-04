@@ -37,7 +37,7 @@ class ManagedDocumentResult;
 
 namespace aql {
 
-class TraversalBlock : public ExecutionBlock {
+class TraversalBlock final : public ExecutionBlock {
  public:
   TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep);
 
