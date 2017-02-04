@@ -997,6 +997,9 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (itr != serverAliases.end()) {
       result->Set(TRI_V8_ASCII_STRING("serverName"),
 		  TRI_V8_STD_STRING(itr->second));
+    } else {
+      result->Set(TRI_V8_ASCII_STRING("serverName"),
+		  TRI_V8_STD_STRING(id));
     }
       
     l->Set((uint32_t)i, result);
