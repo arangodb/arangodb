@@ -63,15 +63,15 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   _graphStore.reset(new GraphStore<V, E>(vocbase, _algorithm->inputFormat()));
   _nextGSSSendMessageCount = 0;
   _messageBatchSize = _algorithm->messageBatchSize(0, 0, 0, 0);
-      
+
   if (_messageCombiner) {
-    _readCache =
-        new CombiningInCache<M>(&_config, _messageFormat.get(), _messageCombiner.get());
-    _writeCache =
-        new CombiningInCache<M>(&_config, _messageFormat.get(), _messageCombiner.get());
+    _readCache = new CombiningInCache<M>(&_config, _messageFormat.get(),
+                                         _messageCombiner.get());
+    _writeCache = new CombiningInCache<M>(&_config, _messageFormat.get(),
+                                          _messageCombiner.get());
     if (_config.asynchronousMode()) {
-      _writeCacheNextGSS =
-          new CombiningInCache<M>(&_config, _messageFormat.get(), _messageCombiner.get());
+      _writeCacheNextGSS = new CombiningInCache<M>(
+          &_config, _messageFormat.get(), _messageCombiner.get());
     }
   } else {
     _readCache = new ArrayInCache<M>(&_config, _messageFormat.get());
@@ -109,9 +109,8 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
     // initialization of the graphstore might take an undefined amount
     // of time. Therefore this is performed asynchronous
     ThreadPool* pool = PregelFeature::instance()->threadPool();
-    pool->enqueue([this, callback] {
-      _graphStore->loadShards(&_config, callback);
-    });
+    pool->enqueue(
+        [this, callback] { _graphStore->loadShards(&_config, callback); });
   }
 }
 
@@ -325,8 +324,8 @@ bool Worker<V, E, M>::_processVertices(
   std::unique_ptr<InCache<M>> inCache;
   std::unique_ptr<OutCache<M>> outCache;
   if (_messageCombiner) {
-    inCache.reset(
-        new CombiningInCache<M>(nullptr, _messageFormat.get(), _messageCombiner.get()));
+    inCache.reset(new CombiningInCache<M>(nullptr, _messageFormat.get(),
+                                          _messageCombiner.get()));
     if (_config.asynchronousMode()) {
       outCache.reset(new CombiningOutCache<M>(
           &_config, (CombiningInCache<M>*)inCache.get(), _writeCacheNextGSS));
@@ -414,16 +413,16 @@ void Worker<V, E, M>::_finishedProcessing() {
   {
     MUTEX_LOCKER(guard, _threadMutex);
     if (_runningThreads != 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "only one thread should ever enter this region");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "only one thread should ever enter this region");
     }
   }
-  
+
   VPackBuilder package;
   {  // only lock after there are no more processing threads
     MUTEX_LOCKER(guard, _commandMutex);
     if (_state != WorkerState::COMPUTING) {
-      return;// probably canceled
+      return;  // probably canceled
     }
 
     // count all received messages
@@ -484,11 +483,9 @@ void Worker<V, E, M>::_finishedProcessing() {
 
     // adaptive message buffering
     ThreadPool* pool = PregelFeature::instance()->threadPool();
-    _messageBatchSize =
-    _algorithm->messageBatchSize(_expectedGSS-1,
-                                 _messageStats.sendCount,
-                                 pool->numThreads(),
-                                 _messageStats.superstepRuntimeSecs);
+    _messageBatchSize = _algorithm->messageBatchSize(
+        _expectedGSS - 1, _messageStats.sendCount, pool->numThreads(),
+        _messageStats.superstepRuntimeSecs);
     _messageStats.resetTracking();
     LOG(INFO) << "Batch size: " << _messageBatchSize;
   }

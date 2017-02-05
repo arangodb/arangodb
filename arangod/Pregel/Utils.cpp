@@ -101,8 +101,9 @@ std::shared_ptr<LogicalCollection> Utils::resolveCollection(
     return ci->getCollection(database, it->second);
   }
   LOG(INFO) << "The collection could not be translated to a planID";
-  //THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-  //                               "The collection could not be translated to a planID");
+  // THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+  //                               "The collection could not be translated to a
+  //                               planID");
   return std::shared_ptr<LogicalCollection>();
 }
 

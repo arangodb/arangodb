@@ -28,7 +28,7 @@
 namespace arangodb {
 namespace pregel {
 namespace algos {
-  
+
 /// The idea behind the algorithm is very simple: propagate the smallest
 /// vertex id along the edges to all vertices of a connected component. The
 /// number of supersteps necessary is equal to the length of the maximum
@@ -36,13 +36,14 @@ namespace algos {
 /// doesn't necessarily leads to a correct result on unidirected graphs
 struct ConnectedComponents : public SimpleAlgorithm<int64_t, int64_t, int64_t> {
  public:
-  ConnectedComponents(VPackSlice userParams) : SimpleAlgorithm("ConnectedComponents", userParams) {}
+  ConnectedComponents(VPackSlice userParams)
+      : SimpleAlgorithm("ConnectedComponents", userParams) {}
 
   bool supportsAsyncMode() const override { return true; }
   bool supportsCompensation() const override { return true; }
 
   GraphFormat<int64_t, int64_t>* inputFormat() const override;
-  
+
   MessageFormat<int64_t>* messageFormat() const override {
     return new IntegerMessageFormat();
   }

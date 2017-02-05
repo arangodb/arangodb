@@ -47,9 +47,7 @@ static std::string const kFailedCount = "failedCount";
 static std::string const kNonFailedCount = "nonfailedCount";
 static std::string const kScale = "scale";
 
-
 struct RPRComputation : public VertexComputation<float, float, float> {
-  
   RPRComputation() {}
   void compute(MessageIterator<float> const& messages) override {
     float* ptr = mutableVertexData();
@@ -99,7 +97,6 @@ IAggregator* RecoveringPageRank::aggregator(std::string const& name) const {
 struct RPRCompensation : public VertexCompensation<float, float, float> {
   RPRCompensation() {}
   void compensate(bool inLostPartition) override {
-    
     const uint32_t* step = getAggregatedValue<uint32_t>(kStep);
     if (*step == 0 && !inLostPartition) {
       uint32_t c = 1;
@@ -115,7 +112,7 @@ struct RPRCompensation : public VertexCompensation<float, float, float> {
           *data *= *scale;
         }
       }
-      
+
       voteActive();
     }
   }
@@ -128,7 +125,7 @@ VertexCompensation<float, float, float>* RecoveringPageRank::createCompensation(
 
 struct RPRMasterContext : public MasterContext {
   float _threshold;
-  
+
   RPRMasterContext(VPackSlice params) {
     VPackSlice t = params.get("convergenceThreshold");
     _threshold = t.isNumber() ? t.getNumber<float>() : EPS;
@@ -136,12 +133,12 @@ struct RPRMasterContext : public MasterContext {
 
   int32_t recoveryStep = 0;
   float totalRank = 0;
-  
+
   bool postGlobalSuperstep() override {
     const float* convergence = getAggregatedValue<float>(kConvergence);
     LOG(INFO) << "Current convergence level" << *convergence;
     totalRank = *getAggregatedValue<float>(kRank);
-    
+
     float const* diff = getAggregatedValue<float>(kConvergence);
     return globalSuperstep() < 50 && *diff > _threshold;
   }
@@ -154,7 +151,7 @@ struct RPRMasterContext : public MasterContext {
   bool postCompensation() override {
     if (recoveryStep == 0) {
       recoveryStep = 1;
-      
+
       const float* remainingRank = getAggregatedValue<float>(kRank);
       const uint32_t* nonfailedCount =
           getAggregatedValue<uint32_t>(kNonFailedCount);

@@ -35,7 +35,7 @@ ThreadPool::ThreadPool(size_t size, std::string const& name)
   _threads.reserve(size);
 
   for (size_t i = 0; i < size; ++i) {
-    WorkerThread *workerThread = new WorkerThread(this);
+    WorkerThread* workerThread = new WorkerThread(this);
 
     try {
       _threads.emplace_back(workerThread);

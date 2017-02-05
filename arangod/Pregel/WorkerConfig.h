@@ -87,29 +87,29 @@ class WorkerConfig {
   inline std::vector<ShardID> const& localVertexShardIDs() const {
     return _localVertexShardIDs;
   };
-  
+
   // convenvience access without guaranteed order, same values as in
   // edgeCollectionShards
   inline std::vector<ShardID> const& localEdgeShardIDs() const {
     return _localEdgeShardIDs;
   };
-  
+
   /// Actual set of pregel shard id's located here
   inline std::set<prgl_shard_t> const& localPregelShardIDs() const {
     return _localPregelShardIDs;
   }
-  
+
   inline prgl_shard_t shardId(ShardID const& responsibleShard) const {
     auto const& it = _pregelShardIDs.find(responsibleShard);
     return it != _pregelShardIDs.end() ? it->second : (prgl_shard_t)-1;
   }
-  
+
   // index in globalShardIDs
   inline bool isLocalVertexShard(prgl_shard_t shardIndex) const {
     // TODO cache this? prob small
     return _localPregelShardIDs.find(shardIndex) != _localPregelShardIDs.end();
   }
-  
+
   // convert an arangodb document id to a pregel id
   PregelID documentIdToPregel(std::string const& documentID) const;
 

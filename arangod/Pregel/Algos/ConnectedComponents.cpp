@@ -21,12 +21,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ConnectedComponents.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ServerState.h"
 
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
@@ -34,14 +34,13 @@ using namespace arangodb::pregel::algos;
 struct MyComputation : public VertexComputation<int64_t, int64_t, int64_t> {
   MyComputation() {}
   void compute(MessageIterator<int64_t> const& messages) override {
-    
     int64_t currentComponent = vertexData();
     for (const int64_t* msg : messages) {
       if (*msg < currentComponent) {
         currentComponent = *msg;
       };
     }
-    
+
     if (currentComponent != vertexData()) {
       sendMessageToAllEdges(currentComponent);
     }
@@ -49,27 +48,27 @@ struct MyComputation : public VertexComputation<int64_t, int64_t, int64_t> {
   }
 };
 
-VertexComputation<int64_t, int64_t, int64_t>* ConnectedComponents::createComputation(
-    WorkerConfig const* config) const {
+VertexComputation<int64_t, int64_t, int64_t>*
+ConnectedComponents::createComputation(WorkerConfig const* config) const {
   return new MyComputation();
 }
 
 struct MyGraphFormat : public VertexGraphFormat<int64_t, int64_t> {
   uint64_t vertexIdRange = 0;
-  
+
   MyGraphFormat(std::string const& result)
-  : VertexGraphFormat<int64_t, int64_t>(result, 0) {}
-  
+      : VertexGraphFormat<int64_t, int64_t>(result, 0) {}
+
   void willLoadVertices(uint64_t count) override {
     // if we aren't running in a cluster it doesn't matter
     if (arangodb::ServerState::instance()->isRunningInCluster()) {
-      arangodb::ClusterInfo *ci = arangodb::ClusterInfo::instance();
+      arangodb::ClusterInfo* ci = arangodb::ClusterInfo::instance();
       if (ci) {
         vertexIdRange = ci->uniqid(count);
       }
     }
   }
-  
+
   size_t copyVertexData(std::string const& documentId,
                         arangodb::velocypack::Slice document,
                         int64_t* targetPtr, size_t maxSize) override {
@@ -86,7 +85,7 @@ struct MyCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
   MyCompensation() {}
   void compensate(bool inLostPartition) override {
     // actually don't do anything, graph format will reinitalize lost vertices
-    
+
     /*if (inLostPartition) {
       int64_t* data = mutableVertexData();
       *data = INT64_MAX;

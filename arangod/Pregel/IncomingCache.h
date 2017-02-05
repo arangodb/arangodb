@@ -23,9 +23,9 @@
 #ifndef ARANGODB_IN_MESSAGE_CACHE_H
 #define ARANGODB_IN_MESSAGE_CACHE_H 1
 
-#include <atomic>
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/vpack.h>
+#include <atomic>
 #include <string>
 
 #include "Basics/Common.h"
@@ -38,7 +38,7 @@
 
 namespace arangodb {
 namespace pregel {
-  
+
 class WorkerConfig;
 
 /* In the longer run, maybe write optimized implementations for certain use
@@ -47,7 +47,6 @@ processing */
 template <typename M>
 class InCache {
  protected:
-  
   mutable std::map<prgl_shard_t, arangodb::Mutex> _bucketLocker;
   std::atomic<uint64_t> _containedMessageCount;
   MessageFormat<M> const* _format;
@@ -63,17 +62,15 @@ class InCache {
 
   MessageFormat<M> const* format() const { return _format; }
   uint64_t containedMessageCount() const { return _containedMessageCount; }
-  
+
   void parseMessages(VPackSlice const& messages);
-  
+
   /// @brief Store a single message.
   /// Only ever call when you are sure this is a thread local store
-  void storeMessageNoLock(prgl_shard_t shard,
-                          std::string const& vertexId,
+  void storeMessageNoLock(prgl_shard_t shard, std::string const& vertexId,
                           M const& data);
   /// @brief  Store a single message
-  void storeMessage(prgl_shard_t shard,
-                    std::string const& vertexId,
+  void storeMessage(prgl_shard_t shard, std::string const& vertexId,
                     M const& data);
 
   virtual void mergeCache(InCache<M> const* otherCache) = 0;
@@ -83,10 +80,10 @@ class InCache {
                                          std::string const& key) = 0;
   /// clear cache
   virtual void clear() = 0;
-  
+
   /// Deletes one entry. DOES NOT LOCK
   virtual void erase(prgl_shard_t shard, std::string const& key) = 0;
-  
+
   /// Calls function for each entry. DOES NOT LOCK
   virtual void forEach(
       std::function<void(prgl_shard_t, std::string const&, M const&)> func) = 0;
@@ -116,7 +113,6 @@ class ArrayInCache : public InCache<M> {
                    func) override;
 };
 
-  
 /// Cache which stores one value per vertex id
 template <typename M>
 class CombiningInCache : public InCache<M> {

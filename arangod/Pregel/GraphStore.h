@@ -51,8 +51,8 @@ template <typename V, typename E>
 class GraphStore {
   VocbaseGuard _vocbaseGuard;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
-  WorkerConfig *_config;
-  
+  WorkerConfig* _config;
+
   // int _indexFd, _vertexFd, _edgeFd;
   // void *_indexMapping, *_vertexMapping, *_edgeMapping;
   // size_t _indexSize, _vertexSize, _edgeSize;

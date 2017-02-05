@@ -34,6 +34,7 @@ namespace algos {
 /// the value == 0, all others -1 or an undefined value
 class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   std::string _sourceDocumentId, _resultField = "result";
+
  public:
   SSSPAlgorithm(VPackSlice userParams) : Algorithm("SSSP") {
     _sourceDocumentId = userParams.get("source").copyString();
@@ -47,15 +48,15 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   bool supportsCompensation() const override { return true; }
 
   GraphFormat<int64_t, int64_t>* inputFormat() const override;
-  
+
   MessageFormat<int64_t>* messageFormat() const override {
     return new IntegerMessageFormat();
   }
-  
+
   MessageCombiner<int64_t>* messageCombiner() const override {
     return new MinCombiner<int64_t>();
   }
-  
+
   VertexComputation<int64_t, int64_t, int64_t>* createComputation(
       WorkerConfig const*) const override;
   VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(

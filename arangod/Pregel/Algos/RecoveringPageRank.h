@@ -32,9 +32,8 @@ namespace algos {
 
 /// PageRank
 struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
-  
   RecoveringPageRank(arangodb::velocypack::Slice params)
-  : SimpleAlgorithm("PageRank", params) {}
+      : SimpleAlgorithm("PageRank", params) {}
 
   bool supportsCompensation() const override { return true; }
   MasterContext* masterContext(VPackSlice userParams) const override;
@@ -42,11 +41,11 @@ struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
   GraphFormat<float, float>* inputFormat() const override {
     return new VertexGraphFormat<float, float>(_resultField, 0);
   }
-  
+
   MessageFormat<float>* messageFormat() const override {
     return new NumberMessageFormat<float>();
   }
-  
+
   MessageCombiner<float>* messageCombiner() const override {
     return new SumCombiner<float>();
   }

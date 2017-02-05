@@ -28,6 +28,7 @@
 #include "Pregel/Utils.h"
 #include "Pregel/VertexComputation.h"
 
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -42,13 +43,18 @@ using namespace arangodb::pregel::algos;
 static float EPS = 0.00001;
 static std::string const kConvergence = "convergence";
 
-struct PRComputation : public VertexComputation<float, float, float> {
+PageRank::PageRank(VPackSlice const& params)
+    : SimpleAlgorithm("PageRank", params) {
+  _maxGSS =
+      basics::VelocyPackHelper::getNumericValue(params, "maxIterations", 250);
+}
 
+struct PRComputation : public VertexComputation<float, float, float> {
   PRComputation() {}
   void compute(MessageIterator<float> const& messages) override {
     float* ptr = mutableVertexData();
     float copy = *ptr;
-    
+
     if (globalSuperstep() == 0) {
       *ptr = 1.0 / context()->vertexCount();
     } else {
@@ -60,7 +66,7 @@ struct PRComputation : public VertexComputation<float, float, float> {
     }
     float diff = fabs(copy - *ptr);
     aggregate(kConvergence, diff);
-    
+
     RangeIterator<Edge<float>> edges = getEdges();
     float val = *ptr / edges.size();
     for (Edge<float>* edge : edges) {
@@ -82,13 +88,12 @@ IAggregator* PageRank::aggregator(std::string const& name) const {
 }
 
 struct PRMasterContext : public MasterContext {
-  
   float _threshold = EPS;
   PRMasterContext(VPackSlice params) {
     VPackSlice t = params.get("threshold");
     _threshold = t.isNumber() ? t.getNumber<float>() : EPS;
   }
-  
+
   void preApplication() override {
     LOG(INFO) << "Using threshold " << _threshold;
   };

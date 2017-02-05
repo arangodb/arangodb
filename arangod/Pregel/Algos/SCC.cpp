@@ -21,14 +21,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SCC.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
-#include "Pregel/VertexComputation.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ServerState.h"
 #include "Pregel/MasterContext.h"
+#include "Pregel/VertexComputation.h"
 
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
@@ -45,34 +45,33 @@ enum SCCPhase {
   BACKWARD_TRAVERSAL_REST = 4
 };
 
-struct SCCComputation : public VertexComputation<SCCValue, int32_t, SenderMessage<uint64_t>> {
+struct SCCComputation
+    : public VertexComputation<SCCValue, int32_t, SenderMessage<uint64_t>> {
   SCCComputation() {}
 
-  void compute(MessageIterator<SenderMessage<uint64_t>> const& messages) override {
+  void compute(
+      MessageIterator<SenderMessage<uint64_t>> const& messages) override {
     if (isActive() == false) {
       // color was already determinded or vertex was trimmed
       return;
     }
-    
-    SCCValue *vertexState = mutableVertexData();
+
+    SCCValue* vertexState = mutableVertexData();
     uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
     switch (*phase) {
-        
       // let all our connected nodes know we are there
       case SCCPhase::TRANSPOSE: {
-        
         vertexState->parents.clear();
         SenderMessage<uint64_t> message(pregelId(), 0);
         sendMessageToAllEdges(message);
         break;
       }
-        
-      
-      // Creates list of parents based on the received ids and halts the vertices
+
+      // Creates list of parents based on the received ids and halts the
+      // vertices
       // that don't have any parent or outgoing edge, hence, they can't be
       // part of an SCC.
-      case SCCPhase::TRIMMING:{
-        
+      case SCCPhase::TRIMMING: {
         for (SenderMessage<uint64_t> const* msg : messages) {
           vertexState->parents.push_back(msg->pregelId);
         }
@@ -90,8 +89,8 @@ struct SCCComputation : public VertexComputation<SCCValue, int32_t, SenderMessag
         }
         break;
       }
-        
-      case SCCPhase::FORWARD_TRAVERSAL:{
+
+      case SCCPhase::FORWARD_TRAVERSAL: {
         uint64_t old = vertexState->color;
         for (SenderMessage<uint64_t> const* msg : messages) {
           if (vertexState->color < msg->value) {
@@ -105,9 +104,8 @@ struct SCCComputation : public VertexComputation<SCCValue, int32_t, SenderMessag
         }
         break;
       }
-        
-      case SCCPhase::BACKWARD_TRAVERSAL_START:{
-        
+
+      case SCCPhase::BACKWARD_TRAVERSAL_START: {
         // if I am the 'root' of a SCC start traversak
         if (vertexState->vertexID == vertexState->color) {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
@@ -118,9 +116,8 @@ struct SCCComputation : public VertexComputation<SCCValue, int32_t, SenderMessag
         }
         break;
       }
-        
-      case SCCPhase::BACKWARD_TRAVERSAL_REST:{
-        
+
+      case SCCPhase::BACKWARD_TRAVERSAL_REST: {
         for (SenderMessage<uint64_t> const* msg : messages) {
           if (vertexState->color == msg->value) {
             for (PregelID const& pid : vertexState->parents) {
@@ -136,96 +133,91 @@ struct SCCComputation : public VertexComputation<SCCValue, int32_t, SenderMessag
   }
 };
 
-VertexComputation<SCCValue, int32_t,
-SenderMessage<uint64_t>>* SCC::createComputation(
-    WorkerConfig const* config) const {
+VertexComputation<SCCValue, int32_t, SenderMessage<uint64_t>>*
+SCC::createComputation(WorkerConfig const* config) const {
   return new SCCComputation();
 }
-
 
 struct SCCGraphFormat : public GraphFormat<SCCValue, int32_t> {
   const std::string _resultField;
   uint64_t vertexIdRange = 0;
-  
+
   SCCGraphFormat(std::string const& result) : _resultField(result) {}
-  
+
   void willLoadVertices(uint64_t count) override {
     // if we aren't running in a cluster it doesn't matter
     if (arangodb::ServerState::instance()->isRunningInCluster()) {
-      arangodb::ClusterInfo *ci = arangodb::ClusterInfo::instance();
+      arangodb::ClusterInfo* ci = arangodb::ClusterInfo::instance();
       if (ci) {
         vertexIdRange = ci->uniqid(count);
       }
     }
   }
-  
+
   size_t estimatedEdgeSize() const override { return 0; };
-  
+
   size_t copyVertexData(std::string const& documentId,
                         arangodb::velocypack::Slice document,
                         SCCValue* targetPtr, size_t maxSize) override {
-    SCCValue *senders = (SCCValue*) targetPtr;
+    SCCValue* senders = (SCCValue*)targetPtr;
     senders->vertexID = vertexIdRange++;
     return sizeof(SCCValue);
   }
-  
+
   size_t copyEdgeData(arangodb::velocypack::Slice document, int32_t* targetPtr,
                       size_t maxSize) override {
     return 0;
   }
-  
+
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           const SCCValue* ptr,
-                           size_t size) override {
-    SCCValue *senders = (SCCValue*) ptr;
+                           const SCCValue* ptr, size_t size) override {
+    SCCValue* senders = (SCCValue*)ptr;
     b.add(_resultField, VPackValue(senders->color));
     return true;
   }
-  
+
   bool buildEdgeDocument(arangodb::velocypack::Builder& b, const int32_t* ptr,
                          size_t size) override {
     return false;
   }
 };
 
-
 GraphFormat<SCCValue, int32_t>* SCC::inputFormat() const {
   return new SCCGraphFormat(_resultField);
 }
 
 struct SCCMasterContext : public MasterContext {
-  SCCMasterContext() {}// TODO use _threashold
+  SCCMasterContext() {}  // TODO use _threashold
   void preGlobalSuperstep() override {
     if (globalSuperstep() == 0) {
       return;
     }
-    
+
     uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
     switch (*phase) {
       case SCCPhase::TRANSPOSE:
         LOG(INFO) << "Phase: TRANSPOSE";
         aggregate<uint32_t>(kPhase, SCCPhase::TRIMMING);
         break;
-        
+
       case SCCPhase::TRIMMING:
         LOG(INFO) << "Phase: TRANSPOSE";
         aggregate<uint32_t>(kPhase, SCCPhase::FORWARD_TRAVERSAL);
         break;
-        
+
       case SCCPhase::FORWARD_TRAVERSAL: {
         LOG(INFO) << "Phase: FORWARD_TRAVERSAL";
         bool const* newMaxFound = getAggregatedValue<bool>(kFoundNewMax);
         if (*newMaxFound == false) {
           aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_START);
         }
-      }
-        break;
-        
+      } break;
+
       case SCCPhase::BACKWARD_TRAVERSAL_START:
         LOG(INFO) << "Phase: BACKWARD_TRAVERSAL_START";
         aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_REST);
         break;
-        
+
       case SCCPhase::BACKWARD_TRAVERSAL_REST:
         LOG(INFO) << "Phase: BACKWARD_TRAVERSAL_REST";
         bool const* converged = getAggregatedValue<bool>(kConverged);
@@ -243,12 +235,12 @@ MasterContext* SCC::masterContext(VPackSlice userParams) const {
 }
 
 IAggregator* SCC::aggregator(std::string const& name) const {
-  if (name == kPhase) {// permanent value
+  if (name == kPhase) {  // permanent value
     return new ValueAggregator<uint32_t>(SCCPhase::TRANSPOSE, true);
   } else if (name == kFoundNewMax) {
-    return new BoolOrAggregator(false);// non perm
+    return new BoolOrAggregator(false);  // non perm
   } else if (name == kConverged) {
-    return new BoolOrAggregator(false);// non perm
+    return new BoolOrAggregator(false);  // non perm
   }
   return nullptr;
 }

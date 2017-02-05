@@ -25,10 +25,10 @@
 #include <algorithm>
 #include "Agency/Supervision.h"
 #include "Basics/MutexLocker.h"
-#include "Pregel/ThreadPool.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/ThreadPool.h"
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConfig.h"
 #include "VocBase/LogicalCollection.h"

@@ -47,7 +47,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 const char* arangodb::pregel::ExecutionStateNames[6] = {
-  "none", "running", "done", "canceled", "in error", "recovering"};
+    "none", "running", "done", "canceled", "in error", "recovering"};
 
 Conductor::Conductor(
     uint64_t executionNumber, TRI_vocbase_t* vocbase,
@@ -63,7 +63,8 @@ Conductor::Conductor(
 
 Conductor::~Conductor() { this->cancel(); }
 
-void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
+void Conductor::start(std::string const& algoName,
+                      VPackSlice const& userConfig) {
   if (!userConfig.isObject()) {
     _userParams.openObject();
     _userParams.close();
@@ -196,7 +197,7 @@ bool Conductor::_startGlobalStep() {
 }
 
 // ============ Conductor callbacks ===============
-void Conductor::finishedWorkerStartup(VPackSlice data) {
+void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
   if (_state != ExecutionState::RUNNING) {
@@ -233,7 +234,7 @@ void Conductor::finishedWorkerStartup(VPackSlice data) {
 /// Will optionally send a response, to notify the worker of converging
 /// aggregator
 /// values which can be coninually updated (in async mode)
-VPackBuilder Conductor::finishedWorkerStep(VPackSlice data) {
+VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   // this method can be called multiple times in a superstep depending on
   // whether we are in the async mode
@@ -294,7 +295,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice data) {
   return VPackBuilder();
 }
 
-void Conductor::finishedRecoveryStep(VPackSlice data) {
+void Conductor::finishedRecoveryStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
   if (_state != ExecutionState::RECOVERING) {

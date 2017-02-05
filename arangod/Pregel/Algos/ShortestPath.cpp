@@ -44,7 +44,7 @@ struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
         current = *msg;
       };
     }
-    
+
     // use global state to limit the computation of paths
     bool isSource = current == 0 && localSuperstep() == 0;
     int64_t const* max = getAggregatedValue<int64_t>(spUpperPathBound);
@@ -81,15 +81,16 @@ struct arangodb::pregel::algos::SPGraphFormat
  public:
   SPGraphFormat(std::string const& source, std::string const& target)
       : InitGraphFormat<int64_t, int64_t>("length", 0, 1),
-        _sourceDocId(source), _targetDocId(target) {}
+        _sourceDocId(source),
+        _targetDocId(target) {}
 
   size_t copyVertexData(std::string const& documentId,
-                        arangodb::velocypack::Slice document, int64_t* targetPtr,
-                        size_t maxSize) override {
+                        arangodb::velocypack::Slice document,
+                        int64_t* targetPtr, size_t maxSize) override {
     *targetPtr = documentId == _sourceDocId ? 0 : INT64_MAX;
     return sizeof(int64_t);
   }
-      
+
   bool buildEdgeDocument(arangodb::velocypack::Builder& b,
                          const int64_t* targetPtr, size_t size) override {
     return false;

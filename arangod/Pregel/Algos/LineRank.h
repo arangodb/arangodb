@@ -30,13 +30,14 @@ namespace arangodb {
 namespace pregel {
 namespace algos {
 
-/// LineRank from "Centralities in Large Networks: Algorithms and Observations" 2011:
+/// LineRank from "Centralities in Large Networks: Algorithms and Observations"
+/// 2011:
 /// Given a directed graph G, the LINERANK score of a node v ∈ G is computed by
-/// aggregating the stationary probabilities of its incident edges on the line graph L(G).
+/// aggregating the stationary probabilities of its incident edges on the line
+/// graph L(G).
 /// Implementation based on
 /// github.com/JananiC/NetworkCentralities/blob/master/src/main/java/linerank/LineRank.java
 struct LineRank : public SimpleAlgorithm<float, float, float> {
-
  public:
   LineRank(arangodb::velocypack::Slice params);
 
@@ -46,11 +47,11 @@ struct LineRank : public SimpleAlgorithm<float, float, float> {
   MessageFormat<float>* messageFormat() const override {
     return new NumberMessageFormat<float>();
   }
-  
+
   MessageCombiner<float>* messageCombiner() const override {
     return new SumCombiner<float>();
   }
-  
+
   VertexComputation<float, float, float>* createComputation(
       WorkerConfig const*) const override;
   IAggregator* aggregator(std::string const& name) const override;

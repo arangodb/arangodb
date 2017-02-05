@@ -45,7 +45,7 @@ static const double EPS = 0.000000001;
 
 LineRank::LineRank(arangodb::velocypack::Slice params)
     : SimpleAlgorithm("LineRank", params) {
-  //VPackSlice t = params.get("convergenceThreshold");
+  // VPackSlice t = params.get("convergenceThreshold");
   //_threshold = t.isNumber() ? t.getNumber<float>() : 0.000002f;
 }
 
@@ -53,37 +53,35 @@ LineRank::LineRank(arangodb::velocypack::Slice params)
 struct LRComputation : public VertexComputation<float, float, float> {
   LRComputation() {}
   void compute(MessageIterator<float> const& messages) override {
-    
     float startAtNodeProb = 1.0f / context()->edgeCount();
     float* vertexValue = mutableVertexData();
     RangeIterator<Edge<float>> edges = getEdges();
-    
+
     if (*vertexValue < 0.0f) {
       *vertexValue = startAtNodeProb;
       aggregate(kMoreIterations, true);
     } else {
-      
       float newScore = 0.0f;
       for (const float* msg : messages) {
         newScore += *msg;
       }
-      
+
       bool const* moreIterations = getAggregatedValue<bool>(kMoreIterations);
       if (*moreIterations == false) {
         *vertexValue = *vertexValue * edges.size() + newScore;
         voteHalt();
       } else {
-        
         if (edges.size() == 0) {
           newScore = 0;
         } else {
           newScore /= edges.size();
-          newScore = startAtNodeProb * RESTART_PROB + newScore * (1.0 - RESTART_PROB);
+          newScore =
+              startAtNodeProb * RESTART_PROB + newScore * (1.0 - RESTART_PROB);
         }
-        
+
         float diff = fabsf(newScore - *vertexValue);
         *vertexValue = newScore;
-        
+
         if (diff > EPS) {
           aggregate(kMoreIterations, true);
         }
@@ -100,7 +98,7 @@ VertexComputation<float, float, float>* LineRank::createComputation(
 
 IAggregator* LineRank::aggregator(std::string const& name) const {
   if (name == kMoreIterations) {
-    return new ValueAggregator<bool>(false, false);// non perm
+    return new ValueAggregator<bool>(false, false);  // non perm
   }
   return nullptr;
 }

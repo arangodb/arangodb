@@ -32,31 +32,29 @@ namespace algos {
 
 /// PageRank
 struct PageRank : public SimpleAlgorithm<float, float, float> {
+  uint64_t _maxGSS = 250;
 
-  PageRank(arangodb::velocypack::Slice params)
-    : SimpleAlgorithm("PageRank", params) {}
+  PageRank(arangodb::velocypack::Slice const& params);
 
   GraphFormat<float, float>* inputFormat() const override {
     return new VertexGraphFormat<float, float>(_resultField, 0);
   }
-  
+
   MessageFormat<float>* messageFormat() const override {
     return new NumberMessageFormat<float>();
   }
-  
+
   MessageCombiner<float>* messageCombiner() const override {
     return new SumCombiner<float>();
   }
-  
+
   VertexComputation<float, float, float>* createComputation(
       WorkerConfig const*) const override;
   IAggregator* aggregator(std::string const& name) const override;
-  
+
   MasterContext* masterContext(VPackSlice userParams) const override;
-  
-  uint64_t maxGlobalSuperstep() const override  {
-    return 250;
-  }
+
+  uint64_t maxGlobalSuperstep() const override { return _maxGSS; }
 };
 }
 }

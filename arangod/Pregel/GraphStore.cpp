@@ -63,7 +63,7 @@ std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
   double t = TRI_microtime();
   std::unique_ptr<Transaction> countTrx(_createTransaction());
   std::map<ShardID, uint64_t> shardSizes;
-  
+
   // Allocating some memory
   uint64_t count = 0;
   for (auto const& shard : _config->localVertexShardIDs()) {
@@ -92,7 +92,7 @@ std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
     LOG(WARN) << "Pregel worker: Failed to commit on a read transaction";
   }
   LOG(INFO) << "Allocating memory took " << TRI_microtime() - t << "s";
-  
+
   return shardSizes;
 }
 
@@ -101,7 +101,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
                                   std::function<void()> callback) {
   _config = config;
   std::map<ShardID, uint64_t> shardSizes(_allocateMemory());
-  
+
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   uint64_t vertexOffset = 0, edgeOffset = 0;
   // Contains the shards located on this db server in the right order
@@ -267,7 +267,7 @@ std::unique_ptr<Transaction> GraphStore<V, E>::_createTransaction() {
   double lockTimeout = Transaction::DefaultLockTimeout;
   auto ctx = StandaloneTransactionContext::Create(_vocbaseGuard.vocbase());
   std::unique_ptr<Transaction> trx(
-                                   new ExplicitTransaction(ctx, {}, {}, {}, lockTimeout, false, true));
+      new ExplicitTransaction(ctx, {}, {}, {}, lockTimeout, false, true));
   int res = trx->begin();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -281,7 +281,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
                                      uint64_t vertexOffset,
                                      uint64_t edgeOffset) {
   uint64_t originalVertexOffset = vertexOffset;
-  
+
   std::unique_ptr<Transaction> trx(_createTransaction());
   TRI_voc_cid_t cid = trx->addCollectionAtRuntime(vertexShard);
   trx->orderDitch(cid);  // will throw when it fails
@@ -295,13 +295,12 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up shard '%s'",
                                   vertexShard.c_str());
   }
-  
+
   // tell the formatter the number of docs we are about to load
   LogicalCollection* collection = cursor->collection();
   uint64_t number = collection->numberDocuments();
   _graphFormat->willLoadVertices(number);
 
-  
   std::vector<DocumentIdentifierToken> result;
   result.reserve(1000);
   while (cursor->hasMore()) {
@@ -343,8 +342,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::_loadEdges(Transaction* trx,
-                                  ShardID const& edgeShard,
+void GraphStore<V, E>::_loadEdges(Transaction* trx, ShardID const& edgeShard,
                                   VertexEntry& vertexEntry,
                                   std::string const& documentID) {
   //  offset into the edge store, edgeCount is 0 initally
@@ -354,13 +352,12 @@ void GraphStore<V, E>::_loadEdges(Transaction* trx,
   traverser::EdgeCollectionInfo info(trx, edgeShard, TRI_EDGE_OUT,
                                      StaticStrings::FromString, 0);
   ManagedDocumentResult mmdr;
-  std::unique_ptr<OperationCursor>  cursor = info.getEdges(documentID, &mmdr);
+  std::unique_ptr<OperationCursor> cursor = info.getEdges(documentID, &mmdr);
   if (cursor->failed()) {
     THROW_ARANGO_EXCEPTION_FORMAT(cursor->code,
                                   "while looking up edges '%s' from %s",
                                   documentID.c_str(), edgeShard.c_str());
   }
-  
 
   LogicalCollection* collection = cursor->collection();
   std::vector<DocumentIdentifierToken> result;
@@ -411,7 +408,7 @@ void GraphStore<V, E>::_loadEdges(Transaction* trx,
       }
     }
   }
-  
+
   // Add up all added elements
   size_t added = offset - originalOffset;
   vertexEntry._edgeCount += added;
@@ -433,8 +430,9 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
   //  writeColls.push_back(shard);
   //}
   double lockTimeout = Transaction::DefaultLockTimeout;
-  ExplicitTransaction writeTrx(StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()), {},
-                               writeColls, {}, lockTimeout, false, false);
+  ExplicitTransaction writeTrx(
+      StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()), {},
+      writeColls, {}, lockTimeout, false, false);
   int res = writeTrx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);

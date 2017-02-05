@@ -65,12 +65,10 @@ struct IAlgorithm {
   virtual MasterContext* masterContext(VPackSlice userParams) const {
     return nullptr;
   }
-  
+
   // ============= Configure runtime parameters ============
-  
-  virtual uint64_t maxGlobalSuperstep() const {
-    return 500;
-  }
+
+  virtual uint64_t maxGlobalSuperstep() const { return 500; }
 
   std::string const& name() const { return _name; }
 
@@ -100,9 +98,8 @@ struct Algorithm : IAlgorithm {
   virtual std::set<std::string> initialActiveSet() {
     return std::set<std::string>();
   }
-  
-  virtual uint32_t messageBatchSize(uint64_t gss,
-                                    uint64_t sendCount,
+
+  virtual uint32_t messageBatchSize(uint64_t gss, uint64_t sendCount,
                                     uint64_t threadCount,
                                     double superstepDuration) const {
     if (gss == 0) {

@@ -96,9 +96,9 @@ class Conductor {
   void _ensureUniqueResponse(VPackSlice body);
 
   // === REST callbacks ===
-  void finishedWorkerStartup(VPackSlice data);
-  VPackBuilder finishedWorkerStep(VPackSlice data);
-  void finishedRecoveryStep(VPackSlice data);
+  void finishedWorkerStartup(VPackSlice const& data);
+  VPackBuilder finishedWorkerStep(VPackSlice const& data);
+  void finishedRecoveryStep(VPackSlice const& data);
 
  public:
   Conductor(
@@ -107,7 +107,7 @@ class Conductor {
       std::vector<std::shared_ptr<LogicalCollection>> const& edgeCollections);
   ~Conductor();
 
-  void start(std::string const& algoName, VPackSlice userConfig);
+  void start(std::string const& algoName, VPackSlice const& userConfig);
   void cancel();
   void startRecovery();
   AggregatorHandler const* aggregators() const { return _aggregators.get(); }
