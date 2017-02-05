@@ -27,7 +27,6 @@
 #include "Agency/Job.h"
 
 using namespace arangodb::consensus;
-using namespace arangodb::velocypack;
 
 UnassumedLeadership::UnassumedLeadership(
     Node const& snapshot, Agent* agent, std::string const& jobId,

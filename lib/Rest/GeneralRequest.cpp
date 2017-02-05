@@ -217,7 +217,7 @@ std::vector<std::string> GeneralRequest::decodedSuffixes() const {
   result.reserve(_suffixes.size());
 
   for (auto const& it : _suffixes) {
-    result.emplace_back(StringUtils::urlDecode(it));
+    result.emplace_back(StringUtils::urlDecodePath(it));
   }
   return result;
 }

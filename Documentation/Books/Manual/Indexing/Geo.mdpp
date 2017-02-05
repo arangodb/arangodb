@@ -90,6 +90,42 @@ Create a geo index for a hash array attribute:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock geoIndexCreateForArrayAttribute2
 
+Use GeoIndex with AQL SORT statement:
+
+    @startDocuBlockInline geoIndexSortOptimization
+    @EXAMPLE_ARANGOSH_OUTPUT{geoIndexSortOptimization}
+    ~db._create("geoSort")
+    db.geoSort.ensureIndex({ type: "geo", fields: [ "latitude", "longitude" ] });
+    | for (i = -90;  i <= 90;  i += 10) {
+    |     for (j = -180; j <= 180; j += 10) {
+    |         db.geoSort.save({ name : "Name/" + i + "/" + j, latitude : i, longitude : j });
+    |     }
+      }	
+    var query = "FOR doc in geoSort SORT distance(doc.latitude, doc.longitude, 0, 0) LIMIT 5 RETURN doc"
+    db._explain(query, {}, {colors: false});
+    db._query(query);
+    ~db._drop("geoSort")
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock geoIndexSortOptimization
+
+Use GeoIndex with AQL FILTER statement:
+
+    @startDocuBlockInline geoIndexFilterOptimization
+    @EXAMPLE_ARANGOSH_OUTPUT{geoIndexFilterOptimization}
+    ~db._create("geoFilter")
+    db.geoFilter.ensureIndex({ type: "geo", fields: [ "latitude", "longitude" ] });
+    | for (i = -90;  i <= 90;  i += 10) {
+    |     for (j = -180; j <= 180; j += 10) {
+    |         db.geoFilter.save({ name : "Name/" + i + "/" + j, latitude : i, longitude : j });
+    |     }
+      }	
+    var query = "FOR doc in geoFilter FILTER distance(doc.latitude, doc.longitude, 0, 0) < 2000 RETURN doc"
+    db._explain(query, {}, {colors: false});
+    db._query(query);
+    ~db._drop("geoFilter")
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock geoIndexFilterOptimization
+
 
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionGeo
