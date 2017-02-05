@@ -70,11 +70,11 @@ template <typename M>
 void ArrayOutCache<M>::appendMessage(prgl_shard_t shard, std::string const& key,
                                      M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
-    if (this->_sendToNextGSS) {
-      this->_localCacheNextGSS->setDirect(shard, key, data);
+    if (this->_sendToNextGSS) {// I use the global cache, we need locking
+      this->_localCacheNextGSS->storeMessage(shard, key, data);
       this->_sendCountNextGSS++;
-    } else {
-      this->_localCache->setDirect(shard, key, data);
+    } else {// the local cache is always thread local
+      this->_localCache->storeMessageNoLock(shard, key, data);
       this->_sendCount++;
     }
   } else {
@@ -180,10 +180,10 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
                                          M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {
-      this->_localCacheNextGSS->setDirect(shard, key, data);
+      this->_localCacheNextGSS->storeMessage(shard, key, data);
       this->_sendCountNextGSS++;
     } else {
-      this->_localCache->setDirect(shard, key, data);
+      this->_localCache->storeMessageNoLock(shard, key, data);
       this->_sendCount++;
     }
   } else {

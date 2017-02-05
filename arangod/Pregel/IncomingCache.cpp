@@ -20,8 +20,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/IncomingCache.h"
+#include "IncomingCache.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/WorkerConfig.h"
 #include "Pregel/Utils.h"
 
 #include "Basics/MutexLocker.h"
@@ -35,30 +36,39 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 template <typename M>
+InCache<M>::InCache(MessageFormat<M> const* format)
+: _containedMessageCount(0), _format(format) {}
+
+template <typename M>
 void InCache<M>::parseMessages(VPackSlice const& incomingData) {
-  // every packet should contain one shard
+  // every packet contains one shard
   VPackSlice shardSlice = incomingData.get(Utils::shardIdKey);
   VPackSlice messages = incomingData.get(Utils::messagesKey);
 
-  prgl_shard_t shard = (prgl_shard_t)shardSlice.getUInt();
-  std::string key;
+  // temporary variables
   VPackValueLength i = 0;
-
+  std::string key;
+  prgl_shard_t shard = (prgl_shard_t)shardSlice.getUInt();
+  MUTEX_LOCKER(guard, this->_bucketLocker[shard]);
+  
   for (VPackSlice current : VPackArrayIterator(messages)) {
     if (i % 2 == 0) {  // TODO support multiple recipients
       key = current.copyString();
     } else {
-      MUTEX_LOCKER(guard, this->_writeLock);
       if (current.isArray()) {
+        VPackValueLength c = 0;
         for (VPackSlice val : VPackArrayIterator(current)) {
           M newValue;
           _format->unwrapValue(val, newValue);
           _set(shard, key, newValue);
+          c++;
         }
+        this->_containedMessageCount += c;
       } else {
         M newValue;
         _format->unwrapValue(current, newValue);
         _set(shard, key, newValue);
+        this->_containedMessageCount++;
       }
     }
     i++;
@@ -67,37 +77,55 @@ void InCache<M>::parseMessages(VPackSlice const& incomingData) {
   if (i % 2 != 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "There must always be a multiple of 3 entries in messages");
+        "There must always be a multiple of 2 entries in message array");
   }
 }
 
 template <typename M>
-void InCache<M>::setDirect(prgl_shard_t shard, std::string const& vertexId,
-                           M const& data) {
-  MUTEX_LOCKER(guard, this->_writeLock);
+void InCache<M>::storeMessageNoLock(prgl_shard_t shard, std::string const& vertexId,
+                                    M const& data) {
   this->_set(shard, vertexId, data);
+  this->_containedMessageCount++;
+}
+
+template <typename M>
+void InCache<M>::storeMessage(prgl_shard_t shard, std::string const& vertexId,
+                           M const& data) {
+  MUTEX_LOCKER(guard, this->_bucketLocker[shard]);
+  this->_set(shard, vertexId, data);
+  this->_containedMessageCount++;
 }
 
 // ================== ArrayIncomingCache ==================
 
 template <typename M>
+ArrayInCache<M>::ArrayInCache(WorkerConfig const* config,
+                              MessageFormat<M> const* format) : InCache<M>(format) {
+  if (config != nullptr) {
+    std::set<prgl_shard_t> const& shardIDs = config->localPregelShardIDs();
+    // one mutex per shard, we will see how this scales
+    for (prgl_shard_t shardID : shardIDs) {
+      this->_bucketLocker[shardID];
+      _shardMap[shardID];
+    }
+  }
+}
+
+template <typename M>
 void ArrayInCache<M>::_set(prgl_shard_t shard, std::string const& key,
                            M const& newValue) {
-  this->_containedMessageCount++;
-  HMap& vertexMap = _shardMap[shard];
+  HMap& vertexMap(_shardMap[shard]);
   vertexMap[key].push_back(newValue);
 }
 
 template <typename M>
 void ArrayInCache<M>::mergeCache(InCache<M> const* otherCache) {
-  MUTEX_LOCKER(guard, this->_writeLock);
-
   ArrayInCache<M>* other = (ArrayInCache<M>*)otherCache;
   this->_containedMessageCount += other->_containedMessageCount;
 
-  // cannot call setDirect since it locks
   for (auto const& pair : other->_shardMap) {
-    HMap& vertexMap = _shardMap[pair.first];
+    MUTEX_LOCKER(guard, this->_bucketLocker[pair.first]);
+    HMap& vertexMap(_shardMap[pair.first]);
     for (auto& vertexMessage : pair.second) {
       std::vector<M>& a = vertexMap[vertexMessage.first];
       std::vector<M> const& b = vertexMessage.second;
@@ -123,16 +151,17 @@ MessageIterator<M> ArrayInCache<M>::getMessages(prgl_shard_t shard,
 
 template <typename M>
 void ArrayInCache<M>::clear() {
-  MUTEX_LOCKER(guard, this->_writeLock);
+  for (auto& pair : _shardMap) {
+    MUTEX_LOCKER(guard, this->_bucketLocker[pair.first]);
+    pair.second.clear();
+  }
   this->_containedMessageCount = 0;
-  _shardMap.clear();
 }
 
+/// Deletes one entry. DOES NOT LOCK
 template <typename M>
 void ArrayInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
-  MUTEX_LOCKER(guard, this->_writeLock);
-  HMap& vertexMap(_shardMap[shard]);
-
+  HMap& vertexMap = _shardMap[shard];
   auto const& it = vertexMap.find(key);
   if (it != vertexMap.end()) {
     vertexMap.erase(it);
@@ -157,9 +186,23 @@ void ArrayInCache<M>::forEach(
 // ================== CombiningIncomingCache ==================
 
 template <typename M>
+CombiningInCache<M>::CombiningInCache(WorkerConfig const* config,
+                                      MessageFormat<M> const* format,
+                                      MessageCombiner<M> const* combiner)
+: InCache<M>( format), _combiner(combiner) {
+  if (config != nullptr) {
+    std::set<prgl_shard_t> const& shardIDs = config->localPregelShardIDs();
+    // one mutex per shard, we will see how this scales
+    for (prgl_shard_t shardID : shardIDs) {
+      this->_bucketLocker[shardID];
+      _shardMap[shardID];
+    }
+  }
+}
+
+template <typename M>
 void CombiningInCache<M>::_set(prgl_shard_t shard, std::string const& key,
                                M const& newValue) {
-  this->_containedMessageCount++;
   HMap& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {  // got a message for the same vertex
@@ -171,15 +214,14 @@ void CombiningInCache<M>::_set(prgl_shard_t shard, std::string const& key,
 
 template <typename M>
 void CombiningInCache<M>::mergeCache(InCache<M> const* otherCache) {
-  MUTEX_LOCKER(guard, this->_writeLock);
 
   CombiningInCache<M>* other = (CombiningInCache<M>*)otherCache;
   this->_containedMessageCount += other->_containedMessageCount;
 
-  // cannot call setDirect since it locks
   for (auto const& pair : other->_shardMap) {
+    MUTEX_LOCKER(guard, this->_bucketLocker[pair.first]);
+    
     HMap& vertexMap = _shardMap[pair.first];
-
     for (auto& vertexMessage : pair.second) {
       auto vmsg = vertexMap.find(vertexMessage.first);
       if (vmsg != vertexMap.end()) {  // got a message for the same vertex
@@ -194,7 +236,7 @@ void CombiningInCache<M>::mergeCache(InCache<M> const* otherCache) {
 template <typename M>
 MessageIterator<M> CombiningInCache<M>::getMessages(prgl_shard_t shard,
                                                     std::string const& key) {
-  HMap const& vertexMap(_shardMap[shard]);
+  HMap const& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {
     return MessageIterator<M>(&vmsg->second);
@@ -205,16 +247,18 @@ MessageIterator<M> CombiningInCache<M>::getMessages(prgl_shard_t shard,
 
 template <typename M>
 void CombiningInCache<M>::clear() {
-  MUTEX_LOCKER(guard, this->_writeLock);
+  for (auto& pair : _shardMap) {
+    MUTEX_LOCKER(guard, this->_bucketLocker[pair.first]);
+    pair.second.clear();
+  }
   this->_containedMessageCount = 0;
-  _shardMap.clear();
 }
 
+/// Deletes one entry. DOES NOT LOCK
 template <typename M>
 void CombiningInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
-  MUTEX_LOCKER(guard, this->_writeLock);
 
-  HMap& vertexMap(_shardMap[shard]);
+  HMap& vertexMap = _shardMap[shard];
   auto const& it = vertexMap.find(key);
   if (it != vertexMap.end()) {
     vertexMap.erase(it);
@@ -222,6 +266,7 @@ void CombiningInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
   }
 }
 
+/// Calls function for each entry. DOES NOT LOCK
 template <typename M>
 void CombiningInCache<M>::forEach(
     std::function<void(prgl_shard_t shard, std::string const& key, M const&)>

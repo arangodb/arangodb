@@ -46,6 +46,10 @@ class CombiningInCache;
 template <typename M>
 class ArrayInCache;
 
+/// None of the current implementations use locking
+/// Therefore only ever use this thread locally
+/// We expect the local cache to be thread local too,
+/// next GSS cache may be a global cache
 template <typename M>
 class OutCache {
  protected:

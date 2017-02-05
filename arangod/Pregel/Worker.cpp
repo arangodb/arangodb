@@ -66,18 +66,18 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
       
   if (_messageCombiner) {
     _readCache =
-        new CombiningInCache<M>(_messageFormat.get(), _messageCombiner.get());
+        new CombiningInCache<M>(&_config, _messageFormat.get(), _messageCombiner.get());
     _writeCache =
-        new CombiningInCache<M>(_messageFormat.get(), _messageCombiner.get());
+        new CombiningInCache<M>(&_config, _messageFormat.get(), _messageCombiner.get());
     if (_config.asynchronousMode()) {
       _writeCacheNextGSS =
-          new CombiningInCache<M>(_messageFormat.get(), _messageCombiner.get());
+          new CombiningInCache<M>(&_config, _messageFormat.get(), _messageCombiner.get());
     }
   } else {
-    _readCache = new ArrayInCache<M>(_messageFormat.get());
-    _writeCache = new ArrayInCache<M>(_messageFormat.get());
+    _readCache = new ArrayInCache<M>(&_config, _messageFormat.get());
+    _writeCache = new ArrayInCache<M>(&_config, _messageFormat.get());
     if (_config.asynchronousMode()) {
-      _writeCacheNextGSS = new ArrayInCache<M>(_messageFormat.get());
+      _writeCacheNextGSS = new ArrayInCache<M>(&_config, _messageFormat.get());
     }
   }
 
@@ -326,7 +326,7 @@ bool Worker<V, E, M>::_processVertices(
   std::unique_ptr<OutCache<M>> outCache;
   if (_messageCombiner) {
     inCache.reset(
-        new CombiningInCache<M>(_messageFormat.get(), _messageCombiner.get()));
+        new CombiningInCache<M>(nullptr, _messageFormat.get(), _messageCombiner.get()));
     if (_config.asynchronousMode()) {
       outCache.reset(new CombiningOutCache<M>(
           &_config, (CombiningInCache<M>*)inCache.get(), _writeCacheNextGSS));
@@ -335,7 +335,7 @@ bool Worker<V, E, M>::_processVertices(
           &_config, (CombiningInCache<M>*)inCache.get()));
     }
   } else {
-    inCache.reset(new ArrayInCache<M>(_messageFormat.get()));
+    inCache.reset(new ArrayInCache<M>(nullptr, _messageFormat.get()));
     if (_config.asynchronousMode()) {
       outCache.reset(
           new ArrayOutCache<M>(&_config, inCache.get(), _writeCacheNextGSS));
@@ -422,6 +422,9 @@ void Worker<V, E, M>::_finishedProcessing() {
   VPackBuilder package;
   {  // only lock after there are no more processing threads
     MUTEX_LOCKER(guard, _commandMutex);
+    if (_state != WorkerState::COMPUTING) {
+      return;// probably canceled
+    }
 
     // count all received messages
     _messageStats.receivedCount = _readCache->containedMessageCount();
