@@ -233,6 +233,10 @@ V8Task::callbackFunction() {
   auto self = shared_from_this();
 
   return [self, this](const boost::system::error_code& error) {
+    // First tell the scheduler that this thread is working:
+    JobGuard guard(SchedulerFeature::SCHEDULER);
+    guard.work();
+
     if (error) {
       V8Task::unregisterTask(_id, false);
       return;
@@ -243,13 +247,8 @@ V8Task::callbackFunction() {
       return;
     }
 
-    {
-      // First tell the scheduler that this thread is working:
-      JobGuard guard(SchedulerFeature::SCHEDULER);
-      guard.work();
-      // Now do the work:
-      work();
-    }
+    // now do the work:
+    work();
 
     if (_periodic) {
       _timer->expires_from_now(_interval);
@@ -415,8 +414,7 @@ static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              Javascript
-// functions
+// --SECTION--                                              Javascript functions
 // -----------------------------------------------------------------------------
 
 static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {

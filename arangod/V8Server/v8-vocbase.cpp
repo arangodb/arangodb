@@ -2137,7 +2137,7 @@ static void ListDatabasesCoordinator(
 
       if (!DBServers.empty()) {
         ServerID sid = DBServers[0];
-        ClusterComm* cc = ClusterComm::instance();
+        auto cc = ClusterComm::instance();
 
         std::unordered_map<std::string, std::string> headers;
         headers["Authentication"] = TRI_ObjectToString(args[2]);
