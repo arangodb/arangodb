@@ -475,6 +475,20 @@ void TRI_DisallowMemoryFailures() {
 }
 #endif
 
+/// @brief securely zero memory
+void TRI_ZeroMemory(void* m, size_t size) {
+#ifdef _WIN32
+  SecureZeroMemory(m, size);
+#else
+  // use volatile in order to not optimize away the zeroing
+  volatile char* ptr = reinterpret_cast<volatile char*>(m);
+  volatile char* end = ptr + size;
+  while (ptr < end) {
+    *ptr++ = '\0';
+  }
+#endif
+}
+
 /// @brief initialize memory subsystem
 void TRI_InitializeMemory() {
   if (CoreInitialized == 0) {
