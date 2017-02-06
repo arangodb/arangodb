@@ -70,6 +70,8 @@ void EngineSelectorFeature::prepare() {
   }
 
   TRI_ASSERT(ENGINE != nullptr);
+
+  ENGINE->addAqlFunctions();
 }
 
 void EngineSelectorFeature::unprepare() {

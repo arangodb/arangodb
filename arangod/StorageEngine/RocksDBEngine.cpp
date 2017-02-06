@@ -434,6 +434,9 @@ int RocksDBEngine::transferMarkers(LogicalCollection* collection,
   return TRI_ERROR_NO_ERROR;
 }
 
+void RocksDBEngine::addAqlFunctions() const {
+}
+
 void RocksDBEngine::verifyDirectories() {
   if (!TRI_IsDirectory(_basePath.c_str())) {
     LOG(ERR) << "database path '" << _basePath << "' is not a directory";

@@ -206,6 +206,7 @@ SET(ARANGOD_SOURCES
   MMFiles/fulltext-result.cpp
   MMFiles/geo-index.cpp
   MMFiles/MMFilesAllocatorThread.cpp
+  MMFiles/MMFilesAqlFunctions.cpp
   MMFiles/MMFilesCleanupThread.cpp
   MMFiles/MMFilesCollection.cpp
   MMFiles/MMFilesCollectorThread.cpp

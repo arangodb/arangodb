@@ -247,6 +247,11 @@ class MMFilesEngine final : public StorageEngine {
   int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
                       MMFilesOperationsType const&) override;
 
+  /// @brief Add engine specific AQL functions.
+  ///        Parameter is a callback that has to be called
+  ///        once for every funtion.
+  void addAqlFunctions() const override;
+
  private:
   /// @brief: check the initial markers in a datafile
   bool checkDatafileHeader(MMFilesDatafile* datafile, std::string const& filename) const;

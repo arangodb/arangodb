@@ -33,6 +33,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "MMFiles/MMFilesAqlFunctions.h"
 #include "MMFiles/MMFilesCleanupThread.h"
 #include "MMFiles/MMFilesCompactorThread.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -2047,11 +2048,18 @@ int MMFilesEngine::transferMarkers(LogicalCollection* collection,
   return res;
 }
 
+/// @brief Add engine specific AQL functions.
+///        Parameter is a callback that has to be called
+///        once for every funtion.
+void MMFilesEngine::addAqlFunctions() const {
+  aql::MMFilesFunctions::RegisterFunctions();
+}
+
 /// @brief transfer markers into a collection, actual work
 /// the collection must have been prepared to call this function
-int MMFilesEngine::transferMarkersWorker(LogicalCollection* collection,
-                                         MMFilesCollectorCache* cache,
-                                         MMFilesOperationsType const& operations) {
+int MMFilesEngine::transferMarkersWorker(
+    LogicalCollection* collection, MMFilesCollectorCache* cache,
+    MMFilesOperationsType const& operations) {
   // used only for crash / recovery tests
   int numMarkers = 0;
 
@@ -2063,7 +2071,8 @@ int MMFilesEngine::transferMarkersWorker(LogicalCollection* collection,
     TRI_voc_tick_t const tick = source->getTick();
 
     if (tick <= minTransferTick) {
-      // we have already transferred this marker in a previous run, nothing to
+      // we have already transferred this marker in a previous run, nothing
+      // to
       // do
       continue;
     }
@@ -2092,7 +2101,8 @@ int MMFilesEngine::transferMarkersWorker(LogicalCollection* collection,
 
       memcpy(dst, source, size);
 
-      finishMarker(reinterpret_cast<char const*>(source), dst, collection, tick, cache);
+      finishMarker(reinterpret_cast<char const*>(source), dst, collection, tick,
+                   cache);
     }
   }
 

@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Aql/Functions.h"
 #include "Indexes/IndexFactory.h"
 #include "MMFiles/MMFilesCollectorCache.h"
 #include "VocBase/voc-types.h"
@@ -35,6 +36,10 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+namespace aql {
+struct Function;
+}
+
 class LogicalCollection;
 class PhysicalCollection;
 
@@ -252,6 +257,15 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
                               MMFilesOperationsType const&) = 0;
   
+
+  // AQL functions
+  // -------------
+
+  /// @brief Add engine specific AQL functions.
+  ///        Parameter is a callback that has to be called
+  ///        once for every funtion.
+  virtual void addAqlFunctions() const = 0;
+
  protected:
   arangodb::LogicalCollection* registerCollection(
       TRI_vocbase_t* vocbase, arangodb::velocypack::Slice params) {

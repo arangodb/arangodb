@@ -21,31 +21,29 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_FUNCTION_DEFINITIONS_H
-#define ARANGOD_AQL_FUNCTION_DEFINITIONS_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_AQL_FUNCTIONS_H
+#define ARANGOD_MMFILES_MMFILES_AQL_FUNCTIONS_H 1
 
-#include "Basics/Common.h"
-#include "Aql/Function.h"
+#include "Aql/Functions.h"
 
 namespace arangodb {
-namespace velocypack {
-class Builder;
-}
-
 namespace aql {
+struct Function;
 
-struct FunctionDefinitions {
-  /// @brief AQL internal function names
-  static std::unordered_map<int, std::string const> const InternalFunctionNames;
-  
-  /// @brief AQL user-callable function names
-  static std::unordered_map<std::string, Function const> FunctionNames;
+struct MMFilesFunctions : public Functions {
+  static AqlValue Fulltext(arangodb::aql::Query*, arangodb::Transaction*,
+                           VPackFunctionParameters const&);
 
-  static void toVelocyPack(arangodb::velocypack::Builder&);
+   static AqlValue Near(arangodb::aql::Query*, arangodb::Transaction*,
+                        VPackFunctionParameters const&);
 
-  static void add(Function const& func);
+   static AqlValue Within(arangodb::aql::Query*, arangodb::Transaction*,
+                          VPackFunctionParameters const&);
+
+  static void RegisterFunctions();
 };
-}
-}
+} // namespace aql
+} // namespace arangodb
+
 
 #endif
