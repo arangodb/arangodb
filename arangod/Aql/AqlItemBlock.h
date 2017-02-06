@@ -32,6 +32,7 @@
 
 namespace arangodb {
 namespace aql {
+class BlockCollector;
 
 // an <AqlItemBlock> is a <nrItems>x<nrRegs> vector of <AqlValue>s (not
 // pointers). The size of an <AqlItemBlock> is the number of items.
@@ -254,6 +255,9 @@ class AqlItemBlock {
   /// after this operation, because it is unclear, when the values
   /// to which our AqlValues point will vanish.
   AqlItemBlock* steal(std::vector<size_t> const& chosen, size_t from, size_t to);
+
+  /// @brief concatenate multiple blocks from a collector
+  static AqlItemBlock* concatenate(ResourceMonitor*, BlockCollector* collector);
 
   /// @brief concatenate multiple blocks, note that the new block now owns all
   /// AqlValue pointers in the old blocks, therefore, the latter are all
