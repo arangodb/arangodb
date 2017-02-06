@@ -1232,7 +1232,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     arangodb::rest::RequestType type, std::string const& urlPart,
     std::string const& body) const {
   DEBUG_BEGIN_BLOCK();
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
 
   // Later, we probably want to set these sensibly:
   ClientTransactionID const clientTransactionId = "AQL";
