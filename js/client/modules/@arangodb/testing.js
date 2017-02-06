@@ -179,7 +179,7 @@ const optionsDefaults = {
   'skipBoost': false,
   'skipEndpoints': false,
   'skipGeo': false,
-  'skipLogAnalysis': false,
+  'skipLogAnalysis': true,
   'skipMemoryIntense': false,
   'skipNightly': true,
   'skipNondeterministic': false,
