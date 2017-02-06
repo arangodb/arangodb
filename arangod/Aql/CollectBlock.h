@@ -43,7 +43,7 @@ class ExecutionEngine;
 
 typedef std::vector<Aggregator*> AggregateValuesType;
 
-class SortedCollectBlock : public ExecutionBlock {
+class SortedCollectBlock final : public ExecutionBlock {
  private:
   typedef std::vector<Aggregator*> AggregateValuesType;
 

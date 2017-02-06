@@ -19,9 +19,9 @@ endif()
 # debug info directory:
 if (${CMAKE_INSTALL_LIBDIR} STREQUAL "usr/lib64")
   # some systems have weird places for usr/lib: 
-  set(CMAKE_INSTALL_DEBINFO_DIR "usr/lib/debug/${CMAKE_PROJECT_NAME}")
+  set(CMAKE_INSTALL_DEBINFO_DIR "usr/lib/debug/")
 else ()
-  set(CMAKE_INSTALL_DEBINFO_DIR "${CMAKE_INSTALL_LIBDIR}/debug/${CMAKE_PROJECT_NAME}")
+  set(CMAKE_INSTALL_DEBINFO_DIR "${CMAKE_INSTALL_LIBDIR}/debug/")
 endif ()
 
 set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/${CMAKE_PROJECT_NAME}")

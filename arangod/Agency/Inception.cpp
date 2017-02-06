@@ -66,7 +66,7 @@ void Inception::gossip() {
     auto const version = config.version();
 
     // Build gossip message
-    auto out = std::make_shared<velocypack::Builder>();
+    auto out = std::make_shared<Builder>();
     out->openObject();
     out->add("endpoint", VPackValue(config.endpoint()));
     out->add("id", VPackValue(config.id()));
@@ -169,7 +169,7 @@ bool Inception::restartingActiveAgent() {
   auto const& clientEp  = myConfig.endpoint();
   auto const majority   = (myConfig.size()+1)/2;
 
-  velocypack::Builder greeting;
+  Builder greeting;
   {
     VPackObjectBuilder b(&greeting);
     greeting.add(clientId, VPackValue(clientEp));
@@ -259,7 +259,7 @@ bool Inception::restartingActiveAgent() {
                 }
               }
               
-              auto agency = std::make_shared<velocypack::Builder>();
+              auto agency = std::make_shared<Builder>();
               agency->openObject();
               agency->add("term", theirConfig.get("term"));
               agency->add("id", VPackValue(theirLeaderId));
@@ -435,7 +435,7 @@ bool Inception::estimateRAFTInterval() {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "mean(" << mean << ") stdev(" << stdev<< ")";
       
-    velocypack::Builder measurement;
+    Builder measurement;
     measurement.openObject();
     measurement.add("mean", VPackValue(mean));
     measurement.add("stdev", VPackValue(stdev));
@@ -541,8 +541,10 @@ void Inception::run() {
       LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent.";
       _agent->ready(true);
     } else {
+      if (!this->isStopping()) {
         LOG_TOPIC(FATAL, Logger::AGENCY)
           << "Unable to restart with persisted pool. Fatal exit.";
+      }
         FATAL_ERROR_EXIT();
       // FATAL ERROR
     }

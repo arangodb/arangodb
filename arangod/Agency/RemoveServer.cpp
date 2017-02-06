@@ -27,7 +27,6 @@
 #include "Agency/Job.h"
 
 using namespace arangodb::consensus;
-using namespace arangodb::velocypack;
 
 RemoveServer::RemoveServer(Node const& snapshot, Agent* agent,
                            std::string const& jobId, std::string const& creator,

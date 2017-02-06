@@ -37,7 +37,7 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-class SortBlock : public ExecutionBlock {
+class SortBlock final : public ExecutionBlock {
  public:
   SortBlock(ExecutionEngine*, SortNode const*);
 

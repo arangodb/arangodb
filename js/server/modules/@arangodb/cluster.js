@@ -455,6 +455,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
   // synchronize this shard from the leader
   // this function will throw if anything goes wrong
 
+  var startTime = new Date();
   var isStopping = require('internal').isStopping;
   var ourselves = global.ArangoServerState.id();
 
@@ -487,8 +488,9 @@ function synchronizeOneShard (database, shard, planId, leader) {
       planned[0] !== leader) {
       // Things have changed again, simply terminate:
       terminateAndStartOther();
-      console.debug('synchronizeOneShard: cancelled, %s/%s, %s/%s',
-        database, shard, database, planId);
+      let endTime = new Date();
+      console.debug('synchronizeOneShard: cancelled, %s/%s, %s/%s, started %s, ended %s',
+        database, shard, database, planId, startTime.toString(), endTime.toString());
       return;
     }
     var current = [];
@@ -502,8 +504,9 @@ function synchronizeOneShard (database, shard, planId, leader) {
       }
       // We are already there, this is rather strange, but never mind:
       terminateAndStartOther();
-      console.debug('synchronizeOneShard: already done, %s/%s, %s/%s',
-        database, shard, database, planId);
+      let endTime = new Date();
+      console.debug('synchronizeOneShard: already done, %s/%s, %s/%s, started %s, ended %s',
+        database, shard, database, planId, startTime.toString(), endTime.toString());
       return;
     }
     console.debug('synchronizeOneShard: waiting for leader, %s/%s, %s/%s',
@@ -524,9 +527,16 @@ function synchronizeOneShard (database, shard, planId, leader) {
     if (isStopping()) {
       throw 'server is shutting down';
     }
+    let startTime = new Date();
     sy = rep.syncCollection(shard,
       { endpoint: ep, incremental: true,
       keepBarrier: true, useCollectionId: false });
+    let endTime = new Date();
+    let longSync = false;
+    if (endTime - startTime > 5000) {
+      console.error('synchronizeOneShard: long call to syncCollection for shard', shard, JSON.stringify(sy), "start time: ", startTime.toString(), "end time: ", endTime.toString());
+      longSync = true;
+    }
     if (sy.error) {
       console.error('synchronizeOneShard: could not initially synchronize',
         'shard ', shard, sy);
@@ -534,7 +544,15 @@ function synchronizeOneShard (database, shard, planId, leader) {
     } else {
       if (sy.collections.length === 0 ||
         sy.collections[0].name !== shard) {
+        if (longSync) {
+          console.error('synchronizeOneShard: long sync, before cancelBarrier',
+                        new Date().toString());
+        }
         cancelBarrier(ep, database, sy.barrierId);
+        if (longSync) {
+          console.error('synchronizeOneShard: long sync, after cancelBarrier',
+                        new Date().toString());
+        }
         throw 'Shard ' + shard + ' seems to be gone from leader!';
       } else {
         // Now start a read transaction to stop writes:
@@ -594,14 +612,17 @@ function synchronizeOneShard (database, shard, planId, leader) {
       } else if (err2 && err2.errorNum === 1402 && err2.errorMessage.match(/HTTP 404/)) {
         logLevel = 'debug';
       }
-      console[logLevel]("synchronization of local shard '%s/%s' for central '%s/%s' failed: %s",
-        database, shard, database, planId, JSON.stringify(err2));
+      let endTime = new Date();
+      console[logLevel]("synchronization of local shard '%s/%s' for central '%s/%s' failed: %s, started: %s, ended: %s",
+        database, shard, database, planId, JSON.stringify(err2),
+        startTime.toString(), endTime.toString());
     }
   }
   // Tell others that we are done:
   terminateAndStartOther();
-  console.debug('synchronizeOneShard: done, %s/%s, %s/%s',
-    database, shard, database, planId);
+  let endTime = new Date();
+  console.debug('synchronizeOneShard: done, %s/%s, %s/%s, started: %s, ended: %s',
+    database, shard, database, planId, startTime.toString(), endTime.toString());
 }
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -1789,8 +1810,7 @@ function shardDistribution () {
   var result = {};
   for (var i = 0; i < colls.length; ++i) {
     var collName = colls[i].name();
-    var collInfo = global.ArangoClusterInfo.getCollectionInfo(dbName,
-      collName);
+    var collInfo = global.ArangoClusterInfo.getCollectionInfo(dbName, collName);
     var shards = collInfo.shards;
     var collInfoCurrent = {};
     var shardNames = Object.keys(shards);

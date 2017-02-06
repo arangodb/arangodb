@@ -186,14 +186,15 @@
         async: true,
         success: function (data) {
           if (data.id) {
-            arangoHelper.arangoNotification('Shard ' + shardName + ' will be moved to ' + arangoHelper.getDatabaseServerId(toServer) + '.');
+            console.log(toServer);
+            arangoHelper.arangoNotification('Shard ' + shardName + ' will be moved to ' + arangoHelper.getDatabaseShortName(toServer) + '.');
             window.setTimeout(function () {
               window.App.shardsView.render();
             }, 3000);
           }
         },
         error: function () {
-          arangoHelper.arangoError('Shard ' + shardName + ' could not be moved to ' + arangoHelper.getDatabaseServerId(toServer) + '.');
+          arangoHelper.arangoError('Shard ' + shardName + ' could not be moved to ' + arangoHelper.getDatabaseShortName(toServer) + '.');
         }
       });
 

@@ -35,10 +35,10 @@
 #include "Rest/Version.h"
 
 using namespace arangodb;
+
 using namespace arangodb::basics;
-using namespace arangodb::consensus;
 using namespace arangodb::rest;
-using namespace arangodb::velocypack;
+using namespace arangodb::consensus;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server

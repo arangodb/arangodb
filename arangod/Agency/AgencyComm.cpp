@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
@@ -54,7 +54,6 @@
 
 using namespace arangodb;
 using namespace arangodb::application_features;
-using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
@@ -450,7 +449,7 @@ std::string AgencyCommManager::path(std::string const& p1) {
     return "";
   }
 
-  return MANAGER->_prefix + "/" + StringUtils::trim(p1, "/");
+  return MANAGER->_prefix + "/" + basics::StringUtils::trim(p1, "/");
 }
 
 std::string AgencyCommManager::path(std::string const& p1,
@@ -459,8 +458,8 @@ std::string AgencyCommManager::path(std::string const& p1,
     return "";
   }
 
-  return MANAGER->_prefix + "/" + StringUtils::trim(p1, "/") + "/" +
-         StringUtils::trim(p2, "/");
+  return MANAGER->_prefix + "/" + basics::StringUtils::trim(p1, "/") + "/" +
+         basics::StringUtils::trim(p2, "/");
 }
 
 std::string AgencyCommManager::generateStamp() {
@@ -674,7 +673,7 @@ void AgencyCommManager::removeEndpoint(std::string const& endpoint) {
 }
 
 std::string AgencyCommManager::endpointsString() const {
-  return StringUtils::join(endpoints(), ", ");
+  return basics::StringUtils::join(endpoints(), ", ");
 }
 
 std::vector<std::string> AgencyCommManager::endpoints() const {
@@ -1280,7 +1279,7 @@ void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
   for (const auto& i : VPackObjectIterator(current)) {
     auto const endpoint = Endpoint::unifiedForm(i.value.copyString());
     if (std::find(stored.begin(), stored.end(), endpoint) == stored.end()) {
-      LOG_TOPIC(INFO, Logger::CLUSTER)
+      LOG_TOPIC(DEBUG, Logger::CLUSTER)
         << "Adding endpoint " << endpoint << " to agent pool";
       AgencyCommManager::MANAGER->addEndpoint(endpoint);
     }
@@ -1391,7 +1390,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
         b.add(VPackValue(clientId));
       }
       
-      LOG_TOPIC(INFO, Logger::AGENCYCOMM) <<
+      LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) <<
         "Failed agency comm (" << result._statusCode << ")! " <<
         "Inquiring about clientId " << clientId << ".";
       
@@ -1410,25 +1409,25 @@ AgencyCommResult AgencyComm::sendWithFailover(
               for (auto const& i : VPackArrayIterator(inner)) {
                 if (i.isUInt()) {
                   if (i.getUInt() == 0) {
-                    LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+                    LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
                       << body << " failed: " << outer.toJson();
                     return result;
                   } else {
                     success = true;
                   }
                 } else {
-                  LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+                  LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
                     << body << " failed with " << outer.toJson();
                 }
               }
             }
           }
           if (success) {
-            LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+            LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
               << body << " succeeded (" << outer.toJson() << ")";
             return inq;
           } else {
-            LOG_TOPIC(INFO, Logger::AGENCYCOMM)
+            LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
               << body << " failed (" << outer.toJson() << ")";
             return result;
           }
@@ -1437,7 +1436,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
         }
         return inq;
       } else {
-        LOG_TOPIC(INFO, Logger::AGENCYCOMM) <<
+        LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) <<
           "Inquiry failed (" << inq._statusCode << "). Keep trying ...";
         continue;
       }

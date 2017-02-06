@@ -1777,16 +1777,6 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
-  // First see whether or not we have to do synchronous replication:
-  std::shared_ptr<std::vector<ServerID> const> followers;
-  bool doingSynchronousReplication = false;
-  if (ServerState::isDBServer(_serverRole)) {
-    // Now replicate the same operation on all followers:
-    auto const& followerInfo = collection->followers();
-    followers = followerInfo->get();
-    doingSynchronousReplication = followers->size() > 0;
-  }
-
   if (options.returnNew) {
     orderDitch(cid); // will throw when it fails 
   }
@@ -1815,11 +1805,6 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
       // Error reporting in the babies case is done outside of here,
       // in the single document case no body needs to be created at all.
       return res;
-    }
-
-    if (options.silent && !doingSynchronousReplication) {
-      // no need to construct the result object
-      return TRI_ERROR_NO_ERROR;
     }
 
     uint8_t const* vpack = result.vpack();
@@ -1864,6 +1849,15 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     MMFilesLogfileManager::instance()->slots()->waitForTick(maxTick);
   }
   
+  // Now see whether or not we have to do synchronous replication:
+  std::shared_ptr<std::vector<ServerID> const> followers;
+  bool doingSynchronousReplication = false;
+  if (ServerState::isDBServer(_serverRole)) {
+    // Now replicate the same operation on all followers:
+    auto const& followerInfo = collection->followers();
+    followers = followerInfo->get();
+    doingSynchronousReplication = followers->size() > 0;
+  }
 
   if (doingSynchronousReplication && res == TRI_ERROR_NO_ERROR) {
     // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -1950,7 +1944,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     }
   }
   
-  if (doingSynchronousReplication && options.silent) {
+  if (options.silent) {
     // We needed the results, but do not want to report:
     resultBuilder.clear();
   }
@@ -2078,16 +2072,6 @@ OperationResult Transaction::modifyLocal(
     orderDitch(cid); // will throw when it fails 
   }
 
-  // First see whether or not we have to do synchronous replication:
-  std::shared_ptr<std::vector<ServerID> const> followers;
-  bool doingSynchronousReplication = false;
-  if (ServerState::isDBServer(_serverRole)) {
-    // Now replicate the same operation on all followers:
-    auto const& followerInfo = collection->followers();
-    followers = followerInfo->get();
-    doingSynchronousReplication = followers->size() > 0;
-  }
-
   // Update/replace are a read and a write, let's get the write lock already
   // for the read operation:
   int res = lock(trxCollection(cid), AccessMode::Type::WRITE);
@@ -2125,7 +2109,7 @@ OperationResult Transaction::modifyLocal(
 
     if (res == TRI_ERROR_ARANGO_CONFLICT) {
       // still return 
-      if ((!options.silent || doingSynchronousReplication) && !isBabies) {
+      if (!isBabies) {
         StringRef key(newVal.get(StaticStrings::KeyString));
         buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision, 0,
                               options.returnOld ? previous.vpack() : nullptr, nullptr);
@@ -2138,13 +2122,11 @@ OperationResult Transaction::modifyLocal(
     uint8_t const* vpack = result.vpack();
     TRI_ASSERT(vpack != nullptr);
 
-    if (!options.silent || doingSynchronousReplication) {
-      StringRef key(newVal.get(StaticStrings::KeyString));
-      buildDocumentIdentity(collection, resultBuilder, cid, key, 
-          TRI_ExtractRevisionId(VPackSlice(vpack)), actualRevision, 
-          options.returnOld ? previous.vpack() : nullptr , 
-          options.returnNew ? vpack : nullptr);
-    }
+    StringRef key(newVal.get(StaticStrings::KeyString));
+    buildDocumentIdentity(collection, resultBuilder, cid, key, 
+        TRI_ExtractRevisionId(VPackSlice(vpack)), actualRevision, 
+        options.returnOld ? previous.vpack() : nullptr , 
+        options.returnNew ? vpack : nullptr);
     return TRI_ERROR_NO_ERROR;
   };
 
@@ -2171,6 +2153,16 @@ OperationResult Transaction::modifyLocal(
   // wait for operation(s) to be synced to disk here 
   if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 && isSingleOperationTransaction()) {
     MMFilesLogfileManager::instance()->slots()->waitForTick(maxTick);
+  }
+
+  // Now see whether or not we have to do synchronous replication:
+  std::shared_ptr<std::vector<ServerID> const> followers;
+  bool doingSynchronousReplication = false;
+  if (ServerState::isDBServer(_serverRole)) {
+    // Now replicate the same operation on all followers:
+    auto const& followerInfo = collection->followers();
+    followers = followerInfo->get();
+    doingSynchronousReplication = followers->size() > 0;
   }
 
   if (doingSynchronousReplication && res == TRI_ERROR_NO_ERROR) {
@@ -2262,7 +2254,7 @@ OperationResult Transaction::modifyLocal(
     }
   }
   
-  if (doingSynchronousReplication && options.silent) {
+  if (options.silent) {
     // We needed the results, but do not want to report:
     resultBuilder.clear();
   }
@@ -2332,16 +2324,6 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     orderDitch(cid); // will throw when it fails 
   }
  
-  // First see whether or not we have to do synchronous replication:
-  std::shared_ptr<std::vector<ServerID> const> followers;
-  bool doingSynchronousReplication = false;
-  if (ServerState::isDBServer(_serverRole)) {
-    // Now replicate the same operation on all followers:
-    auto const& followerInfo = collection->followers();
-    followers = followerInfo->get();
-    doingSynchronousReplication = followers->size() > 0;
-  }
-
   VPackBuilder resultBuilder;
   TRI_voc_tick_t maxTick = 0;
 
@@ -2380,7 +2362,6 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_CONFLICT && 
-          (!options.silent || doingSynchronousReplication) && 
           !isBabies) {
         buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision, 0, 
                               options.returnOld ? previous.vpack() : nullptr, nullptr);
@@ -2388,10 +2369,8 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
       return res;
     }
 
-    if (!options.silent || doingSynchronousReplication) {
-      buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision, 0,
-                            options.returnOld ? previous.vpack() : nullptr, nullptr);
-    }
+    buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision, 0,
+                          options.returnOld ? previous.vpack() : nullptr, nullptr);
 
     return TRI_ERROR_NO_ERROR;
   };
@@ -2416,6 +2395,16 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   // wait for operation(s) to be synced to disk here 
   if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 && isSingleOperationTransaction()) {
     MMFilesLogfileManager::instance()->slots()->waitForTick(maxTick);
+  }
+
+  // Now see whether or not we have to do synchronous replication:
+  std::shared_ptr<std::vector<ServerID> const> followers;
+  bool doingSynchronousReplication = false;
+  if (ServerState::isDBServer(_serverRole)) {
+    // Now replicate the same operation on all followers:
+    auto const& followerInfo = collection->followers();
+    followers = followerInfo->get();
+    doingSynchronousReplication = followers->size() > 0;
   }
 
   if (doingSynchronousReplication && res == TRI_ERROR_NO_ERROR) {
@@ -2505,7 +2494,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     }
   }
   
-  if (doingSynchronousReplication && options.silent) {
+  if (options.silent) {
     // We needed the results, but do not want to report:
     resultBuilder.clear();
   }

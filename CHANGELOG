@@ -1,14 +1,37 @@
 devel
 -----
 
+
+v3.2.alpha1 (2017-02-05)
+------------------------
+
+* added figure `httpRequests` to AQL query statistics
+  
+* removed revisions cache intermediate layer implementation
+ 
+* obsoleted startup options `--database.revision-cache-chunk-size` and
+  `--database.revision-cache-target-size` 
+
+* fix potential port number over-/underruns
+
 * added startup option `--log.shorten-filenames` for controlling whether filenames
   in log message should be shortened to just the filename with the absolute path
 
-* removed IndexThreadFeature, made --database.index-threads option obsolete
+* removed IndexThreadFeature, made `--database.index-threads` option obsolete
 
 * changed index filling to make it more parallel, dispatch tasks to boost::asio
 
 * more detailed stacktraces in Foxx apps
+
+
+v3.1.11 (XXXX-XX-XX)
+--------------------
+
+* fixed sort issue in cluster, occurring when one of the local sort buffers of a
+  GatherNode was empty
+
+* reduce number of HTTP requests made for certain kinds of join queries in cluster,
+  leading to speedup of some join queries
 
 
 v3.1.10 (2017-XX-XX)
