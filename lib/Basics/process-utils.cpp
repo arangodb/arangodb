@@ -419,7 +419,7 @@ static bool startProcess(TRI_external_t* external, HANDLE rd, HANDLE wr) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, args);
 
   if (bFuncRetn == FALSE) {
-    TRI_SYSTEM_ERROR()
+    TRI_SYSTEM_ERROR();
     LOG(ERR) << "execute of '" << external->_executable
              << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
     return false;
