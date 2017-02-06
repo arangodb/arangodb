@@ -185,7 +185,8 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">optimizer</span>: { <span cl
       } 
     ], 
     <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">1265.3856189774724</span>, 
-    <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">100</span> 
+    <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">100</span>, 
+    <span class="hljs-string">"initialize"</span> : <span class="hljs-literal">true</span> 
   }, 
   <span class="hljs-string">"warnings"</span> : [ ], 
   <span class="hljs-string">"stats"</span> : { 
