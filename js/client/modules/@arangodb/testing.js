@@ -222,7 +222,10 @@ const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 const YELLOW = require('internal').COLORS.COLOR_YELLOW;
-
+let executable_ext;
+if (platform.substr(0, 3) === 'win') {
+  executable_ext = '.exe';
+}
 let cleanupDirectories = [];
 let serverCrashed = false;
 
@@ -1448,7 +1451,12 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   }
 
   instanceInfo.url = endpointToURL(instanceInfo.endpoint);
-  instanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(args), options).pid;
+  try {
+    instanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(args), options).pid;
+  } catch (x) {
+    print('failed to run arangod - ' + JSON.stringify(x));
+    throw(x)          
+  }
   instanceInfo.role = role;
 
   if (platform.substr(0, 3) === 'win') {
@@ -2608,10 +2616,7 @@ testFuncs.authentication_parameters = function (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function locateBoostTest (name) {
-  var file = fs.join(UNITTESTS_DIR, name);
-  if (platform.substr(0, 3) === 'win') {
-    file += '.exe';
-  }
+  var file = fs.join(UNITTESTS_DIR, name + executable_ext);
 
   if (!fs.exists(file)) {
     return '';
@@ -4236,12 +4241,12 @@ function unitTest (cases, options) {
     UNITTESTS_DIR = fs.join(UNITTESTS_DIR, options.buildType);
   }
 
-  ARANGOBENCH_BIN = fs.join(BIN_DIR, 'arangobench');
-  ARANGODUMP_BIN = fs.join(BIN_DIR, 'arangodump');
-  ARANGOD_BIN = fs.join(BIN_DIR, 'arangod');
-  ARANGOIMP_BIN = fs.join(BIN_DIR, 'arangoimp');
-  ARANGORESTORE_BIN = fs.join(BIN_DIR, 'arangorestore');
-  ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh');
+  ARANGOBENCH_BIN = fs.join(BIN_DIR, 'arangobench' + executable_ext);
+  ARANGODUMP_BIN = fs.join(BIN_DIR, 'arangodump' + executable_ext);
+  ARANGOD_BIN = fs.join(BIN_DIR, 'arangod' + executable_ext);
+  ARANGOIMP_BIN = fs.join(BIN_DIR, 'arangoimp' + executable_ext);
+  ARANGORESTORE_BIN = fs.join(BIN_DIR, 'arangorestore' + executable_ext);
+  ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh' + executable_ext);
 
   CONFIG_ARANGODB_DIR = fs.join(TOP_DIR, builddir, 'etc', 'arangodb3');
   CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, 'etc', 'relative');
@@ -4260,7 +4265,7 @@ function unitTest (cases, options) {
     ARANGORESTORE_BIN,
     ARANGOSH_BIN];
   for (let b = 0; b < checkFiles.length; ++b) {
-    if (!fs.isFile(checkFiles[b]) && !fs.isFile(checkFiles[b] + '.exe')) {
+    if (!fs.isFile(checkFiles[b])) {
       throw new Error('unable to locate ' + checkFiles[b]);
     }
   }
