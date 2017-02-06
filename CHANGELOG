@@ -1,5 +1,7 @@
 3.2.0-alpha1 (XXXX-XX-XX)
 -------------------------
+
+* added figure `httpRequests` to AQL query statistics
   
 * removed revisions cache intermediate layer implementation
  
@@ -18,7 +20,17 @@
 * more detailed stacktraces in Foxx apps
 
 
-v3.1.10 (2017-XX-XX)
+v3.1.11 (XXXX-XX-XX)
+--------------------
+
+* fixed sort issue in cluster, occurring when one of the local sort buffers of a
+  GatherNode was empty
+
+* reduce number of HTTP requests made for certain kinds of join queries in cluster,
+  leading to speedup of some join queries
+
+
+v3.1.10 (2017-02-02)
 --------------------
 
 * updated versions of bundled node modules:
