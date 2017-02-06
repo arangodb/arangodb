@@ -169,5 +169,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   } catch (...) {
   }
 
+  now = TRI_microtime();
+  if (now - startTime > 30) {
+    LOG_TOPIC(WARN, Logger::HEARTBEAT) << "DBServerAgencySync::execute "
+      "took longer than 30s to execute handlePlanChange()";
+  }
   return result;
 }
