@@ -151,7 +151,6 @@ fi
 MINP=0.5
 MAXP=2.0
 SFRE=2.5
-COMP=1000
 BASE=5000
 
 if [ "$GOSSIP_MODE" = "0" ]; then
@@ -192,7 +191,6 @@ for aid in "${aaid[@]}"; do
     --agency.activate true \
     $GOSSIP_PEERS \
     --agency.my-address $TRANSPORT://localhost:$port \
-    --agency.compaction-step-size $COMP \
     --agency.pool-size $POOLSZ \
     --agency.size $NRAGENTS \
     --agency.supervision true \
