@@ -216,7 +216,7 @@ class Optimizer {
   /// set the level of the appended plan to the largest level of rule
   /// that ought to be considered as done to indicate which rule is to be
   /// applied next.
-  typedef std::function<void(Optimizer*, ExecutionPlan*, Rule const*)>
+  typedef std::function<void(Optimizer*, std::unique_ptr<ExecutionPlan>, Rule const*)>
       RuleFunction;
 
   /// @brief type of an optimizer rule
@@ -351,9 +351,10 @@ class Optimizer {
   /// stealPlans.
   int createPlans(ExecutionPlan* p, std::vector<std::string> const&, bool);
 
+  size_t hasEnoughPlans(size_t extraPlans) const;
+
   /// @brief add a plan to the optimizer
-  /// returns false if there are already enough plans, true otherwise
-  bool addPlan(ExecutionPlan*, Rule const*, bool, int newLevel = 0);
+  void addPlan(std::unique_ptr<ExecutionPlan>, Rule const*, bool, int newLevel = 0);
 
   /// @brief getBest, ownership of the plan remains with the optimizer
   ExecutionPlan* getBest() {
