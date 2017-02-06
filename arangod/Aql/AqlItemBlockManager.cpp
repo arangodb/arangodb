@@ -36,6 +36,7 @@ AqlItemBlockManager::~AqlItemBlockManager() { delete _last; }
 /// @brief request a block with the specified size
 AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems,
                                                 RegisterId nrRegs) {
+/*  
   if (_last != nullptr && _last->size() == nrItems &&
       _last->getNrRegs() == nrRegs) {
     auto block = _last;
@@ -45,16 +46,19 @@ AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems,
 
     return block;
   }
-
+*/
   return new AqlItemBlock(_resourceMonitor, nrItems, nrRegs);
 }
 
 /// @brief return a block to the manager
 void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) {
   TRI_ASSERT(block != nullptr);
+  delete block;
+  /*
   block->destroy();
 
   delete _last;
   _last = block;
+  */
   block = nullptr;
 }

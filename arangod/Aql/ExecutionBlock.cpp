@@ -440,7 +440,7 @@ int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
         collector.add(std::move(more));
       }
       skipped += cur->size() - _pos;
-      delete cur;
+      returnBlock(cur);
       _buffer.pop_front();
       _pos = 0;
     } else {
@@ -454,7 +454,7 @@ int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
         }
         collector.add(cur);
       } else {
-        delete cur;
+        returnBlock(cur);
       }
       _buffer.pop_front();
       _pos = 0;

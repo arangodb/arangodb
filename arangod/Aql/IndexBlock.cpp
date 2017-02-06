@@ -522,7 +522,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         AqlItemBlock* cur = _buffer.front();
         if (++_pos >= cur->size()) {
           _buffer.pop_front();  // does not throw
-          delete cur;
+          returnBlock(cur);
           _pos = 0;
         }
         if (_buffer.empty()) {
@@ -552,11 +552,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
 
     if (toSend > 0) {
       // automatically freed should we throw
-      res.reset(
-        new AqlItemBlock(_engine->getQuery()->resourceMonitor(),
-        toSend,
-        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()])
-      );
+      res.reset(requestBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
       TRI_ASSERT(curRegs <= res->getNrRegs());
 
@@ -638,7 +634,7 @@ size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
 
         if (++_pos >= cur->size()) {
           _buffer.pop_front();  // does not throw
-          delete cur;
+          returnBlock(cur);
           _pos = 0;
         }
 
