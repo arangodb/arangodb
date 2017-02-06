@@ -327,6 +327,16 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
       delete cur;
       _gatherBlockBuffer.at(val.first).pop_front();
       _gatherBlockPos.at(val.first) = std::make_pair(val.first, 0);
+
+      if (_gatherBlockBuffer.at(val.first).empty()) {
+        // if we pulled everything from the buffer, we need to fetch
+        // more data for the shard for which we have no more local
+        // values. 
+        getBlock(val.first, atLeast, atMost);
+        // note that if getBlock() returns false here, this is not
+        // a problem, because the sort function used takes care of
+        // this
+      }
     }
   }
 
