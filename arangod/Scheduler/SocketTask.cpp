@@ -112,7 +112,7 @@ void SocketTask::start() {
       << _connectionInfo.clientPort;
 
   auto self = shared_from_this();
-  _loop._ioService->post([self, this]() { asyncReadSome(); });
+  _loop._scheduler->post([self, this]() { asyncReadSome(); });
 }
 
 // -----------------------------------------------------------------------------
@@ -128,11 +128,7 @@ void SocketTask::addWriteBuffer(WriteBuffer& buffer) {
   {
     auto self = shared_from_this();
 
-    _loop._ioService->post([self, this]() {
-      // tell the scheduler that this thread is busy:
-      JobGuard guard(SchedulerFeature::SCHEDULER);
-      guard.busy();
-      // now try to process already read requests:
+    _loop._scheduler->post([self, this]() {
       MUTEX_LOCKER(locker, _readLock);
       processAll();
     });
@@ -201,12 +197,14 @@ void SocketTask::writeWriteBuffer() {
   // was written in one go, begin writing at offset (written)
   auto self = shared_from_this();
   _peer->asyncWrite(
-      boost::asio::buffer(_writeBuffer._buffer->begin() + written, total - written),
+      boost::asio::buffer(_writeBuffer._buffer->begin() + written,
+                          total - written),
       [self, this](const boost::system::error_code& ec,
                    std::size_t transferred) {
         MUTEX_LOCKER(locker, _writeLock);
 
-        RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, transferred);
+        RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics,
+                                          transferred);
 
         if (ec) {
           LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
@@ -215,13 +213,7 @@ void SocketTask::writeWriteBuffer() {
           closeStream();
         } else {
           if (completedWriteBuffer()) {
-            _loop._ioService->post([self, this]() {
-                // tell the scheduler that we are busy:
-                JobGuard guard(SchedulerFeature::SCHEDULER);
-                guard.busy();
-                // Now write some:
-                writeWriteBuffer();
-              });
+            _loop._scheduler->post([self, this]() { writeWriteBuffer(); });
           }
         }
       });
@@ -417,9 +409,6 @@ void SocketTask::asyncReadSome() {
       return;
     }
 
-    JobGuard guard(_loop);
-    guard.busy();
-
     size_t const MAX_DIRECT_TRIES = 2;
     size_t n = 0;
 
@@ -465,6 +454,9 @@ void SocketTask::asyncReadSome() {
   auto self = shared_from_this();
   auto handler = [self, this](const boost::system::error_code& ec,
                               std::size_t transferred) {
+    JobGuard guard(_loop);
+    guard.work();
+
     MUTEX_LOCKER(locker, _readLock);
 
     if (ec) {
@@ -472,13 +464,10 @@ void SocketTask::asyncReadSome() {
                                               << ec.message();
       closeStream();
     } else {
-      JobGuard guard(_loop);
-      guard.busy();
-
       _readBuffer.increaseLength(transferred);
 
       if (processAll()) {
-        _loop._ioService->post([self, this]() { asyncReadSome(); });
+        _loop._scheduler->post([self, this]() { asyncReadSome(); });
       }
     }
   };
