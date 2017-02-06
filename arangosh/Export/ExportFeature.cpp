@@ -43,6 +43,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer* server,
       _collections(),
       _graphName(),
       _typeExport("json"),
+      _xgmmlLabelOnly(false),
       _outputDirectory(),
       _overwrite(false),
       _progress(true),
@@ -67,6 +68,9 @@ void ExportFeature::collectOptions(
 
   options->addOption("--graph-name", "name of a graph to export",
                      new StringParameter(&_graphName));
+
+  options->addOption("--xgmml-label-only", "export only xgmml label",
+                     new BooleanParameter(&_xgmmlLabelOnly));
 
   options->addOption("--output-directory", "output directory",
                      new StringParameter(&_outputDirectory));
@@ -441,19 +445,113 @@ directed="1">
 }
 
 void ExportFeature::writeGraphBatch(int fd, VPackArrayIterator it, std::string const& fileName) {
+  std::string xmlTag;
 
-  // todos:
-  // insert actual label, options to have also attributes
   for(auto const& doc : it) {
     if (doc.hasKey("_from")) {
-      // <edge label="B-C" source="2" target="3">
-      std::string edge = "<edge label=\"MYLABEL\" source=\"" + doc.get("_from").copyString() + "\" target=\"" + doc.get("_to").copyString() + "\" />\n";
-      writeToFile(fd, edge, fileName);
+      xmlTag = "<edge label=\"" + (doc.hasKey("label") ? doc.get("label").copyString() : "Default-Label") + "\" source=\"" + doc.get("_from").copyString() + "\" target=\"" + doc.get("_to").copyString() + "\"";
+      writeToFile(fd, xmlTag, fileName);
+      if (!_xgmmlLabelOnly) {
+        xmlTag = ">\n";
+        writeToFile(fd, xmlTag, fileName);
+
+        for (auto const& it : VPackObjectIterator(doc)) {
+          xmlTag = it.key.copyString();
+          xgmmlWriteOneAtt(fd, fileName, it.value, xmlTag);
+        }
+
+        xmlTag = "</edge>\n";
+        writeToFile(fd, xmlTag, fileName);
+
+      } else {
+        xmlTag = " />\n";
+        writeToFile(fd, xmlTag, fileName);
+      }
 
     } else {
-      // <node label="C" id="3">
-      std::string node = "<node label=\"MYNODELABEL\" id=\"" + doc.get("_id").copyString() + "\" />\n";
-      writeToFile(fd, node, fileName);
+      xmlTag = "<node label=\"" + (doc.hasKey("label") ? doc.get("label").copyString() : "Default-Label") + "\" id=\"" + doc.get("_id").copyString() + "\"";
+      writeToFile(fd, xmlTag, fileName);
+      if (!_xgmmlLabelOnly) {
+        xmlTag = ">\n";
+        writeToFile(fd, xmlTag, fileName);
+
+        for (auto const& it : VPackObjectIterator(doc)) {
+          xmlTag = it.key.copyString();
+          xgmmlWriteOneAtt(fd, fileName, it.value, xmlTag);
+        }
+
+        xmlTag = "</node>\n";
+        writeToFile(fd, xmlTag, fileName);
+
+      } else {
+        xmlTag = " />\n";
+        writeToFile(fd, xmlTag, fileName);
+      }
     }
+  }
+}
+
+void ExportFeature::xgmmlWriteOneAtt(int fd, std::string const& fileName, VPackSlice const& slice, std::string& name, int deep) {
+  std::string value, type, xmlTag;
+
+  if (deep == 0 &&
+     (name == "_id" || name == "_key" || name == "_rev" || name == "_from" || name == "_to")) {
+    return;
+  }
+
+  if (slice.isInteger()) {
+    type = "integer";
+    value = "\"" + slice.toString() + "\"";
+
+  } else if (slice.isDouble()) {
+    type = "real";
+    value = "\"" + slice.toString() + "\"";
+
+  } else if (slice.isBool()) {
+    type = "boolean";
+    value = "\"" + slice.toString() + "\"";
+
+  } else if (slice.isString()) {
+    type = "string";
+    value = slice.toString();
+
+  } else if (slice.isArray() || slice.isObject()) {
+    if (0 < deep) {
+      std::cout << "Warning: cant map deep nested objects / array into xgmml" << std::endl;
+      return;
+    }
+
+  } else {
+    xmlTag = "  <att name=\"" + name + "\" type=\"string\" value=\"" + slice.toString() + "\"/>\n";
+    writeToFile(fd, xmlTag, fileName);
+    return;
+  }
+
+  if (!type.empty()) {
+    xmlTag = "  <att name=\"" + name + "\" type=\"" + type + "\" value=" + value + "/>\n";
+    writeToFile(fd, xmlTag, fileName);
+
+  } else if (slice.isArray()) {
+    xmlTag = "  <att name=\"" + name + "\" type=\"list\">\n";
+    writeToFile(fd, xmlTag, fileName);
+
+    for (auto const& val : VPackArrayIterator(slice)) {
+      xgmmlWriteOneAtt(fd, fileName, val, name, deep + 1);
+    }
+
+    xmlTag = "  </att>\n";
+    writeToFile(fd, xmlTag, fileName);
+
+  } else if (slice.isObject()) {
+    xmlTag = "  <att name=\"" + name + "\" type=\"list\">\n";
+    writeToFile(fd, xmlTag, fileName);
+
+    for (auto const& it : VPackObjectIterator(slice)) {
+      std::string name = it.key.copyString();
+      xgmmlWriteOneAtt(fd, fileName, it.value, name, deep + 1);
+    }
+
+    xmlTag = "  </att>\n";
+    writeToFile(fd, xmlTag, fileName);
   }
 }
