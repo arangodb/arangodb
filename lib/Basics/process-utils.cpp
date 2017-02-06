@@ -383,7 +383,8 @@ static bool startProcess(TRI_external_t* external, HANDLE rd, HANDLE wr) {
   PROCESS_INFORMATION piProcInfo;
   STARTUPINFO siStartInfo;
   BOOL bFuncRetn = FALSE;
-
+  TRI_ERRORBUF;
+  
   args = makeWindowsArgs(external);
   if (args == NULL) {
     LOG(ERR) << "execute of '" << external->_executable
@@ -418,8 +419,9 @@ static bool startProcess(TRI_external_t* external, HANDLE rd, HANDLE wr) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, args);
 
   if (bFuncRetn == FALSE) {
+    TRI_SYSTEM_ERROR();
     LOG(ERR) << "execute of '" << external->_executable
-             << "' failed, error: " << GetLastError();
+             << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
     return false;
   } else {
     external->_pid = piProcInfo.dwProcessId;
