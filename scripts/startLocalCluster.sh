@@ -155,7 +155,6 @@ if [ ! -z "$INTERACTIVE_MODE" ] ; then
 fi
 
 SFRE=5.0
-COMP=2000
 KEEP=0
 AG_BASE=$(( $PORT_OFFSET + 4001 ))
 CO_BASE=$(( $PORT_OFFSET + 8530 ))
@@ -191,7 +190,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     ${BUILD}/bin/arangod \
         -c none \
         --agency.activate true \
-        --agency.compaction-step-size $COMP \
         --agency.compaction-keep-size $KEEP \
         --agency.endpoint $TRANSPORT://localhost:$AG_BASE \
         --agency.my-address $TRANSPORT://localhost:$port \
