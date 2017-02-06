@@ -222,7 +222,7 @@ const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 const YELLOW = require('internal').COLORS.COLOR_YELLOW;
-let executable_ext;
+let executable_ext = "";
 if (platform.substr(0, 3) === 'win') {
   executable_ext = '.exe';
 }
