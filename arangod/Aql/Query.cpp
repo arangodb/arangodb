@@ -156,7 +156,6 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _ast(nullptr),
       _profile(nullptr),
       _state(INVALID_STATE),
-      _plan(nullptr),
       _parser(nullptr),
       _trx(nullptr),
       _engine(nullptr),
@@ -224,7 +223,6 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _ast(nullptr),
       _profile(nullptr),
       _state(INVALID_STATE),
-      _plan(nullptr),
       _parser(nullptr),
       _trx(nullptr),
       _engine(nullptr),
@@ -313,7 +311,7 @@ Query* Query::clone(QueryPart part, bool withPlan) {
   if (_plan != nullptr) {
     if (withPlan) {
       // clone the existing plan
-      clone->setPlan(_plan->clone(*clone));
+      clone->_plan.reset(_plan->clone(*clone));
     }
 
     // clone all variables
@@ -326,7 +324,7 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 
   if (clone->_plan == nullptr) {
     // initialize an empty plan
-    clone->setPlan(new ExecutionPlan(ast()));
+    clone->_plan.reset(new ExecutionPlan(ast()));
   }
 
   TRI_ASSERT(clone->_trx == nullptr);
@@ -566,7 +564,7 @@ QueryResult Query::prepare(QueryRegistry* registry) {
 
       // If all went well so far, then we keep _plan, _parser and _trx and
       // return:
-      _plan = plan.release();
+      _plan = std::move(plan);
       _parser = parser.release();
       _engine = engine;
       return QueryResult();
@@ -1408,18 +1406,7 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
     _parser = nullptr;
   }
 
-  if (_plan != nullptr) {
-    delete _plan;
-    _plan = nullptr;
-  }
-}
-
-/// @brief set the plan for the query
-void Query::setPlan(ExecutionPlan* plan) {
-  if (_plan != nullptr) {
-    delete _plan;
-  }
-  _plan = plan;
+  _plan.reset();
 }
 
 /// @brief create a TransactionContext
