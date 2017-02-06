@@ -1455,7 +1455,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
     instanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(args), options).pid;
   } catch (x) {
     print('failed to run arangod - ' + JSON.stringify(x));
-    throw(x)          
+    throw(x);        
   }
   instanceInfo.role = role;
 
