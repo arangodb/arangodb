@@ -396,10 +396,11 @@ class ClusterComm {
   /// @brief get the unique instance
   //////////////////////////////////////////////////////////////////////////////
 
-  static ClusterComm* instance();
+  static std::shared_ptr<ClusterComm> instance();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief initialize function to call once when still single-threaded
+  /// @brief initialize function to call once, instance() can be called
+  /// beforehand but the background thread is only started here.
   //////////////////////////////////////////////////////////////////////////////
 
   static void initialize();
@@ -529,11 +530,21 @@ class ClusterComm {
       std::string const& destination, arangodb::rest::RequestType reqtype,
       std::string const* body,
       std::unordered_map<std::string, std::string> const& headerFields);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the pointer to the singleton instance
   //////////////////////////////////////////////////////////////////////////////
 
-  static ClusterComm* _theinstance;
+  static std::shared_ptr<ClusterComm> _theInstance;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the following atomic int is 0 in the beginning, is set to 1
+  /// if some thread initializes the singleton and is 2 once _theInstance
+  /// is set. Note that after a shutdown has happened, _theInstance can be
+  /// a nullptr, which means no new ClusterComm operations can be started.
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::atomic<int>             _theInstanceInit;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief produces an operation ID which is unique in this process

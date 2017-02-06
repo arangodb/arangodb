@@ -595,7 +595,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   }
 
   /// @brief aggregateQueryIds, get answers for all shards in a Scatter/Gather
-  void aggregateQueryIds(EngineInfo* info, arangodb::ClusterComm*& cc,
+  void aggregateQueryIds(EngineInfo* info,
+                         std::shared_ptr<arangodb::ClusterComm>& cc,
                          arangodb::CoordTransactionID& coordTransactionID,
                          Collection* collection) {
     // pick up the remote query ids
