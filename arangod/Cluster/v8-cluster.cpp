@@ -985,11 +985,23 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto serverAliases = ClusterInfo::instance()->getServerAliases();
 
   v8::Handle<v8::Array> l = v8::Array::New(isolate);
+
   for (size_t i = 0; i < DBServers.size(); ++i) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
-    result->Set(TRI_V8_ASCII_STRING("serverId"), TRI_V8_STD_STRING(DBServers[i]));
-    result->Set(TRI_V8_ASCII_STRING("serverName"),
-                TRI_V8_STD_STRING(serverAliases.at(DBServers[i])));
+    auto id = DBServers[i];
+
+    result->Set(TRI_V8_ASCII_STRING("serverId"), TRI_V8_STD_STRING(id));
+
+    auto itr = serverAliases.find(id);
+    
+    if (itr != serverAliases.end()) {
+      result->Set(TRI_V8_ASCII_STRING("serverName"),
+		  TRI_V8_STD_STRING(itr->second));
+    } else {
+      result->Set(TRI_V8_ASCII_STRING("serverName"),
+		  TRI_V8_STD_STRING(id));
+    }
+      
     l->Set((uint32_t)i, result);
   }
 
