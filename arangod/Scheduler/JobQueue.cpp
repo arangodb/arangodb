@@ -71,7 +71,10 @@ class JobQueueThread final : public Thread {
           idleTries = 0;
 
           _ioService->post([jobQueue, job]() {
-            std::unique_ptr<Job> guard(job);
+            JobGuard guard(SchedulerFeature::SCHEDULER);
+            guard.work();
+
+            std::unique_ptr<Job> releaseGuard(job);
 
             try {
               job->_callback(std::move(job->_handler));
@@ -142,7 +145,9 @@ void JobQueue::beginShutdown() {
 }
 
 bool JobQueue::tryActive() {
-  if (!SchedulerFeature::SCHEDULER->tryBlocking()) {
+  static size_t const MAX_ACTIVE = 10;
+  
+  if (_active > MAX_ACTIVE) {
     return false;
   }
 
@@ -151,7 +156,6 @@ bool JobQueue::tryActive() {
 }
 
 void JobQueue::releaseActive() {
-  SchedulerFeature::SCHEDULER->unworkThread();
   --_active;
 }
 

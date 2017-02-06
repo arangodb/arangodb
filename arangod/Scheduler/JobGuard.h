@@ -44,15 +44,6 @@ class JobGuard {
     return _scheduler->isIdle();
   }
 
-  void busy() {
-    if (0 == _isBusy) {
-      _scheduler->enterThread();
-    }
-
-    ++_isBusy;
-    _isBusyFlag = true;
-  }
-
   void work() {
     if (0 == _isWorking) {
       _scheduler->workThread();
@@ -72,15 +63,6 @@ class JobGuard {
   }
 
   void release() {
-    if (_isBusyFlag) {
-      --_isBusy;
-      _isBusyFlag = false;
-
-      if (0 == _isBusy) {
-        _scheduler->unenterThread();
-      }
-    }
-    
     if (_isWorkingFlag) {
       --_isWorking;
       _isWorkingFlag = false;
@@ -103,11 +85,9 @@ class JobGuard {
  private:
   rest::Scheduler* _scheduler;
 
- bool _isBusyFlag = false;
- bool _isWorkingFlag = false;
- bool _isBlockedFlag = false;
+  bool _isWorkingFlag = false;
+  bool _isBlockedFlag = false;
 
-  static thread_local size_t _isBusy;
   static thread_local size_t _isWorking;
   static thread_local size_t _isBlocked;
 };
