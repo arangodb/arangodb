@@ -22,10 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleCollectionTransaction.h"
+#include "StorageEngine/TransactionCollection.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationResult.h"
 #include "Utils/Transaction.h"
-#include "Utils/TransactionCollection.h"
 #include "Utils/TransactionContext.h"
 #include "Utils/TransactionState.h"
 #include "VocBase/Ditch.h"

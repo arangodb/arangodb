@@ -94,10 +94,13 @@ void RocksDBEngine::start() {
 void RocksDBEngine::stop() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
 }
+  
+TransactionCollection* RocksDBEngine::createTransactionCollection(TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) {
+  return nullptr;
+}
 
 // create storage-engine specific collection
 PhysicalCollection* RocksDBEngine::createPhysicalCollection(LogicalCollection* collection) {
-  TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
   return nullptr;
 }
 

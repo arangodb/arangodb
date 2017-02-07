@@ -230,6 +230,7 @@ SET(ARANGOD_SOURCES
   MMFiles/MMFilesRevisionsCache.cpp
   MMFiles/MMFilesSkiplistIndex.cpp
   MMFiles/MMFilesSynchronizerThread.cpp
+  MMFiles/MMFilesTransactionCollection.cpp
   MMFiles/MMFilesWalLogfile.cpp
   MMFiles/MMFilesWalRecoverState.cpp
   MMFiles/MMFilesWalRecoveryFeature.cpp
@@ -317,7 +318,6 @@ SET(ARANGOD_SOURCES
   Utils/SingleCollectionTransaction.cpp
   Utils/StandaloneTransactionContext.cpp
   Utils/Transaction.cpp
-  Utils/TransactionCollection.cpp
   Utils/TransactionContext.cpp
   Utils/TransactionState.cpp
   Utils/V8TransactionContext.cpp

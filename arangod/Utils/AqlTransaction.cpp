@@ -24,7 +24,7 @@
 #include "AqlTransaction.h"
 #include "CollectionNameResolver.h"
 #include "Logger/Logger.h"
-#include "Utils/TransactionCollection.h"
+#include "StorageEngine/TransactionCollection.h"
 #include "Utils/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -92,7 +92,6 @@ LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
   TRI_ASSERT(trxColl != nullptr);
   return trxColl->collection();
 }
-
 
 /// @brief lockCollections, this is needed in a corner case in AQL: we need
 /// to lock all shards in a controlled way when we set up a distributed

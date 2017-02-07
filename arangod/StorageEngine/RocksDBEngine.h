@@ -59,6 +59,8 @@ class RocksDBEngine final : public StorageEngine {
 
   // called when recovery is finished
   void recoveryDone(TRI_vocbase_t* vocbase) override;
+  
+  TransactionCollection* createTransactionCollection(TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) override;
 
   // create storage-engine specific collection
   PhysicalCollection* createPhysicalCollection(LogicalCollection*) override;

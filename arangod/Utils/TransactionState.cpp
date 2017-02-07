@@ -30,8 +30,10 @@
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionCollection.h"
 #include "Utils/Transaction.h"
-#include "Utils/TransactionCollection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 #include "VocBase/ticks.h"
@@ -92,23 +94,8 @@ TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid, AccessMod
   size_t unused;
   TransactionCollection* trxCollection = findCollection(cid, unused);
 
-  if (trxCollection == nullptr) {
-    // not found
-    return nullptr;
-  }
-
-  if (trxCollection->_collection == nullptr) {
-    if (!hasHint(TransactionHints::Hint::LOCK_NEVER) ||
-        !hasHint(TransactionHints::Hint::NO_USAGE_LOCK)) {
-      // not opened. probably a mistake made by the caller
-      return nullptr;
-    }
-    // ok
-  }
-
-  // check if access type matches
-  if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(trxCollection->_accessType)) {
-    // type doesn't match. probably also a mistake by the caller
+  if (trxCollection == nullptr || !trxCollection->canAccess(accessType)) {
+    // not found or not accessible in the requested mode
     return nullptr;
   }
 
@@ -149,26 +136,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   
   if (trxCollection != nullptr) {
     // collection is already contained in vector
-
-    if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(trxCollection->_accessType)) {
-      if (nestingLevel > 0) {
-        // trying to write access a collection that is only marked with
-        // read-access
-        return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
-      }
-
-      TRI_ASSERT(nestingLevel == 0);
-
-      // upgrade collection type to write-access
-      trxCollection->_accessType = accessType;
-    }
-
-    if (nestingLevel < trxCollection->_nestingLevel) {
-      trxCollection->_nestingLevel = nestingLevel;
-    }
-
-    // all correct
-    return TRI_ERROR_NO_ERROR;
+    return trxCollection->updateUsage(accessType, nestingLevel);
   }
 
   // collection not found.
@@ -185,7 +153,8 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   // collection was not contained. now create and insert it
   TRI_ASSERT(trxCollection == nullptr);
   try {
-    trxCollection = new TransactionCollection(this, cid, accessType, nestingLevel);
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    trxCollection = engine->createTransactionCollection(this, cid, accessType, nestingLevel);
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -211,121 +180,28 @@ int TransactionState::ensureCollections(int nestingLevel) {
 
 /// @brief use all participating collections of a transaction
 int TransactionState::useCollections(int nestingLevel) {
-  // process collections in forward order
-  for (auto& trxCollection : _collections) {
-    if (trxCollection->_nestingLevel != nestingLevel) {
-      // only process our own collections
-      continue;
-    }
-
-    if (trxCollection->_collection == nullptr) {
-      // open the collection
-      if (!hasHint(TransactionHints::Hint::LOCK_NEVER) &&
-          !hasHint(TransactionHints::Hint::NO_USAGE_LOCK)) {
-        // use and usage-lock
-        TRI_vocbase_col_status_e status;
-        LOG_TRX(this, nestingLevel) << "using collection " << trxCollection->_cid;
-        trxCollection->_collection = _vocbase->useCollection(trxCollection->_cid, status);
-      } else {
-        // use without usage-lock (lock already set externally)
-        trxCollection->_collection = _vocbase->lookupCollection(trxCollection->_cid);
-
-        if (trxCollection->_collection == nullptr) {
-          return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-        }
-      }
-
-      if (trxCollection->_collection == nullptr) {
-        // something went wrong
-        int res = TRI_errno();
-
-        if (res == TRI_ERROR_NO_ERROR) {
-          // must return an error
-          res = TRI_ERROR_INTERNAL;
-        }
-        return res;
-      }
-
-      if (AccessMode::isWriteOrExclusive(trxCollection->_accessType) &&
-          TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE &&
-          !LogicalCollection::IsSystemName(
-              trxCollection->_collection->name())) {
-        return TRI_ERROR_ARANGO_READ_ONLY;
-      }
-
-      // store the waitForSync property
-      trxCollection->_waitForSync =
-          trxCollection->_collection->waitForSync();
-    }
-
-    TRI_ASSERT(trxCollection->_collection != nullptr);
-
-    if (nestingLevel == 0 &&
-        AccessMode::isWriteOrExclusive(trxCollection->_accessType)) {
-      // read-lock the compaction lock
-      if (!hasHint(TransactionHints::Hint::NO_COMPACTION_LOCK)) {
-        if (!trxCollection->_compactionLocked) {
-          trxCollection->_collection->preventCompaction();
-          trxCollection->_compactionLocked = true;
-        }
-      }
-    }
-
-    if (AccessMode::isWriteOrExclusive(trxCollection->_accessType) &&
-        trxCollection->_originalRevision == 0) {
-      // store original revision at transaction start
-      trxCollection->_originalRevision =
-          trxCollection->_collection->revision();
-    }
-
-    bool shouldLock = hasHint(TransactionHints::Hint::LOCK_ENTIRELY);
-
-    if (!shouldLock) {
-      shouldLock = (AccessMode::isWriteOrExclusive(trxCollection->_accessType) && !isSingleOperation());
-    }
-
-    if (shouldLock && !trxCollection->isLocked()) {
-      // r/w lock the collection
-      int res = trxCollection->doLock(trxCollection->_accessType, nestingLevel);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
-      }
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief release collection locks for a transaction
-int TransactionState::unuseCollections(int nestingLevel) {
   int res = TRI_ERROR_NO_ERROR;
 
-  // process collections in reverse order
-  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
-    TransactionCollection* trxCollection = (*it);
+  // process collections in forward order
+  for (auto& trxCollection : _collections) {
+    res = trxCollection->use(nestingLevel);
 
-    if (trxCollection->isLocked() &&
-        (nestingLevel == 0 || trxCollection->_nestingLevel == nestingLevel)) {
-      // unlock our own r/w locks
-      trxCollection->doUnlock(trxCollection->_accessType, nestingLevel);
-    }
-
-    // the top level transaction releases all collections
-    if (nestingLevel == 0 && trxCollection->_collection != nullptr) {
-      if (!hasHint(TransactionHints::Hint::NO_COMPACTION_LOCK)) {
-        if (AccessMode::isWriteOrExclusive(trxCollection->_accessType) && trxCollection->_compactionLocked) {
-          // read-unlock the compaction lock
-          trxCollection->_collection->allowCompaction();
-          trxCollection->_compactionLocked = false;
-        }
-      }
-
-      trxCollection->_lockType = AccessMode::Type::NONE;
+    if (res != TRI_ERROR_NO_ERROR) {
+      break;
     }
   }
 
   return res;
+}
+
+/// @brief release collection locks for a transaction
+int TransactionState::unuseCollections(int nestingLevel) {
+  // process collections in reverse order
+  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
+    (*it)->unuse(nestingLevel);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief start a transaction
@@ -575,33 +451,20 @@ int TransactionState::addOperation(TRI_voc_rid_t revisionId,
   } else {
     // operation is buffered and might be rolled back
     TransactionCollection* trxCollection = this->collection(collection->cid(), AccessMode::Type::WRITE);
-
-    if (trxCollection->_operations == nullptr) {
-      trxCollection->_operations = new std::vector<MMFilesDocumentOperation*>;
-      trxCollection->_operations->reserve(16);
-      _hasOperations = true;
-    } else {
-      // reserve space for one more element so the push_back below does not fail
-      size_t oldSize = trxCollection->_operations->size();
-      if (oldSize + 1 >= trxCollection->_operations->capacity()) {
-        // double the size
-        trxCollection->_operations->reserve((oldSize + 1) * 2);
-      }
-    }
+    
+    std::unique_ptr<MMFilesDocumentOperation> copy(operation.swap());
     
     TRI_IF_FAILURE("TransactionOperationPushBack") {
       // test what happens if reserve above failed
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); 
     }
-
-    std::unique_ptr<MMFilesDocumentOperation> copy(operation.swap());
     
-    // should not fail because we reserved enough room above 
-    trxCollection->_operations->push_back(copy.get());
+    trxCollection->addOperation(copy.get());
     copy->handled();
     copy.release();
+    _hasOperations = true;
   }
-   
+
   collection->setRevision(revisionId, false);
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
@@ -643,46 +506,11 @@ TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid, size_
 /// @brief free all operations for a transaction
 void TransactionState::freeOperations(arangodb::Transaction* activeTrx) {
   bool const mustRollback = (_status == Transaction::Status::ABORTED);
-  bool const isSingleOperationTransaction = isSingleOperation();
      
   TRI_ASSERT(activeTrx != nullptr);
    
   for (auto& trxCollection : _collections) {
-    if (trxCollection->_operations == nullptr) {
-      continue;
-    }
-
-    arangodb::LogicalCollection* collection = trxCollection->_collection;
-
-    if (mustRollback) {
-      // revert all operations
-      for (auto it = trxCollection->_operations->rbegin();
-           it != trxCollection->_operations->rend(); ++it) {
-        MMFilesDocumentOperation* op = (*it);
-
-        try {
-          op->revert(activeTrx);
-        } catch (...) {
-        }
-        delete op;
-      }
-    } else {
-      // no rollback. simply delete all operations
-      for (auto it = trxCollection->_operations->rbegin();
-           it != trxCollection->_operations->rend(); ++it) {
-        delete (*it);
-      }
-    }
-
-    if (mustRollback) {
-      collection->setRevision(trxCollection->_originalRevision, true);
-    } else if (!collection->isVolatile() && !isSingleOperationTransaction) {
-      // only count logfileEntries if the collection is durable
-      collection->increaseUncollectedLogfileEntries(trxCollection->_operations->size());
-    }
-
-    delete trxCollection->_operations;
-    trxCollection->_operations = nullptr;
+    trxCollection->freeOperations(activeTrx, mustRollback);
   }
 }
 
@@ -720,14 +548,10 @@ void TransactionState::clearQueryCache() {
   try {
     std::vector<std::string> collections;
     for (auto& trxCollection : _collections) {
-      if (!AccessMode::isWriteOrExclusive(trxCollection->_accessType) ||
-          trxCollection->_operations == nullptr ||
-          trxCollection->_operations->empty()) {
+      if (trxCollection->hasOperations()) {
         // we're only interested in collections that may have been modified
-        continue;
+        collections.emplace_back(trxCollection->collection()->name());
       }
-
-      collections.emplace_back(trxCollection->_collection->name());
     }
 
     if (!collections.empty()) {

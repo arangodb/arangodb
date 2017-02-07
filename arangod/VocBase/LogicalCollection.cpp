@@ -57,7 +57,6 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Utils/TransactionCollection.h"
 #include "Utils/TransactionState.h"
 #include "VocBase/DatafileStatisticsContainer.h"
 #include "VocBase/KeyGenerator.h"
