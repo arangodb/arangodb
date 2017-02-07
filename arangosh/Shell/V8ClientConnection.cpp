@@ -270,7 +270,7 @@ static V8ClientConnection* CreateV8ClientConnection(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_DestructorCallback(
-    const v8::WeakCallbackData<v8::External, v8::Persistent<v8::External>>&
+    const v8::WeakCallbackInfo<v8::Persistent<v8::External>>&
         data) {
   auto persistent = data.GetParameter();
   auto myConnection =
@@ -297,7 +297,8 @@ static v8::Handle<v8::Value> WrapV8ClientConnection(
   result->SetInternalField(SLOT_CLASS, myConnection);
   Connections[v8connection].Reset(isolate, myConnection);
   Connections[v8connection].SetWeak(&Connections[v8connection],
-                                    ClientConnection_DestructorCallback);
+                                    ClientConnection_DestructorCallback,
+                                    v8::WeakCallbackType::kFinalizer);
   return scope.Escape<v8::Value>(result);
 }
 

@@ -555,7 +555,7 @@ void Supervision::handleShutdown() {
         LOG(ERR) << "Invalid resultsize of " << result.indices.size()
                  << " found during shutdown";
       } else {
-        if (!_agent->waitFor(result.indices.at(0))) {
+        if (_agent->waitFor(result.indices.at(0)) != Agent::raft_commit_t::OK) {
           LOG(ERR) << "Result was not written to followers during shutdown";
         }
       }

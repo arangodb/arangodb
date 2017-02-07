@@ -29,6 +29,7 @@ add_executable(${TEST_BASICS_SUITE}
   Basics/EndpointTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
+  ../lib/ApplicationFeatures/LanguageFeature.cpp
   ../lib/Basics/WorkMonitorDummy.cpp
 )
 
