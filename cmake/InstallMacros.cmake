@@ -186,6 +186,7 @@ macro(install_debinfo
       string(SUBSTRING ${FILE_CHECKSUM} 0 2 SUB_DIR)
       string(SUBSTRING ${FILE_CHECKSUM} 2 -1 STRIP_FILE)
       set(SUB_DEBINFO_DIR .build-id/${SUB_DIR})
+      set(STRIP_FILE "${STRIP_FILE}.debug")
     endif()
     execute_process(COMMAND ${CMAKE_OBJCOPY} --only-keep-debug ${FILE} ${STRIP_DIR}/${STRIP_FILE})
     set(FILE ${STRIP_DIR}/${STRIP_FILE})
