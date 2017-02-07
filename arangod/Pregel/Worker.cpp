@@ -549,6 +549,24 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body) {
 }
 
 template <typename V, typename E, typename M>
+void Worker<V, E, M>::aqlResult(VPackBuilder *b) const {
+  MUTEX_LOCKER(guard, _commandMutex);
+  
+  b->openArray();
+  auto it = _graphStore->vertexIterator();
+  for (VertexEntry const* vertexEntry : it) {
+    
+    V* data = _graphStore->mutableVertexData(vertexEntry);
+    b->openObject();
+    b->add(StaticStrings::KeyString, VPackValue(vertexEntry->key()));
+    // bool store =
+    _graphStore->graphFormat()->buildVertexDocument(*b, data, sizeof(V));
+    b->close();
+  }
+  b->close();
+}
+
+template <typename V, typename E, typename M>
 void Worker<V, E, M>::startRecovery(VPackSlice const& data) {
   // other methods might lock _commandMutex
   MUTEX_LOCKER(guard, _commandMutex);

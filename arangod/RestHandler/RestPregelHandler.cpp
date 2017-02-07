@@ -70,7 +70,7 @@ RestStatus RestPregelHandler::execute() {
       return RestStatus::DONE;
     }
     
-    VPackBuilder result;
+    VPackBuilder response;
     uint64_t executionNumber = sExecutionNum.getUInt();
     if (suffix.size() != 1) {
       LOG(ERR) << "Invalid suffix";
@@ -97,7 +97,7 @@ RestStatus RestPregelHandler::execute() {
     } else if (suffix[0] == Utils::prepareGSSPath) {
       IWorker *w = PregelFeature::instance()->worker(executionNumber);
       if (w) {
-        result = w->prepareGlobalStep(body);
+        response = w->prepareGlobalStep(body);
       } else {
         LOG(ERR) << "Invalid execution number, worker does not exist.";
         generateError(rest::ResponseCode::NOT_FOUND,
@@ -122,7 +122,7 @@ RestStatus RestPregelHandler::execute() {
     } else if (suffix[0] == Utils::finishedWorkerStepPath) {
       Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
       if (exe) {
-        result = exe->finishedWorkerStep(body);
+        response = exe->finishedWorkerStep(body);
       }
     } else if (suffix[0] == Utils::cancelGSSPath) {
       IWorker *exe = PregelFeature::instance()->worker(executionNumber);
@@ -151,6 +151,11 @@ RestStatus RestPregelHandler::execute() {
       if (w) {// we will need to create a worker in these cicumstances
         w->finalizeRecovery(body);
       }
+    } else if (suffix[0] == Utils::aqlResultsPath) {
+      IWorker *w = PregelFeature::instance()->worker(executionNumber);
+      if (w) {// we will need to create a worker in these cicumstances
+        w->aqlResult(&response);
+      }
     } else if (suffix[0] == Utils::finishedRecoveryPath) {
       Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
       if (exe) {
@@ -158,7 +163,7 @@ RestStatus RestPregelHandler::execute() {
       }
     }
     
-    generateResult(rest::ResponseCode::OK, result.slice());
+    generateResult(rest::ResponseCode::OK, response.slice());
     
   } catch (std::exception const &e) {
     LOG(ERR) << e.what();

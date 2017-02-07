@@ -53,9 +53,9 @@ struct GraphFormat {
                               E* targetPtr, size_t maxSize) = 0;
 
   virtual bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                                   const V* targetPtr, size_t size) = 0;
+                                   const V* targetPtr, size_t size) const = 0;
   virtual bool buildEdgeDocument(arangodb::velocypack::Builder& b,
-                                 const E* targetPtr, size_t size) = 0;
+                                 const E* targetPtr, size_t size) const = 0;
 };
 
 template <typename V, typename E>
@@ -108,13 +108,13 @@ class NumberGraphFormat : public GraphFormat<V, E> {
   }
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b, const V* ptr,
-                           size_t size) override {
+                           size_t size) const override{
     b.add(_resultField, VPackValue(*ptr));
     return true;
   }
 
   bool buildEdgeDocument(arangodb::velocypack::Builder& b, const E* ptr,
-                         size_t size) override {
+                         size_t size) const override {
     b.add(_resultField, VPackValue(*ptr));
     return true;
   }
@@ -145,13 +145,13 @@ class InitGraphFormat : public GraphFormat<V, E> {
   }
 
   virtual bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                                   const V* ptr, size_t size) override {
+                                   const V* ptr, size_t size) const override {
     b.add(_resultField, VPackValue(*ptr));
     return true;
   }
 
   virtual bool buildEdgeDocument(arangodb::velocypack::Builder& b, const E* ptr,
-                                 size_t size) override {
+                                 size_t size) const override {
     b.add(_resultField, VPackValue(*ptr));
     return true;
   }
@@ -183,13 +183,13 @@ class VertexGraphFormat : public GraphFormat<V, E> {
   }
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b, const V* ptr,
-                           size_t size) override {
+                           size_t size) const override {
     b.add(_resultField, VPackValue(*ptr));
     return true;
   }
 
   bool buildEdgeDocument(arangodb::velocypack::Builder& b, const E* ptr,
-                         size_t size) override {
+                         size_t size) const override {
     return false;
   }
 };

@@ -57,6 +57,7 @@
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/AggregatorHandler.h"
+#include "Pregel/Worker.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
@@ -2147,6 +2148,37 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  // check the arguments
+  uint32_t const argLength = args.Length();
+  if (argLength != 1 || !(args[0]->IsNumber() || args[0]->IsString())) {
+    // TODO extend this for named graphs, use the Graph class
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
+  }
+  
+  uint64_t executionNum = TRI_ObjectToUInt64(args[0], true);
+  if (ServerState::instance()->isCoordinator()) {
+    pregel::Conductor *c = pregel::PregelFeature::instance()->conductor(executionNum);
+    if (!c) {
+      TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
+    }
+    
+    VPackBuilder docs = c->collectAQLResults();
+    TRI_ASSERT(docs.slice().isArray());
+    VPackOptions resultOptions = VPackOptions::Defaults;
+    auto documents = TRI_VPackToV8(isolate, docs.slice(), &resultOptions);
+    TRI_V8_RETURN(documents);
+  } else {
+    TRI_V8_THROW_EXCEPTION_USAGE("Only valid on the conductor");
+  }
+  
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch the revision for a local collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -3321,6 +3353,8 @@ void TRI_InitV8Collection(v8::Handle<v8::Context> context,
                        JS_PregelStatus);
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_pregelCancel"),
                        JS_PregelCancel);
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_pregelAqlResult"),
+                       JS_PregelAQLResult);
 
   // an internal API used for storing a document without wrapping a V8
   // collection object

@@ -277,6 +277,9 @@ struct Functions {
   static AqlValue IsSameCollection(arangodb::aql::Query*,
                                   arangodb::Transaction*,
                                   VPackFunctionParameters const&);
+  
+  static AqlValue PregelResult(arangodb::aql::Query*, arangodb::Transaction*,
+                               VPackFunctionParameters const&);
 };
 }
 }

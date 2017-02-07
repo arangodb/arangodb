@@ -116,6 +116,8 @@ class Conductor {
   ExecutionState getState() const { return _state; }
   StatsManager workerStats() const { return _statistics; }
   uint64_t globalSuperstep() const { return _globalSuperstep; }
+  
+  VPackBuilder collectAQLResults();
   double totalRuntimeSecs() {
     return _endTimeSecs == 0 ? TRI_microtime() - _startTimeSecs
                              : _endTimeSecs - _startTimeSecs;

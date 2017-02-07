@@ -4060,3 +4060,35 @@ AqlValue Functions::IsSameCollection(
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
+
+#include "Pregel/PregelFeature.h"
+#include "Pregel/Worker.h"
+
+AqlValue Functions::PregelResult(arangodb::aql::Query* query, arangodb::Transaction* trx,
+                                        VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "PREGEL_RESULT", 1, 1);
+  
+  AqlValue arg1 = ExtractFunctionParameterValue(trx, parameters, 0);
+  if (!arg1.isNumber()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+                                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PREGEL_RESULT");
+  }
+  
+  uint64_t execNr = arg1.toInt64(trx);
+  pregel::PregelFeature *feature = pregel::PregelFeature::instance();
+  if (feature) {
+    pregel::IWorker *worker = feature->worker(execNr);
+    if (!worker) {
+      RegisterWarning(query, "PREGEL_RESULT",
+                      TRI_ERROR_QUERY_FUNCTION_INVALID_CODE);
+      return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+    }
+    TransactionBuilderLeaser builder(trx);
+    worker->aqlResult(builder.get());
+    return AqlValue(builder.get());
+  } else {
+    RegisterWarning(query, "PREGEL_RESULT",
+                    TRI_ERROR_QUERY_FUNCTION_INVALID_CODE);
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+  }
+}

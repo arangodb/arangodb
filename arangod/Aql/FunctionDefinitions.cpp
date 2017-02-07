@@ -109,6 +109,9 @@ struct FunctionDefiner {
     addFulltextFunctions();
     addDateFunctions();
     addMiscFunctions();
+    
+    add({"PREGEL_RESULT", "AQL_PREGEL_RESULT", "n", true, false, true,
+      true, true, &Functions::PregelResult, NotInCoordinator});
   }
 
   // meanings of the symbols in the function arguments list

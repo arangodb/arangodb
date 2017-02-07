@@ -181,14 +181,14 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int32_t> {
   }
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           const SCCValue* ptr, size_t size) override {
+                           const SCCValue* ptr, size_t size) const override {
     SCCValue* senders = (SCCValue*)ptr;
     b.add(_resultField, VPackValue(senders->color));
     return true;
   }
 
   bool buildEdgeDocument(arangodb::velocypack::Builder& b, const int32_t* ptr,
-                         size_t size) override {
+                         size_t size) const override {
     return false;
   }
 };

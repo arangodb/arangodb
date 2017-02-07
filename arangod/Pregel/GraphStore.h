@@ -88,6 +88,7 @@ class GraphStore {
 
   uint64_t localVertexCount() const { return _localVerticeCount; }
   uint64_t localEdgeCount() const { return _localEdgeCount; }
+  GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
 
   // ====================== NOT THREAD SAFE ===========================
   void loadShards(WorkerConfig* state, std::function<void()> callback);
@@ -102,7 +103,7 @@ class GraphStore {
   RangeIterator<Edge<E>> edgeIterator(VertexEntry const* entry);
 
   /// get the pointer to the vertex
-  void* mutableVertexData(VertexEntry const* entry);
+  V* mutableVertexData(VertexEntry const* entry);
   /// does nothing currently
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
 

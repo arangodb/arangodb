@@ -99,7 +99,7 @@ void Conductor::start(std::string const& algoName,
   if (_lazyLoading) {
     LOG(INFO) << "Enabled lazy loading";
   }
-  _storeResults = VelocyPackHelper::getNumericValue(config, "store", true);
+  _storeResults = VelocyPackHelper::getBooleanValue(config, "store", true);
   if (!_storeResults) {
     LOG(INFO) << "Will keep results in-memory";
   }
@@ -599,6 +599,31 @@ int Conductor::_finalizeWorkers() {
   LOG(INFO) << "Overall: " << totalRuntimeSecs() << "s";
   LOG(INFO) << "Stats: " << b.toString();
   return res;
+}
+
+VPackBuilder Conductor::collectAQLResults() {
+  if (_state != ExecutionState::DONE) {
+    return VPackBuilder();
+  }
+  
+  VPackBuilder b;
+  b.openObject();
+  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+  b.close();
+  std::vector<ClusterCommRequest> requests;
+  int res = _sendToAllDBServers(Utils::aqlResultsPath, b.slice(), requests);
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  
+  VPackBuilder messages;
+  for (auto const& req : requests) {
+    VPackSlice payload = req.result.answer->payload();
+    if (payload.isArray()) {
+      messages.add(payload);
+    }
+  }
+  return messages;
 }
 
 int Conductor::_sendToAllDBServers(std::string const& suffix,

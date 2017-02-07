@@ -92,7 +92,7 @@ struct arangodb::pregel::algos::SPGraphFormat
   }
 
   bool buildEdgeDocument(arangodb::velocypack::Builder& b,
-                         const int64_t* targetPtr, size_t size) override {
+                         const int64_t* targetPtr, size_t size) const override {
     return false;
   }
 };

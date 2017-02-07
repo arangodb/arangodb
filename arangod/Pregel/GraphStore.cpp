@@ -243,7 +243,7 @@ RangeIterator<VertexEntry> GraphStore<V, E>::vertexIterator(size_t start,
 }
 
 template <typename V, typename E>
-void* GraphStore<V, E>::mutableVertexData(VertexEntry const* entry) {
+V* GraphStore<V, E>::mutableVertexData(VertexEntry const* entry) {
   return _vertexData.data() + entry->_vertexDataOffset;
 }
 
