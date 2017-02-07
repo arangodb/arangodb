@@ -92,7 +92,7 @@ std::vector<std::string> TransactionState::collectionNames() const {
 
   for (auto& trxCollection : _collections) {
     if (trxCollection->collection() != nullptr) {
-      result.emplace_back(trxCollection->collection()->name());
+      result.emplace_back(trxCollection->collectionName());
     }
   }
 
@@ -565,7 +565,7 @@ void TransactionState::clearQueryCache() {
     for (auto& trxCollection : _collections) {
       if (trxCollection->hasOperations()) {
         // we're only interested in collections that may have been modified
-        collections.emplace_back(trxCollection->collection()->name());
+        collections.emplace_back(trxCollection->collectionName());
       }
     }
 

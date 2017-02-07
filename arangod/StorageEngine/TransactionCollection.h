@@ -46,6 +46,14 @@ class TransactionCollection {
   
   virtual ~TransactionCollection() {}
   
+  inline TRI_voc_cid_t id() const { return _cid; }
+  
+  LogicalCollection* collection() const {
+    return _collection;  // vocbase collection pointer
+  }
+
+  std::string collectionName() const;
+
   /// @brief request a main-level lock for a collection
   virtual int lock() = 0;
  
@@ -74,12 +82,6 @@ class TransactionCollection {
   virtual void unuse(int nestingLevel) = 0;
   virtual void release() = 0;
   
-  inline TRI_voc_cid_t id() const { return _cid; }
-  
-  LogicalCollection* collection() const {
-    return _collection;  // vocbase collection pointer
-  }
-
  protected:
   TransactionState* _transaction;  // the transaction state
   TRI_voc_cid_t const _cid;        // collection id

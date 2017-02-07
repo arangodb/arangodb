@@ -1167,9 +1167,8 @@ int Transaction::finish(int errorNum) {
 std::string Transaction::name(TRI_voc_cid_t cid) const {
   auto c = trxCollection(cid);
   TRI_ASSERT(c != nullptr);
-  return c->collection()->name();
+  return c->collectionName();
 }
-
 
 /// @brief read any (random) document
 OperationResult Transaction::any(std::string const& collectionName) {

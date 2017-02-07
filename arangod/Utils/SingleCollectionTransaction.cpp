@@ -137,8 +137,7 @@ bool SingleCollectionTransaction::hasDitch() const {
 std::string SingleCollectionTransaction::name() { 
   trxCollection(); // will ensure we have the _trxCollection object set
   TRI_ASSERT(_trxCollection != nullptr);
-  TRI_ASSERT(_trxCollection->collection() != nullptr);
-  return _trxCollection->collection()->name(); 
+  return _trxCollection->collectionName();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

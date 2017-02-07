@@ -307,6 +307,7 @@ SET(ARANGOD_SOURCES
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/RocksDBEngine.cpp
   StorageEngine/RocksDBIndexFactory.cpp
+  StorageEngine/TransactionCollection.cpp
   Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
