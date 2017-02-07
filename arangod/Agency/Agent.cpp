@@ -52,6 +52,7 @@ Agent::Agent(config_t const& config)
     _nextCompationAfter(_config.compactionStepSize()),
     _inception(std::make_unique<Inception>(this)),
     _activator(nullptr),
+    _compactor(std::make_unique<Compactor>(this)),
     _ready(false) {
   _state.configure(this);
   _constituent.configure(this);
@@ -236,6 +237,7 @@ void Agent::reportIn(std::string const& peerId, index_t index) {
         _lastCommitIndex = index;
 
         if (_lastCommitIndex >= _nextCompationAfter) {
+          _compactor->wakeUp();
           _state.compact(_lastCommitIndex-_config.compactionKeepSize());
           _nextCompationAfter += _config.compactionStepSize();
         }
@@ -292,7 +294,8 @@ bool Agent::recvAppendEntriesRPC(
         _lastCommitIndex = _state.log(queries, ndups);
         
         if (_lastCommitIndex >= _nextCompationAfter) {
-          _state.compact(_lastCommitIndex);
+          _compactor->wakeUp();
+          _state.compact(_lastCommitIndex-_config.compactionKeepSize());
           _nextCompationAfter += _config.compactionStepSize();
         }
 
@@ -1144,6 +1147,13 @@ Store const& Agent::spearhead() const { return _spearhead; }
 
 /// Get readdb
 Store const& Agent::readDB() const { return _readDB; }
+
+/// Get readdb
+arangodb::consensus::index_t Agent::readDB(Node& node) const {
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+  node = _readDB.get();
+  return _lastCommitIndex;
+}
 
 /// Get transient
 Store const& Agent::transient() const { return _transient; }
