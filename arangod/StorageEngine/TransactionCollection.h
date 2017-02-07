@@ -30,7 +30,6 @@
                                 
 namespace arangodb {
 class LogicalCollection;
-struct MMFilesDocumentOperation;
 class Transaction;
 class TransactionState;
 
@@ -72,8 +71,6 @@ class TransactionCollection {
   /// @brief whether or not any write operations for the collection happened
   virtual bool hasOperations() const = 0;
   
-  virtual void addOperation(MMFilesDocumentOperation* operation) = 0;
-
   virtual void freeOperations(Transaction* activeTrx, bool mustRollback) = 0;
   
   virtual bool canAccess(AccessMode::Type accessType) const = 0;

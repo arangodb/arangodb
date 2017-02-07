@@ -29,6 +29,7 @@
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
+#include "MMFiles/MMFilesTransactionCollection.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Utils/Transaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -308,7 +309,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); 
     }
       
-    trxCollection->addOperation(copy.get());
+    static_cast<MMFilesTransactionCollection*>(trxCollection)->addOperation(copy.get());
     
     TRI_IF_FAILURE("TransactionOperationPushBack2") {
       copy.release();

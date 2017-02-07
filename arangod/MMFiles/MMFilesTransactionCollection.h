@@ -59,8 +59,6 @@ class MMFilesTransactionCollection final : public TransactionCollection {
   /// @brief whether or not any write operations for the collection happened
   bool hasOperations() const override;
 
-  void addOperation(MMFilesDocumentOperation* operation) override;
-  
   void freeOperations(Transaction* activeTrx, bool mustRollback) override;
 
   bool canAccess(AccessMode::Type accessType) const override;
@@ -68,6 +66,8 @@ class MMFilesTransactionCollection final : public TransactionCollection {
   int use(int nestingLevel) override;
   void unuse(int nestingLevel) override;
   void release() override;
+  
+  void addOperation(MMFilesDocumentOperation* operation);
   
  private:
   /// @brief request a lock for a collection
