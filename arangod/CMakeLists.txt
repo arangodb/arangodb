@@ -78,6 +78,7 @@ SET(ARANGOD_SOURCES
   Agency/AgentCallback.cpp
   Agency/AgentConfiguration.cpp
   Agency/CleanOutServer.cpp
+  Agency/Compactor.cpp
   Agency/Constituent.cpp
   Agency/FailedFollower.cpp
   Agency/FailedLeader.cpp

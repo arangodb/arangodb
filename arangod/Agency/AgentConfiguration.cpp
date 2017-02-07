@@ -37,7 +37,7 @@ config_t::config_t()
       _supervision(false),
       _waitForSync(true),
       _supervisionFrequency(5.0),
-      _compactionStepSize(200000),
+      _compactionStepSize(2000),
       _compactionKeepSize(500),
       _supervisionGracePeriod(15.0),
       _cmdLineTimings(false),
@@ -706,7 +706,7 @@ bool config_t::merge(VPackSlice const& conf) {
       _compactionStepSize = conf.get(compactionStepSizeStr).getUInt();
       ss << _compactionStepSize << " (persisted)";
     } else {
-      _compactionStepSize = 200000;
+      _compactionStepSize = 2000;
       ss << _compactionStepSize << " (default)";
     }
   } else {
