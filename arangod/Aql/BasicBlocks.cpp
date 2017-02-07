@@ -148,7 +148,10 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
 }
 
 FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
-    : ExecutionBlock(engine, en), _inReg(ExecutionNode::MaxRegisterId) {
+    : ExecutionBlock(engine, en), 
+      _inReg(ExecutionNode::MaxRegisterId),
+      _collector(&engine->_itemBlockManager) {
+
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
   TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _inReg = it->second.registerId;
@@ -284,7 +287,7 @@ int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   }
 
   if (!skipping) {
-    result = _collector.steal(_engine->getQuery()->resourceMonitor());
+    result = _collector.steal();
   }
   return TRI_ERROR_NO_ERROR;
 

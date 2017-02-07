@@ -76,6 +76,8 @@ struct Collection {
 
   /// @brief returns the shard keys of a collection
   std::vector<std::string> shardKeys() const;
+  
+  size_t numberOfShards() const;
 
   /// @brief whether or not the collection uses the default sharding
   bool usesDefaultSharding() const;

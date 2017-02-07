@@ -889,7 +889,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
 
   std::deque<std::pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
 
-  BlockCollector collector;
+  BlockCollector collector(&_engine->_itemBlockManager);
 
   if (buf.empty()) {
     if (!getBlockForClient(atLeast, atMost, clientId)) {
@@ -929,7 +929,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
   }
 
   if (!skipping) {
-    result = collector.steal(_engine->getQuery()->resourceMonitor());
+    result = collector.steal();
   }
 
   // _buffer is left intact, deleted and cleared at shutdown

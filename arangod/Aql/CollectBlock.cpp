@@ -409,7 +409,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
             TRI_ASSERT(cur != nullptr);
             emitGroup(cur, res.get(), skipped);
             ++skipped;
-            res->shrink(skipped);
+            res->shrink(skipped, false);
           } else {
             ++skipped;
           }
@@ -448,7 +448,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
   if (!skipping) {
     TRI_ASSERT(skipped > 0);
-    res->shrink(skipped);
+    res->shrink(skipped, false);
   }
 
   result = res.release();

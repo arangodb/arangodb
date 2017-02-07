@@ -50,8 +50,8 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _cursor(nullptr),
       _cursors(_indexes.size()),
       _condition(en->_condition->root()),
-      _hasV8Expression(false) {
-    
+      _hasV8Expression(false),
+      _collector(&_engine->_itemBlockManager) {
   _mmdr.reset(new ManagedDocumentResult);
  
   if (_condition != nullptr) {
@@ -498,7 +498,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   traceGetSomeBegin();
   if (_done) {
     traceGetSomeEnd(nullptr);
-    return _collector.steal(_engine->getQuery()->resourceMonitor());
+    return _collector.steal();
   }
  
   std::unique_ptr<AqlItemBlock> res;
@@ -514,7 +514,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
       if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
         _done = true;
         traceGetSomeEnd(nullptr);
-        return _collector.steal(_engine->getQuery()->resourceMonitor());
+        return _collector.steal();
       }
       _pos = 0;  // this is in the first block
 
@@ -536,7 +536,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
           if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
             _done = true;
             traceGetSomeEnd(nullptr);
-            return _collector.steal(_engine->getQuery()->resourceMonitor());
+            return _collector.steal();
           }
           _pos = 0;  // this is in the first block
         }
@@ -544,7 +544,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         if (!initIndexes()) {
           _done = true;
           traceGetSomeEnd(nullptr);
-          return _collector.steal(_engine->getQuery()->resourceMonitor());
+          return _collector.steal();
         }
         readIndex(atMost);
       }
@@ -588,7 +588,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
       TRI_ASSERT(res.get() == nullptr);
 
       if (_collector.totalSize() >= atMost) {
-        res.reset(_collector.steal(_engine->getQuery()->resourceMonitor()));
+        res.reset(_collector.steal());
       }
     }
 
