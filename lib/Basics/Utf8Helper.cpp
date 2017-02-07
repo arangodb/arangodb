@@ -132,8 +132,11 @@ int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
                         (const UChar*)right, (int32_t)rightLength);
 }
 
-bool Utf8Helper::setCollatorLanguage(std::string const& lang, void *icuDataPointer) {
-  if (icuDataPointer == nullptr)  return false;
+bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPointer) {
+  if (icuDataPointer == nullptr) {
+     return false;
+    }
+
   UErrorCode status = U_ZERO_ERROR;
   udata_setCommonData(reinterpret_cast<void*>(icuDataPointer), &status);
   if (U_FAILURE(status)) {
@@ -472,6 +475,7 @@ bool Utf8Helper::getWords(std::vector<std::string>& words,
 
   BreakIterator* wordIterator =
       BreakIterator::createWordInstance(locale, status);
+  TRI_ASSERT(wordIterator != nullptr);
   UnicodeString utext(textUtf16);
 
   wordIterator->setText(utext);

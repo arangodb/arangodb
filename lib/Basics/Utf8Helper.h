@@ -92,7 +92,7 @@ class Utf8Helper {
   /// @param icuDataPointer data file to be loaded by the application
   //////////////////////////////////////////////////////////////////////////////
 
-  bool setCollatorLanguage(std::string const& lang, void *icuDataPointer);
+  bool setCollatorLanguage(std::string const& lang, void* icuDataPointer);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get collator language
