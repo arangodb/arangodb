@@ -70,7 +70,7 @@ class ExportFeature final : public application_features::ApplicationFeature,
   bool _progress;
 
   bool _firstLine;
-  uint64_t _ignoredDeepNested;
+  uint64_t _skippedDeepNested;
 
   int* _result;
 };
