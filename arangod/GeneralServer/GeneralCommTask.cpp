@@ -179,6 +179,7 @@ void GeneralCommTask::processResponse(GeneralResponse* response) {
   if (response == nullptr) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "processResponse received a nullptr, closing connection";
+
     closeStream();
   } else {
     addResponse(response, nullptr);
