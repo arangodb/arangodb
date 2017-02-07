@@ -12,5 +12,14 @@ By default, cloning the github repository will checkout **devel**. This version
 contains the development version of the ArangoDB.  Use this branch if you want
 to make changes to the ArangoDB source.
 
+We now use [git submodules](https://git-scm.com/docs/git-submodule) for V8 and Rocksdb.
+Since the V8 git repository also requires external addons to be present, we end 
+up with recursive submodules. Thus a clone command now has to look like:
+
+    git clone https://github.com/arangodb/arangodb.git
+    cd arangodb
+    git submodule update --recursive
+    git submodule update --init --recursive
+
 Please checkout the [cookbook](https://docs.arangodb.com/cookbook) on how to
 compile ArangoDB.

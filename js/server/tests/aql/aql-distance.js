@@ -53,13 +53,14 @@ function distanceSuite () {
         var co1 = { lat: 52.5163, lon: 13.3777, _key: "BrandenburgGate" };
         var co2 = { lat: 50.9322, lon: 6.94, _key: "ArangoHQ" };
         var query = "DISTANCE(" + co1.lat + "," + co1.lon + "," + co2.lat + "," + co2.lon + ")";
-        var expected = [ 476918.89688380965 ]; // Vincenty's formula: 477.47 km
-        
+        var expected    = [ 476918.8968838096  ]; // Vincenty's formula: 477.47 km
+        var expected_js = [ 476918.89688380965 ]; // Vincenty's formula: 477.47 km
+
         var actual = AQL_EXECUTE("RETURN " + query).json;
         assertEqual(expected, actual);
         
         actual = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json;
-        assertEqual(expected, actual);
+        assertEqual(expected_js, actual);
         
         actual = AQL_EXECUTE("RETURN NOOPT(V8(" + query + "))").json;
         assertEqual(expected, actual);
