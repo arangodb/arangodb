@@ -287,6 +287,7 @@ elseif (WIN32)
   
   list(APPEND V8_GYP_ARGS "-GGYP_GENERATORS=msvs")
   list(APPEND V8_GYP_ARGS "-Dmsvs_cygwin_shell=0")
+  list(APPEND V8_GYP_ARGS "-Dv8_use_snapshot=false")
   
   if ("${BITS}" STREQUAL "64")
     set(MS_TARGET_PLATFORM x64)
@@ -330,7 +331,7 @@ elseif (WIN32)
       SOURCE_DIR
         "${V8_DIR}"
       CONFIGURE_COMMAND
-        ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER}
+        ${CMAKE_COMMAND} -E env GYP_GENERATORS=msvs GYP_MSVS_VERSION=2015 DEPOT_TOOLS_WIN_TOOLCHAIN=0 ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER}
       BUILD_COMMAND
         ""
       INSTALL_COMMAND
