@@ -47,6 +47,7 @@
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesToken.h"
+#include "MMFiles/MMFilesTransactionState.h"
 #include "MMFiles/MMFilesWalMarker.h"
 #include "MMFiles/MMFilesWalSlots.h"
 #include "StorageEngine/StorageEngine.h"
@@ -2610,7 +2611,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    res = trx->state()->addOperation(revisionId, operation, marker, options.waitForSync);
+    res = static_cast<MMFilesTransactionState*>(trx->state())->addOperation(revisionId, operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -2710,7 +2711,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    res = trx->state()->addOperation(revisionId, operation, marker, options.waitForSync);
+    res = static_cast<MMFilesTransactionState*>(trx->state())->addOperation(revisionId, operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -3155,7 +3156,7 @@ int LogicalCollection::updateDocument(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  return trx->state()->addOperation(newRevisionId, operation, marker, waitForSync);
+  return static_cast<MMFilesTransactionState*>(trx->state())->addOperation(newRevisionId, operation, marker, waitForSync);
 }
 
 /// @brief insert a document, low level worker
@@ -3191,7 +3192,7 @@ int LogicalCollection::insertDocument(arangodb::Transaction* trx,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  return trx->state()->addOperation(revisionId, operation, marker, waitForSync);
+  return static_cast<MMFilesTransactionState*>(trx->state())->addOperation(revisionId, operation, marker, waitForSync);
 }
 
 /// @brief creates a new entry in the primary index

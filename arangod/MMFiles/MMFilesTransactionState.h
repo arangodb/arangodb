@@ -60,12 +60,12 @@ class MMFilesTransactionState final : public TransactionState {
   /// @brief abort a transaction
   int abortTransaction(Transaction* trx, int nestingLevel) override;
 
-  /// @brief add a WAL operation for a transaction collection
-  int addOperation(TRI_voc_rid_t, MMFilesDocumentOperation&, MMFilesWalMarker const* marker, bool&) override;
-
   bool hasFailedOperations() const override {
     return (_hasOperations && _status == Transaction::Status::ABORTED);
   }
+  
+  /// @brief add a WAL operation for a transaction collection
+  int addOperation(TRI_voc_rid_t, MMFilesDocumentOperation&, MMFilesWalMarker const* marker, bool&);
 
  private:
   /// @brief whether or not a marker needs to be written

@@ -38,9 +38,6 @@ class Transaction;
 }
 
 namespace arangodb {
-class LogicalCollection;
-struct MMFilesDocumentOperation;
-class MMFilesWalMarker;
 class Transaction;
 class TransactionCollection;
 
@@ -103,9 +100,6 @@ class TransactionState {
 
   /// @brief abort a transaction
   virtual int abortTransaction(Transaction* trx, int nestingLevel) = 0;
-
-  /// @brief add a WAL operation for a transaction collection
-  virtual int addOperation(TRI_voc_rid_t, MMFilesDocumentOperation&, MMFilesWalMarker const* marker, bool&) = 0;
 
   /// TODO: implement this in base class
   virtual bool hasFailedOperations() const = 0;
