@@ -48,6 +48,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer* server,
       _overwrite(false),
       _progress(true),
       _firstLine(true),
+      _skippedDeepNested(0),
       _result(result) {
   requiresElevatedPrivileges(false);
   setOptional(false);
@@ -219,8 +220,6 @@ void ExportFeature::start() {
 }
 
 void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
-  std::cout << "collection export" << std::endl;
-
   std::string errorMsg;
 
   for (auto const& collection : _collections) {
@@ -351,14 +350,12 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClie
 }
 
 void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
-  if (_progress) {
-    std::cout << "graph export" << std::endl;
-  }
-
   std::string errorMsg;
 
   if (_collections.empty()) {
-    std::cout << "export graph '" << _graphName << "'" << std::endl;
+    if (_progress) {
+      std::cout << "# Export graph '" << _graphName << "'" << std::endl;
+    }
     std::string const url = "/_api/gharial/" + _graphName;
     std::shared_ptr<VPackBuilder> parsedBody = httpCall(httpClient, url, rest::RequestType::GET);
     VPackSlice body = parsedBody->slice();
@@ -382,7 +379,9 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
       _collections.push_back(cn);
     }
   } else {
-    std::cout << "export graph with collections " << StringUtils::join(_collections, ", ") << " as '" << _graphName << "'" << std::endl;
+    if (_progress) {
+      std::cout << "# Export graph with collections " << StringUtils::join(_collections, ", ") << " as '" << _graphName << "'" << std::endl;
+    }
   }
 
   std::string fileName = _outputDirectory + TRI_DIR_SEPARATOR_STR + _graphName + "." + _typeExport;
@@ -442,6 +441,10 @@ directed="1">
   }
   std::string closingGraphTag = "</graph>\n";
   writeToFile(fd, closingGraphTag, fileName);
+
+  if (_skippedDeepNested) {
+    std::cout << "skipped " << _skippedDeepNested << " deep nested objects / arrays" << std::endl;
+  }
 }
 
 void ExportFeature::writeGraphBatch(int fd, VPackArrayIterator it, std::string const& fileName) {
@@ -517,7 +520,10 @@ void ExportFeature::xgmmlWriteOneAtt(int fd, std::string const& fileName, VPackS
 
   } else if (slice.isArray() || slice.isObject()) {
     if (0 < deep) {
-      std::cout << "Warning: cant map deep nested objects / array into xgmml" << std::endl;
+      if (_skippedDeepNested == 0) {
+        std::cout << "Warning: skip deep nested objects / arrays" << std::endl;
+      }
+      _skippedDeepNested++;
       return;
     }
 
