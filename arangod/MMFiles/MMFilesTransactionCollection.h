@@ -67,6 +67,7 @@ class MMFilesTransactionCollection final : public TransactionCollection {
   int updateUsage(AccessMode::Type accessType, int nestingLevel) override;
   int use(int nestingLevel) override;
   void unuse(int nestingLevel) override;
+  void release() override;
   
  private:
   /// @brief request a lock for a collection

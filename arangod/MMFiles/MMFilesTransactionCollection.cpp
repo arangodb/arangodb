@@ -290,6 +290,17 @@ void MMFilesTransactionCollection::unuse(int nestingLevel) {
     _lockType = AccessMode::Type::NONE;
   }
 }
+    
+void MMFilesTransactionCollection::release() {
+  // the top level transaction releases all collections
+  if (_collection != nullptr) {
+    // unuse collection, remove usage-lock
+    LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
+
+    _transaction->_vocbase->releaseCollection(_collection);
+    _collection = nullptr;
+  }
+}
 
 /// @brief lock a collection
 int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel) {

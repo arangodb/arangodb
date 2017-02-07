@@ -36,8 +36,6 @@ struct TransactionState;
 
 /// @brief collection used in a transaction
 class TransactionCollection {
-  friend struct TransactionState;
-
  public:
 
   TransactionCollection(TransactionCollection const&) = delete;
@@ -45,7 +43,7 @@ class TransactionCollection {
 
   TransactionCollection(TransactionState* trx, TRI_voc_cid_t cid)
       : _transaction(trx), _cid(cid), _collection(nullptr) {}
-
+  
   virtual ~TransactionCollection() {}
   
   /// @brief request a main-level lock for a collection
@@ -74,6 +72,9 @@ class TransactionCollection {
   virtual int updateUsage(AccessMode::Type accessType, int nestingLevel) = 0;
   virtual int use(int nestingLevel) = 0;
   virtual void unuse(int nestingLevel) = 0;
+  virtual void release() = 0;
+  
+  inline TRI_voc_cid_t id() const { return _cid; }
   
   LogicalCollection* collection() const {
     return _collection;  // vocbase collection pointer

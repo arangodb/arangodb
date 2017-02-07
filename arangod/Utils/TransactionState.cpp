@@ -485,12 +485,12 @@ TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid, size_
   for (i = 0; i < n; ++i) {
     auto trxCollection = _collections.at(i);
 
-    if (cid < trxCollection->_cid) {
+    if (cid < trxCollection->id()) {
       // collection not found
       break;
     }
 
-    if (cid == trxCollection->_cid) {
+    if (cid == trxCollection->id()) {
       // found
       return trxCollection;
     }
@@ -523,16 +523,7 @@ int TransactionState::releaseCollections() {
 
   // process collections in reverse order
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
-    TransactionCollection* trxCollection = (*it);
-
-    // the top level transaction releases all collections
-    if (trxCollection->_collection != nullptr) {
-      // unuse collection, remove usage-lock
-      LOG_TRX(this, 0) << "unusing collection " << trxCollection->_cid;
-
-      _vocbase->releaseCollection(trxCollection->_collection);
-      trxCollection->_collection = nullptr;
-    }
+    (*it)->release();
   }
 
   return TRI_ERROR_NO_ERROR;

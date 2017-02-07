@@ -99,7 +99,7 @@ struct TransactionState {
 
   /// @brief get the transaction id for usage in a marker
   TRI_voc_tid_t idForMarker() {
-    if (_hints.has(TransactionHints::Hint::SINGLE_OPERATION)) {
+    if (isSingleOperation()) {
       return 0;
     }
     return _id;
@@ -156,7 +156,7 @@ struct TransactionState {
   int _nestingLevel;
   bool _allowImplicit;
   bool _hasOperations;
-  bool _waitForSync;   // whether or not the collection had a synchronous op
+  bool _waitForSync;   // whether or not the transaction had a synchronous op
   bool _beginWritten;  // whether or not the begin marker was already written
   double _timeout;     // timeout for lock acquisition
 };
