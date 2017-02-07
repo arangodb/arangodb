@@ -40,9 +40,7 @@ class JobGuard {
   ~JobGuard() { release(); }
 
  public:
-  bool isIdle() {
-    return _scheduler->isIdle();
-  }
+  bool isIdle() { return _scheduler->isIdle(); }
 
   void work() {
     if (0 == _isWorking) {
@@ -50,27 +48,32 @@ class JobGuard {
     }
 
     ++_isWorking;
+    _isWorkingFlag = true;
   }
 
   void block() {
     if (0 == _isBlocked) {
       _scheduler->blockThread();
     }
-    
+
     ++_isBlocked;
+    _isBlockedFlag = true;
   }
 
+ private:
   void release() {
-    if (0 < _isWorking) {
+    if (_isWorkingFlag) {
       --_isWorking;
+      _isWorkingFlag = false;
 
       if (0 == _isWorking) {
         _scheduler->unworkThread();
       }
     }
 
-    if (0 < _isBlocked) {
+    if (_isBlockedFlag) {
       --_isBlocked;
+      _isBlockedFlag = false;
 
       if (0 == _isBlocked) {
         _scheduler->unblockThread();
@@ -80,6 +83,9 @@ class JobGuard {
 
  private:
   rest::Scheduler* _scheduler;
+
+  bool _isWorkingFlag = false;
+  bool _isBlockedFlag = false;
 
   static thread_local size_t _isWorking;
   static thread_local size_t _isBlocked;
