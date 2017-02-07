@@ -428,9 +428,8 @@ void SocketTask::asyncReadSome() {
         continue;
       }
 
-      if (!processAll()) {
-        return;
-      }
+      // ignore the result of processAll, try to read more bytes down below
+      processAll();
     }
   } catch (boost::system::system_error& err) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "i/o stream failed with: "
