@@ -18,48 +18,49 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
-/// @author Jan Steemann
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_HTTP_SERVER_H
-#define ARANGOD_HTTP_SERVER_HTTP_SERVER_H 1
-
-#include "Basics/Common.h"
+#ifndef ARANGOD_CONSENSUS_COMPACTOR_H
+#define ARANGOD_CONSENSUS_COMPACTOR_H 1
 
 #include "Basics/ConditionVariable.h"
-#include "Endpoint/ConnectionInfo.h"
-#include "GeneralServer/GeneralDefinitions.h"
-#include "GeneralServer/HttpCommTask.h"
-#include "GeneralServer/RestHandler.h"
+#include "Basics/Thread.h"
 
 namespace arangodb {
-class EndpointList;
-class ListenTask;
+namespace consensus {
 
-namespace rest {
-class GeneralServer {
-  GeneralServer(GeneralServer const&) = delete;
-  GeneralServer const& operator=(GeneralServer const&) = delete;
+// Forward declaration
+class Agent;
 
- public:
-  GeneralServer() = default;
-  virtual ~GeneralServer();
+class Compactor : public arangodb::Thread {
 
- public:
-  void setEndpointList(const EndpointList* list);
-  void startListening();
-  void stopListening();
+public:
 
- protected:
-  bool openEndpoint(Endpoint* endpoint);
+  // @brief Construct with agent pointer
+  explicit Compactor(Agent const* _agent);
 
- protected:
-  std::vector<ListenTask*> _listenTasks;
-  EndpointList const* _endpointList = nullptr;
+  virtual ~Compactor();
+
+  /// @brief 1. Deal with appendEntries to slaves.
+  ///        2. Report success of write processes.
+  void run() override final;
+
+  /// @brief Start orderly shutdown of threads
+  void beginShutdown() override final;
+
+  /// @brief Wake up compaction
+  void wakeUp();
+  
+private:
+  
+  Agent const* _agent; //< @brief Agent
+  basics::ConditionVariable _cv;
+  long _waitInterval; //< @brief Wait interval 
+  
 };
-}
-}
+
+
+}}
 
 #endif

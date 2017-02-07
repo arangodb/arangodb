@@ -181,7 +181,8 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
       _nextId(0),
       _ast(ast),
       _lastLimitNode(nullptr),
-      _subqueries() {}
+      _subqueries() {
+}
 
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {

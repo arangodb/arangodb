@@ -286,11 +286,9 @@ void ClusterFeature::prepare() {
     ServerState::instance()->setId(_myId);
   }
 
-  if (_requestedRole != ServerState::RoleEnum::ROLE_UNDEFINED) {
-    if (!ServerState::instance()->registerWithRole(_requestedRole, _myAddress)) {
-      LOG(FATAL) << "Couldn't register at agency.";
-      FATAL_ERROR_EXIT();
-    }
+  if (!ServerState::instance()->registerWithRole(_requestedRole, _myAddress)) {
+    LOG(FATAL) << "Couldn't register at agency.";
+    FATAL_ERROR_EXIT();
   }
 
   auto role = ServerState::instance()->getRole();

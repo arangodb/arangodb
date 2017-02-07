@@ -190,7 +190,7 @@ mkdir -p %{buildroot}%{_piddir}
 %{_datadir}/arangodb3/js/node
 
 %files debuginfo
-/usr/lib*/debug/*
+/usr/lib*/debug/.build-id/*
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                              post

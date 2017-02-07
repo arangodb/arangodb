@@ -41,7 +41,6 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Rest/Version.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"

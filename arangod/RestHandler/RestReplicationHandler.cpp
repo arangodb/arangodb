@@ -774,7 +774,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   }
 
   // Set a few variables needed for our work:
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
 
   std::unique_ptr<ClusterCommResult> res;
   if (!useVpp) {

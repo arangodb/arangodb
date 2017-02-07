@@ -173,7 +173,6 @@ include(${ORIGINAL_SOURCE_DIR}/arangosh/install.cmake)
 
 install_readme(README.windows README.windows.txt)
 
-# other platforms link the file into the binary
 install(FILES ${ICU_DT}
   DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME ${ICU_DT_DEST})

@@ -29,8 +29,6 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"

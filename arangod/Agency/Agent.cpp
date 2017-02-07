@@ -52,6 +52,7 @@ Agent::Agent(config_t const& config)
     _nextCompationAfter(_config.compactionStepSize()),
     _inception(std::make_unique<Inception>(this)),
     _activator(nullptr),
+    _compactor(std::make_unique<Compactor>(this)),
     _ready(false) {
   _state.configure(this);
   _constituent.configure(this);
@@ -236,6 +237,7 @@ void Agent::reportIn(std::string const& peerId, index_t index) {
         _lastCommitIndex = index;
 
         if (_lastCommitIndex >= _nextCompationAfter) {
+          _compactor->wakeUp();
           _state.compact(_lastCommitIndex-_config.compactionKeepSize());
           _nextCompationAfter += _config.compactionStepSize();
         }
@@ -285,22 +287,15 @@ bool Agent::recvAppendEntriesRPC(
     if (nqs > ndups) {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Appending " << nqs - ndups << " entries to state machine. ("
-        << nqs << ", " << ndups << ")";
+        << nqs << ", " << ndups << "): " << queries->slice().toJson() ;
       
       try {
         
-        auto last = _state.log(queries, ndups);
-
-        _spearhead.apply(
-          _state.slices(last-ndups, last), last, _constituent.term());
-        
-        _readDB.apply(
-          _state.slices(last-ndups, last), last, _constituent.term());
-        
-        _lastCommitIndex = last;
+        _lastCommitIndex = _state.log(queries, ndups);
         
         if (_lastCommitIndex >= _nextCompationAfter) {
-          _state.compact(_lastCommitIndex);
+          _compactor->wakeUp();
+          _state.compact(_lastCommitIndex-_config.compactionKeepSize());
           _nextCompationAfter += _config.compactionStepSize();
         }
 
@@ -1124,10 +1119,10 @@ bool Agent::rebuildDBs() {
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
-  _spearhead.apply(_state.slices(_lastCommitIndex + 1), _lastCommitIndex,
-                   _constituent.term());
-  _readDB.apply(_state.slices(_lastCommitIndex + 1), _lastCommitIndex,
-                _constituent.term());
+  _spearhead.apply(
+    _state.slices(0, _lastCommitIndex), _lastCommitIndex, _constituent.term());
+  _readDB.apply(
+    _state.slices(0, _lastCommitIndex), _lastCommitIndex, _constituent.term());
 
   return true;
 }
@@ -1152,6 +1147,13 @@ Store const& Agent::spearhead() const { return _spearhead; }
 
 /// Get readdb
 Store const& Agent::readDB() const { return _readDB; }
+
+/// Get readdb
+arangodb::consensus::index_t Agent::readDB(Node& node) const {
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+  node = _readDB.get();
+  return _lastCommitIndex;
+}
 
 /// Get transient
 Store const& Agent::transient() const { return _transient; }

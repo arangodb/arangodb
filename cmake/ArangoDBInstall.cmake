@@ -180,16 +180,15 @@ configure_file (
   NEWLINE_STYLE UNIX
 )
 
+install(FILES ${ICU_DT}
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
+  RENAME ${ICU_DT_DEST})
 
 if (MSVC)
   # so we don't need to ship dll's twice, make it one directory:
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/InstallMacros.cmake)
   set(CMAKE_INSTALL_FULL_SBINDIR     "${CMAKE_INSTALL_FULL_BINDIR}")
 
-  # other platforms link the file into the binary
-  install(FILES ${ICU_DT}
-    DESTINATION "${INSTALL_ICU_DT_DEST}"
-    RENAME ${ICU_DT_DEST})
 
   install_readme(README.windows README.windows.txt)
 
