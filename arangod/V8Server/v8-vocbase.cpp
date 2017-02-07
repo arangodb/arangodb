@@ -2138,31 +2138,33 @@ static void ListDatabasesCoordinator(
       if (!DBServers.empty()) {
         ServerID sid = DBServers[0];
         auto cc = ClusterComm::instance();
+        if (cc != nullptr) {
+          // nullptr happens only during controlled shutdown
+          std::unordered_map<std::string, std::string> headers;
+          headers["Authentication"] = TRI_ObjectToString(args[2]);
+          auto res = cc->syncRequest(
+              "", 0, "server:" + sid, arangodb::rest::RequestType::GET,
+              "/_api/database/user", std::string(), headers, 0.0);
 
-        std::unordered_map<std::string, std::string> headers;
-        headers["Authentication"] = TRI_ObjectToString(args[2]);
-        auto res = cc->syncRequest(
-            "", 0, "server:" + sid, arangodb::rest::RequestType::GET,
-            "/_api/database/user", std::string(), headers, 0.0);
+          if (res->status == CL_COMM_SENT) {
+            // We got an array back as JSON, let's parse it and build a v8
+            StringBuffer& body = res->result->getBody();
 
-        if (res->status == CL_COMM_SENT) {
-          // We got an array back as JSON, let's parse it and build a v8
-          StringBuffer& body = res->result->getBody();
+            std::shared_ptr<VPackBuilder> builder =
+                VPackParser::fromJson(body.c_str(), body.length());
+            VPackSlice resultSlice = builder->slice();
 
-          std::shared_ptr<VPackBuilder> builder =
-              VPackParser::fromJson(body.c_str(), body.length());
-          VPackSlice resultSlice = builder->slice();
-
-          if (resultSlice.isObject()) {
-            VPackSlice r = resultSlice.get("result");
-            if (r.isArray()) {
-              uint32_t i = 0;
-              v8::Handle<v8::Array> result = v8::Array::New(isolate);
-              for (auto const& it : VPackArrayIterator(r)) {
-                std::string v = it.copyString();
-                result->Set(i++, TRI_V8_STD_STRING(v));
+            if (resultSlice.isObject()) {
+              VPackSlice r = resultSlice.get("result");
+              if (r.isArray()) {
+                uint32_t i = 0;
+                v8::Handle<v8::Array> result = v8::Array::New(isolate);
+                for (auto const& it : VPackArrayIterator(r)) {
+                  std::string v = it.copyString();
+                  result->Set(i++, TRI_V8_STD_STRING(v));
+                }
+                TRI_V8_RETURN(result);
               }
-              TRI_V8_RETURN(result);
             }
           }
         }

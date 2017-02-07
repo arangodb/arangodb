@@ -389,11 +389,17 @@ void Constituent::callElection() {
        << "&prevLogTerm=" << _agent->lastLog().term;
 
   // Ask everyone for their vote
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // only happens on controlled shutdown
+    follow(_term);
+    return;
+  }
   for (auto const& i : active) {
     if (i != _id) {
       auto headerFields =
         std::make_unique<std::unordered_map<std::string, std::string>>();
-      ClusterComm::instance()->asyncRequest(
+      cc->asyncRequest(
         "", coordinatorTransactionID, _agent->config().poolAt(i),
         rest::RequestType::GET, path.str(),
         std::make_shared<std::string>(body), headerFields,
@@ -419,8 +425,7 @@ void Constituent::callElection() {
       break;
     }
     
-    auto res = ClusterComm::instance()->wait(
-      "", coordinatorTransactionID, 0, "",
+    auto res = cc->wait("", coordinatorTransactionID, 0, "",
       duration<double>(steady_clock::now()-timeout).count());
 
     if (res.status == CL_COMM_SENT) {
@@ -461,7 +466,7 @@ void Constituent::callElection() {
     << (yea >= majority ? "yeas" : "nays") << " have it.";
 
   // Clean up
-  ClusterComm::instance()->drop("", coordinatorTransactionID, 0, "");
+  cc->drop("", coordinatorTransactionID, 0, "");
   
 }
 

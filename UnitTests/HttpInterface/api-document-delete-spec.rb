@@ -190,20 +190,20 @@ describe ArangoDB do
         hdr = { "if-match" => "\"*abcd\"" }
         doc = ArangoDB.log_delete("#{prefix}-rev-invalid", cmd, :headers => hdr )
 
-        doc.code.should eq(400)
+        doc.code.should eq(412)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(400)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1200)
+        doc.parsed_response['code'].should eq(412)
         
         # delete document, invalid revision
         cmd = "/_api/document/#{did}"
         hdr = { "if-match" => "'*abcd'" }
         doc = ArangoDB.log_delete("#{prefix}-rev-invalid", cmd, :headers => hdr)
 
-        doc.code.should eq(400)
+        doc.code.should eq(412)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(400)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1200)
+        doc.parsed_response['code'].should eq(412)
         
         # delete document, correct revision
         cmd = "/_api/document/#{did}"

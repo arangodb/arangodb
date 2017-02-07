@@ -313,6 +313,11 @@ bool Agent::recvAppendEntriesRPC(
 
 /// Leader's append entries
 void Agent::sendAppendEntriesRPC() {
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr only happens during controlled shutdown
+    return;
+  }
 
   // _lastSent, _lastHighest and _confirmed only accessed in main thread
   std::string const myid = id();
@@ -387,7 +392,7 @@ void Agent::sendAppendEntriesRPC() {
       // Send request
       auto headerFields =
         std::make_unique<std::unordered_map<std::string, std::string>>();
-      arangodb::ClusterComm::instance()->asyncRequest(
+      cc->asyncRequest(
         "1", 1, _config.poolAt(followerId),
         arangodb::rest::RequestType::POST, path.str(),
         std::make_shared<std::string>(builder.toJson()), headerFields,
@@ -1002,6 +1007,11 @@ TimePoint const& Agent::leaderSince() const {
 
 // Notify inactive pool members of configuration change()
 void Agent::notifyInactive() const {
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr only happens during controlled shutdown
+    return;
+  }
 
   std::map<std::string, std::string> pool = _config.pool();
   std::string path = "/_api/agency_priv/inform";
@@ -1023,7 +1033,7 @@ void Agent::notifyInactive() const {
       auto headerFields =
         std::make_unique<std::unordered_map<std::string, std::string>>();
 
-      arangodb::ClusterComm::instance()->asyncRequest(
+      cc->asyncRequest(
         "1", 1, p.second, arangodb::rest::RequestType::POST,
         path, std::make_shared<std::string>(out.toJson()), headerFields,
         nullptr, 1.0, true);

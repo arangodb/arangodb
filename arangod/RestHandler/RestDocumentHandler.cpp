@@ -203,23 +203,19 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   // check for an etag
   bool isValidRevision;
-  TRI_voc_rid_t const ifNoneRid =
+  TRI_voc_rid_t ifNoneRid =
       extractRevision("if-none-match", isValidRevision);
   if (!isValidRevision) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
-    return false;
+    ifNoneRid = 1;    // an impossible rev, so precondition failed will happen
   }
 
   OperationOptions options;
   options.ignoreRevs = true;
 
-  TRI_voc_rid_t const ifRid =
+  TRI_voc_rid_t ifRid =
       extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
-    return false;
+    ifRid = 1;    // an impossible rev, so precondition failed will happen
   }
 
   VPackBuilder builder;
@@ -396,9 +392,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     bool isValidRevision;
     revision = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
-      return false;
+      revision = 1;   // an impossible revision, so precondition failed
     }
     VPackSlice keyInBody = body.get(StaticStrings::KeyString);
     if ((revision != 0 && TRI_ExtractRevisionId(body) != revision) ||
@@ -502,9 +496,7 @@ bool RestDocumentHandler::deleteDocument() {
     bool isValidRevision = false;
     revision = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
-      return false;
+      revision = 1;   // an impossible revision, so precondition failed
     }
   }
 
