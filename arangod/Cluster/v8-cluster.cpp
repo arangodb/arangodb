@@ -1811,8 +1811,8 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto cc = ClusterComm::instance();
 
   if (cc == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "clustercomm object not found");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+      "clustercomm object not found (JS_AsyncRequest)");
   }
 
   arangodb::rest::RequestType reqType;
@@ -1878,7 +1878,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto cc = ClusterComm::instance();
 
   if (cc == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
                                    "clustercomm object not found");
   }
 
@@ -1931,7 +1931,7 @@ static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (cc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "clustercomm object not found");
+      "clustercomm object not found (JS_SyncRequest)");
   }
 
   OperationID operationID = TRI_ObjectToUInt64(args[0], true);
@@ -1967,8 +1967,8 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto cc = ClusterComm::instance();
 
   if (cc == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "clustercomm object not found");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+                                   "clustercomm object not found (JS_Wait)");
   }
 
   ClientTransactionID myclientTransactionID = "";
@@ -2038,7 +2038,7 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (cc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "clustercomm object not found");
+                                   "clustercomm object not found (JS_Drop)");
   }
 
   ClientTransactionID myclientTransactionID = "";
@@ -2116,9 +2116,13 @@ static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) 
     }
     options->Set(TRI_V8_ASCII_STRING("headers"), headers);
     
-    std::string const authorization = "bearer " + ClusterComm::instance()->jwt();
-    v8::Handle<v8::String> v8Authorization = TRI_V8_STD_STRING(authorization);
-    headers->Set(TRI_V8_ASCII_STRING("Authorization"), v8Authorization);
+    auto cc = ClusterComm::instance();
+    if (cc != nullptr) {
+      // nullptr happens only during controlled shutdown
+      std::string authorization = "bearer " + ClusterComm::instance()->jwt();
+      v8::Handle<v8::String> v8Authorization = TRI_V8_STD_STRING(authorization);
+      headers->Set(TRI_V8_ASCII_STRING("Authorization"), v8Authorization);
+    }
     args[2] = options;
   }
   TRI_V8_TRY_CATCH_END

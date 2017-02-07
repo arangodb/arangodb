@@ -745,7 +745,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   ClusterInfo::instance()->flush();
 
   // turn on error logging now
-  if (!ClusterComm::instance()->enableConnectionErrorLogging(true)) {
+  auto cc = ClusterComm::instance();
+  if (cc != nullptr && cc->enableConnectionErrorLogging(true)) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
         << "created coordinator databases for the first time";
   }
