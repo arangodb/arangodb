@@ -53,11 +53,12 @@ endif()
 file(RELATIVE_PATH V8_REL_TARGET_PATH ${V8_DIR} ${V8_TARGET_DIR})
 
 list(APPEND V8_GYP_ARGS
-  --generator-output=${V8_REL_TARGET_PATH}
+  --generator-output=${V8_TARGET_DIR}
+  #$ ${V8_REL_TARGET_PATH}
   -Dv8_target_arch=${V8_PROC_ARCH}
   -Dv8_host_arch=${V8_PROC_ARCH}
   -Dbyteorder=${ENDIANESS}
-  -Dicu_use_data_file_flag=1
+  # -Dicu_use_data_file_flag=1 not supportet anymore..
   -Dv8_enable_i18n_support=1
 )
 
@@ -272,18 +273,21 @@ elseif (${CMAKE_GENERATOR} MATCHES "Ninja")
 
 elseif (WIN32)
   MESSAGE("Building V8 for Windows with MSBUILD")
-  set(GYP_MAIN ${V8_DIR}/gypfiles/gyp_v8)
+  set(GYP_MAIN gypfiles/gyp_v8)
 
   # try to find 2013 in 'Visual Studio 12 2013 Win64'
   if (${CMAKE_GENERATOR} MATCHES "2013") 
-    list(APPEND V8_GYP_ARGS "-G msvs_version=2013")
+    list(APPEND V8_GYP_ARGS "-Gmsvs_version=2013")
   endif()
 
   # try to find 2015 in 'Visual Studio 14 2015 Win64'
   if (${CMAKE_GENERATOR} MATCHES "2015") 
-    list(APPEND V8_GYP_ARGS "-G msvs_version=2015")
+    list(APPEND V8_GYP_ARGS "-Gmsvs_version=2015")
   endif()
-
+  
+  list(APPEND V8_GYP_ARGS "-GGYP_GENERATORS=msvs")
+  list(APPEND V8_GYP_ARGS "-Dmsvs_cygwin_shell=0")
+  
   if ("${BITS}" STREQUAL "64")
     set(MS_TARGET_PLATFORM x64)
   else ()
@@ -291,14 +295,19 @@ elseif (WIN32)
   endif ()
 
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
-  list(APPEND V8_GYP_ARGS ${V8_DIR}/gypfiles/all.gyp)
+  list(APPEND V8_GYP_ARGS gypfiles/all.gyp)
 
   if ("${V8_TARGET_ARCHS}" STREQUAL "")
     set(V8_TARGET_ARCHS "Debug;Release" CACHE string "V8 targets to build")
   endif()
+  set(ENV{GYP_GENERATORS} msvs)
+  set(ENV{GYP_MSVS_VERSION} 2015)
+  set(ENV{DEPOT_TOOLS_WIN_TOOLCHAIN} 0)
   list(APPEND V8_GYP_ARGS
     -Dcomponent=static_library
     -Dlibrary=static_library
+    -Dgenerator_output=${V8_TARGET_DIR}
+    -Ggenerator_output=${V8_TARGET_DIR}
     #--depth=2
     #-Dv8_use_external_startup_data=1
     #-Dicu_gyp_path=../third_party/icu/icu.gyp
@@ -317,7 +326,7 @@ elseif (WIN32)
       BUILD_IN_SOURCE
         TRUE
       WORKING_DIRECTORY
-        ${V8_DIR}/gypfiles
+        ${V8_DIR}
       SOURCE_DIR
         "${V8_DIR}"
       CONFIGURE_COMMAND
@@ -334,7 +343,7 @@ elseif (WIN32)
 
     ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} icu_build_icui18n
       WORKING_DIRECTORY
-        ${V8_DIR}/third_party/icu
+        ${V8_TARGET_DIR}/third_party/icu
       COMMAND
         msbuild icu.sln /t:icui18n /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
       DEPENDEES
@@ -345,7 +354,7 @@ elseif (WIN32)
 
     ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} icu_build_icuuc
       WORKING_DIRECTORY
-        ${V8_DIR}/third_party/icu
+        ${V8_TARGET_DIR}/third_party/icu
       COMMAND
         msbuild icu.sln /t:icuuc /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
       DEPENDEES
@@ -357,7 +366,7 @@ elseif (WIN32)
     # cmake eats semicolons or quotes them or, or, or so we can't use /t:a;b;c
     ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} v8_build_v8
       WORKING_DIRECTORY
-        ${V8_DIR}/build
+        ${V8_TARGET_DIR}/gypfiles
       COMMAND
         msbuild all.sln /t:v8 /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
       DEPENDEES
@@ -368,7 +377,7 @@ elseif (WIN32)
 
     ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} v8_build_v8_libbase
       WORKING_DIRECTORY
-        ${V8_DIR}/build
+        ${V8_TARGET_DIR}/gypfiles
       COMMAND
         msbuild all.sln /t:v8_libbase /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
       DEPENDEES
@@ -379,7 +388,7 @@ elseif (WIN32)
 
     ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} v8_build_v8_libplatform
       WORKING_DIRECTORY
-        ${V8_DIR}/build
+        ${V8_TARGET_DIR}/gypfiles
       COMMAND
         msbuild all.sln /t:v8_libplatform /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
       DEPENDEES
@@ -387,10 +396,21 @@ elseif (WIN32)
       DEPENDERS
         build
     )
+
+    ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} v8_build_v8_libsampler
+      WORKING_DIRECTORY
+        ${V8_TARGET_DIR}/gypfiles
+      COMMAND
+        msbuild all.sln /t:v8_libsampler /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
+      DEPENDEES
+        configure
+      DEPENDERS
+        build
+    )
   endforeach ()
 
-  set(ICU_LIBRARY_DEBUG "${V8_DIR}/build/Debug")
-  set(ICU_LIBRARY_RELEASE "${V8_DIR}/build/Release")
+  set(ICU_LIBRARY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}}/../build/Debug")
+  set(ICU_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}}/../build/Release")
 
   set(ICU_LIBS
     debug "${ICU_LIBRARY_DEBUG}/lib/icui18n.lib"
@@ -403,9 +423,8 @@ elseif (WIN32)
     "ICU: Libraries"
     FORCE
     )
-
-  set(V8_LIBRARY_DEBUG "${V8_DIR}/build/Debug")
-  set(V8_LIBRARY_RELEASE "${V8_DIR}/build/Release")
+  set(V8_LIBRARY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/build/Debug")
+  set(V8_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/build/Release")
 
   set(V8_LIBS
     debug "${V8_LIBRARY_DEBUG}/lib/v8_base_0.lib"
@@ -431,6 +450,9 @@ elseif (WIN32)
 
     debug "${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib"
+
+    debug "DbgHelp.lib"
+    optimized "DbgHelp.lib"
 
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
