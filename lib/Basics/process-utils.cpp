@@ -1151,7 +1151,7 @@ static bool OurKillProcessPID(DWORD pid) {
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_KillExternalProcess(TRI_external_id_t pid) {
+bool TRI_KillExternalProcess(TRI_external_id_t pid, int signal) {
   LOG(DEBUG) << "killing process: " << pid._pid;
 
   TRI_external_t* external = nullptr;  // just to please the compiler
@@ -1172,7 +1172,7 @@ bool TRI_KillExternalProcess(TRI_external_id_t pid) {
     LOG(DEBUG) << "kill: process not found: " << pid._pid;
 #ifndef _WIN32
     // Kill just in case:
-    if (0 == kill(pid._pid, SIGTERM)) {
+    if (0 == kill(pid._pid, signal)) {
       // Otherwise we just let it be.
       for (int count = 0; count < 10; count++) {
         int loc;

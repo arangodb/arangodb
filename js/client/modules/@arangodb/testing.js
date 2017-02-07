@@ -1290,7 +1290,18 @@ function shutdownInstance (instanceInfo, options) {
           print('forcefully terminating ' + yaml.safeDump(arangod.pid) +
             ' after ' + timeout + 's grace period; marking crashy.');
           serverCrashed = true;
-          killExternal(arangod.pid);
+          if (platform.substr(0, 3) === 'win') {
+            const procdumpArgs = [
+              '-accepteula',
+              '-ma',
+              instanceInfo.pid,
+              fs.join(instanceInfo.rootDir, 'core.dmp')
+            ];
+          }
+          
+          killExternal(arangod.pid, 11);
+
+          analyzeServerCrash(arangod, options, 'instance forcefully KILLED after 60s - ' + arangod.exitStatus.signal);
           return false;
         } else {
           return true;
