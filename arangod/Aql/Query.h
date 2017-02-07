@@ -268,15 +268,12 @@ class Query {
   inline arangodb::Transaction* trx() { return _trx; }
 
   /// @brief get the plan for the query
-  ExecutionPlan* plan() const { return _plan; }
+  ExecutionPlan* plan() const { return _plan.get(); }
 
   /// @brief whether or not the query returns verbose error messages
   bool verboseErrors() const {
     return getBooleanOption("verboseErrors", false);
   }
-
-  /// @brief set the plan for the query
-  void setPlan(ExecutionPlan* plan);
 
   /// @brief enter a V8 context
   void enterContext();
@@ -438,7 +435,7 @@ class Query {
   ExecutionState _state;
 
   /// @brief the ExecutionPlan object, if the query is prepared
-  ExecutionPlan* _plan;
+  std::unique_ptr<ExecutionPlan> _plan;
 
   /// @brief the Parser object, if the query is prepared
   Parser* _parser;

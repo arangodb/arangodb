@@ -82,8 +82,7 @@ TransactionCollection* SingleCollectionTransaction::trxCollection() {
     _trxCollection = _state->collection(_cid, _accessType);
 
     if (_trxCollection != nullptr) {
-      _documentCollection =
-          _trxCollection->_collection;
+      _documentCollection = _trxCollection->collection();
     }
   }
 
@@ -138,8 +137,8 @@ bool SingleCollectionTransaction::hasDitch() const {
 std::string SingleCollectionTransaction::name() { 
   trxCollection(); // will ensure we have the _trxCollection object set
   TRI_ASSERT(_trxCollection != nullptr);
-  TRI_ASSERT(_trxCollection->_collection != nullptr);
-  return _trxCollection->_collection->name(); 
+  TRI_ASSERT(_trxCollection->collection() != nullptr);
+  return _trxCollection->collection()->name(); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -45,6 +45,25 @@ static inline bool HasHint(TransactionState const* trx,
 static inline bool IsSingleOperationTransaction(TransactionState const* trx) {
   return HasHint(trx, TransactionHints::Hint::SINGLE_OPERATION);
 }
+      
+TransactionCollection::TransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel)
+    : _transaction(trx), 
+      _cid(cid), 
+      _operations(nullptr),
+      _originalRevision(0), 
+      _nestingLevel(nestingLevel), 
+      _compactionLocked(false), 
+      _waitForSync(false),
+      _collection(nullptr), 
+      _accessType(accessType), 
+      _lockType(AccessMode::Type::NONE) {} 
+
+TransactionCollection::~TransactionCollection() {}
+
+/// @brief request a main-level lock for a collection
+int TransactionCollection::lock() {
+  return lock(_accessType, 0);
+}
 
 /// @brief request a lock for a collection
 int TransactionCollection::lock(AccessMode::Type accessType,

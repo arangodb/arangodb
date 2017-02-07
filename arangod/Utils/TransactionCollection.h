@@ -34,14 +34,20 @@ struct MMFilesDocumentOperation;
 struct TransactionState;
 
 /// @brief collection used in a transaction
-struct TransactionCollection {
+class TransactionCollection {
   friend struct TransactionState;
 
-  TransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel)
-      : _transaction(trx), _cid(cid), _accessType(accessType), _nestingLevel(nestingLevel), _collection(nullptr), _operations(nullptr),
-        _originalRevision(0), _lockType(AccessMode::Type::NONE), _compactionLocked(false), _waitForSync(false) {}
-
  public:
+
+  TransactionCollection(TransactionCollection const&) = delete;
+  TransactionCollection& operator=(TransactionCollection const&) = delete;
+
+  TransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel);
+  ~TransactionCollection();
+  
+  /// @brief request a main-level lock for a collection
+  int lock();
+ 
   /// @brief request a lock for a collection
   int lock(AccessMode::Type, int nestingLevel);
 
@@ -53,6 +59,10 @@ struct TransactionCollection {
   
   /// @brief check whether a collection is locked at all
   bool isLocked() const;
+  
+  LogicalCollection* collection() const {
+    return _collection;  // vocbase collection pointer
+  }
 
  private:
   /// @brief request a lock for a collection
@@ -61,18 +71,19 @@ struct TransactionCollection {
   /// @brief request an unlock for a collection
   int doUnlock(AccessMode::Type, int nestingLevel);
 
- public:
+ private:
   TransactionState* _transaction;     // the transaction
   TRI_voc_cid_t const _cid;                  // collection id
-  AccessMode::Type _accessType;  // access type (read|write)
-  int _nestingLevel;  // the transaction level that added this collection
-  LogicalCollection* _collection;  // vocbase collection pointer
   std::vector<MMFilesDocumentOperation*>* _operations;
   TRI_voc_rid_t _originalRevision;   // collection revision at trx start
-  AccessMode::Type _lockType;  // collection lock type
+  int _nestingLevel;  // the transaction level that added this collection
   bool
       _compactionLocked;  // was the compaction lock grabbed for the collection?
   bool _waitForSync;      // whether or not the collection has waitForSync
+  
+  LogicalCollection* _collection;  // vocbase collection pointer
+  AccessMode::Type _accessType;  // access type (read|write)
+  AccessMode::Type _lockType;  // collection lock type
 };
 
 }

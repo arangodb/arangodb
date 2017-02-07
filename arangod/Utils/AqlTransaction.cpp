@@ -90,7 +90,7 @@ int AqlTransaction::processCollectionNormal(aql::Collection* collection) {
 LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
   TransactionCollection* trxColl = this->trxCollection(cid);
   TRI_ASSERT(trxColl != nullptr);
-  return trxColl->_collection;
+  return trxColl->collection();
 }
 
 
@@ -104,7 +104,7 @@ LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
 int AqlTransaction::lockCollections() {
   auto trx = state();
   for (auto& trxCollection : trx->_collections) {
-    int res = trxCollection->lock(trxCollection->_accessType, 0);
+    int res = trxCollection->lock();
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;

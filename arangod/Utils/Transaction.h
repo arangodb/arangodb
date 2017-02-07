@@ -87,7 +87,7 @@ struct OperationCursor;
 struct OperationOptions;
 class TransactionContext;
 struct TransactionState;
-struct TransactionCollection;
+class TransactionCollection;
 
 class Transaction {
   friend class traverser::BaseTraverserEngine;
