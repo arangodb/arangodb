@@ -42,7 +42,7 @@ class LogicalCollection;
 struct MMFilesDocumentOperation;
 class MMFilesWalMarker;
 class Transaction;
-struct TransactionCollection;
+class TransactionCollection;
 
 /// @brief transaction type
 struct TransactionState {
