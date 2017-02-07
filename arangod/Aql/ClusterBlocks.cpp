@@ -1233,30 +1233,34 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     std::string const& body) const {
   DEBUG_BEGIN_BLOCK();
   auto cc = ClusterComm::instance();
+  if (cc != nullptr) {
+    // nullptr only happens on controlled shutdown
 
-  // Later, we probably want to set these sensibly:
-  ClientTransactionID const clientTransactionId = "AQL";
-  CoordTransactionID const coordTransactionId = TRI_NewTickServer();
-  std::unordered_map<std::string, std::string> headers;
-  if (!_ownName.empty()) {
-    headers.emplace("Shard-Id", _ownName);
+    // Later, we probably want to set these sensibly:
+    ClientTransactionID const clientTransactionId = "AQL";
+    CoordTransactionID const coordTransactionId = TRI_NewTickServer();
+    std::unordered_map<std::string, std::string> headers;
+    if (!_ownName.empty()) {
+      headers.emplace("Shard-Id", _ownName);
+    }
+
+    ++_engine->_stats.httpRequests;
+    {
+      JobGuard guard(SchedulerFeature::SCHEDULER);
+      guard.block();
+
+      auto result =
+          cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
+                          std::string("/_db/") +
+                              arangodb::basics::StringUtils::urlEncode(
+                                  _engine->getQuery()->trx()->vocbase()->name()) +
+                              urlPart + _queryId,
+                          body, headers, defaultTimeOut);
+
+      return result;
+    }
   }
-
-  ++_engine->_stats.httpRequests;
-  {
-    JobGuard guard(SchedulerFeature::SCHEDULER);
-    guard.block();
-
-    auto result =
-        cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                        std::string("/_db/") +
-                            arangodb::basics::StringUtils::urlEncode(
-                                _engine->getQuery()->trx()->vocbase()->name()) +
-                            urlPart + _queryId,
-                        body, headers, defaultTimeOut);
-
-    return result;
-  }
+  return std::make_unique<ClusterCommResult>();
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

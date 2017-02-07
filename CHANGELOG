@@ -1,6 +1,9 @@
 devel
 -----
 
+* change undocumented behaviour in case of invalid revision ids in
+  If-Match and If-None-Match headers from 400 (BAD) to 412 (PRECONDITION
+  FAILED).
 
 v3.2.alpha1 (2017-02-05)
 ------------------------

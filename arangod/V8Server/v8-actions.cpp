@@ -1348,6 +1348,9 @@ static bool clusterSendToAllServers(
     arangodb::rest::RequestType const& method, std::string const& body) {
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
   std::string url = "/_db/" + StringUtils::urlEncode(dbname) + "/" + path;
 
   // Have to propagate to DB Servers
