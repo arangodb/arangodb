@@ -7,6 +7,7 @@ v3.1.11 (XXXX-XX-XX)
 * reduce number of HTTP requests made for certain kinds of join queries in cluster,
   leading to speedup of some join queries
 
+* supervision deals with demised coordinators correctly again
 
 v3.1.10 (2017-02-02)
 --------------------
