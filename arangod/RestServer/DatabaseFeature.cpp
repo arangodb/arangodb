@@ -303,9 +303,17 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           &_check30Revisions,
           std::unordered_set<std::string>{"true", "false", "fail"}));
 
+  // the following option was removed in 3.2 
+  // index-creation is now automatically parallelized via the Boost ASIO thread pool
   options->addObsoleteOption(
       "--database.index-threads",
       "threads to start for parallel background index creation", true);
+  
+  // the following options were removed in 3.2
+  options->addObsoleteOption("--database.revision-cache-chunk-size", 
+      "chunk size (in bytes) for the document revisions cache", true);
+  options->addObsoleteOption("--database.revision-cache-target-size", 
+      "total target size (in bytes) for the document revisions cache", true);
 }
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

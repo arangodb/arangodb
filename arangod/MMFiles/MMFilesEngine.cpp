@@ -313,7 +313,7 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
     if (!idSlice.isString() ||
         id != static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()))) {
       LOG(ERR) << "database directory '" << directory
-               << "' does not contain a valid parameters file";
+               << "' does not contain a valid parameters file. database id is not a string";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
     }
     
@@ -1237,7 +1237,14 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
       
 /// @brief physically erases the database directory
 int MMFilesEngine::dropDatabaseDirectory(std::string const& path) {
-  return TRI_RemoveDirectory(path.c_str());
+  // first create a .tmp file in the directory that will help us recover when we crash
+  // before the directory deletion is completed
+  std::string const tmpfile(
+      arangodb::basics::FileUtils::buildFilename(path, ".tmp"));
+  // ignore errors from writing this file...
+  TRI_WriteFile(tmpfile.c_str(), "", 0);
+
+  return TRI_RemoveDirectoryDeterministic(path.c_str());
 }
 
 /// @brief iterate over a set of datafiles, identified by filenames

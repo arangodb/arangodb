@@ -296,7 +296,7 @@ void HttpRequest::parseHeader(size_t length) {
           }
 
           if (pathBegin < pathEnd) {
-            setRequestPath(pathBegin);
+            setRequestPath(pathBegin, pathEnd);
           }
 
           if (paramBegin < paramEnd) {

@@ -44,9 +44,14 @@ Variable const* BaseExpressionContext::getVariable(size_t i) const {
 AqlValue BaseExpressionContext::getVariableValue(Variable const* variable, bool doCopy, bool& mustDestroy) const {
   mustDestroy = false;
 
+  TRI_ASSERT(_vars != nullptr);
+  TRI_ASSERT(_regs != nullptr);
+  TRI_ASSERT(_argv != nullptr);
+
   size_t i = 0;
   for (auto it = (*_vars).begin(); it != (*_vars).end(); ++it, ++i) {
     if ((*it)->id == variable->id) {
+      TRI_ASSERT(i < _regs->size());
       if (doCopy) {
         mustDestroy = true;  // as we are copying
         return _argv->getValueReference(_startPos, (*_regs)[i]).clone();

@@ -156,7 +156,6 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _ast(nullptr),
       _profile(nullptr),
       _state(INVALID_STATE),
-      _plan(nullptr),
       _parser(nullptr),
       _trx(nullptr),
       _engine(nullptr),
@@ -224,7 +223,6 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _ast(nullptr),
       _profile(nullptr),
       _state(INVALID_STATE),
-      _plan(nullptr),
       _parser(nullptr),
       _trx(nullptr),
       _engine(nullptr),
@@ -313,7 +311,7 @@ Query* Query::clone(QueryPart part, bool withPlan) {
   if (_plan != nullptr) {
     if (withPlan) {
       // clone the existing plan
-      clone->setPlan(_plan->clone(*clone));
+      clone->_plan.reset(_plan->clone(*clone));
     }
 
     // clone all variables
@@ -326,7 +324,7 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 
   if (clone->_plan == nullptr) {
     // initialize an empty plan
-    clone->setPlan(new ExecutionPlan(ast()));
+    clone->_plan.reset(new ExecutionPlan(ast()));
   }
 
   TRI_ASSERT(clone->_trx == nullptr);
@@ -566,7 +564,7 @@ QueryResult Query::prepare(QueryRegistry* registry) {
 
       // If all went well so far, then we keep _plan, _parser and _trx and
       // return:
-      _plan = plan.release();
+      _plan = std::move(plan);
       _parser = parser.release();
       _engine = engine;
       return QueryResult();
@@ -731,14 +729,12 @@ QueryResult Query::execute(QueryRegistry* registry) {
     }
 
     _trx->commit();
+    
+    result.context = _trx->transactionContext();
 
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     auto stats = std::make_shared<VPackBuilder>();
-    _engine->_stats.toVelocyPack(*(stats.get()));
-
-    result.context = _trx->transactionContext();
-
-    cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
+    cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, stats.get());
 
     enterState(FINALIZATION);
 
@@ -913,18 +909,15 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
     _trx->commit();
 
-    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
-    auto stats = std::make_shared<VPackBuilder>();
-    _engine->_stats.toVelocyPack(*(stats.get()));
-
-    result.context = _trx->transactionContext();
-
     LOG_TOPIC(DEBUG, Logger::QUERIES)
         << TRI_microtime() - _startTime << " "
         << "Query::executeV8: before cleanupPlanAndEngine"
         << " this: " << (uintptr_t) this;
 
-    cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
+    result.context = _trx->transactionContext();
+    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    auto stats = std::make_shared<VPackBuilder>();
+    cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, stats.get());
 
     enterState(FINALIZATION);
 
@@ -1387,10 +1380,13 @@ std::string Query::getStateString() const {
 }
 
 /// @brief cleanup plan and engine for current query
-void Query::cleanupPlanAndEngine(int errorCode) {
+void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
   if (_engine != nullptr) {
     try {
       _engine->shutdown(errorCode);
+      if (statsBuilder != nullptr) {
+        _engine->_stats.toVelocyPack(*statsBuilder);
+      }
     } catch (...) {
       // shutdown may fail but we must not throw here
       // (we're also called from the destructor)
@@ -1410,18 +1406,7 @@ void Query::cleanupPlanAndEngine(int errorCode) {
     _parser = nullptr;
   }
 
-  if (_plan != nullptr) {
-    delete _plan;
-    _plan = nullptr;
-  }
-}
-
-/// @brief set the plan for the query
-void Query::setPlan(ExecutionPlan* plan) {
-  if (_plan != nullptr) {
-    delete _plan;
-  }
-  _plan = plan;
+  _plan.reset();
 }
 
 /// @brief create a TransactionContext

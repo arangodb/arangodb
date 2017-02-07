@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GreetingsFeature.h"
+#include "Logger/Logger.h"
 #include "Rest/Version.h"
 
 using namespace arangodb;

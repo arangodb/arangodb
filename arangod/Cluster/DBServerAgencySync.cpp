@@ -54,6 +54,8 @@ void DBServerAgencySync::work() {
 DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
 
+  double startTime = TRI_microtime();
+
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "DBServerAgencySync::execute starting";
   DatabaseFeature* database = 
     ApplicationServer::getFeature<DatabaseFeature>("Database");
@@ -78,6 +80,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   if (context == nullptr) {
     LOG(INFO) << "DBServerAgencySync::execute no V8 context";
     return result;
+  }
+
+  double now = TRI_microtime();
+  if (now - startTime > 5.0) {
+    LOG(INFO) << "DBServerAgencySync::execute took more than 5s to get free V8 context, starting handle-plan-change now";
   }
 
   TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
@@ -162,5 +169,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   } catch (...) {
   }
 
+  now = TRI_microtime();
+  if (now - startTime > 30) {
+    LOG_TOPIC(WARN, Logger::HEARTBEAT) << "DBServerAgencySync::execute "
+      "took longer than 30s to execute handlePlanChange()";
+  }
   return result;
 }

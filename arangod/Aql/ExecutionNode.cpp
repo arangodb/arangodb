@@ -1139,7 +1139,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
         regsToClear.emplace(r);
       }
     }
-    en->setRegsToClear(regsToClear);
+    en->setRegsToClear(std::move(regsToClear));
   }
 }
 

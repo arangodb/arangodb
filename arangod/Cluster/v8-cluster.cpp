@@ -754,7 +754,11 @@ static void JS_GetCollectionInfoClusterInfo(
     uint32_t pos = 0;
     for (auto const& s : p.second) {
       try{
-        shorts->Set(pos, TRI_V8_STD_STRING(serverAliases.at(s)));
+        std::string t = s;
+        if (s.at(0) == '_') {
+          t = s.substr(1);
+        }
+        shorts->Set(pos, TRI_V8_STD_STRING(serverAliases.at(t)));
       } catch (...) {}
       list->Set(pos++, TRI_V8_STD_STRING(s));
     }
@@ -985,11 +989,23 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto serverAliases = ClusterInfo::instance()->getServerAliases();
 
   v8::Handle<v8::Array> l = v8::Array::New(isolate);
+
   for (size_t i = 0; i < DBServers.size(); ++i) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
-    result->Set(TRI_V8_ASCII_STRING("serverId"), TRI_V8_STD_STRING(DBServers[i]));
-    result->Set(TRI_V8_ASCII_STRING("serverName"),
-                TRI_V8_STD_STRING(serverAliases.at(DBServers[i])));
+    auto id = DBServers[i];
+
+    result->Set(TRI_V8_ASCII_STRING("serverId"), TRI_V8_STD_STRING(id));
+
+    auto itr = serverAliases.find(id);
+    
+    if (itr != serverAliases.end()) {
+      result->Set(TRI_V8_ASCII_STRING("serverName"),
+		  TRI_V8_STD_STRING(itr->second));
+    } else {
+      result->Set(TRI_V8_ASCII_STRING("serverName"),
+		  TRI_V8_STD_STRING(id));
+    }
+      
     l->Set((uint32_t)i, result);
   }
 
@@ -1792,7 +1808,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   //   - singleRequest        (boolean) default is false
   //   - initTimeout          (number)
 
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
 
   if (cc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1859,7 +1875,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   //  role");
   //}
 
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
 
   if (cc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1911,7 +1927,7 @@ static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("enquire(operationID)");
   }
 
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
 
   if (cc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1948,7 +1964,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   //   - shardID              (string)
   //   - timeout              (number)
 
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
 
   if (cc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -2018,7 +2034,7 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   //   - operationID          (number)
   //   - shardID              (string)
 
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
 
   if (cc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

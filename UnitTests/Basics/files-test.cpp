@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for files.c
 ///
 /// @file
@@ -38,6 +38,7 @@
 using namespace arangodb::basics;
 
 static bool Initialized = false;
+static uint64_t counter = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -73,11 +74,10 @@ struct CFilesSetup {
   }
 
   StringBuffer* writeFile (const char* blob) {
-    static uint64_t counter = 0;
-
     StringBuffer* filename = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
     filename->appendText(_directory);
-    filename->appendText("/tmp-");
+    filename->appendChar(TRI_DIR_SEPARATOR_CHAR);
+    filename->appendText("tmp-");
     filename->appendInteger(++counter);
     filename->appendInteger(arangodb::RandomGenerator::interval(UINT32_MAX));
 
@@ -108,6 +108,71 @@ struct CFilesSetup {
 
 BOOST_FIXTURE_TEST_SUITE(CFilesTest, CFilesSetup)
 
+BOOST_AUTO_TEST_CASE (tst_createdirectory) {
+  std::ostringstream out;
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
+
+  std::string filename = out.str();
+  long unused1;
+  std::string unused2;
+  int res = TRI_CreateDirectory(filename.c_str(), unused1, unused2);
+  BOOST_CHECK_EQUAL(0, res);
+  BOOST_CHECK_EQUAL(true, TRI_ExistsFile(filename.c_str()));
+  BOOST_CHECK_EQUAL(true, TRI_IsDirectory(filename.c_str()));
+
+  res = TRI_RemoveDirectory(filename.c_str());
+  BOOST_CHECK_EQUAL(false, TRI_ExistsFile(filename.c_str()));
+  BOOST_CHECK_EQUAL(false, TRI_IsDirectory(filename.c_str()));
+}
+
+BOOST_AUTO_TEST_CASE (tst_createdirectoryrecursive) {
+  std::ostringstream out;
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
+  
+  std::string filename1 = out.str();
+  out << TRI_DIR_SEPARATOR_CHAR << "abc";
+  std::string filename2 = out.str();
+
+  long unused1;
+  std::string unused2;
+  int res = TRI_CreateRecursiveDirectory(filename2.c_str(), unused1, unused2);
+  BOOST_CHECK_EQUAL(0, res);
+  BOOST_CHECK_EQUAL(true, TRI_ExistsFile(filename1.c_str()));
+  BOOST_CHECK_EQUAL(true, TRI_IsDirectory(filename1.c_str()));
+  BOOST_CHECK_EQUAL(true, TRI_ExistsFile(filename2.c_str()));
+  BOOST_CHECK_EQUAL(true, TRI_IsDirectory(filename2.c_str()));
+
+  res = TRI_RemoveDirectory(filename1.c_str());
+  BOOST_CHECK_EQUAL(false, TRI_ExistsFile(filename1.c_str()));
+  BOOST_CHECK_EQUAL(false, TRI_IsDirectory(filename1.c_str()));
+  BOOST_CHECK_EQUAL(false, TRI_ExistsFile(filename2.c_str()));
+  BOOST_CHECK_EQUAL(false, TRI_IsDirectory(filename2.c_str()));
+}
+
+BOOST_AUTO_TEST_CASE (tst_removedirectorydeterministic) {
+  std::ostringstream out;
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
+  
+  std::string filename1 = out.str();
+  out << TRI_DIR_SEPARATOR_CHAR << "abc";
+  std::string filename2 = out.str();
+
+  long unused1;
+  std::string unused2;
+  int res = TRI_CreateRecursiveDirectory(filename2.c_str(), unused1, unused2);
+  BOOST_CHECK_EQUAL(0, res);
+  BOOST_CHECK_EQUAL(true, TRI_ExistsFile(filename1.c_str()));
+  BOOST_CHECK_EQUAL(true, TRI_IsDirectory(filename1.c_str()));
+  BOOST_CHECK_EQUAL(true, TRI_ExistsFile(filename2.c_str()));
+  BOOST_CHECK_EQUAL(true, TRI_IsDirectory(filename2.c_str()));
+
+  res = TRI_RemoveDirectoryDeterministic(filename1.c_str());
+  BOOST_CHECK_EQUAL(false, TRI_ExistsFile(filename1.c_str()));
+  BOOST_CHECK_EQUAL(false, TRI_IsDirectory(filename1.c_str()));
+  BOOST_CHECK_EQUAL(false, TRI_ExistsFile(filename2.c_str()));
+  BOOST_CHECK_EQUAL(false, TRI_IsDirectory(filename2.c_str()));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test file exists
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,6 +181,7 @@ BOOST_AUTO_TEST_CASE (tst_existsfile) {
   StringBuffer* filename = writeFile("");
   BOOST_CHECK_EQUAL(true, TRI_ExistsFile(filename->c_str()));
   TRI_UnlinkFile(filename->c_str());
+  BOOST_CHECK_EQUAL(false, TRI_ExistsFile(filename->c_str()));
 
   delete filename;
 }

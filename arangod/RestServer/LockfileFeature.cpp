@@ -24,6 +24,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
+#include "Logger/Logger.h"
 #include "RestServer/DatabasePathFeature.h"
 
 using namespace arangodb;

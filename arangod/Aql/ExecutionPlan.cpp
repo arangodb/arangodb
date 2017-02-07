@@ -177,10 +177,12 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
     : _ids(),
       _root(nullptr),
       _varUsageComputed(false),
+      _isResponsibleForInitialize(true),
       _nextId(0),
       _ast(ast),
       _lastLimitNode(nullptr),
-      _subqueries() {}
+      _subqueries() {
+}
 
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
@@ -280,6 +282,7 @@ ExecutionPlan* ExecutionPlan::clone() {
   plan->_root = _root->clone(plan.get(), true, false);
   plan->_nextId = _nextId;
   plan->_appliedRules = _appliedRules;
+  plan->_isResponsibleForInitialize = _isResponsibleForInitialize;
 
   CloneNodeAdder adder(plan.get());
   plan->_root->walk(&adder);
@@ -348,6 +351,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
   size_t nrItems = 0;
   builder.add("estimatedCost", VPackValue(_root->getCost(nrItems)));
   builder.add("estimatedNrItems", VPackValue(nrItems));
+  builder.add("initialize", VPackValue(_isResponsibleForInitialize));
 
   builder.close();
 }
@@ -1882,10 +1886,13 @@ void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
 
 /// @brief create a plan from VPack
 ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
-  ExecutionNode* ret = nullptr;
-
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "plan slice is not an object");
+  }
+
+  if (slice.hasKey("initialize")) {
+    // whether or not this plan (or fragment) is responsible for calling initialize
+    _isResponsibleForInitialize = slice.get("initialize").getBoolean();
   }
 
   VPackSlice nodes = slice.get("nodes");
@@ -1893,6 +1900,8 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   if (!nodes.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "plan \"nodes\" attribute is not an array");
   }
+  
+  ExecutionNode* ret = nullptr;
 
   // first, re-create all nodes from the Slice, using the node ids
   // no dependency links will be set up in this step

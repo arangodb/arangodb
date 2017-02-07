@@ -838,7 +838,7 @@ static TRI_action_result_t ExecuteActionVocbase(
   // copy suffix, which comes from the action:
   std::string path = request->prefix();
   v8::Handle<v8::Array> suffixArray = v8::Array::New(isolate);
-  std::vector<std::string> const& suffixes = request->suffixes();
+  std::vector<std::string> const& suffixes = request->suffixes(); // TODO: does this need to be decodedSuffixes()??
 
   uint32_t index = 0;
   char const* sep = "";
@@ -1347,7 +1347,7 @@ static bool clusterSendToAllServers(
     std::string const& path,  // Note: Has to be properly encoded!
     arangodb::rest::RequestType const& method, std::string const& body) {
   ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
   std::string url = "/_db/" + StringUtils::urlEncode(dbname) + "/" + path;
 
   // Have to propagate to DB Servers

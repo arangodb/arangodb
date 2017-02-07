@@ -105,10 +105,14 @@ class SchedulerThread : public Thread {
         _service->run_one();
 
         if (++counter > EVERY_LOOP) {
+          counter = 0;
+
           auto now = std::chrono::steady_clock::now();
           std::chrono::duration<double> diff = now - start;
 
           if (diff.count() > MIN_SECONDS) {
+            start = std::chrono::steady_clock::now();
+
             if (_scheduler->stopThread()) {
               auto n = _scheduler->decRunning();
 
@@ -118,8 +122,6 @@ class SchedulerThread : public Thread {
                 break;
               }
             }
-
-            start = std::chrono::steady_clock::now();
           }
         }
       }

@@ -1,7 +1,7 @@
 ################################################################################
 # the client package is a complete cmake sub package.
 ################################################################################
-project(PACKAGE-DBG)
+project(@CMAKE_PROJECT_NAME@)
 cmake_minimum_required(VERSION 2.8)
 
 ################################################################################
@@ -14,6 +14,9 @@ set(CROSS_COMPILING @CROSS_COMPILING@)
 
 set(CMAKE_INSTALL_BINDIR @CMAKE_INSTALL_BINDIR@)
 set(CMAKE_INSTALL_FULL_BINDIR @CMAKE_INSTALL_FULL_BINDIR@)
+
+set(CMAKE_INSTALL_SBINDIR @CMAKE_INSTALL_SBINDIR@)
+set(CMAKE_INSTALL_FULL_SBINDIR @CMAKE_INSTALL_FULL_SBINDIR@)
 
 set(CMAKE_INSTALL_DATAROOTDIR @CMAKE_INSTALL_DATAROOTDIR@)
 set(CMAKE_INSTALL_DATAROOTDIR_ARANGO @CMAKE_INSTALL_DATAROOTDIR_ARANGO@)
@@ -29,6 +32,8 @@ set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO @CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO@)
 set(CMAKE_INSTALL_DEBINFO_DIR @CMAKE_INSTALL_DEBINFO_DIR@)
 
 set(CMAKE_OBJCOPY @CMAKE_OBJCOPY@)
+
+set(FILE_EXECUTABLE @FILE_EXECUTABLE@)
 
 set(INSTALL_CONFIGFILES_LIST)
 set(PACKAGING_HANDLE_CONFIG_FILES false)

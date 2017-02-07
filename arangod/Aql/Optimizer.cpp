@@ -47,18 +47,20 @@ Optimizer::Optimizer(size_t maxNumberOfPlans)
     setupRules();
   }
 }
+  
+size_t Optimizer::hasEnoughPlans(size_t extraPlans) const {
+  return (_newPlans.size() + extraPlans >= _maxNumberOfPlans);
+}
 
 // @brief add a plan to the optimizer
-bool Optimizer::addPlan(ExecutionPlan* plan, Rule const* rule, bool wasModified,
+void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, Rule const* rule, bool wasModified,
                         int newLevel) {
   TRI_ASSERT(plan != nullptr);
 
-  if (newLevel > 0) {
-    // use user-specified new level
-    _newPlans.push_back(plan, newLevel);
-  } else {
+  if (newLevel <= 0) {
     // use rule's level
-    _newPlans.push_back(plan, rule->level);
+    newLevel = rule->level;
+    // else use user-specified new level
   }
 
   if (wasModified) {
@@ -72,31 +74,31 @@ bool Optimizer::addPlan(ExecutionPlan* plan, Rule const* rule, bool wasModified,
     plan->invalidateCost();
     plan->findVarUsage();
   }
-
-  if (_newPlans.size() >= _maxNumberOfPlans) {
-    return false;
-  }
-
-  return true;
+  
+  // hand over ownership
+  _newPlans.push_back(plan.get(), newLevel);
+  plan.release();
 }
 
 // @brief the actual optimization
 int Optimizer::createPlans(ExecutionPlan* plan,
                            std::vector<std::string> const& rulesSpecification,
                            bool inspectSimplePlans) {
+  // _plans contains the previous optimization result
+  _plans.clear();
+    
+  try {
+    _plans.push_back(plan, 0);
+  } catch (...) {
+    delete plan;
+    throw;
+  }
+  
   if (!inspectSimplePlans &&
       !arangodb::ServerState::instance()->isCoordinator() &&
       plan->isDeadSimple()) {
     // the plan is so simple that any further optimizations would probably cost
     // more than simply executing the plan
-    _plans.clear();
-    try {
-      _plans.push_back(plan, 0);
-    } catch (...) {
-      delete plan;
-      throw;
-    }
-
     estimatePlans();
 
     return TRI_ERROR_NO_ERROR;
@@ -110,15 +112,6 @@ int Optimizer::createPlans(ExecutionPlan* plan,
 
   // which optimizer rules are disabled?
   std::unordered_set<int> disabledIds(getDisabledRuleIds(rulesSpecification));
-
-  // _plans contains the previous optimization result
-  _plans.clear();
-  try {
-    _plans.push_back(plan, 0);
-  } catch (...) {
-    delete plan;
-    throw;
-  }
 
   _newPlans.clear();
 
@@ -134,11 +127,12 @@ int Optimizer::createPlans(ExecutionPlan* plan,
     // For all current plans:
     while (_plans.size() > 0) {
       int level;
-      auto p = _plans.pop_front(level);
+      std::unique_ptr<ExecutionPlan> p(_plans.pop_front(level));
 
       if (level >= maxRuleLevel) {
-        _newPlans.push_back(p, level);  // nothing to do, just keep it
-      } else {                          // find next rule
+        _newPlans.push_back(p.get(), level);  // nothing to do, just keep it
+        p.release();
+      } else {                                // find next rule
         auto it = _rules.upper_bound(level);
         TRI_ASSERT(it != _rules.end());
 
@@ -158,7 +152,8 @@ int Optimizer::createPlans(ExecutionPlan* plan,
           // we picked a disabled rule or we have reached the max number of
           // plans and just skip this rule
 
-          _newPlans.push_back(p, level);  // nothing to do, just keep it
+          _newPlans.push_back(p.get(), level);  // nothing to do, just keep it
+          p.release();
 
           if (!rule.isHidden) {
             ++_stats.rulesSkipped;
@@ -167,35 +162,27 @@ int Optimizer::createPlans(ExecutionPlan* plan,
           continue;
         }
 
-        try {
-          TRI_IF_FAILURE("Optimizer::createPlansOom") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
+        TRI_IF_FAILURE("Optimizer::createPlansOom") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
 
-          if (!p->varUsageComputed()) {
-            p->findVarUsage();
-          }
+        if (!p->varUsageComputed()) {
+          p->findVarUsage();
+        }
 
-          // all optimizer rule functions must obey the following guidelines:
-          // - the original plan passed to the rule function must be deleted if
-          // and only
-          //   if it has not been added (back) to the optimizer (using addPlan).
-          // - if the rule throws, then the original plan will be deleted by the
-          // optimizer.
-          //   thus the rule must not have deleted the plan itself or add it
-          //   back to the
-          //   optimizer
-          rule.func(this, p, &rule);
+        // all optimizer rule functions must obey the following guidelines:
+        // - the original plan passed to the rule function must be deleted if
+        // and only
+        //   if it has not been added (back) to the optimizer (using addPlan).
+        // - if the rule throws, then the original plan will be deleted by the
+        // optimizer.
+        //   thus the rule must not have deleted the plan itself or add it
+        //   back to the
+        //   optimizer
+        rule.func(this, std::move(p), &rule);
 
-          if (!rule.isHidden) {
-            ++_stats.rulesExecuted;
-          }
-        } catch (...) {
-          if (!_newPlans.isContained(p)) {
-            // only delete the plan if not yet contained in _newPlans
-            delete p;
-          }
-          throw;
+        if (!rule.isHidden) {
+          ++_stats.rulesExecuted;
         }
       }
 

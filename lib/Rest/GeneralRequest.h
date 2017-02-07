@@ -27,13 +27,13 @@
 
 #include "Basics/Common.h"
 
+#include "Endpoint/ConnectionInfo.h"
+#include "Rest/CommonDefines.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "Endpoint/ConnectionInfo.h"
-#include "Rest/CommonDefines.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -95,9 +95,6 @@ class GeneralRequest {
   void setProtocol(char const* protocol) { _protocol = protocol; }
 
   ConnectionInfo const& connectionInfo() const { return _connectionInfo; }
-  void setConnectionInfo(ConnectionInfo const& connectionInfo) {
-    _connectionInfo = connectionInfo;
-  }
 
   uint64_t clientTaskId() const { return _clientTaskId; }
   void setClientTaskId(uint64_t clientTaskId) { _clientTaskId = clientTaskId; }
@@ -125,6 +122,12 @@ class GeneralRequest {
   std::string const& requestPath() const { return _requestPath; }
   void setRequestPath(std::string const& requestPath) {
     _requestPath = requestPath;
+  }
+  void setRequestPath(char const* begin) {
+    _requestPath = std::string(begin);
+  }
+  void setRequestPath(char const* begin, char const* end) {
+    _requestPath = std::string(begin, end - begin);
   }
 
   // The request path consists of the URL without the host and without any

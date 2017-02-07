@@ -115,13 +115,15 @@ const optionsDocumentation = [
   '',
   '   - `build`: the directory containing the binaries',
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
+  '   - `configDir`: the directory containing the config files, defaults to',
+  '                  etc/testing',
   '   - `rspec`: the location of rspec program',
   '   - `ruby`: the location of ruby program; if empty start rspec directly',
   '',
   '   - `rr`: if set to true arangod instances are run with rr',
   '',
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
-  '     and need longer tomeouts',
+  '     and need longer timeouts',
   '',
   '   - `valgrind`: if set the programs are run with the valgrind',
   '     memory checker; should point to the valgrind executable',
@@ -148,6 +150,7 @@ const optionsDefaults = {
   'cleanup': true,
   'cluster': false,
   'concurrency': 3,
+  'configDir': 'etc/testing',
   'coordinators': 1,
   'coreDirectory': '/var/tmp',
   'dbServers': 2,
@@ -176,7 +179,7 @@ const optionsDefaults = {
   'skipBoost': false,
   'skipEndpoints': false,
   'skipGeo': false,
-  'skipLogAnalysis': false,
+  'skipLogAnalysis': true,
   'skipMemoryIntense': false,
   'skipNightly': true,
   'skipNondeterministic': false,
@@ -219,7 +222,10 @@ const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 const YELLOW = require('internal').COLORS.COLOR_YELLOW;
-
+let executable_ext = "";
+if (platform.substr(0, 3) === 'win') {
+  executable_ext = '.exe';
+}
 let cleanupDirectories = [];
 let serverCrashed = false;
 
@@ -235,19 +241,20 @@ const TOP_DIR = (function findTopDir () {
 }());
 
 let BIN_DIR;
-let CONFIG_DIR;
 let ARANGOBENCH_BIN;
 let ARANGODUMP_BIN;
 let ARANGOD_BIN;
 let ARANGOIMP_BIN;
 let ARANGORESTORE_BIN;
 let ARANGOSH_BIN;
+let CONFIG_ARANGODB_DIR;
 let CONFIG_RELATIVE_DIR;
+let CONFIG_DIR;
 let JS_DIR;
 let JS_ENTERPRISE_DIR;
 let LOGS_DIR;
 let UNITTESTS_DIR;
-let GDB_OUTPUT="";
+let GDB_OUTPUT = "";
 
 function makeResults (testname, instanceInfo) {
   const startTime = time();
@@ -311,7 +318,7 @@ function makeArgsArangod (options, appDir, role) {
   }
 
   return {
-    'configuration': 'etc/testing/' + config,
+    'configuration': fs.join(CONFIG_DIR, config),
     'define': 'TOP_DIR=' + TOP_DIR,
     'wal.flush-timeout': options.walFlushTimeout,
     'javascript.app-path': appDir,
@@ -325,7 +332,7 @@ function makeArgsArangod (options, appDir, role) {
 
 function makeArgsArangosh (options) {
   return {
-    'configuration': 'etc/testing/arangosh.conf',
+    'configuration': fs.join(CONFIG_DIR, 'arangosh.conf'),
     'javascript.startup-directory': JS_DIR,
     'javascript.module-directory': JS_ENTERPRISE_DIR,
     'server.username': options.username,
@@ -1161,7 +1168,7 @@ function runArangoImp (options, instanceInfo, what) {
 
 function runArangoDumpRestore (options, instanceInfo, which, database) {
   let args = {
-    'configuration': (which === 'dump' ? 'etc/testing/arangodump.conf' : 'etc/testing/arangorestore.conf'),
+    'configuration': fs.join(CONFIG_DIR, (which === 'dump' ? 'arangodump.conf' : 'arangorestore.conf')),
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
@@ -1189,7 +1196,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database) {
 
 function runArangoBenchmark (options, instanceInfo, cmds) {
   let args = {
-    'configuration': 'etc/testing/arangobench.conf',
+    'configuration': fs.join(CONFIG_DIR, 'arangobench.conf'),
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
@@ -1283,7 +1290,18 @@ function shutdownInstance (instanceInfo, options) {
           print('forcefully terminating ' + yaml.safeDump(arangod.pid) +
             ' after ' + timeout + 's grace period; marking crashy.');
           serverCrashed = true;
-          killExternal(arangod.pid);
+          if (platform.substr(0, 3) === 'win') {
+            const procdumpArgs = [
+              '-accepteula',
+              '-ma',
+              arangod.pid,
+              fs.join(instanceInfo.rootDir, 'core.dmp')
+            ];
+          }
+          
+          killExternal(arangod.pid, 11);
+
+          analyzeServerCrash(arangod, options, 'instance forcefully KILLED after 60s - ' + arangod.exitStatus.signal);
           return false;
         } else {
           return true;
@@ -1444,7 +1462,12 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   }
 
   instanceInfo.url = endpointToURL(instanceInfo.endpoint);
-  instanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(args), options).pid;
+  try {
+    instanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(args), options).pid;
+  } catch (x) {
+    print('failed to run arangod - ' + JSON.stringify(x));
+    throw(x);        
+  }
   instanceInfo.role = role;
 
   if (platform.substr(0, 3) === 'win') {
@@ -2604,10 +2627,7 @@ testFuncs.authentication_parameters = function (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function locateBoostTest (name) {
-  var file = fs.join(UNITTESTS_DIR, name);
-  if (platform.substr(0, 3) === 'win') {
-    file += '.exe';
-  }
+  var file = fs.join(UNITTESTS_DIR, name + executable_ext);
 
   if (!fs.exists(file)) {
     return '';
@@ -2698,7 +2718,7 @@ testFuncs.config = function (options) {
     print(CYAN + "checking '" + test + "'" + RESET);
 
     const args = {
-      'configuration': fs.join(CONFIG_DIR, test + '.conf'),
+      'configuration': fs.join(CONFIG_ARANGODB_DIR, test + '.conf'),
       'flatCommands': ['--check-configuration']
     };
 
@@ -2766,7 +2786,7 @@ testFuncs.config = function (options) {
 
 testFuncs.dfdb = function (options) {
   const dataDir = fs.getTempFile();
-  const args = ['-c', 'etc/testing/arango-dfdb.conf', dataDir];
+  const args = ['-c', fs.join(CONFIG_DIR, 'arango-dfdb.conf'), dataDir];
 
   fs.makeDirectoryRecursive(dataDir);
   let results = {};
@@ -2971,12 +2991,12 @@ testFuncs.foxx_manager = function (options) {
   let results = {};
 
   results.update = runArangoshCmd(options, instanceInfo, {
-    'configuration': 'etc/testing/foxx-manager.conf'
+    'configuration': fs.join(CONFIG_DIR, 'foxx-manager.conf')
   }, ['update']);
 
   if (results.update.status === true || options.force) {
     results.search = runArangoshCmd(options, instanceInfo, {
-      'configuration': 'etc/testing/foxx-manager.conf'
+      'configuration': fs.join(CONFIG_DIR, 'foxx-manager.conf')
     }, ['search', 'itzpapalotl']);
   }
 
@@ -3250,6 +3270,7 @@ const recoveryTests = [
   'empty-datafiles',
   'flush-drop-database-and-fail',
   'drop-database-flush-and-fail',
+  'drop-database-only-tmp',
   'create-databases',
   'recreate-databases',
   'drop-databases',
@@ -4231,16 +4252,20 @@ function unitTest (cases, options) {
     UNITTESTS_DIR = fs.join(UNITTESTS_DIR, options.buildType);
   }
 
-  CONFIG_DIR = fs.join(TOP_DIR, builddir, 'etc', 'arangodb3');
-  ARANGOBENCH_BIN = fs.join(BIN_DIR, 'arangobench');
-  ARANGODUMP_BIN = fs.join(BIN_DIR, 'arangodump');
-  ARANGOD_BIN = fs.join(BIN_DIR, 'arangod');
-  ARANGOIMP_BIN = fs.join(BIN_DIR, 'arangoimp');
-  ARANGORESTORE_BIN = fs.join(BIN_DIR, 'arangorestore');
-  ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh');
+  ARANGOBENCH_BIN = fs.join(BIN_DIR, 'arangobench' + executable_ext);
+  ARANGODUMP_BIN = fs.join(BIN_DIR, 'arangodump' + executable_ext);
+  ARANGOD_BIN = fs.join(BIN_DIR, 'arangod' + executable_ext);
+  ARANGOIMP_BIN = fs.join(BIN_DIR, 'arangoimp' + executable_ext);
+  ARANGORESTORE_BIN = fs.join(BIN_DIR, 'arangorestore' + executable_ext);
+  ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh' + executable_ext);
+
+  CONFIG_ARANGODB_DIR = fs.join(TOP_DIR, builddir, 'etc', 'arangodb3');
   CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, 'etc', 'relative');
+  CONFIG_DIR = fs.join(TOP_DIR, options.configDir);
+
   JS_DIR = fs.join(TOP_DIR, 'js');
   JS_ENTERPRISE_DIR = fs.join(TOP_DIR, 'enterprise/js');
+
   LOGS_DIR = fs.join(TOP_DIR, 'logs');
 
   let checkFiles = [
@@ -4251,7 +4276,7 @@ function unitTest (cases, options) {
     ARANGORESTORE_BIN,
     ARANGOSH_BIN];
   for (let b = 0; b < checkFiles.length; ++b) {
-    if (!fs.isFile(checkFiles[b]) && !fs.isFile(checkFiles[b] + '.exe')) {
+    if (!fs.isFile(checkFiles[b])) {
       throw new Error('unable to locate ' + checkFiles[b]);
     }
   }

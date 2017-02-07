@@ -27,7 +27,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 
 namespace arangodb {
 namespace application_features {
@@ -46,7 +45,7 @@ class ApplicationFeature {
 
  public:
   // return the feature's name
-  std::string name() const { return _name; }
+  std::string const& name() const { return _name; }
 
   bool isOptional() const { return _optional; }
   bool isRequired() const { return !_optional; }

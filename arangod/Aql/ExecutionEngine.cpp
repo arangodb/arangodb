@@ -529,6 +529,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     VPackBuilder tmp;
     query->ast()->variables()->toVelocyPack(tmp);
+    result.add("initialize", VPackValue(false));
     result.add("variables", tmp.slice());
 
     result.add("collections", VPackValue(VPackValueType::Array));
@@ -594,7 +595,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   }
 
   /// @brief aggregateQueryIds, get answers for all shards in a Scatter/Gather
-  void aggregateQueryIds(EngineInfo* info, arangodb::ClusterComm*& cc,
+  void aggregateQueryIds(EngineInfo* info,
+                         std::shared_ptr<arangodb::ClusterComm>& cc,
                          arangodb::CoordTransactionID& coordTransactionID,
                          Collection* collection) {
     // pick up the remote query ids
@@ -1133,7 +1135,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
   bool const isCoordinator =
       arangodb::ServerState::instance()->isCoordinator(role);
   bool const isDBServer = arangodb::ServerState::instance()->isDBServer(role);
-
+    
   TRI_ASSERT(queryRegistry != nullptr);
 
   ExecutionEngine* engine = nullptr;
@@ -1354,8 +1356,11 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     }
 
     engine->_root = root;
-    root->initialize();
-    root->initializeCursor(nullptr, 0);
+
+    if (plan->isResponsibleForInitialize()) {
+      root->initialize();
+      root->initializeCursor(nullptr, 0);
+    }
 
     return engine;
   } catch (...) {
