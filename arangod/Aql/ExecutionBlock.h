@@ -158,10 +158,10 @@ class ExecutionBlock {
 
  protected:
   /// @brief request an AqlItemBlock from the memory manager
-  AqlItemBlock* requestBlock(size_t, RegisterId);
+  AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
 
   /// @brief return an AqlItemBlock to the memory manager
-  void returnBlock(AqlItemBlock*&);
+  void returnBlock(AqlItemBlock*& block);
 
   /// @brief copy register data from one block (src) into another (dst)
   /// register values are cloned

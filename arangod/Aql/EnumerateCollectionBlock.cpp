@@ -283,7 +283,7 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
       _cursor->reset();
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
-        delete cur;
+        returnBlock(cur);
         _pos = 0;
       }
     }

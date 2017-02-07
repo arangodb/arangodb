@@ -288,12 +288,8 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   AqlItemBlock* example = _gatherBlockBuffer.at(index).front();
   size_t nrRegs = example->getNrRegs();
 
-  auto res = std::make_unique<AqlItemBlock>(
-    _engine->getQuery()->resourceMonitor(), 
-    toSend, 
-    static_cast<arangodb::aql::RegisterId>(nrRegs)
-  );
   // automatically deleted if things go wrong
+  std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, static_cast<arangodb::aql::RegisterId>(nrRegs)));
 
   for (size_t i = 0; i < toSend; i++) {
     // get the next smallest row from the buffer . . .
@@ -327,7 +323,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
     if (_gatherBlockPos.at(val.first).second ==
         _gatherBlockBuffer.at(val.first).front()->size()) {
       AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
-      delete cur;
+      returnBlock(cur);
       _gatherBlockBuffer.at(val.first).pop_front();
       _gatherBlockPos.at(val.first) = std::make_pair(val.first, 0);
 
@@ -411,7 +407,7 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
     if (_gatherBlockPos.at(val.first).second ==
         _gatherBlockBuffer.at(val.first).front()->size()) {
       AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
-      delete cur;
+      returnBlock(cur);
       _gatherBlockBuffer.at(val.first).pop_front();
       _gatherBlockPos.at(val.first) = std::make_pair(val.first, 0);
     }

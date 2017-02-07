@@ -43,10 +43,10 @@ class AqlItemBlockManager {
 
  public:
   /// @brief request a block with the specified size
-  AqlItemBlock* requestBlock(size_t, RegisterId);
+  AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
 
   /// @brief return a block to the manager
-  void returnBlock(AqlItemBlock*&);
+  void returnBlock(AqlItemBlock*& block);
 
  private:
   ResourceMonitor* _resourceMonitor;
