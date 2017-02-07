@@ -1294,7 +1294,7 @@ function shutdownInstance (instanceInfo, options) {
             const procdumpArgs = [
               '-accepteula',
               '-ma',
-              instanceInfo.pid,
+              arangod.pid,
               fs.join(instanceInfo.rootDir, 'core.dmp')
             ];
           }
