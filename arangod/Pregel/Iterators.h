@@ -118,7 +118,12 @@ class RangeIterator {
 
   T* operator*() const {
     T* el = _vector.data();
-    return _current != _end ? el + _current : nullptr;
+    return el + _current;
+  }
+  
+  T* operator->() const {
+    T* el = _vector.data();
+    return el + _current;
   }
 
   bool operator!=(RangeIterator<T> const& other) const {

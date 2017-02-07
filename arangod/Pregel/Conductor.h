@@ -78,6 +78,7 @@ class Conductor {
   /// determines whether we support async execution
   bool _asyncMode = false;
   bool _lazyLoading = false;
+  bool _storeResults = false;
 
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;

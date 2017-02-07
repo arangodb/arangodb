@@ -297,8 +297,7 @@ void Worker<V, E, M>::_startProcessing() {
         _finishedProcessing();  // last thread turns the lights out
       }
     });
-    start = end;
-    end = end + delta;
+    start = end; end = end + delta;
     if (total < end + delta) {  // swallow the rest
       end = total;
     }
@@ -547,21 +546,6 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body) {
     LOG(WARN) << "Discarding results";
   }
   _graphStore.reset();
-
-  /*VPackBuilder b;
-  b.openArray();
-  auto it = _graphStore->vertexIterator();
-  for (const VertexEntry& vertexEntry : it) {
-    V data = _graphStore->copyVertexData(&vertexEntry);
-    VPackBuilder v;
-    v.openObject();
-    v.add("key", VPackValue(vertexEntry.vertexID()));
-    v.add("result", VPackValue(data));
-    v.close();
-    b.add(v.slice());
-  }
-  b.close();
-  LOG(INFO) << "Results. " << b.toJson();//*/
 }
 
 template <typename V, typename E, typename M>

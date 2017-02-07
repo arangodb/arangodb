@@ -56,6 +56,7 @@ GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, GraphFormat<V, E>* graphFormat)
 template <typename V, typename E>
 GraphStore<V, E>::~GraphStore() {
   _destroyed = true;
+  usleep(25 * 1000);
 }
 
 template <typename V, typename E>
@@ -92,7 +93,7 @@ std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
     LOG(WARN) << "Pregel worker: Failed to commit on a read transaction";
   }
   LOG(INFO) << "Allocating memory took " << TRI_microtime() - t << "s";
-
+  
   return shardSizes;
 }
 
@@ -100,7 +101,7 @@ template <typename V, typename E>
 void GraphStore<V, E>::loadShards(WorkerConfig* config,
                                   std::function<void()> callback) {
   _config = config;
-  std::map<ShardID, uint64_t> shardSizes(_allocateMemory());
+  std::map<ShardID, uint64_t> shardSizes (_allocateMemory());
 
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   uint64_t vertexOffset = 0, edgeOffset = 0;
@@ -415,39 +416,43 @@ void GraphStore<V, E>::_loadEdges(Transaction* trx, ShardID const& edgeShard,
   _localEdgeCount += added;
 }
 
+/// Loops over the array starting a new transaction for different shards
+/// Should not dead-lock unless we have to wait really long for other threads
 template <typename V, typename E>
-void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
-  double start = TRI_microtime();
+void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
+                                      RangeIterator<VertexEntry> &it) {
+  // transaction on one shard
+  std::unique_ptr<ExplicitTransaction> trx;
+  prgl_shard_t currentShard = (prgl_shard_t)-1;
+  int res = TRI_ERROR_NO_ERROR;
+  
+  // loop over vertices
+  while (it != it.end()) {
+    if (it->shard() != currentShard) {
+      if (trx) {
+        res = trx->finish(res);
+        if (res != TRI_ERROR_NO_ERROR) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
+      }
+      currentShard = it->shard();
+      ShardID const& shard = globalShards[currentShard];
+      trx.reset(
+        new ExplicitTransaction(
+            StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()), {},
+            {shard}, {}, Transaction::DefaultLockTimeout, false, false)
+      );
+      res = trx->begin();
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
 
-  std::vector<std::string> writeColls;
-  for (auto const& shard : state.localVertexShardIDs()) {
-    writeColls.push_back(shard);
-  }
-  for (auto const& shard : state.localEdgeShardIDs()) {
-    writeColls.push_back(shard);
-  }
-  // for (auto shard : state.localEdgeShardIDs() ) {
-  //  writeColls.push_back(shard);
-  //}
-  double lockTimeout = Transaction::DefaultLockTimeout;
-  ExplicitTransaction writeTrx(
-      StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()), {},
-      writeColls, {}, lockTimeout, false, false);
-  int res = writeTrx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  OperationOptions options;
-
-  auto it = _index.begin();
-  while (it != _index.end()) {
-    TransactionBuilderLeaser b(&writeTrx);
-
-    prgl_shard_t shardID = it->shard();
+    TransactionBuilderLeaser b(trx.get());
     b->openArray();
-    size_t buffer = 1000;
-    while (it != _index.end() && buffer > 0) {
-      if (it->shard() != shardID) {
+    size_t buffer = 0;
+    while (it != it.end() && buffer < 1000) {
+      if (it->shard() != currentShard) {
         break;
       }
 
@@ -459,24 +464,59 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
       b->close();
 
       ++it;
-      buffer--;
+      ++buffer;
     }
     b->close();
 
-    ShardID const& shard = state.globalShardIDs()[shardID];
-    OperationResult result = writeTrx.update(shard, b->slice(), options);
+    ShardID const& shard = globalShards[currentShard];
+    OperationOptions options;
+    OperationResult result = trx->update(shard, b->slice(), options);
     if (result.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(result.code);
     }
-
-    // TODO loop over edges
-  }
-  res = writeTrx.finish(res);
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
   }
 
-  LOG(INFO) << "Storing data took " << (TRI_microtime() - start) << "s";
+  if (trx) {
+    res = trx->finish(res);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
+}
+
+template <typename V, typename E>
+void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
+  double now = TRI_microtime();
+
+  //for (auto const& shard : state.localEdgeShardIDs()) {
+  //  writeColls.push_back(shard);
+  //}
+  std::atomic<size_t> tCount(state.localVertexShardIDs().size());
+  size_t total = _index.size();
+  size_t delta = std::max(10UL, _index.size()/tCount);
+  size_t start = 0, end = delta;
+
+  do {
+    ThreadPool* pool = PregelFeature::instance()->threadPool();
+    pool->enqueue([this, start, end, &state, &tCount] {
+      try {
+        RangeIterator<VertexEntry> it = vertexIterator(start, end);
+        _storeVertices(state.globalShardIDs(), it);
+      } catch(...) {
+        LOG(ERR) << "Storing vertex data failed";
+      }
+      tCount--;
+    });
+    start = end; end = end + delta;
+    if (total < end + delta) {  // swallow the rest
+      end = total;
+    }
+  } while (start != end);
+
+  while (tCount > 0 && !_destroyed) {
+    usleep(25 * 1000);// 25ms
+  }
+  LOG(INFO) << "Storing data took " << (TRI_microtime() - now) << "s";
 }
 
 template class arangodb::pregel::GraphStore<int64_t, int64_t>;

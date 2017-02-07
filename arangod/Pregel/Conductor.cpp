@@ -32,6 +32,7 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -45,6 +46,7 @@
 
 using namespace arangodb;
 using namespace arangodb::pregel;
+using namespace arangodb::basics;
 
 const char* arangodb::pregel::ExecutionStateNames[6] = {
     "none", "running", "done", "canceled", "in error", "recovering"};
@@ -64,30 +66,26 @@ Conductor::Conductor(
 Conductor::~Conductor() { this->cancel(); }
 
 void Conductor::start(std::string const& algoName,
-                      VPackSlice const& userConfig) {
-  if (!userConfig.isObject()) {
+                      VPackSlice const& config) {
+  if (!config.isObject()) {
     _userParams.openObject();
     _userParams.close();
   } else {
-    _userParams.add(userConfig);
-  }
-
-  VPackSlice maxGSS = userConfig.get("maxGSS");
-  if (maxGSS.isInteger()) {
-    _maxSuperstep = maxGSS.getUInt();
+    _userParams.add(config);
   }
 
   _startTimeSecs = TRI_microtime();
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
-  _algorithm.reset(AlgoRegistry::createAlgorithm(algoName, userConfig));
+  _algorithm.reset(AlgoRegistry::createAlgorithm(algoName, config));
   if (!_algorithm) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Algorithm not found");
   }
-  _maxSuperstep = _algorithm->maxGlobalSuperstep();
-  _masterContext.reset(_algorithm->masterContext(userConfig));
+  _masterContext.reset(_algorithm->masterContext(config));
   _aggregators.reset(new AggregatorHandler(_algorithm.get()));
+
+  _maxSuperstep = VelocyPackHelper::getNumericValue(config, "maxGSS", _maxSuperstep);
   // configure the async mode as optional
   VPackSlice async = _userParams.slice().get("async");
   _asyncMode = _algorithm->supportsAsyncMode();
@@ -100,6 +98,10 @@ void Conductor::start(std::string const& algoName,
   _lazyLoading = _lazyLoading && (lazy.isNone() || lazy.getBoolean());
   if (_lazyLoading) {
     LOG(INFO) << "Enabled lazy loading";
+  }
+  _storeResults = VelocyPackHelper::getNumericValue(config, "store", true);
+  if (!_storeResults) {
+    LOG(INFO) << "Will keep results in-memory";
   }
 
   LOG(INFO) << "Telling workers to load the data";
@@ -164,7 +166,11 @@ bool Conductor::_startGlobalStep() {
   if (!proceed || done || _globalSuperstep >= _maxSuperstep) {
     _state = ExecutionState::DONE;
     // tells workers to store / discard results
-    _finalizeWorkers();
+    if (_storeResults) {
+      _finalizeWorkers();
+    } else {// just stop the timer
+        _endTimeSecs = TRI_microtime();
+    }
     return false;
   }
   if (_masterContext) {
@@ -357,20 +363,7 @@ void Conductor::cancel() {
       _state == ExecutionState::RECOVERING ||
       _state == ExecutionState::IN_ERROR) {
     _state = ExecutionState::CANCELED;
-
-    LOG(INFO) << "Telling workers to discard results";
-    VPackBuilder b;
-    b.openObject();
-    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-    b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-    b.close();
-    _sendToAllDBServers(Utils::cancelGSSPath, b.slice());
-  }
-  _state = ExecutionState::CANCELED;
-  // stop monitoring shards
-  RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
-  if (mngr) {
-    mngr->stopMonitoring(this);
+    _finalizeWorkers();
   }
 }
 
@@ -568,7 +561,8 @@ int Conductor::_initializeWorkers(std::string const& suffix,
 int Conductor::_finalizeWorkers() {
   double compEnd = TRI_microtime();
 
-  bool storeResults = _state == ExecutionState::DONE;
+  bool store = _state == ExecutionState::DONE;
+  store = store && _storeResults;
   if (_masterContext) {
     _masterContext->postApplication();
   }
@@ -583,12 +577,12 @@ int Conductor::_finalizeWorkers() {
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::storeResultsKey, VPackValue(storeResults));
+  b.add(Utils::storeResultsKey, VPackValue(store));
   b.close();
   int res = _sendToAllDBServers(Utils::finalizeExecutionPath, b.slice());
-  _endTimeSecs = TRI_microtime();
   b.clear();
 
+  _endTimeSecs = TRI_microtime();
   b.openObject();
   b.add("stats", VPackValue(VPackValueType::Object));
   _statistics.serializeValues(b);

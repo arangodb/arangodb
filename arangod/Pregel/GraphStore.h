@@ -63,7 +63,9 @@ class GraphStore {
   std::vector<V> _vertexData;
   std::vector<Edge<E>> _edges;
 
+  // cacge the amount of vertices
   std::set<ShardID> _loadedShards;
+  // actual count of loaded vertices / edges
   std::atomic<uint64_t> _localVerticeCount;
   std::atomic<uint64_t> _localEdgeCount;
   uint32_t _runningThreads;
@@ -75,6 +77,8 @@ class GraphStore {
                      uint64_t vertexOffset, uint64_t edgeOffset);
   void _loadEdges(Transaction* trx, ShardID const& shard,
                   VertexEntry& vertexEntry, std::string const& documentID);
+  void _storeVertices(std::vector<ShardID> const& globalShards,
+                      RangeIterator<VertexEntry> &it);
   std::unique_ptr<Transaction> _createTransaction();
   bool _destroyed = false;
 
