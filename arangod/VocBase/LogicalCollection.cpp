@@ -2070,7 +2070,7 @@ int LogicalCollection::insert(Transaction* trx, VPackSlice const slice,
   // create marker
   MMFilesCrudMarker insertMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
-      TRI_MarkerIdTransaction(trx->state()), newSlice);
+      trx->state()->idForMarker(), newSlice);
 
   MMFilesWalMarker const* marker;
   if (options.recoveryMarker == nullptr) {
@@ -2266,7 +2266,7 @@ int LogicalCollection::update(Transaction* trx, VPackSlice const newSlice,
   // create marker
   MMFilesCrudMarker updateMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
-      TRI_MarkerIdTransaction(trx->state()), builder->slice());
+      trx->state()->idForMarker(), builder->slice());
 
   MMFilesWalMarker const* marker;
   if (options.recoveryMarker == nullptr) {
@@ -2428,7 +2428,7 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
   // create marker
   MMFilesCrudMarker replaceMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
-      TRI_MarkerIdTransaction(trx->state()), builder->slice());
+      trx->state()->idForMarker(), builder->slice());
 
   MMFilesWalMarker const* marker;
   if (options.recoveryMarker == nullptr) {
@@ -2525,7 +2525,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
 
   // create marker
   MMFilesCrudMarker removeMarker(
-      TRI_DF_MARKER_VPACK_REMOVE, TRI_MarkerIdTransaction(trx->state()),
+      TRI_DF_MARKER_VPACK_REMOVE, trx->state()->idForMarker(),
       builder->slice());
 
   MMFilesWalMarker const* marker;
@@ -2656,7 +2656,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
 
   // create marker
   MMFilesCrudMarker removeMarker(
-      TRI_DF_MARKER_VPACK_REMOVE, TRI_MarkerIdTransaction(trx->state()),
+      TRI_DF_MARKER_VPACK_REMOVE, trx->state()->idForMarker(),
       builder->slice());
 
   MMFilesWalMarker const* marker = &removeMarker;

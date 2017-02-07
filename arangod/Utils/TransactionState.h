@@ -97,6 +97,14 @@ struct TransactionState {
     return _hints.has(hint);
   }
 
+  /// @brief get the transaction id for usage in a marker
+  TRI_voc_tid_t idForMarker() {
+    if (_hints.has(TransactionHints::Hint::SINGLE_OPERATION)) {
+      return 0;
+    }
+    return _id;
+  }
+
  private:
   /// @brief find a collection in the transaction's list of collections
   TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;
@@ -152,16 +160,6 @@ struct TransactionState {
   bool _beginWritten;  // whether or not the begin marker was already written
   double _timeout;     // timeout for lock acquisition
 };
-
-/// @brief get the transaction id for usage in a marker
-static inline TRI_voc_tid_t TRI_MarkerIdTransaction(
-    TransactionState const* trx) {
-  if (trx->_hints.has(TransactionHints::Hint::SINGLE_OPERATION)) {
-    return 0;
-  }
-
-  return trx->_id;
-}
 
 }
 
