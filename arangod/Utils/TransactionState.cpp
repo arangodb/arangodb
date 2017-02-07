@@ -476,16 +476,22 @@ int TransactionState::addOperation(TRI_voc_rid_t revisionId,
     // operation is buffered and might be rolled back
     TransactionCollection* trxCollection = this->collection(collection->cid(), AccessMode::Type::WRITE);
     
-    std::unique_ptr<MMFilesDocumentOperation> copy(operation.swap());
-    
+    std::unique_ptr<MMFilesDocumentOperation> copy(operation.clone());
+   
     TRI_IF_FAILURE("TransactionOperationPushBack") {
-      // test what happens if reserve above failed
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); 
     }
-    
+      
     trxCollection->addOperation(copy.get());
+    
+    TRI_IF_FAILURE("TransactionOperationPushBack2") {
+      copy.release();
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); 
+    }
+
     copy->handled();
     copy.release();
+    operation.swapped();
     _hasOperations = true;
   }
 

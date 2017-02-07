@@ -4589,6 +4589,7 @@ function transactionServerFailuresSuite () {
                        "TransactionOperationNoSlotExcept",
                        "TransactionOperationAfterAdjust",
                        "TransactionOperationPushBack",
+                       "TransactionOperationPushBack2",
                        "TransactionOperationAtEnd" ]; 
 
       failures.forEach (function (f) {
@@ -4697,6 +4698,7 @@ function transactionServerFailuresSuite () {
                        "TransactionOperationNoSlotExcept",
                        "TransactionOperationAfterAdjust",
                        "TransactionOperationPushBack",
+                       "TransactionOperationPushBack2",
                        "TransactionOperationAtEnd" ];
 
       failures.forEach (function (f) {
@@ -4789,6 +4791,7 @@ function transactionServerFailuresSuite () {
                        "TransactionOperationNoSlotExcept",
                        "TransactionOperationAfterAdjust",
                        "TransactionOperationPushBack",
+                       "TransactionOperationPushBack2",
                        "TransactionOperationAtEnd" ];
 
       failures.forEach (function (f) {
@@ -4842,6 +4845,7 @@ function transactionServerFailuresSuite () {
                        "TransactionOperationNoSlotExcept",
                        "TransactionOperationAfterAdjust",
                        "TransactionOperationPushBack",
+                       "TransactionOperationPushBack2",
                        "TransactionOperationAtEnd" ];
 
       failures.forEach (function (f) {
@@ -4948,6 +4952,7 @@ function transactionServerFailuresSuite () {
                        "TransactionOperationNoSlotExcept",
                        "TransactionOperationAfterAdjust",
                        "TransactionOperationPushBack",
+                       "TransactionOperationPushBack2",
                        "TransactionOperationAtEnd" ]; 
 
       failures.forEach (function (f) {
