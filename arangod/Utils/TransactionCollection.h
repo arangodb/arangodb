@@ -44,6 +44,9 @@ class TransactionCollection {
 
   TransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel);
   ~TransactionCollection();
+  
+  /// @brief request a main-level lock for a collection
+  int lock();
  
   /// @brief request a lock for a collection
   int lock(AccessMode::Type, int nestingLevel);
@@ -56,6 +59,10 @@ class TransactionCollection {
   
   /// @brief check whether a collection is locked at all
   bool isLocked() const;
+  
+  LogicalCollection* collection() const {
+    return _collection;  // vocbase collection pointer
+  }
 
  private:
   /// @brief request a lock for a collection
@@ -73,7 +80,7 @@ class TransactionCollection {
   bool
       _compactionLocked;  // was the compaction lock grabbed for the collection?
   bool _waitForSync;      // whether or not the collection has waitForSync
- public:
+  
   LogicalCollection* _collection;  // vocbase collection pointer
   AccessMode::Type _accessType;  // access type (read|write)
   AccessMode::Type _lockType;  // collection lock type

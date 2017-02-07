@@ -618,8 +618,8 @@ std::vector<std::string> Transaction::collectionNames() const {
   result.reserve(_state->_collections.size());
 
   for (auto& trxCollection : _state->_collections) {
-    if (trxCollection->_collection != nullptr) {
-      result.emplace_back(trxCollection->_collection->name());
+    if (trxCollection->collection() != nullptr) {
+      result.emplace_back(trxCollection->collection()->name());
     }
   }
 
@@ -659,9 +659,9 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to determine transaction collection");    
   }
 
-  TRI_ASSERT(trxCollection->_collection != nullptr);
+  TRI_ASSERT(trxCollection->collection() != nullptr);
 
-  DocumentDitch* ditch = _transactionContext->orderDitch(trxCollection->_collection);
+  DocumentDitch* ditch = _transactionContext->orderDitch(trxCollection->collection());
 
   if (ditch == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1178,7 +1178,7 @@ int Transaction::finish(int errorNum) {
 std::string Transaction::name(TRI_voc_cid_t cid) const {
   auto c = trxCollection(cid);
   TRI_ASSERT(c != nullptr);
-  return c->_collection->name();
+  return c->collection()->name();
 }
 
 
@@ -3065,9 +3065,9 @@ arangodb::LogicalCollection* Transaction::documentCollection(
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(trxCollection != nullptr);
   TRI_ASSERT(getStatus() == Transaction::Status::RUNNING);
-  TRI_ASSERT(trxCollection->_collection != nullptr);
+  TRI_ASSERT(trxCollection->collection() != nullptr);
 
-  return trxCollection->_collection;
+  return trxCollection->collection();
 }
 
 /// @brief return the collection
@@ -3083,8 +3083,8 @@ arangodb::LogicalCollection* Transaction::documentCollection(
   }
 
   TRI_ASSERT(trxCollection != nullptr);
-  TRI_ASSERT(trxCollection->_collection != nullptr);
-  return trxCollection->_collection;
+  TRI_ASSERT(trxCollection->collection() != nullptr);
+  return trxCollection->collection();
 }
   
 /// @brief add a collection by id, with the name supplied

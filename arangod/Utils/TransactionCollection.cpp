@@ -60,6 +60,11 @@ TransactionCollection::TransactionCollection(TransactionState* trx, TRI_voc_cid_
 
 TransactionCollection::~TransactionCollection() {}
 
+/// @brief request a main-level lock for a collection
+int TransactionCollection::lock() {
+  return lock(_accessType, 0);
+}
+
 /// @brief request a lock for a collection
 int TransactionCollection::lock(AccessMode::Type accessType,
                                 int nestingLevel) {
