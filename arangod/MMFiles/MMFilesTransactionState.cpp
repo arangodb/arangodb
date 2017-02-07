@@ -21,17 +21,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "TransactionState.h"
+#include "MMFilesTransactionState.h"
 #include "Aql/QueryCache.h"
 #include "Logger/Logger.h"
 #include "Basics/Exceptions.h"
-#include "Basics/StaticStrings.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Utils/Transaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -51,185 +48,14 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
 }
 
 /// @brief transaction type
-TransactionState::TransactionState(TRI_vocbase_t* vocbase, double timeout, bool waitForSync)
-    : _vocbase(vocbase), 
-      _id(0), 
-      _type(AccessMode::Type::READ),
-      _status(Transaction::Status::CREATED),
-      _arena(),
-      _collections{_arena}, // assign arena to vector 
-      _rocksTransaction(nullptr),
-      _hints(),
-      _nestingLevel(0), 
-      _allowImplicit(true),
-      _hasOperations(false), 
-      _waitForSync(waitForSync),
-      _beginWritten(false), 
-      _timeout(Transaction::DefaultLockTimeout) {
-  
-  if (timeout > 0.0) {
-    _timeout = timeout;
-  } 
-}
+MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase)
+    : TransactionState(vocbase) {}
 
 /// @brief free a transaction container
-TransactionState::~TransactionState() {
-  TRI_ASSERT(_status != Transaction::Status::RUNNING);
-
-  delete _rocksTransaction;
-
-  releaseCollections();
-
-  // free all collections
-  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
-    delete (*it);
-  }
-}
+MMFilesTransactionState::~MMFilesTransactionState() {}
   
-std::vector<std::string> TransactionState::collectionNames() const {
-  std::vector<std::string> result;
-  result.reserve(_collections.size());
-
-  for (auto& trxCollection : _collections) {
-    if (trxCollection->collection() != nullptr) {
-      result.emplace_back(trxCollection->collectionName());
-    }
-  }
-
-  return result;
-}
-
-/// @brief return the collection from a transaction
-TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid, AccessMode::Type accessType) {
-  TRI_ASSERT(_status == Transaction::Status::CREATED ||
-             _status == Transaction::Status::RUNNING);
-
-  size_t unused;
-  TransactionCollection* trxCollection = findCollection(cid, unused);
-
-  if (trxCollection == nullptr || !trxCollection->canAccess(accessType)) {
-    // not found or not accessible in the requested mode
-    return nullptr;
-  }
-
-  return trxCollection;
-}
-
-/// @brief add a collection to a transaction
-int TransactionState::addCollection(TRI_voc_cid_t cid,
-                                    AccessMode::Type accessType,
-                                    int nestingLevel, bool force,
-                                    bool allowImplicitCollections) {
-  LOG_TRX(this, nestingLevel) << "adding collection " << cid;
-
-  allowImplicitCollections &= _allowImplicit;
-
-  // LOG(TRACE) << "cid: " << cid 
-  //            << ", accessType: " << accessType 
-  //            << ", nestingLevel: " << nestingLevel 
-  //            << ", force: " << force 
-  //            << ", allowImplicitCollections: " << allowImplicitCollections;
-  
-  // upgrade transaction type if required
-  if (nestingLevel == 0) {
-    if (!force) {
-      TRI_ASSERT(_status == Transaction::Status::CREATED);
-    }
-
-    if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_type)) {
-      // if one collection is written to, the whole transaction becomes a
-      // write-transaction
-      _type = AccessMode::Type::WRITE;
-    }
-  }
-
-  // check if we already have got this collection in the _collections vector
-  size_t position = 0;
-  TransactionCollection* trxCollection = findCollection(cid, position);
-  
-  if (trxCollection != nullptr) {
-    // collection is already contained in vector
-    return trxCollection->updateUsage(accessType, nestingLevel);
-  }
-
-  // collection not found.
-
-  if (nestingLevel > 0 && AccessMode::isWriteOrExclusive(accessType)) {
-    // trying to write access a collection in an embedded transaction
-    return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
-  }
-
-  if (!AccessMode::isWriteOrExclusive(accessType) && !allowImplicitCollections) {
-    return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
-  }
-  
-  // collection was not contained. now create and insert it
-  TRI_ASSERT(trxCollection == nullptr);
-  try {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    trxCollection = engine->createTransactionCollection(this, cid, accessType, nestingLevel);
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  
-  TRI_ASSERT(trxCollection != nullptr);
-
-  // insert collection at the correct position
-  try {
-    _collections.insert(_collections.begin() + position, trxCollection);
-  } catch (...) {
-    delete trxCollection;
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief make sure all declared collections are used & locked
-int TransactionState::ensureCollections(int nestingLevel) {
-  return useCollections(nestingLevel);
-}
-
-/// @brief use all participating collections of a transaction
-int TransactionState::useCollections(int nestingLevel) {
-  int res = TRI_ERROR_NO_ERROR;
-
-  // process collections in forward order
-  for (auto& trxCollection : _collections) {
-    res = trxCollection->use(nestingLevel);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      break;
-    }
-  }
-
-  return res;
-}
-
-/// @brief release collection locks for a transaction
-int TransactionState::unuseCollections(int nestingLevel) {
-  // process collections in reverse order
-  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
-    (*it)->unuse(nestingLevel);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
- 
-int TransactionState::lockCollections() { 
-  for (auto& trxCollection : _collections) {
-    int res = trxCollection->lock();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  }
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief start a transaction
-int TransactionState::beginTransaction(TransactionHints hints, int nestingLevel) {
+int MMFilesTransactionState::beginTransaction(TransactionHints hints, int nestingLevel) {
   LOG_TRX(this, nestingLevel) << "beginning " << AccessMode::typeString(_type) << " transaction";
 
   if (nestingLevel == 0) {
@@ -295,7 +121,7 @@ int TransactionState::beginTransaction(TransactionHints hints, int nestingLevel)
 }
 
 /// @brief commit a transaction
-int TransactionState::commitTransaction(arangodb::Transaction* activeTrx, int nestingLevel) {
+int MMFilesTransactionState::commitTransaction(arangodb::Transaction* activeTrx, int nestingLevel) {
   LOG_TRX(this, nestingLevel) << "committing " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == Transaction::Status::RUNNING);
@@ -341,7 +167,7 @@ int TransactionState::commitTransaction(arangodb::Transaction* activeTrx, int ne
 }
 
 /// @brief abort and rollback a transaction
-int TransactionState::abortTransaction(arangodb::Transaction* activeTrx, int nestingLevel) {
+int MMFilesTransactionState::abortTransaction(arangodb::Transaction* activeTrx, int nestingLevel) {
   LOG_TRX(this, nestingLevel) << "aborting " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == Transaction::Status::RUNNING);
@@ -362,7 +188,7 @@ int TransactionState::abortTransaction(arangodb::Transaction* activeTrx, int nes
 }
 
 /// @brief add a WAL operation for a transaction collection
-int TransactionState::addOperation(TRI_voc_rid_t revisionId,
+int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
                                    MMFilesDocumentOperation& operation,
                                    MMFilesWalMarker const* marker,
                                    bool& waitForSync) {
@@ -502,39 +328,8 @@ int TransactionState::addOperation(TRI_voc_rid_t revisionId,
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief whether or not a transaction consists of a single operation
-bool TransactionState::isSingleOperation() const {
-  return hasHint(TransactionHints::Hint::SINGLE_OPERATION);
-}
-
-/// @brief find a collection in the transaction's list of collections
-TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid, size_t& position) const {
-  size_t const n = _collections.size();
-  size_t i;
-
-  for (i = 0; i < n; ++i) {
-    auto trxCollection = _collections.at(i);
-
-    if (cid < trxCollection->id()) {
-      // collection not found
-      break;
-    }
-
-    if (cid == trxCollection->id()) {
-      // found
-      return trxCollection;
-    }
-    // next
-  }
-
-  // update the insert position if required
-  position = i;
-
-  return nullptr;
-}
-
 /// @brief free all operations for a transaction
-void TransactionState::freeOperations(arangodb::Transaction* activeTrx) {
+void MMFilesTransactionState::freeOperations(arangodb::Transaction* activeTrx) {
   bool const mustRollback = (_status == Transaction::Status::ABORTED);
      
   TRI_ASSERT(activeTrx != nullptr);
@@ -544,65 +339,8 @@ void TransactionState::freeOperations(arangodb::Transaction* activeTrx) {
   }
 }
 
-/// @brief release collection locks for a transaction
-int TransactionState::releaseCollections() {
-  if (hasHint(TransactionHints::Hint::LOCK_NEVER) ||
-      hasHint(TransactionHints::Hint::NO_USAGE_LOCK)) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // process collections in reverse order
-  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
-    (*it)->release();
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief clear the query cache for all collections that were modified by
-/// the transaction
-void TransactionState::clearQueryCache() {
-  if (_collections.empty()) {
-    return;
-  }
-
-  try {
-    std::vector<std::string> collections;
-    for (auto& trxCollection : _collections) {
-      if (trxCollection->hasOperations()) {
-        // we're only interested in collections that may have been modified
-        collections.emplace_back(trxCollection->collectionName());
-      }
-    }
-
-    if (!collections.empty()) {
-      arangodb::aql::QueryCache::instance()->invalidate(_vocbase, collections);
-    }
-  } catch (...) {
-    // in case something goes wrong, we have to remove all queries from the
-    // cache
-    arangodb::aql::QueryCache::instance()->invalidate(_vocbase);
-  }
-}
-
-/// @brief update the status of a transaction
-void TransactionState::updateStatus(Transaction::Status status) {
-  TRI_ASSERT(_status == Transaction::Status::CREATED ||
-             _status == Transaction::Status::RUNNING);
-
-  if (_status == Transaction::Status::CREATED) {
-    TRI_ASSERT(status == Transaction::Status::RUNNING ||
-               status == Transaction::Status::ABORTED);
-  } else if (_status == Transaction::Status::RUNNING) {
-    TRI_ASSERT(status == Transaction::Status::COMMITTED ||
-               status == Transaction::Status::ABORTED);
-  }
-
-  _status = status;
-}
-
 /// @brief write WAL begin marker
-int TransactionState::writeBeginMarker() {
+int MMFilesTransactionState::writeBeginMarker() {
   if (!needWriteMarker(true)) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -645,7 +383,7 @@ int TransactionState::writeBeginMarker() {
 }
 
 /// @brief write WAL abort marker
-int TransactionState::writeAbortMarker() {
+int MMFilesTransactionState::writeAbortMarker() {
   if (!needWriteMarker(false)) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -686,7 +424,7 @@ int TransactionState::writeAbortMarker() {
 }
 
 /// @brief write WAL commit marker
-int TransactionState::writeCommitMarker() {
+int MMFilesTransactionState::writeCommitMarker() {
   if (!needWriteMarker(false)) {
     return TRI_ERROR_NO_ERROR;
   }

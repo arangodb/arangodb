@@ -32,8 +32,8 @@
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesToken.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/TransactionContext.h"
-#include "Utils/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>

@@ -231,6 +231,7 @@ SET(ARANGOD_SOURCES
   MMFiles/MMFilesSkiplistIndex.cpp
   MMFiles/MMFilesSynchronizerThread.cpp
   MMFiles/MMFilesTransactionCollection.cpp
+  MMFiles/MMFilesTransactionState.cpp
   MMFiles/MMFilesWalLogfile.cpp
   MMFiles/MMFilesWalRecoverState.cpp
   MMFiles/MMFilesWalRecoveryFeature.cpp
@@ -308,6 +309,7 @@ SET(ARANGOD_SOURCES
   StorageEngine/RocksDBEngine.cpp
   StorageEngine/RocksDBIndexFactory.cpp
   StorageEngine/TransactionCollection.cpp
+  StorageEngine/TransactionState.cpp
   Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
@@ -320,7 +322,6 @@ SET(ARANGOD_SOURCES
   Utils/StandaloneTransactionContext.cpp
   Utils/Transaction.cpp
   Utils/TransactionContext.cpp
-  Utils/TransactionState.cpp
   Utils/V8TransactionContext.cpp
   Utils/WorkMonitorArangod.cpp
   V8Server/FoxxQueuesFeature.cpp

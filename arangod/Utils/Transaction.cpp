@@ -42,14 +42,16 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/TransactionContext.h"
-#include "Utils/TransactionState.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -583,7 +585,7 @@ Transaction::Transaction(std::shared_ptr<TransactionContext> transactionContext)
     _isReal = false;
   }
 
-  this->setupTransaction();
+  setupTransaction();
 }
    
 /// @brief destroy the transaction
@@ -3317,7 +3319,7 @@ int Transaction::addCollectionToplevel(TRI_voc_cid_t cid, AccessMode::Type type)
 /// transaction. if not, it will create a transaction of its own
 int Transaction::setupTransaction() {
   // check in the context if we are running embedded
-  _state = this->_transactionContext->getParentTransaction();
+  _state = _transactionContext->getParentTransaction();
 
   if (_state != nullptr) {
     // yes, we are embedded
@@ -3338,7 +3340,7 @@ int Transaction::setupEmbedded() {
 
   _nestingLevel = ++_state->_nestingLevel;
 
-  if (!this->_transactionContext->isEmbeddable()) {
+  if (!_transactionContext->isEmbeddable()) {
     // we are embedded but this is disallowed...
     return TRI_ERROR_TRANSACTION_NESTED;
   }
@@ -3352,7 +3354,10 @@ int Transaction::setupToplevel() {
 
   // we are not embedded. now start our own transaction
   try {
-    _state = new TransactionState(_vocbase, _timeout, _waitForSync);
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    _state = engine->createTransactionState(_vocbase);
+    _state->timeout(_timeout);
+    _state->waitForSync(_waitForSync);
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -3360,7 +3365,7 @@ int Transaction::setupToplevel() {
   TRI_ASSERT(_state != nullptr);
 
   // register the transaction in the context
-  return this->_transactionContext->registerTransaction(_state);
+  return _transactionContext->registerTransaction(_state);
 }
 
 /// @brief free transaction

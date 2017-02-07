@@ -25,7 +25,7 @@
 #include "CollectionNameResolver.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/TransactionCollection.h"
-#include "Utils/TransactionState.h"
+#include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;

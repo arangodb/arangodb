@@ -25,9 +25,9 @@
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionHints.h"
-#include "Utils/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 

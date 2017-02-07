@@ -51,8 +51,17 @@ class TransactionState {
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(TRI_vocbase_t* vocbase, double timeout, bool waitForSync);
-  ~TransactionState();
+  explicit TransactionState(TRI_vocbase_t* vocbase);
+  virtual ~TransactionState();
+
+  double timeout() const { return _timeout; }
+  void timeout(double value) { 
+    if (value > 0.0) {
+      _timeout = value;
+    } 
+  }
+  bool waitForSync() const { return _waitForSync; }
+  void waitForSync(bool value) { _waitForSync = value; }
 
   std::vector<std::string> collectionNames() const;
 
@@ -74,31 +83,32 @@ class TransactionState {
   int lockCollections();
   
   /// @brief whether or not a transaction consists of a single operation
-  bool isSingleOperation() const;
-
-  /// @brief begin a transaction
-  int beginTransaction(TransactionHints hints, int nestingLevel);
-
-  /// @brief commit a transaction
-  int commitTransaction(Transaction* trx, int nestingLevel);
-
-  /// @brief abort a transaction
-  int abortTransaction(Transaction* trx, int nestingLevel);
-
-  /// @brief add a WAL operation for a transaction collection
-  int addOperation(TRI_voc_rid_t, MMFilesDocumentOperation&, MMFilesWalMarker const* marker, bool&);
+  bool isSingleOperation() const {
+    return hasHint(TransactionHints::Hint::SINGLE_OPERATION);
+  }
 
   /// @brief update the status of a transaction
   void updateStatus(Transaction::Status status);
-
-  bool hasFailedOperations() const {
-    return (_hasOperations && _status == Transaction::Status::ABORTED);
-  }
-
+  
   /// @brief whether or not a specific hint is set for the transaction
   bool hasHint(TransactionHints::Hint hint) const {
     return _hints.has(hint);
   }
+
+  /// @brief begin a transaction
+  virtual int beginTransaction(TransactionHints hints, int nestingLevel) = 0;
+
+  /// @brief commit a transaction
+  virtual int commitTransaction(Transaction* trx, int nestingLevel) = 0;
+
+  /// @brief abort a transaction
+  virtual int abortTransaction(Transaction* trx, int nestingLevel) = 0;
+
+  /// @brief add a WAL operation for a transaction collection
+  virtual int addOperation(TRI_voc_rid_t, MMFilesDocumentOperation&, MMFilesWalMarker const* marker, bool&) = 0;
+
+  /// TODO: implement this in base class
+  virtual bool hasFailedOperations() const = 0;
 
   /// @brief get the transaction id for usage in a marker
   TRI_voc_tid_t idForMarker() {
@@ -108,7 +118,7 @@ class TransactionState {
     return _id;
   }
 
- private:
+ protected:
   /// @brief find a collection in the transaction's list of collections
   TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;
 
@@ -116,25 +126,6 @@ class TransactionState {
   bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);
   }
-
-  /// @brief whether or not a marker needs to be written
-  bool needWriteMarker(bool isBeginMarker) const {
-    if (isBeginMarker) {
-      return (!isReadOnlyTransaction() && !isSingleOperation());
-    }
-
-    return (_nestingLevel == 0 && _beginWritten &&
-            !isReadOnlyTransaction() && !isSingleOperation());
-  }
-
-  /// @brief write WAL begin marker
-  int writeBeginMarker();
-
-  /// @brief write WAL abort marker
-  int writeAbortMarker();
-
-  /// @brief write WAL commit marker
-  int writeCommitMarker();
 
   /// @brief free all operations for a transaction
   void freeOperations(arangodb::Transaction* activeTrx);
@@ -152,7 +143,7 @@ class TransactionState {
   AccessMode::Type _type;             // access type (read|write)
   Transaction::Status _status;        // current status
 
- private:
+ protected:
   SmallVector<TransactionCollection*>::allocator_type::arena_type _arena; // memory for collections
   SmallVector<TransactionCollection*> _collections; // list of participating collections
  public:

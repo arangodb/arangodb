@@ -94,6 +94,10 @@ void RocksDBEngine::start() {
 void RocksDBEngine::stop() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
 }
+
+TransactionState* RocksDBEngine::createTransactionState(TRI_vocbase_t* vocbase) {
+  return nullptr;
+}
   
 TransactionCollection* RocksDBEngine::createTransactionCollection(TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) {
   return nullptr;
