@@ -612,16 +612,7 @@ Transaction::~Transaction() {
   
 /// @brief return the names of all collections used in the transaction
 std::vector<std::string> Transaction::collectionNames() const {
-  std::vector<std::string> result;
-  result.reserve(_state->_collections.size());
-
-  for (auto& trxCollection : _state->_collections) {
-    if (trxCollection->collection() != nullptr) {
-      result.emplace_back(trxCollection->collection()->name());
-    }
-  }
-
-  return result;
+  return _state->collectionNames();
 }
   
 /// @brief return the collection name resolver

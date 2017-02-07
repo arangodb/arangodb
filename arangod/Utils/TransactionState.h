@@ -45,7 +45,8 @@ class Transaction;
 class TransactionCollection;
 
 /// @brief transaction type
-struct TransactionState {
+class TransactionState {
+ public:
   TransactionState() = delete;
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
@@ -53,7 +54,7 @@ struct TransactionState {
   TransactionState(TRI_vocbase_t* vocbase, double timeout, bool waitForSync);
   ~TransactionState();
 
- public:
+  std::vector<std::string> collectionNames() const;
 
   /// @brief return the collection from a transaction
   TransactionCollection* collection(TRI_voc_cid_t cid, AccessMode::Type accessType);
@@ -69,6 +70,8 @@ struct TransactionState {
   
   /// @brief release collection locks for a transaction
   int unuseCollections(int nestingLevel);
+  
+  int lockCollections();
   
   /// @brief whether or not a transaction consists of a single operation
   bool isSingleOperation() const;
@@ -144,13 +147,15 @@ struct TransactionState {
   void clearQueryCache();
 
  public:
-  
   TRI_vocbase_t* _vocbase;            // vocbase
   TRI_voc_tid_t _id;                  // local trx id
   AccessMode::Type _type;             // access type (read|write)
   Transaction::Status _status;        // current status
+
+ private:
   SmallVector<TransactionCollection*>::allocator_type::arena_type _arena; // memory for collections
   SmallVector<TransactionCollection*> _collections; // list of participating collections
+ public:
   rocksdb::Transaction* _rocksTransaction;
   TransactionHints _hints;            // hints;
   int _nestingLevel;

@@ -85,6 +85,19 @@ TransactionState::~TransactionState() {
     delete (*it);
   }
 }
+  
+std::vector<std::string> TransactionState::collectionNames() const {
+  std::vector<std::string> result;
+  result.reserve(_collections.size());
+
+  for (auto& trxCollection : _collections) {
+    if (trxCollection->collection() != nullptr) {
+      result.emplace_back(trxCollection->collection()->name());
+    }
+  }
+
+  return result;
+}
 
 /// @brief return the collection from a transaction
 TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid, AccessMode::Type accessType) {
@@ -201,6 +214,17 @@ int TransactionState::unuseCollections(int nestingLevel) {
     (*it)->unuse(nestingLevel);
   }
 
+  return TRI_ERROR_NO_ERROR;
+}
+ 
+int TransactionState::lockCollections() { 
+  for (auto& trxCollection : _collections) {
+    int res = trxCollection->lock();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
   return TRI_ERROR_NO_ERROR;
 }
 

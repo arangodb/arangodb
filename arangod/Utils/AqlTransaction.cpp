@@ -101,14 +101,6 @@ LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
 /// order via an HTTP call. This method is used to implement that HTTP action.
 
 int AqlTransaction::lockCollections() {
-  auto trx = state();
-  for (auto& trxCollection : trx->_collections) {
-    int res = trxCollection->lock();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  }
-  return TRI_ERROR_NO_ERROR;
+  return state()->lockCollections();
 }
 

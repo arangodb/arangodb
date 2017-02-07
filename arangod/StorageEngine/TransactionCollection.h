@@ -32,7 +32,7 @@ namespace arangodb {
 class LogicalCollection;
 struct MMFilesDocumentOperation;
 class Transaction;
-struct TransactionState;
+class TransactionState;
 
 /// @brief collection used in a transaction
 class TransactionCollection {
