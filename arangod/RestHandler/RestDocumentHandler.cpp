@@ -206,7 +206,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   TRI_voc_rid_t ifNoneRid =
       extractRevision("if-none-match", isValidRevision);
   if (!isValidRevision) {
-    ifNoneRid = 1;    // an impossible rev, so precondition failed will happen
+    ifNoneRid = UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
 
   OperationOptions options;
@@ -215,7 +215,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   TRI_voc_rid_t ifRid =
       extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
-    ifRid = 1;    // an impossible rev, so precondition failed will happen
+    ifRid = UINT64_MAX;    // an impossible rev, so precondition failed will happen
   }
 
   VPackBuilder builder;
@@ -392,7 +392,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     bool isValidRevision;
     revision = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
-      revision = 1;   // an impossible revision, so precondition failed
+      revision = UINT64_MAX;   // an impossible revision, so precondition failed
     }
     VPackSlice keyInBody = body.get(StaticStrings::KeyString);
     if ((revision != 0 && TRI_ExtractRevisionId(body) != revision) ||
@@ -496,7 +496,7 @@ bool RestDocumentHandler::deleteDocument() {
     bool isValidRevision = false;
     revision = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
-      revision = 1;   // an impossible revision, so precondition failed
+      revision = UINT64_MAX;   // an impossible revision, so precondition failed
     }
   }
 

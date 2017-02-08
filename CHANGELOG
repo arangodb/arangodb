@@ -14,6 +14,10 @@ devel
   If-Match and If-None-Match headers from 400 (BAD) to 412 (PRECONDITION
   FAILED).
 
+* change undocumented behaviour in case of invalid revision ids in
+  JavaScript document operations from 1239 ("illegal document revision")
+  to 1200 ("conflict").
+
 v3.2.alpha1 (2017-02-05)
 ------------------------
 
