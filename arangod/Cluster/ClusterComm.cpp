@@ -277,6 +277,12 @@ std::shared_ptr<ClusterComm> ClusterComm::instance() {
       }
     }
   }
+  // We want to achieve by other means that nobody requests a copy of the
+  // shared_ptr when the singleton is already destroyed. Therefore we put
+  // an assertion despite the fact that we have checks for nullptr in
+  // all places that call this method. Assertions have no effect in released
+  // code at the customer's site.
+  // TRI_ASSERT(_theInstance != nullptr); //temporarily disabled until AQLFeature is done
   return _theInstance;
 }
 
