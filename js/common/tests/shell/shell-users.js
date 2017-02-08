@@ -35,7 +35,6 @@ var db = arangodb.db;
 
 var users = require("@arangodb/users");
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,12 +55,19 @@ function UsersSuite () {
       }
     }
 
-    try {
-      users.remove("hackers@arangodb.com");
-    }
-    catch (e2) {
-      // nope
-    }
+    [
+      "hackers@arangodb.com",
+      "this+is+also+a+username",
+      "this-is-also-a-username",
+      "this.is.also.a.username"
+    ].forEach(function(username) {
+      try {
+        users.remove(username);
+      }
+      catch (e2) {
+        // nope
+      }
+    });
   };
 
   return {
@@ -161,15 +167,23 @@ function UsersSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test save w/ email address pattern
+/// @brief test save w/ email address and other patterns
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSaveWithEmailAddressName : function () {
-      var username = "hackers@arangodb.com";
+    testSaveWithSomePatterns : function () {
+      var usernames = [
+        "hackers@arangodb.com",
+        "this+is+also+a+username",
+        "this-is-also-a-username",
+        "this.is.also.a.username"
+      ];
+
       var passwd = "arangodb-loves-you";
 
-      users.save(username, passwd);
-      assertEqual(username, c.firstExample({ user: username }).user);
+      usernames.forEach(function(username) {
+        users.save(username, passwd);
+        assertEqual(username, c.firstExample({ user: username }).user);
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
