@@ -35,7 +35,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/directories.h"
 
-#include "ApplicationFeatures/LanguageFeature.h"
+#include "UnitTests/Basics/icu-helper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
@@ -51,21 +51,8 @@
 
 struct CNormalizeStringTestSetup {
   CNormalizeStringTestSetup () {
-    std::string p;
-    std::string binaryPath = TRI_LocateBinaryPath(boost::unit_test::framework::master_test_suite().argv[0]);
-    void *icuDataPtr = arangodb::LanguageFeature::prepareIcu(SBIN_DIRECTORY, binaryPath, p);
-    if (!arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("", icuDataPtr)) {
-      std::string msg =
-        "cannot initialize ICU; please make sure ICU*dat is available; "
-        "the variable ICU_DATA='";
-      if (getenv("ICU_DATA") != nullptr) {
-        msg += getenv("ICU_DATA");
-      }
-      msg += "' should point the directory containing the ICU*dat file. We searched here: " + p;
-      BOOST_TEST_MESSAGE(msg);
-      BOOST_CHECK_EQUAL(false, true);
-    }
     BOOST_TEST_MESSAGE("setup utf8 string normalize test");
+    IcuInitializer::setup(boost::unit_test::framework::master_test_suite().argv[0]);
   }
 
   ~CNormalizeStringTestSetup () {

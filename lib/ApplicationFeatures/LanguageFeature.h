@@ -34,13 +34,14 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
-  static void* prepareIcu(std::string const& binaryPath, std::string const& binaryExecutionPath, std::string & path);
+  static void* prepareIcu(std::string const& binaryPath, std::string const& binaryExecutionPath, std::string& path);
 
  private:
   std::string _language;
   char const* _binaryPath;
-  void *_icuDataPtr;
+  void* _icuDataPtr;
 };
+
 }
 
 #endif
