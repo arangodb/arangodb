@@ -41,6 +41,8 @@ FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/${CMAKE_PROJECT_NAME}")
 
 set(INSTALL_ICU_DT_DEST "${CMAKE_INSTALL_DATAROOTDIR}/${CMAKE_PROJECT_NAME}")
 
+set(CMAKE_TEST_DIRECTORY "tests")
+
 include(InstallMacros)
 # install ----------------------------------------------------------------------
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
@@ -173,6 +175,7 @@ to_native_path("ICU_DT_DEST")
 to_native_path("CMAKE_INSTALL_SBINDIR")
 to_native_path("CMAKE_INSTALL_BINDIR")
 to_native_path("INSTALL_ICU_DT_DEST")
+to_native_path("CMAKE_TEST_DIRECTORY")
 
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/directories.h.in"

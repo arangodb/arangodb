@@ -58,7 +58,7 @@ void LanguageFeature::collectOptions(
                            new StringParameter(&_language));
 }
 
-void* LanguageFeature::prepareIcu(std::string const& binaryPath, std::string const& binaryExecutionPath, std::string& path) {
+void* LanguageFeature::prepareIcu(std::string const& binaryPath, std::string const& binaryExecutionPath, std::string& path, std::string const& binaryName) {
   char const* icuDataEnv = getenv("ICU_DATA");
 
   std::string fn("icudtl.dat");
@@ -71,6 +71,7 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath, std::string con
       LOG(WARN) << "failed to locate '" << fn << "' at '"<< path << "'";
     }
     std::string bpfn = binaryExecutionPath + TRI_DIR_SEPARATOR_STR  + fn;
+    
     if (TRI_IsRegularFile(fn.c_str())) {
       path = fn;
     }
@@ -78,11 +79,8 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath, std::string con
       path = bpfn;
     }
     else {
-#if _WIN32
-      path = TRI_LocateInstallDirectory(binaryPath.c_str());
-#else
-      path = TRI_DIR_SEPARATOR_STR;
-#endif
+      std::string argv_0 = binaryExecutionPath + TRI_DIR_SEPARATOR_STR + binaryName;
+      path = TRI_LocateInstallDirectory(argv_0.c_str(), binaryPath.c_str());
       path += ICU_DESTINATION_DIRECTORY TRI_DIR_SEPARATOR_STR + fn;
     }
     if (!TRI_IsRegularFile(path.c_str())) {
@@ -112,7 +110,8 @@ void LanguageFeature::prepare() {
   std::string p;
   auto context = ArangoGlobalContext::CONTEXT;
   std::string binaryExecutionPath = context->getBinaryPath();
-  _icuDataPtr = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p);
+  std::string binaryName = context->binaryName();
+  _icuDataPtr = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p, binaryName);
 
   if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_language, _icuDataPtr)) {
     LOG(FATAL) << "error initializing ICU with the contents of '" << p << "'";
