@@ -2391,7 +2391,7 @@ char* TRI_LocateConfigDirectory(char const* binaryPath) {
     return v;
   }
 
-  std::string r = TRI_LocateInstallDirectory(binaryPath);
+  std::string r = TRI_LocateInstallDirectory(nullptr, binaryPath);
 
   r += _SYSCONFDIR_;
 
