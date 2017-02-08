@@ -87,16 +87,23 @@ actions.defineHttp({
 
     let agency = ArangoAgency.get('', false, true).arango;
 
-    if (agency.Current.DBServers[serverId] !== undefined) {
+    let node = agency.Supervision.Health[serverId];
+    if (node === undefined) {
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND,
+        'unknown server id');
+      return;
+    }
+
+    if (node.Role != 'Coordinator') {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'removing dbservers not yet supported');
+        'only coordinators can be removed at this time');
       return;
     }
 
     let operations = {};
     operations['/arango/Coordinators/' + serverId] = {'op': 'delete'};
     operations['/arango/DBServers/' + serverId] = {'op': 'delete'};
-    operations['/arango/ServersRegistered/' + serverId] = {'op': 'delete'};
+    operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
     operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
     operations['/arango/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
 
