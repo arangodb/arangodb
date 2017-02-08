@@ -28,6 +28,7 @@
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
+#include "Aql/AqlFunctionFeature.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
@@ -118,6 +119,7 @@ static int runServer(int argc, char** argv) {
 
     server.addFeature(new ActionFeature(&server));
     server.addFeature(new AgencyFeature(&server));
+    server.addFeature(new aql::AqlFunctionFeature(&server));
     server.addFeature(new AuthenticationFeature(&server));
     server.addFeature(new BootstrapFeature(&server));
     server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));

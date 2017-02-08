@@ -28,15 +28,22 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Indexes/IndexFactory.h"
 #include "MMFiles/MMFilesCollectorCache.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+namespace v8 {
+class Isolate;
+}
 namespace arangodb {
+
 class LogicalCollection;
 class PhysicalCollection;
+class TransactionCollection;
+class TransactionState;
 
 class StorageEngine : public application_features::ApplicationFeature {
  public:
@@ -65,6 +72,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void stop() {}
   virtual void recoveryDone(TRI_vocbase_t* vocbase) {}
 
+  virtual TransactionState* createTransactionState(TRI_vocbase_t*) = 0;
+  virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
 
   // create storage-engine specific collection
   virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*) = 0;
@@ -251,6 +260,12 @@ class StorageEngine : public application_features::ApplicationFeature {
   /// @brief transfer markers into a collection
   virtual int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
                               MMFilesOperationsType const&) = 0;
+
+  // AQL functions
+  // -------------
+
+  /// @brief Add engine specific AQL functions.
+  virtual void addAqlFunctions() const = 0;
 
  protected:
   arangodb::LogicalCollection* registerCollection(

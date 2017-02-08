@@ -25,12 +25,13 @@
 
 #include "BlockCollector.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ResourceUsage.h"
+#include "Aql/AqlItemBlockManager.h"
 #include "Basics/Exceptions.h"
 
 using namespace arangodb::aql;
 
-BlockCollector::BlockCollector() : _blocks{_arena}, _totalSize(0) {}
+BlockCollector::BlockCollector(AqlItemBlockManager* blockManager) 
+    : _blockManager(blockManager), _blocks{_arena}, _totalSize(0) {}
 
 BlockCollector::~BlockCollector() { clear(); }
 
@@ -45,7 +46,7 @@ RegisterId BlockCollector::nrRegs() const {
 void BlockCollector::clear() {
   for (auto& it : _blocks) {
     it->eraseAll();
-    delete it;
+    _blockManager->returnBlock(it);
   }
   _blocks.clear();
   _totalSize = 0;
@@ -67,7 +68,7 @@ void BlockCollector::add(AqlItemBlock* block) {
   _totalSize += block->size();
 }
 
-AqlItemBlock* BlockCollector::steal(ResourceMonitor* resourceMonitor) {
+AqlItemBlock* BlockCollector::steal() {
   if (_blocks.empty()) {
     return nullptr;
   }
@@ -83,9 +84,10 @@ AqlItemBlock* BlockCollector::steal(ResourceMonitor* resourceMonitor) {
     // only got a single result. return it as it is
     result = _blocks[0];
   } else {
-    result = AqlItemBlock::concatenate(resourceMonitor, this);
+    result = AqlItemBlock::concatenate(_blockManager->resourceMonitor(), this);
     for (auto& it : _blocks) {
-      delete it;
+      it->eraseAll();
+      _blockManager->returnBlock(it);
     }
   }
 

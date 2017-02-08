@@ -54,7 +54,6 @@
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
-#include "Utils/TransactionState.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"

@@ -623,7 +623,6 @@ ClusterCommResult const ClusterComm::wait(
   JobGuard guard{SchedulerFeature::SCHEDULER};
   guard.block();
 
-
   CONDITION_LOCKER(locker, somethingReceived);
   if (ticketId == 0) {
     for (i = responses.begin(); i != responses.end(); i++) {

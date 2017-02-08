@@ -95,9 +95,16 @@ void RocksDBEngine::stop() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
 }
 
+TransactionState* RocksDBEngine::createTransactionState(TRI_vocbase_t* vocbase) {
+  return nullptr;
+}
+  
+TransactionCollection* RocksDBEngine::createTransactionCollection(TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) {
+  return nullptr;
+}
+
 // create storage-engine specific collection
 PhysicalCollection* RocksDBEngine::createPhysicalCollection(LogicalCollection* collection) {
-  TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
   return nullptr;
 }
 
@@ -432,6 +439,9 @@ int RocksDBEngine::transferMarkers(LogicalCollection* collection,
                                    MMFilesCollectorCache* cache,
                                    MMFilesOperationsType const& operations) {
   return TRI_ERROR_NO_ERROR;
+}
+
+void RocksDBEngine::addAqlFunctions() const {
 }
 
 void RocksDBEngine::verifyDirectories() {

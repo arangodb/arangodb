@@ -114,6 +114,10 @@ class HeartbeatBackgroundJob {
   }
 
   void operator()() {
+    // first tell the scheduler that this thread is working:
+    JobGuard guard(SchedulerFeature::SCHEDULER);
+    guard.work();
+
     double now = TRI_microtime();
     if (now > _startTime + 5.0) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT) << "ALARM: Scheduling background job "
@@ -134,10 +138,6 @@ void HeartbeatThread::runBackgroundJob() {
   uint64_t jobNr = ++_backgroundJobsLaunched;
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
   {
-    // First tell the scheduler that this thread is working:
-    JobGuard guard(SchedulerFeature::SCHEDULER);
-    guard.work();
-    // Now get to work:
     DBServerAgencySync job(this);
     job.work();
   }
@@ -150,6 +150,8 @@ void HeartbeatThread::runBackgroundJob() {
       jobNr = ++_backgroundJobsPosted;
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
       _launchAnotherBackgroundJob = false;
+
+      // the JobGuard is in the operator() of HeartbeatBackgroundJob
       _ioService->post(HeartbeatBackgroundJob(shared_from_this(),
                                               TRI_microtime()));
     } else {
@@ -804,6 +806,8 @@ void HeartbeatThread::syncDBServerStatusQuo() {
   uint64_t jobNr = ++_backgroundJobsPosted;
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
   _backgroundJobScheduledOrRunning = true;
+
+  // the JobGuard is in the operator() of HeartbeatBackgroundJob
   _ioService->post(HeartbeatBackgroundJob(shared_from_this(), TRI_microtime()));
 }
 

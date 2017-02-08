@@ -29,7 +29,7 @@
 #include "MMFiles/fulltext-index.h"
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
-#include "Utils/TransactionState.h"
+#include "StorageEngine/TransactionState.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

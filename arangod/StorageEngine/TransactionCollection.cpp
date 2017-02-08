@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,29 +20,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_FUNCTION_DEFINITIONS_H
-#define ARANGOD_AQL_FUNCTION_DEFINITIONS_H 1
+#include "TransactionCollection.h"
+#include "VocBase/LogicalCollection.h"
 
-#include "Basics/Common.h"
-#include "Aql/Function.h"
+using namespace arangodb;
 
-namespace arangodb {
-namespace velocypack {
-class Builder;
+std::string TransactionCollection::collectionName() const {
+  TRI_ASSERT(_collection != nullptr);
+  return _collection->name();
 }
-
-namespace aql {
-
-struct FunctionDefinitions {
-  /// @brief AQL internal function names
-  static std::unordered_map<int, std::string const> const InternalFunctionNames;
-  
-  /// @brief AQL user-callable function names
-  static std::unordered_map<std::string, Function const> FunctionNames;
-
-  static void toVelocyPack(arangodb::velocypack::Builder&);
-};
-}
-}
-
-#endif

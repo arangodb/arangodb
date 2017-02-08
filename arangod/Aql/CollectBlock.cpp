@@ -280,11 +280,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
       if (isTotalAggregation && _currentGroup.groupLength == 0) {
         // total aggregation, but have not yet emitted a group
-        res.reset(new AqlItemBlock(
-          _engine->getQuery()->resourceMonitor(),
-          1, 
-          getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()])
-        );
+        res.reset(requestBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
         emitGroup(nullptr, res.get(), skipped);
         result = res.release();
       }
@@ -299,11 +295,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
   TRI_ASSERT(cur != nullptr);
 
   if (!skipping) {
-    res.reset(new AqlItemBlock(
-      _engine->getQuery()->resourceMonitor(),
-      atMost,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()])
-    );
+    res.reset(requestBlock(atMost, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
     TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
     inheritRegisters(cur, res.get(), _pos);
@@ -398,7 +390,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           hasMore = ExecutionBlock::getBlock(atLeast, atMost);
         } catch (...) {
           // prevent leak
-          delete cur;
+          returnBlock(cur);
           throw;
         }
       }
@@ -417,16 +409,16 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
             TRI_ASSERT(cur != nullptr);
             emitGroup(cur, res.get(), skipped);
             ++skipped;
-            res->shrink(skipped);
+            res->shrink(skipped, false);
           } else {
             ++skipped;
           }
-          delete cur;
+          returnBlock(cur);
           _done = true;
           result = res.release();
           return TRI_ERROR_NO_ERROR;
         } catch (...) {
-          delete cur;
+          returnBlock(cur);
           throw;
         }
       }
@@ -449,14 +441,14 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
       // block
       _currentGroup.addValues(cur, _collectRegister);
 
-      delete cur;
+      returnBlock(cur);
       cur = _buffer.front();
     }
   }
 
   if (!skipping) {
     TRI_ASSERT(skipped > 0);
-    res->shrink(skipped);
+    res->shrink(skipped, false);
   }
 
   result = res.release();
@@ -639,9 +631,9 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
   TRI_DEFER(cleanup());
 
   auto buildResult = [&](AqlItemBlock const* src) {
-    auto nrRegs = en->getRegisterPlan()->nrRegs[en->getDepth()];
+    RegisterId nrRegs = en->getRegisterPlan()->nrRegs[en->getDepth()];
 
-    auto result = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), allGroups.size(), nrRegs);
+    std::unique_ptr<AqlItemBlock> result(requestBlock(allGroups.size(), nrRegs));
 
     if (src != nullptr) {
       inheritRegisters(src, result.get(), 0);

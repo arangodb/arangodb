@@ -86,8 +86,8 @@ class ManagedDocumentResult;
 struct OperationCursor;
 struct OperationOptions;
 class TransactionContext;
-struct TransactionState;
-struct TransactionCollection;
+class TransactionState;
+class TransactionCollection;
 
 class Transaction {
   friend class traverser::BaseTraverserEngine;

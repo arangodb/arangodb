@@ -93,11 +93,7 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
   }
 
   if (!skipping) {
-    result = new AqlItemBlock(
-      _engine->getQuery()->resourceMonitor(),
-      1, 
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]
-    );
+    result = requestBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
 
     try {
       if (_inputRegisterValues != nullptr) {
@@ -152,7 +148,10 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
 }
 
 FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
-    : ExecutionBlock(engine, en), _inReg(ExecutionNode::MaxRegisterId) {
+    : ExecutionBlock(engine, en), 
+      _inReg(ExecutionNode::MaxRegisterId),
+      _collector(&engine->_itemBlockManager) {
+
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
   TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _inReg = it->second.registerId;
@@ -200,7 +199,7 @@ bool FilterBlock::getBlock(size_t atLeast, size_t atMost) {
     }
 
     _buffer.pop_front();  // Block was useless, just try again
-    delete cur;           // free this block
+    returnBlock(cur);     // free this block
   
     throwIfKilled();  // check if we were aborted
   }
@@ -263,7 +262,7 @@ int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
         _collector.add(std::move(more));
       }
       skipped += _chosen.size() - _pos;
-      delete cur;
+      returnBlock(cur);
       _buffer.pop_front();
       _chosen.clear();
       _pos = 0;
@@ -279,7 +278,7 @@ int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
         }
         _collector.add(cur);
       } else {
-        delete cur;
+        returnBlock(cur);
       }
       _buffer.pop_front();
       _chosen.clear();
@@ -288,7 +287,7 @@ int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   }
 
   if (!skipping) {
-    result = _collector.steal(_engine->getQuery()->resourceMonitor());
+    result = _collector.steal();
   }
   return TRI_ERROR_NO_ERROR;
 
@@ -451,7 +450,7 @@ AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
 
-  auto stripped = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), n, 1);
+  std::unique_ptr<AqlItemBlock> stripped(requestBlock(n, 1));
 
   for (size_t i = 0; i < n; i++) {
     auto a = res->getValueReference(i, registerId);

@@ -151,6 +151,9 @@ void TRI_DisallowMemoryFailures();
 static inline void TRI_DisallowMemoryFailures() {}
 #endif
 
+/// @brief securely zero memory
+void TRI_ZeroMemory(void* m, size_t size);
+
 /// @brief initialize memory subsystem
 void TRI_InitializeMemory(void);
 
