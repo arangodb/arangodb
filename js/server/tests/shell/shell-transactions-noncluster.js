@@ -1950,11 +1950,11 @@ function transactionOperationsSuite () {
           write: [ cn1 ]
         },
         action : function () {
-          var r = c1.FULLTEXT(idx, "prefix:steam");
-          assertEqual(2, r.documents.length);
+          var r = c1.fulltext("text", "prefix:steam", idx).toArray();
+          assertEqual(2, r.length);
           
-          r = c1.FULLTEXT(idx, "steam");
-          assertEqual(1, r.documents.length);
+          r = c1.fulltext("text", "steam", idx).toArray();
+          assertEqual(1, r.length);
         }
       };
 
