@@ -94,11 +94,11 @@ actions.defineHttp({
     }
 
     let operations = {};
-    operations['/arango/Coordinators/' + serverId ] = {'op': 'delete'};
-    operations['/arango/DBServers/' + serverId ] = {'op': 'delete'};
-    operations['/arango/ServersRegistered/' + serverId ] = {'op': 'delete'};
-    operations['/arango/Supervision/Health/' + serverId ] = {'op': 'delete'};
-    operations['/arango/MapUniqueToShortID/' + serverId ] = {'op': 'delete'};
+    operations['/arango/Coordinators/' + serverId] = {'op': 'delete'};
+    operations['/arango/DBServers/' + serverId] = {'op': 'delete'};
+    operations['/arango/ServersRegistered/' + serverId] = {'op': 'delete'};
+    operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
+    operations['/arango/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
 
     let preconditions = {};
     preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
@@ -106,7 +106,7 @@ actions.defineHttp({
     try {
       global.ArangoAgency.write([[operations, preconditions]]);
     } catch (e) {
-      if (e.code == 412) {
+      if (e.code === 412) {
         actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED,
           'you can only remove failed servers');
         return;
