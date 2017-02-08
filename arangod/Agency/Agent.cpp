@@ -46,13 +46,15 @@ Agent::Agent(config_t const& config)
   : Thread("Agent"),
     _config(config),
     _lastCommitIndex(0),
+    _lastAppliedIndex(0),
+    _leaderCommitIndex(0),
     _spearhead(this),
     _readDB(this),
     _transient(this),
     _nextCompationAfter(_config.compactionStepSize()),
     _inception(std::make_unique<Inception>(this)),
     _activator(nullptr),
-    _compactor(std::make_unique<Compactor>(this)),
+    _compactor(this),
     _ready(false) {
   _state.configure(this);
   _constituent.configure(this);
@@ -234,12 +236,13 @@ void Agent::reportIn(std::string const& peerId, index_t index) {
         _readDB.apply(
           _state.slices(
             _lastCommitIndex + 1, index), _lastCommitIndex, _constituent.term());
-        _lastCommitIndex = index;
+        
+        _lastCommitIndex   = index;
+        _leaderCommitIndex = index;
+        _lastAppliedIndex  = index;
 
-        if (_lastCommitIndex >= _nextCompationAfter) {
-          _compactor->wakeUp();
-          _state.compact(_lastCommitIndex-_config.compactionKeepSize());
-          _nextCompationAfter += _config.compactionStepSize();
+        if (_leaderCommitIndex >= _nextCompationAfter) {
+          _compactor.wakeUp();
         }
 
       }
@@ -275,6 +278,11 @@ bool Agent::recvAppendEntriesRPC(
     return false;
   }
 
+  {
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+    _leaderCommitIndex = leaderCommitIndex;
+  }
+  
   size_t nqs = queries->slice().length();
 
   // State machine, _lastCommitIndex to advance atomically
@@ -294,9 +302,7 @@ bool Agent::recvAppendEntriesRPC(
         _lastCommitIndex = _state.log(queries, ndups);
         
         if (_lastCommitIndex >= _nextCompationAfter) {
-          _compactor->wakeUp();
-          _state.compact(_lastCommitIndex-_config.compactionKeepSize());
-          _nextCompationAfter += _config.compactionStepSize();
+          _compactor.wakeUp();
         }
 
       } catch (std::exception const&) {
@@ -306,7 +312,6 @@ bool Agent::recvAppendEntriesRPC(
       
     }
   }
-  
 
   return true;
 }
@@ -525,6 +530,8 @@ bool Agent::load() {
   }
 
   reportIn(id(), _state.lastLog().index);
+
+  _compactor.start();
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
   if (size() == 1 || !this->isStopping()) {
@@ -943,6 +950,9 @@ void Agent::beginShutdown() {
     _inception->beginShutdown();
   } 
 
+  // Compactor
+  _compactor.beginShutdown();
+
   // Stop key value stores
   _spearhead.beginShutdown();
   _readDB.beginShutdown();
@@ -1125,17 +1135,36 @@ void Agent::notify(query_t const& message) {
 }
 
 // Rebuild key value stores
-bool Agent::rebuildDBs() {
+arangodb::consensus::index_t Agent::rebuildDBs() {
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
+  // Apply logs from last applied index to leader's commit index
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
+    << "Rebuilding kvstores from index "
+    << _lastAppliedIndex << " to " << _leaderCommitIndex;
+  
   _spearhead.apply(
-    _state.slices(0, _lastCommitIndex), _lastCommitIndex, _constituent.term());
+    _state.slices(_lastAppliedIndex, _leaderCommitIndex),
+    _leaderCommitIndex, _constituent.term());
+  
   _readDB.apply(
-    _state.slices(0, _lastCommitIndex), _lastCommitIndex, _constituent.term());
+    _state.slices(_lastAppliedIndex, _leaderCommitIndex),
+    _leaderCommitIndex, _constituent.term());
+  _lastAppliedIndex = _leaderCommitIndex;
+  
+  return _lastAppliedIndex;
 
-  return true;
 }
+
+
+/// Compact read db
+void Agent::compact() {
+  rebuildDBs();
+  _state.compact(_lastAppliedIndex-_config.compactionKeepSize());
+  _nextCompationAfter += _config.compactionStepSize();
+}
+
 
 /// Last commit index
 arangodb::consensus::index_t Agent::lastCommitted() const {
@@ -1147,6 +1176,7 @@ arangodb::consensus::index_t Agent::lastCommitted() const {
 void Agent::lastCommitted(arangodb::consensus::index_t lastCommitIndex) {
   MUTEX_LOCKER(mutexLocker, _ioLock);
   _lastCommitIndex = lastCommitIndex;
+  _leaderCommitIndex = lastCommitIndex;
 }
 
 /// Last log entry
@@ -1178,6 +1208,7 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
   // Catch up with commit
   try {
     _lastCommitIndex = std::stoul(compaction.get("_key").copyString());
+    _leaderCommitIndex = _lastCommitIndex;
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
   }

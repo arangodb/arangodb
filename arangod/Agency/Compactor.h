@@ -24,6 +24,7 @@
 #ifndef ARANGOD_CONSENSUS_COMPACTOR_H
 #define ARANGOD_CONSENSUS_COMPACTOR_H 1
 
+#include "Agency/AgencyCommon.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 
@@ -38,7 +39,7 @@ class Compactor : public arangodb::Thread {
 public:
 
   // @brief Construct with agent pointer
-  explicit Compactor(Agent const* _agent);
+  explicit Compactor(Agent* _agent);
 
   virtual ~Compactor();
 
@@ -51,10 +52,13 @@ public:
 
   /// @brief Wake up compaction
   void wakeUp();
+
+  /// @brief Do compaction
+  void compact();
   
 private:
   
-  Agent const* _agent; //< @brief Agent
+  Agent* _agent; //< @brief Agent
   basics::ConditionVariable _cv;
   long _waitInterval; //< @brief Wait interval 
   
