@@ -94,7 +94,7 @@ actions.defineHttp({
       return;
     }
 
-    if (node.Role != 'Coordinator') {
+    if (node.Role !== 'Coordinator') {
       actions.resultError(req, res, actions.HTTP_BAD,
         'only coordinators can be removed at this time');
       return;
