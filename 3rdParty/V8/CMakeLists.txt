@@ -11,7 +11,7 @@ if (POLICY CMP0048)
 endif ()
 
 project(V8)
-set(V8_VERSION 5.0.71.39)
+set(V8_VERSION 5.7.0.0)
 
 # create target directory
 
