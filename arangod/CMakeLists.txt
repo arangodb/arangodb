@@ -100,6 +100,7 @@ SET(ARANGOD_SOURCES
   Agency/UnassumedLeadership.cpp
   Agency/v8-agency.cpp
   Aql/Aggregator.cpp
+  Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
   Aql/AqlValue.cpp
@@ -131,7 +132,6 @@ SET(ARANGOD_SOURCES
   Aql/Expression.cpp
   Aql/FixedVarExpressionContext.cpp
   Aql/Function.cpp
-  Aql/FunctionDefinitions.cpp
   Aql/Functions.cpp
   Aql/Graphs.cpp
   Aql/IndexBlock.cpp

@@ -24,7 +24,7 @@
 #include "MMFilesAqlFunctions.h"
 
 #include "Aql/Function.h"
-#include "Aql/FunctionDefinitions.h"
+#include "Aql/AqlFunctionFeature.h"
 #include "MMFiles/fulltext-index.h"
 #include "MMFiles/fulltext-query.h"
 #include "MMFiles/fulltext-result.h"
@@ -425,14 +425,15 @@ AqlValue MMFilesAqlFunctions::Within(
 
 
 void MMFilesAqlFunctions::RegisterFunctions() {
+  auto functions = AqlFunctionFeature::AQLFUNCTIONS;
+  TRI_ASSERT(functions != nullptr);
+
   // fulltext functions
-  FunctionDefinitions::add({"FULLTEXT", "AQL_FULLTEXT", "hs,s,s|n", true, false,
-                            true, false, true, &MMFilesAqlFunctions::Fulltext,
-                            NotInCoordinator});
-  FunctionDefinitions::add({"NEAR", "AQL_NEAR", "hs,n,n|nz,s", true, false,
-                            true, false, true, &MMFilesAqlFunctions::Near,
-                            NotInCoordinator});
-  FunctionDefinitions::add({"WITHIN", "AQL_WITHIN", "hs,n,n,n|s", true, false,
-                            true, false, true, &MMFilesAqlFunctions::Within,
-                            NotInCoordinator});
+  functions->add({"FULLTEXT", "AQL_FULLTEXT", "hs,s,s|n", true, false, true,
+                 false, true, &MMFilesAqlFunctions::Fulltext,
+                 NotInCoordinator});
+  functions->add({"NEAR", "AQL_NEAR", "hs,n,n|nz,s", true, false, true, false,
+                  true, &MMFilesAqlFunctions::Near, NotInCoordinator});
+  functions->add({"WITHIN", "AQL_WITHIN", "hs,n,n,n|s", true, false, true,
+                  false, true, &MMFilesAqlFunctions::Within, NotInCoordinator});
 }
