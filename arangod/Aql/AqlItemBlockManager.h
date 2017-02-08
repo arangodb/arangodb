@@ -27,6 +27,8 @@
 #include "Basics/Common.h"
 #include "Aql/types.h"
 
+#include <array>
+
 namespace arangodb {
 namespace aql {
 
