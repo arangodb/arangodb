@@ -28,7 +28,7 @@ void IcuInitializer::setup(char const* path) {
   initialized = true;
   std::string p;
   std::string binaryPath = TRI_LocateBinaryPath(path);
-  icuDataPtr = arangodb::LanguageFeature::prepareIcu(SBIN_DIRECTORY, binaryPath, p);
+  icuDataPtr = arangodb::LanguageFeature::prepareIcu(TEST_DIRECTORY, binaryPath, p, "basics_suite");
   if (icuDataPtr == nullptr ||
       !arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("", icuDataPtr)) {
     std::string msg =

@@ -2370,16 +2370,11 @@ void TRI_SetUserTempPath(std::string const& path) { TempPath = path; }
 //
 /// Will always end in a directory separator.
 ////////////////////////////////////////////////////////////////////////////////
-
-#if _WIN32
-
-std::string TRI_LocateInstallDirectory(char const* binaryPath) {
-  std::string thisPath = TRI_LocateBinaryPath(nullptr);
+std::string TRI_LocateInstallDirectory(char const* argv_0, char const* binaryPath) {
+  std::string thisPath = TRI_LocateBinaryPath(argv_0);
   return TRI_GetInstallRoot(thisPath, binaryPath) + 
     std::string(1, TRI_DIR_SEPARATOR_CHAR);
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the configuration directory
@@ -2407,7 +2402,7 @@ char* TRI_LocateConfigDirectory(char const* binaryPath) {
 
 #elif defined(_SYSCONFDIR_)
 
-char* TRI_LocateConfigDirectory(const char* binaryPath) {
+char* TRI_LocateConfigDirectory(char const* binaryPath) {
   char* v = LocateConfigDirectoryEnv();
 
   if (v != nullptr) {
