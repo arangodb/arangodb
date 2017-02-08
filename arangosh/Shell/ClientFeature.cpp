@@ -63,7 +63,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new StringParameter(&_databaseName));
 
   options->addOption("--server.authentication",
-                     "require authentication when connecting",
+                     "require authentication credentials when connecting (does not affect the server-side authentication settings)",
                      new BooleanParameter(&_authentication));
 
   options->addOption("--server.username",
@@ -89,9 +89,9 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "request timeout in seconds",
                      new DoubleParameter(&_requestTimeout));
   
-  options->addOption("--server.max-packet-size",
-                     "maximum packet size (in bytes) for client/server communication",
-                     new UInt64Parameter(&_maxPacketSize));
+  options->addHiddenOption("--server.max-packet-size",
+                           "maximum packet size (in bytes) for client/server communication",
+                           new UInt64Parameter(&_maxPacketSize));
 
   std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4, 5};
 
