@@ -2757,29 +2757,36 @@ static void JS_DecodeRev(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string rev = TRI_ObjectToString(args[0]);
   uint64_t revInt = HybridLogicalClock::decodeTimeStamp(rev);
-  uint64_t timeMilli = HybridLogicalClock::extractTime(revInt);
-  uint64_t count = HybridLogicalClock::extractCount(revInt);
-  
-  time_t timeSeconds = timeMilli / 1000;
-  uint64_t millis = timeMilli % 1000;
-  struct tm date;
-#ifdef _WIN32
-  gmtime_s(&date, &timeSeconds);
-#else
-  gmtime_r(&timeSeconds, &date);
-#endif
-  char buffer[32];
-  strftime(buffer, 32, "%Y-%m-%dT%H:%M:%S.000Z", &date);
-  buffer[20] = static_cast<char>(millis / 100) + '0';
-  buffer[21] = ((millis / 10) % 10) + '0';
-  buffer[22] = (millis % 10) + '0';
-  buffer[24] = 0;
-
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("date"),
-              TRI_V8_ASCII_STRING(buffer));
-  result->Set(TRI_V8_ASCII_STRING("count"),
-              v8::Number::New(isolate, static_cast<double>(count)));
+  if (revInt == UINT64_MAX) {
+    result->Set(TRI_V8_ASCII_STRING("date"),
+                TRI_V8_ASCII_STRING("illegal"));
+    result->Set(TRI_V8_ASCII_STRING("count"),
+                v8::Number::New(isolate, 0.0));
+  } else {
+    uint64_t timeMilli = HybridLogicalClock::extractTime(revInt);
+    uint64_t count = HybridLogicalClock::extractCount(revInt);
+    
+    time_t timeSeconds = timeMilli / 1000;
+    uint64_t millis = timeMilli % 1000;
+    struct tm date;
+#ifdef _WIN32
+    gmtime_s(&date, &timeSeconds);
+#else
+    gmtime_r(&timeSeconds, &date);
+#endif
+    char buffer[32];
+    strftime(buffer, 32, "%Y-%m-%dT%H:%M:%S.000Z", &date);
+    buffer[20] = static_cast<char>(millis / 100) + '0';
+    buffer[21] = ((millis / 10) % 10) + '0';
+    buffer[22] = (millis % 10) + '0';
+    buffer[24] = 0;
+
+    result->Set(TRI_V8_ASCII_STRING("date"),
+                TRI_V8_ASCII_STRING(buffer));
+    result->Set(TRI_V8_ASCII_STRING("count"),
+                v8::Number::New(isolate, static_cast<double>(count)));
+  }
 
   TRI_V8_RETURN(result);
   

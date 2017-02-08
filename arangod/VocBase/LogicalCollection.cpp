@@ -2354,8 +2354,8 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
     VPackValueLength l;
     char const* p = oldRev.getString(l);
     revisionId = TRI_StringToRid(p, l, isOld, false);
-    if (isOld) {
-      // Do not tolerate old revision ticks:
+    if (isOld || revisionId == UINT64_MAX) {
+      // Do not tolerate old revision ticks or invalid ones:
       revisionId = TRI_HybridLogicalClock();
     }
   } else {
@@ -2499,8 +2499,8 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
       VPackValueLength l;
       char const* p = oldRev.getString(l);
       revisionId = TRI_StringToRid(p, l, isOld, false);
-      if (isOld) {
-        // Do not tolerate old revisions
+      if (isOld || revisionId == UINT64_MAX) {
+        // Do not tolerate old revisions or illegal ones
         revisionId = TRI_HybridLogicalClock();
       }
     }
@@ -3364,7 +3364,7 @@ int LogicalCollection::newObjectForInsert(
     VPackValueLength l;
     char const* p = oldRev.getString(l);
     TRI_voc_rid_t oldRevision = TRI_StringToRid(p, l, isOld, false);
-    if (isOld) {
+    if (isOld || oldRevision == UINT64_MAX) {
       oldRevision = TRI_HybridLogicalClock();
     }
     newRevSt = TRI_RidToString(oldRevision);

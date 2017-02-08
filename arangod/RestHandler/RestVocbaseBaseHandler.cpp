@@ -595,8 +595,8 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
     TRI_voc_rid_t rid = 0;
 
     bool isOld;
-    rid = TRI_StringToRidWithCheck(s, e - s, isOld, false);
-    isValid = (rid != 0);
+    rid = TRI_StringToRid(s, e - s, isOld, false);
+    isValid = (rid != 0 && rid != UINT64_MAX);
 
     return rid;
   }
