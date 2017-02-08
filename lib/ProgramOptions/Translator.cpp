@@ -93,7 +93,7 @@ std::string arangodb::options::EnvironmentTranslator(std::string const& value,
           if (v == nullptr) {
 #if _WIN32
             if (TRI_EqualString(k.c_str(), "ROOTDIR")) {
-              vv = TRI_LocateInstallDirectory(binaryPath);
+              vv = TRI_LocateInstallDirectory(nullptr, binaryPath);
 
               if (!vv.empty()) {
                 char c = *(vv.rbegin());

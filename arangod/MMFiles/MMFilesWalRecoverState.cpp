@@ -351,7 +351,7 @@ bool MMFilesWalRecoverState::InitialScanMarker(TRI_df_marker_t const* marker,
       if (payloadSlice.isObject()) {
         TRI_voc_rid_t revisionId =
             Transaction::extractRevFromDocument(payloadSlice);
-        if (revisionId > state->maxRevisionId) {
+        if (revisionId != UINT64_MAX && revisionId > state->maxRevisionId) {
           state->maxRevisionId = revisionId;
         }
       }

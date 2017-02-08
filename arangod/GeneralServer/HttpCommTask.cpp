@@ -589,9 +589,8 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
 
   if (found) {
     uint64_t timeStampInt =
-        arangodb::basics::HybridLogicalClock::decodeTimeStampWithCheck(
-            timeStamp);
-    if (timeStampInt != 0) {
+        arangodb::basics::HybridLogicalClock::decodeTimeStamp(timeStamp);
+    if (timeStampInt != 0 && timeStampInt != UINT64_MAX) {
       TRI_HybridLogicalClock(timeStampInt);
     }
   }

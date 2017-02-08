@@ -31,7 +31,7 @@ using namespace arangodb::consensus;
 
 
 // @brief Construct with agent
-Compactor::Compactor(Agent const* agent) :
+Compactor::Compactor(Agent* agent) :
   Thread("Compactor"), _agent(agent), _waitInterval(1000000) {
 }
 
@@ -45,14 +45,18 @@ Compactor::~Compactor() {
 // @brief Run
 void Compactor::run () {
 
-  CONDITION_LOCKER(guard, _cv);
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting compator personality";
 
-  while (!this->isStopping()) {
-    _cv.wait(_waitInterval);
-    Node node("compact");
-    arangodb::consensus::index_t commitIndex = _agent->readDB(node);
-    LOG(DEBUG) << "Compacting up to " << commitIndex;
+  CONDITION_LOCKER(guard, _cv);
+      
+  while (true) {
+    _cv.wait();
     
+    if (this->isStopping()) {
+      break;
+    }
+    
+    _agent->compact();
   }
   
 }
@@ -70,6 +74,8 @@ void Compactor::wakeUp () {
 // @brief Begin shutdown
 void Compactor::beginShutdown() {
 
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Shutting down compator personality";
+    
   Thread::beginShutdown();
 
   {

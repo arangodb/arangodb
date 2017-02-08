@@ -61,6 +61,75 @@ var _ = require('lodash');
 // //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
+  url: '_admin/cluster/removeServer',
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (req.requestType !== actions.POST ||
+      !require('@arangodb/cluster').isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only DELETE requests are allowed and only to coordinators');
+      return;
+    }
+
+    let serverId;
+    try {
+      serverId = JSON.parse(req.requestBody);
+    } catch (e) {
+    }
+
+    if (typeof serverId !== 'string') {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        'required parameter ServerID was not given');
+      return;
+    }
+
+    let agency = ArangoAgency.get('', false, true).arango;
+
+    let node = agency.Supervision.Health[serverId];
+    if (node === undefined) {
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND,
+        'unknown server id');
+      return;
+    }
+
+    if (node.Role !== 'Coordinator') {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        'only coordinators can be removed at this time');
+      return;
+    }
+
+    let operations = {};
+    operations['/arango/Coordinators/' + serverId] = {'op': 'delete'};
+    operations['/arango/DBServers/' + serverId] = {'op': 'delete'};
+    operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
+    operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
+    operations['/arango/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
+
+    let preconditions = {};
+    preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
+
+    try {
+      global.ArangoAgency.write([[operations, preconditions]]);
+    } catch (e) {
+      if (e.code === 412) {
+        actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED,
+          'you can only remove failed servers');
+        return;
+      }
+      throw e;
+    }
+
+    actions.resultOk(req, res, actions.HTTP_OK, true);
+    /*DBOnly:
+
+    Current/Databases/YYY/XXX
+    */
+  }
+});
+
+actions.defineHttp({
   url: '_admin/cluster-test',
   prefix: true,
 

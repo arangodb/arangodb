@@ -612,7 +612,7 @@ int revisionOnCoordinator(std::string const& dbname,
             char const* p = r.getString(len);
             TRI_voc_rid_t cmp = TRI_StringToRid(p, len, false);
 
-            if (cmp > rid) {
+            if (cmp != UINT64_MAX && cmp > rid) {
               // get the maximum value
               rid = cmp;
             }

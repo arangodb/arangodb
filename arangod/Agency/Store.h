@@ -1,4 +1,5 @@
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -144,6 +145,12 @@ class Store : public arangodb::Thread {
   /// @brief Root node
   Node _node;
 };
+
+
+inline std::ostream& operator<<(std::ostream& o, Store const& store) {
+  return store.get().print(o);
+}
+
 }
 }
 
