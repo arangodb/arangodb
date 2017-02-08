@@ -30,7 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesToken.h"
-#include "Utils/TransactionState.h"
+#include "StorageEngine/TransactionState.h"
 
 using namespace arangodb;
 

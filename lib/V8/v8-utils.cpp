@@ -29,6 +29,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <signal.h>
 
 #include "3rdParty/valgrind/valgrind.h"
 #include "unicode/normalizer2.h"
@@ -3648,10 +3649,13 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // extract the arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("killExternal(<external-identifier>)");
+  if (args.Length() < 1 || args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("killExternal(<external-identifier>, <signal>)");
   }
-
+  int signal = SIGTERM;
+  if (args.Length() == 2) {
+    signal = static_cast<int>(TRI_ObjectToInt64(args[0]));
+  }
   TRI_external_id_t pid;
   memset(&pid, 0, sizeof(TRI_external_id_t));
 
@@ -3662,7 +3666,7 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #endif
 
   // return the result
-  if (TRI_KillExternalProcess(pid)) {
+  if (TRI_KillExternalProcess(pid, signal)) {
     TRI_V8_RETURN_TRUE();
   }
   TRI_V8_RETURN_FALSE();

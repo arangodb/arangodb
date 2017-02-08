@@ -24,8 +24,8 @@
 #include "AqlTransaction.h"
 #include "CollectionNameResolver.h"
 #include "Logger/Logger.h"
-#include "Utils/TransactionCollection.h"
-#include "Utils/TransactionState.h"
+#include "StorageEngine/TransactionCollection.h"
+#include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -93,7 +93,6 @@ LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
   return trxColl->collection();
 }
 
-
 /// @brief lockCollections, this is needed in a corner case in AQL: we need
 /// to lock all shards in a controlled way when we set up a distributed
 /// execution engine. To this end, we prevent the standard mechanism to
@@ -102,14 +101,6 @@ LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
 /// order via an HTTP call. This method is used to implement that HTTP action.
 
 int AqlTransaction::lockCollections() {
-  auto trx = state();
-  for (auto& trxCollection : trx->_collections) {
-    int res = trxCollection->lock();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  }
-  return TRI_ERROR_NO_ERROR;
+  return state()->lockCollections();
 }
 

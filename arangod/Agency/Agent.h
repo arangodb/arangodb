@@ -28,6 +28,7 @@
 #include "Agency/AgentActivator.h"
 #include "Agency/AgentCallback.h"
 #include "Agency/AgentConfiguration.h"
+#include "Agency/Compactor.h"
 #include "Agency/Constituent.h"
 #include "Agency/Inception.h"
 #include "Agency/State.h"
@@ -160,6 +161,9 @@ class Agent : public arangodb::Thread {
 
   /// @brief State machine
   State const& state() const;
+
+  /// @brief Get read store and compaction index
+  arangodb::consensus::index_t readDB(Node&) const;
 
   /// @brief Get read store
   Store const& readDB() const;
@@ -302,6 +306,9 @@ class Agent : public arangodb::Thread {
 
   /// @brief Activator thread for the leader to wake up a sleeping agent from pool
   std::unique_ptr<AgentActivator> _activator;
+
+  /// @brief Compactor
+  std::unique_ptr<Compactor> _compactor;
 
   /// @brief Agent is ready for RAFT
   std::atomic<bool> _ready;

@@ -2406,7 +2406,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
       plan->registerNode(gatherNode);
       TRI_ASSERT(remoteNode);
       gatherNode->addDependency(remoteNode);
-      if (!elements.empty()) {
+      if (!elements.empty() && gatherNode->collection()->numberOfShards() > 1) {
         gatherNode->setElements(elements);
       }
 
@@ -2810,10 +2810,12 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
           // then unlink the filter/calculator from the plan
           plan->unlinkNode(inspectNode);
           // and re-insert into plan in front of the remoteNode
-          if(thisSortNode->_reinsertInCluster){
+          if (thisSortNode->_reinsertInCluster){
             plan->insertDependency(rn, inspectNode);
           }
-          gatherNode->setElements(thisSortNode->getElements());
+          if (gatherNode->collection()->numberOfShards() > 1) {
+            gatherNode->setElements(thisSortNode->getElements());
+          }
           modified = true;
           // ready to rumble!
       }

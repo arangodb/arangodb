@@ -22,12 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleCollectionTransaction.h"
+#include "StorageEngine/TransactionCollection.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationResult.h"
 #include "Utils/Transaction.h"
-#include "Utils/TransactionCollection.h"
 #include "Utils/TransactionContext.h"
-#include "Utils/TransactionState.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -137,8 +137,7 @@ bool SingleCollectionTransaction::hasDitch() const {
 std::string SingleCollectionTransaction::name() { 
   trxCollection(); // will ensure we have the _trxCollection object set
   TRI_ASSERT(_trxCollection != nullptr);
-  TRI_ASSERT(_trxCollection->collection() != nullptr);
-  return _trxCollection->collection()->name(); 
+  return _trxCollection->collectionName();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

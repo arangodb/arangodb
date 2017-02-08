@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Indexes/IndexFactory.h"
 #include "MMFiles/MMFilesCollectorCache.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -41,6 +42,8 @@ namespace arangodb {
 
 class LogicalCollection;
 class PhysicalCollection;
+class TransactionCollection;
+class TransactionState;
 
 class StorageEngine : public application_features::ApplicationFeature {
  public:
@@ -69,6 +72,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void stop() {}
   virtual void recoveryDone(TRI_vocbase_t* vocbase) {}
 
+  virtual TransactionState* createTransactionState(TRI_vocbase_t*) = 0;
+  virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
 
   // create storage-engine specific collection
   virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*) = 0;

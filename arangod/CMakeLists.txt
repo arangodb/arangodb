@@ -78,6 +78,7 @@ SET(ARANGOD_SOURCES
   Agency/AgentCallback.cpp
   Agency/AgentConfiguration.cpp
   Agency/CleanOutServer.cpp
+  Agency/Compactor.cpp
   Agency/Constituent.cpp
   Agency/FailedFollower.cpp
   Agency/FailedLeader.cpp
@@ -231,6 +232,8 @@ SET(ARANGOD_SOURCES
   MMFiles/MMFilesRevisionsCache.cpp
   MMFiles/MMFilesSkiplistIndex.cpp
   MMFiles/MMFilesSynchronizerThread.cpp
+  MMFiles/MMFilesTransactionCollection.cpp
+  MMFiles/MMFilesTransactionState.cpp
   MMFiles/MMFilesWalLogfile.cpp
   MMFiles/MMFilesWalRecoverState.cpp
   MMFiles/MMFilesWalRecoveryFeature.cpp
@@ -307,6 +310,8 @@ SET(ARANGOD_SOURCES
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/RocksDBEngine.cpp
   StorageEngine/RocksDBIndexFactory.cpp
+  StorageEngine/TransactionCollection.cpp
+  StorageEngine/TransactionState.cpp
   Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
@@ -318,9 +323,7 @@ SET(ARANGOD_SOURCES
   Utils/SingleCollectionTransaction.cpp
   Utils/StandaloneTransactionContext.cpp
   Utils/Transaction.cpp
-  Utils/TransactionCollection.cpp
   Utils/TransactionContext.cpp
-  Utils/TransactionState.cpp
   Utils/V8TransactionContext.cpp
   Utils/WorkMonitorArangod.cpp
   V8Server/FoxxQueuesFeature.cpp

@@ -775,6 +775,12 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 
   // Set a few variables needed for our work:
   auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN,
+                  "shutting down server");
+    return;
+  }
 
   std::unique_ptr<ClusterCommResult> res;
   if (!useVpp) {

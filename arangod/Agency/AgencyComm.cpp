@@ -1529,7 +1529,15 @@ AgencyCommResult AgencyComm::send(
       << "': " << body;
 
   arangodb::httpclient::SimpleHttpClient client(connection, timeout, false);
-  client.setJwt(ClusterComm::instance()->jwt());
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr only happens during controlled shutdown
+    result._message = "could not send request to agency because of shutdown";
+    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "could not send request to agency";
+
+    return result;
+  }
+  client.setJwt(cc->jwt());
   client.keepConnectionOnDestruction(true);
 
   // set up headers

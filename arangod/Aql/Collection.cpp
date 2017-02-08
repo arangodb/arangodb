@@ -122,6 +122,10 @@ std::vector<std::string> Collection::shardKeys() const {
   return keys;
 }
 
+size_t Collection::numberOfShards() const {
+  return getCollection()->numberOfShards();
+}
+
 /// @brief whether or not the collection uses the default sharding
 bool Collection::usesDefaultSharding() const {
   return getCollection()->usesDefaultShardKeys();

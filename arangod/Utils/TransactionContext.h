@@ -47,7 +47,7 @@ class CollectionNameResolver;
 class DocumentDitch;
 class LogicalCollection;
 class Transaction;
-struct TransactionState;
+class TransactionState;
 
 class TransactionContext {
  public:

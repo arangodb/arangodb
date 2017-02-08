@@ -42,6 +42,8 @@
 #include "MMFiles/MMFilesIndexFactory.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
+#include "MMFiles/MMFilesTransactionCollection.h"
+#include "MMFiles/MMFilesTransactionState.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -182,6 +184,14 @@ void MMFilesEngine::start() {
 // write requests to the storage engine after this call
 void MMFilesEngine::stop() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
+}
+  
+TransactionState* MMFilesEngine::createTransactionState(TRI_vocbase_t* vocbase) {
+  return new MMFilesTransactionState(vocbase);
+}
+  
+TransactionCollection* MMFilesEngine::createTransactionCollection(TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) {
+  return new MMFilesTransactionCollection(state, cid, accessType, nestingLevel);
 }
 
 // create storage-engine specific collection

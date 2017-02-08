@@ -28,12 +28,15 @@
 #include "Basics/Mutex.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "StorageEngine/StorageEngine.h"
+#include "VocBase/AccessMode.h"
 
 #include <velocypack/Builder.h>
 
 namespace arangodb {
 class MMFilesCleanupThread;
 class MMFilesCompactorThread;
+class TransactionCollection;
+class TransactionState;
 
 /// @brief collection file structure
 struct MMFilesEngineCollectionFiles {
@@ -70,6 +73,9 @@ class MMFilesEngine final : public StorageEngine {
 
   // called when recovery is finished
   void recoveryDone(TRI_vocbase_t* vocbase) override;
+
+  TransactionState* createTransactionState(TRI_vocbase_t*) override;
+  TransactionCollection* createTransactionCollection(TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) override;
 
   // create storage-engine specific collection
   PhysicalCollection* createPhysicalCollection(LogicalCollection*) override;

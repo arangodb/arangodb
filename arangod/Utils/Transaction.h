@@ -86,7 +86,7 @@ class ManagedDocumentResult;
 struct OperationCursor;
 struct OperationOptions;
 class TransactionContext;
-struct TransactionState;
+class TransactionState;
 class TransactionCollection;
 
 class Transaction {

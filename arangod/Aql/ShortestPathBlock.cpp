@@ -579,7 +579,7 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t, size_t atMost) {
       // we can only return nullptr iff the buffer is empty.
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
-        delete cur;
+        returnBlock(cur);
         _pos = 0;
       }
       auto r = getSome(atMost, atMost);
@@ -624,7 +624,7 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t, size_t atMost) {
     // Advance read position for next call
     if (++_pos >= cur->size()) {
       _buffer.pop_front();  // does not throw
-      delete cur;
+      returnBlock(cur);
       _pos = 0;
     }
   }

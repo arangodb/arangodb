@@ -206,7 +206,10 @@ void AqlItemBlock::destroy() {
 }
 
 /// @brief shrink the block to the specified number of rows
-void AqlItemBlock::shrink(size_t nrItems) {
+/// if sweep is set, then the superfluous rows are cleaned
+/// if sweep is not set, the caller has to ensure that the
+/// superfluous rows are empty
+void AqlItemBlock::shrink(size_t nrItems, bool sweep) {
   TRI_ASSERT(nrItems > 0);
 
   if (nrItems == _nrItems) {
@@ -220,28 +223,30 @@ void AqlItemBlock::shrink(size_t nrItems) {
                                    "cannot use shrink() to increase block");
   }
 
-  // erase all stored values in the region that we freed
-  for (size_t i = nrItems; i < _nrItems; ++i) {
-    for (RegisterId j = 0; j < _nrRegs; ++j) {
-      AqlValue& a(_data[_nrRegs * i + j]);
+  if (sweep) {
+    // erase all stored values in the region that we freed
+    for (size_t i = nrItems; i < _nrItems; ++i) {
+      for (RegisterId j = 0; j < _nrRegs; ++j) {
+        AqlValue& a(_data[_nrRegs * i + j]);
 
-      if (a.requiresDestruction()) {
-        auto it = _valueCount.find(a);
+        if (a.requiresDestruction()) {
+          auto it = _valueCount.find(a);
 
-        if (it != _valueCount.end()) {
-          TRI_ASSERT((*it).second > 0);
+          if (it != _valueCount.end()) {
+            TRI_ASSERT((*it).second > 0);
 
-          if (--((*it).second) == 0) {
-            decreaseMemoryUsage(a.memoryUsage());
-            a.destroy();
-            try {
-              _valueCount.erase(it);
-            } catch (...) {
+            if (--((*it).second) == 0) {
+              decreaseMemoryUsage(a.memoryUsage());
+              a.destroy();
+              try {
+                _valueCount.erase(it);
+              } catch (...) {
+              }
             }
           }
         }
+        a.erase();
       }
-      a.erase();
     }
   }
     
@@ -249,6 +254,39 @@ void AqlItemBlock::shrink(size_t nrItems) {
 
   // adjust the size of the block
   _nrItems = nrItems;
+  _data.resize(_nrItems * _nrRegs);
+}
+
+void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
+  TRI_ASSERT(_valueCount.empty());
+  TRI_ASSERT(nrRegs > 0);
+  TRI_ASSERT(nrRegs <= ExecutionNode::MaxRegisterId);
+
+  size_t const targetSize = nrItems * nrRegs;
+  size_t const currentSize = _nrItems * _nrRegs;
+  TRI_ASSERT(currentSize <= _data.size());
+
+  if (targetSize > _data.size()) {
+    increaseMemoryUsage(sizeof(AqlValue) * (targetSize - currentSize));
+    try {
+      _data.resize(targetSize);
+    } catch (...) {
+      decreaseMemoryUsage(sizeof(AqlValue) * (targetSize - currentSize));
+      throw;
+    }
+  } else if (targetSize < _data.size()) {
+    decreaseMemoryUsage(sizeof(AqlValue) * (currentSize - targetSize));
+    try {
+      _data.resize(targetSize);
+    } catch (...) {
+      increaseMemoryUsage(sizeof(AqlValue) * (currentSize - targetSize));
+      throw;
+    }
+  }
+
+  TRI_ASSERT(_data.size() >= targetSize);
+  _nrItems = nrItems;
+  _nrRegs = nrRegs;
 }
 
 /// @brief clears out some columns (registers), this deletes the values if

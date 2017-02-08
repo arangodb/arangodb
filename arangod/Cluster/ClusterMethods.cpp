@@ -562,6 +562,10 @@ int revisionOnCoordinator(std::string const& dbname,
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -636,6 +640,10 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -701,6 +709,10 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   result.clear();
 
@@ -771,6 +783,10 @@ int createDocumentOnCoordinator(
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -906,6 +922,10 @@ int deleteDocumentOnCoordinator(
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -1135,6 +1155,10 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -1191,6 +1215,10 @@ int getDocumentOnCoordinator(
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -1462,6 +1490,10 @@ int fetchEdgesFromEngines(
     size_t& filtered,
     size_t& read) {
   auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
   // TODO map id => ServerID if possible
   // And go fast-path
 
@@ -1546,6 +1578,10 @@ void fetchVerticesFromEngines(
         result,
     VPackBuilder& builder) {
   auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return;
+  }
   // TODO map id => ServerID if possible
   // And go fast-path
 
@@ -1636,6 +1672,10 @@ int getFilteredEdgesOnCoordinator(
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo =
@@ -1755,6 +1795,10 @@ int modifyDocumentOnCoordinator(
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo =
@@ -2005,6 +2049,10 @@ int modifyDocumentOnCoordinator(
 int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
   std::vector<ServerID> DBservers = ci->getCurrentDBServers();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::string url = std::string("/_admin/wal/flush?waitForSync=") +
