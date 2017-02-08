@@ -42,6 +42,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer* server,
     : ApplicationFeature(server, "Export"),
       _collections(),
       _graphName(),
+      _xgmmlLabelAttribute("label"),
       _typeExport("json"),
       _xgmmlLabelOnly(false),
       _outputDirectory(),
@@ -49,6 +50,8 @@ ExportFeature::ExportFeature(application_features::ApplicationServer* server,
       _progress(true),
       _firstLine(true),
       _skippedDeepNested(0),
+      _currentCollection(),
+      _currentGraph(),
       _result(result) {
   requiresElevatedPrivileges(false);
   setOptional(false);
@@ -73,6 +76,9 @@ void ExportFeature::collectOptions(
   options->addOption("--xgmml-label-only", "export only xgmml label",
                      new BooleanParameter(&_xgmmlLabelOnly));
 
+  options->addOption("--xgmml-label-attribute", "specify document attribute that will be the xgmml label",
+                     new StringParameter(&_xgmmlLabelAttribute));
+
   options->addOption("--output-directory", "output directory",
                      new StringParameter(&_outputDirectory));
 
@@ -82,9 +88,9 @@ void ExportFeature::collectOptions(
   options->addOption("--progress", "show progress",
                      new BooleanParameter(&_progress));
 
-  std::unordered_set<std::string> exportsWithUpperCase = {"csv", "json", "jsonl", "xgmml",
-                                                          "CSV", "JSON", "JSONL", "XGMML"};
-  std::unordered_set<std::string> exports = {"csv", "json", "jsonl", "xgmml"};
+  std::unordered_set<std::string> exportsWithUpperCase = {"json", "jsonl", "xgmml",
+                                                          "JSON", "JSONL", "XGMML"};
+  std::unordered_set<std::string> exports = {"json", "jsonl", "xgmml"};
   std::vector<std::string> exportsVector(exports.begin(), exports.end());
   std::string exportsJoined = StringUtils::join(exportsVector, ", ");
   options->addOption(
@@ -114,7 +120,7 @@ void ExportFeature::validateOptions(
   }
 
   if (_graphName.empty() && _collections.empty()) {
-    LOG(FATAL) << "expecting at least one collection ore one graph name";
+    LOG(FATAL) << "expecting at least one collection or one graph name";
     FATAL_ERROR_EXIT();
   }
 
@@ -208,10 +214,10 @@ void ExportFeature::start() {
     graphExport(httpClient.get());
   }
 
-  if (_typeExport == "json" || _typeExport == "jsonl" || _typeExport == "csv") {
+  if (_typeExport == "json" || _typeExport == "jsonl") {
     if (_collections.size()) {
       collectionExport(httpClient.get());
-    } else if (_graphName.size()) {
+    } else if (_typeExport == "xgmml" && _graphName.size()) {
       graphExport(httpClient.get());
     }
   }
@@ -227,6 +233,8 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
       std::cout << "# Exporting collection '" << collection << "'..." << std::endl;
     }
 
+    _currentCollection = collection;
+
     std::string fileName =
         _outputDirectory + TRI_DIR_SEPARATOR_STR + collection + "." + _typeExport;
 
@@ -235,14 +243,9 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
       TRI_UnlinkFile(fileName.c_str());
     }
 
-    int fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                    S_IRUSR | S_IWUSR);
-
-    if (fd < 0) {
-      errorMsg = "cannot write to file '" + fileName + "'";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
-    }
+    int fd = -1;
     TRI_DEFER(TRI_CLOSE(fd));
+
     std::string const url = "_api/cursor";
 
     VPackBuilder post;
@@ -253,14 +256,22 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
     post.close();
     post.close();
 
+    std::shared_ptr<VPackBuilder> parsedBody = httpCall(httpClient, url, rest::RequestType::POST, post.toJson());
+    VPackSlice body = parsedBody->slice();
+
+    fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                    S_IRUSR | S_IWUSR);
+
+    if (fd < 0) {
+      errorMsg = "cannot write to file '" + fileName + "'";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
+    }
+
     _firstLine = true;
     if (_typeExport == "json") {
       std::string openingBracket = "[\n";
       writeToFile(fd, openingBracket, fileName);
     }
-
-    std::shared_ptr<VPackBuilder> parsedBody = httpCall(httpClient, url, rest::RequestType::POST, post.toJson());
-    VPackSlice body = parsedBody->slice();
 
     writeCollectionBatch(fd, VPackArrayIterator(body.get("result")), fileName);
 
@@ -272,7 +283,7 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
       writeCollectionBatch(fd, VPackArrayIterator(body.get("result")), fileName);
     }
     if (_typeExport == "json") {
-      std::string closingBracket = "]";
+      std::string closingBracket = "]\n";
       writeToFile(fd, closingBracket , fileName);
     }
   }
@@ -320,7 +331,12 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClie
   if (response->wasHttpError()) {
 
     if (response->getHttpReturnCode() == 404) {
-      LOG(FATAL) << "Collection or graph not found.";
+      if (_currentGraph.size()) {
+        LOG(FATAL) << "Graph '" << _currentGraph << "' not found.";
+      } else if (_currentCollection.size()) {
+        LOG(FATAL) << "Collection " << _currentCollection << "not found.";
+      }
+
       FATAL_ERROR_EXIT();
     } else {
       parsedBody = response->getBodyVelocyPack();
@@ -352,6 +368,8 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClie
 void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
   std::string errorMsg;
 
+  _currentGraph = _graphName;
+
   if (_collections.empty()) {
     if (_progress) {
       std::cout << "# Export graph '" << _graphName << "'" << std::endl;
@@ -359,7 +377,6 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
     std::string const url = "/_api/gharial/" + _graphName;
     std::shared_ptr<VPackBuilder> parsedBody = httpCall(httpClient, url, rest::RequestType::GET);
     VPackSlice body = parsedBody->slice();
-
 
     std::unordered_set<std::string> collections;
 
@@ -400,7 +417,11 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
   TRI_DEFER(TRI_CLOSE(fd));
 
   std::string xmlHeader = R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<graph label="small example" 
+<graph label=")";
+  writeToFile(fd, xmlHeader, fileName);
+  writeToFile(fd, _graphName, fileName);
+
+  xmlHeader = R"(" 
 xmlns:dc="http://purl.org/dc/elements/1.1/" 
 xmlns:xlink="http://www.w3.org/1999/xlink" 
 xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" 
@@ -408,7 +429,6 @@ xmlns:cy="http://www.cytoscape.org"
 xmlns="http://www.cs.rpi.edu/XGMML" 
 directed="1">
 )";
-
   writeToFile(fd, xmlHeader, fileName);
 
   for (auto const& collection : _collections) {

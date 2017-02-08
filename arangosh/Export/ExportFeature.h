@@ -62,6 +62,7 @@ class ExportFeature final : public application_features::ApplicationFeature,
  private:
   std::vector<std::string> _collections;
   std::string _graphName;
+  std::string _xgmmlLabelAttribute;
   std::string _typeExport;
   bool        _xgmmlLabelOnly;
 
@@ -71,6 +72,8 @@ class ExportFeature final : public application_features::ApplicationFeature,
 
   bool _firstLine;
   uint64_t _skippedDeepNested;
+  std::string _currentCollection;
+  std::string _currentGraph;
 
   int* _result;
 };
