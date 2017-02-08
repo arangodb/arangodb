@@ -30,7 +30,7 @@ namespace arangodb {
 namespace aql {
 struct Function;
 
-struct MMFilesFunctions : public Functions {
+struct MMFilesAqlFunctions : public Functions {
   static AqlValue Fulltext(arangodb::aql::Query*, arangodb::Transaction*,
                            VPackFunctionParameters const&);
 

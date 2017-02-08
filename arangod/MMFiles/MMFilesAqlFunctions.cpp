@@ -171,7 +171,7 @@ static arangodb::MMFilesGeoIndex* getGeoIndex(
 }
 
 /// @brief function FULLTEXT
-AqlValue MMFilesFunctions::Fulltext(
+AqlValue MMFilesAqlFunctions::Fulltext(
     arangodb::aql::Query* query, arangodb::Transaction* trx,
     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "FULLTEXT", 3, 4);
@@ -310,9 +310,9 @@ AqlValue MMFilesFunctions::Fulltext(
 
 
 /// @brief function NEAR
-AqlValue MMFilesFunctions::Near(arangodb::aql::Query* query,
-                                arangodb::Transaction* trx,
-                                VPackFunctionParameters const& parameters) {
+AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
+                                   arangodb::Transaction* trx,
+                                   VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "NEAR", 3, 5);
 
   AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
@@ -373,9 +373,9 @@ AqlValue MMFilesFunctions::Near(arangodb::aql::Query* query,
 }
 
 /// @brief function WITHIN
-AqlValue MMFilesFunctions::Within(arangodb::aql::Query* query,
-                                  arangodb::Transaction* trx,
-                                  VPackFunctionParameters const& parameters) {
+AqlValue MMFilesAqlFunctions::Within(
+    arangodb::aql::Query* query, arangodb::Transaction* trx,
+    VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "WITHIN", 4, 5);
 
   AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
@@ -424,15 +424,15 @@ AqlValue MMFilesFunctions::Within(arangodb::aql::Query* query,
 }
 
 
-void MMFilesFunctions::RegisterFunctions() {
+void MMFilesAqlFunctions::RegisterFunctions() {
   // fulltext functions
   FunctionDefinitions::add({"FULLTEXT", "AQL_FULLTEXT", "hs,s,s|n", true, false,
-                            true, false, true, &MMFilesFunctions::Fulltext,
+                            true, false, true, &MMFilesAqlFunctions::Fulltext,
                             NotInCoordinator});
   FunctionDefinitions::add({"NEAR", "AQL_NEAR", "hs,n,n|nz,s", true, false,
-                            true, false, true, &MMFilesFunctions::Near,
+                            true, false, true, &MMFilesAqlFunctions::Near,
                             NotInCoordinator});
   FunctionDefinitions::add({"WITHIN", "AQL_WITHIN", "hs,n,n,n|s", true, false,
-                            true, false, true, &MMFilesFunctions::Within,
+                            true, false, true, &MMFilesAqlFunctions::Within,
                             NotInCoordinator});
 }

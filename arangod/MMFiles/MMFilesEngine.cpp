@@ -2049,10 +2049,8 @@ int MMFilesEngine::transferMarkers(LogicalCollection* collection,
 }
 
 /// @brief Add engine specific AQL functions.
-///        Parameter is a callback that has to be called
-///        once for every funtion.
 void MMFilesEngine::addAqlFunctions() const {
-  aql::MMFilesFunctions::RegisterFunctions();
+  aql::MMFilesAqlFunctions::RegisterFunctions();
 }
 
 /// @brief transfer markers into a collection, actual work

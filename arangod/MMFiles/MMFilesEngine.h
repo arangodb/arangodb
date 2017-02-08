@@ -248,8 +248,7 @@ class MMFilesEngine final : public StorageEngine {
                       MMFilesOperationsType const&) override;
 
   /// @brief Add engine specific AQL functions.
-  ///        Parameter is a callback that has to be called
-  ///        once for every funtion.
+
   void addAqlFunctions() const override;
 
  private:

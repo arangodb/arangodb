@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Aql/Functions.h"
 #include "Indexes/IndexFactory.h"
 #include "MMFiles/MMFilesCollectorCache.h"
 #include "VocBase/voc-types.h"
@@ -35,10 +34,10 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-namespace arangodb {
-namespace aql {
-struct Function;
+namespace v8 {
+class Isolate;
 }
+namespace arangodb {
 
 class LogicalCollection;
 class PhysicalCollection;
@@ -261,8 +260,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // -------------
 
   /// @brief Add engine specific AQL functions.
-  ///        Parameter is a callback that has to be called
-  ///        once for every funtion.
   virtual void addAqlFunctions() const = 0;
 
  protected:
