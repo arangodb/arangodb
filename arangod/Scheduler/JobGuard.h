@@ -50,6 +50,7 @@ class JobGuard {
     }
 
     ++_isBusy;
+    _isBusyFlag = true;
   }
 
   void work() {
@@ -58,6 +59,7 @@ class JobGuard {
     }
 
     ++_isWorking;
+    _isWorkingFlag = true;
   }
 
   void block() {
@@ -66,27 +68,31 @@ class JobGuard {
     }
     
     ++_isBlocked;
+    _isBlockedFlag = true;
   }
 
   void release() {
-    if (0 < _isBusy) {
+    if (_isBusyFlag) {
       --_isBusy;
+      _isBusyFlag = false;
 
       if (0 == _isBusy) {
         _scheduler->unenterThread();
       }
     }
     
-    if (0 < _isWorking) {
+    if (_isWorkingFlag) {
       --_isWorking;
+      _isWorkingFlag = false;
 
       if (0 == _isWorking) {
         _scheduler->unworkThread();
       }
     }
 
-    if (0 < _isBlocked) {
+    if (_isBlockedFlag) {
       --_isBlocked;
+      _isBlockedFlag = false;
 
       if (0 == _isBlocked) {
         _scheduler->unblockThread();
@@ -96,6 +102,10 @@ class JobGuard {
 
  private:
   rest::Scheduler* _scheduler;
+
+ bool _isBusyFlag = false;
+ bool _isWorkingFlag = false;
+ bool _isBlockedFlag = false;
 
   static thread_local size_t _isBusy;
   static thread_local size_t _isWorking;
