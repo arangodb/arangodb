@@ -63,9 +63,7 @@ static size_t _approxThreadNumber() {
   const size_t procNum = TRI_numberProcessors();
   if (procNum <= 1)
     return 1;
-  else
-    return procNum / 2;
-  // else return procNum;// use full performance on cluster
+  else return procNum - 1;// use full performance on cluster
 }
 
 void PregelFeature::start() {
