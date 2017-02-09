@@ -180,14 +180,14 @@ function delete_api_index (req, res) {
     return;
   }
 
-  var iid = parseInt(decodeURIComponent(req.suffix[1]), 10);
-  var dropped = collection.dropIndex(name + "/" + iid);
+  var id = name + '/' + req.suffix[1];
+  var dropped = collection.dropIndex(id);
 
   if (dropped) {
-    actions.resultOk(req, res, actions.HTTP_OK, { id : name + "/" + iid });
+    actions.resultOk(req, res, actions.HTTP_OK, { id : id });
   }
   else {
-    actions.indexNotFound(req, res, collection, name + "/" + iid);
+    actions.indexNotFound(req, res, collection, id);
   }
 }
 
