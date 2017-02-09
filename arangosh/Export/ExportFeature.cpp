@@ -50,6 +50,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer* server,
       _progress(true),
       _firstLine(true),
       _skippedDeepNested(0),
+      _httpRequestsDone(0),
       _currentCollection(),
       _currentGraph(),
       _result(result) {
@@ -210,19 +211,32 @@ void ExportFeature::start() {
             << client->databaseName() << "', username: '" << client->username()
             << "'" << std::endl;
 
-  if (_typeExport == "xgmml") {
-    graphExport(httpClient.get());
-  }
+  uint64_t exportedSize = 0;
 
   if (_typeExport == "json" || _typeExport == "jsonl") {
     if (_collections.size()) {
       collectionExport(httpClient.get());
-    } else if (_typeExport == "xgmml" && _graphName.size()) {
-      graphExport(httpClient.get());
+
+      for(auto const& collection : _collections) {
+        std::string filePath = _outputDirectory + TRI_DIR_SEPARATOR_STR + collection + "." + _typeExport;
+        int64_t fileSize = TRI_SizeFile(filePath.c_str());
+
+        if (0 < fileSize) {
+          exportedSize += fileSize;
+        }
+      }
+    }
+  } else if (_typeExport == "xgmml" && _graphName.size()) {
+    graphExport(httpClient.get());
+    std::string filePath = _outputDirectory + TRI_DIR_SEPARATOR_STR + _graphName + "." + _typeExport;
+    int64_t fileSize = TRI_SizeFile(filePath.c_str());
+
+    if (0 < fileSize) {
+      exportedSize += fileSize;
     }
   }
 
-  std::cout << _xgmmlLabelAttribute << std::endl;
+  std::cout << "Processed " <<  _collections.size() << " collection(s), wrote " << exportedSize << " Byte(s), " << _httpRequestsDone << " HTTP request(s)" << std::endl;
 
   *_result = ret;
 }
@@ -321,6 +335,7 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClie
 
   std::unique_ptr<SimpleHttpResult> response(
       httpClient->request(requestType, url, postBody.c_str(), postBody.size()));
+  _httpRequestsDone++;
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
@@ -473,7 +488,6 @@ void ExportFeature::writeGraphBatch(int fd, VPackArrayIterator it, std::string c
   std::string xmlTag;
 
   for(auto const& doc : it) {
-    std::cout << _xgmmlLabelAttribute << std::endl;
     if (doc.hasKey("_from")) {
       xmlTag = "<edge label=\"" + (doc.hasKey(_xgmmlLabelAttribute) && doc.get(_xgmmlLabelAttribute).isString() ? doc.get(_xgmmlLabelAttribute).copyString() : "Default-Label") +
                "\" source=\"" + doc.get("_from").copyString() + "\" target=\"" + doc.get("_to").copyString() + "\"";

@@ -72,6 +72,7 @@ class ExportFeature final : public application_features::ApplicationFeature,
 
   bool _firstLine;
   uint64_t _skippedDeepNested;
+  uint64_t _httpRequestsDone;
   std::string _currentCollection;
   std::string _currentGraph;
 
