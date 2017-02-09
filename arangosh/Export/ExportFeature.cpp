@@ -439,10 +439,6 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
   writeToFile(fd, _graphName, fileName);
 
   xmlHeader = R"(" 
-xmlns:dc="http://purl.org/dc/elements/1.1/" 
-xmlns:xlink="http://www.w3.org/1999/xlink" 
-xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" 
-xmlns:cy="http://www.cytoscape.org" 
 xmlns="http://www.cs.rpi.edu/XGMML" 
 directed="1">
 )";
