@@ -53,10 +53,13 @@ TraverserEngineRegistry::~TraverserEngineRegistry() {
 
 /// @brief Create a new Engine and return it's id
 TraverserEngineID TraverserEngineRegistry::createNew(TRI_vocbase_t* vocbase,
-                                                     VPackSlice engineInfo) {
+                                                     VPackSlice engineInfo,
+                                                     double ttl) {
   TraverserEngineID id = TRI_NewTickServer();
   TRI_ASSERT(id != 0);
   auto info = std::make_unique<EngineInfo>(vocbase, engineInfo);
+  info->_timeToLive = ttl;
+  info->_expires = TRI_microtime() + ttl;
 
   WRITE_LOCKER(writeLocker, _lock);
   TRI_ASSERT(_engines.find(id) == _engines.end());
@@ -89,7 +92,7 @@ BaseTraverserEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
 }
 
 /// @brief Returns the engine to the registry. Someone else can now use it.
-void TraverserEngineRegistry::returnEngine(TraverserEngineID id) {
+void TraverserEngineRegistry::returnEngine(TraverserEngineID id, double ttl) {
   WRITE_LOCKER(writeLocker, _lock);
   auto e = _engines.find(id);
   if (e == _engines.end()) {
@@ -102,6 +105,11 @@ void TraverserEngineRegistry::returnEngine(TraverserEngineID id) {
       auto engine = e->second;
       _engines.erase(e);
       delete engine;
+    } else {
+      if (ttl >= 0.0) {
+        e->second->_timeToLive = ttl;
+      }
+      e->second->_expires = TRI_microtime() + e->second->_timeToLive;
     }
   }
 }
@@ -131,3 +139,35 @@ void TraverserEngineRegistry::destroy(TraverserEngineID id, bool doLock) {
 
   delete engine;
 }
+
+/// @brief expireEngines
+void TraverserEngineRegistry::expireEngines() {
+  double now = TRI_microtime();
+  std::vector<TraverserEngineID> toDelete;
+
+  {
+    WRITE_LOCKER(writeLocker, _lock);
+    for (auto& y : _engines) {
+      // y.first is an TraverserEngineID and
+      // y.second is an EngineInfo*
+      EngineInfo*& ei = y.second;
+      if (!ei->_isInUse && now > ei->_expires) {
+        toDelete.emplace_back(y.first);
+      }
+    }
+  }
+
+  for (auto& p : toDelete) {
+    try {  // just in case
+      destroy(p, true);
+    } catch (...) {
+    }
+  }
+}
+
+/// @brief return number of registered engines
+size_t TraverserEngineRegistry::numberRegisteredEngines() {
+  READ_LOCKER(readLocker, _lock);
+  return _engines.size();
+}
+

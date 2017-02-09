@@ -32,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/TraverserEngineRegistry.h"
 #include "Cluster/v8-cluster.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
@@ -40,6 +41,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
@@ -195,9 +197,14 @@ void DatabaseManagerThread::run() {
 
         // The following is only necessary after a wait:
         auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
-
         if (queryRegistry != nullptr) {
           queryRegistry->expireQueries();
+        }
+
+        auto engineRegistry
+          = TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY;
+        if (engineRegistry != nullptr) {
+          engineRegistry->expireEngines();
         }
 
         // on a coordinator, we have no cleanup threads for the databases
