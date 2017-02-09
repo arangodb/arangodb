@@ -1138,13 +1138,8 @@ int DatabaseFeature::createApplicationDirectory(std::string const& name,
     res = TRI_CreateRecursiveDirectory(path.c_str(), systemError, errorMessage);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      if (MMFilesLogfileManager::instance()->isInRecovery()) {
-        LOG(TRACE) << "created application directory '" << path
-                   << "' for database '" << name << "'";
-      } else {
-        LOG(INFO) << "created application directory '" << path
-                  << "' for database '" << name << "'";
-      }
+      LOG(TRACE) << "created application directory '" << path
+                 << "' for database '" << name << "'";
     } else if (res == TRI_ERROR_FILE_EXISTS) {
       LOG(INFO) << "unable to create application directory '" << path
                 << "' for database '" << name << "': " << errorMessage;
