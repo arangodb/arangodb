@@ -222,6 +222,8 @@ void ExportFeature::start() {
     }
   }
 
+  std::cout << _xgmmlLabelAttribute << std::endl;
+
   *_result = ret;
 }
 
@@ -471,8 +473,10 @@ void ExportFeature::writeGraphBatch(int fd, VPackArrayIterator it, std::string c
   std::string xmlTag;
 
   for(auto const& doc : it) {
+    std::cout << _xgmmlLabelAttribute << std::endl;
     if (doc.hasKey("_from")) {
-      xmlTag = "<edge label=\"" + (doc.hasKey("label") ? doc.get("label").copyString() : "Default-Label") + "\" source=\"" + doc.get("_from").copyString() + "\" target=\"" + doc.get("_to").copyString() + "\"";
+      xmlTag = "<edge label=\"" + (doc.hasKey(_xgmmlLabelAttribute) ? doc.get(_xgmmlLabelAttribute).copyString() : "Default-Label") +
+               "\" source=\"" + doc.get("_from").copyString() + "\" target=\"" + doc.get("_to").copyString() + "\"";
       writeToFile(fd, xmlTag, fileName);
       if (!_xgmmlLabelOnly) {
         xmlTag = ">\n";
@@ -492,7 +496,8 @@ void ExportFeature::writeGraphBatch(int fd, VPackArrayIterator it, std::string c
       }
 
     } else {
-      xmlTag = "<node label=\"" + (doc.hasKey("label") ? doc.get("label").copyString() : "Default-Label") + "\" id=\"" + doc.get("_id").copyString() + "\"";
+      xmlTag = "<node label=\"" + (doc.hasKey(_xgmmlLabelAttribute) ? doc.get(_xgmmlLabelAttribute).copyString() : "Default-Label") +
+               "\" id=\"" + doc.get("_id").copyString() + "\"";
       writeToFile(fd, xmlTag, fileName);
       if (!_xgmmlLabelOnly) {
         xmlTag = ">\n";
