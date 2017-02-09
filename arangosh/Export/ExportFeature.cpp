@@ -475,7 +475,7 @@ void ExportFeature::writeGraphBatch(int fd, VPackArrayIterator it, std::string c
   for(auto const& doc : it) {
     std::cout << _xgmmlLabelAttribute << std::endl;
     if (doc.hasKey("_from")) {
-      xmlTag = "<edge label=\"" + (doc.hasKey(_xgmmlLabelAttribute) ? doc.get(_xgmmlLabelAttribute).copyString() : "Default-Label") +
+      xmlTag = "<edge label=\"" + (doc.hasKey(_xgmmlLabelAttribute) && doc.get(_xgmmlLabelAttribute).isString() ? doc.get(_xgmmlLabelAttribute).copyString() : "Default-Label") +
                "\" source=\"" + doc.get("_from").copyString() + "\" target=\"" + doc.get("_to").copyString() + "\"";
       writeToFile(fd, xmlTag, fileName);
       if (!_xgmmlLabelOnly) {
@@ -496,7 +496,7 @@ void ExportFeature::writeGraphBatch(int fd, VPackArrayIterator it, std::string c
       }
 
     } else {
-      xmlTag = "<node label=\"" + (doc.hasKey(_xgmmlLabelAttribute) ? doc.get(_xgmmlLabelAttribute).copyString() : "Default-Label") +
+      xmlTag = "<node label=\"" + (doc.hasKey(_xgmmlLabelAttribute) && doc.get(_xgmmlLabelAttribute).isString() ? doc.get(_xgmmlLabelAttribute).copyString() : "Default-Label") +
                "\" id=\"" + doc.get("_id").copyString() + "\"";
       writeToFile(fd, xmlTag, fileName);
       if (!_xgmmlLabelOnly) {
