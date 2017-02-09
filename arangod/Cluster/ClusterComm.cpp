@@ -801,14 +801,15 @@ ClusterCommThread::~ClusterCommThread() { shutdown(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterCommThread::beginShutdown() {
+  // Note that this is called from the destructor of the ClusterComm singleton
+  // object. This means that our pointer _cc is still valid and the condition
+  // variable in it is still OK. However, this method is called from a 
+  // different thread than the ClusterCommThread. Therefore we can still 
+  // use the condition variable to wake up the ClusterCommThread.
   Thread::beginShutdown();
 
-  auto cc = ClusterComm::instance();
-
-  if (cc != nullptr) {
-    CONDITION_LOCKER(guard, cc->somethingToSend);
-    guard.signal();
-  }
+  CONDITION_LOCKER(guard, _cc->somethingToSend);
+  guard.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
