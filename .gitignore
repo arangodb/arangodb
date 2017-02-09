@@ -97,6 +97,8 @@ js/apps/system/_admin/aardvark/APP/frontend/build/libs.js.gz
 js/apps/system/_admin/aardvark/APP/frontend/build/style.css
 js/apps/system/_admin/aardvark/APP/frontend/build/scripts.html.part
 
+js/common/tests/shell/shell-database.js
+
 3rdParty/boost/1.61.0/b2
 3rdParty/boost/1.61.0/bin.v2/
 3rdParty/boost/1.61.0/bjam
