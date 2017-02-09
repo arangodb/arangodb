@@ -142,7 +142,7 @@ function MovingShardsSuite () {
     if (toCollNr === undefined) {
       toCollNr = c.length - 1;
     }
-    var count = 300;
+    var count = 600;
     var ok = false;
 
     console.info("Waiting for server " + id + " to be cleaned out ...");
