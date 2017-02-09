@@ -267,6 +267,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
+  RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
   RestServer/ConsoleFeature.cpp

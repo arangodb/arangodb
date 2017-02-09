@@ -282,7 +282,7 @@ std::shared_ptr<ClusterComm> ClusterComm::instance() {
   // an assertion despite the fact that we have checks for nullptr in
   // all places that call this method. Assertions have no effect in released
   // code at the customer's site.
-  // TRI_ASSERT(_theInstance != nullptr); //temporarily disabled until AQLFeature is done
+  TRI_ASSERT(_theInstance != nullptr);
   return _theInstance;
 }
 
@@ -801,14 +801,15 @@ ClusterCommThread::~ClusterCommThread() { shutdown(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterCommThread::beginShutdown() {
+  // Note that this is called from the destructor of the ClusterComm singleton
+  // object. This means that our pointer _cc is still valid and the condition
+  // variable in it is still OK. However, this method is called from a 
+  // different thread than the ClusterCommThread. Therefore we can still 
+  // use the condition variable to wake up the ClusterCommThread.
   Thread::beginShutdown();
 
-  auto cc = ClusterComm::instance();
-
-  if (cc != nullptr) {
-    CONDITION_LOCKER(guard, cc->somethingToSend);
-    guard.signal();
-  }
+  CONDITION_LOCKER(guard, _cc->somethingToSend);
+  guard.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -74,6 +74,12 @@ class QueryRegistry {
   /// @brief expireQueries, this deletes all expired queries from the registry
   void expireQueries();
 
+  /// @brief return number of registered queries
+  size_t numberRegisteredQueries();
+
+  /// @brief for shutdown, we need to shut down all queries:
+  void destroyAll();
+
  private:
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo {

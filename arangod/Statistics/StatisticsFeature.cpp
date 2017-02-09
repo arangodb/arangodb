@@ -122,6 +122,7 @@ StatisticsFeature::StatisticsFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Statistics"), _statistics(true) {
   startsAfter("Logger");
+  startsAfter("Aql");
 }
 
 void StatisticsFeature::collectOptions(
@@ -167,18 +168,19 @@ void StatisticsFeature::prepare() {
       new StatisticsDistribution(TRI_BytesSentDistributionVectorStatistics);
   TRI_BytesReceivedDistributionStatistics =
       new StatisticsDistribution(TRI_BytesReceivedDistributionVectorStatistics);
-}
 
-void StatisticsFeature::start() {
   STATISTICS = this;
-
-  if (!_statistics) {
-    return;
-  }
 
   ServerStatistics::initialize();
   ConnectionStatistics::initialize();
   RequestStatistics::initialize();
+}
+
+void StatisticsFeature::start() {
+
+  if (!_statistics) {
+    return;
+  }
 
   _statisticsThread.reset(new StatisticsThread);
 
