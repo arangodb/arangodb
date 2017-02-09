@@ -266,10 +266,6 @@ void SslClientConnection::init(uint64_t sslProtocol) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SslClientConnection::connectSocket() {
-#ifdef _WIN32
-  char windowsErrorBuf[256];
-#endif
-
   TRI_ASSERT(_endpoint != nullptr);
 
   if (_endpoint->isConnected()) {
