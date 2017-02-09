@@ -39,7 +39,7 @@ Mutex AqlFeature::_aqlFeatureMutex;
 
 AqlFeature::AqlFeature(
     application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Aql"), _numberLeases(0) {
+    : ApplicationFeature(server, "Aql"), _numberLeases(0), _isStopped(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Scheduler");
