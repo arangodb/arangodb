@@ -85,6 +85,8 @@ void AqlFeature::stop() {
     _isStopped = true;  // prevent new AQL queries from being launched
   }
   LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature stopped";
+  QueryRegistryFeature::QUERY_REGISTRY->destroyAll();
+
   // Wait until all AQL queries are done
   while (true) {
     size_t m, n, o;

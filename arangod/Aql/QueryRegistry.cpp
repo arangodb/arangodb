@@ -275,3 +275,18 @@ size_t QueryRegistry::numberRegisteredQueries() {
   return sum;
 }
 
+/// @brief for shutdown, we need to shut down all queries:
+void QueryRegistry::destroyAll() {
+  std::vector<std::pair<std::string, QueryId>> allQueries;
+  {
+    READ_LOCKER(readlock, _lock);
+    for (auto& p : _queries) {
+      for (auto& q : p.second) {
+        allQueries.emplace_back(p.first, q.first);
+      }
+    }
+  }
+  for (auto& p : allQueries) {
+    destroy(p.first, p.second, TRI_ERROR_SHUTTING_DOWN);
+  }
+}
