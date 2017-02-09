@@ -2164,8 +2164,10 @@
           var totalb = result.length;
 
           _.each(result, function (obj) {
-            if (obj._from && obj._to && obj._id) {
-              hitsb++;
+            if (obj) {
+              if (obj._from && obj._to && obj._id) {
+                hitsb++;
+              }
             }
           });
 
