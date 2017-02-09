@@ -37,39 +37,30 @@ namespace aql {
 
 /// @brief class TraversalNode
 class TraversalNode : public ExecutionNode {
+  class TraversalEdgeConditionBuilder final : public EdgeConditionBuilder {
+   private:
+    /// @brief reference to the outer traversal node
+    TraversalNode const* _tn;
 
-  class EdgeConditionBuilder {
-    private:
+   protected:
+    // Create the _fromCondition for the first time.
+    void buildFromCondition() override;
 
-      /// @brief reference to the outer traversal node
-      TraversalNode const* _tn;
+    // Create the _toCondition for the first time.
+    void buildToCondition() override;
 
-      /// @brief the conditions modifying the edge on this depth
-      AstNode* _modCondition;
+   public:
+    explicit TraversalEdgeConditionBuilder(TraversalNode const*);
 
-      /// @brief indicator if we have attached the _from or _to condition to _modCondition
-      bool _containsCondition;
+    TraversalEdgeConditionBuilder(TraversalNode const*,
+                                  arangodb::velocypack::Slice const&);
 
-    public:
-     explicit EdgeConditionBuilder(TraversalNode const*);
+    TraversalEdgeConditionBuilder(TraversalNode const*,
+                                  TraversalEdgeConditionBuilder const*);
 
-     EdgeConditionBuilder(TraversalNode const*, arangodb::velocypack::Slice const&);
+    ~TraversalEdgeConditionBuilder() {}
 
-     EdgeConditionBuilder(TraversalNode const*, EdgeConditionBuilder const*);
-
-     ~EdgeConditionBuilder() {}
-
-     EdgeConditionBuilder(EdgeConditionBuilder const&) = delete;
-
-     EdgeConditionBuilder(EdgeConditionBuilder&&) = delete;
-
-     void addConditionPart(AstNode const*);
-
-      AstNode* getOutboundCondition();
-
-      AstNode* getInboundCondition();
-
-      void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+    void toVelocyPack(arangodb::velocypack::Builder&, bool);
   };
 
   friend class ExecutionBlock;
@@ -337,7 +328,8 @@ class TraversalNode : public ExecutionNode {
   std::vector<AstNode const*> _globalVertexConditions;
 
   /// @brief List of all depth specific conditions for edges
-  std::unordered_map<size_t, std::unique_ptr<EdgeConditionBuilder>> _edgeConditions;
+  std::unordered_map<size_t, std::unique_ptr<TraversalEdgeConditionBuilder>>
+      _edgeConditions;
 
   /// @brief List of all depth specific conditions for vertices
   std::unordered_map<size_t, AstNode*> _vertexConditions;

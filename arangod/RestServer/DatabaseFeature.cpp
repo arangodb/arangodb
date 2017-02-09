@@ -55,6 +55,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/ticks.h"
 
 #include <velocypack/velocypack-aliases.h>
 

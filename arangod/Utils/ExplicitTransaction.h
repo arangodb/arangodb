@@ -27,9 +27,7 @@
 #include "Basics/Common.h"
 
 #include "Utils/Transaction.h"
-#include "Utils/TransactionState.h"
 #include "Utils/V8TransactionContext.h"
-#include "VocBase/ticks.h"
 
 namespace arangodb {
 
@@ -46,29 +44,29 @@ class ExplicitTransaction final : public Transaction {
                       double lockTimeout, bool waitForSync,
                       bool allowImplicitCollections)
       : Transaction(transactionContext) {
-    this->addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
+    addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
 
     if (lockTimeout >= 0.0) {
-      this->setTimeout(lockTimeout);
+      setTimeout(lockTimeout);
     }
 
     if (waitForSync) {
-      this->setWaitForSync();
+      setWaitForSync();
     }
     
     for (auto const& it : exclusiveCollections) {
-      this->addCollection(it, AccessMode::Type::EXCLUSIVE);
+      addCollection(it, AccessMode::Type::EXCLUSIVE);
     }
 
     for (auto const& it : writeCollections) {
-      this->addCollection(it, AccessMode::Type::WRITE);
+      addCollection(it, AccessMode::Type::WRITE);
     }
 
     for (auto const& it : readCollections) {
-      this->addCollection(it, AccessMode::Type::READ);
+      addCollection(it, AccessMode::Type::READ);
     }
     
-    this->setAllowImplicitCollections(allowImplicitCollections);
+    setAllowImplicitCollections(allowImplicitCollections);
   }
 
   //////////////////////////////////////////////////////////////////////////////

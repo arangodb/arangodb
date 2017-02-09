@@ -75,10 +75,9 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
   if (_currentCursor == _cursors.size()) {
     return false;
   }
-  _cachePos++;
   if (_cachePos < _cache.size()) {
     LogicalCollection* collection = _cursors[_currentCursor][_currentSubCursor]->collection();
-    if (collection->readDocument(_trx, *_mmdr, _cache[_cachePos])) {
+    if (collection->readDocument(_trx, *_mmdr, _cache[_cachePos++])) {
       result.emplace_back(_mmdr->vpack());
     }
     if (_internalCursorMapping != nullptr) {
@@ -121,13 +120,18 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
       // If we switch the cursor. We have to clear the cache.
       _cache.clear();
     } else {
-      cursor->getMoreTokens(_cache, 1000);
+      _cache.clear();
+      auto cb = [&] (DocumentIdentifierToken const& token) {
+        _cache.emplace_back(token);
+      };
+      bool tmp = cursor->getMore(cb, 1000);
+      TRI_ASSERT(tmp == cursor->hasMore());
     }
   } while (_cache.empty());
 
   TRI_ASSERT(_cachePos < _cache.size());
   LogicalCollection* collection = cursor->collection();
-  if (collection->readDocument(_trx, *_mmdr, _cache[_cachePos])) {
+  if (collection->readDocument(_trx, *_mmdr, _cache[_cachePos++])) {
     result.emplace_back(_mmdr->vpack());
   }
   if (_internalCursorMapping != nullptr) {
@@ -155,15 +159,12 @@ bool SingleServerEdgeCursor::readAll(std::unordered_set<VPackSlice>& result,
   auto& cursorSet = _cursors[_currentCursor];
   for (auto& cursor : cursorSet) {
     LogicalCollection* collection = cursor->collection(); 
-    while (cursor->hasMore()) {
-      // NOTE: We cannot clear the cache,
-      // because the cursor expect's it to be filled.
-      cursor->getMoreTokens(_cache, 1000);
-      for (auto const& element : _cache) {
-        if (collection->readDocument(_trx, *_mmdr, element)) {
-          result.emplace(_mmdr->vpack());
-        }
+    auto cb = [&] (DocumentIdentifierToken const& token) {
+      if (collection->readDocument(_trx, *_mmdr, token)) {
+        result.emplace(_mmdr->vpack());
       }
+    };
+    while (cursor->getMore(cb, 1000)) {
     }
   }
   _currentCursor++;

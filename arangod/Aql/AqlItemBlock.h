@@ -229,9 +229,19 @@ class AqlItemBlock {
 
   /// @brief getter for _nrItems
   inline size_t size() const { return _nrItems; }
+  
+  inline size_t capacity() const { return _data.size(); }
 
   /// @brief shrink the block to the specified number of rows
-  void shrink(size_t nrItems);
+  /// if sweep is set, then the superfluous rows are cleaned
+  /// if sweep is not set, the caller has to ensure that the
+  /// superfluous rows are empty
+  void shrink(size_t nrItems, bool sweep);
+
+  /// @brief rescales the block to the specified dimensions
+  /// note that the block should be empty before rescaling to prevent
+  /// losses of still managed AqlValues 
+  void rescale(size_t nrItems, RegisterId nrRegs);
 
   /// @brief clears out some columns (registers), this deletes the values if
   /// necessary, using the reference count.

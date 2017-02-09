@@ -103,7 +103,7 @@ class GeneralCommTask : public SocketTask {
 
   void processResponse(GeneralResponse*);
 
-  virtual void handleSimpleError(rest::ResponseCode, uint64_t messagid) = 0;
+  virtual void handleSimpleError(rest::ResponseCode, uint64_t messageId) = 0;
 
   virtual void handleSimpleError(rest::ResponseCode, int code,
                                  std::string const& errorMessage,

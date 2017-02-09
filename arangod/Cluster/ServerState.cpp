@@ -389,7 +389,9 @@ void mkdir (std::string const& path) {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create an id for a specified role
+/// TODO: why are the parameters passed by value here?
 //////////////////////////////////////////////////////////////////////////////
+
 std::string ServerState::createIdForRole(AgencyComm comm,
                                          ServerState::RoleEnum role,
                                          std::string id) {

@@ -24,12 +24,20 @@ MMFiles reference removals from files:
 - StorageEngine specific IndexFactory:
   - create indexes from VPack
   - enhance/validate given VPack index definitions (set default values, reject illegal ones)
+- Implement new IndexIterator API next(callback, limit)
+  - Primary
+  - Hash
+  - Skiplist
+  - Persistent
+  - Geo
+  - Fulltext
+
+
 
 in progress
 -----------
 - move engine-specific parts of transaction.cpp into engine
 - transaction API
-
 to do
 -----
 - rename TRI_df_marker_* to something storage-engine specific
@@ -52,6 +60,7 @@ to do
   - Register for specific function names => branches to StorageEngine impl
   - Storage Engine can implement these functions with specific code and interna
     - e.g.: Geo, Fulltext
+- Replace Usage of new callback-based IndexIterator
 
 MMFiles are known to the following files:
 * arangod/Aql/Functions.cpp
@@ -83,6 +92,8 @@ MMFiles are known to the following files:
 
 - IndexFactory needs a function to stringifyIndexes and rename idxFoo => IdxZirkusBar
 
+- Implement new IndexIterator API nextExtra(callback, limit)
+  - Geo
 
 
 
@@ -93,5 +104,12 @@ MMFiles are known to the following files:
 
 Questions
 ---------
-
 * For GeoIndex `ignoreNull: true` and `constraint: false` are only set in Cluster mode. Is that art or can it go away?
+
+OpenIssues Hacki
+----------------
+* batchSize == 0 ? What Happens? ASSERT ok? React gracefully?
+* HashIndex Lookup into a still local buffer, could be replaced by callback as well.
+* SingleServerTraverser API does NOT takeover responsibility for slice data. getMore() hopes slices to not go away
+  * This API can be improved if we make better use of those callbacks.
+* ShortestPathBlock does assume that slices do not walk away.

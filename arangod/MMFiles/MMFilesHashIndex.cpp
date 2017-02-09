@@ -32,8 +32,8 @@
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesToken.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/TransactionContext.h"
-#include "Utils/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -298,12 +298,12 @@ MMFilesHashIndexIterator::MMFilesHashIndexIterator(LogicalCollection* collection
   _index->lookup(_trx, _lookups.lookup(), _buffer);
 }
 
-DocumentIdentifierToken MMFilesHashIndexIterator::next() {
-  while (true) {
+bool MMFilesHashIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  while (limit > 0) {
     if (_posInBuffer >= _buffer.size()) {
       if (!_lookups.hasAndGetNext()) {
         // we're at the end of the lookup values
-        return MMFilesToken{};
+        return false;
       }
 
       // We have to refill the buffer
@@ -315,48 +315,11 @@ DocumentIdentifierToken MMFilesHashIndexIterator::next() {
 
     if (!_buffer.empty()) {
       // found something
-      return MMFilesToken{_buffer[_posInBuffer++]->revisionId()};
+      cb(MMFilesToken{_buffer[_posInBuffer++]->revisionId()});
+      --limit;
     }
   }
-}
-
-void MMFilesHashIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& result, size_t atMost) {
-  result.clear();
-
-  if (atMost == 0) {
-    return;
-  }
-
-  while (true) {
-    if (_posInBuffer >= _buffer.size()) {
-      if (!_lookups.hasAndGetNext()) {
-        // we're at the end of the lookup values
-        return;
-      }
-
-      // TODO maybe we can hand in result directly and remove the buffer
-
-      // We have to refill the buffer
-      _buffer.clear();
-      _posInBuffer = 0;
-
-      _index->lookup(_trx, _lookups.lookup(), _buffer);
-    }
-
-    if (!_buffer.empty()) {
-      // found something
-      // TODO OPTIMIZE THIS
-      if (_buffer.size() - _posInBuffer < atMost) {
-        atMost = _buffer.size() - _posInBuffer;
-      }
-
-      for (size_t i = _posInBuffer; i < atMost + _posInBuffer; ++i) {
-        result.emplace_back(MMFilesToken{_buffer[i]->revisionId()});
-      }
-      _posInBuffer += atMost;
-      return;
-    }
-  }
+  return true;
 }
 
 void MMFilesHashIndexIterator::reset() {
@@ -387,12 +350,12 @@ MMFilesHashIndexIteratorVPack::~MMFilesHashIndexIteratorVPack() {
   }
 }
 
-DocumentIdentifierToken MMFilesHashIndexIteratorVPack::next() {
-  while (true) {
+bool MMFilesHashIndexIteratorVPack::next(TokenCallback const& cb, size_t limit) {
+  while (limit > 0) {
     if (_posInBuffer >= _buffer.size()) {
       if (!_iterator.valid()) {
         // we're at the end of the lookup values
-        return MMFilesToken{};
+        return false;
       }
 
       // We have to refill the buffer
@@ -410,9 +373,11 @@ DocumentIdentifierToken MMFilesHashIndexIteratorVPack::next() {
 
     if (!_buffer.empty()) {
       // found something
-      return MMFilesToken{_buffer[_posInBuffer++]->revisionId()};
+      cb(MMFilesToken{_buffer[_posInBuffer++]->revisionId()});
+      --limit;
     }
   }
+  return true;
 }
 
 void MMFilesHashIndexIteratorVPack::reset() {

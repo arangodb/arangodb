@@ -267,10 +267,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
   bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
   bool const producesOutput = (ep->_outVariableOld != nullptr);
 
-  result.reset(new AqlItemBlock(
-      _engine->getQuery()->resourceMonitor(),
-      count,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   VPackBuilder keyBuilder;
 
@@ -432,10 +429,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   bool const producesOutput = (ep->_outVariableNew != nullptr);
 
-  result.reset(new AqlItemBlock(
-      _engine->getQuery()->resourceMonitor(),
-      count,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   OperationOptions options;
   options.silent = !producesOutput;
@@ -576,10 +570,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
     keyRegisterId = it->second.registerId;
   }
 
-  result.reset(new AqlItemBlock(
-      _engine->getQuery()->resourceMonitor(),
-      count,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   OperationOptions options;
   options.silent = !producesOutput;
@@ -773,10 +764,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   std::string errorMessage;
 
-  result.reset(new AqlItemBlock(
-      _engine->getQuery()->resourceMonitor(),
-      count,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   OperationOptions options;
   options.silent = !producesOutput;
@@ -1021,10 +1009,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     keyRegisterId = it->second.registerId;
   }
 
-  result.reset(new AqlItemBlock(
-      _engine->getQuery()->resourceMonitor(),
-      count,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   OperationOptions options;
   options.silent = !producesOutput;

@@ -1141,15 +1141,16 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const modeStr = TRI_ObjectToString(isolate, args[1]);
+  size_t const length = modeStr.length();
 
-  if ((modeStr.length() > 5) || (modeStr.length() == 0)) {
+  if (length == 0 || length > 5) {
     TRI_V8_THROW_TYPE_ERROR(
         "<mode> must be a string with up to 4 octal digits in it plus a "
         "leading zero.");
   }
 
   long mode = 0;
-  for (uint32_t i = 0; i < modeStr.length(); i++) {
+  for (uint32_t i = 0; i < length; ++i) {
     if (!isdigit(modeStr[i])) {
       TRI_V8_THROW_TYPE_ERROR(
           "<mode> must be a string with up to 4 octal digits in it plus a "
@@ -1164,7 +1165,7 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "<mode> must be a string with up to 4 octal digits in it plus a "
           "leading zero.");
     }
-    mode = mode | digit << ((modeStr.length() - i - 1) * 3);
+    mode = mode | digit << ((length - i - 1) * 3);
   }
   std::string err;
   int rc = TRI_ChMod(*name, mode, err);

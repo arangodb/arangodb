@@ -138,14 +138,12 @@ void PersistentIndexIterator::reset() {
   }
 }
 
-/// @brief Get the next element in the index
-DocumentIdentifierToken PersistentIndexIterator::next() {
+bool PersistentIndexIterator::next(TokenCallback const& cb, size_t limit) {
   auto comparator = RocksDBFeature::instance()->comparator();
-    
-  while (true) {
+  while (limit > 0) {
     if (!_cursor->Valid()) {
       // We are exhausted already, sorry
-      return MMFilesToken{};
+      return false;
     }
   
     rocksdb::Slice key = _cursor->key();
@@ -156,7 +154,8 @@ DocumentIdentifierToken PersistentIndexIterator::next() {
 
     if (res < 0) {
       if (_reverse) {
-        return MMFilesToken{};
+        // We are done
+        return false;
       } else {
         _cursor->Next();
       }
@@ -166,7 +165,6 @@ DocumentIdentifierToken PersistentIndexIterator::next() {
     res = comparator->Compare(key, rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
     // LOG(TRACE) << "comparing: " << VPackSlice(key.data() + PersistentIndex::keyPrefixSize()).toJson() << " with " << VPackSlice((char const*) _rightEndpoint->data() + PersistentIndex::keyPrefixSize()).toJson() << " - res: " << res;
    
-    MMFilesToken doc;
      
     if (res <= 0) {
       // get the value for _key, which is the last entry in the key array
@@ -181,7 +179,11 @@ DocumentIdentifierToken PersistentIndexIterator::next() {
       // use primary index to lookup the document
       MMFilesSimpleIndexElement element = _primaryIndex->lookupKey(_trx, keySlice[n - 1]);
       if (element) {
-        doc = MMFilesToken{element.revisionId()};
+        MMFilesToken doc = MMFilesToken{element.revisionId()};
+        if (doc != 0) {
+          cb(doc);
+          --limit;
+        }
       }
     }
     
@@ -193,16 +195,12 @@ DocumentIdentifierToken PersistentIndexIterator::next() {
 
     if (res > 0) {
       if (!_probe) {
-        return MMFilesToken{};
+        return false;
       }
       _probe = false;
-      continue;
-    }
-
-    if (doc != 0) {
-      return doc;
     }
   }
+  return true;
 }
 
 /// @brief create the index
