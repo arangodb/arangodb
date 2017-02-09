@@ -3339,6 +3339,15 @@ const recoveryTests = [
 
 testFuncs.recovery = function (options) {
   let results = {};
+
+  if (!global.ARANGODB_CLIENT_VERSION(true)['failure-tests']) {
+    results.recovery = { 
+      status: false,
+      message: "failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On"
+    };
+    return results;
+  }
+  
   let status = true;
 
   for (let i = 0; i < recoveryTests.length; ++i) {

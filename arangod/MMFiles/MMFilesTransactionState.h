@@ -66,6 +66,14 @@ class MMFilesTransactionState final : public TransactionState {
   
   /// @brief add a WAL operation for a transaction collection
   int addOperation(TRI_voc_rid_t, MMFilesDocumentOperation&, MMFilesWalMarker const* marker, bool&);
+  
+  /// @brief get the transaction id for usage in a marker
+  TRI_voc_tid_t idForMarker() {
+    if (isSingleOperation()) {
+      return 0;
+    }
+    return _id;
+  }
 
  private:
   /// @brief whether or not a marker needs to be written
