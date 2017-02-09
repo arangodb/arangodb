@@ -264,3 +264,14 @@ void QueryRegistry::expireQueries() {
     }
   }
 }
+
+/// @brief return number of registered queries
+size_t QueryRegistry::numberRegisteredQueries() {
+  READ_LOCKER(readLocker, _lock);
+  size_t sum = 0;
+  for (auto const&m : _queries) {
+    sum += m.second.size();
+  }
+  return sum;
+}
+

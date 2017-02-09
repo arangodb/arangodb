@@ -46,7 +46,6 @@ DatabasePathFeature::DatabasePathFeature(ApplicationServer* server)
   startsAfter("Random");
   startsAfter("Temp");
   startsAfter("WorkMonitor");
-  startsAfter("Statistics");
 }
 
 void DatabasePathFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

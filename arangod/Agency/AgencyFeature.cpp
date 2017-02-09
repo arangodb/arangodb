@@ -59,6 +59,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
   startsAfter("MMFilesWalRecovery");
   startsAfter("Scheduler");
   startsAfter("Server");
+  startsAfter("Aql");
 }
 
 AgencyFeature::~AgencyFeature() {}

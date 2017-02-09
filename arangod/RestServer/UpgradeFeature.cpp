@@ -53,6 +53,7 @@ UpgradeFeature::UpgradeFeature(
   startsAfter("Database");
   startsAfter("MMFilesWalRecovery");
   startsAfter("V8Dealer");
+  startsAfter("Aql");
 }
 
 void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

@@ -49,6 +49,7 @@
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
+#include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
@@ -121,6 +122,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new AgencyFeature(&server));
     server.addFeature(new aql::AqlFunctionFeature(&server));
     server.addFeature(new AuthenticationFeature(&server));
+    server.addFeature(new AqlFeature(&server));
     server.addFeature(new BootstrapFeature(&server));
     server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
     server.addFeature(new ClusterFeature(&server));

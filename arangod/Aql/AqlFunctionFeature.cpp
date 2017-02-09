@@ -92,6 +92,7 @@ AqlFunctionFeature::AqlFunctionFeature(
            "RELATIONAL_ARRAY_NOT_IN"}} {
   setOptional(false);
   startsAfter("EngineSelector");
+  startsAfter("Aql");
 }
 
 // This feature does not have any options

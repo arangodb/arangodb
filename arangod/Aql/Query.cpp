@@ -41,6 +41,7 @@
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
+#include "RestServer/AqlFeature.h"
 #include "Utils/Transaction.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -166,6 +167,12 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
       _isModificationQuery(false) {
+
+  AqlFeature* aql = AqlFeature::lease();
+  if (aql == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR: " <<
   // queryString << "\n";
   double tracing = getNumericOption("tracing", 0);
@@ -234,6 +241,11 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _killed(false),
       _isModificationQuery(false) {
 
+  AqlFeature* aql = AqlFeature::lease();
+  if (aql == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
   LOG_TOPIC(DEBUG, Logger::QUERIES)
       << TRI_microtime() - _startTime << " "
       << "Query::Query queryStruct: " << queryStruct->slice().toJson()
@@ -295,6 +307,7 @@ Query::~Query() {
   LOG_TOPIC(DEBUG, Logger::QUERIES)
       << TRI_microtime() - _startTime << " "
       << "Query::~Query this: " << (uintptr_t) this;
+  AqlFeature::unlease();
 }
 
 /// @brief clone a query
