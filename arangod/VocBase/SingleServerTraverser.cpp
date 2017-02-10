@@ -261,6 +261,6 @@ bool SingleServerTraverser::getVertex(VPackSlice edge,
 }
 
 bool SingleServerTraverser::getSingleVertex(VPackSlice edge, VPackSlice vertex,
-                                            size_t depth, VPackSlice& result) {
+                                            uint64_t depth, VPackSlice& result) {
   return _vertexGetter->getSingleVertex(edge, vertex, depth, result);
 }
