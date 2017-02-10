@@ -1,0 +1,8 @@
+Exporting Data from an ArangoDB database
+======================================
+
+To export data from an ArangoDB server instance, you will need to invoke _arangoexport_.
+_arangoexport_ can be invoked by executing
+the following command:
+
+    unix> arangoexport --output-directory "dump"
