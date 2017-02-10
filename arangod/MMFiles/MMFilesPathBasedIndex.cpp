@@ -112,7 +112,7 @@ int MMFilesPathBasedIndex::fillElement(std::vector<T*>& elements,
                                 TRI_voc_rid_t revisionId,
                                 VPackSlice const& doc) {
   if (doc.isNone()) {
-    LOG(ERR) << "encountered invalid marker with slice of type None";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "encountered invalid marker with slice of type None";
     return TRI_ERROR_INTERNAL;
   }
 

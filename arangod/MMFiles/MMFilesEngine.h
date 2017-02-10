@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_STORAGE_ENGINE_MMFILES_ENGINE_H
@@ -56,23 +57,22 @@ class MMFilesEngine final : public StorageEngine {
 
   // inherited from ApplicationFeature
   // ---------------------------------
-  
+
   // add the storage engine's specifc options to the global list of options
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  
+
   // validate the storage engine's specific options
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
   // preparation phase for storage engine. can be used for internal setup.
   // the storage engine must not start any threads here or write any files
   void prepare() override;
-  
+
   // initialize engine
   void start() override;
-  void stop() override;
 
-  // called when recovery is finished
-  void recoveryDone(TRI_vocbase_t* vocbase) override;
+  // flush wal wait for collector
+  void stop() override;
 
   TransactionState* createTransactionState(TRI_vocbase_t*) override;
   TransactionCollection* createTransactionCollection(TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) override;
@@ -99,46 +99,41 @@ class MMFilesEngine final : public StorageEngine {
   int getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result,
                                bool wasCleanShutdown, bool isUpgrade) override;
   
-  // return the path for a database
-  std::string databasePath(TRI_vocbase_t const* vocbase) const override { 
-    return databaseDirectory(vocbase->id()); 
-  }
-  
   // return the path for a collection
   std::string collectionPath(TRI_vocbase_t const* vocbase, TRI_voc_cid_t id) const override { 
     return collectionDirectory(vocbase->id(), id); 
   }
 
-  TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) override;
-
   // database, collection and index management
   // -----------------------------------------
 
-  // asks the storage engine to create a database as specified in the VPack
-  // Slice object and persist the creation info. It is guaranteed by the server that 
-  // no other active database with the same name and id exists when this function
-  // is called. If this operation fails somewhere in the middle, the storage 
-  // engine is required to fully clean up the creation and throw only then, 
-  // so that subsequent database creation requests will not fail.
-  // the WAL entry for the database creation will be written *after* the call
-  // to "createDatabase" returns
-  TRI_vocbase_t* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) override;
+  // return the path for a database
+  std::string databasePath(TRI_vocbase_t const* vocbase) const override {
+    return databaseDirectory(vocbase->id());
+  }
 
-  // asks the storage engine to drop the specified database and persist the 
-  // deletion info. Note that physical deletion of the database data must not 
-  // be carried out by this call, as there may still be readers of the database's data. 
-  // It is recommended that this operation only sets a deletion flag for the database 
-  // but let's an async task perform the actual deletion. 
-  // the WAL entry for database deletion will be written *after* the call
-  // to "prepareDropDatabase" returns
-  int prepareDropDatabase(TRI_vocbase_t* vocbase) override;
-  
-  // perform a physical deletion of the database      
-  int dropDatabase(TRI_vocbase_t* vocbase) override;
-  
-  /// @brief wait until a database directory disappears
-  int waitUntilDeletion(TRI_voc_tick_t id, bool force) override;
-  
+  virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade, int&) override;
+  Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) override {
+    status = TRI_ERROR_NO_ERROR;
+    return createDatabaseMMFiles(id,args);
+  }
+  int writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
+
+  void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker, int& status) override;
+  void dropDatabase(Database* database, int& status) override;
+  void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
+
+  // wal in recovery
+  bool inRecovery() override;
+
+  // start compactor thread and delete files form collections marked as deleted
+  void recoveryDone(TRI_vocbase_t* vocbase) override;
+
+private:
+  int dropDatabaseMMFiles(TRI_vocbase_t* vocbase);
+  TRI_vocbase_t* createDatabaseMMFiles(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data);
+
+public:
   // asks the storage engine to create a collection as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server 
   // that no other active collection with the same name and id exists in the same
@@ -184,6 +179,9 @@ class MMFilesEngine final : public StorageEngine {
   // to "createIndex" returns
   void createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                    TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) override;
+  
+  virtual void createIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
+                                    arangodb::velocypack::Slice const& data, bool useMarker, int&) override;
 
   // asks the storage engine to drop the specified index and persist the deletion 
   // info. Note that physical deletion of the index must not be carried out by this call, 
@@ -195,6 +193,9 @@ class MMFilesEngine final : public StorageEngine {
   void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                  TRI_idx_iid_t id) override;
   
+  void dropIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
+                          arangodb::velocypack::Slice const& data, bool writeMarker, int&) override;
+
   void unloadCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId) override;
   
   void signalCleanup(TRI_vocbase_t* vocbase) override;
@@ -341,6 +342,9 @@ class MMFilesEngine final : public StorageEngine {
   int beginShutdownCompactor(TRI_vocbase_t* vocbase);
   // stop and delete the compactor thread for the database
   int stopCompactor(TRI_vocbase_t* vocbase);
+  
+  /// @brief writes a drop-database marker into the log
+  int writeDropMarker(TRI_voc_tick_t id);
 
  public:
   static std::string const EngineName;

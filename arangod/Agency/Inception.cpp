@@ -579,9 +579,9 @@ void Inception::run() {
 
   // If command line RAFT timings have not been set explicitly
   // Try good estimate of RAFT time limits
-  if (!config.cmdLineTimings()) {
+  /*if (!config.cmdLineTimings()) {
     estimateRAFTInterval();
-  }
+    }*/
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent.";
   _agent->ready(true);

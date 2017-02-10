@@ -1000,8 +1000,8 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
   return oldValue;
 }
 
-bool AgencyComm::registerCallback(std::string const& key,
-                                  std::string const& endpoint) {
+AgencyCommResult AgencyComm::registerCallback(std::string const& key,
+                                              std::string const& endpoint) {
   VPackBuilder builder;
   builder.add(VPackValue(endpoint));
 
@@ -1010,11 +1010,11 @@ bool AgencyComm::registerCallback(std::string const& key,
   AgencyWriteTransaction transaction(operation);
 
   auto result = sendTransactionWithFailover(transaction);
-  return result.successful();
+  return result;
 }
 
-bool AgencyComm::unregisterCallback(std::string const& key,
-                                    std::string const& endpoint) {
+AgencyCommResult AgencyComm::unregisterCallback(std::string const& key,
+                                                std::string const& endpoint) {
   VPackBuilder builder;
   builder.add(VPackValue(endpoint));
 
@@ -1023,7 +1023,7 @@ bool AgencyComm::unregisterCallback(std::string const& key,
   AgencyWriteTransaction transaction(operation);
 
   auto result = sendTransactionWithFailover(transaction);
-  return result.successful();
+  return result;
 }
 
 bool AgencyComm::lockRead(std::string const& key, double ttl, double timeout) {
@@ -1170,7 +1170,7 @@ bool AgencyComm::ensureStructureInitialized() {
       std::vector<std::string>({AgencyCommManager::path(), "Secret"}));
 
   if (!secretValue.isString()) {
-    LOG(ERR) << "Couldn't find secret in agency!";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Couldn't find secret in agency!";
     return false;
   }
   std::string const secret = secretValue.copyString();
@@ -1533,7 +1533,8 @@ AgencyCommResult AgencyComm::send(
   if (cc == nullptr) {
     // nullptr only happens during controlled shutdown
     result._message = "could not send request to agency because of shutdown";
-    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "could not send request to agency";
+    LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
+      << "could not send request to agency because of shutdown";
 
     return result;
   }
@@ -1738,10 +1739,10 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
 
     return result.successful();
   } catch (std::exception const& e) {
-    LOG(FATAL) << "Fatal error initializing agency " << e.what();
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Fatal error initializing agency " << e.what();
     FATAL_ERROR_EXIT();
   } catch (...) {
-    LOG(FATAL) << "Fatal error initializing agency";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Fatal error initializing agency";
     FATAL_ERROR_EXIT();
   }
 }

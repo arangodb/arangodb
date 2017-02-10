@@ -422,7 +422,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
       rip->_callbacks._onError(TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
       break;
     default:
-      LOG(ERR) << "Curl return " << rc;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Curl return " << rc;
       rip->_callbacks._onError(TRI_ERROR_INTERNAL, {nullptr});
       break;
   }

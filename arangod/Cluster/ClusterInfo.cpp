@@ -511,7 +511,7 @@ void ClusterInfo::loadPlan() {
               // This should not happen in healthy situations.
               // If it happens in unhealthy situations the
               // cluster should not fail.
-              LOG(ERR) << "Failed to load information for collection '"
+              LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Failed to load information for collection '"
                        << collectionId << "': " << ex.what()
                        << ". invalid information in plan. The collection will "
                           "be ignored for now and the invalid information will "
@@ -525,7 +525,7 @@ void ClusterInfo::loadPlan() {
               // This should not happen in healthy situations.
               // If it happens in unhealthy situations the
               // cluster should not fail.
-              LOG(ERR) << "Failed to load information for collection '"
+              LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Failed to load information for collection '"
                        << collectionId
                        << ". invalid information in plan. The collection will "
                           "be ignored for now and the invalid information will "
@@ -1774,6 +1774,7 @@ int ClusterInfo::ensureIndexCoordinator(
       errorMsg += trx.toJson();
       errorMsg += "ClientId: " + result._clientId + " ";
       errorMsg += " ResultCode: " + std::to_string(result.errorCode()) + " ";
+      errorMsg += " Result: " + result.errorMessage() + " ";
       errorMsg += std::string(__FILE__) + ":" + std::to_string(__LINE__);
       resultBuilder = *resBuilder;
     }

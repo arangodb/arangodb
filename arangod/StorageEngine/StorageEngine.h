@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_STORAGE_ENGINE_STORAGE_ENGINE_H
@@ -70,7 +71,6 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual void start() {}
   virtual void stop() {}
-  virtual void recoveryDone(TRI_vocbase_t* vocbase) {}
 
   virtual TransactionState* createTransactionState(TRI_vocbase_t*) = 0;
   virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
@@ -110,10 +110,29 @@ class StorageEngine : public application_features::ApplicationFeature {
   // return the path for a collection
   virtual std::string collectionPath(TRI_vocbase_t const* vocbase, TRI_voc_cid_t id) const = 0;
 
-  virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) = 0;
 
   // database, collection and index management
   // -----------------------------------------
+
+  // if not stated other wise functions may throw and the caller has to take care of error handling
+  // the return values will be the usual  TRI_ERROR_* codes.
+
+  // TODO add pre / post conditions for functions
+
+  using Database = TRI_vocbase_t;
+  using CollectionView = LogicalCollection;
+
+  //// operations on databasea
+
+  /// @brief opens a database
+  virtual Database* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) = 0;
+  Database* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade){
+    int status;
+    Database* rv = openDatabase(args, isUpgrade, status);
+    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
+    TRI_ASSERT(rv != nullptr);
+    return rv;
+  }
 
   // asks the storage engine to create a database as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server that
@@ -123,7 +142,18 @@ class StorageEngine : public application_features::ApplicationFeature {
   // so that subsequent database creation requests will not fail.
   // the WAL entry for the database creation will be written *after* the call
   // to "createDatabase" returns
-  virtual TRI_vocbase_t* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) = 0;
+  //no way to aquire id within this function?!
+  virtual Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) = 0;
+  Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args ){
+    int status;
+    Database* rv = createDatabase(id, args, status);
+    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
+    TRI_ASSERT(rv != nullptr);
+    return rv;
+  }
+
+  // @brief wirte create marker for database
+  virtual int writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) = 0;
 
   // asks the storage engine to drop the specified database and persist the
   // deletion info. Note that physical deletion of the database data must not
@@ -132,14 +162,34 @@ class StorageEngine : public application_features::ApplicationFeature {
   // but let's an async task perform the actual deletion.
   // the WAL entry for database deletion will be written *after* the call
   // to "prepareDropDatabase" returns
-  virtual int prepareDropDatabase(TRI_vocbase_t* vocbase) = 0;
+  //
+  // is done under a lock in database feature
+  virtual void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker, int& status) = 0;
+  void prepareDropDatabase(Database* db, bool useWriteMarker){
+    int status = 0;
+    prepareDropDatabase(db, useWriteMarker, status);
+    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
+  };
 
   // perform a physical deletion of the database
-  virtual int dropDatabase(TRI_vocbase_t* vocbase) = 0;
+  virtual void dropDatabase(Database*, int& status) = 0;
+  void dropDatabase(Database* db){
+    int status;
+    dropDatabase(db, status);
+    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
+  };
 
-  /// @brief wait until a database directory disappears -- FIXME force WAIT or Delete Add keyword Database to signature
-  virtual int waitUntilDeletion(TRI_voc_tick_t id, bool force) = 0;
+  /// @brief wait until a database directory disappears - not under lock in databaseFreature
+  virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) = 0;
 
+  /// @brief is database in recovery
+  virtual bool inRecovery() { return false; }
+
+  /// @brief function to be run when recovery is done
+  virtual void recoveryDone(TRI_vocbase_t* vocbase) {}
+
+
+  //// Operations on Collections
   // asks the storage engine to create a collection as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server
   // that no other active collection with the same name and id exists in the same
@@ -186,6 +236,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                            TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) = 0;
 
+  virtual void createIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
+                                    arangodb::velocypack::Slice const& data, bool useMarker, int&) = 0;
+
   // asks the storage engine to drop the specified index and persist the deletion
   // info. Note that physical deletion of the index must not be carried out by this call,
   // as there may still be users of the index. It is recommended that this operation
@@ -196,6 +249,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                          TRI_idx_iid_t id) = 0;
 
+  virtual void dropIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
+                                    arangodb::velocypack::Slice const& data, bool useMarker, int&) = 0;
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate
   // information about indexes.

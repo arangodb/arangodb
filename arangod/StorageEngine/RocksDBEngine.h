@@ -96,44 +96,16 @@ class RocksDBEngine final : public StorageEngine {
     return "";
   }
 
-  TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) override;
+  TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade, int&) override;
 
   // database, collection and index management
   // -----------------------------------------
 
-  // asks the storage engine to create a database as specified in the VPack
-  // Slice object and persist the creation info. It is guaranteed by the server that 
-  // no other active database with the same name and id exists when this function
-  // is called. If this operation fails somewhere in the middle, the storage 
-  // engine is required to fully clean up the creation and throw only then, 
-  // so that subsequent database creation requests will not fail.
-  // the WAL entry for the database creation will be written *after* the call
-  // to "createDatabase" returns
-  TRI_vocbase_t* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) override;
-
-  // asks the storage engine to drop the specified database and persist the 
-  // deletion info. Note that physical deletion of the database data must not 
-  // be carried out by this call, as there may still be readers of the database's data. 
-  // It is recommended that this operation only sets a deletion flag for the database 
-  // but let's an async task perform the actual deletion. 
-  // the WAL entry for database deletion will be written *after* the call
-  // to "prepareDropDatabase" returns
-  int prepareDropDatabase(TRI_vocbase_t* vocbase) override;
+  TRI_vocbase_t* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data, int&) override;
+  virtual void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWallMaker, int&) override;
+  virtual void dropDatabase(TRI_vocbase_t* vocbase, int&) override;
+  virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int&) override;
   
-  // perform a physical deletion of the database      
-  int dropDatabase(TRI_vocbase_t* vocbase) override;
-  
-  /// @brief wait until a database directory disappears
-  int waitUntilDeletion(TRI_voc_tick_t id, bool force) override;
-  
-  // asks the storage engine to create a collection as specified in the VPack
-  // Slice object and persist the creation info. It is guaranteed by the server 
-  // that no other active collection with the same name and id exists in the same
-  // database when this function is called. If this operation fails somewhere in 
-  // the middle, the storage engine is required to fully clean up the creation 
-  // and throw only then, so that subsequent collection creation requests will not fail.
-  // the WAL entry for the collection creation will be written *after* the call
-  // to "createCollection" returns
   std::string createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                arangodb::LogicalCollection const* parameters) override;
   

@@ -35,17 +35,17 @@
 #define DEBUG_END_BLOCK()                                                     \
   }                                                                           \
   catch (arangodb::basics::Exception const& ex) {                             \
-    LOG(WARN) << "arango exception caught in " << __FILE__ << ":" << __LINE__ \
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "arango exception caught in " << __FILE__ << ":" << __LINE__ \
               << ":" << ex.what();                                            \
     throw;                                                                    \
   }                                                                           \
   catch (std::exception const& ex) {                                          \
-    LOG(WARN) << "std exception caught in " << __FILE__ << ":" << __LINE__    \
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "std exception caught in " << __FILE__ << ":" << __LINE__    \
               << ": " << ex.what();                                           \
     throw;                                                                    \
   }                                                                           \
   catch (...) {                                                               \
-    LOG(WARN) << "exception caught in " << __FILE__ << ":" << __LINE__;       \
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "exception caught in " << __FILE__ << ":" << __LINE__;       \
     throw;                                                                    \
   }  //
 

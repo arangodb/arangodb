@@ -115,6 +115,7 @@ struct Parameter {
   virtual std::string name() const = 0;
   virtual std::string valueString() const = 0;
   virtual std::string set(std::string const&) = 0;
+  virtual std::string description() const { return std::string(); }
 
   virtual std::string typeDescription() const {
     return std::string("<") + name() + std::string(">");
@@ -342,18 +343,10 @@ struct DiscreteValuesParameter : public T {
 
     if (allowed.find(*ptr) == allowed.end()) {
       // default value is not in list of allowed values
-      std::string msg("invalid default value for DiscreteValues parameter: ");
+      std::string msg("invalid default value for DiscreteValues parameter: '");
       msg.append(stringifyValue(*ptr));
-      msg.append(". allowed values: ");
-      size_t i = 0;
-      for (auto const& it : allowed) {
-        if (i > 0) {
-          msg.append(" or ");
-        }
-        msg.append(stringifyValue(it));
-        ++i;
-      }
-
+      msg.append("'. ");
+      msg.append(description());
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
     }
   }
@@ -362,10 +355,33 @@ struct DiscreteValuesParameter : public T {
     auto it = allowed.find(fromString<typename T::ValueType>(value));
 
     if (it == allowed.end()) {
-      return "invalid value " + value;
+      std::string msg("invalid value '");
+      msg.append(value);
+      msg.append("'. ");
+      msg.append(description());
+      return msg;
     }
 
     return T::set(value);
+  }
+      
+  std::string description() const override {
+    std::string msg("possible values: ");
+    std::vector<std::string> values;
+    for (auto const& it : allowed) {
+      values.emplace_back(stringifyValue(it));
+    }
+    std::sort(values.begin(), values.end());
+
+    size_t i = 0;
+    for (auto const& it : values) {
+      if (i > 0) {
+        msg.append(", ");
+      }
+      msg.append(it);
+      ++i;
+    }
+    return msg;
   }
 
   std::unordered_set<typename T::ValueType> allowed;

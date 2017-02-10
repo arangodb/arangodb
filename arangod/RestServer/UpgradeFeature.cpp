@@ -53,6 +53,7 @@ UpgradeFeature::UpgradeFeature(
   startsAfter("Database");
   startsAfter("MMFilesWalRecovery");
   startsAfter("V8Dealer");
+  startsAfter("Aql");
 }
 
 void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -71,17 +72,17 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_upgrade && !_upgradeCheck) {
-    LOG(FATAL) << "cannot specify both '--database.auto-upgrade true' and "
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot specify both '--database.auto-upgrade true' and "
                   "'--database.upgrade-check false'";
     FATAL_ERROR_EXIT();
   }
 
   if (!_upgrade) {
-    LOG(TRACE) << "executing upgrade check: not disabling server features";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "executing upgrade check: not disabling server features";
     return;
   }
 
-  LOG(TRACE) << "executing upgrade procedure: disabling server features";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "executing upgrade procedure: disabling server features";
 
   ApplicationServer::forceDisableFeatures(_nonServerFeatures);
 
@@ -120,7 +121,7 @@ void UpgradeFeature::start() {
 }
 
 void UpgradeFeature::changeAdminPassword(std::string const& defaultPassword) {
-  LOG(TRACE) << "starting to restore admin user";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "starting to restore admin user";
 
   auto* systemVocbase = DatabaseFeature::DATABASE->systemDatabase();
 
@@ -130,7 +131,7 @@ void UpgradeFeature::changeAdminPassword(std::string const& defaultPassword) {
         V8DealerFeature::DEALER->enterContext(systemVocbase, true, 0);
 
     if (context == nullptr) {
-      LOG(FATAL) << "could not enter context #0";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not enter context #0";
       FATAL_ERROR_EXIT();
     }
 
@@ -146,7 +147,7 @@ void UpgradeFeature::changeAdminPassword(std::string const& defaultPassword) {
         v8::Context::Scope contextScope(localContext);
 
         // run upgrade script
-        LOG(DEBUG) << "running admin recreation script";
+        LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "running admin recreation script";
 
         // special check script to be run just once in first thread (not in
         // all) but for all databases
@@ -173,13 +174,13 @@ void UpgradeFeature::changeAdminPassword(std::string const& defaultPassword) {
   }
 
   // and return from the context
-  LOG(TRACE) << "finished to restore admin user";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "finished to restore admin user";
 
   *_result = EXIT_SUCCESS;
 }
 
 void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
-  LOG(TRACE) << "starting database init/upgrade";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "starting database init/upgrade";
 
   DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
   auto* systemVocbase = DatabaseFeature::DATABASE->systemDatabase();
@@ -190,7 +191,7 @@ void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
         V8DealerFeature::DEALER->enterContext(systemVocbase, true, 0);
 
     if (context == nullptr) {
-      LOG(FATAL) << "could not enter context #0";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not enter context #0";
       FATAL_ERROR_EXIT();
     }
 
@@ -206,7 +207,7 @@ void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
         v8::Context::Scope contextScope(localContext);
 
         // run upgrade script
-        LOG(DEBUG) << "running database init/upgrade";
+        LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "running database init/upgrade";
 
         for (auto& name : databaseFeature->getDatabaseNames()) {
           TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
@@ -234,23 +235,23 @@ void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
                     context->_isolate, "UPGRADE_STARTED"))) {
               localContext->Exit();
               if (_upgrade) {
-                LOG(FATAL) << "Database '" << vocbase->name()
+                LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database '" << vocbase->name()
                            << "' upgrade failed. Please inspect the logs from "
                               "the upgrade procedure";
                 FATAL_ERROR_EXIT();
               } else {
-                LOG(FATAL)
+                LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
                     << "Database '" << vocbase->name()
                     << "' needs upgrade. Please start the server with the "
                        "--database.auto-upgrade option";
                 FATAL_ERROR_EXIT();
               }
             } else {
-              LOG(FATAL) << "JavaScript error during server start";
+              LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "JavaScript error during server start";
               FATAL_ERROR_EXIT();
             }
 
-            LOG(DEBUG) << "database '" << vocbase->name()
+            LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "database '" << vocbase->name()
                        << "' init/upgrade done";
           }
         }
@@ -264,9 +265,9 @@ void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
 
   if (_upgrade) {
     *_result = EXIT_SUCCESS;
-    LOG(INFO) << "database upgrade passed";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "database upgrade passed";
   }
 
   // and return from the context
-  LOG(TRACE) << "finished database init/upgrade";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "finished database init/upgrade";
 }

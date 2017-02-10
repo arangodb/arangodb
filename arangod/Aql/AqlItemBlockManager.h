@@ -136,8 +136,6 @@ class AqlItemBlockManager {
   };
 
   Bucket _buckets[NumBuckets];
-
-  static_assert(sizeof(_buckets) <= 400, "buckets memory usage is unexpectedly high");
 };
 
 }

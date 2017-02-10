@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,39 +17,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_AGENT_CALLBACK_H
-#define ARANGOD_CONSENSUS_AGENT_CALLBACK_H 1
+#ifndef APPLICATION_FEATURES_AQL_FEATURE_H
+#define APPLICATION_FEATURES_AQL_FEATURE_H 1
 
-#include "Agency/AgencyCommon.h"
-#include "Cluster/ClusterComm.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+
+#include "Basics/Mutex.h"
 
 namespace arangodb {
-namespace consensus {
-
-class Agent;
-
-class AgentCallback : public arangodb::ClusterCommCallback {
+class AqlFeature final : public application_features::ApplicationFeature {
+  static AqlFeature* _AQL;
+  static Mutex _aqlFeatureMutex;
  public:
-  AgentCallback();
+  explicit AqlFeature(application_features::ApplicationServer*);
 
-  AgentCallback(Agent*, std::string const&, index_t, size_t);
-
-  virtual bool operator()(arangodb::ClusterCommResult*) override final;
-
-  void shutdown();
-
+ public:
+  static AqlFeature* lease();
+  static void unlease();
+  void start() override final;
+  void stop() override final;
+ 
  private:
-  Agent* _agent;
-  index_t _last;
-  std::string _slaveID;
-  size_t _toLog;
-  double _startTime;
-
+  uint64_t _numberLeases;
+  bool _isStopped;
 };
 }
-}  // namespace
 
 #endif

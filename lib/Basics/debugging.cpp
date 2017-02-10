@@ -78,7 +78,7 @@ static char* MakeValue(char const* value) {
 /// @brief cause a segmentation violation
 /// this is used for crash and recovery tests
 void TRI_SegfaultDebugging(char const* message) {
-  LOG(WARN) << "" << message << ": summon Baal!";
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << message << ": summon Baal!";
   // make sure the latest log messages are flushed
   TRI_FlushDebugging();
 
@@ -136,7 +136,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
     // not yet found. so add it
     char* copy;
 
-    LOG(WARN) << "activating intentional failure point '" << value << "'. the server will misbehave!";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "activating intentional failure point '" << value << "'. the server will misbehave!";
     size_t n = strlen(checkValue);
 
     if (FailurePoints == nullptr) {
@@ -360,7 +360,7 @@ void TRI_LogBacktrace() {
   std::string bt;
   TRI_GetBacktrace(bt);
   if (!bt.empty()) {  
-    LOG(WARN) << bt;
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << bt;
   }
 #endif
 #endif
@@ -374,7 +374,7 @@ void TRI_FlushDebugging() {
 
 /// @brief flushes the logger and shuts it down
 void TRI_FlushDebugging(char const* file, int line, char const* message) {
-  LOG(FATAL) << "assertion failed in " << file << ":" << line << ": " << message;
+  LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "assertion failed in " << file << ":" << line << ": " << message;
   Logger::flush();
   Logger::shutdown();
 }

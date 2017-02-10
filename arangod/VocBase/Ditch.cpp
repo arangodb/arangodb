@@ -133,10 +133,10 @@ void Ditches::destroy() {
         type == Ditch::TRI_DITCH_COMPACTION) {
       delete ptr;
     } else if (type == Ditch::TRI_DITCH_DOCUMENT) {
-      LOG(ERR) << "logic error. shouldn't have document ditches on unload";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "logic error. shouldn't have document ditches on unload";
       TRI_ASSERT(false);
     } else {
-      LOG(ERR) << "unknown ditch type";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown ditch type";
     }
 
     ptr = next;

@@ -1277,7 +1277,7 @@ bool TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
     size_t start;
     size_t i;
 
-    // LOG(DEBUG) << "checking word " << wordlist->_words[w];
+    // LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "checking word " << wordlist->_words[w];
 
     if (w > 0) {
       std::string tmp = wordlist[w];
@@ -1416,7 +1416,7 @@ TRI_fulltext_result_t* TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
     match = query->_matches[i];
     operation = query->_operations[i];
 
-    LOG(DEBUG) << "searching for word: '" << word << "'";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "searching for word: '" << word << "'";
 
     if ((operation == TRI_FULLTEXT_AND || operation == TRI_FULLTEXT_EXCLUDE) &&
         i > 0 && TRI_NumEntriesListMMFilesFulltextIndex(result) == 0) {
@@ -1435,7 +1435,7 @@ TRI_fulltext_result_t* TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
         // prefix matching
         list = GetSubNodeHandles(node);
       } else {
-        LOG(WARN) << "invalid matching option for fulltext index query";
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "invalid matching option for fulltext index query";
         list = TRI_CreateListMMFilesFulltextIndex(0);
       }
     } else {

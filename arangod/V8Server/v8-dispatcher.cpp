@@ -238,7 +238,17 @@ V8Task::callbackFunction() {
     guard.work();
 
     if (error) {
-      V8Task::unregisterTask(_id, false);
+      MUTEX_LOCKER(guard, _tasksLock);
+
+      auto itr = _tasks.find(_id);
+
+      if (itr != _tasks.end()) {
+        // remove task from list of tasks if it is still active
+        if (this == (*itr).second.get()) {
+          // still the same task. must remove from map
+          _tasks.erase(itr);
+        }
+      }
       return;
     }
 
@@ -359,18 +369,18 @@ void V8Task::work() {
             TRI_GET_GLOBALS();
 
             v8g->_canceled = true;
-            LOG(WARN)
+            LOG_TOPIC(WARN, arangodb::Logger::FIXME)
                 << "caught non-catchable exception (aka termination) in job";
           }
         }
       } catch (arangodb::basics::Exception const& ex) {
-        LOG(ERR) << "caught exception in V8 user task: "
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in V8 user task: "
                  << TRI_errno_string(ex.code()) << " " << ex.what();
       } catch (std::bad_alloc const&) {
-        LOG(ERR) << "caught exception in V8 user task: "
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in V8 user task: "
                  << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
       } catch (...) {
-        LOG(ERR) << "caught unknown exception in V8 user task";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception in V8 user task";
       }
     }
   }

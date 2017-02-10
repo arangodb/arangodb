@@ -148,11 +148,11 @@ if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
   exit 1
 fi
 
-MINP=0.2
-MAXP=1.0
+MINP=0.5
+MAXP=2.5
 SFRE=2.5
-COMP=100
-KEEP=10
+COMP=200000
+KEEP=500
 BASE=5000
 
 if [ "$GOSSIP_MODE" = "0" ]; then
