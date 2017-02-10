@@ -60,7 +60,7 @@ Conductor::Conductor(
       _vertexCollections(vertexCollections),
       _edgeCollections(edgeCollections) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  LOG(INFO) << "Constructed conductor";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Constructed conductor";
 }
 
 Conductor::~Conductor() { this->cancel(); }
@@ -91,24 +91,24 @@ void Conductor::start(std::string const& algoName,
   _asyncMode = _algorithm->supportsAsyncMode();
   _asyncMode = _asyncMode && (async.isNone() || async.getBoolean());
   if (_asyncMode) {
-    LOG(INFO) << "Running in async mode";
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Running in async mode";
   }
   VPackSlice lazy = _userParams.slice().get("lazyLoading");
   _lazyLoading = _algorithm->supportsLazyLoading();
   _lazyLoading = _lazyLoading && (lazy.isNone() || lazy.getBoolean());
   if (_lazyLoading) {
-    LOG(INFO) << "Enabled lazy loading";
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Enabled lazy loading";
   }
   _storeResults = VelocyPackHelper::getBooleanValue(config, "store", true);
   if (!_storeResults) {
-    LOG(INFO) << "Will keep results in-memory";
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Will keep results in-memory";
   }
 
-  LOG(INFO) << "Telling workers to load the data";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Telling workers to load the data";
   int res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::CANCELED;
-    LOG(ERR) << "Not all DBServers started the execution";
+    LOG_TOPIC(ERR, Logger::PREGEL) << "Not all DBServers started the execution";
   }
 }
 
@@ -130,7 +130,7 @@ bool Conductor::_startGlobalStep() {
   int res = _sendToAllDBServers(Utils::prepareGSSPath, b.slice(), requests);
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
-    LOG(INFO) << "Seems there is at least one worker out of order";
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Seems there is at least one worker out of order";
     Utils::printResponses(requests);
     // the recovery mechanisms should take care of this
     return false;
@@ -157,7 +157,7 @@ bool Conductor::_startGlobalStep() {
     _masterContext->_enterNextGSS = false;
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
-      LOG(INFO) << "Master context ended execution";
+      LOG_TOPIC(INFO, Logger::PREGEL) << "Master context ended execution";
     }
   }
 
@@ -188,16 +188,16 @@ bool Conductor::_startGlobalStep() {
   b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
   _aggregators->serializeValues(b);
   b.close();
-  LOG(INFO) << b.toString();
+  LOG_TOPIC(INFO, Logger::PREGEL) << b.toString();
 
   // start vertex level operations, does not get a response
   res = _sendToAllDBServers(Utils::startGSSPath, b.slice());  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
-    LOG(INFO) << "Conductor could not start GSS " << _globalSuperstep;
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Conductor could not start GSS " << _globalSuperstep;
     // the recovery mechanisms should take care od this
   } else {
-    LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Conductor started new gss " << _globalSuperstep;
   }
   return res == TRI_ERROR_NO_ERROR;
 }
@@ -207,7 +207,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
   if (_state != ExecutionState::RUNNING) {
-    LOG(WARN) << "We are not in a state where we expect a response";
+    LOG_TOPIC(WARN, Logger::PREGEL) << "We are not in a state where we expect a response";
     return;
   }
 
@@ -217,7 +217,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
     return;
   }
 
-  LOG(INFO) << _totalVerticesCount << " vertices, " << _totalEdgesCount
+  LOG_TOPIC(INFO, Logger::PREGEL) << _totalVerticesCount << " vertices, " << _totalEdgesCount
             << " edges";
   if (_masterContext) {
     _masterContext->_globalSuperstep = 0;
@@ -248,7 +248,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   if (gss != _globalSuperstep ||
       !(_state == ExecutionState::RUNNING ||
         _state == ExecutionState::CANCELED)) {
-    LOG(WARN) << "Conductor did received a callback from the wrong superstep";
+    LOG_TOPIC(WARN, Logger::PREGEL) << "Conductor did received a callback from the wrong superstep";
     return VPackBuilder();
   }
 
@@ -279,7 +279,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     return response;
   }
 
-  LOG(INFO) << "Finished gss " << _globalSuperstep << " in "
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Finished gss " << _globalSuperstep << " in "
             << (TRI_microtime() - _computationStartTimeSecs) << "s";
   _globalSuperstep++;
 
@@ -292,10 +292,10 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     if (_state == ExecutionState::RUNNING) {
       _startGlobalStep();  // trigger next superstep
     } else if (_state == ExecutionState::CANCELED) {
-      LOG(WARN) << "Execution was canceled, results will be discarded.";
+      LOG_TOPIC(WARN, Logger::PREGEL) << "Execution was canceled, results will be discarded.";
       _finalizeWorkers();  // tells workers to store / discard results
     } else {  // this prop shouldn't occur unless we are recovering or in error
-      LOG(WARN) << "No further action taken after receiving all responses";
+      LOG_TOPIC(WARN, Logger::PREGEL) << "No further action taken after receiving all responses";
     }
   });
   return VPackBuilder();
@@ -305,7 +305,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
   if (_state != ExecutionState::RECOVERING) {
-    LOG(WARN) << "We are not in a state where we expect a recovery response";
+    LOG_TOPIC(WARN, Logger::PREGEL) << "We are not in a state where we expect a recovery response";
     return;
   }
 
@@ -338,7 +338,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
     res = _sendToAllDBServers(Utils::continueRecoveryPath, b.slice());
 
   } else {
-    LOG(INFO) << "Recovery finished. Proceeding normally";
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Recovery finished. Proceeding normally";
 
     // build the message, works for all cases
     VPackBuilder b;
@@ -354,7 +354,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
   }
   if (res != TRI_ERROR_NO_ERROR) {
     cancel();
-    LOG(INFO) << "Recovery failed";
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Recovery failed";
   }
 }
 
@@ -372,7 +372,7 @@ void Conductor::startRecovery() {
   if (_state != ExecutionState::RUNNING && _state != ExecutionState::IN_ERROR) {
     return;  // maybe we are already in recovery mode
   } else if (_algorithm->supportsCompensation() == false) {
-    LOG(ERR) << "Execution is not recoverable";
+    LOG_TOPIC(ERR, Logger::PREGEL) << "Execution is not recoverable";
     cancel();
     return;
   }
@@ -397,7 +397,7 @@ void Conductor::startRecovery() {
     int res = PregelFeature::instance()->recoveryManager()->filterGoodServers(
         _dbServers, goodServers);
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "Recovery proceedings failed";
+      LOG_TOPIC(ERR, Logger::PREGEL) << "Recovery proceedings failed";
       cancel();
       return;
     }
@@ -433,7 +433,7 @@ void Conductor::startRecovery() {
     res = _initializeWorkers(Utils::startRecoveryPath, b.slice());
     if (res != TRI_ERROR_NO_ERROR) {
       cancel();
-      LOG(ERR) << "Compensation failed";
+      LOG_TOPIC(ERR, Logger::PREGEL) << "Compensation failed";
     }
   });
 }
@@ -489,7 +489,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
   std::string const path =
       Utils::baseUrl(_vocbaseGuard.vocbase()->name()) + suffix;
   std::string coordinatorId = ServerState::instance()->getId();
-  LOG(INFO) << "My id: " << coordinatorId;
+  LOG_TOPIC(INFO, Logger::PREGEL) << "My id: " << coordinatorId;
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : vertexMap) {
     ServerID const& server = it.first;
@@ -546,11 +546,11 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     auto body = std::make_shared<std::string const>(b.toJson());
     requests.emplace_back("server:" + server, rest::RequestType::POST, path,
                           body);
-    LOG(INFO) << "Initializing Server " << server;
-    LOG(INFO) << body;
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Initializing Server " << server;
+    LOG_TOPIC(INFO, Logger::PREGEL) << body;
   }
 
-  ClusterComm* cc = ClusterComm::instance();
+  std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
   size_t nrDone = 0;
   size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
                                       LogTopic("Pregel Conductor"));
@@ -572,7 +572,7 @@ int Conductor::_finalizeWorkers() {
     mngr->stopMonitoring(this);
   }
 
-  LOG(INFO) << "Finalizing workers";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Finalizing workers";
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -590,14 +590,14 @@ int Conductor::_finalizeWorkers() {
   _aggregators->serializeValues(b);
   b.close();
 
-  LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
-  LOG(INFO) << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Done. We did " << _globalSuperstep << " rounds";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs
             << "s";
-  LOG(INFO) << "Computation Time: " << compEnd - _computationStartTimeSecs
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Computation Time: " << compEnd - _computationStartTimeSecs
             << "s";
-  LOG(INFO) << "Storage Time: " << TRI_microtime() - compEnd << "s";
-  LOG(INFO) << "Overall: " << totalRuntimeSecs() << "s";
-  LOG(INFO) << "Stats: " << b.toString();
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Storage Time: " << TRI_microtime() - compEnd << "s";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Stats: " << b.toString();
   return res;
 }
 
@@ -637,9 +637,9 @@ int Conductor::_sendToAllDBServers(std::string const& suffix,
                                    std::vector<ClusterCommRequest>& requests) {
   _respondedServers.clear();
 
-  ClusterComm* cc = ClusterComm::instance();
+  std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
   if (_dbServers.size() == 0) {
-    LOG(WARN) << "No servers registered";
+    LOG_TOPIC(WARN, Logger::PREGEL) << "No servers registered";
     return TRI_ERROR_FAILED;
   }
 
@@ -653,7 +653,7 @@ int Conductor::_sendToAllDBServers(std::string const& suffix,
   size_t nrDone = 0;
   size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
                                       LogTopic("Pregel Conductor"));
-  LOG(INFO) << "Send " << suffix << " to " << nrDone << " servers";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Send " << suffix << " to " << nrDone << " servers";
   Utils::printResponses(requests);
 
   return nrGood == requests.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
@@ -663,7 +663,7 @@ void Conductor::_ensureUniqueResponse(VPackSlice body) {
   // check if this the only time we received this
   ServerID sender = body.get(Utils::senderKey).copyString();
   if (_respondedServers.find(sender) != _respondedServers.end()) {
-    LOG(ERR) << "Received response already from " << sender;
+    LOG_TOPIC(ERR, Logger::PREGEL) << "Received response already from " << sender;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);
   }
   _respondedServers.insert(sender);

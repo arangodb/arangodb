@@ -87,7 +87,7 @@ void ArrayOutCache<M>::appendMessage(prgl_shard_t shard, std::string const& key,
 
 template <typename M>
 void ArrayOutCache<M>::flushMessages() {
-  // LOG(INFO) << "Beginning to send messages to other machines";
+  // LOG_TOPIC(INFO, Logger::PREGEL) << "Beginning to send messages to other machines";
   uint64_t gss = this->_config->globalSuperstep();
   if (this->_sendToNextGSS) {
     gss += 1;
@@ -134,7 +134,7 @@ void ArrayOutCache<M>::flushMessages() {
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
 
-    // LOG(INFO) << "Worker: Sending data to other Shard: " << shardId;
+    // LOG_TOPIC(INFO, Logger::PREGEL) << "Worker: Sending data to other Shard: " << shardId;
     //<< ". Message: " << package.toJson();
   }
   size_t nrDone = 0;
@@ -144,7 +144,7 @@ void ArrayOutCache<M>::flushMessages() {
   for (auto const& req : requests) {
     auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED) {
-      LOG(INFO) << res.answer->payload().toJson();
+      LOG_TOPIC(INFO, Logger::PREGEL) << res.answer->payload().toJson();
     }
   }
   this->clear();
@@ -195,7 +195,7 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
       vertexMap.emplace(key, data);
 
       if (++(this->_containedMessages) >= this->_batchSize) {
-        LOG(INFO) << "Hit buffer limit";
+        LOG_TOPIC(INFO, Logger::PREGEL) << "Hit buffer limit";
         flushMessages();
       }
     }
@@ -204,7 +204,7 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
 
 template <typename M>
 void CombiningOutCache<M>::flushMessages() {
-  // LOG(INFO) << "Beginning to send messages to other machines";
+  // LOG_TOPIC(INFO, Logger::PREGEL) << "Beginning to send messages to other machines";
   uint64_t gss = this->_config->globalSuperstep();
   if (this->_sendToNextGSS && this->_config->asynchronousMode()) {
     gss += 1;
@@ -247,7 +247,7 @@ void CombiningOutCache<M>::flushMessages() {
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
 
-    // LOG(INFO) << "Worker: Sending data to other Shard: " << shardId;
+    // LOG_TOPIC(INFO, Logger::PREGEL) << "Worker: Sending data to other Shard: " << shardId;
     //          << ". Message: " << package.toJson();
   }
   size_t nrDone = 0;

@@ -95,7 +95,7 @@ struct PRMasterContext : public MasterContext {
   }
 
   void preApplication() override {
-    LOG(INFO) << "Using threshold " << _threshold;
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Using threshold " << _threshold;
   };
 
   bool postGlobalSuperstep() override {

@@ -73,7 +73,7 @@ void PregelFeature::start() {
   }
 
   const size_t threadNum = _approxThreadNumber();
-  LOG(INFO) << "Pregel uses " << threadNum << " threads";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Pregel uses " << threadNum << " threads";
   _threadPool.reset(new ThreadPool(threadNum, "Pregel"));
 
   if (ServerState::instance()->isCoordinator()) {

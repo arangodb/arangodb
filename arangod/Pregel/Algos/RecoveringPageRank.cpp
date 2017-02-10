@@ -136,7 +136,7 @@ struct RPRMasterContext : public MasterContext {
 
   bool postGlobalSuperstep() override {
     const float* convergence = getAggregatedValue<float>(kConvergence);
-    LOG(INFO) << "Current convergence level" << *convergence;
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Current convergence level" << *convergence;
     totalRank = *getAggregatedValue<float>(kRank);
 
     float const* diff = getAggregatedValue<float>(kConvergence);

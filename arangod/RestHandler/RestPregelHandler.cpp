@@ -50,7 +50,7 @@ RestStatus RestPregelHandler::execute() {
     VPackSlice body(parsedBody->start());// never nullptr
     
     if (!parseSuccess || !body.isObject()) {
-      LOG(ERR) << "Bad request body\n";
+      LOG_TOPIC(ERR, Logger::PREGEL) << "Bad request body\n";
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_NOT_IMPLEMENTED, "illegal request for /_api/pregel");
       return RestStatus::DONE;
@@ -65,7 +65,7 @@ RestStatus RestPregelHandler::execute() {
     std::vector<std::string> const& suffix = _request->suffixes();
     VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
     if (!sExecutionNum.isInteger()) {
-      LOG(ERR) << "Invalid execution number";
+      LOG_TOPIC(ERR, Logger::PREGEL) << "Invalid execution number";
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       return RestStatus::DONE;
     }
@@ -73,14 +73,14 @@ RestStatus RestPregelHandler::execute() {
     VPackBuilder response;
     uint64_t executionNumber = sExecutionNum.getUInt();
     if (suffix.size() != 1) {
-      LOG(ERR) << "Invalid suffix";
+      LOG_TOPIC(ERR, Logger::PREGEL) << "Invalid suffix";
       generateError(rest::ResponseCode::NOT_FOUND,
                     TRI_ERROR_HTTP_NOT_FOUND);
       return RestStatus::DONE;
     } else if (suffix[0] == Utils::startExecutionPath) {
       IWorker *w = PregelFeature::instance()->worker(executionNumber);
       if (w) {
-        LOG(ERR) << "Worker with this execution number already exists.";
+        LOG_TOPIC(ERR, Logger::PREGEL) << "Worker with this execution number already exists.";
         generateError(rest::ResponseCode::BAD,
                       TRI_ERROR_HTTP_FORBIDDEN);
         return RestStatus::DONE;
@@ -92,14 +92,14 @@ RestStatus RestPregelHandler::execute() {
       if (exe) {
         exe->finishedWorkerStartup(body);
       } else {
-        LOG(ERR) << "Conductor not found: " << executionNumber;
+        LOG_TOPIC(ERR, Logger::PREGEL) << "Conductor not found: " << executionNumber;
       }
     } else if (suffix[0] == Utils::prepareGSSPath) {
       IWorker *w = PregelFeature::instance()->worker(executionNumber);
       if (w) {
         response = w->prepareGlobalStep(body);
       } else {
-        LOG(ERR) << "Invalid execution number, worker does not exist.";
+        LOG_TOPIC(ERR, Logger::PREGEL) << "Invalid execution number, worker does not exist.";
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
         return RestStatus::DONE;
@@ -109,7 +109,7 @@ RestStatus RestPregelHandler::execute() {
       if (w) {
         w->startGlobalStep(body);
       } else {
-        LOG(ERR) << "Invalid execution number, worker does not exist.";
+        LOG_TOPIC(ERR, Logger::PREGEL) << "Invalid execution number, worker does not exist.";
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
         return RestStatus::DONE;
@@ -166,9 +166,9 @@ RestStatus RestPregelHandler::execute() {
     generateResult(rest::ResponseCode::OK, response.slice());
     
   } catch (std::exception const &e) {
-    LOG(ERR) << e.what();
+    LOG_TOPIC(ERR, Logger::PREGEL) << e.what();
   } catch(...) {
-    LOG(ERR) << "Exception in pregel REST handler";
+    LOG_TOPIC(ERR, Logger::PREGEL) << "Exception in pregel REST handler";
   }
     
   return RestStatus::DONE;
