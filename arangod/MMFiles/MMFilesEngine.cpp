@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesEngine.h"
@@ -544,11 +545,6 @@ TRI_vocbase_t* MMFilesEngine::createDatabaseMMFiles(TRI_voc_tick_t id, arangodb:
 
   int res = 0;
   waitUntilDeletion(id, true, res);
-  
-  // //assert?!
-  // if (res != TRI_ERROR_NO_ERROR) {
-  //   THROW_ARANGO_EXCEPTION(res);
-  // }
 
   res = createDatabaseDirectory(id, name);
 

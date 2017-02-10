@@ -18,6 +18,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DatabaseFeature.h"
@@ -43,10 +44,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-//#include "MMFiles/MMFilesLogfileManager.h"   // instance::isInRecovery / waitForCollector
-//#include "MMFiles/MMFilesPersistentIndex.h"  // RocksDBFeature used in MMFiles
-//#include "MMFiles/MMFilesWalMarker.h"      // MMFiles write ahead log marker
-//#include "MMFiles/MMFilesWalSlots.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
