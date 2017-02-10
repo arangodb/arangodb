@@ -115,6 +115,7 @@ set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${AR
 
 
 set(INSTALL_MACROS_NO_TARGET_INSTALL TRUE)
+include(${ORIGINAL_SOURCE_DIR}/cmake/dbugInformation.cmake)
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallMacros.cmake)
 include(${ORIGINAL_SOURCE_DIR}/arangosh/dbg.cmake)
 include(${ORIGINAL_SOURCE_DIR}/arangod/dbg.cmake)
