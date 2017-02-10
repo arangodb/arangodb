@@ -597,7 +597,13 @@ function TaskSuite () {
 
       internal.wait(7);
 
-      tasks.unregister(task);
+      try {
+        tasks.unregister(task);
+      } catch (err) {
+        // should not happen. print debug info
+        require("console").warn("task not found. currently available tasks: ", getTasks());
+        throw err;
+      }
 
       assertTrue(db[cn].count() > 0);
       assertTrue(db[cn].byExample({ value: 17 }).toArray().length > 0);
@@ -634,7 +640,13 @@ function TaskSuite () {
 
       internal.wait(7);
 
-      tasks.unregister(task);
+      try {
+        tasks.unregister(task);
+      } catch (err) {
+        // should not happen. print debug info
+        require("console").warn("task not found. currently available tasks: ", getTasks());
+        throw err;
+      }
 
       assertTrue(db[cn].count() > 0);
       assertTrue(db[cn].byExample({ value: 42 }).toArray().length > 0);
