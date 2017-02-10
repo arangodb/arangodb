@@ -522,7 +522,7 @@ void ConsoleFeature::startPager() {
     _toPager = popen(_pagerCommand.c_str(), "w");
 
     if (_toPager == nullptr) {
-      LOG(ERR) << "popen() for pager failed! Using stdout instead!";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "popen() for pager failed! Using stdout instead!";
       _toPager = stdout;
       _pager = false;
     }

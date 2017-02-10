@@ -201,7 +201,7 @@ struct IndexBucket {
     } else {
       if (TRI_UNMMFile(_table, requiredSize(_nrAlloc), _file, &_mmHandle) != TRI_ERROR_NO_ERROR) { 
         // unmapping failed
-        LOG(WARN) << "munmap failed";
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "munmap failed";
       }
       _mmHandle = nullptr;
     }

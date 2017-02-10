@@ -64,7 +64,7 @@ void ConsoleThread::run() {
   _context = V8DealerFeature::DEALER->enterContext(_vocbase, true);
 
   if (_context == nullptr) {
-    LOG(FATAL) << "cannot acquire V8 context";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";
     FATAL_ERROR_EXIT();
   }
 
@@ -75,7 +75,7 @@ void ConsoleThread::run() {
     inner();
   } catch (char const* error) {
     if (strcmp(error, USER_ABORTED) != 0) {
-      LOG(ERR) << error;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << error;
     }
   } catch (...) {
     _applicationServer->beginShutdown();
@@ -143,7 +143,7 @@ start_pretty_print();
     sigaddset(&set, SIGINT);
 
     if (pthread_sigmask(SIG_UNBLOCK, &set, nullptr) < 0) {
-      LOG(ERR) << "unable to install signal handler";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to install signal handler";
     }
 #endif
 

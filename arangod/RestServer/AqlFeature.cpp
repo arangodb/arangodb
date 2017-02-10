@@ -86,6 +86,7 @@ void AqlFeature::stop() {
   }
   LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature stopped";
   QueryRegistryFeature::QUERY_REGISTRY->destroyAll();
+  TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY->destroyAll();
 
   // Wait until all AQL queries are done
   while (true) {

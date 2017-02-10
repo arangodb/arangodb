@@ -371,13 +371,13 @@ int MMFilesTransactionState::writeBeginMarker() {
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
-    LOG(WARN) << "could not save transaction begin marker in log: " << ex.what();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction begin marker in log: " << ex.what();
   } catch (std::exception const& ex) {
     res = TRI_ERROR_INTERNAL;
-    LOG(WARN) << "could not save transaction begin marker in log: " << ex.what();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction begin marker in log: " << ex.what();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
-    LOG(WARN) << "could not save transaction begin marker in log: unknown exception";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction begin marker in log: unknown exception";
   }
 
   return res;
@@ -412,13 +412,13 @@ int MMFilesTransactionState::writeAbortMarker() {
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
-    LOG(WARN) << "could not save transaction abort marker in log: " << ex.what();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction abort marker in log: " << ex.what();
   } catch (std::exception const& ex) {
     res = TRI_ERROR_INTERNAL;
-    LOG(WARN) << "could not save transaction abort marker in log: " << ex.what();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction abort marker in log: " << ex.what();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
-    LOG(WARN) << "could not save transaction abort marker in log: unknown exception";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction abort marker in log: unknown exception";
   }
 
   return res;
@@ -460,13 +460,13 @@ int MMFilesTransactionState::writeCommitMarker() {
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
-    LOG(WARN) << "could not save transaction commit marker in log: " << ex.what();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction commit marker in log: " << ex.what();
   } catch (std::exception const& ex) {
     res = TRI_ERROR_INTERNAL;
-    LOG(WARN) << "could not save transaction commit marker in log: " << ex.what();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction commit marker in log: " << ex.what();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
-    LOG(WARN) << "could not save transaction commit marker in log: unknown exception";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save transaction commit marker in log: unknown exception";
   }
 
   return res;

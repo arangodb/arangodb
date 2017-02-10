@@ -89,7 +89,7 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
   if (!_jwtSecretProgramOption.empty()) {
     if (_jwtSecretProgramOption.length() > _maxSecretLength) {
-      LOG(ERR) << "Given JWT secret too long. Max length is "
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Given JWT secret too long. Max length is "
                << _maxSecretLength;
       FATAL_ERROR_EXIT();
     }
@@ -126,7 +126,7 @@ void AuthenticationFeature::start() {
 #endif
   }
 
-  LOG(INFO) << out.str();
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << out.str();
 }
 
 AuthLevel AuthenticationFeature::canUseDatabase(std::string const& username,

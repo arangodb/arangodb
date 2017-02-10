@@ -70,10 +70,10 @@ void Mutex::lock() {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG(ERR) << "mutex deadlock detected";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
     }
 
-    LOG(FATAL) << "could not lock the mutex object: " << strerror(rc);
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not lock the mutex object: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
 }
@@ -96,7 +96,7 @@ void Mutex::unlock() {
   int rc = pthread_mutex_unlock(&_mutex);
 
   if (rc != 0) {
-    LOG(FATAL) << "could not release the mutex: " << strerror(rc);
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not release the mutex: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
 }

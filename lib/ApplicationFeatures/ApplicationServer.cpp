@@ -39,7 +39,7 @@ ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
     const char *binaryPath)
     : _options(options), _stopping(false), _binaryPath(binaryPath) {
   if (ApplicationServer::server != nullptr) {
-    LOG(ERR) << "ApplicationServer initialized twice";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "ApplicationServer initialized twice";
   }
 
   ApplicationServer::server = this;
@@ -256,7 +256,7 @@ VPackBuilder ApplicationServer::options(
 
 // fail and abort with the specified message
 void ApplicationServer::fail(std::string const& message) {
-  LOG(FATAL) << "error. cannot proceed. reason: " << message;
+  LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "error. cannot proceed. reason: " << message;
   FATAL_ERROR_EXIT();
 }
 

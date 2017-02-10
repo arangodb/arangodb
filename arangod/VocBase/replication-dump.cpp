@@ -313,7 +313,7 @@ static int StringifyMarker(TRI_replication_dump_t* dump,
 
     default: {
       TRI_ASSERT(false);
-      LOG(ERR) << "got invalid marker of type " << static_cast<int>(type); 
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got invalid marker of type " << static_cast<int>(type); 
       return TRI_ERROR_INTERNAL;
     }
   }
@@ -436,7 +436,7 @@ static int SliceifyMarker(TRI_replication_dump_t* dump,
 
     default: {
       TRI_ASSERT(false);
-      LOG(ERR) << "got invalid marker of type " << static_cast<int>(type); 
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got invalid marker of type " << static_cast<int>(type); 
       return TRI_ERROR_INTERNAL;
     }
   }
@@ -527,7 +527,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
                           TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                           TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                           bool withTicks, bool useVpp = false) {
-  LOG(TRACE) << "dumping collection " << collection->cid() << ", tick range "
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dumping collection " << collection->cid() << ", tick range "
              << dataMin << " - " << dataMax;
 
   bool const isEdgeCollection = (collection->type() == TRI_COL_TYPE_EDGE);
@@ -553,7 +553,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "got error during dump dump of collection '" << collection->name() << "': " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got error during dump dump of collection '" << collection->name() << "': " << TRI_errno_string(res);
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -585,13 +585,13 @@ static int DumpCollection(TRI_replication_dump_t* dump,
 
     return TRI_ERROR_NO_ERROR;
   } catch (basics::Exception const& ex) {
-    LOG(ERR) << "caught exception during dump of collection '" << collection->name() << "': " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception during dump of collection '" << collection->name() << "': " << ex.what();
     return ex.code();
   } catch (std::exception const& ex) {
-    LOG(ERR) << "caught exception during dump of collection '" << collection->name() << "': " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception during dump of collection '" << collection->name() << "': " << ex.what();
     return TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG(ERR) << "caught unknown exception during dump of collection '" << collection->name() << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception during dump of collection '" << collection->name() << "'";
     return TRI_ERROR_INTERNAL;
   }
 }
@@ -645,7 +645,7 @@ int TRI_DumpLogReplication(
     std::unordered_set<TRI_voc_tid_t> const& transactionIds,
     TRI_voc_tick_t firstRegularTick, TRI_voc_tick_t tickMin,
     TRI_voc_tick_t tickMax, bool outputAsArray) {
-  LOG(TRACE) << "dumping log, tick range " << tickMin << " - " << tickMax;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dumping log, tick range " << tickMin << " - " << tickMax;
 
   // get a custom type handler
   auto customTypeHandler = dump->_transactionContext->orderCustomTypeHandler();
@@ -797,13 +797,13 @@ int TRI_DumpLogReplication(
       Append(dump, "]");
     }
   } catch (arangodb::basics::Exception const& ex) {
-    LOG(ERR) << "caught exception while dumping replication log: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception while dumping replication log: " << ex.what();
     res = ex.code();
   } catch (std::exception const& ex) {
-    LOG(ERR) << "caught exception while dumping replication log: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception while dumping replication log: " << ex.what();
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG(ERR) << "caught unknown exception while dumping replication log";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception while dumping replication log";
     res = TRI_ERROR_INTERNAL;
   }
 
@@ -837,7 +837,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
                                              TRI_voc_tick_t tickMin,
                                              TRI_voc_tick_t tickMax,
                                              bool useVpp) {
-  LOG(TRACE) << "determining transactions, tick range " << tickMin << " - "
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "determining transactions, tick range " << tickMin << " - "
              << tickMax;
 
   std::unordered_map<TRI_voc_tid_t, TRI_voc_tick_t> transactions;
@@ -852,7 +852,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
   TRI_voc_tick_t lastFoundTick = 0;
   int res = TRI_ERROR_NO_ERROR;
 
-  // LOG(INFO) << "found logfiles: " << logfiles.size();
+  // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "found logfiles: " << logfiles.size();
 
   try {
     // iterate over the datafiles found
@@ -865,7 +865,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
       MMFilesLogfileManager::instance()->getActiveLogfileRegion(
           logfile, ptr, end);
 
-      // LOG(INFO) << "scanning logfile " << i;
+      // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "scanning logfile " << i;
       while (ptr < end) {
         auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
 
@@ -920,8 +920,8 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
       }
     }
 
-    // LOG(INFO) << "found transactions: " << transactions.size();
-    // LOG(INFO) << "last tick: " << lastFoundTick;
+    // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "found transactions: " << transactions.size();
+    // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "last tick: " << lastFoundTick;
 
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer);
@@ -966,18 +966,18 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
 
     dump->_fromTickIncluded = fromTickIncluded;
     dump->_lastFoundTick = lastFoundTick;
-    // LOG(INFO) << "last tick2: " << lastFoundTick;
+    // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "last tick2: " << lastFoundTick;
 
     dump->_slices.push_back(std::move(buffer));
 
   } catch (arangodb::basics::Exception const& ex) {
-    LOG(ERR) << "caught exception while determining open transactions: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception while determining open transactions: " << ex.what();
     res = ex.code();
   } catch (std::exception const& ex) {
-    LOG(ERR) << "caught exception while determining open transactions: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception while determining open transactions: " << ex.what();
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG(ERR) << "caught unknown exception while determining open transactions";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception while determining open transactions";
     res = TRI_ERROR_INTERNAL;
   }
 

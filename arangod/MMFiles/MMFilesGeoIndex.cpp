@@ -81,7 +81,7 @@ void MMFilesGeoIndexIterator::evaluateCondition() {
       _inclusive = args->getMember(4)->getBoolValue();
     }
   } else {
-    LOG(ERR) << "No condition passed to MMFilesGeoIndexIterator constructor";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "No condition passed to MMFilesGeoIndexIterator constructor";
   }
 }
 
@@ -430,12 +430,12 @@ int MMFilesGeoIndex::insert(arangodb::Transaction*, TRI_voc_rid_t revisionId,
   int res = GeoIndex_insert(_geoIndex, &gc);
 
   if (res == -1) {
-    LOG(WARN) << "found duplicate entry in geo-index, should not happen";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "found duplicate entry in geo-index, should not happen";
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   } else if (res == -2) {
     return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
   } else if (res == -3) {
-    LOG(DEBUG) << "illegal geo-coordinates, ignoring entry";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "illegal geo-coordinates, ignoring entry";
     return TRI_ERROR_NO_ERROR;
   } else if (res < 0) {
     return TRI_set_errno(TRI_ERROR_INTERNAL);

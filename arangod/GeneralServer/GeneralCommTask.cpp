@@ -125,7 +125,7 @@ void GeneralCommTask::executeRequest(
 
   // transfer statistics into handler
   if (handler == nullptr) {
-    LOG(TRACE) << "no handler is known, giving up";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no handler is known, giving up";
     handleSimpleError(rest::ResponseCode::NOT_FOUND, messageId);
     return;
   }

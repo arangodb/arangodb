@@ -36,7 +36,7 @@ AqlItemBlockManager::~AqlItemBlockManager() { }
 /// @brief request a block with the specified size
 AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems,
                                                 RegisterId nrRegs) {
-  // LOG(TRACE) << "requesting AqlItemBlock of " << nrItems << " x " << nrRegs;
+  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "requesting AqlItemBlock of " << nrItems << " x " << nrRegs;
   size_t const targetSize = nrItems * nrRegs;
 
   AqlItemBlock* block = nullptr;
@@ -50,7 +50,7 @@ AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems,
       TRI_ASSERT(block != nullptr);
       block->eraseAll();
       block->rescale(nrItems, nrRegs);
-      // LOG(TRACE) << "returned cached AqlItemBlock with dimensions " << block->size() << " x " << block->getNrRegs();
+      // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "returned cached AqlItemBlock with dimensions " << block->size() << " x " << block->getNrRegs();
       break;
     }
     // try next (bigger) bucket
@@ -61,7 +61,7 @@ AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems,
 
   if (block == nullptr) {
     block = new AqlItemBlock(_resourceMonitor, nrItems, nrRegs);
-    // LOG(TRACE) << "created AqlItemBlock with dimensions " << block->size() << " x " << block->getNrRegs();
+    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "created AqlItemBlock with dimensions " << block->size() << " x " << block->getNrRegs();
   }
  
   TRI_ASSERT(block != nullptr);
@@ -75,7 +75,7 @@ AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems,
 void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) {
   TRI_ASSERT(block != nullptr);
 
-  // LOG(TRACE) << "returning AqlItemBlock of dimensions " << block->size() << " x " << block->getNrRegs();
+  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "returning AqlItemBlock of dimensions " << block->size() << " x " << block->getNrRegs();
   
   size_t const targetSize = block->size() * block->getNrRegs();
   size_t const i = Bucket::getId(targetSize);

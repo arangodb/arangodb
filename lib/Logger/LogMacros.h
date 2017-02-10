@@ -59,28 +59,6 @@
 #define ARANGODB_LOGGER_LOG_MACROS_H 1
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logs a message
-////////////////////////////////////////////////////////////////////////////////
-
-#define LOG(a)                                                        \
-  !arangodb::Logger::isEnabled((arangodb::LogLevel::a))               \
-      ? (void)0                                                       \
-      : arangodb::LogVoidify() & (arangodb::LoggerStream()            \
-                                  << (arangodb::LogLevel::a)          \
-                                  << arangodb::Logger::LINE(__LINE__) \
-                                  << arangodb::Logger::FILE(__FILE__) \
-                                  << arangodb::Logger::FUNCTION(__FUNCTION__))
-
-#define LOG_RAW(a)                                                    \
-  !arangodb::Logger::isEnabled((a))                                   \
-      ? (void)0                                                       \
-      : arangodb::LogVoidify() & (arangodb::LoggerStream()            \
-                                  << (a)                              \
-                                  << arangodb::Logger::LINE(__LINE__) \
-                                  << arangodb::Logger::FILE(__FILE__) \
-                                  << arangodb::Logger::FUNCTION(__FUNCTION__))
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic
 ////////////////////////////////////////////////////////////////////////////////
 

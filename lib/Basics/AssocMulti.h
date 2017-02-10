@@ -1038,7 +1038,7 @@ class AssocMulti {
   void resizeInternal(UserData* userData, Bucket& b, size_t targetSize) {
     std::string const cb(_contextCallback());
 
-    LOG(TRACE) << "resizing hash " << cb << ", target size: " << targetSize;
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "resizing hash " << cb << ", target size: " << targetSize;
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "hash-resize " << cb
                                           << ", target size: " << targetSize;
@@ -1094,7 +1094,7 @@ class AssocMulti {
 
     b = std::move(copy);
 
-    LOG(TRACE) << "resizing hash " << cb << " done";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "resizing hash " << cb << " done";
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
         << "[timer] " << Logger::FIXED(TRI_microtime() - start)
