@@ -31,15 +31,14 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include <boost/spirit/include/classic_core.hpp>
-#include <boost/spirit/include/classic_tree_to_xml.hpp>
 
+#include <boost/property_tree/detail/xml_parser_utils.hpp>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
-using namespace boost::spirit::classic;
+using namespace boost::property_tree::xml_parser;
 
 ExportFeature::ExportFeature(application_features::ApplicationServer* server,
                              int* result)
@@ -489,15 +488,15 @@ void ExportFeature::writeGraphBatch(int fd, VPackArrayIterator it, std::string c
 
   for(auto const& doc : it) {
     if (doc.hasKey("_from")) {
-      xmlTag = "<edge label=\"" + xml::encode(doc.hasKey(_xgmmlLabelAttribute) && doc.get(_xgmmlLabelAttribute).isString() ? doc.get(_xgmmlLabelAttribute).copyString() : "Default-Label") +
-               "\" source=\"" + xml::encode(doc.get("_from").copyString()) + "\" target=\"" + xml::encode(doc.get("_to").copyString()) + "\"";
+      xmlTag = "<edge label=\"" + encode_char_entities(doc.hasKey(_xgmmlLabelAttribute) && doc.get(_xgmmlLabelAttribute).isString() ? doc.get(_xgmmlLabelAttribute).copyString() : "Default-Label") +
+               "\" source=\"" + encode_char_entities(doc.get("_from").copyString()) + "\" target=\"" + encode_char_entities(doc.get("_to").copyString()) + "\"";
       writeToFile(fd, xmlTag, fileName);
       if (!_xgmmlLabelOnly) {
         xmlTag = ">\n";
         writeToFile(fd, xmlTag, fileName);
 
         for (auto const& it : VPackObjectIterator(doc)) {
-          xmlTag = xml::encode(it.key.copyString());
+          xmlTag = encode_char_entities(it.key.copyString());
           xgmmlWriteOneAtt(fd, fileName, it.value, xmlTag);
         }
 
@@ -510,15 +509,15 @@ void ExportFeature::writeGraphBatch(int fd, VPackArrayIterator it, std::string c
       }
 
     } else {
-      xmlTag = "<node label=\"" + xml::encode(doc.hasKey(_xgmmlLabelAttribute) && doc.get(_xgmmlLabelAttribute).isString() ? doc.get(_xgmmlLabelAttribute).copyString() : "Default-Label") +
-               "\" id=\"" + xml::encode(doc.get("_id").copyString()) + "\"";
+      xmlTag = "<node label=\"" + encode_char_entities(doc.hasKey(_xgmmlLabelAttribute) && doc.get(_xgmmlLabelAttribute).isString() ? doc.get(_xgmmlLabelAttribute).copyString() : "Default-Label") +
+               "\" id=\"" + encode_char_entities(doc.get("_id").copyString()) + "\"";
       writeToFile(fd, xmlTag, fileName);
       if (!_xgmmlLabelOnly) {
         xmlTag = ">\n";
         writeToFile(fd, xmlTag, fileName);
 
         for (auto const& it : VPackObjectIterator(doc)) {
-          xmlTag = xml::encode(it.key.copyString());
+          xmlTag = encode_char_entities(it.key.copyString());
           xgmmlWriteOneAtt(fd, fileName, it.value, xmlTag);
         }
 
@@ -543,19 +542,19 @@ void ExportFeature::xgmmlWriteOneAtt(int fd, std::string const& fileName, VPackS
 
   if (slice.isInteger()) {
     type = "integer";
-    value = "\"" + slice.toString() + "\"";
+    value = slice.toString();
 
   } else if (slice.isDouble()) {
     type = "real";
-    value = "\"" + slice.toString() + "\"";
+    value = slice.toString();
 
   } else if (slice.isBool()) {
     type = "boolean";
-    value = "\"" + slice.toString() + "\"";
+    value = slice.toString();
 
   } else if (slice.isString()) {
     type = "string";
-    value = slice.toString();
+    value = slice.copyString();
 
   } else if (slice.isArray() || slice.isObject()) {
     if (0 < deep) {
@@ -567,13 +566,13 @@ void ExportFeature::xgmmlWriteOneAtt(int fd, std::string const& fileName, VPackS
     }
 
   } else {
-    xmlTag = "  <att name=\"" + name + "\" type=\"string\" value=\"" + xml::encode(slice.toString()) + "\"/>\n";
+    xmlTag = "  <att name=\"" + name + "\" type=\"string\" value=\"" + encode_char_entities(slice.toString()) + "\"/>\n";
     writeToFile(fd, xmlTag, fileName);
     return;
   }
 
   if (!type.empty()) {
-    xmlTag = "  <att name=\"" + name + "\" type=\"" + type + "\" value=" + xml::encode(value) + "/>\n";
+    xmlTag = "  <att name=\"" + name + "\" type=\"" + type + "\" value=\"" + encode_char_entities(value) + "\"/>\n";
     writeToFile(fd, xmlTag, fileName);
 
   } else if (slice.isArray()) {
@@ -592,7 +591,7 @@ void ExportFeature::xgmmlWriteOneAtt(int fd, std::string const& fileName, VPackS
     writeToFile(fd, xmlTag, fileName);
 
     for (auto const& it : VPackObjectIterator(slice)) {
-      std::string name = xml::encode(it.key.copyString());
+      std::string name = encode_char_entities(it.key.copyString());
       xgmmlWriteOneAtt(fd, fileName, it.value, name, deep + 1);
     }
 
