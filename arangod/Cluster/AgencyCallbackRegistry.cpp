@@ -46,7 +46,9 @@ AgencyCallbackRegistry::AgencyCallbackRegistry(std::string const& callbackBasePa
 AgencyCallbackRegistry::~AgencyCallbackRegistry() {
 }
 
-bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb) {
+AgencyCommResult AgencyCallbackRegistry::registerCallback(
+  std::shared_ptr<AgencyCallback> cb) {
+  
   uint32_t rand;
   { 
     WRITE_LOCKER(locker, _lock);
@@ -58,22 +60,28 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
     }
   }
 
-  bool ok = false;
+  AgencyCommResult result;
   try {
-    ok = _agency.registerCallback(cb->key, getEndpointUrl(rand));
-    if (!ok) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Registering callback failed";
+    result = _agency.registerCallback(cb->key, getEndpointUrl(rand));
+    if (!result.successful()) {
+      LOG_TOPIC(ERR, arangodb::Logger::AGENCY)
+        << "Registering callback failed with " << result.errorCode() << ": "
+        << result.errorMessage();
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Couldn't register callback " << e.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      << "Couldn't register callback " << e.what();
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Couldn't register callback. Unknown exception";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      << "Couldn't register callback. Unknown exception";
   }
-  if (!ok) {
+  
+  if (!result.successful()) {
     WRITE_LOCKER(locker, _lock);
     _endpoints.erase(rand);
   }
-  return ok;
+  
+  return result;
 }
 
 std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint32_t id) {
