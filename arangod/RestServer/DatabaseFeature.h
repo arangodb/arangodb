@@ -146,11 +146,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   /// @brief activates deadlock detection in all existing databases
   void enableDeadlockDetection();
 
-  /// @brief writes a create-database marker into the log
-  int writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice);
   
-  /// @brief writes a drop-database marker into the log
-  int writeDropMarker(TRI_voc_tick_t id);
 
  private:
   uint64_t _maximalJournalSize;

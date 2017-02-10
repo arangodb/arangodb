@@ -114,6 +114,10 @@ class HeartbeatBackgroundJob {
   }
 
   void operator()() {
+    // first tell the scheduler that this thread is working:
+    JobGuard guard(SchedulerFeature::SCHEDULER);
+    guard.work();
+
     double now = TRI_microtime();
     if (now > _startTime + 5.0) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT) << "ALARM: Scheduling background job "
@@ -134,10 +138,6 @@ void HeartbeatThread::runBackgroundJob() {
   uint64_t jobNr = ++_backgroundJobsLaunched;
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
   {
-    // First tell the scheduler that this thread is working:
-    JobGuard guard(SchedulerFeature::SCHEDULER);
-    guard.work();
-    // Now get to work:
     DBServerAgencySync job(this);
     job.work();
   }
@@ -150,6 +150,8 @@ void HeartbeatThread::runBackgroundJob() {
       jobNr = ++_backgroundJobsPosted;
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
       _launchAnotherBackgroundJob = false;
+
+      // the JobGuard is in the operator() of HeartbeatBackgroundJob
       _ioService->post(HeartbeatBackgroundJob(shared_from_this(),
                                               TRI_microtime()));
     } else {
@@ -293,7 +295,7 @@ void HeartbeatThread::runDBServer() {
               agentPool.get("size").getUInt() > 1) {
             _agency.updateEndpoints(agentPool);
           } else {
-            LOG(TRACE) << "Cannot find an agency persisted in RAFT 8|";
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
           }
           
           VPackSlice shutdownSlice =
@@ -452,7 +454,7 @@ void HeartbeatThread::runCoordinator() {
               agentPool.get("size").getUInt() > 1) {
             _agency.updateEndpoints(agentPool);
           } else {
-            LOG(TRACE) << "Cannot find an agency persisted in RAFT 8|";
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
           }
         
         VPackSlice shutdownSlice = result.slice()[0].get(
@@ -714,7 +716,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         int res = databaseFeature->createDatabaseCoordinator(id, name, vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG(ERR) << "creating local database '" << name
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "creating local database '" << name
                    << "' failed: " << TRI_errno_string(res);
         } else {
           HasRunOnce = true;
@@ -745,7 +747,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   ClusterInfo::instance()->flush();
 
   // turn on error logging now
-  if (!ClusterComm::instance()->enableConnectionErrorLogging(true)) {
+  auto cc = ClusterComm::instance();
+  if (cc != nullptr && cc->enableConnectionErrorLogging(true)) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
         << "created coordinator databases for the first time";
   }
@@ -803,6 +806,8 @@ void HeartbeatThread::syncDBServerStatusQuo() {
   uint64_t jobNr = ++_backgroundJobsPosted;
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
   _backgroundJobScheduledOrRunning = true;
+
+  // the JobGuard is in the operator() of HeartbeatBackgroundJob
   _ioService->post(HeartbeatBackgroundJob(shared_from_this(), TRI_microtime()));
 }
 

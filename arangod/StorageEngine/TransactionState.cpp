@@ -1,0 +1,297 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+////////////////////////////////////////////////////////////////////////////////
+
+#include "TransactionState.h"
+#include "Aql/QueryCache.h"
+#include "Logger/Logger.h"
+#include "Basics/Exceptions.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionCollection.h"
+#include "Utils/Transaction.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/modes.h"
+#include "VocBase/ticks.h"
+
+#include <rocksdb/db.h>
+#include <rocksdb/options.h>
+#include <rocksdb/utilities/optimistic_transaction_db.h>
+#include <rocksdb/utilities/transaction.h>
+
+using namespace arangodb;
+
+/// @brief transaction type
+TransactionState::TransactionState(TRI_vocbase_t* vocbase)
+    : _vocbase(vocbase), 
+      _id(0), 
+      _type(AccessMode::Type::READ),
+      _status(Transaction::Status::CREATED),
+      _arena(),
+      _collections{_arena}, // assign arena to vector 
+      _rocksTransaction(nullptr),
+      _hints(),
+      _nestingLevel(0), 
+      _allowImplicit(true),
+      _hasOperations(false), 
+      _waitForSync(false),
+      _beginWritten(false), 
+      _timeout(Transaction::DefaultLockTimeout) {}
+
+/// @brief free a transaction container
+TransactionState::~TransactionState() {
+  TRI_ASSERT(_status != Transaction::Status::RUNNING);
+
+  delete _rocksTransaction;
+
+  releaseCollections();
+
+  // free all collections
+  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
+    delete (*it);
+  }
+}
+  
+std::vector<std::string> TransactionState::collectionNames() const {
+  std::vector<std::string> result;
+  result.reserve(_collections.size());
+
+  for (auto& trxCollection : _collections) {
+    if (trxCollection->collection() != nullptr) {
+      result.emplace_back(trxCollection->collectionName());
+    }
+  }
+
+  return result;
+}
+
+/// @brief return the collection from a transaction
+TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid, AccessMode::Type accessType) {
+  TRI_ASSERT(_status == Transaction::Status::CREATED ||
+             _status == Transaction::Status::RUNNING);
+
+  size_t unused;
+  TransactionCollection* trxCollection = findCollection(cid, unused);
+
+  if (trxCollection == nullptr || !trxCollection->canAccess(accessType)) {
+    // not found or not accessible in the requested mode
+    return nullptr;
+  }
+
+  return trxCollection;
+}
+
+/// @brief add a collection to a transaction
+int TransactionState::addCollection(TRI_voc_cid_t cid,
+                                    AccessMode::Type accessType,
+                                    int nestingLevel, bool force,
+                                    bool allowImplicitCollections) {
+  LOG_TRX(this, nestingLevel) << "adding collection " << cid;
+
+  allowImplicitCollections &= _allowImplicit;
+
+  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cid: " << cid 
+  //            << ", accessType: " << accessType 
+  //            << ", nestingLevel: " << nestingLevel 
+  //            << ", force: " << force 
+  //            << ", allowImplicitCollections: " << allowImplicitCollections;
+  
+  // upgrade transaction type if required
+  if (nestingLevel == 0) {
+    if (!force) {
+      TRI_ASSERT(_status == Transaction::Status::CREATED);
+    }
+
+    if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_type)) {
+      // if one collection is written to, the whole transaction becomes a
+      // write-transaction
+      _type = AccessMode::Type::WRITE;
+    }
+  }
+
+  // check if we already have got this collection in the _collections vector
+  size_t position = 0;
+  TransactionCollection* trxCollection = findCollection(cid, position);
+  
+  if (trxCollection != nullptr) {
+    // collection is already contained in vector
+    return trxCollection->updateUsage(accessType, nestingLevel);
+  }
+
+  // collection not found.
+
+  if (nestingLevel > 0 && AccessMode::isWriteOrExclusive(accessType)) {
+    // trying to write access a collection in an embedded transaction
+    return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
+  }
+
+  if (!AccessMode::isWriteOrExclusive(accessType) && !allowImplicitCollections) {
+    return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
+  }
+  
+  // collection was not contained. now create and insert it
+  TRI_ASSERT(trxCollection == nullptr);
+  try {
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    trxCollection = engine->createTransactionCollection(this, cid, accessType, nestingLevel);
+  } catch (...) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  
+  TRI_ASSERT(trxCollection != nullptr);
+
+  // insert collection at the correct position
+  try {
+    _collections.insert(_collections.begin() + position, trxCollection);
+  } catch (...) {
+    delete trxCollection;
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief make sure all declared collections are used & locked
+int TransactionState::ensureCollections(int nestingLevel) {
+  return useCollections(nestingLevel);
+}
+
+/// @brief use all participating collections of a transaction
+int TransactionState::useCollections(int nestingLevel) {
+  int res = TRI_ERROR_NO_ERROR;
+
+  // process collections in forward order
+  for (auto& trxCollection : _collections) {
+    res = trxCollection->use(nestingLevel);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      break;
+    }
+  }
+
+  return res;
+}
+
+/// @brief release collection locks for a transaction
+int TransactionState::unuseCollections(int nestingLevel) {
+  // process collections in reverse order
+  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
+    (*it)->unuse(nestingLevel);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+ 
+int TransactionState::lockCollections() { 
+  for (auto& trxCollection : _collections) {
+    int res = trxCollection->lock();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief find a collection in the transaction's list of collections
+TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid, size_t& position) const {
+  size_t const n = _collections.size();
+  size_t i;
+
+  for (i = 0; i < n; ++i) {
+    auto trxCollection = _collections.at(i);
+
+    if (cid < trxCollection->id()) {
+      // collection not found
+      break;
+    }
+
+    if (cid == trxCollection->id()) {
+      // found
+      return trxCollection;
+    }
+    // next
+  }
+
+  // update the insert position if required
+  position = i;
+
+  return nullptr;
+}
+
+/// @brief release collection locks for a transaction
+int TransactionState::releaseCollections() {
+  if (hasHint(TransactionHints::Hint::LOCK_NEVER) ||
+      hasHint(TransactionHints::Hint::NO_USAGE_LOCK)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // process collections in reverse order
+  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
+    (*it)->release();
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief clear the query cache for all collections that were modified by
+/// the transaction
+void TransactionState::clearQueryCache() {
+  if (_collections.empty()) {
+    return;
+  }
+
+  try {
+    std::vector<std::string> collections;
+    for (auto& trxCollection : _collections) {
+      if (trxCollection->hasOperations()) {
+        // we're only interested in collections that may have been modified
+        collections.emplace_back(trxCollection->collectionName());
+      }
+    }
+
+    if (!collections.empty()) {
+      arangodb::aql::QueryCache::instance()->invalidate(_vocbase, collections);
+    }
+  } catch (...) {
+    // in case something goes wrong, we have to remove all queries from the
+    // cache
+    arangodb::aql::QueryCache::instance()->invalidate(_vocbase);
+  }
+}
+
+/// @brief update the status of a transaction
+void TransactionState::updateStatus(Transaction::Status status) {
+  TRI_ASSERT(_status == Transaction::Status::CREATED ||
+             _status == Transaction::Status::RUNNING);
+
+  if (_status == Transaction::Status::CREATED) {
+    TRI_ASSERT(status == Transaction::Status::RUNNING ||
+               status == Transaction::Status::ABORTED);
+  } else if (_status == Transaction::Status::RUNNING) {
+    TRI_ASSERT(status == Transaction::Status::COMMITTED ||
+               status == Transaction::Status::ABORTED);
+  }
+
+  _status = status;
+}

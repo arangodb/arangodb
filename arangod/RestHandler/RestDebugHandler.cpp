@@ -24,10 +24,8 @@
 #include "RestDebugHandler.h"
 
 #include "Rest/HttpRequest.h"
-#include "Rest/Version.h"
 
 using namespace arangodb;
-
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 

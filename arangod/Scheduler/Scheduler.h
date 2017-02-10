@@ -29,15 +29,16 @@
 
 #include <boost/asio/steady_timer.hpp>
 
-#include "Basics/asio-helper.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/asio-helper.h"
 #include "Basics/socket-utils.h"
 #include "Logger/Logger.h"
 #include "Scheduler/EventLoop.h"
 
 namespace arangodb {
 class JobQueue;
+class JobGuard;
 
 namespace basics {
 class ConditionVariable;
@@ -47,9 +48,12 @@ class Builder;
 }
 
 namespace rest {
+
 class Scheduler {
   Scheduler(Scheduler const&) = delete;
   Scheduler& operator=(Scheduler const&) = delete;
+
+  friend class arangodb::JobGuard;
 
  public:
   Scheduler(size_t nrThreads, size_t maxQueueSize);
@@ -62,10 +66,12 @@ class Scheduler {
   }
 
   EventLoop eventLoop() {
-    // return EventLoop{._ioService = *_ioService.get(), ._scheduler = this}; //
+    // return EventLoop{._ioService = *_ioService.get(), ._scheduler = this};
     // windows complains ...
     return EventLoop{_ioService.get(), this};
   }
+
+  void post(std::function<void()> callback);
 
   bool start(basics::ConditionVariable*);
   bool isRunning() { return _nrRunning.load() > 0; }
@@ -88,40 +94,15 @@ class Scheduler {
     return false;
   }
 
-  bool tryBlocking() {
-    static int64_t const MIN_FREE = 2;
-
-    if (_nrWorking < (_nrRealMaximum - MIN_FREE)) {
-      ++_nrWorking;
-      return true;
-    }
-
-    return false;
-  }
-
-  void enterThread() { ++_nrBusy; }
-
-  void unenterThread() { --_nrBusy; }
-
-  void workThread() { ++_nrWorking; }
-
-  void unworkThread() { --_nrWorking; }
-
-  void blockThread() { ++_nrBlocked; }
-
-  void unblockThread() { --_nrBlocked; }
-
-  uint64_t incRunning() { return ++_nrRunning; }
-
-  uint64_t decRunning() { return --_nrRunning; }
-
   void setMinimal(int64_t minimal) { _nrMinimal = minimal; }
   void setMaximal(int64_t maximal) { _nrMaximal = maximal; }
   void setRealMaximum(int64_t maximum) { _nrRealMaximum = maximum; }
 
+  uint64_t incRunning() { return ++_nrRunning; }
+  uint64_t decRunning() { return --_nrRunning; }
+
   std::string infoStatus() {
-    return "busy: " + std::to_string(_nrBusy) + ", working: " +
-           std::to_string(_nrWorking) + ", blocked: " +
+    return "working: " + std::to_string(_nrWorking) + ", blocked: " +
            std::to_string(_nrBlocked) + ", running: " +
            std::to_string(_nrRunning) + ", maximal: " +
            std::to_string(_nrMaximal) + ", real maximum: " +
@@ -134,6 +115,12 @@ class Scheduler {
   void deleteOldThreads();
 
  private:
+  void workThread() { ++_nrWorking; }
+  void unworkThread() { --_nrWorking; }
+
+  void blockThread() { ++_nrBlocked; }
+  void unblockThread() { --_nrBlocked; }
+
   void startIoService();
   void startRebalancer();
   void startManagerThread();
@@ -145,7 +132,6 @@ class Scheduler {
 
   std::atomic<bool> _stopping;
 
-  std::atomic<int64_t> _nrBusy;
   std::atomic<int64_t> _nrWorking;
   std::atomic<int64_t> _nrBlocked;
   std::atomic<int64_t> _nrRunning;

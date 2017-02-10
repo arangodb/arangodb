@@ -498,13 +498,20 @@ router.get("/coordshort", function(req, res) {
   if (Array.isArray(coordinators)) {
     var coordinatorStats = coordinators.map(coordinator => {
       var endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinator);
-      var response = download(endpoint.replace(/^tcp/, "http") + "/_db/_system/_admin/aardvark/statistics/short?count=" + coordinators.length, '', {headers: {}});
-      try {
-        return JSON.parse(response.body);
-      } catch (e) {
-        console.error("Couldn't read statistics response:", response.body);
-        throw e;
+      if (endpoint !== "") {
+        var response = download(endpoint.replace(/^tcp/, "http") + "/_db/_system/_admin/aardvark/statistics/short?count=" + coordinators.length, '', {headers: {}});
+        if (response.body === undefined) {
+          console.warn("cannot contact coordinator " + coordinator + " on endpoint " + endpoint);
+        } else {
+          try {
+            return JSON.parse(response.body);
+          } catch (e) {
+            console.error("Couldn't read statistics response:", response.body);
+            throw e;
+          }
+        }
       }
+      return {};
     });
 
     mergeHistory(coordinatorStats);

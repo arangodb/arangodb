@@ -42,20 +42,21 @@ MMFilesDocumentOperation::MMFilesDocumentOperation(LogicalCollection* collection
 MMFilesDocumentOperation::~MMFilesDocumentOperation() {
 }
   
-MMFilesDocumentOperation* MMFilesDocumentOperation::swap() {
+MMFilesDocumentOperation* MMFilesDocumentOperation::clone() {
   MMFilesDocumentOperation* copy =
       new MMFilesDocumentOperation(_collection, _type);
   copy->_tick = _tick;
   copy->_oldRevision = _oldRevision;
   copy->_newRevision = _newRevision;
   copy->_status = _status;
+  return copy;
+}
 
+void MMFilesDocumentOperation::swapped() {
   _type = TRI_VOC_DOCUMENT_OPERATION_UNKNOWN;
   _status = StatusType::SWAPPED;
   _oldRevision.clear();
   _newRevision.clear();
-
-  return copy;
 }
 
 void MMFilesDocumentOperation::setVPack(uint8_t const* vpack) {

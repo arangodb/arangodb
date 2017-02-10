@@ -66,11 +66,15 @@ void AgentActivator::run() {
 
     auto headerFields =
       std::make_unique<std::unordered_map<std::string, std::string>>();
-    arangodb::ClusterComm::instance()->asyncRequest(
-      "1", 1, endpoint, rest::RequestType::POST, path,
-      std::make_shared<std::string>(allLogs->toJson()), headerFields,
-      std::make_shared<ActivationCallback>(_agent, _failed, _replacement),
-      5.0, true, 1.0);
+    auto cc = arangodb::ClusterComm::instance();
+    if (cc != nullptr) {
+      // nullptr only happens on controlled shutdown
+      cc->asyncRequest(
+        "1", 1, endpoint, rest::RequestType::POST, path,
+        std::make_shared<std::string>(allLogs->toJson()), headerFields,
+        std::make_shared<ActivationCallback>(_agent, _failed, _replacement),
+        5.0, true, 1.0);
+    }
 
     _cv.wait(10000000); // 10 sec
 

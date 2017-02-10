@@ -34,6 +34,63 @@ class Slice;
 }
 
 namespace aql {
+struct AstNode;
+
+// Helper class to generate AQL AstNode conditions
+// that can be handed over to Indexes in order to
+// query the data.
+// This class does NOT take responsibility
+// of the referenced AstNodes, the creater
+// has to free them.
+// In AQL the AST is responsible to free all nodes.
+class EdgeConditionBuilder {
+
+ protected:
+  /// @brief a condition checking for _from
+  /// not used directly
+  AstNode* _fromCondition;
+
+  /// @brief a condition checking for _to
+  /// not used directly
+  AstNode* _toCondition;
+
+  /// @brief the temporary condition to ask indexes
+  /// Is always in Normalized format: One n-ary-and
+  /// branch of a DNF => No OR contained.
+  AstNode* _modCondition;
+
+  /// @brief indicator if we have attached the _from or _to condition to
+  /// _modCondition
+  bool _containsCondition;
+
+  explicit EdgeConditionBuilder(AstNode*);
+
+  // Create the _fromCondition for the first time.
+  virtual void buildFromCondition() = 0;
+
+  // Create the _toCondition for the first time.
+  virtual void buildToCondition() = 0;
+
+ public:
+  virtual ~EdgeConditionBuilder() {};
+
+  EdgeConditionBuilder(EdgeConditionBuilder const&) = delete;
+  EdgeConditionBuilder(EdgeConditionBuilder&&) = delete;
+
+  // Add a condition on the edges that is not related to
+  // the direction e.g. `label == foo`
+  void addConditionPart(AstNode const*);
+
+  // Get the complete condition for outbound edges
+  AstNode const* getOutboundCondition();
+
+  // Get the complete condition for inbound edges
+  AstNode const* getInboundCondition();
+
+ private:
+  // Internal helper to swap _from and _to parts
+  void swapSides(AstNode* condition);
+};
 
 class Graph {
  public:

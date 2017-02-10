@@ -84,11 +84,11 @@ void SchedulerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
   if (_nrServerThreads == 0) {
     _nrServerThreads = TRI_numberProcessors();
-    LOG(DEBUG) << "Detected number of processors: " << _nrServerThreads;
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Detected number of processors: " << _nrServerThreads;
   }
 
   if (_queueSize < 128) {
-    LOG(FATAL)
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for `--server.maximal-queue-size', need at least 128";
     FATAL_ERROR_EXIT();
   }
@@ -105,7 +105,7 @@ void SchedulerFeature::start() {
   bool ok = _scheduler->start(nullptr);
 
   if (!ok) {
-    LOG(FATAL) << "the scheduler cannot be started";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "the scheduler cannot be started";
     FATAL_ERROR_EXIT();
   }
 
@@ -204,14 +204,14 @@ bool CtrlHandler(DWORD eventType) {
   }
 
   if (shutdown == false) {
-    LOG(ERR) << "Invalid CTRL HANDLER event received - ignoring event";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Invalid CTRL HANDLER event received - ignoring event";
     return true;
   }
 
   static bool seen = false;
 
   if (!seen) {
-    LOG(INFO) << "" << shutdownMessage << ", beginning shut down sequence";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "" << shutdownMessage << ", beginning shut down sequence";
 
     if (application_features::ApplicationServer::server != nullptr) {
       application_features::ApplicationServer::server->beginShutdown();
@@ -225,7 +225,7 @@ bool CtrlHandler(DWORD eventType) {
   // user is desperate to kill the server!
   // ........................................................................
 
-  LOG(INFO) << "" << shutdownMessage << ", terminating";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "" << shutdownMessage << ", terminating";
   _exit(EXIT_FAILURE);  // quick exit for windows
   return true;
 }
@@ -250,7 +250,7 @@ void SchedulerFeature::buildControlCHandler() {
     int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
 
     if (result == 0) {
-      LOG(WARN) << "unable to install control-c handler";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to install control-c handler";
     }
   }
 #else
@@ -263,7 +263,7 @@ void SchedulerFeature::buildControlCHandler() {
       return;
     }
 
-    LOG(INFO) << "control-c received, beginning shut down sequence";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "control-c received, beginning shut down sequence";
     server()->beginShutdown();
     _exitSignals->async_wait(_exitHandler);
   };
@@ -273,7 +273,7 @@ void SchedulerFeature::buildControlCHandler() {
       return;
     }
 
-    LOG(FATAL) << "control-c received (again!), terminating";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "control-c received (again!), terminating";
     FATAL_ERROR_EXIT();
   };
 
@@ -292,9 +292,9 @@ void SchedulerFeature::buildHangupHandler() {
       return;
     }
 
-    LOG(INFO) << "hangup received, about to reopen logfile";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "hangup received, about to reopen logfile";
     LogAppender::reopen();
-    LOG(INFO) << "hangup received, reopened logfile";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "hangup received, reopened logfile";
 
     _hangupSignals->async_wait(_hangupHandler);
   };

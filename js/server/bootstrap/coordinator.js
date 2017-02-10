@@ -55,7 +55,7 @@
       var colls = db._collections();
       colls = colls.filter(c => c.name()[0] === '_');
       if (!require('@arangodb/cluster').waitForSyncRepl('_system', colls)) {
-        console.error('System collections not properly set up. Starting anyway now...');
+        throw new Error('System collections not properly set up. Refusing startup!');
       } else {
         global.ArangoAgency.set('SystemCollectionsCreated', true);
       }

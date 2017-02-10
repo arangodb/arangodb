@@ -1,3 +1,5 @@
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -93,7 +95,7 @@ class Store : public arangodb::Thread {
   void toBuilder(Builder&, bool showHidden = false) const;
 
   /// @brief Copy out a node
-  Node get(std::string const& path) const;
+  Node get(std::string const& path = std::string("/")) const;
 
   std::string toJson() const;
 
@@ -143,6 +145,12 @@ class Store : public arangodb::Thread {
   /// @brief Root node
   Node _node;
 };
+
+
+inline std::ostream& operator<<(std::ostream& o, Store const& store) {
+  return store.get().print(o);
+}
+
 }
 }
 

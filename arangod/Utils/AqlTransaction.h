@@ -26,10 +26,8 @@
 
 #include "Basics/Common.h"
 #include "Aql/Collection.h"
-#include "Cluster/ServerState.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
-#include "Utils/TransactionState.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -43,14 +41,14 @@ class AqlTransaction final : public Transaction {
 
   AqlTransaction(
       std::shared_ptr<TransactionContext> transactionContext, 
-      std::map<std::string, arangodb::aql::Collection*> const* collections,
+      std::map<std::string, aql::Collection*> const* collections,
       bool isMainTransaction)
       : Transaction(transactionContext),
         _collections(*collections) {
     if (!isMainTransaction) {
-      this->addHint(TransactionHints::Hint::LOCK_NEVER, true);
+      addHint(TransactionHints::Hint::LOCK_NEVER, true);
     } else {
-      this->addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
+      addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
     }
 
     for (auto it : *collections) {
@@ -71,7 +69,7 @@ class AqlTransaction final : public Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   int addCollectionList(
-      std::map<std::string, arangodb::aql::Collection*>* collections) {
+      std::map<std::string, aql::Collection*>* collections) {
     int ret = TRI_ERROR_NO_ERROR;
     for (auto it : *collections) {
       ret = processCollection(it.second);
@@ -86,26 +84,26 @@ class AqlTransaction final : public Transaction {
   /// @brief add a collection to the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int processCollection(arangodb::aql::Collection*); 
+  int processCollection(aql::Collection*); 
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a coordinator collection to the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int processCollectionCoordinator(arangodb::aql::Collection*);
+  int processCollectionCoordinator(aql::Collection*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a regular collection to the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int processCollectionNormal(arangodb::aql::Collection* collection);
+  int processCollectionNormal(aql::Collection* collection);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ditch
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::DocumentDitch* ditch(TRI_voc_cid_t cid) {
-    return this->_transactionContext->ditch(cid);
+  DocumentDitch* ditch(TRI_voc_cid_t cid) {
+    return _transactionContext->ditch(cid);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -120,9 +118,8 @@ class AqlTransaction final : public Transaction {
   /// AQL query running on the coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::Transaction* clone() const override {
-    return new arangodb::AqlTransaction(
-        arangodb::StandaloneTransactionContext::Create(this->_vocbase),
+  Transaction* clone() const override {
+    return new AqlTransaction(StandaloneTransactionContext::Create(_vocbase),
         &_collections, false);
   }
 
@@ -143,7 +140,7 @@ class AqlTransaction final : public Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
  private:
-  std::map<std::string, arangodb::aql::Collection*> _collections;
+  std::map<std::string, aql::Collection*> _collections;
 };
 }
 

@@ -45,7 +45,8 @@ struct MMFilesDocumentOperation {
 
   ~MMFilesDocumentOperation();
 
-  MMFilesDocumentOperation* swap();
+  MMFilesDocumentOperation* clone();
+  void swapped();
 
   void setRevisions(DocumentDescriptor const& oldRevision,
                     DocumentDescriptor const& newRevision);

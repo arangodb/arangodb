@@ -88,7 +88,7 @@ static std::vector<SrvRecord> srvRecords(std::string const& specification) {
       n = dn_expand(msg, eom, cp, (char*)hostbuf, 256);
 
       if (n < 0) {
-        LOG(WARN) << "DNS record for '" << specification << "' is corrupt";
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "DNS record for '" << specification << "' is corrupt";
         return {};
       }
 
@@ -100,7 +100,7 @@ static std::vector<SrvRecord> srvRecords(std::string const& specification) {
       n = dn_expand(msg, eom, cp, (char*)hostbuf, 256);
 
       if (n < 0) {
-        LOG(WARN) << "DNS record for '" << specification << "' is corrupt";
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "DNS record for '" << specification << "' is corrupt";
         return {};
       }
 
@@ -130,13 +130,13 @@ static std::vector<SrvRecord> srvRecords(std::string const& specification) {
       n = dn_expand(msg, eom, cp, (char*)hostbuf, 256);
 
       if (n < 0) {
-        LOG(WARN) << "DNS record for '" << specification << "' is corrupt";
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "DNS record for '" << specification << "' is corrupt";
         break;
       }
 
       cp += n;
 
-      LOG(TRACE) << "DNS record for '" << specification << "': type " << type
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "DNS record for '" << specification << "': type " << type
                  << ", class " << nclass << ", ttl " << ttl << ", len " << dlen
                  << ", prio " << priority << ", weight " << weight << ", port "
                  << port << ", host '" << hostbuf << "'";
@@ -155,7 +155,7 @@ static std::vector<SrvRecord> srvRecords(std::string const& specification) {
       services.push_back(srv);
     }
   } else {
-    LOG(WARN) << "DNS record for '" << specification << "' not found";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "DNS record for '" << specification << "' not found";
   }
 
   std::sort(services.begin(), services.end(),

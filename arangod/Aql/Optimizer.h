@@ -27,11 +27,10 @@
 #include "Basics/Common.h"
 #include "Aql/ExecutionPlan.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/RollingVector.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include <deque>
 
 namespace arangodb {
 namespace aql {
@@ -216,7 +215,7 @@ class Optimizer {
   /// set the level of the appended plan to the largest level of rule
   /// that ought to be considered as done to indicate which rule is to be
   /// applied next.
-  typedef std::function<void(Optimizer*, ExecutionPlan*, Rule const*)>
+  typedef std::function<void(Optimizer*, std::unique_ptr<ExecutionPlan>, Rule const*)>
       RuleFunction;
 
   /// @brief type of an optimizer rule
@@ -243,10 +242,13 @@ class Optimizer {
   /// @brief the following struct keeps a list (deque) of ExecutionPlan*
   /// and has some automatic convenience functions.
   struct PlanList {
-    std::deque<ExecutionPlan*> list;
-    std::deque<int> levelDone;
+    RollingVector<ExecutionPlan*> list;
+    RollingVector<int> levelDone;
 
-    PlanList() {}
+    PlanList() {
+      list.reserve(8);
+      levelDone.reserve(8);
+    }
 
     /// @brief constructor with a plan
     PlanList(ExecutionPlan* p, int level) { push_back(p, level); }
@@ -296,13 +298,8 @@ class Optimizer {
 
     /// @brief steals all the plans in b and clears b at the same time
     void steal(PlanList& b) {
-      list.swap(b.list);
-      levelDone.swap(b.levelDone);
-      for (auto& p : b.list) {
-        delete p;
-      }
-      b.list.clear();
-      b.levelDone.clear();
+      list = std::move(b.list);
+      levelDone = std::move(b.levelDone);
     }
 
     /// @brief appends all the plans to the target and clears *this at the same
@@ -351,9 +348,10 @@ class Optimizer {
   /// stealPlans.
   int createPlans(ExecutionPlan* p, std::vector<std::string> const&, bool);
 
+  size_t hasEnoughPlans(size_t extraPlans) const;
+
   /// @brief add a plan to the optimizer
-  /// returns false if there are already enough plans, true otherwise
-  bool addPlan(ExecutionPlan*, Rule const*, bool, int newLevel = 0);
+  void addPlan(std::unique_ptr<ExecutionPlan>, Rule const*, bool, int newLevel = 0);
 
   /// @brief getBest, ownership of the plan remains with the optimizer
   ExecutionPlan* getBest() {
@@ -364,7 +362,7 @@ class Optimizer {
   }
 
   /// @brief getPlans, ownership of the plans remains with the optimizer
-  std::deque<ExecutionPlan*>& getPlans() { return _plans.list; }
+  RollingVector<ExecutionPlan*>& getPlans() { return _plans.list; }
 
   /// @brief stealBest, ownership of the plan is handed over to the caller,
   /// all other plans are deleted
@@ -389,9 +387,8 @@ class Optimizer {
 
   /// @brief stealPlans, ownership of the plans is handed over to the caller,
   /// the optimizer will forget about them!
-  std::deque<ExecutionPlan*> stealPlans() {
-    std::deque<ExecutionPlan*> res;
-    res.swap(_plans.list);
+  RollingVector<ExecutionPlan*> stealPlans() {
+    RollingVector<ExecutionPlan*> res(std::move(_plans.list));
     _plans.levelDone.clear();
     return res;
   }

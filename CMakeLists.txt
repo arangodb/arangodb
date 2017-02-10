@@ -489,7 +489,9 @@ if (USE_MAINTAINER_MODE)
   find_program(AWK_EXECUTABLE awk)
 endif ()
 
+include(ArangoDBInstall)
 find_program(FILE_EXECUTABLE file)
+detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
 
 ################################################################################
 ## FAILURE TESTS
@@ -796,7 +798,7 @@ endif ()
 ################################################################################
 
 include_directories(${V8_INCLUDE_DIR})
-add_definitions("-DARANGODB_V8_VERSION=\"5.0.71.39\"")
+add_definitions("-DARANGODB_V8_VERSION=\"5.7.0.0\"")
 
 ################################################################################
 ## ZLIB
@@ -820,7 +822,6 @@ if (MSVC)
   include(generate_product_version)
 endif()
 
-include(ArangoDBInstall)
 if (NOT(SKIP_PACKAGING))
   include(packages/packages)
 endif()

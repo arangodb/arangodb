@@ -774,7 +774,13 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   }
 
   // Set a few variables needed for our work:
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN,
+                  "shutting down server");
+    return;
+  }
 
   std::unique_ptr<ClusterCommResult> res;
   if (!useVpp) {
@@ -2023,7 +2029,7 @@ static int restoreDataParser(char const* ptr, char const* pos,
   }
 
   if (key.empty()) {
-    LOG(ERR) << "GOT EXCEPTION 5";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GOT EXCEPTION 5";
     errorMsg = invalidMsg;
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -2691,7 +2697,7 @@ void RestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  LOG(TRACE) << "requested collection dump for collection '" << collection
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "requested collection dump for collection '" << collection
              << "', tickStart: " << tickStart << ", tickEnd: " << tickEnd;
 
   if (flush) {

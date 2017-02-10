@@ -83,7 +83,7 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 
   if (*thread == 0) {
     TRI_Free(TRI_CORE_MEM_ZONE, d);
-    LOG(ERR) << "could not start thread: " << strerror(errno) << " ";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not start thread: " << strerror(errno) << " ";
     return false;
   }
 
@@ -99,7 +99,7 @@ int TRI_JoinThread(TRI_thread_t* thread) {
 
   switch (result) {
     case WAIT_ABANDONED: {
-      LOG(FATAL) << "threads-win32.c:TRI_JoinThread:could not join thread --> WAIT_ABANDONED"; FATAL_ERROR_EXIT();
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "threads-win32.c:TRI_JoinThread:could not join thread --> WAIT_ABANDONED"; FATAL_ERROR_EXIT();
     }
 
     case WAIT_OBJECT_0: {
@@ -108,12 +108,12 @@ int TRI_JoinThread(TRI_thread_t* thread) {
     }
 
     case WAIT_TIMEOUT: {
-      LOG(FATAL) << "threads-win32.c:TRI_JoinThread:could not joint thread --> WAIT_TIMEOUT"; FATAL_ERROR_EXIT();
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "threads-win32.c:TRI_JoinThread:could not joint thread --> WAIT_TIMEOUT"; FATAL_ERROR_EXIT();
     }
 
     case WAIT_FAILED: {
       result = GetLastError();
-      LOG(FATAL) << "threads-win32.c:TRI_JoinThread:could not join thread --> WAIT_FAILED - reason -->" << result; FATAL_ERROR_EXIT();
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "threads-win32.c:TRI_JoinThread:could not join thread --> WAIT_FAILED - reason -->" << result; FATAL_ERROR_EXIT();
     }
   }
 

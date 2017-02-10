@@ -288,12 +288,8 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   AqlItemBlock* example = _gatherBlockBuffer.at(index).front();
   size_t nrRegs = example->getNrRegs();
 
-  auto res = std::make_unique<AqlItemBlock>(
-    _engine->getQuery()->resourceMonitor(), 
-    toSend, 
-    static_cast<arangodb::aql::RegisterId>(nrRegs)
-  );
   // automatically deleted if things go wrong
+  std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, static_cast<arangodb::aql::RegisterId>(nrRegs)));
 
   for (size_t i = 0; i < toSend; i++) {
     // get the next smallest row from the buffer . . .
@@ -327,9 +323,19 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
     if (_gatherBlockPos.at(val.first).second ==
         _gatherBlockBuffer.at(val.first).front()->size()) {
       AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
-      delete cur;
+      returnBlock(cur);
       _gatherBlockBuffer.at(val.first).pop_front();
       _gatherBlockPos.at(val.first) = std::make_pair(val.first, 0);
+
+      if (_gatherBlockBuffer.at(val.first).empty()) {
+        // if we pulled everything from the buffer, we need to fetch
+        // more data for the shard for which we have no more local
+        // values. 
+        getBlock(val.first, atLeast, atMost);
+        // note that if getBlock() returns false here, this is not
+        // a problem, because the sort function used takes care of
+        // this
+      }
     }
   }
 
@@ -401,7 +407,7 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
     if (_gatherBlockPos.at(val.first).second ==
         _gatherBlockBuffer.at(val.first).front()->size()) {
       AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
-      delete cur;
+      returnBlock(cur);
       _gatherBlockBuffer.at(val.first).pop_front();
       _gatherBlockPos.at(val.first) = std::make_pair(val.first, 0);
     }
@@ -883,7 +889,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
 
   std::deque<std::pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
 
-  BlockCollector collector;
+  BlockCollector collector(&_engine->_itemBlockManager);
 
   if (buf.empty()) {
     if (!getBlockForClient(atLeast, atMost, clientId)) {
@@ -923,7 +929,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
   }
 
   if (!skipping) {
-    result = collector.steal(_engine->getQuery()->resourceMonitor());
+    result = collector.steal();
   }
 
   // _buffer is left intact, deleted and cleared at shutdown
@@ -1222,31 +1228,35 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     arangodb::rest::RequestType type, std::string const& urlPart,
     std::string const& body) const {
   DEBUG_BEGIN_BLOCK();
-  ClusterComm* cc = ClusterComm::instance();
+  auto cc = ClusterComm::instance();
+  if (cc != nullptr) {
+    // nullptr only happens on controlled shutdown
 
-  // Later, we probably want to set these sensibly:
-  ClientTransactionID const clientTransactionId = "AQL";
-  CoordTransactionID const coordTransactionId = TRI_NewTickServer();
-  std::unordered_map<std::string, std::string> headers;
-  if (!_ownName.empty()) {
-    headers.emplace("Shard-Id", _ownName);
+    // Later, we probably want to set these sensibly:
+    ClientTransactionID const clientTransactionId = "AQL";
+    CoordTransactionID const coordTransactionId = TRI_NewTickServer();
+    std::unordered_map<std::string, std::string> headers;
+    if (!_ownName.empty()) {
+      headers.emplace("Shard-Id", _ownName);
+    }
+
+    ++_engine->_stats.httpRequests;
+    {
+      JobGuard guard(SchedulerFeature::SCHEDULER);
+      guard.block();
+
+      auto result =
+          cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
+                          std::string("/_db/") +
+                              arangodb::basics::StringUtils::urlEncode(
+                                  _engine->getQuery()->trx()->vocbase()->name()) +
+                              urlPart + _queryId,
+                          body, headers, defaultTimeOut);
+
+      return result;
+    }
   }
-
-  ++_engine->_stats.httpRequests;
-  {
-    JobGuard guard(SchedulerFeature::SCHEDULER);
-    guard.block();
-
-    auto result =
-        cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                        std::string("/_db/") +
-                            arangodb::basics::StringUtils::urlEncode(
-                                _engine->getQuery()->trx()->vocbase()->name()) +
-                            urlPart + _queryId,
-                        body, headers, defaultTimeOut);
-
-    return result;
-  }
+  return std::make_unique<ClusterCommResult>();
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

@@ -22,12 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleCollectionTransaction.h"
+#include "StorageEngine/TransactionCollection.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationResult.h"
 #include "Utils/Transaction.h"
-#include "Utils/TransactionCollection.h"
 #include "Utils/TransactionContext.h"
-#include "Utils/TransactionState.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -82,8 +82,7 @@ TransactionCollection* SingleCollectionTransaction::trxCollection() {
     _trxCollection = _state->collection(_cid, _accessType);
 
     if (_trxCollection != nullptr) {
-      _documentCollection =
-          _trxCollection->_collection;
+      _documentCollection = _trxCollection->collection();
     }
   }
 
@@ -138,8 +137,7 @@ bool SingleCollectionTransaction::hasDitch() const {
 std::string SingleCollectionTransaction::name() { 
   trxCollection(); // will ensure we have the _trxCollection object set
   TRI_ASSERT(_trxCollection != nullptr);
-  TRI_ASSERT(_trxCollection->_collection != nullptr);
-  return _trxCollection->_collection->name(); 
+  return _trxCollection->collectionName();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

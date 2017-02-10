@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for files.c
 ///
 /// @file
@@ -76,7 +76,8 @@ struct CFilesSetup {
   StringBuffer* writeFile (const char* blob) {
     StringBuffer* filename = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
     filename->appendText(_directory);
-    filename->appendText("/tmp-");
+    filename->appendChar(TRI_DIR_SEPARATOR_CHAR);
+    filename->appendText("tmp-");
     filename->appendInteger(++counter);
     filename->appendInteger(arangodb::RandomGenerator::interval(UINT32_MAX));
 
@@ -109,7 +110,7 @@ BOOST_FIXTURE_TEST_SUITE(CFilesTest, CFilesSetup)
 
 BOOST_AUTO_TEST_CASE (tst_createdirectory) {
   std::ostringstream out;
-  out << _directory.c_str() << "/tmp-" << ++counter << "-dir";
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
 
   std::string filename = out.str();
   long unused1;
@@ -126,10 +127,10 @@ BOOST_AUTO_TEST_CASE (tst_createdirectory) {
 
 BOOST_AUTO_TEST_CASE (tst_createdirectoryrecursive) {
   std::ostringstream out;
-  out << _directory.c_str() << "/tmp-" << ++counter << "-dir";
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
   
   std::string filename1 = out.str();
-  out << "/abc";
+  out << TRI_DIR_SEPARATOR_CHAR << "abc";
   std::string filename2 = out.str();
 
   long unused1;
@@ -150,10 +151,10 @@ BOOST_AUTO_TEST_CASE (tst_createdirectoryrecursive) {
 
 BOOST_AUTO_TEST_CASE (tst_removedirectorydeterministic) {
   std::ostringstream out;
-  out << _directory.c_str() << "/tmp-" << ++counter << "-dir";
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
   
   std::string filename1 = out.str();
-  out << "/abc";
+  out << TRI_DIR_SEPARATOR_CHAR << "abc";
   std::string filename2 = out.str();
 
   long unused1;

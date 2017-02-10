@@ -36,6 +36,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/asio-helper.h"
 #include "Basics/build-date.h"
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
@@ -46,12 +47,9 @@ using namespace arangodb::rest;
 
 std::map<std::string, std::string> Version::Values;
   
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parse a version string into major, minor
 /// returns -1, -1 when the version string has an invalid format
 /// returns major, -1 when only the major version can be determined
-////////////////////////////////////////////////////////////////////////////////
-  
 std::pair<int, int> Version::parseVersionString(std::string const& str) {
   std::pair<int, int> result{ -1, -1 };
 
@@ -81,10 +79,7 @@ std::pair<int, int> Version::parseVersionString(std::string const& str) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
-////////////////////////////////////////////////////////////////////////////////
-
 void Version::initialize() {
   if (!Values.empty()) {
     return;
@@ -111,6 +106,7 @@ void Version::initialize() {
   Values["icu-version"] = getICUVersion();
   Values["openssl-version"] = getOpenSSLVersion();
   Values["platform"] = TRI_PLATFORM;
+  Values["reactor-type"] = getBoostReactorType();
   Values["server-version"] = getServerVersion();
   Values["sizeof int"] = arangodb::basics::StringUtils::itoa(sizeof(int));
   Values["sizeof void*"] = arangodb::basics::StringUtils::itoa(sizeof(void*));
@@ -193,10 +189,7 @@ void Version::initialize() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get numeric server version
-////////////////////////////////////////////////////////////////////////////////
-
 int32_t Version::getNumericServerVersion() {
   char const* apiVersion = ARANGODB_VERSION;
   char const* p = apiVersion;
@@ -222,16 +215,10 @@ int32_t Version::getNumericServerVersion() {
   return (int32_t)(minor * 100L + major * 10000L);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get server version
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Version::getServerVersion() { return std::string(ARANGODB_VERSION); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get BOOST version
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Version::getBoostVersion() {
 #ifdef ARANGODB_BOOST_VERSION
   return std::string(ARANGODB_BOOST_VERSION);
@@ -240,10 +227,22 @@ std::string Version::getBoostVersion() {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get V8 version
-////////////////////////////////////////////////////////////////////////////////
+/// @brief get boost reactor type
+std::string Version::getBoostReactorType() {
+#if defined(BOOST_ASIO_HAS_IOCP)
+  return std::string("iocp");
+#elif defined(BOOST_ASIO_HAS_EPOLL)
+  return std::string("epoll");
+#elif defined(BOOST_ASIO_HAS_KQUEUE)
+  return std::string("kqueue");
+#elif defined(BOOST_ASIO_HAS_DEV_POLL)
+  return std::string("/dev/poll");
+#else
+  return std::string("select");
+#endif
+}
 
+/// @brief get V8 version
 std::string Version::getV8Version() {
 #ifdef ARANGODB_V8_VERSION
   return std::string(ARANGODB_V8_VERSION);
@@ -252,10 +251,7 @@ std::string Version::getV8Version() {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get OpenSSL version
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Version::getOpenSSLVersion() {
 #ifdef OPENSSL_VERSION_TEXT
   return std::string(OPENSSL_VERSION_TEXT);
@@ -266,18 +262,12 @@ std::string Version::getOpenSSLVersion() {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get vpack version
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Version::getVPackVersion() {
   return arangodb::velocypack::Version::BuildVersion.toString();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get zlib version
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Version::getZLibVersion() {
 #ifdef ARANGODB_ZLIB_VERSION
   return std::string(ARANGODB_ZLIB_VERSION);
@@ -286,10 +276,7 @@ std::string Version::getZLibVersion() {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get ICU version
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Version::getICUVersion() {
   UVersionInfo icuVersion;
   char icuVersionString[U_MAX_VERSION_STRING_LENGTH];
@@ -299,10 +286,7 @@ std::string Version::getICUVersion() {
   return icuVersionString;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get compiler
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Version::getCompiler() {
 #if defined(__clang__)
   return "clang [" + std::string(__VERSION__) + "]";
@@ -315,10 +299,7 @@ std::string Version::getCompiler() {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get endianness
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Version::getEndianness() {
   uint64_t value = 0x12345678abcdef99;
   static_assert(sizeof(value) == 8, "unexpected uint64_t size");
@@ -334,10 +315,7 @@ std::string Version::getEndianness() {
   return "unknown";
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get build date
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Version::getBuildDate() {
 // the OpenSuSE build system does not like it, if __DATE__ is used
 #ifdef ARANGODB_BUILD_DATE
@@ -347,10 +325,7 @@ std::string Version::getBuildDate() {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get build repository
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Version::getBuildRepository() {
 #ifdef HAVE_ARANGODB_BUILD_REPOSITORY
   return std::string(ARANGODB_BUILD_REPOSITORY);
@@ -359,10 +334,7 @@ std::string Version::getBuildRepository() {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a server version string
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Version::getVerboseVersionString() {
   std::ostringstream version;
 
@@ -388,10 +360,7 @@ std::string Version::getVerboseVersionString() {
   return version.str();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get detailed version information as a (multi-line) string
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Version::getDetailed() {
   std::string result;
 
@@ -413,10 +382,7 @@ std::string Version::getDetailed() {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief VelocyPack all data
-////////////////////////////////////////////////////////////////////////////////
-
 void Version::getVPack(VPackBuilder& dst) {
   TRI_ASSERT(!dst.isClosed());
 

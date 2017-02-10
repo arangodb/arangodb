@@ -342,15 +342,13 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
 /// @brief locate the installation directory
 ////////////////////////////////////////////////////////////////////////////////
 
-#if _WIN32
-std::string TRI_LocateInstallDirectory(const char* binaryPath);
-#endif
+std::string TRI_LocateInstallDirectory(char const* argv_0, const char* binaryPath);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the configuration directory
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_LocateConfigDirectory(const char * binaryPath);
+char* TRI_LocateConfigDirectory(char const* binaryPath);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the address of the null buffer

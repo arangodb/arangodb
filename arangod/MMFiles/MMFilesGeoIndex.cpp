@@ -30,7 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesToken.h"
-#include "Utils/TransactionState.h"
+#include "StorageEngine/TransactionState.h"
 
 using namespace arangodb;
 
@@ -81,31 +81,67 @@ void MMFilesGeoIndexIterator::evaluateCondition() {
       _inclusive = args->getMember(4)->getBoolValue();
     }
   } else {
-    LOG(ERR) << "No condition passed to MMFilesGeoIndexIterator constructor";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "No condition passed to MMFilesGeoIndexIterator constructor";
   }
 }
 
-DocumentIdentifierToken MMFilesGeoIndexIterator::next() {
-  if (!_cursor) {
-    createCursor(_lat, _lon);
-  }
+size_t MMFilesGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
+  TRI_ASSERT(coords != nullptr);
 
-  auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor, 1));
-  if (coords && coords->length) {
-    if (  _near
-       || (!_inclusive && coords->distances[0] < _radius)
-       || ( _inclusive && coords->distances[0] <= _radius)
-       )
-    {
-      return ::MMFilesGeoIndex::toDocumentIdentifierToken(
-          coords->coordinates[0].data);
+  // determine which documents to return...
+  size_t numDocs = coords->length;
+
+  if (!_near) {
+    // WITHIN
+    // only return those documents that are within the specified radius
+    TRI_ASSERT(numDocs > 0);
+    
+    // linear scan for the first document outside the specified radius
+    // scan backwards because documents with higher distances are more interesting
+    int iterations = 0;
+    while ((_inclusive && coords->distances[numDocs - 1] > _radius) ||
+          (!_inclusive && coords->distances[numDocs - 1] >= _radius)) {
+      // document is outside the specified radius!
+      --numDocs;
+
+      if (numDocs == 0) {
+        break;
+      }
+
+      if (++iterations == 8 && numDocs >= 10) {
+        // switch to a binary search for documents inside/outside the specified radius
+        size_t l = 0;
+        size_t r = numDocs - 1;
+
+        while (true) {
+          // determine midpoint
+          size_t m = l + ((r - l) / 2);
+          if ((_inclusive && coords->distances[m] > _radius) ||
+              (!_inclusive && coords->distances[m] >= _radius)) {
+            // document is outside the specified radius!
+            if (m == 0) {
+              numDocs = 0;
+              break;
+            }
+            r = m - 1;
+          } else {
+            // still inside the radius
+            numDocs = m + 1;
+            l = m + 1;
+          }
+
+          if (r < l) {
+            break;
+          }
+        }
+        break;
+      }
     }
   }
-  // if there are no more results we return the default constructed IndexLookupResult
-  return MMFilesToken{};
+  return numDocs;
 }
 
-void MMFilesGeoIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& result, size_t batchSize) {
+bool MMFilesGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
   if (!_cursor) { 
     createCursor(_lat, _lon);
     
@@ -117,14 +153,13 @@ void MMFilesGeoIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& r
 
   TRI_ASSERT(_cursor != nullptr);
 
-  result.clear();
-
   if (_done) {
     // we already know that no further results will be returned by the index
-    return;
+    return false;
   }
 
-  if (batchSize > 0) {
+  TRI_ASSERT(limit > 0);
+  if (limit > 0) {
     // only need to calculate distances for WITHIN queries, but not for NEAR queries
     bool withDistances;
     double maxDistance;
@@ -136,77 +171,32 @@ void MMFilesGeoIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& r
       maxDistance = _radius;
     }
     auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(
-        _cursor, static_cast<int>(batchSize), withDistances, maxDistance));
+        _cursor, static_cast<int>(limit), withDistances, maxDistance));
 
     size_t const length = coords ? coords->length : 0;
     
     if (length == 0) {
-      return;
+      // Nothing Found
+      // TODO validate
+      _done = true;
+      return false;
     }
 
-    // determine which documents to return...
-    size_t numDocs = length;
-
-    if (!_near) {
-      // WITHIN
-      // only return those documents that are within the specified radius
-      TRI_ASSERT(numDocs > 0);
-      
-      // linear scan for the first document outside the specified radius
-      // scan backwards because documents with higher distances are more interesting
-      int iterations = 0;
-      while ((_inclusive && coords->distances[numDocs - 1] > _radius) ||
-            (!_inclusive && coords->distances[numDocs - 1] >= _radius)) {
-        // document is outside the specified radius!
-        --numDocs;
-
-        if (numDocs == 0) {
-          break;
-        }
-
-        if (++iterations == 8 && numDocs >= 10) {
-          // switch to a binary search for documents inside/outside the specified radius
-          size_t l = 0;
-          size_t r = numDocs - 1;
-
-          while (true) {
-            // determine midpoint
-            size_t m = l + ((r - l) / 2);
-            if ((_inclusive && coords->distances[m] > _radius) ||
-                (!_inclusive && coords->distances[m] >= _radius)) {
-              // document is outside the specified radius!
-              if (m == 0) {
-                numDocs = 0;
-                break;
-              }
-              r = m - 1;
-            } else {
-              // still inside the radius
-              numDocs = m + 1;
-              l = m + 1;
-            }
-
-            if (r < l) {
-              break;
-            }
-          }
-          break;
-        }
-      }
+    size_t numDocs = findLastIndex(coords.get());
+    if (numDocs == 0) {
+      // we are done
+      _done = true;
+      return false;
     }
   
-    result.reserve(numDocs);
-        
     for (size_t i = 0; i < numDocs; ++i) {
-      result.emplace_back(::MMFilesGeoIndex::toDocumentIdentifierToken(
+      cb(::MMFilesGeoIndex::toDocumentIdentifierToken(
           coords->coordinates[i].data));
     }
+    // If we return less then limit many docs we are done.
+    _done = numDocs < limit;
   }
-
-  if (result.size() < batchSize) {
-    // already done
-    _done = true;
-  }
+  return true;
 }
 
 void MMFilesGeoIndexIterator::replaceCursor(::GeoCursor* c) {
@@ -440,12 +430,12 @@ int MMFilesGeoIndex::insert(arangodb::Transaction*, TRI_voc_rid_t revisionId,
   int res = GeoIndex_insert(_geoIndex, &gc);
 
   if (res == -1) {
-    LOG(WARN) << "found duplicate entry in geo-index, should not happen";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "found duplicate entry in geo-index, should not happen";
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   } else if (res == -2) {
     return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
   } else if (res == -3) {
-    LOG(DEBUG) << "illegal geo-coordinates, ignoring entry";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "illegal geo-coordinates, ignoring entry";
     return TRI_ERROR_NO_ERROR;
   } else if (res < 0) {
     return TRI_set_errno(TRI_ERROR_INTERNAL);

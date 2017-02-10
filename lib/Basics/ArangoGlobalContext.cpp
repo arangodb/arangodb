@@ -135,6 +135,7 @@ ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
                                          char const* InstallDirectory)
     : _binaryName(TRI_BinaryName(argv[0])),
+      _binaryPath(TRI_LocateBinaryPath(argv[0])),
       _runRoot(
           TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), InstallDirectory)),
       _ret(EXIT_FAILURE),
@@ -205,7 +206,7 @@ void ArangoGlobalContext::unmaskStandardSignals() {
 void ArangoGlobalContext::runStartupChecks() {
   // test if this binary uses and stdlib that supports std::regex properly
   if (!supportsStdRegex()) {
-    LOG(FATAL) << "the required std::regex functionality required to run "
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "the required std::regex functionality required to run "
                << "ArangoDB is not provided by this build. please try "
                << "rebuilding ArangoDB in a build environment that properly "
                << "supports std::regex";
@@ -215,7 +216,7 @@ void ArangoGlobalContext::runStartupChecks() {
 #ifdef __arm__
   // detect alignment settings for ARM
   {
-    LOG(TRACE)
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
         << "running CPU alignment check";
     // To change the alignment trap behavior, simply echo a number into
     // /proc/cpu/alignment.  The number is made up from various bits:
@@ -263,7 +264,7 @@ void ArangoGlobalContext::runStartupChecks() {
         int64_t alignment =
             std::stol(std::string(cpuAlignment.c_str() + start, end - start));
         if ((alignment & 2) == 0) {
-          LOG(FATAL)
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
               << "possibly incompatible CPU alignment settings found in '"
               << filename << "'. this may cause arangod to abort with "
                              "SIGBUS. please set the value in '"
@@ -276,13 +277,13 @@ void ArangoGlobalContext::runStartupChecks() {
 
     } catch (...) {
       // ignore that we cannot detect the alignment
-      LOG(TRACE)
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
           << "unable to detect CPU alignment settings. could not process file '"
           << filename << "'";
     }
 
     if (!alignmentDetected) {
-      LOG(WARN)
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
           << "unable to detect CPU alignment settings. could not process file '"
           << filename
           << "'. this may cause arangod to abort with SIGBUS. it may be "
@@ -296,13 +297,13 @@ void ArangoGlobalContext::runStartupChecks() {
       auto start = cpuInfo.find("ARMv6");
 
       if (start != std::string::npos) {
-          LOG(FATAL)
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
               << "possibly incompatible ARMv6 CPU detected.";
           FATAL_ERROR_EXIT();
         }
     } catch (...) {
       // ignore that we cannot detect the alignment
-      LOG(TRACE)
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
           << "unable to detect CPU type '"
           << filename << "'";
     }
@@ -336,7 +337,7 @@ void ArangoGlobalContext::normalizePath(std::string& path,
       if (!fatal) {
         return;
       }
-      LOG(FATAL) << "failed to locate " << whichPath
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to locate " << whichPath
                  << " directory, its neither available in '" << path
                  << "' nor in '" << directory << "'";
       FATAL_ERROR_EXIT();

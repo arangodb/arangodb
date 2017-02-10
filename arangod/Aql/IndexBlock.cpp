@@ -50,8 +50,8 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _cursor(nullptr),
       _cursors(_indexes.size()),
       _condition(en->_condition->root()),
-      _hasV8Expression(false) {
-    
+      _hasV8Expression(false),
+      _collector(&_engine->_itemBlockManager) {
   _mmdr.reset(new ManagedDocumentResult);
  
   if (_condition != nullptr) {
@@ -412,7 +412,14 @@ bool IndexBlock::readIndex(size_t atMost) {
     }
 
     LogicalCollection* collection = _cursor->collection();
-    _cursor->getMoreTokens(_result, atMost);
+    _result.clear();
+    auto cb = [&] (DocumentIdentifierToken const& token) {
+      _result.emplace_back(token);
+    };
+    // TODO We can optimize this place by allowing the
+    // index to directly write into AQLItemBlock
+    // instead of the local _result cache.
+    _cursor->getMore(cb, atMost);
 
     size_t length = _result.size();
 
@@ -491,7 +498,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   traceGetSomeBegin();
   if (_done) {
     traceGetSomeEnd(nullptr);
-    return _collector.steal(_engine->getQuery()->resourceMonitor());
+    return _collector.steal();
   }
  
   std::unique_ptr<AqlItemBlock> res;
@@ -507,7 +514,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
       if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
         _done = true;
         traceGetSomeEnd(nullptr);
-        return _collector.steal(_engine->getQuery()->resourceMonitor());
+        return _collector.steal();
       }
       _pos = 0;  // this is in the first block
 
@@ -522,14 +529,14 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         AqlItemBlock* cur = _buffer.front();
         if (++_pos >= cur->size()) {
           _buffer.pop_front();  // does not throw
-          delete cur;
+          returnBlock(cur);
           _pos = 0;
         }
         if (_buffer.empty()) {
           if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
             _done = true;
             traceGetSomeEnd(nullptr);
-            return _collector.steal(_engine->getQuery()->resourceMonitor());
+            return _collector.steal();
           }
           _pos = 0;  // this is in the first block
         }
@@ -537,7 +544,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         if (!initIndexes()) {
           _done = true;
           traceGetSomeEnd(nullptr);
-          return _collector.steal(_engine->getQuery()->resourceMonitor());
+          return _collector.steal();
         }
         readIndex(atMost);
       }
@@ -552,11 +559,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
 
     if (toSend > 0) {
       // automatically freed should we throw
-      res.reset(
-        new AqlItemBlock(_engine->getQuery()->resourceMonitor(),
-        toSend,
-        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()])
-      );
+      res.reset(requestBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
       TRI_ASSERT(curRegs <= res->getNrRegs());
 
@@ -585,7 +588,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
       TRI_ASSERT(res.get() == nullptr);
 
       if (_collector.totalSize() >= atMost) {
-        res.reset(_collector.steal(_engine->getQuery()->resourceMonitor()));
+        res.reset(_collector.steal());
       }
     }
 
@@ -638,7 +641,7 @@ size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
 
         if (++_pos >= cur->size()) {
           _buffer.pop_front();  // does not throw
-          delete cur;
+          returnBlock(cur);
           _pos = 0;
         }
 

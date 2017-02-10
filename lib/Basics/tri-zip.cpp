@@ -395,6 +395,7 @@ int TRI_UnzipFile(char const* filename, char const* outPath,
   unzFile uf = unzOpen64(filename);
 #endif
   if (uf == nullptr) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
     errorMessage = std::string("unable to open zip file ") + filename;
     return TRI_ERROR_INTERNAL;
   }

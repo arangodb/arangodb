@@ -123,7 +123,7 @@ class Supervision : public arangodb::Thread {
   void enforceReplication();
 
   /// @brief Update agency prefix from agency itself
-  bool updateAgencyPrefix(size_t nTries = 10, int intervalSec = 1);
+  bool updateAgencyPrefix(size_t nTries = 10, double intervalSec = 1.0);
 
   /// @brief Move shard from one db server to other db server
   bool moveShard(std::string const& from, std::string const& to);

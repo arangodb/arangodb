@@ -39,7 +39,6 @@
 #include "RestServer/ServerIdFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Utils/TransactionState.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>

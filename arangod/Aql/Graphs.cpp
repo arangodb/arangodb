@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Graphs.h"
+#include "Aql/AstNode.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Iterator.h>
@@ -32,6 +33,61 @@ using namespace arangodb::aql;
 
 char const* Graph::_attrEdgeDefs = "edgeDefinitions";
 char const* Graph::_attrOrphans = "orphanCollections";
+
+EdgeConditionBuilder::EdgeConditionBuilder(AstNode* modCondition)
+    : _fromCondition(nullptr),
+      _toCondition(nullptr),
+      _modCondition(modCondition),
+      _containsCondition(false) {
+  TRI_ASSERT(_modCondition->type == NODE_TYPE_OPERATOR_NARY_AND);
+}
+
+void EdgeConditionBuilder::addConditionPart(AstNode const* part) {
+  TRI_ASSERT(!_containsCondition);
+  // The ordering is only maintained before we request a specific
+  // condition
+  _modCondition->addMember(part);
+}
+
+void EdgeConditionBuilder::swapSides(AstNode* cond) {
+  TRI_ASSERT(cond != nullptr);
+  TRI_ASSERT(cond == _fromCondition || cond == _toCondition);
+  TRI_ASSERT(cond->type == NODE_TYPE_OPERATOR_BINARY_EQ);
+  if (_containsCondition) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    // If used correctly this class guarantuees that the last element
+    // of the nary-and is the _from or _to part and is exchangable.
+    TRI_ASSERT(_modCondition->numMembers() > 0);
+    auto changeNode =
+        _modCondition->getMemberUnchecked(_modCondition->numMembers() - 1);
+    TRI_ASSERT(changeNode == _fromCondition || changeNode == _toCondition);
+#endif
+    _modCondition->changeMember(_modCondition->numMembers() - 1,
+                                cond);
+  } else {
+    _modCondition->addMember(cond);
+    _containsCondition = true;
+  }
+  TRI_ASSERT(_modCondition->numMembers() > 0);
+}
+
+AstNode const* EdgeConditionBuilder::getOutboundCondition() {
+  if (_fromCondition == nullptr) {
+    buildFromCondition();
+  }
+  TRI_ASSERT(_fromCondition != nullptr);
+  swapSides(_fromCondition);
+  return _modCondition;
+}
+
+AstNode const* EdgeConditionBuilder::getInboundCondition() {
+  if (_toCondition == nullptr) {
+    buildToCondition();
+  }
+  TRI_ASSERT(_toCondition != nullptr);
+  swapSides(_toCondition);
+  return _modCondition;
+}
 
 void Graph::insertVertexCollections(VPackSlice& arr) {
   TRI_ASSERT(arr.isArray());

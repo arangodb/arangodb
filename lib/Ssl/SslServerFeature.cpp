@@ -76,7 +76,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--ssl.protocol",
                      "ssl protocol (1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = "
-                     "TLSv1, 5 = TLSV1.2 (recommended)",
+                     "TLSv1, 5 = TLSV1.2 (recommended))",
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
 
@@ -91,10 +91,10 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void SslServerFeature::prepare() {
-  LOG(INFO) << "using SSL options: " << stringifySslOptions(_sslOptions);
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "using SSL options: " << stringifySslOptions(_sslOptions);
 
   if (!_cipherList.empty()) {
-    LOG(INFO) << "using SSL cipher-list '" << _cipherList << "'";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "using SSL cipher-list '" << _cipherList << "'";
   }
 
   UniformCharacter r(
@@ -105,35 +105,35 @@ void SslServerFeature::prepare() {
 }
 
 void SslServerFeature::unprepare() {
-  LOG(TRACE) << "unpreparing ssl: " << stringifySslOptions(_sslOptions);
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "unpreparing ssl: " << stringifySslOptions(_sslOptions);
 }
 
 void SslServerFeature::verifySslOptions() {
   // check keyfile
   if (_keyfile.empty()) {
-    LOG(FATAL) << "keyfile empty'" << _keyfile << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "keyfile empty'" << _keyfile << "'";
     FATAL_ERROR_EXIT();
   }
 
   // validate protocol
   if (_sslProtocol <= SSL_UNKNOWN || _sslProtocol >= SSL_LAST) {
-    LOG(FATAL) << "invalid SSL protocol version specified. Please use a valid "
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid SSL protocol version specified. Please use a valid "
                   "value for '--ssl.protocol'.";
     FATAL_ERROR_EXIT();
   }
 
-  LOG(DEBUG) << "using SSL protocol version '"
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "using SSL protocol version '"
              << protocolName((protocol_e)_sslProtocol) << "'";
 
   if (!FileUtils::exists(_keyfile)) {
-    LOG(FATAL) << "unable to find SSL keyfile '" << _keyfile << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to find SSL keyfile '" << _keyfile << "'";
     FATAL_ERROR_EXIT();
   }
 
   try {
     createSslContext();
   } catch (...) {
-    LOG(FATAL) << "cannot create SSL context";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot create SSL context";
     FATAL_ERROR_EXIT();
   }
 }
@@ -155,7 +155,7 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
   auto sslContextOpt = ::sslContext(protocol_e(_sslProtocol), _keyfile);
 
   if (!sslContextOpt) {
-    LOG(ERR) << "failed to create SSL context, cannot create HTTPS server";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to create SSL context, cannot create HTTPS server";
     throw std::runtime_error("cannot create SSL context");
   }
 
@@ -175,7 +175,7 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
                                                     : SSL_SESS_CACHE_OFF);
 
   if (_sessionCache) {
-    LOG(TRACE) << "using SSL session caching";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "using SSL session caching";
   }
 
   // set options
@@ -183,7 +183,7 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
 
   if (!_cipherList.empty()) {
     if (SSL_CTX_set_cipher_list(nativeContext, _cipherList.c_str()) != 1) {
-      LOG(ERR) << "cannot set SSL cipher list '" << _cipherList
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot set SSL cipher list '" << _cipherList
                << "': " << lastSSLError();
       throw std::runtime_error("cannot create SSL context");
     }
@@ -195,7 +195,7 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
   sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
 
   if (sslEcdhNid == 0) {
-    LOG(ERR) << "SSL error: " << lastSSLError()
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "SSL error: " << lastSSLError()
              << " Unknown curve name: " << _ecdhCurve;
     throw std::runtime_error("cannot create SSL context");
   }
@@ -203,7 +203,7 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
   // https://www.openssl.org/docs/manmaster/apps/ecparam.html
   ecdhKey = EC_KEY_new_by_curve_name(sslEcdhNid);
   if (ecdhKey == nullptr) {
-    LOG(ERR) << "SSL error: " << lastSSLError()
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "SSL error: " << lastSSLError()
              << " Unable to create curve by name: " << _ecdhCurve;
     throw std::runtime_error("cannot create SSL context");
   }
@@ -218,19 +218,19 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
       nativeContext, (unsigned char const*)_rctx.c_str(), (int)_rctx.size());
 
   if (res != 1) {
-    LOG(ERR) << "cannot set SSL session id context '" << _rctx
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot set SSL session id context '" << _rctx
              << "': " << lastSSLError();
     throw std::runtime_error("cannot create SSL context");
   }
 
   // check CA
   if (!_cafile.empty()) {
-    LOG(TRACE) << "trying to load CA certificates from '" << _cafile << "'";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trying to load CA certificates from '" << _cafile << "'";
 
     int res = SSL_CTX_load_verify_locations(nativeContext, _cafile.c_str(), 0);
 
     if (res == 0) {
-      LOG(ERR) << "cannot load CA certificates from '" << _cafile
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load CA certificates from '" << _cafile
                << "': " << lastSSLError();
       throw std::runtime_error("cannot create SSL context");
     }
@@ -240,7 +240,7 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
     certNames = SSL_load_client_CA_file(_cafile.c_str());
 
     if (certNames == nullptr) {
-      LOG(ERR) << "cannot load CA certificates from '" << _cafile
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load CA certificates from '" << _cafile
                << "': " << lastSSLError();
       throw std::runtime_error("cannot create SSL context");
     }
@@ -260,7 +260,7 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
           char* r;
           long len = BIO_get_mem_data(bout._bio, &r);
 
-          LOG(TRACE) << "name: " << std::string(r, len);
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "name: " << std::string(r, len);
         }
       }
     }

@@ -10,7 +10,7 @@ cmake_minimum_required(VERSION 2.8)
 ################################################################################
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "@CMAKE_BINARY_DIR@/bin")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_X "@CMAKE_BINARY_DIR@/bin/$<CONFIGURATION>/")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_X "@CMAKE_BINARY_DIR@/bin/$<CONFIG>/")
 
 set(CMAKE_BUILD_TYPE @CMAKE_BUILD_TYPE@)
 
@@ -173,7 +173,6 @@ include(${ORIGINAL_SOURCE_DIR}/arangosh/install.cmake)
 
 install_readme(README.windows README.windows.txt)
 
-# other platforms link the file into the binary
 install(FILES ${ICU_DT}
   DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME ${ICU_DT_DEST})

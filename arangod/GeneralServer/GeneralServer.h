@@ -28,8 +28,6 @@
 
 #include "Basics/Common.h"
 
-#include <boost/lockfree/queue.hpp>
-
 #include "Basics/ConditionVariable.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "GeneralServer/GeneralDefinitions.h"

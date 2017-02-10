@@ -110,9 +110,9 @@ if (INSTALL_MACROS_NO_TARGET_INSTALL)
         OUTPUT ${name}
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${name}>
-	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}${CMAKE_EXECUTABLE_SUFFIX})
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/${alias}${CMAKE_EXECUTABLE_SUFFIX})
       install(
-        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}${CMAKE_EXECUTABLE_SUFFIX}
+        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/${alias}${CMAKE_EXECUTABLE_SUFFIX}
         DESTINATION ${where})
     else ()
       add_custom_command(
@@ -132,9 +132,9 @@ else ()
         TARGET ${name}
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${name}>
-	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}${CMAKE_EXECUTABLE_SUFFIX})
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/${alias}${CMAKE_EXECUTABLE_SUFFIX})
       install(
-        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}${CMAKE_EXECUTABLE_SUFFIX}
+        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/${alias}${CMAKE_EXECUTABLE_SUFFIX}
         DESTINATION ${where})
     else ()
       add_custom_command(
@@ -181,16 +181,46 @@ macro(install_debinfo
       FILE_CHECKSUM
       ${FILE_RESULT}
       )
-    
-    if (NOT ${FILE_CHECKSUM} STREQUAL "")
+    string(LENGTH ${FILE_CHECKSUM} FILE_CHECKSUM_LEN)
+
+    if (FILE_CHECKSUM_LEN EQUAL 40)
       string(SUBSTRING ${FILE_CHECKSUM} 0 2 SUB_DIR)
       string(SUBSTRING ${FILE_CHECKSUM} 2 -1 STRIP_FILE)
       set(SUB_DEBINFO_DIR .build-id/${SUB_DIR})
+      set(STRIP_FILE "${STRIP_FILE}.debug")
+    else ()
+      set(STRIP_FILE ${USER_STRIP_FILE})
     endif()
     execute_process(COMMAND ${CMAKE_OBJCOPY} --only-keep-debug ${FILE} ${STRIP_DIR}/${STRIP_FILE})
     set(FILE ${STRIP_DIR}/${STRIP_FILE})
+    install(
+      PROGRAMS ${FILE}
+      DESTINATION ${CMAKE_INSTALL_DEBINFO_DIR}/${SUB_DEBINFO_DIR})
   endif()
-  install(
-    PROGRAMS ${FILE}
-    DESTINATION ${CMAKE_INSTALL_DEBINFO_DIR}/${SUB_DEBINFO_DIR})
+endmacro()
+
+
+# Detect whether this system has SHA checksums
+macro(detect_binary_id_type sourceVar)
+  set(${sourceVar} false)
+  if (NOT MSVC AND CMAKE_STRIP AND FILE_EXECUTABLE)
+    execute_process(
+      COMMAND ${FILE_EXECUTABLE} ${FILE_EXECUTABLE}
+      OUTPUT_VARIABLE FILE_RESULT)
+    
+    string(REGEX
+      REPLACE ".*=([a-z0-9]*),.*" "\\1"
+      FILE_CHECKSUM
+      ${FILE_RESULT}
+      )
+    string(LENGTH ${FILE_CHECKSUM} FILE_CHECKSUM_LEN)
+    if (FILE_CHECKSUM_LEN EQUAL 40)
+      set(${sourceVar} true)
+    endif()
+<<<<<<< HEAD
+    execute_process(COMMAND ${CMAKE_OBJCOPY} --only-keep-debug ${FILE} ${STRIP_DIR}/${STRIP_FILE})
+    set(FILE ${STRIP_DIR}/${STRIP_FILE})
+=======
+>>>>>>> ac5207cf7d44f27960813ce5cde91f67bba48ccc
+  endif()
 endmacro()

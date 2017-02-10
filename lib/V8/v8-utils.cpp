@@ -29,6 +29,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <signal.h>
 
 #include "3rdParty/valgrind/valgrind.h"
 #include "unicode/normalizer2.h"
@@ -111,7 +112,7 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
                               std::string const& message) noexcept {
   try {
     if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
-      LOG(ERR) << "encountered out-of-memory error";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "encountered out-of-memory error";
     }
 
     v8::Handle<v8::String> errorMessage = TRI_V8_STD_STRING(message);
@@ -168,7 +169,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, &length);
 
   if (content == nullptr) {
-    LOG(ERR) << "cannot load java script file '" << filename
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load java script file '" << filename
              << "': " << TRI_last_error();
     return false;
   }
@@ -204,7 +205,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   }
 
   if (content == nullptr) {
-    LOG(ERR) << "cannot load java script file '" << filename
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load java script file '" << filename
              << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
     return false;
   }
@@ -226,7 +227,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
-    LOG(ERR) << "cannot load java script file '" << filename
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load java script file '" << filename
              << "': compilation failed.";
     return false;
   }
@@ -245,7 +246,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
     }
   }
 
-  LOG(TRACE) << "loaded java script file: '" << filename << "'";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "loaded java script file: '" << filename << "'";
   return true;
 }
 
@@ -259,7 +260,7 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
   v8::HandleScope scope(isolate);
   bool result;
 
-  LOG(TRACE) << "loading JavaScript directory: '" << path << "'";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "loading JavaScript directory: '" << path << "'";
 
   std::vector<std::string> files = TRI_FilesDirectory(path);
 
@@ -818,7 +819,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_SYNTAX_ERROR("unsupported URL specified");
     }
 
-    LOG(TRACE) << "downloading file. endpoint: " << endpoint
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "downloading file. endpoint: " << endpoint
                << ", relative URL: " << url;
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
@@ -992,7 +993,7 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
 
         if (*keyName != nullptr) {
-          LOG(TRACE) << "copying key '" << *keyName
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "copying key '" << *keyName
                      << "' from sandbox to context";
         }
       }
@@ -1070,7 +1071,7 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
 
         if (*keyName != nullptr) {
-          LOG(TRACE) << "copying key '" << *keyName
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "copying key '" << *keyName
                      << "' from context to sandbox";
         }
       }
@@ -1140,15 +1141,16 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const modeStr = TRI_ObjectToString(isolate, args[1]);
+  size_t const length = modeStr.length();
 
-  if ((modeStr.length() > 5) || (modeStr.length() == 0)) {
+  if (length == 0 || length > 5) {
     TRI_V8_THROW_TYPE_ERROR(
         "<mode> must be a string with up to 4 octal digits in it plus a "
         "leading zero.");
   }
 
   long mode = 0;
-  for (uint32_t i = 0; i < modeStr.length(); i++) {
+  for (uint32_t i = 0; i < length; ++i) {
     if (!isdigit(modeStr[i])) {
       TRI_V8_THROW_TYPE_ERROR(
           "<mode> must be a string with up to 4 octal digits in it plus a "
@@ -1163,7 +1165,7 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "<mode> must be a string with up to 4 octal digits in it plus a "
           "leading zero.");
     }
-    mode = mode | digit << ((modeStr.length() - i - 1) * 3);
+    mode = mode | digit << ((length - i - 1) * 3);
   }
   std::string err;
   int rc = TRI_ChMod(*name, mode, err);
@@ -1770,7 +1772,7 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
   LogTopic* topic = ts.empty() ? nullptr : LogTopic::lookup(ts);
 
   if (topic == nullptr) {
-    LOG_RAW(ll) << msg;
+    LOG_TOPIC_RAW(ll, Logger::FIXME) << msg;
   } else {
     LOG_TOPIC_RAW(ll, *topic) << msg;
   }
@@ -3647,10 +3649,13 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // extract the arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("killExternal(<external-identifier>)");
+  if (args.Length() < 1 || args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("killExternal(<external-identifier>, <signal>)");
   }
-
+  int signal = SIGTERM;
+  if (args.Length() == 2) {
+    signal = static_cast<int>(TRI_ObjectToInt64(args[0]));
+  }
   TRI_external_id_t pid;
   memset(&pid, 0, sizeof(TRI_external_id_t));
 
@@ -3661,7 +3666,7 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #endif
 
   // return the result
-  if (TRI_KillExternalProcess(pid)) {
+  if (TRI_KillExternalProcess(pid, signal)) {
     TRI_V8_RETURN_TRUE();
   }
   TRI_V8_RETURN_FALSE();
@@ -4085,9 +4090,9 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
   // exception.
   if (message.IsEmpty()) {
     if (exceptionString == nullptr) {
-      LOG(ERR) << "JavaScript exception";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "JavaScript exception";
     } else {
-      LOG(ERR) << "JavaScript exception: " << exceptionString;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "JavaScript exception: " << exceptionString;
     }
   } else {
     TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE,
@@ -4101,16 +4106,16 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 
     if (filenameString == nullptr) {
       if (exceptionString == nullptr) {
-        LOG(ERR) << "JavaScript exception";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "JavaScript exception";
       } else {
-        LOG(ERR) << "JavaScript exception: " << exceptionString;
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "JavaScript exception: " << exceptionString;
       }
     } else {
       if (exceptionString == nullptr) {
-        LOG(ERR) << "JavaScript exception in file '" << filenameString
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "JavaScript exception in file '" << filenameString
                  << "' at " << linenum << "," << start;
       } else {
-        LOG(ERR) << "JavaScript exception in file '" << filenameString
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "JavaScript exception in file '" << filenameString
                  << "' at " << linenum << "," << start << ": "
                  << exceptionString;
       }
@@ -4121,7 +4126,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
     if (*sourceline) {
       std::string l = *sourceline;
 
-      LOG(ERR) << "!" << l;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "!" << l;
 
       if (1 < start) {
         l = std::string(start - 1, ' ');
@@ -4131,7 +4136,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 
       l += std::string((size_t)(end - start + 1), '^');
 
-      LOG(ERR) << "!" << l;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "!" << l;
     }
   }
 }
@@ -4220,7 +4225,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
         }
       }
     } else {
-      LOG(ERR) << "no output function defined in Javascript context";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "no output function defined in Javascript context";
     }
   }
 

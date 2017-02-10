@@ -81,8 +81,8 @@ static inline v8::Handle<v8::Value> V8CollectionId(v8::Isolate* isolate,
 /// @brief weak reference callback for collections
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WeakCollectionCallback(const v8::WeakCallbackData<
-    v8::External, v8::Persistent<v8::External>>& data) {
+static void WeakCollectionCallback(const v8::WeakCallbackInfo<
+                                   v8::Persistent<v8::External>>& data) {
   auto isolate = data.GetIsolate();
   auto persistent = data.GetParameter();
   auto myCollection = v8::Local<v8::External>::New(isolate, *persistent);
@@ -145,8 +145,9 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
         result->SetInternalField(SLOT_COLLECTION, externalCollection);
 
         v8g->JSCollections[nonconstCollection].Reset(isolate, externalCollection);
-        v8g->JSCollections[nonconstCollection].SetWeak(
-            &v8g->JSCollections[nonconstCollection], WeakCollectionCallback);
+        v8g->JSCollections[nonconstCollection].SetWeak(&v8g->JSCollections[nonconstCollection],
+                                                       WeakCollectionCallback,
+                                                       v8::WeakCallbackType::kFinalizer);
         v8g->increaseActiveExternals();
       } catch (...) {
         nonconstCollection->vocbase()->release();

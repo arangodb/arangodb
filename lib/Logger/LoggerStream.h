@@ -51,7 +51,7 @@ class LoggerStream {
 
   LoggerStream& operator<<(LogTopic topic) {
     _topicId = topic.id();
-    _out << "{" + topic.name() << "} ";
+    _out << topic.displayName();
     return *this;
   }
   

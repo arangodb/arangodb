@@ -36,6 +36,7 @@
 #include "Basics/Thread.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralResponse.h"
+#include "Scheduler/JobGuard.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/Task.h"
 
@@ -156,7 +157,6 @@ Scheduler::Scheduler(size_t nrThreads, size_t maxQueueSize)
     : _nrThreads(nrThreads),
       _maxQueueSize(maxQueueSize),
       _stopping(false),
-      _nrBusy(0),
       _nrWorking(0),
       _nrBlocked(0),
       _nrRunning(0),
@@ -170,14 +170,34 @@ Scheduler::Scheduler(size_t nrThreads, size_t maxQueueSize)
 
 Scheduler::~Scheduler() {
   if (_threadManager != nullptr) {
-    _threadManager->cancel();
+    try {
+      _threadManager->cancel();
+    } catch (...) {
+      // must not throw in the dtor
+    }
   }
-  deleteOldThreads();
+
+  try {
+    deleteOldThreads();
+  } catch (...) {
+    // probably out of memory here...
+    // must not throw in the dtor
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to delete old scheduler threads";
+  }
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+void Scheduler::post(std::function<void()> callback) {
+  _ioService.get()->post([this, callback]() {
+    JobGuard guard(this);
+    guard.work();
+
+    callback();
+  });
+}
 
 bool Scheduler::start(ConditionVariable* cv) {
   // start the I/O
@@ -204,7 +224,7 @@ bool Scheduler::start(ConditionVariable* cv) {
   _jobQueue->start();
 
   // done
-  LOG(TRACE) << "all scheduler threads are up and running";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "all scheduler threads are up and running";
   return true;
 }
 
@@ -259,11 +279,11 @@ bool Scheduler::stopThread() {
   if (_nrRunning <= _nrMinimal) {
     return false;
   }
-  
+
   if (_nrRunning >= 3) {
     int64_t low = ((_nrRunning <= 4) ? 0 : (_nrRunning * 1 / 4)) - _nrBlocked;
 
-    if (_nrBusy <= low && _nrWorking <= low) {
+    if (_nrWorking <= low) {
       return true;
     }
   }
@@ -306,22 +326,20 @@ void Scheduler::rebalanceThreads() {
   static double const MIN_ERR_INTERVAL = 300;
 
   int64_t high = (_nrRunning <= 4) ? 1 : (_nrRunning * 11 / 16);
-  int64_t working = (_nrBusy > _nrWorking) ? _nrBusy : _nrWorking;
 
   LOG_TOPIC(DEBUG, Logger::THREADS) << "rebalancing threads, high: " << high
-                                    << ", working: " << working << " ("
-                                    << infoStatus() << ")";
+                                    << ", " << infoStatus();
 
-  if (working >= high) {
+  if (_nrWorking >= high) {
     if (_nrRunning < _nrMaximal + _nrBlocked &&
-        _nrRunning < _nrRealMaximum) {   // added by Max 22.12.2016
+        _nrRunning < _nrRealMaximum) {  // added by Max 22.12.2016
       // otherwise we exceed the total maximum
       startNewThread();
       return;
     }
   }
 
-  if (working >= _nrMaximal + _nrBlocked || _nrRunning < _nrMinimal) {
+  if (_nrWorking >= _nrMaximal + _nrBlocked || _nrRunning < _nrMinimal) {
     double ltw = _lastThreadWarning.load();
     double now = TRI_microtime();
 
@@ -396,7 +414,7 @@ void Scheduler::initializeSignalHandlers() {
   int res = sigaction(SIGPIPE, &action, 0);
 
   if (res < 0) {
-    LOG(ERR) << "cannot initialize signal handlers for pipe";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot initialize signal handlers for pipe";
   }
 #endif
 }
