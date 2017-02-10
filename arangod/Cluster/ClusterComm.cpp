@@ -277,6 +277,12 @@ std::shared_ptr<ClusterComm> ClusterComm::instance() {
       }
     }
   }
+  // We want to achieve by other means that nobody requests a copy of the
+  // shared_ptr when the singleton is already destroyed. Therefore we put
+  // an assertion despite the fact that we have checks for nullptr in
+  // all places that call this method. Assertions have no effect in released
+  // code at the customer's site.
+  TRI_ASSERT(_theInstance != nullptr);
   return _theInstance;
 }
 
@@ -617,7 +623,6 @@ ClusterCommResult const ClusterComm::wait(
   JobGuard guard{SchedulerFeature::SCHEDULER};
   guard.block();
 
-
   CONDITION_LOCKER(locker, somethingReceived);
   if (ticketId == 0) {
     for (i = responses.begin(); i != responses.end(); i++) {
@@ -796,14 +801,15 @@ ClusterCommThread::~ClusterCommThread() { shutdown(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterCommThread::beginShutdown() {
+  // Note that this is called from the destructor of the ClusterComm singleton
+  // object. This means that our pointer _cc is still valid and the condition
+  // variable in it is still OK. However, this method is called from a 
+  // different thread than the ClusterCommThread. Therefore we can still 
+  // use the condition variable to wake up the ClusterCommThread.
   Thread::beginShutdown();
 
-  auto cc = ClusterComm::instance();
-
-  if (cc != nullptr) {
-    CONDITION_LOCKER(guard, cc->somethingToSend);
-    guard.signal();
-  }
+  CONDITION_LOCKER(guard, _cc->somethingToSend);
+  guard.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1148,9 +1154,9 @@ void ClusterCommThread::run() {
       _cc->communicator()->work_once();
       _cc->communicator()->wait();
     } catch (std::exception const& ex) {
-      LOG(ERR) << "caught exception in ClusterCommThread: " << ex.what();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in ClusterCommThread: " << ex.what();
     } catch (...) {
-      LOG(ERR) << "caught unknown exception in ClusterCommThread";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception in ClusterCommThread";
     }
   }
   _cc->communicator()->abortRequests();

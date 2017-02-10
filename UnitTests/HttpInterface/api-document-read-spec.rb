@@ -567,7 +567,7 @@ describe ArangoDB do
         hdr = { "if-match" => "'*abcd'" }
         doc = ArangoDB.log_head("#{prefix}-head-rev-invalid", cmd, :headers => hdr)
         
-        doc.code.should eq(400)
+        doc.code.should eq(412)
       end
 
     end

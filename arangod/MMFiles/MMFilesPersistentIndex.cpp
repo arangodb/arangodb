@@ -116,9 +116,9 @@ PersistentIndexIterator::PersistentIndexIterator(LogicalCollection* collection,
   TRI_ASSERT(_leftEndpoint->size() > 8);
   TRI_ASSERT(_rightEndpoint->size() > 8);
     
-  // LOG(TRACE) << "prefix: " << fasthash64(prefix.c_str(), prefix.size(), 0);
-  // LOG(TRACE) << "iterator left key: " << left.toJson();
-  // LOG(TRACE) << "iterator right key: " << right.toJson();
+  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "prefix: " << fasthash64(prefix.c_str(), prefix.size(), 0);
+  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "iterator left key: " << left.toJson();
+  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "iterator right key: " << right.toJson();
     
   _cursor.reset(_db->GetBaseDB()->NewIterator(rocksdb::ReadOptions()));
 
@@ -138,25 +138,24 @@ void PersistentIndexIterator::reset() {
   }
 }
 
-/// @brief Get the next element in the index
-DocumentIdentifierToken PersistentIndexIterator::next() {
+bool PersistentIndexIterator::next(TokenCallback const& cb, size_t limit) {
   auto comparator = RocksDBFeature::instance()->comparator();
-    
-  while (true) {
+  while (limit > 0) {
     if (!_cursor->Valid()) {
       // We are exhausted already, sorry
-      return MMFilesToken{};
+      return false;
     }
   
     rocksdb::Slice key = _cursor->key();
-    // LOG(TRACE) << "cursor key: " << VPackSlice(key.data() + PersistentIndex::keyPrefixSize()).toJson();
+    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cursor key: " << VPackSlice(key.data() + PersistentIndex::keyPrefixSize()).toJson();
   
     int res = comparator->Compare(key, rocksdb::Slice(_leftEndpoint->data(), _leftEndpoint->size()));
-    // LOG(TRACE) << "comparing: " << VPackSlice(key.data() + PersistentIndex::keyPrefixSize()).toJson() << " with " << VPackSlice((char const*) _leftEndpoint->data() + PersistentIndex::keyPrefixSize()).toJson() << " - res: " << res;
+    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "comparing: " << VPackSlice(key.data() + PersistentIndex::keyPrefixSize()).toJson() << " with " << VPackSlice((char const*) _leftEndpoint->data() + PersistentIndex::keyPrefixSize()).toJson() << " - res: " << res;
 
     if (res < 0) {
       if (_reverse) {
-        return MMFilesToken{};
+        // We are done
+        return false;
       } else {
         _cursor->Next();
       }
@@ -164,9 +163,8 @@ DocumentIdentifierToken PersistentIndexIterator::next() {
     } 
   
     res = comparator->Compare(key, rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
-    // LOG(TRACE) << "comparing: " << VPackSlice(key.data() + PersistentIndex::keyPrefixSize()).toJson() << " with " << VPackSlice((char const*) _rightEndpoint->data() + PersistentIndex::keyPrefixSize()).toJson() << " - res: " << res;
+    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "comparing: " << VPackSlice(key.data() + PersistentIndex::keyPrefixSize()).toJson() << " with " << VPackSlice((char const*) _rightEndpoint->data() + PersistentIndex::keyPrefixSize()).toJson() << " - res: " << res;
    
-    MMFilesToken doc;
      
     if (res <= 0) {
       // get the value for _key, which is the last entry in the key array
@@ -175,13 +173,17 @@ DocumentIdentifierToken PersistentIndexIterator::next() {
       VPackValueLength const n = keySlice.length();
       TRI_ASSERT(n > 1); // one value + _key
     
-      // LOG(TRACE) << "looking up document with key: " << keySlice.toJson();
-      // LOG(TRACE) << "looking up document with primary key: " << keySlice[n - 1].toJson();
+      // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "looking up document with key: " << keySlice.toJson();
+      // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "looking up document with primary key: " << keySlice[n - 1].toJson();
 
       // use primary index to lookup the document
       MMFilesSimpleIndexElement element = _primaryIndex->lookupKey(_trx, keySlice[n - 1]);
       if (element) {
-        doc = MMFilesToken{element.revisionId()};
+        MMFilesToken doc = MMFilesToken{element.revisionId()};
+        if (doc != 0) {
+          cb(doc);
+          --limit;
+        }
       }
     }
     
@@ -193,16 +195,12 @@ DocumentIdentifierToken PersistentIndexIterator::next() {
 
     if (res > 0) {
       if (!_probe) {
-        return MMFilesToken{};
+        return false;
       }
       _probe = false;
-      continue;
-    }
-
-    if (doc != 0) {
-      return doc;
     }
   }
+  return true;
 }
 
 /// @brief create the index
@@ -444,7 +442,7 @@ int PersistentIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
   size_t const count = elements.size();
 
   for (size_t i = 0; i < count; ++i) {
-    // LOG(TRACE) << "removing key: " << VPackSlice(values[i].c_str() + keyPrefixSize()).toJson();
+    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "removing key: " << VPackSlice(values[i].c_str() + keyPrefixSize()).toJson();
     auto status = rocksTransaction->Delete(values[i]);
 
     // we may be looping through this multiple times, and if an error

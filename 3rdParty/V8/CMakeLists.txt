@@ -11,7 +11,7 @@ if (POLICY CMP0048)
 endif ()
 
 project(V8)
-set(V8_VERSION 5.0.71.39)
+set(V8_VERSION 5.7.0.0)
 
 # create target directory
 
@@ -593,12 +593,6 @@ configure_file(
   "${ICU_DT}"
   "${CMAKE_BINARY_DIR}/tests/${CONFIGURATION}/${ICU_DT_DEST}"
   COPYONLY)
-install(FILES ${ICU_DT}
-  DESTINATION "share/arangodb/"
-  RENAME ${ICU_DT_DEST})
-install(FILES ${ICU_DT}
-  DESTINATION "bin/share/arangodb/"
-  RENAME ${ICU_DT_DEST})
 if (NOT WIN32)
   add_custom_target(nonthinV8
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../Installation/archive-de-thinner.sh ${V8_REL_TARGET_PATH}

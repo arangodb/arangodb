@@ -87,7 +87,7 @@ void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
     auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED &&
         res.answer_code != rest::ResponseCode::OK) {
-      LOG(ERR) << "Error sending request to " << req.destination
+      LOG_TOPIC(ERR, Logger::PREGEL) << "Error sending request to " << req.destination
                << ". Payload: " << res.answer->payload().toJson();
     }
   }
@@ -101,7 +101,7 @@ std::shared_ptr<LogicalCollection> Utils::resolveCollection(
   if (it != collectionPlanIdMap.end()) {
     return ci->getCollection(database, it->second);
   }
-  LOG(INFO) << "The collection could not be translated to a planID";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "The collection could not be translated to a planID";
   // THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
   //                               "The collection could not be translated to a
   //                               planID");
@@ -117,7 +117,7 @@ void Utils::resolveShard(LogicalCollection* info, std::string const& shardKey,
   partial.openObject();
   partial.add(shardKey, VPackValue(vertexKey));
   partial.close();
-  //  LOG(INFO) << "Partial doc: " << partial.toJson();
+  //  LOG_TOPIC(INFO, Logger::PREGEL) << "Partial doc: " << partial.toJson();
   int res =
       ci->getResponsibleShard(info, partial.slice(), true, responsibleShard,
                               usesDefaultShardingAttributes);

@@ -209,7 +209,11 @@ void addReplicationAuthentication(v8::Isolate* isolate,
   if (!hasUsernamePassword) {
     auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
     if (cluster->isEnabled()) {
-      config._jwt = ClusterComm::instance()->jwt();
+      auto cc = ClusterComm::instance();
+      if (cc != nullptr) {
+        // nullptr happens only during controlled shutdown
+        config._jwt = ClusterComm::instance()->jwt();
+      }
     }
   }
 }

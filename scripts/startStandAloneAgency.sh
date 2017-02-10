@@ -149,9 +149,10 @@ if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
 fi
 
 MINP=0.5
-MAXP=2.0
+MAXP=2.5
 SFRE=2.5
-COMP=2000
+COMP=200000
+KEEP=500
 BASE=5000
 
 if [ "$GOSSIP_MODE" = "0" ]; then
@@ -163,7 +164,7 @@ mkdir -p agency
 PIDS=""
 
 aaid=(`seq 0 $(( $POOLSZ - 1 ))`)
-#shuffle
+shuffle
 
 count=1
 
@@ -193,6 +194,9 @@ for aid in "${aaid[@]}"; do
     $GOSSIP_PEERS \
     --agency.my-address $TRANSPORT://localhost:$port \
     --agency.compaction-step-size $COMP \
+    --agency.compaction-keep-size $KEEP \
+    --agency.election-timeout-min $MINP \
+    --agency.election-timeout-max $MAXP \
     --agency.pool-size $POOLSZ \
     --agency.size $NRAGENTS \
     --agency.supervision true \

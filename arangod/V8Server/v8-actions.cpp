@@ -131,7 +131,7 @@ class v8_action_t : public TRI_action_t {
       auto it = _callbacks.find(context->_isolate);
 
       if (it == _callbacks.end()) {
-        LOG(WARN) << "no callback function for JavaScript action '" << _url
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "no callback function for JavaScript action '" << _url
                   << "'";
 
         result.isValid = true;
@@ -642,7 +642,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         VPackBuilder builder;
 
         v8::Handle<v8::Value> v8Body = res->Get(BodyKey);
-        // LOG(ERR) << v8Body->IsString();
+        // LOG_TOPIC(ERR, arangodb::Logger::FIXME) << v8Body->IsString();
         std::string out;
 
         // decode and set out
@@ -993,10 +993,10 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (action != nullptr) {
       action->createCallback(isolate, callback);
     } else {
-      LOG(ERR) << "cannot create callback for V8 action";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create callback for V8 action";
     }
   } else {
-    LOG(ERR) << "cannot define V8 action";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot define V8 action";
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -1348,6 +1348,9 @@ static bool clusterSendToAllServers(
     arangodb::rest::RequestType const& method, std::string const& body) {
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
   std::string url = "/_db/" + StringUtils::urlEncode(dbname) + "/" + path;
 
   // Have to propagate to DB Servers

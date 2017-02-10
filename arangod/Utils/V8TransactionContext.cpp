@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8TransactionContext.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/TransactionState.h"
 
 #include <v8.h>
 #include "V8/v8-globals.h"

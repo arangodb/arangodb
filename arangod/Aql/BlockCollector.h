@@ -31,7 +31,7 @@
 namespace arangodb {
 namespace aql {
 class AqlItemBlock;
-struct ResourceMonitor;
+class AqlItemBlockManager;
 
 class BlockCollector {
   friend class AqlItemBlock;
@@ -40,7 +40,7 @@ class BlockCollector {
   BlockCollector(BlockCollector const&) = delete;
   BlockCollector& operator=(BlockCollector const&) = delete;
 
-  BlockCollector();
+  explicit BlockCollector(AqlItemBlockManager*);
   ~BlockCollector();
 
   size_t totalSize() const;
@@ -51,9 +51,10 @@ class BlockCollector {
   void add(std::unique_ptr<AqlItemBlock> block);
   void add(AqlItemBlock* block);
 
-  AqlItemBlock* steal(ResourceMonitor*);
+  AqlItemBlock* steal();
 
  private:
+  AqlItemBlockManager* _blockManager;
   SmallVector<AqlItemBlock*>::allocator_type::arena_type _arena;
   SmallVector<AqlItemBlock*> _blocks;
   size_t _totalSize;

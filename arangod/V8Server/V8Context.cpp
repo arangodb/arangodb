@@ -89,7 +89,7 @@ void V8Context::handleGlobalContextMethods() {
   for (auto& type : copy) {
     std::string const& func = GlobalContextMethods::code(type);
 
-    LOG(DEBUG) << "executing global context method '" << func
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "executing global context method '" << func
                << "' for context " << _id;
 
     TRI_GET_GLOBALS2(_isolate);
@@ -116,7 +116,7 @@ void V8Context::handleGlobalContextMethods() {
 void V8Context::handleCancelationCleanup() {
   v8::HandleScope scope(_isolate);
 
-  LOG(DEBUG) << "executing cancelation cleanup context " << _id;
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "executing cancelation cleanup context " << _id;
 
   TRI_ExecuteJavaScriptString(
       _isolate, _isolate->GetCurrentContext(),

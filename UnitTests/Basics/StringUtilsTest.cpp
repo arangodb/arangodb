@@ -37,7 +37,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
 
-#include "ApplicationFeatures/LanguageFeature.h"
+#include "UnitTests/Basics/icu-helper.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -51,13 +51,13 @@ using namespace std;
 /// @brief hex dump with ':' separator
 ////////////////////////////////////////////////////////////////////////////////
 
-static string hexedump (const string &s) {
-  ostringstream oss;
+static std::string hexdump(std::string const& s) {
+  std::ostringstream oss;
   oss.imbue(locale());
   bool first = true;
 
-  for (string::const_iterator it = s.begin();  it != s.end();  it++) {
-    oss << (first ? "" : ":") << hex << setw(2) << setfill('y') << string::traits_type::to_int_type(*it);
+  for (std::string::const_iterator it = s.begin();  it != s.end();  it++) {
+    oss << (first ? "" : ":") << hex << setw(2) << setfill('y') << std::string::traits_type::to_int_type(*it);
     first = false;
   }
 
@@ -70,21 +70,8 @@ static string hexedump (const string &s) {
 
 struct StringUtilsSetup {
   StringUtilsSetup () {
-    std::string p;
-    std::string binaryPath = TRI_LocateBinaryPath(boost::unit_test::framework::master_test_suite().argv[0]);
-    void *icuDataPtr = arangodb::LanguageFeature::prepareIcu(SBIN_DIRECTORY, binaryPath, p);
-    if (!arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("", icuDataPtr)) {
-      std::string msg =
-        "cannot initialize ICU; please make sure ICU*dat is available; "
-        "the variable ICU_DATA='";
-      if (getenv("ICU_DATA") != nullptr) {
-        msg += getenv("ICU_DATA");
-      }
-      msg += "' should point the directory containing the ICU*dat file. We searched here: " + p;
-      BOOST_TEST_MESSAGE(msg);
-      BOOST_CHECK_EQUAL(false, true);
-    }
     BOOST_TEST_MESSAGE("setup StringUtils");
+    IcuInitializer::setup(boost::unit_test::framework::master_test_suite().argv[0]);
   }
 
   ~StringUtilsSetup () {
@@ -172,7 +159,7 @@ BOOST_AUTO_TEST_CASE (test_convertUTF16ToUTF8) {
 
   BOOST_CHECK(isOk);
   BOOST_CHECK_EQUAL(result.length(), (size_t) 4);
-  BOOST_CHECK_EQUAL("f0:b9:85:82", hexedump(result));
+  BOOST_CHECK_EQUAL("f0:b9:85:82", hexdump(result));
 
   result.clear();
 

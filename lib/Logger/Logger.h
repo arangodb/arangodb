@@ -134,16 +134,19 @@ class Logger {
   static LogTopic CONFIG;
   static LogTopic DATAFILES;
   static LogTopic DEVEL;
+  static LogTopic FIXME;
   static LogTopic GRAPHS;
   static LogTopic HEARTBEAT;
   static LogTopic MEMORY;
   static LogTopic MMAP;
   static LogTopic PERFORMANCE;
+  static LogTopic PREGEL;
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
   static LogTopic REQUESTS;
   static LogTopic STARTUP;
   static LogTopic SUPERVISION;
+  static LogTopic SYSCALL;
   static LogTopic THREADS;
   static LogTopic V8;
 

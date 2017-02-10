@@ -578,20 +578,23 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     auto body = std::make_shared<std::string const>(result.slice().toJson());
 
-    //LOG(ERR) << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get());
+    //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get());
     // << "\n";
 
     auto cc = arangodb::ClusterComm::instance();
+    if (cc != nullptr) {
+      // nullptr only happens on controlled shutdown
 
-    std::string const url("/_db/"
-                          + arangodb::basics::StringUtils::urlEncode(collection->vocbase->name()) +
-                          "/_api/aql/instantiate");
+      std::string const url("/_db/"
+                            + arangodb::basics::StringUtils::urlEncode(collection->vocbase->name()) +
+                            "/_api/aql/instantiate");
 
-    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-    (*headers)["X-Arango-Nolock"] = shardId;  // Prevent locking
-    cc->asyncRequest("", coordTransactionID, "shard:" + shardId,
-                     arangodb::rest::RequestType::POST,
-                     url, body, headers, nullptr, 30.0);
+      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      (*headers)["X-Arango-Nolock"] = shardId;  // Prevent locking
+      cc->asyncRequest("", coordTransactionID, "shard:" + shardId,
+                       arangodb::rest::RequestType::POST,
+                       url, body, headers, nullptr, 30.0);
+    }
   }
 
   /// @brief aggregateQueryIds, get answers for all shards in a Scatter/Gather
@@ -646,7 +649,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       }
     }
 
-    //LOG(ERR) << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
+    //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
 
     if (nrok != (int)shardIds->size()) {
       if (errorCode == TRI_ERROR_NO_ERROR) {
@@ -658,7 +661,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
   /// @brief distributePlansToShards, for a single Scatter/Gather block
   void distributePlansToShards(EngineInfo* info, QueryId connectedId) {
-    //LOG(ERR) << "distributePlansToShards: " << info.id;
+    //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "distributePlansToShards: " << info.id;
     Collection* collection = info->getCollection();
 
     auto auxiliaryCollections = info->getAuxiliaryCollections();
@@ -670,28 +673,29 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // now send the plan to the remote servers
     arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto cc = arangodb::ClusterComm::instance();
-    TRI_ASSERT(cc != nullptr);
+    if (cc != nullptr) {
+      // nullptr only happens on controlled shutdown
+      // iterate over all shards of the collection
+      size_t nr = 0;
+      auto shardIds = collection->shardIds();
+      for (auto const& shardId : *shardIds) {
+        // inject the current shard id into the collection
+        VPackBuilder b;
+        collection->setCurrentShard(shardId);
+        generatePlanForOneShard(b, nr++, info, connectedId, shardId, true);
 
-    // iterate over all shards of the collection
-    size_t nr = 0;
-    auto shardIds = collection->shardIds();
-    for (auto const& shardId : *shardIds) {
-      // inject the current shard id into the collection
-      VPackBuilder b;
-      collection->setCurrentShard(shardId);
-      generatePlanForOneShard(b, nr++, info, connectedId, shardId, true);
+        distributePlanToShard(coordTransactionID, info,
+                              connectedId, shardId,
+                              b.slice());
+      }
+      collection->resetCurrentShard();
+      for (auto const& auxiliaryCollection: auxiliaryCollections) {
+        TRI_ASSERT(auxiliaryCollection->shardIds()->size() == 1);
+        auxiliaryCollection->resetCurrentShard();
+      }
 
-      distributePlanToShard(coordTransactionID, info,
-                            connectedId, shardId,
-                            b.slice());
+      aggregateQueryIds(info, cc, coordTransactionID, collection);
     }
-    collection->resetCurrentShard();
-    for (auto const& auxiliaryCollection: auxiliaryCollections) {
-      TRI_ASSERT(auxiliaryCollection->shardIds()->size() == 1);
-      auxiliaryCollection->resetCurrentShard();
-    }
-
-    aggregateQueryIds(info, cc, coordTransactionID, collection);
   }
 
   /// @brief buildEngineCoordinator, for a single piece
@@ -931,6 +935,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                                         query->vocbase()->name()) +
                           "/_internal/traverser");
     auto cc = arangodb::ClusterComm::instance();
+    if (cc == nullptr) {
+      // nullptr only happens on controlled shutdown
+      return;
+    }
     bool hasVars = false;
     VPackBuilder varInfo;
     std::vector<aql::Variable const*> vars;
@@ -1031,7 +1039,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
       EngineInfo* info = &(*it);
-      //LOG(ERR) << "Doing engine: " << it->id << " location:"
+      //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Doing engine: " << it->id << " location:"
       //          << it->location;
       if (info->location == COORDINATOR) {
         // create a coordinator-based engine
@@ -1229,6 +1237,11 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           // Lock shard on DBserver:
           arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
           auto cc = arangodb::ClusterComm::instance();
+          if (cc == nullptr) {
+            // nullptr only happens on controlled shutdown
+            THROW_ARANGO_EXCEPTION( TRI_ERROR_SHUTTING_DOWN);
+          }
+
           TRI_vocbase_t* vocbase = query->vocbase();
           std::unique_ptr<ClusterCommResult> res;
           std::unordered_map<std::string, std::string> headers;
@@ -1263,70 +1276,73 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
         // the DBservers via HTTP:
         TRI_vocbase_t* vocbase = query->vocbase();
         auto cc = arangodb::ClusterComm::instance();
-        for (auto& q : inst.get()->queryIds) {
-          std::string theId = q.first;
-          std::string queryId = q.second;
-          auto pos = theId.find(':');
-          if (pos != std::string::npos) {
-            // So this is a remote one on a DBserver:
-            std::string shardId = theId.substr(pos + 1);
-            // Remove query from DBserver:
-            arangodb::CoordTransactionID coordTransactionID =
-                TRI_NewTickServer();
-            if (queryId.back() == '*') {
-              queryId.pop_back();
+        if (cc != nullptr) {
+          // nullptr only happens during controlled shutdown
+          for (auto& q : inst.get()->queryIds) {
+            std::string theId = q.first;
+            std::string queryId = q.second;
+            auto pos = theId.find(':');
+            if (pos != std::string::npos) {
+              // So this is a remote one on a DBserver:
+              std::string shardId = theId.substr(pos + 1);
+              // Remove query from DBserver:
+              arangodb::CoordTransactionID coordTransactionID =
+                  TRI_NewTickServer();
+              if (queryId.back() == '*') {
+                queryId.pop_back();
+              }
+              std::string const url(
+                  "/_db/" +
+                  arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
+                  "/_api/aql/shutdown/" + queryId);
+              std::unordered_map<std::string, std::string> headers;
+              auto res =
+                  cc->syncRequest("", coordTransactionID, "shard:" + shardId,
+                                  arangodb::rest::RequestType::PUT,
+                                  url, "{\"code\": 0}", headers, 120.0);
+              // Ignore result, we need to try to remove all.
+              // However, log the incident if we have an errorMessage.
+              if (!res->errorMessage.empty()) {
+                std::string msg("while trying to unregister query ");
+                msg += queryId + ": " + res->stringifyErrorMessage();
+                LOG_TOPIC(WARN, arangodb::Logger::FIXME) << msg;
+              }
+            } else {
+              // Remove query from registry:
+              try {
+                queryRegistry->destroy(
+                    vocbase, arangodb::basics::StringUtils::uint64(queryId),
+                    TRI_ERROR_INTERNAL);
+              } catch (...) {
+                // Ignore problems
+              }
             }
+          }
+          // Also we need to destroy all traverser engines that have been pushed to DBServers
+          {
+
             std::string const url(
                 "/_db/" +
                 arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
-                "/_api/aql/shutdown/" + queryId);
-            std::unordered_map<std::string, std::string> headers;
-            auto res =
-                cc->syncRequest("", coordTransactionID, "shard:" + shardId,
-                                arangodb::rest::RequestType::PUT,
-                                url, "{\"code\": 0}", headers, 120.0);
-            // Ignore result, we need to try to remove all.
-            // However, log the incident if we have an errorMessage.
-            if (!res->errorMessage.empty()) {
-              std::string msg("while trying to unregister query ");
-              msg += queryId + ": " + res->stringifyErrorMessage();
-              LOG(WARN) << msg;
-            }
-          } else {
-            // Remove query from registry:
-            try {
-              queryRegistry->destroy(
-                  vocbase, arangodb::basics::StringUtils::uint64(queryId),
-                  TRI_ERROR_INTERNAL);
-            } catch (...) {
-              // Ignore problems
-            }
-          }
-        }
-        // Also we need to destroy all traverser engines that have been pushed to DBServers
-        {
+                "/_internal/traverser/");
+            for (auto& te : inst.get()->traverserEngines) {
+              std::string traverserId = arangodb::basics::StringUtils::itoa(te.first);
+              arangodb::CoordTransactionID coordTransactionID =
+                  TRI_NewTickServer();
+              std::unordered_map<std::string, std::string> headers;
+              // NOTE: te.second is the list of shards. So we just send delete
+              // to the first of those shards
+              auto res = cc->syncRequest(
+                  "", coordTransactionID, "shard:" + *(te.second.begin()),
+                  RequestType::DELETE_REQ, url + traverserId, "", headers, 30.0);
 
-          std::string const url(
-              "/_db/" +
-              arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
-              "/_internal/traverser/");
-          for (auto& te : inst.get()->traverserEngines) {
-            std::string traverserId = arangodb::basics::StringUtils::itoa(te.first);
-            arangodb::CoordTransactionID coordTransactionID =
-                TRI_NewTickServer();
-            std::unordered_map<std::string, std::string> headers;
-            // NOTE: te.second is the list of shards. So we just send delete
-            // to the first of those shards
-            auto res = cc->syncRequest(
-                "", coordTransactionID, "shard:" + *(te.second.begin()),
-                RequestType::DELETE_REQ, url + traverserId, "", headers, 30.0);
-
-            // Ignore result, we need to try to remove all.
-            // However, log the incident if we have an errorMessage.
-            if (!res->errorMessage.empty()) {
-              std::string msg("while trying to unregister traverser engine ");
-              msg += traverserId + ": " + res->stringifyErrorMessage();
-              LOG(WARN) << msg;
+              // Ignore result, we need to try to remove all.
+              // However, log the incident if we have an errorMessage.
+              if (!res->errorMessage.empty()) {
+                std::string msg("while trying to unregister traverser engine ");
+                msg += traverserId + ": " + res->stringifyErrorMessage();
+                LOG_TOPIC(WARN, arangodb::Logger::FIXME) << msg;
+              }
             }
           }
         }

@@ -112,13 +112,14 @@ void SocketTask::start() {
       << _connectionInfo.clientPort;
 
   auto self = shared_from_this();
-  _loop._ioService->post([self, this]() { asyncReadSome(); });
+  _loop._scheduler->post([self, this]() { asyncReadSome(); });
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
+// will acquire the _writeLock
 void SocketTask::addWriteBuffer(WriteBuffer& buffer) {
   if (_closedSend) {
     buffer.release();
@@ -128,11 +129,7 @@ void SocketTask::addWriteBuffer(WriteBuffer& buffer) {
   {
     auto self = shared_from_this();
 
-    _loop._ioService->post([self, this]() {
-      // tell the scheduler that this thread is busy:
-      JobGuard guard(SchedulerFeature::SCHEDULER);
-      guard.busy();
-      // now try to process already read requests:
+    _loop._scheduler->post([self, this]() {
       MUTEX_LOCKER(locker, _readLock);
       processAll();
     });
@@ -152,6 +149,7 @@ void SocketTask::addWriteBuffer(WriteBuffer& buffer) {
   writeWriteBuffer();
 }
 
+// caller must hold the _writeLock
 void SocketTask::writeWriteBuffer() {
   if (_writeBuffer.empty()) {
     return;
@@ -190,50 +188,47 @@ void SocketTask::writeWriteBuffer() {
 
   // write could have blocked which is the only acceptable error
   if (err && err != ::boost::asio::error::would_block) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "SocketTask::addWriteBuffer (write_some) - write on stream "
-        << " failed with: " << err.message();
-    closeStream();
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "write on stream failed with: "
+                                            << err.message();
+    closeStreamNoLock();
     return;
   }
 
   // so the code could have blocked at this point or not all data
   // was written in one go, begin writing at offset (written)
   auto self = shared_from_this();
-  _peer->asyncWrite(
-      boost::asio::buffer(_writeBuffer._buffer->begin() + written, total - written),
-      [self, this](const boost::system::error_code& ec,
-                   std::size_t transferred) {
-        MUTEX_LOCKER(locker, _writeLock);
+  _peer->asyncWrite(boost::asio::buffer(_writeBuffer._buffer->begin() + written,
+                                        total - written),
+                    [self, this](const boost::system::error_code& ec,
+                                 std::size_t transferred) {
+                      MUTEX_LOCKER(locker, _writeLock);
 
-        RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, transferred);
+                      RequestStatistics::ADD_SENT_BYTES(
+                          _writeBuffer._statistics, transferred);
 
-        if (ec) {
-          LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-              << "SocketTask::addWriteBuffer(async_write) - write on stream "
-              << " failed with: " << ec.message();
-          closeStream();
-        } else {
-          if (completedWriteBuffer()) {
-            _loop._ioService->post([self, this]() {
-                // tell the scheduler that we are busy:
-                JobGuard guard(SchedulerFeature::SCHEDULER);
-                guard.busy();
-                // Now write some:
-                writeWriteBuffer();
-              });
-          }
-        }
-      });
+                      if (ec) {
+                        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+                            << "write on stream failed with: " << ec.message();
+                        closeStreamNoLock();
+                      } else {
+                        if (completedWriteBuffer()) {
+                          _loop._scheduler->post([self, this]() {
+                            MUTEX_LOCKER(locker, _writeLock);
+                            writeWriteBuffer();
+                          });
+                        }
+                      }
+                    });
 }
 
+// caller must hold the _writeLock
 bool SocketTask::completedWriteBuffer() {
   RequestStatistics::SET_WRITE_END(_writeBuffer._statistics);
   _writeBuffer.release();
 
   if (_writeBuffers.empty()) {
     if (_closeRequested) {
-      closeStream();
+      closeStreamNoLock();
     }
 
     return false;
@@ -245,7 +240,14 @@ bool SocketTask::completedWriteBuffer() {
   return true;
 }
 
+// caller must hold the _writeLock
 void SocketTask::closeStream() {
+  MUTEX_LOCKER(locker, _writeLock);
+  closeStreamNoLock();
+}
+
+// caller must hold the _writeLock
+void SocketTask::closeStreamNoLock() {
   boost::system::error_code err;
 
   if (!_closedSend) {
@@ -253,8 +255,7 @@ void SocketTask::closeStream() {
 
     if (err && err != boost::asio::error::not_connected) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "SocketTask::closeStream - shutdown send stream "
-          << " failed with: " << err.message();
+          << "shutdown send stream failed with: " << err.message();
     }
 
     _closedSend = true;
@@ -265,8 +266,7 @@ void SocketTask::closeStream() {
 
     if (err && err != boost::asio::error::not_connected) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "SocketTask::CloseStream - shutdown send stream "
-          << " failed with: " << err.message();
+          << "shutdown send stream failed with: " << err.message();
     }
 
     _closedReceive = true;
@@ -276,8 +276,7 @@ void SocketTask::closeStream() {
 
   if (err && err != boost::asio::error::not_connected) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "SocketTask::CloseStream - shutdown send stream "
-        << "failed with: " << err.message();
+        << "shutdown send stream failed with: " << err.message();
   }
 
   _closeRequested = false;
@@ -289,18 +288,24 @@ void SocketTask::closeStream() {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
+// will acquire the _readLock
 void SocketTask::addToReadBuffer(char const* data, std::size_t len) {
+  MUTEX_LOCKER(locker, _readLock);
+
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << std::string(data, len);
   _readBuffer.appendText(data, len);
 }
 
+// will acquire the _writeLock
 void SocketTask::resetKeepAlive() {
+  MUTEX_LOCKER(locker, _writeLock);
+
   if (_useKeepAliveTimer) {
     boost::system::error_code err;
     _keepAliveTimer.expires_from_now(_keepAliveTimeout, err);
 
     if (err) {
-      closeStream();
+      closeStreamNoLock();
       return;
     }
 
@@ -320,7 +325,10 @@ void SocketTask::resetKeepAlive() {
   }
 }
 
+// will acquire the _writeLock
 void SocketTask::cancelKeepAlive() {
+  MUTEX_LOCKER(locker, _writeLock);
+
   if (_useKeepAliveTimer && _keepAliveTimerActive) {
     boost::system::error_code err;
     _keepAliveTimer.cancel(err);
@@ -328,9 +336,10 @@ void SocketTask::cancelKeepAlive() {
   }
 }
 
+// caller must hold the _readLock
 bool SocketTask::reserveMemory() {
   if (_readBuffer.reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
-    LOG(WARN) << "out of memory while reading from client";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "out of memory while reading from client";
     closeStream();
     return false;
   }
@@ -338,6 +347,7 @@ bool SocketTask::reserveMemory() {
   return true;
 }
 
+// caller must hold the _readLock
 bool SocketTask::trySyncRead() {
   boost::system::error_code err;
 
@@ -346,7 +356,7 @@ bool SocketTask::trySyncRead() {
   }
 
   if (!_peer) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "peer disappeared ";
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "peer disappeared";
     return false;
   }
 
@@ -376,8 +386,7 @@ bool SocketTask::trySyncRead() {
       return false;
     } else {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "SocketTask::trySyncRead "
-          << "- failed with: " << err.message();
+          << "trySyncRead failed with: " << err.message();
       return false;
     }
   }
@@ -385,6 +394,7 @@ bool SocketTask::trySyncRead() {
   return true;
 }
 
+// caller must hold the _readLock
 bool SocketTask::processAll() {
   double start_time = StatisticsFeature::time();
 
@@ -409,6 +419,7 @@ bool SocketTask::processAll() {
   return true;
 }
 
+// will acquire the _readLock
 void SocketTask::asyncReadSome() {
   MUTEX_LOCKER(locker, _readLock);
 
@@ -416,9 +427,6 @@ void SocketTask::asyncReadSome() {
     if (_abandoned) {
       return;
     }
-
-    JobGuard guard(_loop);
-    guard.busy();
 
     size_t const MAX_DIRECT_TRIES = 2;
     size_t n = 0;
@@ -439,9 +447,8 @@ void SocketTask::asyncReadSome() {
         continue;
       }
 
-      if (!processAll()) {
-        return;
-      }
+      // ignore the result of processAll, try to read more bytes down below
+      processAll();
     }
   } catch (boost::system::system_error& err) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "i/o stream failed with: "
@@ -465,6 +472,9 @@ void SocketTask::asyncReadSome() {
   auto self = shared_from_this();
   auto handler = [self, this](const boost::system::error_code& ec,
                               std::size_t transferred) {
+    JobGuard guard(_loop);
+    guard.work();
+
     MUTEX_LOCKER(locker, _readLock);
 
     if (ec) {
@@ -472,13 +482,10 @@ void SocketTask::asyncReadSome() {
                                               << ec.message();
       closeStream();
     } else {
-      JobGuard guard(_loop);
-      guard.busy();
-
       _readBuffer.increaseLength(transferred);
 
       if (processAll()) {
-        _loop._ioService->post([self, this]() { asyncReadSome(); });
+        _loop._scheduler->post([self, this]() { asyncReadSome(); });
       }
     }
   };
@@ -489,12 +496,13 @@ void SocketTask::asyncReadSome() {
   }
 }
 
+// caller must hold the _writeLock
 void SocketTask::closeReceiveStream() {
   if (!_closedReceive) {
     try {
       _peer->shutdownReceive();
     } catch (boost::system::system_error& err) {
-      LOG(WARN) << "shutdown receive stream "
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "shutdown receive stream "
                 << " failed with: " << err.what();
     }
 

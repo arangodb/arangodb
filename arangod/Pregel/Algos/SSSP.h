@@ -61,6 +61,10 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
       WorkerConfig const*) const override;
   VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(
       WorkerConfig const*) const override;
+  
+  uint32_t messageBatchSize(WorkerConfig const& config,
+                            MessageStats const& stats,
+                            uint64_t threadCount) const override;
 };
 }
 }

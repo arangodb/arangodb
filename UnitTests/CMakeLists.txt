@@ -2,7 +2,7 @@
 
 include_directories(.)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/tests/")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/${CMAKE_TEST_DIRECTORY}")
 
 ################################################################################
 ## basics_suite
@@ -29,6 +29,7 @@ add_executable(${TEST_BASICS_SUITE}
   Basics/EndpointTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
+  Basics/icu-helper.cpp
   ../lib/ApplicationFeatures/LanguageFeature.cpp
   ../lib/Basics/WorkMonitorDummy.cpp
 )

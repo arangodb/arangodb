@@ -37,7 +37,6 @@
 #include "Meta/conversion.h"
 #include "Rest/VppResponse.h"
 #include "Scheduler/Job.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -126,7 +125,7 @@ void GeneralCommTask::executeRequest(
 
   // transfer statistics into handler
   if (handler == nullptr) {
-    LOG(TRACE) << "no handler is known, giving up";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no handler is known, giving up";
     handleSimpleError(rest::ResponseCode::NOT_FOUND, messageId);
     return;
   }
@@ -180,6 +179,7 @@ void GeneralCommTask::processResponse(GeneralResponse* response) {
   if (response == nullptr) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "processResponse received a nullptr, closing connection";
+
     closeStream();
   } else {
     addResponse(response, nullptr);
@@ -247,7 +247,8 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
   }
 
   // ok, we need to queue the request
-  LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler";
+  LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler: "
+                                    << _loop._scheduler->infoStatus();
   size_t queue = handler->queue();
   uint64_t messageId = handler->messageId();
 
@@ -271,9 +272,6 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
 
 void GeneralCommTask::handleRequestDirectly(
     std::shared_ptr<RestHandler> handler) {
-  JobGuard guard(_loop);
-  guard.work();
-
   auto self = shared_from_this();
   handler->initEngine(_loop, [self, this](RestHandler* h) {
       RequestStatistics* stat = h->stealStatistics();
@@ -317,9 +315,6 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   auto job =
       std::make_unique<Job>(_server, std::move(handler),
                             [self, this](std::shared_ptr<RestHandler> h) {
-                              JobGuard guard(_loop);
-                              guard.work();
-
                               h->asyncRunEngine();
                             });
 

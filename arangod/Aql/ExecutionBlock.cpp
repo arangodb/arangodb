@@ -392,7 +392,7 @@ int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   }
 
   // if _buffer.size() is > 0 then _pos points to a valid place . . .
-  BlockCollector collector;
+  BlockCollector collector(&_engine->_itemBlockManager);
 
   while (skipped < atLeast) {
     if (_buffer.empty()) {
@@ -440,7 +440,7 @@ int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
         collector.add(std::move(more));
       }
       skipped += cur->size() - _pos;
-      delete cur;
+      returnBlock(cur);
       _buffer.pop_front();
       _pos = 0;
     } else {
@@ -454,7 +454,7 @@ int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
         }
         collector.add(cur);
       } else {
-        delete cur;
+        returnBlock(cur);
       }
       _buffer.pop_front();
       _pos = 0;
@@ -464,7 +464,7 @@ int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   TRI_ASSERT(result == nullptr);
 
   if (!skipping) {
-    result = collector.steal(_engine->getQuery()->resourceMonitor());
+    result = collector.steal();
   }
 
   return TRI_ERROR_NO_ERROR;

@@ -31,7 +31,6 @@
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"
-#include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -53,10 +52,9 @@ using namespace arangodb::basics;
 /// @brief run an AQL query and return the result as a V8 array 
 ////////////////////////////////////////////////////////////////////////////////
 
-static aql::QueryResultV8 AqlQuery(v8::Isolate* isolate,
-                                   arangodb::LogicalCollection const* col,
-                                   std::string const& aql,
-                                   std::shared_ptr<VPackBuilder> bindVars) {
+aql::QueryResultV8 AqlQuery(
+    v8::Isolate* isolate, arangodb::LogicalCollection const* col,
+    std::string const& aql, std::shared_ptr<VPackBuilder> bindVars) {
   TRI_ASSERT(col != nullptr);
 
   TRI_GET_GLOBALS();
@@ -171,8 +169,9 @@ static void EdgesQuery(TRI_edge_direction_e direction,
   }
 
   std::string const queryString = "FOR doc IN @@collection " + filter + " RETURN doc";
-  v8::Handle<v8::Value> result = AqlQuery(isolate, collection, queryString, bindVars).result;
-    
+  v8::Handle<v8::Value> result =
+      AqlQuery(isolate, collection, queryString, bindVars).result;
+
   TRI_V8_RETURN(result);
 }
 
@@ -254,17 +253,16 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackOptions resultOptions = VPackOptions::Defaults;
   resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler().get();
 
-  std::vector<DocumentIdentifierToken> batch;
   ManagedDocumentResult mmdr;
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
-  while (opCursor->hasMore()) {
-    opCursor->getMoreTokens(batch, 1000);
-    for (auto const& it : batch) {
-      if (collection->readDocument(&trx, mmdr, it)) {
-        resultBuilder.add(VPackSlice(mmdr.vpack()));
-      }
+  auto cb = [&resultBuilder, &mmdr, &trx, &collection](DocumentIdentifierToken const& tkn) {
+   if (collection->readDocument(&trx, mmdr, tkn)) {
+      resultBuilder.add(VPackSlice(mmdr.vpack()));
     }
+  };
+  while (opCursor->getMore(cb, 1000)) {
+    // Noop all done in cb
   }
   resultBuilder.close();
 
@@ -478,188 +476,6 @@ static void JS_OutEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionFulltext
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_FulltextQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  arangodb::LogicalCollection const* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   TRI_GetVocBaseColType());
-
-  if (collection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-  }
-  
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
-
-  // expected: FULLTEXT(<index-handle>, <query>, <limit>)
-  if (args.Length() < 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("FULLTEXT(<index-handle>, <query>, <limit>)");
-  }
-
-  // extract the index attribute
-  std::string attribute;
-  {
-    SingleCollectionTransaction trx(
-        V8TransactionContext::Create(collection->vocbase(), true),
-        collection->cid(), AccessMode::Type::READ);
-
-    int res = trx.begin();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-    auto idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection,
-                                       args[0], false);
-
-    if (idx == nullptr ||
-        idx->type() != arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
-    }
-
-    // get index attribute
-    TRI_AttributeNamesToString(idx->fields()[0], attribute);
-    trx.finish(TRI_ERROR_NO_ERROR);
-  }
-
-  std::string const searchQuery(TRI_ObjectToString(args[1]));
-
-  size_t maxResults = 0;  // 0 means "all results"
-
-  if (args.Length() >= 3 && args[2]->IsNumber()) {
-    int64_t value = TRI_ObjectToInt64(args[2]);
-    if (value > 0) {
-      maxResults = static_cast<size_t>(value);
-    }
-  }
-  
-  auto bindVars = std::make_shared<VPackBuilder>();
-  bindVars->openObject();
-  bindVars->add("@collection", VPackValue(collection->name()));
-  bindVars->add("attribute", VPackValue(attribute));
-  bindVars->add("query", VPackValue(searchQuery));
-  bindVars->add("maxResults", VPackValue(maxResults));
-  bindVars->close();
-
-  std::string const queryString = "FOR doc IN FULLTEXT(@@collection, @attribute, @query, @maxResults) RETURN doc";
-  aql::QueryResultV8 queryResult = AqlQuery(isolate, collection, queryString, bindVars);
-
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
-
-  TRI_V8_RETURN(result);
-
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief selects points near a given coordinate
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_NearQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  arangodb::LogicalCollection const* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   TRI_GetVocBaseColType());
-
-  if (collection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-  }
-    
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
-
-  // expected: NEAR(<index-id>, <latitude>, <longitude>, <limit>)
-  if (args.Length() < 4) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "NEAR(<index-handle>, <latitude>, <longitude>, <limit>, <distance>)");
-  }
-  
-  // extract latitude, longitude, limit, distance etc.
-  std::string queryString;
-
-  auto bindVars = std::make_shared<VPackBuilder>();
-  bindVars->openObject();
-  bindVars->add("@collection", VPackValue(collection->name()));
-  bindVars->add("latitude", VPackValue(TRI_ObjectToDouble(args[1])));
-  bindVars->add("longitude", VPackValue(TRI_ObjectToDouble(args[2])));
-  bindVars->add("limit", VPackValue(TRI_ObjectToDouble(args[3])));
-  if (args.Length() >= 5 && !args[4]->IsNull() && !args[4]->IsUndefined()) {
-    // have a distance attribute
-    bindVars->add("distanceAttribute", VPackValue(TRI_ObjectToString(args[4])));
-    queryString = "FOR doc IN NEAR(@@collection, @latitude, @longitude, @radius, @distanceAttribute) RETURN doc";
-  }
-  else {
-    queryString = "FOR doc IN NEAR(@@collection, @latitude, @longitude, @radius) RETURN doc";
-  }
-  bindVars->close();
-
-  aql::QueryResultV8 queryResult = AqlQuery(isolate, collection, queryString, bindVars);
-
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
-
-  TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief selects points within a given radius
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_WithinQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  arangodb::LogicalCollection const* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   TRI_GetVocBaseColType());
-
-  if (collection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-  }
-    
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
-
-  // expected: WITHIN(<index-handle>, <latitude>, <longitude>, <radius>)
-  if (args.Length() < 4) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "WITHIN(<index-handle>, <latitude>, <longitude>, <radius>, <distance>)");
-  }
-  
-  // extract latitude, longitude, radius, distance etc.
-  std::string queryString;
-
-  auto bindVars = std::make_shared<VPackBuilder>();
-  bindVars->openObject();
-  bindVars->add("@collection", VPackValue(collection->name()));
-  bindVars->add("latitude", VPackValue(TRI_ObjectToDouble(args[1])));
-  bindVars->add("longitude", VPackValue(TRI_ObjectToDouble(args[2])));
-  bindVars->add("radius", VPackValue(TRI_ObjectToDouble(args[3])));
-  if (args.Length() >= 5 && !args[4]->IsNull() && !args[4]->IsUndefined()) {
-    // have a distance attribute
-    bindVars->add("distanceAttribute", VPackValue(TRI_ObjectToString(args[4])));
-    queryString = "FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttribute) RETURN doc";
-  }
-  else {
-    queryString = "FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius) RETURN doc";
-  }
-  bindVars->close();
-
-  aql::QueryResultV8 queryResult = AqlQuery(isolate, collection, queryString, bindVars);
-
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
-
-  TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionLookupByKeys
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -799,16 +615,10 @@ void TRI_InitV8Queries(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        TRI_V8_ASCII_STRING("checksum"), JS_ChecksumCollection);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("EDGES"),
                        JS_EdgesQuery, true);
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl,
-                       TRI_V8_ASCII_STRING("FULLTEXT"), JS_FulltextQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("INEDGES"),
                        JS_InEdgesQuery, true);
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("NEAR"),
-                       JS_NearQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
                        TRI_V8_ASCII_STRING("OUTEDGES"), JS_OutEdgesQuery, true);
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("WITHIN"),
-                       JS_WithinQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
                        TRI_V8_ASCII_STRING("lookupByKeys"), JS_LookupByKeys,
                        true);  // an alias for .documents

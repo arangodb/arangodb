@@ -90,9 +90,9 @@ std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
   }
   _edges.resize(count);
   if (countTrx->commit() != TRI_ERROR_NO_ERROR) {
-    LOG(WARN) << "Pregel worker: Failed to commit on a read transaction";
+    LOG_TOPIC(WARN, Logger::PREGEL) << "Pregel worker: Failed to commit on a read transaction";
   }
-  LOG(INFO) << "Allocating memory took " << TRI_microtime() - t << "s";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Allocating memory took " << TRI_microtime() - t << "s";
   
   return shardSizes;
 }
@@ -112,7 +112,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       _config->edgeCollectionShards();
 
   _runningThreads = config->localVertexShardIDs().size();
-  LOG(INFO) << "Using " << _runningThreads << " threads to load data";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Using " << _runningThreads << " threads to load data";
   for (auto const& pair : vertexCollMap) {
     std::vector<ShardID> const& vertexShards = pair.second;
     for (size_t i = 0; i < vertexShards.size(); i++) {
@@ -227,7 +227,7 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config,
     }
   }
   if (trx->commit() != TRI_ERROR_NO_ERROR) {
-    LOG(WARN) << "Pregel worker: Failed to commit on a read transaction";
+    LOG_TOPIC(WARN, Logger::PREGEL) << "Pregel worker: Failed to commit on a read transaction";
   }
 }
 
@@ -253,7 +253,7 @@ void GraphStore<V, E>::replaceVertexData(VertexEntry const* entry, void* data,
   // if (size <= entry->_vertexDataOffset)
   void* ptr = _vertexData.data() + entry->_vertexDataOffset;
   memcpy(ptr, data, size);
-  LOG(WARN) << "Don't use this function with varying sizes";
+  LOG_TOPIC(WARN, Logger::PREGEL) << "Don't use this function with varying sizes";
 }
 
 template <typename V, typename E>
@@ -338,7 +338,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   _localVerticeCount += (vertexOffset - originalVertexOffset);
 
   if (trx->commit() != TRI_ERROR_NO_ERROR) {
-    LOG(WARN) << "Pregel worker: Failed to commit on a read transaction";
+    LOG_TOPIC(WARN, Logger::PREGEL) << "Pregel worker: Failed to commit on a read transaction";
   }
 }
 
@@ -372,7 +372,7 @@ void GraphStore<V, E>::_loadEdges(Transaction* trx, ShardID const& edgeShard,
           document = document.resolveExternal();
         }
 
-        // LOG(INFO) << "Loaded Edge: " << document.toJson();
+        // LOG_TOPIC(INFO, Logger::PREGEL) << "Loaded Edge: " << document.toJson();
         std::string toValue =
             document.get(StaticStrings::ToString).copyString();
         std::size_t pos = toValue.find('/');
@@ -381,7 +381,7 @@ void GraphStore<V, E>::_loadEdges(Transaction* trx, ShardID const& edgeShard,
         // If this is called from loadDocument we didn't preallocate the vector
         if (_edges.size() <= offset) {
           if (!_config->lazyLoading()) {
-            LOG(ERR) << "WTF";
+            LOG_TOPIC(ERR, Logger::PREGEL) << "WTF";
           }
           _edges.push_back(Edge<E>());
         }
@@ -503,7 +503,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
         RangeIterator<VertexEntry> it = vertexIterator(start, end);
         _storeVertices(state.globalShardIDs(), it);
       } catch(...) {
-        LOG(ERR) << "Storing vertex data failed";
+        LOG_TOPIC(ERR, Logger::PREGEL) << "Storing vertex data failed";
       }
       tCount--;
     });
@@ -516,7 +516,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
   while (tCount > 0 && !_destroyed) {
     usleep(25 * 1000);// 25ms
   }
-  LOG(INFO) << "Storing data took " << (TRI_microtime() - now) << "s";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Storing data took " << (TRI_microtime() - now) << "s";
 }
 
 template class arangodb::pregel::GraphStore<int64_t, int64_t>;

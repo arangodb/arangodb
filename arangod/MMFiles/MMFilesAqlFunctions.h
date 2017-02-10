@@ -21,39 +21,29 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECTION_SCANNER_H
-#define ARANGOD_AQL_COLLECTION_SCANNER_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_AQL_FUNCTIONS_H
+#define ARANGOD_MMFILES_MMFILES_AQL_FUNCTIONS_H 1
 
-#include "Basics/Common.h"
-#include "Indexes/IndexIterator.h"
+#include "Aql/Functions.h"
 
 namespace arangodb {
-class ManagedDocumentResult;
-struct OperationCursor;
-class Transaction;
-
 namespace aql {
+struct Function;
 
-class CollectionScanner {
- public:
-  CollectionScanner(arangodb::Transaction*, ManagedDocumentResult*, std::string const&, bool);
+struct MMFilesAqlFunctions : public Functions {
+  static AqlValue Fulltext(arangodb::aql::Query*, arangodb::Transaction*,
+                           VPackFunctionParameters const&);
 
-  ~CollectionScanner();
+   static AqlValue Near(arangodb::aql::Query*, arangodb::Transaction*,
+                        VPackFunctionParameters const&);
 
-  void scan(std::vector<DocumentIdentifierToken>& result, size_t batchSize);
+   static AqlValue Within(arangodb::aql::Query*, arangodb::Transaction*,
+                          VPackFunctionParameters const&);
 
-  void reset();
-
-  /// @brief forwards the cursor n elements. Does not read the data.
-  ///        Will at most forward to the last element.
-  ///        In the second parameter we add how many elements are
-  ///        really skipped
-  int forward(size_t, uint64_t&);
-
- private:
-  std::unique_ptr<OperationCursor> _cursor;
+  static void RegisterFunctions();
 };
-}
-}
+} // namespace aql
+} // namespace arangodb
+
 
 #endif

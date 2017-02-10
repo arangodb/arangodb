@@ -289,7 +289,7 @@ void GeneralServerFeature::buildServers() {
             "SslServer");
 
     if (ssl == nullptr) {
-      LOG(FATAL) << "no ssl context is known, cannot create https server, "
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "no ssl context is known, cannot create https server, "
                     "please enable SSL";
       FATAL_ERROR_EXIT();
     }

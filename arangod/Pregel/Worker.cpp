@@ -62,7 +62,11 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   _workerAggregators.reset(new AggregatorHandler(algo));
   _graphStore.reset(new GraphStore<V, E>(vocbase, _algorithm->inputFormat()));
   _nextGSSSendMessageCount = 0;
-  _messageBatchSize = _algorithm->messageBatchSize(0, 0, 0, 0);
+  if (_config.asynchronousMode()) {
+    _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats, 0);
+  } else {
+    _messageBatchSize = 5000;
+  }
 
   if (_messageCombiner) {
     _readCache = new CombiningInCache<M>(&_config, _messageFormat.get(),
@@ -119,7 +123,7 @@ GSSContext::~GSSContext() {}*/
 
 template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
-  LOG(INFO) << "Called ~Worker()";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Called ~Worker()";
   _state = WorkerState::DONE;
   usleep(50000);  // 50ms wait for threads to die
   delete _readCache;
@@ -134,12 +138,12 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::IDLE) {
-    LOG(ERR) << "Expected GSS " << _expectedGSS;
-    LOG(ERR) << "Cannot prepare a gss when the worker is not idle";
+    LOG_TOPIC(ERR, Logger::PREGEL) << "Expected GSS " << _expectedGSS;
+    LOG_TOPIC(ERR, Logger::PREGEL) << "Cannot prepare a gss when the worker is not idle";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
   _state = WorkerState::PREPARING;  // stop any running step
-  LOG(INFO) << "Received prepare GSS: " << data.toJson();
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Received prepare GSS: " << data.toJson();
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   if (!gssSlice.isInteger()) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
@@ -199,7 +203,7 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
   _workerAggregators->serializeValues(response);
   response.close();
 
-  LOG(INFO) << "Responded: " << response.toJson();
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Responded: " << response.toJson();
   return response;
 }
 
@@ -227,7 +231,7 @@ void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Superstep out of sync");
-    LOG(ERR) << "Expected: " << _config._globalSuperstep << "Got: " << gss;
+    LOG_TOPIC(ERR, Logger::PREGEL) << "Expected: " << _config._globalSuperstep << "Got: " << gss;
   }
 }
 
@@ -242,7 +246,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
         TRI_ERROR_INTERNAL,
         "Cannot start a gss when the worker is not prepared");
   }
-  LOG(INFO) << "Starting GSS: " << data.toJson();
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Starting GSS: " << data.toJson();
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   const uint64_t gss = (uint64_t)gssSlice.getUInt();
   if (gss != _config.globalSuperstep()) {
@@ -259,7 +263,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
     _workerContext->preGlobalSuperstep(gss);
   }
 
-  LOG(INFO) << "Worker starts new gss: " << gss;
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Worker starts new gss: " << gss;
   _startProcessing();  // sets _state = COMPUTING;
 }
 
@@ -288,7 +292,7 @@ void Worker<V, E, M>::_startProcessing() {
   do {
     pool->enqueue([this, start, end] {
       if (_state != WorkerState::COMPUTING) {
-        LOG(INFO) << "Execution aborted prematurely.";
+        LOG_TOPIC(INFO, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
       }
       auto vertices = _graphStore->vertexIterator(start, end);
@@ -371,7 +375,7 @@ bool Worker<V, E, M>::_processVertices(
       }
     }
     if (_state != WorkerState::COMPUTING) {
-      LOG(INFO) << "Execution aborted prematurely.";
+      LOG_TOPIC(INFO, Logger::PREGEL) << "Execution aborted prematurely.";
       break;
     }
   }
@@ -480,13 +484,16 @@ void Worker<V, E, M>::_finishedProcessing() {
     }
     package.close();
 
-    // adaptive message buffering
-    ThreadPool* pool = PregelFeature::instance()->threadPool();
-    _messageBatchSize = _algorithm->messageBatchSize(
-        _expectedGSS - 1, _messageStats.sendCount, pool->numThreads(),
-        _messageStats.superstepRuntimeSecs);
+    size_t tn = PregelFeature::instance()->threadPool()->numThreads();
+    if (_config.asynchronousMode()) {
+      // async adaptive message buffering
+      _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats, tn);
+    } else {
+      uint32_t s = _messageStats.sendCount / tn / 2UL;
+      _messageBatchSize = s > 1000 ? s : 1000;
+    }
     _messageStats.resetTracking();
-    LOG(INFO) << "Batch size: " << _messageBatchSize;
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Batch size: " << _messageBatchSize;
   }
 
   if (_config.asynchronousMode()) {
@@ -509,7 +516,7 @@ void Worker<V, E, M>::_finishedProcessing() {
     }
   } else {  // no answer expected
     _callConductor(Utils::finishedWorkerStepPath, package.slice());
-    LOG(INFO) << "Finished GSS: " << package.toJson();
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Finished GSS: " << package.toJson();
   }
 }
 
@@ -539,11 +546,11 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body) {
 
   VPackSlice store = body.get(Utils::storeResultsKey);
   if (store.isBool() && store.getBool() == true) {
-    LOG(INFO) << "Storing results";
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Storing results";
     // tell graphstore to remove read locks
     _graphStore->storeResults(_config);
   } else {
-    LOG(WARN) << "Discarding results";
+    LOG_TOPIC(WARN, Logger::PREGEL) << "Discarding results";
   }
   _graphStore.reset();
 }
@@ -572,7 +579,7 @@ void Worker<V, E, M>::startRecovery(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
   VPackSlice method = data.get(Utils::recoveryMethodKey);
   if (method.compareString(Utils::compensate) != 0) {
-    LOG(INFO) << "Unsupported operation";
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Unsupported operation";
     return;
   }
   // else if (method.compareString(Utils::rollback) == 0)
@@ -605,7 +612,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this] {
     if (_state != WorkerState::RECOVERING) {
-      LOG(INFO) << "Compensation aborted prematurely.";
+      LOG_TOPIC(INFO, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
     }
 
@@ -621,7 +628,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
       vCompensate->compensate(i > _preRecoveryTotal);
       i++;
       if (_state != WorkerState::RECOVERING) {
-        LOG(INFO) << "Execution aborted prematurely.";
+        LOG_TOPIC(INFO, Logger::PREGEL) << "Execution aborted prematurely.";
         break;
       }
     }
@@ -642,7 +649,7 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::RECOVERING) {
-    LOG(INFO) << "Compensation aborted prematurely.";
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Compensation aborted prematurely.";
     return;
   }
 
@@ -654,7 +661,7 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
   }
   _messageStats.resetTracking();
   _state = WorkerState::IDLE;
-  LOG(INFO) << "Recovery finished";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Recovery finished";
 }
 
 template <typename V, typename E, typename M>
@@ -676,7 +683,7 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
 template <typename V, typename E, typename M>
 std::unique_ptr<ClusterCommResult> Worker<V, E, M>::_callConductorWithResponse(
     std::string const& path, VPackSlice const& message) {
-  LOG(INFO) << "Calling the conductor";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Calling the conductor";
   std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
   std::string baseUrl = Utils::baseUrl(_config.database());
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();

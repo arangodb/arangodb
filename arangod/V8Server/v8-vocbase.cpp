@@ -2138,31 +2138,33 @@ static void ListDatabasesCoordinator(
       if (!DBServers.empty()) {
         ServerID sid = DBServers[0];
         auto cc = ClusterComm::instance();
+        if (cc != nullptr) {
+          // nullptr happens only during controlled shutdown
+          std::unordered_map<std::string, std::string> headers;
+          headers["Authentication"] = TRI_ObjectToString(args[2]);
+          auto res = cc->syncRequest(
+              "", 0, "server:" + sid, arangodb::rest::RequestType::GET,
+              "/_api/database/user", std::string(), headers, 0.0);
 
-        std::unordered_map<std::string, std::string> headers;
-        headers["Authentication"] = TRI_ObjectToString(args[2]);
-        auto res = cc->syncRequest(
-            "", 0, "server:" + sid, arangodb::rest::RequestType::GET,
-            "/_api/database/user", std::string(), headers, 0.0);
+          if (res->status == CL_COMM_SENT) {
+            // We got an array back as JSON, let's parse it and build a v8
+            StringBuffer& body = res->result->getBody();
 
-        if (res->status == CL_COMM_SENT) {
-          // We got an array back as JSON, let's parse it and build a v8
-          StringBuffer& body = res->result->getBody();
+            std::shared_ptr<VPackBuilder> builder =
+                VPackParser::fromJson(body.c_str(), body.length());
+            VPackSlice resultSlice = builder->slice();
 
-          std::shared_ptr<VPackBuilder> builder =
-              VPackParser::fromJson(body.c_str(), body.length());
-          VPackSlice resultSlice = builder->slice();
-
-          if (resultSlice.isObject()) {
-            VPackSlice r = resultSlice.get("result");
-            if (r.isArray()) {
-              uint32_t i = 0;
-              v8::Handle<v8::Array> result = v8::Array::New(isolate);
-              for (auto const& it : VPackArrayIterator(r)) {
-                std::string v = it.copyString();
-                result->Set(i++, TRI_V8_STD_STRING(v));
+            if (resultSlice.isObject()) {
+              VPackSlice r = resultSlice.get("result");
+              if (r.isArray()) {
+                uint32_t i = 0;
+                v8::Handle<v8::Array> result = v8::Array::New(isolate);
+                for (auto const& it : VPackArrayIterator(r)) {
+                  std::string v = it.copyString();
+                  result->Set(i++, TRI_V8_STD_STRING(v));
+                }
+                TRI_V8_RETURN(result);
               }
-              TRI_V8_RETURN(result);
             }
           }
         }
@@ -2755,29 +2757,36 @@ static void JS_DecodeRev(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string rev = TRI_ObjectToString(args[0]);
   uint64_t revInt = HybridLogicalClock::decodeTimeStamp(rev);
-  uint64_t timeMilli = HybridLogicalClock::extractTime(revInt);
-  uint64_t count = HybridLogicalClock::extractCount(revInt);
-  
-  time_t timeSeconds = timeMilli / 1000;
-  uint64_t millis = timeMilli % 1000;
-  struct tm date;
-#ifdef _WIN32
-  gmtime_s(&date, &timeSeconds);
-#else
-  gmtime_r(&timeSeconds, &date);
-#endif
-  char buffer[32];
-  strftime(buffer, 32, "%Y-%m-%dT%H:%M:%S.000Z", &date);
-  buffer[20] = static_cast<char>(millis / 100) + '0';
-  buffer[21] = ((millis / 10) % 10) + '0';
-  buffer[22] = (millis % 10) + '0';
-  buffer[24] = 0;
-
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("date"),
-              TRI_V8_ASCII_STRING(buffer));
-  result->Set(TRI_V8_ASCII_STRING("count"),
-              v8::Number::New(isolate, static_cast<double>(count)));
+  if (revInt == UINT64_MAX) {
+    result->Set(TRI_V8_ASCII_STRING("date"),
+                TRI_V8_ASCII_STRING("illegal"));
+    result->Set(TRI_V8_ASCII_STRING("count"),
+                v8::Number::New(isolate, 0.0));
+  } else {
+    uint64_t timeMilli = HybridLogicalClock::extractTime(revInt);
+    uint64_t count = HybridLogicalClock::extractCount(revInt);
+    
+    time_t timeSeconds = timeMilli / 1000;
+    uint64_t millis = timeMilli % 1000;
+    struct tm date;
+#ifdef _WIN32
+    gmtime_s(&date, &timeSeconds);
+#else
+    gmtime_r(&timeSeconds, &date);
+#endif
+    char buffer[32];
+    strftime(buffer, 32, "%Y-%m-%dT%H:%M:%S.000Z", &date);
+    buffer[20] = static_cast<char>(millis / 100) + '0';
+    buffer[21] = ((millis / 10) % 10) + '0';
+    buffer[22] = (millis % 10) + '0';
+    buffer[24] = 0;
+
+    result->Set(TRI_V8_ASCII_STRING("date"),
+                TRI_V8_ASCII_STRING(buffer));
+    result->Set(TRI_V8_ASCII_STRING("count"),
+                v8::Number::New(isolate, static_cast<double>(count)));
+  }
 
   TRI_V8_RETURN(result);
   
@@ -3023,7 +3032,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   v8::Handle<v8::Object> v = WrapVocBase(isolate, vocbase);
   if (v.IsEmpty()) {
-    LOG(ERR) << "out of memory when initializing VocBase";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "out of memory when initializing VocBase";
   } else {
     TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("db"),
                                  v);

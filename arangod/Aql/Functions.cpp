@@ -41,11 +41,6 @@
 #include "Indexes/Index.h"
 #include "Random/UniformCharacter.h"
 #include "Ssl/SslInterface.h"
-#include "MMFiles/fulltext-index.h"
-#include "MMFiles/fulltext-query.h"
-#include "MMFiles/fulltext-result.h"
-#include "MMFiles/MMFilesFulltextIndex.h"
-#include "MMFiles/MMFilesGeoIndex.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
@@ -86,8 +81,9 @@ static AqlValue NumberValue(arangodb::Transaction* trx, double value, bool nulli
 }
 
 /// @brief validate the number of parameters
-static void ValidateParameters(VPackFunctionParameters const& parameters,
-                               char const* function, int minParams, int maxParams) {
+void Functions::ValidateParameters(VPackFunctionParameters const& parameters,
+                                   char const* function, int minParams,
+                                   int maxParams) {
   if (parameters.size() < static_cast<size_t>(minParams) || 
       parameters.size() > static_cast<size_t>(maxParams)) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -95,9 +91,10 @@ static void ValidateParameters(VPackFunctionParameters const& parameters,
   }
 }
 
-static void ValidateParameters(VPackFunctionParameters const& parameters,
-                               char const* function, int minParams) {
-  return ValidateParameters(parameters, function, minParams, static_cast<int>(Function::MaxArguments));
+void Functions::ValidateParameters(VPackFunctionParameters const& parameters,
+                                   char const* function, int minParams) {
+  return ValidateParameters(parameters, function, minParams,
+                            static_cast<int>(Function::MaxArguments));
 }
 
 /// @brief clear the regex cache in a thread
@@ -205,7 +202,7 @@ static std::string BuildRegexPattern(char const* ptr, size_t length,
 }
 
 /// @brief extract a function parameter from the arguments
-static AqlValue ExtractFunctionParameterValue(
+AqlValue Functions::ExtractFunctionParameterValue(
     arangodb::Transaction*, VPackFunctionParameters const& parameters,
     size_t position) {
   if (position >= parameters.size()) {
@@ -216,10 +213,11 @@ static AqlValue ExtractFunctionParameterValue(
 }
 
 /// @brief extra a collection name from an AqlValue
-static std::string ExtractCollectionName(arangodb::Transaction* trx,
-                                         VPackFunctionParameters const& parameters,
-                                         size_t position) {
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, position);
+std::string Functions::ExtractCollectionName(
+    arangodb::Transaction* trx, VPackFunctionParameters const& parameters,
+    size_t position) {
+  AqlValue value =
+      ExtractFunctionParameterValue(trx, parameters, position);
 
   std::string identifier;
   
@@ -357,11 +355,11 @@ static bool GetBooleanParameter(arangodb::Transaction* trx,
 }
 
 /// @brief extract attribute names from the arguments
-static void ExtractKeys(std::unordered_set<std::string>& names,
-                        arangodb::aql::Query* query,
-                        arangodb::Transaction* trx,
-                        VPackFunctionParameters const& parameters,
-                        size_t startParameter, char const* functionName) {
+void Functions::ExtractKeys(std::unordered_set<std::string>& names,
+                            arangodb::aql::Query* query,
+                            arangodb::Transaction* trx,
+                            VPackFunctionParameters const& parameters,
+                            size_t startParameter, char const* functionName) {
   size_t const n = parameters.size();
 
   for (size_t i = startParameter; i < n; ++i) {
@@ -616,7 +614,7 @@ static void GetDocumentByIdentifier(arangodb::Transaction* trx,
 /// @brief Helper function to merge given parameters
 ///        Works for an array of objects as first parameter or arbitrary many
 ///        object parameters
-static AqlValue MergeParameters(arangodb::aql::Query* query,
+AqlValue Functions::MergeParameters(arangodb::aql::Query* query,
                                  arangodb::Transaction* trx,
                                  VPackFunctionParameters const& parameters,
                                  char const* funcName,
@@ -689,127 +687,6 @@ static AqlValue MergeParameters(arangodb::aql::Query* query,
     builder.add(initialSlice);
   }
   return AqlValue(builder);
-}
-
-/// @brief Load geoindex for collection name
-static arangodb::MMFilesGeoIndex* getGeoIndex(
-    arangodb::Transaction* trx, TRI_voc_cid_t const& cid,
-    std::string const& collectionName) {
-  // NOTE:
-  // Due to trx lock the shared_index stays valid
-  // as long as trx stays valid.
-  // It is save to return the Raw pointer.
-  // It can only be used until trx is finished.
-  trx->addCollectionAtRuntime(cid, collectionName);
-
-  auto document = trx->documentCollection(cid);
-
-  if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                  "'%s'", collectionName.c_str());
-  }
-
-  arangodb::MMFilesGeoIndex* index = nullptr;
-
-  for (auto const& idx : document->getIndexes()) {
-    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
-        idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX) {
-      index = static_cast<arangodb::MMFilesGeoIndex*>(idx.get());
-      break;
-    }
-  }
-
-  if (index == nullptr) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING,
-                                  collectionName.c_str());
-  }
-
-  trx->orderDitch(cid);
-
-  return index;
-}
-
-static AqlValue buildGeoResult(arangodb::Transaction* trx,
-                               LogicalCollection* collection,
-                               arangodb::aql::Query* query,
-                               GeoCoordinates* cors,
-                               TRI_voc_cid_t const& cid,
-                               std::string const& attributeName) {
-  if (cors == nullptr) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
-  }
-
-  size_t const nCoords = cors->length;
-  if (nCoords == 0) {
-    GeoIndex_CoordinatesFree(cors);
-    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
-  }
-
-  struct geo_coordinate_distance_t {
-    geo_coordinate_distance_t(double distance, DocumentIdentifierToken token)
-        : _distance(distance), _token(token) {}
-
-    double _distance;
-    DocumentIdentifierToken _token;
-  };
-
-  std::vector<geo_coordinate_distance_t> distances;
-
-  try {
-    distances.reserve(nCoords);
-
-    for (size_t i = 0; i < nCoords; ++i) {
-      distances.emplace_back(geo_coordinate_distance_t(
-          cors->distances[i],
-          arangodb::MMFilesGeoIndex::toDocumentIdentifierToken(
-              cors->coordinates[i].data)));
-    }
-  } catch (...) {
-    GeoIndex_CoordinatesFree(cors);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  GeoIndex_CoordinatesFree(cors);
-
-  // sort result by distance
-  std::sort(distances.begin(), distances.end(),
-            [](geo_coordinate_distance_t const& left,
-               geo_coordinate_distance_t const& right) {
-              return left._distance < right._distance;
-            });
-
-  try {
-    ManagedDocumentResult mmdr;
-    TransactionBuilderLeaser builder(trx);
-    builder->openArray();
-    if (!attributeName.empty()) {
-      // We have to copy the entire document
-      for (auto& it : distances) {
-        VPackObjectBuilder docGuard(builder.get());
-        builder->add(attributeName, VPackValue(it._distance));
-        if (collection->readDocument(trx, mmdr, it._token)) {
-          VPackSlice doc(mmdr.vpack());
-          for (auto const& entry : VPackObjectIterator(doc)) {
-            std::string key = entry.key.copyString();
-            if (key != attributeName) {
-              builder->add(key, entry.value);
-            }
-          }
-        }
-      }
-
-    } else {
-      for (auto& it : distances) {
-        if (collection->readDocument(trx, mmdr, it._token)) {
-          builder->addExternal(mmdr.vpack());
-        }
-      }
-    }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
 }
 
 /// @brief internal recursive flatten helper
@@ -2264,120 +2141,6 @@ AqlValue Functions::Outersection(arangodb::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   return AqlValue(builder.get());
-}
-
-/// @brief function NEAR
-AqlValue Functions::Near(arangodb::aql::Query* query,
-                         arangodb::Transaction* trx,
-                         VPackFunctionParameters const& parameters) {
-  ValidateParameters(parameters, "NEAR", 3, 5);
-
-  AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
-  if (!collectionValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
-  }
-
-  std::string const collectionName(collectionValue.slice().copyString());
-
-  AqlValue latitude = ExtractFunctionParameterValue(trx, parameters, 1);
-  AqlValue longitude = ExtractFunctionParameterValue(trx, parameters, 2);
-
-  if (!latitude.isNumber() || !longitude.isNumber()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
-  }
-
-  // extract limit
-  int64_t limitValue = 100;
-
-  if (parameters.size() > 3) {
-    AqlValue limit = ExtractFunctionParameterValue(trx, parameters, 3);
-
-    if (limit.isNumber()) {
-      limitValue = limit.toInt64(trx);
-    } else if (!limit.isNull(true)) {
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
-    }
-  }
-
-  std::string attributeName;
-  if (parameters.size() > 4) {
-    // have a distance attribute
-    AqlValue distanceValue = ExtractFunctionParameterValue(trx, parameters, 4);
-
-    if (!distanceValue.isNull(true) && !distanceValue.isString()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
-    }
-
-    if (distanceValue.isString()) {
-      attributeName = distanceValue.slice().copyString();
-    }
-  }
-
-  TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
-  arangodb::MMFilesGeoIndex* index = getGeoIndex(trx, cid, collectionName);
-
-  TRI_ASSERT(index != nullptr);
-  TRI_ASSERT(trx->hasDitch(cid));
-
-  GeoCoordinates* cors = index->nearQuery(
-      trx, latitude.toDouble(trx), longitude.toDouble(trx), static_cast<size_t>(limitValue));
-
-  return buildGeoResult(trx, index->collection(), query, cors, cid, attributeName);
-}
-
-/// @brief function WITHIN
-AqlValue Functions::Within(arangodb::aql::Query* query,
-                           arangodb::Transaction* trx,
-                           VPackFunctionParameters const& parameters) {
-  ValidateParameters(parameters, "WITHIN", 4, 5);
-
-  AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
-
-  if (!collectionValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
-  }
-
-  std::string const collectionName(collectionValue.slice().copyString());
-
-  AqlValue latitudeValue = ExtractFunctionParameterValue(trx, parameters, 1);
-  AqlValue longitudeValue = ExtractFunctionParameterValue(trx, parameters, 2);
-  AqlValue radiusValue = ExtractFunctionParameterValue(trx, parameters, 3);
-
-  if (!latitudeValue.isNumber() || !longitudeValue.isNumber() || !radiusValue.isNumber()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
-  }
-
-  std::string attributeName;
-  if (parameters.size() > 4) {
-    // have a distance attribute
-    AqlValue distanceValue = ExtractFunctionParameterValue(trx, parameters, 4);
-
-    if (!distanceValue.isNull(true) && !distanceValue.isString()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
-    }
-
-    if (distanceValue.isString()) {
-      attributeName = distanceValue.slice().copyString();
-    }
-  }
-
-  TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
-  arangodb::MMFilesGeoIndex* index = getGeoIndex(trx, cid, collectionName);
-
-  TRI_ASSERT(index != nullptr);
-  TRI_ASSERT(trx->hasDitch(cid));
-
-  GeoCoordinates* cors = index->withinQuery(
-      trx, latitudeValue.toDouble(trx), longitudeValue.toDouble(trx), radiusValue.toDouble(trx));
-
-  return buildGeoResult(trx, index->collection(), query, cors, cid, attributeName);
 }
 
 /// @brief function DISTANCE
@@ -3903,144 +3666,6 @@ AqlValue Functions::Position(arangodb::aql::Query* query,
   TransactionBuilderLeaser builder(trx);
   builder->add(VPackValue(-1));
   return AqlValue(builder.get());
-}
-
-/// @brief function FULLTEXT
-AqlValue Functions::Fulltext(arangodb::aql::Query* query,
-                             arangodb::Transaction* trx,
-                             VPackFunctionParameters const& parameters) {
-  ValidateParameters(parameters, "FULLTEXT", 3, 4);
-
-  AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
-
-  if (!collectionValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
-  }
-
-  std::string const collectionName(collectionValue.slice().copyString());
-
-  AqlValue attribute = ExtractFunctionParameterValue(trx, parameters, 1);
-
-  if (!attribute.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
-  }
-
-  std::string attributeName(attribute.slice().copyString());
-
-  AqlValue queryValue = ExtractFunctionParameterValue(trx, parameters, 2);
-
-  if (!queryValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
-  }
-
-  std::string queryString = queryValue.slice().copyString();
-
-  size_t maxResults = 0;  // 0 means "all results"
-  if (parameters.size() >= 4) {
-    AqlValue limit = ExtractFunctionParameterValue(trx, parameters, 3);
-    if (!limit.isNull(true) && !limit.isNumber()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
-    } 
-    if (limit.isNumber()) {
-      int64_t value = limit.toInt64(trx);
-      if (value > 0) {
-        maxResults = static_cast<size_t>(value);
-      }
-    }
-  }
-
-  auto resolver = trx->resolver();
-  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(collectionName);
-  trx->addCollectionAtRuntime(cid, collectionName);
-
-  LogicalCollection* collection = trx->documentCollection(cid);
-
-  if (collection == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                  "", collectionName.c_str());
-  }
-
-  // NOTE: The shared_ptr is protected by trx lock.
-  // It is save to use the raw pointer directly.
-  // We are NOT allowed to delete the index.
-  arangodb::MMFilesFulltextIndex* fulltextIndex = nullptr;
-
-  // split requested attribute name on '.' character to create a proper
-  // vector of AttributeNames
-  std::vector<std::vector<arangodb::basics::AttributeName>> search;
-  search.emplace_back();
-  for (auto const& it : basics::StringUtils::split(attributeName, '.')) {
-    search.back().emplace_back(it, false);
-  }
-
-  for (auto const& idx : collection->getIndexes()) {
-    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-      // test if index is on the correct field
-      if (arangodb::basics::AttributeName::isIdentical(idx->fields(), search,
-                                                       false)) {
-        // match!
-        fulltextIndex = static_cast<arangodb::MMFilesFulltextIndex*>(idx.get());
-        break;
-      }
-    }
-  }
-
-  if (fulltextIndex == nullptr) {
-    // fiddle collection name into error message
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING,
-                                  collectionName.c_str());
-  }
-
-  trx->orderDitch(cid);
-
-  TRI_fulltext_query_t* ft =
-      TRI_CreateQueryMMFilesFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS, maxResults);
-
-  if (ft == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  bool isSubstringQuery = false;
-  int res =
-      TRI_ParseQueryMMFilesFulltextIndex(ft, queryString.c_str(), &isSubstringQuery);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeQueryMMFilesFulltextIndex(ft);
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  // note: the following call will free "ft"!
-  TRI_fulltext_result_t* queryResult =
-      TRI_QueryMMFilesFulltextIndex(fulltextIndex->internals(), ft);
-
-  if (queryResult == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-  
-  TRI_ASSERT(trx->hasDitch(cid));
-
-  TransactionBuilderLeaser builder(trx);
-  try {
-    builder->openArray();
-
-    ManagedDocumentResult mmdr;
-    size_t const numResults = queryResult->_numDocuments;
-    for (size_t i = 0; i < numResults; ++i) {
-      if (collection->readDocument(trx, mmdr, queryResult->_documents[i])) {
-        builder->addExternal(mmdr.vpack());
-      }
-    }
-    builder->close();
-    TRI_FreeResultMMFilesFulltextIndex(queryResult);
-    return AqlValue(builder.get());
-  } catch (...) {
-    TRI_FreeResultMMFilesFulltextIndex(queryResult);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
 }
 
 /// @brief function IS_SAME_COLLECTION

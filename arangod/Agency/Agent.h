@@ -77,7 +77,7 @@ class Agent : public arangodb::Thread {
   bool fitness() const;
 
   /// @brief Leader ID
-  arangodb::consensus::index_t lastCommitted() const;
+  index_t lastCommitted() const;
 
   /// @brief Leader ID
   std::string leaderID() const;
@@ -145,7 +145,7 @@ class Agent : public arangodb::Thread {
   void beginShutdown() override final;
 
   /// @brief Report appended entries from AgentCallback
-  void reportIn(std::string const& id, index_t idx);
+  void reportIn(std::string const&, index_t, size_t = 0);
 
   /// @brief Wait for slaves to confirm appended entries
   raft_commit_t waitFor(index_t last_entry, double timeout = 2.0);
@@ -154,7 +154,10 @@ class Agent : public arangodb::Thread {
   size_t size() const;
 
   /// @brief Rebuild DBs by applying state log to empty DB
-  bool rebuildDBs();
+  index_t rebuildDBs();
+
+  /// @brief Rebuild DBs by applying state log to empty DB
+  void compact();
 
   /// @brief Last log entry
   log_t lastLog() const;
@@ -163,7 +166,7 @@ class Agent : public arangodb::Thread {
   State const& state() const;
 
   /// @brief Get read store and compaction index
-  arangodb::consensus::index_t readDB(Node&) const;
+  index_t readDB(Node&) const;
 
   /// @brief Get read store
   Store const& readDB() const;
@@ -221,6 +224,7 @@ class Agent : public arangodb::Thread {
 
   /// @brief State reads persisted state and prepares the agent
   friend class State;
+  friend class Compactor;
 
  private:
 
@@ -246,7 +250,7 @@ class Agent : public arangodb::Thread {
   bool mergeConfiguration(VPackSlice const&);
 
   /// @brief Leader ID
-  void lastCommitted(arangodb::consensus::index_t);
+  void lastCommitted(index_t);
 
   /// @brief Leader election delegate
   Constituent _constituent;
@@ -262,6 +266,12 @@ class Agent : public arangodb::Thread {
 
   /// @brief Last commit index (raft)
   index_t _lastCommitIndex;
+
+  /// @brief Last compaction index
+  index_t _lastAppliedIndex;
+
+  /// @brief Last compaction index
+  index_t _leaderCommitIndex;
 
   /// @brief Spearhead (write) kv-store
   Store _spearhead;
@@ -284,6 +294,7 @@ class Agent : public arangodb::Thread {
 
   std::map<std::string, TimePoint> _lastAcked;
   std::map<std::string, TimePoint> _lastSent;
+  std::map<std::string, TimePoint> _earliestPackage;
 
   /**< @brief RAFT consistency lock:
      _spearhead
@@ -295,11 +306,14 @@ class Agent : public arangodb::Thread {
    */
   mutable arangodb::Mutex _ioLock;
 
+  // lock for _leaderCommitIndex
+  mutable arangodb::Mutex _liLock;
+
   // @brief guard _activator 
   mutable arangodb::Mutex _activatorLock;
 
   /// @brief Next compaction after
-  arangodb::consensus::index_t _nextCompationAfter;
+  index_t _nextCompationAfter;
 
   /// @brief Inception thread getting an agent up to join RAFT from cmd or persistence
   std::unique_ptr<Inception> _inception;
@@ -308,7 +322,7 @@ class Agent : public arangodb::Thread {
   std::unique_ptr<AgentActivator> _activator;
 
   /// @brief Compactor
-  std::unique_ptr<Compactor> _compactor;
+  Compactor _compactor;
 
   /// @brief Agent is ready for RAFT
   std::atomic<bool> _ready;

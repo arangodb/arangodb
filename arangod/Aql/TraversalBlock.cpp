@@ -192,23 +192,26 @@ int TraversalBlock::shutdown(int errorCode) {
   // We have to clean up the engines in Coordinator Case.
   if (arangodb::ServerState::instance()->isCoordinator()) {
     auto cc = arangodb::ClusterComm::instance();
-    std::string const url(
-        "/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase()->name()) +
-        "/_internal/traverser/");
-    for (auto const& it : *_engines) {
-      arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
-      std::unordered_map<std::string, std::string> headers;
-      auto res = cc->syncRequest(
-          "", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
-          url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
-          30.0);
-      if (res->status != CL_COMM_SENT) {
-        // Note If there was an error on server side we do not have CL_COMM_SENT
-        std::string message("Could not destroy all traversal engines");
-        if (!res->errorMessage.empty()) {
-          message += std::string(": ") + res->errorMessage;
+    if (cc != nullptr) {
+      // nullptr only happens on controlled server shutdown
+      std::string const url(
+          "/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase()->name()) +
+          "/_internal/traverser/");
+      for (auto const& it : *_engines) {
+        arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
+        std::unordered_map<std::string, std::string> headers;
+        auto res = cc->syncRequest(
+            "", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
+            url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
+            30.0);
+        if (res->status != CL_COMM_SENT) {
+          // Note If there was an error on server side we do not have CL_COMM_SENT
+          std::string message("Could not destroy all traversal engines");
+          if (!res->errorMessage.empty()) {
+            message += std::string(": ") + res->errorMessage;
+          }
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << message;
         }
-        LOG(ERR) << message;
       }
     }
   }
@@ -378,8 +381,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
       _usedConstant = false; // must reset this variable because otherwise the traverser's start vertex may not be reset properly
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
-        // returnBlock(cur);
-        delete cur;
+        returnBlock(cur);
         _pos = 0;
       } else {
         initializePaths(cur, _pos);
@@ -429,8 +431,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
       _usedConstant = false; // must reset this variable because otherwise the traverser's start vertex may not be reset properly
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
-        // returnBlock(cur);
-        delete cur;
+        returnBlock(cur);
         _pos = 0;
       } else {
         initializePaths(cur, _pos);

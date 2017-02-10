@@ -72,7 +72,7 @@ void SupervisorFeature::validateOptions(
       // revalidate options
       daemon->validateOptions(options);
     } catch (...) {
-      LOG(FATAL) << "daemon mode not available, cannot start supervisor";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "daemon mode not available, cannot start supervisor";
       FATAL_ERROR_EXIT();
     }
   }

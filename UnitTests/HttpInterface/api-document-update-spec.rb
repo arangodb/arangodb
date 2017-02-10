@@ -266,20 +266,20 @@ describe ArangoDB do
         hdr = { "if-match" => "\"*abcd\"" }
         doc = ArangoDB.log_put("#{prefix}-rev-invalid", cmd, :headers => hdr, :body => body)
 
-        doc.code.should eq(400)
+        doc.code.should eq(412)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(400)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1200)
+        doc.parsed_response['code'].should eq(412)
         
         # update document, invalid revision
         cmd = "/_api/document/#{did}"
         hdr = { "if-match" => "'*abcd'" }
         doc = ArangoDB.log_put("#{prefix}-rev-invalid", cmd, :headers => hdr, :body => body)
 
-        doc.code.should eq(400)
+        doc.code.should eq(412)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(400)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1200)
+        doc.parsed_response['code'].should eq(412)
         
         # update document, correct revision
         cmd = "/_api/document/#{did}"
