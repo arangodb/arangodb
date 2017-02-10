@@ -129,7 +129,7 @@ void throwFileReadError(int fd, std::string const& filename) {
 
   std::string message("read failed for file '" + filename + "': " +
                       strerror(res));
-  LOG(TRACE) << "" << message;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "" << message;
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }
@@ -144,7 +144,7 @@ void throwFileWriteError(int fd, std::string const& filename) {
 
   std::string message("write failed for file '" + filename + "': " +
                       strerror(res));
-  LOG(TRACE) << "" << message;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "" << message;
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }

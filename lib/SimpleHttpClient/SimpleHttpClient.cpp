@@ -179,7 +179,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     }
 
     if (!_retryMessage.empty() && (_maxRetries - tries) > 0) {
-      LOG(WARN) << "" << _retryMessage
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << _retryMessage
                 << " - retries left: " << (_maxRetries - tries);
     }
 
@@ -608,7 +608,7 @@ void SimpleHttpClient::setRequest(
 
   _writeBuffer.ensureNullTerminated();
 
-  LOG(TRACE) << "Request: "
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Request: "
              << std::string(_writeBuffer.c_str(), _writeBuffer.length());
 
   if (_state == DEAD) {

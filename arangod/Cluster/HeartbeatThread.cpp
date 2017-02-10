@@ -295,7 +295,7 @@ void HeartbeatThread::runDBServer() {
               agentPool.get("size").getUInt() > 1) {
             _agency.updateEndpoints(agentPool);
           } else {
-            LOG(TRACE) << "Cannot find an agency persisted in RAFT 8|";
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
           }
           
           VPackSlice shutdownSlice =
@@ -454,7 +454,7 @@ void HeartbeatThread::runCoordinator() {
               agentPool.get("size").getUInt() > 1) {
             _agency.updateEndpoints(agentPool);
           } else {
-            LOG(TRACE) << "Cannot find an agency persisted in RAFT 8|";
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
           }
         
         VPackSlice shutdownSlice = result.slice()[0].get(
@@ -716,7 +716,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         int res = databaseFeature->createDatabaseCoordinator(id, name, vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG(ERR) << "creating local database '" << name
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "creating local database '" << name
                    << "' failed: " << TRI_errno_string(res);
         } else {
           HasRunOnce = true;

@@ -217,7 +217,7 @@ void EndpointList::dump() const {
   for (auto& it : _endpoints) {
     Endpoint const* ep = it.second;
 
-    LOG(INFO) << "using endpoint '" << it.first << "' for "
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "using endpoint '" << it.first << "' for "
               << encryptionName(ep->encryption()) << " requests";
   }
 }

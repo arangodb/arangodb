@@ -111,27 +111,27 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   // check timeouts
   if (_connectionTimeout < 0.0) {
-    LOG(FATAL) << "invalid value for --server.connect-timeout, must be >= 0";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for --server.connect-timeout, must be >= 0";
     FATAL_ERROR_EXIT();
   } else if (_connectionTimeout == 0.0) {
     _connectionTimeout = LONG_TIMEOUT;
   }
 
   if (_requestTimeout < 0.0) {
-    LOG(FATAL) << "invalid value for --server.request-timeout, must be positive";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for --server.request-timeout, must be positive";
     FATAL_ERROR_EXIT();
   } else if (_requestTimeout == 0.0) {
     _requestTimeout = LONG_TIMEOUT;
   }
 
   if (_maxPacketSize < 1 * 1024 * 1024) {
-    LOG(FATAL) << "invalid value for --server.max-packet-size, must be at least 1 MB";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for --server.max-packet-size, must be at least 1 MB";
     FATAL_ERROR_EXIT();
   }
 
   // username must be non-empty
   if (_username.empty()) {
-    LOG(FATAL) << "no value specified for --server.username";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "no value specified for --server.username";
     FATAL_ERROR_EXIT();
   }
 
@@ -168,7 +168,7 @@ std::unique_ptr<GeneralClientConnection> ClientFeature::createConnection(
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
   if (endpoint.get() == nullptr) {
-    LOG(ERR) << "invalid value for --server.endpoint ('" << definition << "')";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "invalid value for --server.endpoint ('" << definition << "')";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
@@ -189,7 +189,7 @@ std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
   if (endpoint.get() == nullptr) {
-    LOG(ERR) << "invalid value for --server.endpoint ('" << definition << "')";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "invalid value for --server.endpoint ('" << definition << "')";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 

@@ -109,7 +109,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
 
   allowImplicitCollections &= _allowImplicit;
 
-  // LOG(TRACE) << "cid: " << cid 
+  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cid: " << cid 
   //            << ", accessType: " << accessType 
   //            << ", nestingLevel: " << nestingLevel 
   //            << ", force: " << force 

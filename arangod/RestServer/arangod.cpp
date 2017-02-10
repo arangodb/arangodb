@@ -194,11 +194,11 @@ static int runServer(int argc, char** argv) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG(ERR) << "arangod terminated because of an unhandled exception: "
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangod terminated because of an unhandled exception: "
                << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG(ERR) << "arangod terminated because of an unhandled exception of "
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangod terminated because of an unhandled exception of "
                   "unknown type";
       ret = EXIT_FAILURE;
     }
@@ -206,10 +206,10 @@ static int runServer(int argc, char** argv) {
 
     return context.exit(ret);
   } catch (std::exception const& ex) {
-    LOG(ERR) << "arangod terminated because of an unhandled exception: "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangod terminated because of an unhandled exception: "
              << ex.what();
   } catch (...) {
-    LOG(ERR) << "arangod terminated because of an unhandled exception of "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangod terminated because of an unhandled exception of "
                 "unknown type";
   }
   exit(EXIT_FAILURE);

@@ -550,7 +550,7 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
   delete[] buffer;
 
   if (corrupted) {
-    LOG(WARN) << "escaped corrupted unicode string";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "escaped corrupted unicode string";
   }
 
   return result;

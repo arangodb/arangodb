@@ -86,7 +86,7 @@ int MMFilesTransactionCollection::unlock(AccessMode::Type accessType,
 bool MMFilesTransactionCollection::isLocked(AccessMode::Type accessType, int nestingLevel) const {
   if (isWrite(accessType) && !isWrite(_accessType)) {
     // wrong lock type
-    LOG(WARN) << "logic error. checking wrong lock type";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "logic error. checking wrong lock type";
     return false;
   }
 
@@ -383,7 +383,7 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   } else if (isWrite(type) && !isWrite(_lockType)) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
-    LOG(ERR) << "logic error in UnlockCollection";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "logic error in UnlockCollection";
     TRI_ASSERT(false);
     return TRI_ERROR_INTERNAL;
   }

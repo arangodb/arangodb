@@ -91,7 +91,7 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void V8ShellFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   if (_startupDirectory.empty()) {
-    LOG(FATAL)
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "no 'javascript.startup-directory' has been supplied, giving up";
     FATAL_ERROR_EXIT();
   }
@@ -130,7 +130,7 @@ void V8ShellFeature::start() {
   auto context = v8::Local<v8::Context>::New(_isolate, _context);
 
   if (context.IsEmpty()) {
-    LOG(FATAL) << "cannot initialize V8 engine";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot initialize V8 engine";
     FATAL_ERROR_EXIT();
   }
 
@@ -463,7 +463,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
 
   for (auto const& file : files) {
     if (!FileUtils::exists(file)) {
-      LOG(ERR) << "error: Javascript file not found: '" << file << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error: Javascript file not found: '" << file << "'";
       ok = false;
       continue;
     }
@@ -509,7 +509,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
 
       if (tryCatch.HasCaught()) {
         std::string exception(TRI_StringifyV8Exception(_isolate, &tryCatch));
-        LOG(ERR) << exception;
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << exception;
         ok = false;
       }
     } else {
@@ -548,7 +548,7 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
 
     if (tryCatch.HasCaught()) {
       std::string exception(TRI_StringifyV8Exception(_isolate, &tryCatch));
-      LOG(ERR) << exception;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << exception;
       ok = false;
     } else {
       // check return value of script
@@ -588,7 +588,7 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
   uint32_t i = 0;
   for (auto& file : files) {
     if (!FileUtils::exists(file)) {
-      LOG(ERR) << "error: Javascript file not found: '" << file << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error: Javascript file not found: '" << file << "'";
       ok = false;
       continue;
     }
@@ -614,7 +614,7 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
   TRI_ExecuteJavaScriptString(_isolate, context, input, name, true);
 
   if (tryCatch.HasCaught()) {
-    LOG(ERR) << TRI_StringifyV8Exception(_isolate, &tryCatch);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << TRI_StringifyV8Exception(_isolate, &tryCatch);
     ok = false;
   } else {
     bool res = TRI_ObjectToBoolean(context->Global()->Get(
@@ -650,7 +650,7 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
 
   for (auto const& file : files) {
     if (!FileUtils::exists(file)) {
-      LOG(ERR) << "error: Javascript file not found: '" << file << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error: Javascript file not found: '" << file << "'";
       ok = false;
       continue;
     }
@@ -680,7 +680,7 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
 
   if (tryCatch.HasCaught()) {
     std::string exception(TRI_StringifyV8Exception(_isolate, &tryCatch));
-    LOG(ERR) << exception;
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << exception;
     ok = false;
   } else {
     bool res = TRI_ObjectToBoolean(context->Global()->Get(
@@ -868,7 +868,7 @@ void V8ShellFeature::initGlobals() {
   auto ctx = ArangoGlobalContext::CONTEXT;
 
   if (ctx == nullptr) {
-    LOG(ERR) << "failed to get global context.  ";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to get global context.  ";
     FATAL_ERROR_EXIT();
   }
 
@@ -994,14 +994,14 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
   for (size_t i = 0; i < files.size(); ++i) {
     switch (loader.loadScript(_isolate, context, files[i])) {
       case JSLoader::eSuccess:
-        LOG(TRACE) << "loaded JavaScript file '" << files[i] << "'";
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "loaded JavaScript file '" << files[i] << "'";
         break;
       case JSLoader::eFailLoad:
-        LOG(FATAL) << "cannot load JavaScript file '" << files[i] << "'";
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot load JavaScript file '" << files[i] << "'";
         FATAL_ERROR_EXIT();
         break;
       case JSLoader::eFailExecute:
-        LOG(FATAL) << "error during execution of JavaScript file '" << files[i]
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "error during execution of JavaScript file '" << files[i]
                    << "'";
         FATAL_ERROR_EXIT();
         break;

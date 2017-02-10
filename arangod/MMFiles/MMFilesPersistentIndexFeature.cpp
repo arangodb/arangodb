@@ -180,19 +180,19 @@ void RocksDBFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     forceDisable();
   } else {
     if (_writeBufferSize > 0 && _writeBufferSize < 1024 * 1024) {
-      LOG(FATAL) << "invalid value for '--rocksdb.write-buffer-size'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.write-buffer-size'";
       FATAL_ERROR_EXIT();
     }
     if (_maxBytesForLevelMultiplier == 0) {
-      LOG(FATAL) << "invalid value for '--rocksdb.max-bytes-for-level-multiplier'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.max-bytes-for-level-multiplier'";
       FATAL_ERROR_EXIT();
     }
     if (_numLevels < 1 || _numLevels > 20) {
-      LOG(FATAL) << "invalid value for '--rocksdb.num-levels'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.num-levels'";
       FATAL_ERROR_EXIT();
     }
     if (_baseBackgroundCompactions < 1 || _baseBackgroundCompactions > 64) {
-      LOG(FATAL) << "invalid value for '--rocksdb.base-background-compactions'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid value for '--rocksdb.base-background-compactions'";
       FATAL_ERROR_EXIT();
     }
     if (_maxBackgroundCompactions < _baseBackgroundCompactions) {
@@ -212,7 +212,7 @@ void RocksDBFeature::start() {
   auto database = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _path = database->subdirectoryName("rocksdb");
   
-  LOG(TRACE) << "initializing rocksdb, path: " << _path;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "initializing rocksdb, path: " << _path;
   
   _comparator = new RocksDBKeyComparator();
   
@@ -259,7 +259,7 @@ void RocksDBFeature::start() {
   rocksdb::Status status = rocksdb::OptimisticTransactionDB::Open(_options, _path, &_db);
   
   if (! status.ok()) {
-    LOG(FATAL) << "unable to initialize RocksDB: " << status.ToString();
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to initialize RocksDB: " << status.ToString();
     FATAL_ERROR_EXIT();
   }
 }
@@ -269,7 +269,7 @@ void RocksDBFeature::unprepare() {
     return;
   }
 
-  LOG(TRACE) << "shutting down RocksDB";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "shutting down RocksDB";
 
   // flush
   rocksdb::FlushOptions options;
@@ -277,7 +277,7 @@ void RocksDBFeature::unprepare() {
   rocksdb::Status status = _db->GetBaseDB()->Flush(options);
   
   if (! status.ok()) {
-    LOG(ERR) << "error flushing data to RocksDB: " << status.ToString();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error flushing data to RocksDB: " << status.ToString();
   }
 
   syncWal();
@@ -294,12 +294,12 @@ int RocksDBFeature::syncWal() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  LOG(TRACE) << "syncing RocksDB WAL";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "syncing RocksDB WAL";
 
   rocksdb::Status status = Instance->db()->GetBaseDB()->SyncWAL();
 
   if (! status.ok()) {
-    LOG(ERR) << "error syncing RocksDB WAL: " << status.ToString();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error syncing RocksDB WAL: " << status.ToString();
     return TRI_ERROR_INTERNAL;
   }
 #endif
@@ -310,7 +310,7 @@ int RocksDBFeature::dropDatabase(TRI_voc_tick_t databaseId) {
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
-  // LOG(TRACE) << "dropping RocksDB database: " << databaseId;
+  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dropping RocksDB database: " << databaseId;
   return Instance->dropPrefix(PersistentIndex::buildPrefix(databaseId));
 }
 
@@ -318,7 +318,7 @@ int RocksDBFeature::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t coll
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
-  // LOG(TRACE) << "dropping RocksDB database: " << databaseId << ", collection: " << collectionId;
+  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dropping RocksDB database: " << databaseId << ", collection: " << collectionId;
   return Instance->dropPrefix(PersistentIndex::buildPrefix(databaseId, collectionId));
 }
 
@@ -326,7 +326,7 @@ int RocksDBFeature::dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectio
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
-  // LOG(TRACE) << "dropping RocksDB database: " << databaseId << ", collection: " << collectionId << ", index: " << indexId;
+  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dropping RocksDB database: " << databaseId << ", collection: " << collectionId << ", index: " << indexId;
   return Instance->dropPrefix(PersistentIndex::buildPrefix(databaseId, collectionId, indexId));
 }
 
@@ -376,12 +376,12 @@ int RocksDBFeature::dropPrefix(std::string const& prefix) {
       size_t o;
       char* q = TRI_EncodeHexString(x, 8, &o);
       if (q != nullptr) {
-        LOG(TRACE) << "RocksDB prefix part: " << q;
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "RocksDB prefix part: " << q;
         TRI_FreeString(TRI_CORE_MEM_ZONE, q);
       }
     }
     
-    LOG(TRACE) << "dropping RocksDB range: " << VPackSlice(l.c_str() + PersistentIndex::keyPrefixSize()).toJson() << " - " << VPackSlice(u.c_str() + PersistentIndex::keyPrefixSize()).toJson();
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dropping RocksDB range: " << VPackSlice(l.c_str() + PersistentIndex::keyPrefixSize()).toJson() << " - " << VPackSlice(u.c_str() + PersistentIndex::keyPrefixSize()).toJson();
 #endif
 
     // delete files in range lower..upper
@@ -394,7 +394,7 @@ int RocksDBFeature::dropPrefix(std::string const& prefix) {
       if (!status.ok()) {
         // if file deletion failed, we will still iterate over the remaining keys, so we
         // don't need to abort and raise an error here
-        LOG(WARN) << "RocksDB file deletion failed";
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "RocksDB file deletion failed";
       }
     }
     
@@ -425,19 +425,19 @@ int RocksDBFeature::dropPrefix(std::string const& prefix) {
     rocksdb::Status status = db->Write(rocksdb::WriteOptions(), &batch);
 
     if (!status.ok()) {
-      LOG(WARN) << "RocksDB key deletion failed: " << status.ToString();
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "RocksDB key deletion failed: " << status.ToString();
       return TRI_ERROR_INTERNAL;
     }
 
     return TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {
-    LOG(ERR) << "caught exception during RocksDB key prefix deletion: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception during RocksDB key prefix deletion: " << ex.what();
     return ex.code();
   } catch (std::exception const& ex) {
-    LOG(ERR) << "caught exception during RocksDB key prefix deletion: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception during RocksDB key prefix deletion: " << ex.what();
     return TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG(ERR) << "caught unknown exception during RocksDB key prefix deletion";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception during RocksDB key prefix deletion";
     return TRI_ERROR_INTERNAL;
   }
 }

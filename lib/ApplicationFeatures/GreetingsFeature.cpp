@@ -36,12 +36,12 @@ GreetingsFeature::GreetingsFeature(
 
 void GreetingsFeature::prepare() {
   if (strcmp(_progname, "arangod") == 0) {
-    LOG(INFO) << "" << rest::Version::getVerboseVersionString();
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "" << rest::Version::getVerboseVersionString();
   }
 }
 
 void GreetingsFeature::unprepare() {
   if (strcmp(_progname, "arangod") == 0) {
-    LOG(INFO) << "ArangoDB has been shut down";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB has been shut down";
   }
 }

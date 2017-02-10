@@ -100,7 +100,7 @@ RestHandler* RestHandlerFactory::createHandler(
          path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
         (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
          path.find("/_api/aql") == std::string::npos)) {
-      LOG(DEBUG) << "Maintenance mode: refused path: " << path;
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
       return new MaintenanceHandler(request.release(), response.release());
     }
   }
@@ -113,7 +113,7 @@ RestHandler* RestHandlerFactory::createHandler(
 
   // no direct match, check prefix matches
   if (i == ii.end()) {
-    LOG(TRACE) << "no direct handler found, trying prefixes";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no direct handler found, trying prefixes";
 
     // find longest match
     size_t const pathLength = path.size();
@@ -131,11 +131,11 @@ RestHandler* RestHandlerFactory::createHandler(
     }
 
     if (prefix.empty()) {
-      LOG(TRACE) << "no prefix handler found, trying catch all";
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no prefix handler found, trying catch all";
 
       i = ii.find(ROOT_PATH);
       if (i != ii.end()) {
-        LOG(TRACE) << "found catch all handler '/'";
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found catch all handler '/'";
 
         size_t l = 1;
         size_t n = path.find_first_of('/', l);
@@ -156,7 +156,7 @@ RestHandler* RestHandlerFactory::createHandler(
     }
 
     else {
-      LOG(TRACE) << "found prefix match '" << prefix << "'";
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found prefix match '" << prefix << "'";
 
       size_t l = prefix.size() + 1;
       size_t n = path.find_first_of('/', l);
@@ -184,11 +184,11 @@ RestHandler* RestHandlerFactory::createHandler(
       return _notFound(request.release(), response.release(), nullptr);
     }
 
-    LOG(TRACE) << "no not-found handler, giving up";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no not-found handler, giving up";
     return nullptr;
   }
 
-  LOG(TRACE) << "found handler for path '" << *modifiedPath << "'";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found handler for path '" << *modifiedPath << "'";
   return i->second.first(request.release(), response.release(),
                          i->second.second);
 }

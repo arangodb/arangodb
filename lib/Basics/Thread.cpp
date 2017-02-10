@@ -184,7 +184,7 @@ Thread::~Thread() {
   state = _state.load();
 
   if (state != ThreadState::DETACHED && state != ThreadState::CREATED) {
-    LOG(FATAL) << "thread is not detached but " << stringify(state)
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "thread is not detached but " << stringify(state)
                << ". shutting down hard";
     FATAL_ERROR_ABORT();
   }
@@ -252,7 +252,7 @@ void Thread::shutdown() {
   }
 
   if (_state.load() != ThreadState::STOPPED) {
-    LOG(FATAL) << "cannot shutdown thread, giving up";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot shutdown thread, giving up";
     FATAL_ERROR_ABORT();
   }
 }
@@ -274,7 +274,7 @@ bool Thread::isStopping() const {
 
 bool Thread::start(ConditionVariable* finishedCondition) {
   if (!isSystem() && !ApplicationServer::isPrepared()) {
-    LOG(FATAL) << "trying to start a thread '" << _name
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "trying to start a thread '" << _name
                << "' before prepare has finished, current state: "
                << (ApplicationServer::server == nullptr
                        ? -1

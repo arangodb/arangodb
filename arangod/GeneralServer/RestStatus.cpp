@@ -78,13 +78,13 @@ void RestStatusElement::printTree() const {
     element = element->_previous.get();
   }
 
-  LOG(INFO) << s;
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << s;
 }
 
 void RestStatus::printTree() const {
   if (_element != nullptr) {
     _element->printTree();
   } else {
-    LOG(INFO) << "TREE: EMPTY";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "TREE: EMPTY";
   }
 }

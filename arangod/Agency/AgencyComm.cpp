@@ -1170,7 +1170,7 @@ bool AgencyComm::ensureStructureInitialized() {
       std::vector<std::string>({AgencyCommManager::path(), "Secret"}));
 
   if (!secretValue.isString()) {
-    LOG(ERR) << "Couldn't find secret in agency!";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Couldn't find secret in agency!";
     return false;
   }
   std::string const secret = secretValue.copyString();
@@ -1738,10 +1738,10 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
 
     return result.successful();
   } catch (std::exception const& e) {
-    LOG(FATAL) << "Fatal error initializing agency " << e.what();
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Fatal error initializing agency " << e.what();
     FATAL_ERROR_EXIT();
   } catch (...) {
-    LOG(FATAL) << "Fatal error initializing agency";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Fatal error initializing agency";
     FATAL_ERROR_EXIT();
   }
 }

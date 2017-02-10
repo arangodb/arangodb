@@ -446,14 +446,14 @@ void RocksDBEngine::addAqlFunctions() const {
 
 void RocksDBEngine::verifyDirectories() {
   if (!TRI_IsDirectory(_basePath.c_str())) {
-    LOG(ERR) << "database path '" << _basePath << "' is not a directory";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "database path '" << _basePath << "' is not a directory";
 
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_INVALID);
   }
 
   if (!TRI_IsWritable(_basePath.c_str())) {
     // database directory is not writable for the current user... bad luck
-    LOG(ERR) << "database directory '" << _basePath
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "database directory '" << _basePath
              << "' is not writable for current user";
 
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
@@ -466,7 +466,7 @@ void RocksDBEngine::verifyDirectories() {
     int res = TRI_CreateDirectory(_databasePath.c_str(), systemError, errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "unable to create database directory '"
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to create database directory '"
                << _databasePath << "': " << errorMessage;
 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
@@ -474,7 +474,7 @@ void RocksDBEngine::verifyDirectories() {
   }
 
   if (!TRI_IsWritable(_databasePath.c_str())) {
-    LOG(ERR) << "database directory '" << _databasePath << "' is not writable";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "database directory '" << _databasePath << "' is not writable";
 
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
   }
