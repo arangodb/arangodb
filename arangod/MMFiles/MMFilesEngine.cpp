@@ -149,7 +149,7 @@ void MMFilesEngine::dropDatabase(Database* database, int& status) {
   };
   while (!MMFilesLogfileManager::instance()
           ->executeWhileNothingQueued(callback)) {
-    LOG(TRACE) << "Trying to shutdown dropped database, waiting for phase in which the collector thread does not have queued operations.";
+    LOG_TOPIC(TRACE, Logger::FIXME) << "Trying to shutdown dropped database, waiting for phase in which the collector thread does not have queued operations.";
     usleep(500000);
   }
   // stop compactor thread
@@ -2265,7 +2265,7 @@ int MMFilesEngine::writeDropMarker(TRI_voc_tick_t id) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(WARN) << "could not save drop database marker in log: "
+    LOG_TOPIC(WARN, Logger::FIXME) << "could not save drop database marker in log: "
               << TRI_errno_string(res);
   }
 
@@ -2297,7 +2297,7 @@ int MMFilesEngine::writeCreateMarker(TRI_voc_tick_t id,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(WARN) << "could not save create database marker in log: "
+    LOG_TOPIC(WARN, Logger::FIXME) << "could not save create database marker in log: "
               << TRI_errno_string(res);
   }
 
