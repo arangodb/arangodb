@@ -45,7 +45,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _supervision(false),
       _waitForSync(true),
       _supervisionFrequency(5.0),
-      _compactionStepSize(2000),
+      _compactionStepSize(200000),
       _compactionKeepSize(500),
       _supervisionGracePeriod(15.0),
       _cmdLineTimings(false)
@@ -232,7 +232,7 @@ void AgencyFeature::start() {
 
   _agent.reset(new consensus::Agent(consensus::config_t(
       _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
-      _agencyEndpoints, _supervision, false, _supervisionFrequency,
+      _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
       _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
       _cmdLineTimings)));
 
