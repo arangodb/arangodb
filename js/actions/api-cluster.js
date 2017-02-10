@@ -36,6 +36,8 @@ var cluster = require('@arangodb/cluster');
 //var internal = require('internal');
 var _ = require('lodash');
 
+var fetchKey = cluster.fetchKey;
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_cluster_test_GET
 // //////////////////////////////////////////////////////////////////////////////
@@ -449,40 +451,15 @@ actions.defineHttp({
     }
     var primary = req.parameters.primary;
 
-    var timeout = 60.0;
-
-    try {
-      if (req.parameters.hasOwnProperty('timeout')) {
-        timeout = Number(req.parameters.timeout);
-      }
-    } catch (e) {}
-
-    // Now get to work, first get the write lock on the Plan in the Agency:
-    var success = ArangoAgency.lockRead('Plan', timeout);
-    if (!success) {
-      actions.resultError(req, res, actions.HTTP_REQUEST_TIMEOUT, 0,
-        'could not get a read lock on Plan in Agency');
-      return;
+    var agency = ArangoAgency.get('Plan/DBServers/' + primary);
+    let secondary = fetchKey(agency, 'arango', 'Plan', 'DBServers', primary);
+    if (secondary === undefined) {
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+        'Primary with the given ID is not configured in Agency.');
     }
 
-    try {
-      var oldValue;
-      try {
-        oldValue = ArangoAgency.get('Plan/DBServers/' + primary, false, false);
-        oldValue = oldValue.arango.Plan.DBServers[primary];
-      } catch (e1) {
-        actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
-          'Primary with the given ID is not configured in Agency.');
-        return;
-      }
-
-      oldValue = oldValue['Plan/DBServers/' + primary];
-
-      actions.resultOk(req, res, actions.HTTP_OK, { primary: primary,
-      secondary: oldValue });
-    } finally {
-      ArangoAgency.unlockRead('Plan', timeout);
-    }
+    actions.resultOk(req, res, actions.HTTP_OK, { primary: primary,
+      secondary: secondary });
   }
 });
 
@@ -562,67 +539,32 @@ actions.defineHttp({
         '"newSecondary" are given in body and are strings');
       return;
     }
+    let agency = ArangoAgency.get('Plan/DBServers/' + body.primary);
 
-    var ttl = 60.0;
-    var timeout = 60.0;
-
-    if (body.hasOwnProperty('ttl') && typeof body.ttl === 'number') {
-      ttl = body.ttl;
-    }
-    if (body.hasOwnProperty('timeout') && typeof body.timeout === 'number') {
-      timeout = body.timeout;
-    }
-
-    // Now get to work, first get the write lock on the Plan in the Agency:
-    var success = ArangoAgency.lockWrite('Plan', ttl, timeout);
-    if (!success) {
-      actions.resultError(req, res, actions.HTTP_REQUEST_TIMEOUT, 0,
-        'could not get a write lock on Plan in Agency');
+    if (fetchKey(agency, 'arango', 'Plan', 'DBServers', body.primary) === undefined) {
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+        'Primary with the given ID is not configured in Agency.');
       return;
     }
 
-    try {
-      var oldValue;
-      try {
-        oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary, false,
-                                    false);
-        if (oldValue.arango.Plan.DBServers.hasOwnProperty(body.primary)) {
-          oldValue = oldValue.arango.Plan.DBServers[body.primary];
-        } else {
-          throw true;
-        }
-      } catch (e1) {
-        actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
-          'Primary with the given ID is not configured in Agency.');
-        return;
-      }
+    let operations = {};
+    operations['/arango/Plan/DBServers/' + body.primary] = body.newSecondary;
+    operations['/arango/Plan/Version'] = {'op': 'increment'};
 
-      if (oldValue !== body.oldSecondary) {
+    let preconditions = {};
+    preconditions['/arango/Plan/DBServers/' + body.primary] = {'old': body.oldSecondary};
+
+    try {
+      global.ArangoAgency.write([[operations, preconditions]]);
+    } catch (e) {
+      if (e.code === 412) {
+        oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary);
         actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
           'Primary does not have the given oldSecondary as ' +
-          'its secondary, current value: ' + oldValue);
+          'its secondary, current value: ' + JSON.stringify(oldValue));
         return;
       }
-      try {
-        ArangoAgency.set('Plan/DBServers/' + body.primary, body.newSecondary,
-          0);
-      } catch (e2) {
-        actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
-          'Cannot change secondary of given primary.');
-        return;
-      }
-
-      try {
-        ArangoAgency.increaseVersion('Plan/Version');
-      } catch (e3) {
-        actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
-          'Cannot increase Plan/Version.');
-        return;
-      }
-
-      actions.resultOk(req, res, actions.HTTP_OK, body);
-    } finally {
-      ArangoAgency.unlockWrite('Plan', timeout);
+      throw e;
     }
   }
 });
@@ -635,38 +577,29 @@ actions.defineHttp({
 function changeAllShardReponsibilities (oldServer, newServer) {
   // This is only called when we have the write lock and we "only" have to
   // make sure that either all or none of the shards are moved.
-  var collections = ArangoAgency.get('Plan/Collections', true, false);
+  var collections = ArangoAgency.get('Plan/Collections');
   collections = collections.arango.Plan.Collections;
-  var done = {};
-  try {
-    Object.keys(collections).forEach(function (collectionKey) {
-      var collection = collections[collectionKey];
-      var old = _.cloneDeep(collection);
 
-      Object.keys(collection.shards).forEach(function (shardKey) {
-        var servers = collection.shards[shardKey];
-        collection.shards[shardKey] = servers.map(function (server) {
-          if (server === oldServer) {
-            return newServer;
-          } else {
-            return server;
-          }
-        });
+  let operations = {};
+  let preconditions = {};
+  Object.keys(collections).forEach(function (collectionKey) {
+    var collection = collections[collectionKey];
+    var old = _.cloneDeep(collection);
+
+    Object.keys(collection.shards).forEach(function (shardKey) {
+      var servers = collection.shards[shardKey];
+      collection.shards[shardKey] = servers.map(function (server) {
+        if (server === oldServer) {
+          return newServer;
+        } else {
+          return server;
+        }
       });
-      ArangoAgency.set(collectionKey, collection, 0);
-      done[collectionKey] = old;
     });
-  } catch (e) {
-    // mop: rollback
-    try {
-      Object.keys(done).forEach(function (collectionKey) {
-        ArangoAgency.set(collectionKey, done[collectionKey], 0);
-      });
-    } catch (e2) {
-      console.error('Got error during rollback', e2);
-    }
-    throw e;
-  }
+    operations[collectionKey] = collection;
+    preconditions[collectionKey] = old;
+  });
+  return {operations, preconditions};
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -744,100 +677,33 @@ actions.defineHttp({
       return;
     }
 
-    var ttl = 60.0;
-    var timeout = 60.0;
+    let operations = {};
+    operations['Plan/DBServers/' + body.secondary] = body.primary;
+    operations['Plan/DBServers/' + body.primary] = {'op': 'delete'};
+    operations['Plan/Version'] = {'op': 'increment'};
 
-    if (body.hasOwnProperty('ttl') && typeof body.ttl === 'number') {
-      ttl = body.ttl;
-    }
-    if (body.hasOwnProperty('timeout') && typeof body.timeout === 'number') {
-      timeout = body.timeout;
-    }
+    let preconditions = {};
+    preconditions['Plan/DBServers/' + body.primary] = {'old': body.secondary};
 
-    // Now get to work, first get the write lock on the Plan in the Agency:
-    var success = ArangoAgency.lockWrite('Plan', ttl, timeout);
-    if (!success) {
-      actions.resultError(req, res, actions.HTTP_REQUEST_TIMEOUT, 0,
-        'could not get a write lock on Plan in Agency');
-      return;
-    }
+    let shardChanges = changeAllShardReponsibilities(body.primary, body.secondary);
+    operations = Object.assign(operations, shardChanges.operations);
+    preconditions = Object.assign(preconditions, shardChanges.preconditions);
 
     try {
-      var oldValue;
-      try {
-        oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary, false,
-          false);
-        oldValue = oldValue.arango.Plan.DBservers[body.primary];
-      } catch (e1) {
-        actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
-          'Primary with the given ID is not configured in Agency.');
-        return;
-      }
-      oldValue = oldValue['Plan/DBServers/' + body.primary];
-      if (oldValue !== body.secondary) {
+      global.ArangoAgency.write([[operations, preconditions]]);
+    } catch (e) {
+      if (e.code === 412) {
+        oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary);
         actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
-          'Primary does not have the given secondary as ' +
+          'Primary does not have the given oldSecondary as ' +
           'its secondary, current value: ' + oldValue);
         return;
       }
-      try {
-        ArangoAgency.remove('Plan/DBServers/' + body.primary, false);
-      } catch (e2) {
-        actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
-          'Cannot remove old primary entry.');
-        return;
-      }
-      try {
-        ArangoAgency.set('Plan/DBServers/' + body.secondary,
-          body.primary, 0);
-      } catch (e3) {
-        actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
-          'Cannot set secondary as primary.');
-        // Try to reset the old primary:
-        try {
-          ArangoAgency.set('Plan/DBServers/' + body.primary,
-            body.secondary, 0);
-        } catch (e4) {
-          actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
-            'Cannot set secondary as primary, could not ' +
-            'even reset the old value!');
-        }
-        return;
-      }
-
-      try {
-        // Now change all responsibilities for shards to the "new" primary
-        // body.secondary:
-        changeAllShardReponsibilities(body.primary, body.secondary);
-      } catch (e5) {
-        actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
-          'Could not change responsibilities for shards.');
-        // Try to reset the old primary:
-        try {
-          ArangoAgency.set('Plan/DBServers/' + body.primary,
-            body.secondary, 0);
-          ArangoAgency.remove('Plan/DBServers/' + body.secondary);
-        } catch (e4) {
-          actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
-            'Cannot change responsibility for shards and ' +
-            'could not even reset the old value!');
-        }
-        return;
-      }
-
-      try {
-        ArangoAgency.increaseVersion('Plan/Version');
-      } catch (e3) {
-        actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
-          'Cannot increase Plan/Version.');
-        return;
-      }
-
-      actions.resultOk(req, res, actions.HTTP_OK, {primary: body.secondary,
-      secondary: body.primary});
-    } finally {
-      ArangoAgency.unlockWrite('Plan', timeout);
+      throw e;
     }
+
+    actions.resultOk(req, res, actions.HTTP_OK, {primary: body.secondary,
+      secondary: body.primary});
   }
 });
 
