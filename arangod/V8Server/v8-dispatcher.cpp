@@ -238,7 +238,17 @@ V8Task::callbackFunction() {
     guard.work();
 
     if (error) {
-      V8Task::unregisterTask(_id, false);
+      MUTEX_LOCKER(guard, _tasksLock);
+
+      auto itr = _tasks.find(_id);
+
+      if (itr != _tasks.end()) {
+        // remove task from list of tasks if it is still active
+        if (this == (*itr).second.get()) {
+          // still the same task. must remove from map
+          _tasks.erase(itr);
+        }
+      }
       return;
     }
 

@@ -1,6 +1,12 @@
 # -*- mode: CMAKE; -*-
 
 set(CPACK_GENERATOR "RPM")
+if (CMAKE_DEBUG_FILENAMES_SHA_SUM)
+  message("IFFF!")
+  set(CPACK_DEBUG_DIRECTORY_PATTERN "/usr/lib*/debug/.build-id/*")
+else()
+  set(CPACK_DEBUG_DIRECTORY_PATTERN "/usr/lib*/debug/*")
+endif()
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Installation/rpm/arangodb.spec.in" "${CMAKE_CURRENT_BINARY_DIR}/arangodb.spec" @ONLY IMMEDIATE)
 set(CPACK_RPM_USER_BINARY_SPECFILE "${CMAKE_CURRENT_BINARY_DIR}/arangodb.spec")
 
@@ -47,7 +53,7 @@ include(arangod/dbg.cmake)
 add_custom_target(package-arongodb-server
   COMMAND ${CMAKE_COMMAND} .
   COMMAND ${CMAKE_CPACK_COMMAND} -G RPM
-  COMMAND cp "${CPACK_TEMPORARY_DIRECTORY}/${CPACK_CLIENT_PACKAGE_FILE_NAME}.rpm" "${PROJECT_BINARY_DIR}"
+  COMMAND cp "${CPACK_TEMPORARY_DIRECTORY}/*.rpm" "${PROJECT_BINARY_DIR}"
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
 list(APPEND PACKAGES_LIST package-arongodb-server)
 
