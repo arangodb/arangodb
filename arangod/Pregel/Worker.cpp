@@ -660,7 +660,7 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string const& path,
                                      VPackSlice const& message) {
-  ClusterComm* cc = ClusterComm::instance();
+  std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
   std::string baseUrl = Utils::baseUrl(_config.database());
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
   auto headers =
@@ -677,7 +677,7 @@ template <typename V, typename E, typename M>
 std::unique_ptr<ClusterCommResult> Worker<V, E, M>::_callConductorWithResponse(
     std::string const& path, VPackSlice const& message) {
   LOG(INFO) << "Calling the conductor";
-  ClusterComm* cc = ClusterComm::instance();
+  std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
   std::string baseUrl = Utils::baseUrl(_config.database());
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
   std::unordered_map<std::string, std::string> headers;

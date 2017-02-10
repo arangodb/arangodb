@@ -170,6 +170,7 @@ bool Conductor::_startGlobalStep() {
       _finalizeWorkers();
     } else {// just stop the timer
         _endTimeSecs = TRI_microtime();
+        LOG(INFO) << "Done execution took" << totalRuntimeSecs() << " s";
     }
     return false;
   }
@@ -550,7 +551,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     LOG(INFO) << body;
   }
 
-  ClusterComm* cc = ClusterComm::instance();
+  std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
   size_t nrDone = 0;
   size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
                                       LogTopic("Pregel Conductor"));
@@ -637,7 +638,7 @@ int Conductor::_sendToAllDBServers(std::string const& suffix,
                                    std::vector<ClusterCommRequest>& requests) {
   _respondedServers.clear();
 
-  ClusterComm* cc = ClusterComm::instance();
+  std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
   if (_dbServers.size() == 0) {
     LOG(WARN) << "No servers registered";
     return TRI_ERROR_FAILED;

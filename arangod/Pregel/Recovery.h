@@ -65,7 +65,7 @@ class RecoveryManager {
   // bool allServersAvailable(std::vector<ServerID> const& dbServers);
 };
 /*
-class RecoveryWorker {
+class CheckpointingManager {
   friend class RestPregelHandler;
 
   std::map<ShardID, ServerID> _secondaries;
@@ -75,7 +75,9 @@ class RecoveryWorker {
 
  public:
   template <typename V, typename E>
-  void replicateGraphData(GraphStore<V, E>* graphStore) {}
+  void replicateGraphData(GraphStore<V, E> const* graphStore) {}
+  
+  void restoreGraphData(GraphStore<V, E> const*)
 
   void reloadPlanData() { _secondaries.clear(); }
 };*/
