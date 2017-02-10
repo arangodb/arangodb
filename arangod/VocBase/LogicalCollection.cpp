@@ -43,13 +43,13 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
-#include "MMFiles/MMFilesLogfileManager.h"
+//#include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesToken.h"
 #include "MMFiles/MMFilesTransactionState.h"
-#include "MMFiles/MMFilesWalMarker.h"
-#include "MMFiles/MMFilesWalSlots.h"
+#include "MMFiles/MMFilesWalMarker.h" //crud marker -- TODO remove
+#include "MMFiles/MMFilesWalSlots.h"  //TODO -- remove
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
@@ -1322,7 +1322,7 @@ void LogicalCollection::open(bool ignoreErrors) {
     }
   }
 
-  if (!MMFilesLogfileManager::instance()->isInRecovery()) {
+  if (!engine->inRecovery()) {
     // build the index structures, and fill the indexes
     fillIndexes(&trx, *(indexList()));
   }
@@ -1430,7 +1430,6 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
                                                       VPackSlice const& info,
                                                       bool& created) {
   // TODO Get LOCK for the vocbase
-
   auto idx = lookupIndex(info);
   if (idx != nullptr) {
     created = false;
@@ -1466,8 +1465,8 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  bool const writeMarker =
-      !MMFilesLogfileManager::instance()->isInRecovery();
+  bool const writeMarker = !engine->inRecovery();
+  //    !MMFilesLogfileManager::instance()->isInRecovery();
   res = saveIndex(idx.get(), writeMarker);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1537,6 +1536,8 @@ int LogicalCollection::saveIndex(arangodb::Index* idx, bool writeMarker) {
   std::shared_ptr<VPackBuilder> builder;
   try {
     builder = idx->toVelocyPack(false);
+  } catch (arangodb::basics::Exception const& ex) {
+    return ex.code();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition";
     return TRI_ERROR_INTERNAL;
@@ -1548,33 +1549,9 @@ int LogicalCollection::saveIndex(arangodb::Index* idx, bool writeMarker) {
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->createIndex(_vocbase, cid(), idx->id(), builder->slice());
-
-  if (!writeMarker) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
+  
   int res = TRI_ERROR_NO_ERROR;
-
-  try {
-    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX,
-                                   _vocbase->id(), cid(), builder->slice());
-
-    MMFilesWalSlotInfoCopy slotInfo =
-        MMFilesLogfileManager::instance()->allocateAndWrite(marker,
-                                                                    false);
-
-    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
-    }
-
-    return TRI_ERROR_NO_ERROR;
-  } catch (arangodb::basics::Exception const& ex) {
-    res = ex.code();
-  } catch (...) {
-    res = TRI_ERROR_INTERNAL;
-  }
-
-  // TODO: what to do here?
+  engine->createIndexWalMarker(_vocbase, cid(), builder->slice(), writeMarker,res);
   return res;
 }
 
@@ -1644,38 +1621,20 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
   if (writeMarker) {
     int res = TRI_ERROR_NO_ERROR;
 
-    try {
-      VPackBuilder markerBuilder;
-      markerBuilder.openObject();
-      markerBuilder.add("id", VPackValue(std::to_string(iid)));
-      markerBuilder.close();
+    VPackBuilder markerBuilder;
+    markerBuilder.openObject();
+    markerBuilder.add("id", VPackValue(std::to_string(iid)));
+    markerBuilder.close();
+    engine->dropIndexWalMarker(_vocbase, cid(), markerBuilder.slice(),writeMarker,res);
 
-      MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_INDEX,
-                                     _vocbase->id(), cid(),
-                                     markerBuilder.slice());
-
-      MMFilesWalSlotInfoCopy slotInfo =
-          MMFilesLogfileManager::instance()->allocateAndWrite(marker,
-                                                                      false);
-
-      if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
-      }
-
+    if(! res){
       events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
-      return true;
-    } catch (basics::Exception const& ex) {
-      res = ex.code();
-    } catch (...) {
-      res = TRI_ERROR_INTERNAL;
-    }
-
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save index drop marker in log: "
+    } else {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save index drop marker in log: "
               << TRI_errno_string(res);
-    events::DropIndex("", std::to_string(iid), res);
-    // TODO: what to do here?
+      events::DropIndex("", std::to_string(iid), res);
+    }
   }
-
   return true;
 }
 

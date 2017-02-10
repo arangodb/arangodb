@@ -326,7 +326,6 @@
     },
 
     setFromAndTo: function (e) {
-      console.log(e);
       e.stopPropagation();
       var map = this.calculateEdgeDefinitionMap();
       var id;
@@ -607,6 +606,7 @@
       // if smart graph
       if ($('#new-is_smart').is(':checked')) {
         if ($('#new-numberOfShards').val() === '' || $('#new-smartGraphAttribute').val() === '') {
+          arangoHelper.arangoError('Smart Graph enabled', 'numberOfShards or smartGraphAttribute not set!');
           return;
         } else {
           newCollectionObject.isSmart = true;
@@ -810,7 +810,7 @@
           window.modalView.createCheckboxEntry(
             'new-is_smart',
             'Smart Graph',
-            true,
+            false,
             'Create a Smart Graph? Edge and vertex collections will be automatically generated. They are not allowed to be present before graph creation.',
             false
           )
