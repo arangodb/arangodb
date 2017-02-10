@@ -66,7 +66,6 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   void readCursor(aql::AstNode* condition, aql::Variable const* var,
                   std::string const& collectionName,
                   SingleCollectionTransaction& trx,
-                  arangodb::velocypack::Builder& result,
                   std::function<void(DocumentIdentifierToken const&)> cb);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -76,7 +75,7 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   bool getEdgesForVertex(
       std::string const& id, std::string const& collectionName,
       TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
-      arangodb::velocypack::Builder&, size_t& scannedIndex, size_t& filtered);
+      std::function<void(DocumentIdentifierToken const&)> cb);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Parse the direction parameter

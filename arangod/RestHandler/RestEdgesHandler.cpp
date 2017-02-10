@@ -63,13 +63,10 @@ RestStatus RestEdgesHandler::execute() {
   return RestStatus::DONE;
 }
 
-void RestEdgesHandler::readCursor(aql::AstNode* condition,
-    aql::Variable const* var,
-    std::string const& collectionName,
-    SingleCollectionTransaction& trx,
-    VPackBuilder& result,
+void RestEdgesHandler::readCursor(
+    aql::AstNode* condition, aql::Variable const* var,
+    std::string const& collectionName, SingleCollectionTransaction& trx,
     std::function<void(DocumentIdentifierToken const&)> cb) {
-
   Transaction::IndexHandle indexId;
   bool foundIdx = trx.getBestIndexHandleForFilterCondition(
       collectionName, condition, var, 1000, indexId);
@@ -98,12 +95,8 @@ void RestEdgesHandler::readCursor(aql::AstNode* condition,
 bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id, std::string const& collectionName,
     TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
-    VPackBuilder& result, size_t& scannedIndex, size_t& filtered) {
-  TRI_ASSERT(result.isOpenArray());
+    std::function<void(DocumentIdentifierToken const&)> cb) {
   trx.orderDitch(trx.cid());  // will throw when it fails
-
-  ManagedDocumentResult mmdr;
-  auto collection = trx.documentCollection();
 
   // Create a conditionBuilder that manages the AstNodes for querying
   aql::EdgeConditionBuilderContainer condBuilder;
@@ -112,57 +105,21 @@ bool RestEdgesHandler::getEdgesForVertex(
   aql::Variable const* var = condBuilder.getVariable();
 
   switch (direction) {
-    case TRI_EDGE_IN: 
-      {
-        auto cb = [&] (DocumentIdentifierToken const& token) {
-          if (collection->readDocument(&trx, mmdr, token)) {
-            result.add(VPackSlice(mmdr.vpack()));
-          }
-          scannedIndex++;
-        };
-        readCursor(condBuilder.getInboundCondition(), var, collectionName, trx,
-                   result, cb);
-        break;
-      }
-    case TRI_EDGE_OUT: 
-      {
-        auto cb = [&] (DocumentIdentifierToken const& token) {
-          if (collection->readDocument(&trx, mmdr, token)) {
-            result.add(VPackSlice(mmdr.vpack()));
-          }
-          scannedIndex++;
-        };
-        readCursor(condBuilder.getOutboundCondition(), var, collectionName, trx,
-                   result, cb);
-        break;
-      }
-    case TRI_EDGE_ANY: 
-      // We have to call both directions AND we have to unify reverse direction
-      {
-        std::unordered_set<DocumentIdentifierToken> found;
-        auto inboundCB = [&] (DocumentIdentifierToken const& token) {
-          if (collection->readDocument(&trx, mmdr, token)) {
-            result.add(VPackSlice(mmdr.vpack()));
-            // Mark edges we find
-            found.emplace(token);
-          }
-          scannedIndex++;
-        };
-        auto outboundCB = [&] (DocumentIdentifierToken const& token) {
-          if (found.find(token) == found.end()) {
-            // Only add those tokens we have not found yet
-            if (collection->readDocument(&trx, mmdr, token)) {
-              result.add(VPackSlice(mmdr.vpack()));
-            }
-            scannedIndex++;
-          }
-        };
-        readCursor(condBuilder.getInboundCondition(), var, collectionName, trx,
-                   result, inboundCB);
-        readCursor(condBuilder.getOutboundCondition(), var, collectionName, trx,
-                   result, outboundCB);
-        break;
-      }
+    case TRI_EDGE_IN:
+      readCursor(condBuilder.getInboundCondition(), var, collectionName, trx,
+                 cb);
+      break;
+    case TRI_EDGE_OUT:
+      readCursor(condBuilder.getOutboundCondition(), var, collectionName, trx,
+                 cb);
+      break;
+    case TRI_EDGE_ANY:
+      // We have to call both directions
+      readCursor(condBuilder.getInboundCondition(), var, collectionName, trx,
+                 cb);
+      readCursor(condBuilder.getOutboundCondition(), var, collectionName, trx,
+                 cb);
+      break;
   }
   return true;
 }
@@ -288,9 +245,23 @@ bool RestEdgesHandler::readEdges() {
   // build edges
   resultBuilder.add(VPackValue("edges"));  // only key
   resultBuilder.openArray();
-  // NOTE: collecitonName is the shard-name in DBServer case
-  bool ok = getEdgesForVertex(startVertex, collectionName, direction, trx,
-                              resultBuilder, scannedIndex, filtered);
+
+  auto collection = trx.documentCollection();
+  ManagedDocumentResult mmdr;
+  std::unordered_set<DocumentIdentifierToken> foundTokens;
+  auto cb = [&] (DocumentIdentifierToken const& token) {
+    if (foundTokens.find(token) == foundTokens.end()) {
+      if (collection->readDocument(&trx, mmdr, token)) {
+        resultBuilder.add(VPackSlice(mmdr.vpack()));
+      }
+      scannedIndex++;
+      // Mark edges we find
+      foundTokens.emplace(token);
+    }
+  };
+
+  // NOTE: collectionName is the shard-name in DBServer case
+  bool ok = getEdgesForVertex(startVertex, collectionName, direction, trx, cb);
   resultBuilder.close();
 
   res = trx.finish(res);
@@ -420,13 +391,26 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.add(VPackValue("edges"));  // only key
   resultBuilder.openArray();
 
+  auto collection = trx.documentCollection();
+  ManagedDocumentResult mmdr;
+  std::unordered_set<DocumentIdentifierToken> foundTokens;
+  auto cb = [&] (DocumentIdentifierToken const& token) {
+    if (foundTokens.find(token) == foundTokens.end()) {
+      if (collection->readDocument(&trx, mmdr, token)) {
+        resultBuilder.add(VPackSlice(mmdr.vpack()));
+      }
+      scannedIndex++;
+      // Mark edges we find
+      foundTokens.emplace(token);
+    }
+  };
+
   for (auto const& it : VPackArrayIterator(body)) {
     if (it.isString()) {
       std::string startVertex = it.copyString();
 
       // We ignore if this fails
-      getEdgesForVertex(startVertex, collectionName, direction, trx,
-                        resultBuilder, scannedIndex, filtered);
+      getEdgesForVertex(startVertex, collectionName, direction, trx, cb);
     }
   }
   resultBuilder.close();
