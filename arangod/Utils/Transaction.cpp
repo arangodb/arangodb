@@ -73,11 +73,6 @@ std::vector<std::vector<std::string>> Transaction::IndexHandle::fieldNames() con
   return _index->fieldNames();
 }
 
-/// @brief Only required by traversal should be removed ASAP
-bool Transaction::IndexHandle::isMMFilesEdgeIndex() const {
-  return _index->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX;
-}
-
 /// @brief IndexHandle getter method
 std::shared_ptr<arangodb::Index> Transaction::IndexHandle::getIndex() const {
   return _index;
@@ -1319,20 +1314,6 @@ TRI_col_type_e Transaction::getCollectionType(std::string const& collectionName)
 /// @brief return the name of a collection
 std::string Transaction::collectionName(TRI_voc_cid_t cid) { 
   return resolver()->getCollectionName(cid);
-}
-
-/// @brief return the edge index handle of collection
-Transaction::IndexHandle Transaction::edgeIndexHandle(std::string const& collectionName) {
-  if (!isEdgeCollection(collectionName)) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
-  }
-  auto indexes = indexesForCollection(collectionName); 
-  for (auto idx : indexes) {
-    if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
-      return IndexHandle(idx);
-    }
-  }
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
 }
 
 /// @brief Iterate over all elements of the collection.

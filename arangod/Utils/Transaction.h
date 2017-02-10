@@ -142,8 +142,6 @@ class Transaction {
     }
     std::vector<std::vector<std::string>> fieldNames() const;
 
-    bool isMMFilesEdgeIndex() const;
-
    public:
     std::shared_ptr<arangodb::Index> getIndex() const;
   };
@@ -317,9 +315,6 @@ class Transaction {
 
   /// @brief return the name of a collection
   std::string collectionName(TRI_voc_cid_t cid); 
-  
-  /// @brief return the edge index handle of collection
-  IndexHandle edgeIndexHandle(std::string const&); 
   
   /// @brief Iterate over all elements of the collection.
   void invokeOnAllElements(std::string const& collectionName,
