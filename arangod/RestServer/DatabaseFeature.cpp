@@ -137,18 +137,15 @@ void DatabaseManagerThread::run() {
           // regular database
           // ---------------------------
 
-
           LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "physically removing database directory '"
                      << engine->databasePath(database) << "' of database '"
                      << database->name() << "'";
-
-          std::string path;
 
           // remove apps directory for database
           auto appPath = dealer->appPath();
 
           if (database->isOwnAppsDirectory() && !appPath.empty()) {
-            path = arangodb::basics::FileUtils::buildFilename(
+            std::string path = arangodb::basics::FileUtils::buildFilename(
                 arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
                 database->name());
 
@@ -159,6 +156,8 @@ void DatabaseManagerThread::run() {
               TRI_RemoveDirectory(path.c_str());
             }
           }
+          
+          engine->dropDatabase(database);
         }
 
         delete database;
