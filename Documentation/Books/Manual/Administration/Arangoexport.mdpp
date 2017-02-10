@@ -6,3 +6,17 @@ _arangoexport_ can be invoked by executing
 the following command:
 
     unix> arangoexport --output-directory "dump"
+
+
+*** export json
+*** export jsonl
+
+*** export xgmml
+**** export with collection defined
+
+    unix> arangoexport  --type xgmml --graph-name mygraph --collection vertex --collection edge
+
+This export the unnamed graph with vertex collection vertex and edge collection edge into the xgmml file mygraph.xgmml.
+
+
+**** export with graph defined

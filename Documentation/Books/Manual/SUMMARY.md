@@ -193,6 +193,7 @@
 #  * [Server Internals](Architecture/ServerInternals.md)
 #
 * [Release notes](ReleaseNotes/README.md)
+  * [Whats New in 3.2](ReleaseNotes/NewFeatures32.md)
   * [Whats New in 3.1](ReleaseNotes/NewFeatures31.md)
   * [Incompatible changes in 3.1](ReleaseNotes/UpgradingChanges31.md)
   * [Whats New in 3.0](ReleaseNotes/NewFeatures30.md)
