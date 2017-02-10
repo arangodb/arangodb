@@ -43,6 +43,8 @@ v3.2.alpha1 (2017-02-05)
 v3.1.11 (XXXX-XX-XX)
 --------------------
 
+* ui: #2308
+
 * fixed sort issue in cluster, occurring when one of the local sort buffers of a
   GatherNode was empty
 
