@@ -111,7 +111,7 @@ void ExportFeature::validateOptions(
   if (1 == n) {
     _outputDirectory = positionals[0];
   } else if (1 < n) {
-    LOG(FATAL) << "expecting at most one directory, got " +
+    LOG_TOPIC(FATAL, Logger::CONFIG) << "expecting at most one directory, got " +
                       StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
   }
@@ -125,14 +125,14 @@ void ExportFeature::validateOptions(
   }
 
   if (_graphName.empty() && _collections.empty()) {
-    LOG(FATAL) << "expecting at least one collection or one graph name";
+    LOG_TOPIC(FATAL, Logger::CONFIG) << "expecting at least one collection or one graph name";
     FATAL_ERROR_EXIT();
   }
 
   std::transform(_typeExport.begin(), _typeExport.end(), _typeExport.begin(), ::tolower);
 
   if (_typeExport == "xgmml" && _graphName.empty() ) {
-    LOG(FATAL) << "expecting a graph name to dump a graph";
+    LOG_TOPIC(FATAL, Logger::CONFIG) << "expecting a graph name to dump a graph";
     FATAL_ERROR_EXIT();
   }
 }
@@ -153,13 +153,13 @@ void ExportFeature::prepare() {
 
   if (_outputDirectory.empty() ||
       (TRI_ExistsFile(_outputDirectory.c_str()) && !isDirectory)) {
-    LOG(FATAL) << "cannot write to output directory '" << _outputDirectory
+    LOG_TOPIC(FATAL, Logger::SYSCALL) << "cannot write to output directory '" << _outputDirectory
                << "'";
     FATAL_ERROR_EXIT();
   }
 
   if (isDirectory && !isEmptyDirectory && !_overwrite) {
-    LOG(FATAL) << "output directory '" << _outputDirectory
+    LOG_TOPIC(FATAL, Logger::SYSCALL) << "output directory '" << _outputDirectory
                << "' already exists. use \"--overwrite true\" to "
                   "overwrite data in it";
     FATAL_ERROR_EXIT();
@@ -172,7 +172,7 @@ void ExportFeature::prepare() {
                                   errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "unable to create output directory '" << _outputDirectory
+      LOG_TOPIC(ERR, Logger::SYSCALL) << "unable to create output directory '" << _outputDirectory
                << "': " << errorMessage;
       FATAL_ERROR_EXIT();
     }
@@ -190,7 +190,7 @@ void ExportFeature::start() {
   try {
     httpClient = client->createHttpClient();
   } catch (...) {
-    LOG(FATAL) << "cannot create server connection, giving up!";
+    LOG_TOPIC(FATAL, Logger::COMMUNICATION) << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
 
@@ -201,10 +201,10 @@ void ExportFeature::start() {
   httpClient->getServerVersion();
 
   if (!httpClient->isConnected()) {
-    LOG(ERR) << "Could not connect to endpoint '" << client->endpoint()
+    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "Could not connect to endpoint '" << client->endpoint()
              << "', database: '" << client->databaseName() << "', username: '"
              << client->username() << "'";
-    LOG(FATAL) << httpClient->getErrorMessage() << "'";
+    LOG_TOPIC(FATAL, Logger::COMMUNICATION) << httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -353,9 +353,9 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClie
 
     if (response->getHttpReturnCode() == 404) {
       if (_currentGraph.size()) {
-        LOG(FATAL) << "Graph '" << _currentGraph << "' not found.";
+        LOG_TOPIC(FATAL, Logger::CONFIG) << "Graph '" << _currentGraph << "' not found.";
       } else if (_currentCollection.size()) {
-        LOG(FATAL) << "Collection " << _currentCollection << "not found.";
+        LOG_TOPIC(FATAL, Logger::CONFIG) << "Collection " << _currentCollection << "not found.";
       }
 
       FATAL_ERROR_EXIT();
