@@ -1533,7 +1533,8 @@ AgencyCommResult AgencyComm::send(
   if (cc == nullptr) {
     // nullptr only happens during controlled shutdown
     result._message = "could not send request to agency because of shutdown";
-    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "could not send request to agency";
+    LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
+      << "could not send request to agency because of shutdown";
 
     return result;
   }
