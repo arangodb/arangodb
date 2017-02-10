@@ -32,7 +32,7 @@ AgentCallback::AgentCallback() :
   _agent(0), _last(0), _startTime(0.0), _toLog(0) {}
 
 AgentCallback::AgentCallback(Agent* agent, std::string const& slaveID,
-                             index_t last, index_t toLog)
+                             index_t last, size_t toLog)
     : _agent(agent), _last(last), _slaveID(slaveID),
       _startTime(TRI_microtime())  {}
 
