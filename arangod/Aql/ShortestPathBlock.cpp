@@ -75,14 +75,16 @@ struct ConstDistanceExpanderLocal {
 
   void operator()(VPackSlice const& v, std::vector<VPackSlice>& resEdges,
                   std::vector<VPackSlice>& neighbors) {
+    TRI_ASSERT(v.isString());
+    std::string id = v.copyString();
     ManagedDocumentResult* mmdr = _block->_mmdr.get();
     std::unique_ptr<arangodb::OperationCursor> edgeCursor;
     for (auto const& edgeCollection : _block->_collectionInfos) {
       TRI_ASSERT(edgeCollection != nullptr);
       if (_isReverse) {
-        edgeCursor = edgeCollection->getReverseEdges(v, mmdr);
+        edgeCursor = edgeCollection->getReverseEdges(id, mmdr);
       } else {
-        edgeCursor = edgeCollection->getEdges(v, mmdr);
+        edgeCursor = edgeCollection->getEdges(id, mmdr);
       }
     
       LogicalCollection* collection = edgeCursor->collection();
@@ -208,15 +210,17 @@ struct EdgeWeightExpanderLocal {
 
   void operator()(VPackSlice const& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
+    TRI_ASSERT(source.isString());
+    std::string id = source.copyString();
     ManagedDocumentResult* mmdr = _block->_mmdr.get();
     std::unique_ptr<arangodb::OperationCursor> edgeCursor;
     std::unordered_map<VPackSlice, size_t> candidates;
     for (auto const& edgeCollection : _block->_collectionInfos) {
       TRI_ASSERT(edgeCollection != nullptr);
       if (_reverse) {
-        edgeCursor = edgeCollection->getReverseEdges(source, mmdr);
+        edgeCursor = edgeCollection->getReverseEdges(id, mmdr);
       } else {
-        edgeCursor = edgeCollection->getEdges(source, mmdr);
+        edgeCursor = edgeCollection->getEdges(id, mmdr);
       }
       
       candidates.clear();
