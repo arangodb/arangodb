@@ -132,6 +132,38 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
 MMFilesEngine::~MMFilesEngine() {
 }
 
+
+// perform a physical deletion of the database
+void MMFilesEngine::dropDatabase(Database* database, int& status) {
+  // delete persistent indexes for this database
+  RocksDBFeature::dropDatabase(database->id());
+
+  // To shutdown the database (which destroys all LogicalCollection
+  // objects of all collections) we need to make sure that the
+  // Collector does not interfere. Therefore we execute the shutdown
+  // in a phase in which the collector thread does not have any
+  // queued operations, a service which it offers:
+  auto callback = [&database]() {
+    database->shutdown();
+    usleep(10000);
+  };
+  while (!MMFilesLogfileManager::instance()
+          ->executeWhileNothingQueued(callback)) {
+    LOG(TRACE) << "Trying to shutdown dropped database, waiting for phase in which the collector thread does not have queued operations.";
+    usleep(500000);
+  }
+  // stop compactor thread
+  shutdownDatabase(database);
+
+  {
+    WRITE_LOCKER(locker, _pathsLock);
+    _collectionPaths.erase(database->id());
+  }
+
+  status = dropDatabaseDirectory(databaseDirectory(database->id()));
+}
+
+
 // add the storage engine's specifc options to the global list of options
 void MMFilesEngine::collectOptions(std::shared_ptr<options::ProgramOptions>) {
 }
@@ -184,6 +216,10 @@ void MMFilesEngine::start() {
 // write requests to the storage engine after this call
 void MMFilesEngine::stop() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
+  
+  auto logfileManager = MMFilesLogfileManager::instance();
+  logfileManager->flush(true, true, false);
+  logfileManager->waitForCollector();
 }
   
 TransactionState* MMFilesEngine::createTransactionState(TRI_vocbase_t* vocbase) {
@@ -490,29 +526,31 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-TRI_vocbase_t* MMFilesEngine::openDatabase(VPackSlice const& parameters, bool isUpgrade) {
-  VPackSlice idSlice = parameters.get("id");
+TRI_vocbase_t* MMFilesEngine::openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) {
+  VPackSlice idSlice = args.get("id");
   TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()));
-  std::string const name = parameters.get("name").copyString();
-  
+  std::string const name = args.get("name").copyString();
+
   bool const wasCleanShutdown = MMFilesLogfileManager::instance()->hasFoundLastTick();
+  status = TRI_ERROR_NO_ERROR;
+
+  //try catch?!
   return openExistingDatabase(id, name, wasCleanShutdown, isUpgrade);
 }
 
-// asks the storage engine to create a database as specified in the VPack
-// Slice object and persist the creation info. It is guaranteed by the server that 
-// no other active database with the same name and id exists when this function
-// is called. If this operation fails somewhere in the middle, the storage 
-// engine is required to fully clean up the creation and throw only then, 
-// so that subsequent database creation requests will not fail.
-// the WAL entry for the database creation will be written *after* the call
-// to "createDatabase" returns
-TRI_vocbase_t* MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) {
+
+TRI_vocbase_t* MMFilesEngine::createDatabaseMMFiles(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) {
   std::string const name = data.get("name").copyString();
 
-  waitUntilDeletion(id, true);
+  int res = 0;
+  waitUntilDeletion(id, true, res);
   
-  int res = createDatabaseDirectory(id, name);
+  // //assert?!
+  // if (res != TRI_ERROR_NO_ERROR) {
+  //   THROW_ARANGO_EXCEPTION(res);
+  // }
+
+  res = createDatabaseDirectory(id, name);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -521,35 +559,23 @@ TRI_vocbase_t* MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocy
   return openExistingDatabase(id, name, true, false);
 }
 
-// asks the storage engine to drop the specified database and persist the 
-// deletion info. Note that physical deletion of the database data must not 
-// be carried out by this call, as there may still be readers of the database's data. 
-// It is recommended that this operation only sets a deletion flag for the database 
-// but let's an async task perform the actual deletion. 
-// the WAL entry for database deletion will be written *after* the call
-// to "prepareDropDatabase" returns
-int MMFilesEngine::prepareDropDatabase(TRI_vocbase_t* vocbase) {
+void MMFilesEngine::prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker, int& status)  {
   // signal the compactor thread to finish
   beginShutdownCompactor(vocbase);
 
-  return saveDatabaseParameters(vocbase->id(), vocbase->name(), true);
-}
-
-// perform a physical deletion of the database      
-int MMFilesEngine::dropDatabase(TRI_vocbase_t* vocbase) {
-  // stop compactor thread
-  shutdownDatabase(vocbase);
-
-  {
-    WRITE_LOCKER(locker, _pathsLock);
-    _collectionPaths.erase(vocbase->id());
+  status = saveDatabaseParameters(vocbase->id(), vocbase->name(), true);
+    
+  if (status == TRI_ERROR_NO_ERROR) {
+    if (useWriteMarker) {
+      // TODO: what shall happen in case writeDropMarker() fails?
+      writeDropMarker(vocbase->id());
+    }
   }
-
-  return dropDatabaseDirectory(databaseDirectory(vocbase->id()));
 }
+
 
 /// @brief wait until a database directory disappears
-int MMFilesEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force) {
+void MMFilesEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) {
   std::string const path = databaseDirectory(id);
   
   int iterations = 0;
@@ -562,9 +588,11 @@ int MMFilesEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force) {
 
       if (force) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "forcefully deleting database directory '" << path << "'";
-        return dropDatabaseDirectory(path);
+        status = dropDatabaseDirectory(path);
+        return;
       }
-      return TRI_ERROR_INTERNAL;
+      status = TRI_ERROR_INTERNAL;
+      return;
     }
 
     if (iterations == 5 * 20) {
@@ -575,7 +603,8 @@ int MMFilesEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force) {
     usleep(50000);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  status = TRI_ERROR_NO_ERROR;
+  return;
 }
 
 
@@ -2207,3 +2236,71 @@ int MMFilesEngine::syncJournalCollection(LogicalCollection* collection) {
 
   return static_cast<MMFilesCollection*>(collection->getPhysical())->syncActiveJournal();
 }
+
+/// @brief writes a drop-database marker into the log
+int MMFilesEngine::writeDropMarker(TRI_voc_tick_t id) {
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("id", VPackValue(std::to_string(id)));
+    builder.close();
+
+    MMFilesDatabaseMarker marker(TRI_DF_MARKER_VPACK_DROP_DATABASE, id,
+                                 builder.slice());
+
+    MMFilesWalSlotInfoCopy slotInfo =
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker,
+                                                                    false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      // throw an exception which is caught at the end of this function
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(WARN) << "could not save drop database marker in log: "
+              << TRI_errno_string(res);
+  }
+
+  return res;
+}
+
+bool MMFilesEngine::inRecovery() { return MMFilesLogfileManager::instance()->isInRecovery(); }
+
+/// @brief writes a create-database marker into the log
+int MMFilesEngine::writeCreateMarker(TRI_voc_tick_t id,
+                                       VPackSlice const& slice) {
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    MMFilesDatabaseMarker marker(TRI_DF_MARKER_VPACK_CREATE_DATABASE, id,
+                                 slice);
+    MMFilesWalSlotInfoCopy slotInfo =
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker,
+                                                                    false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      // throw an exception which is caught at the end of this function
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(WARN) << "could not save create database marker in log: "
+              << TRI_errno_string(res);
+  }
+
+  return res;
+}
+

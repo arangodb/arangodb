@@ -171,3 +171,16 @@ size_t TraverserEngineRegistry::numberRegisteredEngines() {
   return _engines.size();
 }
 
+/// @brief destroy all registered engines
+void TraverserEngineRegistry::destroyAll() {
+  std::vector<TraverserEngineID> engines;
+  {
+    READ_LOCKER(readLocker, _lock);
+    for (auto& p : _engines) {
+      engines.push_back(p.first);
+    }
+  }
+  for (auto& i : engines) {
+    destroy(i, true);
+  }
+}
