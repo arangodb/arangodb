@@ -185,7 +185,7 @@ void StatisticsFeature::start() {
   _statisticsThread.reset(new StatisticsThread);
 
   if (!_statisticsThread->start()) {
-    LOG(FATAL) << "could not start statistics thread";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not start statistics thread";
     FATAL_ERROR_EXIT();
   }
 }

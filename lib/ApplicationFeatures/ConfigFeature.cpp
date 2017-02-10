@@ -113,7 +113,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     auto name = files[i];
 
     if (seen.find(name) != seen.end()) {
-      LOG(FATAL) << "circular includes, seen '" << name << "' twice";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "circular includes, seen '" << name << "' twice";
       FATAL_ERROR_EXIT();
     }
 

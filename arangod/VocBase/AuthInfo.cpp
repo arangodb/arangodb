@@ -53,21 +53,21 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
   VPackSlice const userSlice = slice.get("user");
 
   if (!userSlice.isString()) {
-    LOG(DEBUG) << "cannot extract username";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract username";
     return AuthEntry();
   }
 
   VPackSlice const authDataSlice = slice.get("authData");
 
   if (!authDataSlice.isObject()) {
-    LOG(DEBUG) << "cannot extract authData";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract authData";
     return AuthEntry();
   }
 
   VPackSlice const simpleSlice = authDataSlice.get("simple");
 
   if (!simpleSlice.isObject()) {
-    LOG(DEBUG) << "cannot extract simple";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract simple";
     return AuthEntry();
   }
 
@@ -77,7 +77,7 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
 
   if (!methodSlice.isString() || !saltSlice.isString() ||
       !hashSlice.isString()) {
-    LOG(DEBUG) << "cannot extract password internals";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract password internals";
     return AuthEntry();
   }
 
@@ -86,7 +86,7 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
   VPackSlice const activeSlice = authDataSlice.get("active");
 
   if (!activeSlice.isBoolean()) {
-    LOG(DEBUG) << "cannot extract active flag";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract active flag";
     return AuthEntry();
   }
 
@@ -232,7 +232,7 @@ void AuthInfo::reload() {
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
 
   if (vocbase == nullptr) {
-    LOG(DEBUG) << "system database is unknown, cannot load authentication "
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown, cannot load authentication "
                << "and authorization information";
     return;
   }
@@ -253,7 +253,7 @@ void AuthInfo::reload() {
                              queryStr.length(), nullBuilder, objectBuilder,
                              arangodb::aql::PART_MAIN);
 
-  LOG(DEBUG) << "starting to load authentication and authorization information";
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "starting to load authentication and authorization information";
   TRI_ASSERT(_queryRegistry != nullptr); 
   auto queryResult = query.execute(_queryRegistry);
   
@@ -272,7 +272,7 @@ void AuthInfo::reload() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   if (!usersSlice.isArray()) {
-    LOG(ERR) << "cannot read users from _users collection";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read users from _users collection";
     return;
   }
 
@@ -409,7 +409,7 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   std::string::size_type n = up.find(':', 0);
 
   if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-    LOG(TRACE) << "invalid authentication data found, cannot extract "
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "invalid authentication data found, cannot extract "
                   "username/password";
     return AuthResult();
   }
@@ -455,7 +455,7 @@ AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
   std::vector<std::string> const parts = StringUtils::split(jwt, '.');
 
   if (parts.size() != 3) {
-    LOG(TRACE) << "Secret contains " << parts.size() << " parts";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Secret contains " << parts.size() << " parts";
     return AuthResult();
   }
   
@@ -464,20 +464,20 @@ AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
   std::string const& signature = parts[2];
 
   if (!validateJwtHeader(header)) {
-    LOG(TRACE) << "Couldn't validate jwt header " << header;
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Couldn't validate jwt header " << header;
     return AuthResult();
   }
 
   AuthJwtResult result = validateJwtBody(body);
   if (!result._authorized) {
-    LOG(TRACE) << "Couldn't validate jwt body " << body;
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Couldn't validate jwt body " << body;
     return AuthResult();
   }
 
   std::string const message = header + "." + body;
 
   if (!validateJwtHMAC256Signature(message, signature)) {
-    LOG(TRACE) << "Couldn't validate jwt signature " << signature << " " << _jwtSecret;
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Couldn't validate jwt signature " << signature << " " << _jwtSecret;
     return AuthResult();
   }
   WRITE_LOCKER(writeLocker, _authJwtLock);
@@ -493,11 +493,11 @@ std::shared_ptr<VPackBuilder> AuthInfo::parseJson(std::string const& str,
     parser.parse(str);
     result = parser.steal();
   } catch (std::bad_alloc const&) {
-    LOG(ERR) << "Out of memory parsing " << hint << "!";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Out of memory parsing " << hint << "!";
   } catch (VPackException const& ex) {
-    LOG(DEBUG) << "Couldn't parse " << hint << ": " << ex.what();
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Couldn't parse " << hint << ": " << ex.what();
   } catch (...) {
-    LOG(ERR) << "Got unknown exception trying to parse " << hint;
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Got unknown exception trying to parse " << hint;
   }
 
   return result;

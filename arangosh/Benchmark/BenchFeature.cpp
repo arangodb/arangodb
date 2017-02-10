@@ -194,7 +194,7 @@ void BenchFeature::start() {
 
   if (benchmark == nullptr) {
     ARANGOBENCH = nullptr;
-    LOG(FATAL) << "invalid test case name '" << _testCase << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid test case name '" << _testCase << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -268,7 +268,7 @@ void BenchFeature::start() {
       }
 
       if (_progress && numOperations >= nextReportValue) {
-        LOG(INFO) << "number of operations: " << nextReportValue;
+        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "number of operations: " << nextReportValue;
         nextReportValue += stepValue;
       }
 
@@ -432,11 +432,11 @@ void BenchFeature::printResult(BenchRunResult const& result) {
             << std::endl;
 
   if (result.failures > 0) {
-    LOG(WARN) << "WARNING: " << result.failures
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "WARNING: " << result.failures
               << " arangobench request(s) failed!";
   }
   if (result.incomplete > 0) {
-    LOG(WARN) << "WARNING: " << result.incomplete
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "WARNING: " << result.incomplete
               << " arangobench requests with incomplete results!";
   }
 }

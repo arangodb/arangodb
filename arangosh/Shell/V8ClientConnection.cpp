@@ -179,13 +179,13 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
 
   if (isConnected() &&
       _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
-    LOG(INFO) << "Connected to ArangoDB "
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "Connected to ArangoDB "
               << "'" << endpointSpecification() << "', "
               << "version " << _version << " [" << _mode << "], "
               << "database '" << _databaseName << "', "
               << "username: '" << _username << "'";
   } else {
-    LOG(ERR) << "Could not connect to endpoint '" << client->endpoint()
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not connect to endpoint '" << client->endpoint()
              << "', username: '" << client->username() << "'";
 
     std::string errorMsg = "could not connect";
@@ -333,7 +333,7 @@ static void ClientConnection_ConstructorCallback(
   if (v8connection->isConnected() &&
       v8connection->lastHttpReturnCode() ==
           (int)rest::ResponseCode::OK) {
-    LOG(INFO) << "Connected to ArangoDB "
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "Connected to ArangoDB "
               << "'" << v8connection->endpointSpecification() << "', "
               << "version " << v8connection->version() << " ["
               << v8connection->mode() << "], "

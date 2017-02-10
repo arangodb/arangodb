@@ -97,7 +97,7 @@ void TRI_usleep(unsigned long waitTime) {
   }
 
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    LOG(FATAL) << "internal error in TRI_usleep()";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "internal error in TRI_usleep()";
     FATAL_ERROR_EXIT();
   }
 
@@ -113,7 +113,7 @@ void TRI_usleep(unsigned long waitTime) {
 
   if (result != WAIT_OBJECT_0) {
     CloseHandle(hTimer);
-    LOG(FATAL) << "couldn't wait for timer in TRI_usleep()";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "couldn't wait for timer in TRI_usleep()";
     FATAL_ERROR_EXIT();
   }
 
@@ -135,7 +135,7 @@ static void InvalidParameterHandler(
     const wchar_t* file,        // file where code resides - NULL
     unsigned int line,          // line within file - NULL
     uintptr_t pReserved) {      // in case microsoft forget something
-  LOG(ERR) << "Invalid handle parameter passed";
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Invalid handle parameter passed";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,13 +224,13 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
       errorCode = WSAStartup(wVersionRequested, &wsaData);
 
       if (errorCode != 0) {
-        LOG(ERR) << "Could not find a usable Winsock DLL. WSAStartup returned "
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not find a usable Winsock DLL. WSAStartup returned "
                     "an error.";
         return -1;
       }
 
       if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-        LOG(ERR) << "Could not find a usable Winsock DLL. WSAStartup did not "
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not find a usable Winsock DLL. WSAStartup did not "
                     "return version 2.2.";
         WSACleanup();
         return -1;
@@ -239,7 +239,7 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
     }
 
     default: {
-      LOG(ERR) << "Invalid windows initialization called";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Invalid windows initialization called";
       return -1;
     }
   }

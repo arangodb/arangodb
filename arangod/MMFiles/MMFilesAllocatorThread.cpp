@@ -128,16 +128,16 @@ void MMFilesAllocatorThread::run() {
       }
     } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
-      LOG(ERR) << "got unexpected error in allocatorThread: "
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got unexpected error in allocatorThread: "
                << TRI_errno_string(res);
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
-      LOG(ERR) << "got unspecific error in allocatorThread";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got unspecific error in allocatorThread";
     }
 
     if (worked) {
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG(ERR) << "unable to create new WAL reserve logfile: " << TRI_errno_string(res);
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to create new WAL reserve logfile: " << TRI_errno_string(res);
       }
 
       // broadcast new allocator status

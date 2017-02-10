@@ -56,7 +56,7 @@ void MMFilesWalRecoveryFeature::start() {
   int res = logfileManager->runRecovery();
   
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(FATAL) << "unable to finish WAL recovery: " << TRI_errno_string(res);
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to finish WAL recovery: " << TRI_errno_string(res);
     FATAL_ERROR_EXIT();
   }
 

@@ -119,7 +119,7 @@ class ReadLocker {
 
 #ifdef TRI_SHOW_LOCK_TIME
     if (_time > TRI_SHOW_LOCK_THRESHOLD) {
-      LOG(WARN) << "ReadLocker " << _file << ":" << _line << " took " << _time << " s";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "ReadLocker " << _file << ":" << _line << " took " << _time << " s";
     }
 #endif
   }

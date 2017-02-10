@@ -157,7 +157,7 @@ void ImportFeature::validateOptions(
       _filename = positionals[0];
     }
   } else if (1 < n) {
-    LOG(FATAL) << "expecting at most one filename, got " +
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "expecting at most one filename, got " +
                       StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
   }
@@ -168,7 +168,7 @@ void ImportFeature::validateOptions(
     // it's not sensible to raise the batch size beyond this value 
     // because the server has a built-in limit for the batch size too 
     // and will reject bigger HTTP request bodies
-    LOG(WARN) << "capping --batch-size value to " << MaxBatchSize;
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --batch-size value to " << MaxBatchSize;
     _chunkSize = MaxBatchSize;
   }
 }
@@ -184,7 +184,7 @@ void ImportFeature::start() {
   try {
     httpClient = client->createHttpClient();
   } catch (...) {
-    LOG(FATAL) << "cannot create server connection, giving up!";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
 
@@ -195,10 +195,10 @@ void ImportFeature::start() {
   httpClient->getServerVersion();
 
   if (!httpClient->isConnected()) {
-    LOG(ERR) << "Could not connect to endpoint '" << client->endpoint()
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not connect to endpoint '" << client->endpoint()
              << "', database: '" << client->databaseName() << "', username: '"
              << client->username() << "'";
-    LOG(FATAL) << httpClient->getErrorMessage() << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -254,7 +254,7 @@ void ImportFeature::start() {
   if (_quote.length() <= 1) {
     ih.setQuote(_quote);
   } else {
-    LOG(FATAL) << "Wrong length of quote character.";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Wrong length of quote character.";
     FATAL_ERROR_EXIT();
   }
 
@@ -269,30 +269,30 @@ void ImportFeature::start() {
   if (_separator.length() == 1 || _separator == "\\r" || _separator == "\\n" || _separator == "\\t") {
     ih.setSeparator(_separator);
   } else {
-    LOG(FATAL) << "_separator must be exactly one character.";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "_separator must be exactly one character.";
     FATAL_ERROR_EXIT();
   }
 
   // collection name
   if (_collectionName == "") {
-    LOG(FATAL) << "Collection name is missing.";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Collection name is missing.";
     FATAL_ERROR_EXIT();
   }
 
   // filename
   if (_filename == "") {
-    LOG(FATAL) << "File name is missing.";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "File name is missing.";
     FATAL_ERROR_EXIT();
   }
 
   if (_filename != "-" && !FileUtils::isRegularFile(_filename)) {
     if (!FileUtils::exists(_filename)) {
-      LOG(FATAL) << "Cannot open file '" << _filename << "'. File not found.";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Cannot open file '" << _filename << "'. File not found.";
     } else if (FileUtils::isDirectory(_filename)) {
-      LOG(FATAL) << "Specified file '" << _filename
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Specified file '" << _filename
                  << "' is a directory. Please use a regular file.";
     } else {
-      LOG(FATAL) << "Cannot open '" << _filename << "'. Invalid file type.";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Cannot open '" << _filename << "'. Invalid file type.";
     }
 
     FATAL_ERROR_EXIT();
@@ -305,7 +305,7 @@ void ImportFeature::start() {
 
   if (_onDuplicateAction != "error" && _onDuplicateAction != "update" &&
       _onDuplicateAction != "replace" && _onDuplicateAction != "ignore") {
-    LOG(FATAL)
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "Invalid value for '--on-duplicate'. Possible values: 'error', "
            "'update', 'replace', 'ignore'.";
     FATAL_ERROR_EXIT();
@@ -339,7 +339,7 @@ void ImportFeature::start() {
     }
 
     else {
-      LOG(FATAL) << "Wrong type '" << _typeImport << "'.";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Wrong type '" << _typeImport << "'.";
       FATAL_ERROR_EXIT();
     }
 
@@ -357,12 +357,12 @@ void ImportFeature::start() {
       }
 
     } else {
-      LOG(ERR) << "error message:    " << ih.getErrorMessage();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message:    " << ih.getErrorMessage();
     }
   } catch (std::exception const& ex) {
-    LOG(ERR) << "Caught exception " << ex.what() << " during import";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Caught exception " << ex.what() << " during import";
   } catch (...) {
-    LOG(ERR) << "Got an unknown exception during import";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Got an unknown exception during import";
   }
 
   *_result = ret;

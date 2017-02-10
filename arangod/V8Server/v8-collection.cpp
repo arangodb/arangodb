@@ -1443,7 +1443,7 @@ static void JS_PropertiesVocbaseCol(
 
       if (res != TRI_ERROR_NO_ERROR) {
         // TODO: what to do here
-        LOG(WARN) << "could not save collection change marker in log: "
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save collection change marker in log: "
                   << TRI_errno_string(res);
       }
     }

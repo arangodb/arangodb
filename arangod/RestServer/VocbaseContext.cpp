@@ -177,7 +177,7 @@ rest::ResponseCode VocbaseContext::authenticateRequest(bool* forceOpen) {
     ++auth;
   }
 
-  LOG(DEBUG) << "Authorization header: " << authStr;
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Authorization header: " << authStr;
 
   if (TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
     return basicAuthentication(auth);
