@@ -178,24 +178,6 @@ class MMFilesEdgeIndex final : public Index {
   void expandInSearchValues(arangodb::velocypack::Slice const,
                             arangodb::velocypack::Builder&) const override;
 
-  /// @brief creates an IndexIterator for the given VelocyPackSlices.
-  ///        The searchValue is a an Array with exactly two Entries, one of them
-  ///        has to be NONE.
-  ///        If the first is set it means we are searching for _from (OUTBOUND),
-  ///        if the second is set we are searching for _to (INBOUND).
-  ///        The slice that is set has to be list of keys to search for.
-  ///        Each key needs to have the following formats:
-  ///
-  ///        1) {"eq": <compareValue>} // The value in index is exactly this
-  ///
-  ///        Reverse is not supported, hence ignored
-  ///        NOTE: The iterator is only valid as long as the slice points to
-  ///        a valid memory region.
-  IndexIterator* iteratorForSlice(arangodb::Transaction*,
-                                  ManagedDocumentResult*,
-                                  arangodb::velocypack::Slice const,
-                                  bool) const override;
-
  private:
   /// @brief create the iterator
   IndexIterator* createEqIterator(arangodb::Transaction*,

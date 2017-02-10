@@ -202,11 +202,6 @@ class MMFilesPrimaryIndex final : public Index {
                                       arangodb::aql::Variable const*,
                                       bool) const override;
 
-  IndexIterator* iteratorForSlice(arangodb::Transaction*, 
-                                  ManagedDocumentResult*,
-                                  arangodb::velocypack::Slice const,
-                                  bool) const override;
-
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 

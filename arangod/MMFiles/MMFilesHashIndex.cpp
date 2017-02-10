@@ -982,22 +982,6 @@ IndexIterator* MMFilesHashIndex::iteratorForCondition(
   return new MMFilesHashIndexIterator(_collection, trx, mmdr, this, node, reference);
 }
 
-/// @brief creates an IndexIterator for the given VelocyPackSlices
-IndexIterator* MMFilesHashIndex::iteratorForSlice(arangodb::Transaction* trx,
-                                           ManagedDocumentResult* mmdr,
-                                           VPackSlice const searchValues,
-                                           bool) const {
-  if (!searchValues.isArray()) {
-    // Invalid searchValue
-    return nullptr;
-  }
-
-  TransactionBuilderLeaser builder(trx);
-  std::unique_ptr<VPackBuilder> keys(builder.steal());
-  keys->add(searchValues);
-  return new MMFilesHashIndexIteratorVPack(_collection, trx, mmdr, this, keys);
-}
-
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* MMFilesHashIndex::specializeCondition(
     arangodb::aql::AstNode* node,

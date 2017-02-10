@@ -1218,8 +1218,8 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
   ManagedDocumentResult mmdr;
 
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, Transaction::CursorType::ANY, IndexHandle(), 
-                {}, &mmdr, skip, limit, 1000, false);
+      indexScan(collectionName, Transaction::CursorType::ANY, &mmdr, skip,
+                limit, 1000, false);
 
   LogicalCollection* collection = cursor->collection();
   auto cb = [&] (DocumentIdentifierToken const& token) {
@@ -2543,8 +2543,8 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   ManagedDocumentResult mmdr;
 
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, Transaction::CursorType::ALL, IndexHandle(),
-                {}, &mmdr, skip, limit, 1000, false);
+      indexScan(collectionName, Transaction::CursorType::ALL, &mmdr, skip,
+                limit, 1000, false);
 
   if (cursor->failed()) {
     return OperationResult(cursor->code);
@@ -2974,7 +2974,6 @@ OperationCursor* Transaction::indexScanForCondition(
 /// calling this method
 std::unique_ptr<OperationCursor> Transaction::indexScan(
     std::string const& collectionName, CursorType cursorType,
-    IndexHandle const& indexId, VPackSlice const search, 
     ManagedDocumentResult* mmdr,
     uint64_t skip, uint64_t limit, uint64_t batchSize, bool reverse) {
   // For now we assume indexId is the iid part of the index.
@@ -2998,11 +2997,6 @@ std::unique_ptr<OperationCursor> Transaction::indexScan(
 
   switch (cursorType) {
     case CursorType::ANY: {
-      // We do not need search values
-      TRI_ASSERT(search.isNone());
-      // We do not need an index either
-      TRI_ASSERT(nullptr == indexId.getIndex());
-
       arangodb::MMFilesPrimaryIndex* idx = document->primaryIndex();
 
       if (idx == nullptr) {
@@ -3015,11 +3009,6 @@ std::unique_ptr<OperationCursor> Transaction::indexScan(
       break;
     }
     case CursorType::ALL: {
-      // We do not need search values
-      TRI_ASSERT(search.isNone());
-      // We do not need an index either
-      TRI_ASSERT(nullptr == indexId.getIndex());
-
       arangodb::MMFilesPrimaryIndex* idx = document->primaryIndex();
 
       if (idx == nullptr) {
@@ -3030,19 +3019,6 @@ std::unique_ptr<OperationCursor> Transaction::indexScan(
 
       iterator.reset(idx->allIterator(this, mmdr, reverse));
       break;
-    }
-    case CursorType::INDEX: {
-      auto idx = indexId.getIndex();
-      if (nullptr == idx) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "The index id cannot be empty.");
-      }
-      // Normalize the search values
-      // VPackBuilder expander;
-      // idx->expandInSearchValues(search, expander);
-
-      // Now collect the Iterator
-      iterator.reset(idx->iteratorForSlice(this, mmdr, search, reverse));
     }
   }
   if (iterator == nullptr) {

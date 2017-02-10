@@ -177,8 +177,7 @@ class Transaction {
   /// @brief Type of cursor
   enum class CursorType {
     ALL = 0,
-    ANY,
-    INDEX
+    ANY
   };
 
   /// @brief return database of transaction
@@ -451,8 +450,6 @@ class Transaction {
   /// calling this method
   std::unique_ptr<OperationCursor> indexScan(std::string const& collectionName,
                                              CursorType cursorType,
-                                             IndexHandle const& indexId,
-                                             VPackSlice const search,
                                              ManagedDocumentResult*,
                                              uint64_t skip, uint64_t limit,
                                              uint64_t batchSize, bool reverse);

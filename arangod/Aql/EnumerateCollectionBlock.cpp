@@ -45,8 +45,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
           _collection->getName(),
           (ep->_random ? arangodb::Transaction::CursorType::ANY
                        : arangodb::Transaction::CursorType::ALL),
-          Transaction::IndexHandle(), VPackSlice(), _mmdr.get(), 0, UINT64_MAX,
-          1000, false)),
+          _mmdr.get(), 0, UINT64_MAX, 1000, false)),
       _mustStoreResult(true) {
   TRI_ASSERT(_cursor->successful());
 }
