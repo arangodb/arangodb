@@ -112,7 +112,7 @@ void HttpCommTask::addResponse(HttpResponse* response, RequestStatistics* stat) 
   if (!_origin.empty()) {
     // the request contained an Origin header. We have to send back the
     // access-control-allow-origin header now
-    LOG(TRACE) << "handling CORS response";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "handling CORS response";
 
     // send back original value of "Origin" header
     response->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin,
@@ -239,7 +239,7 @@ bool HttpCommTask::processRead(double startTime) {
     size_t headerLength = ptr - (_readBuffer.c_str() + _startPosition);
 
     if (headerLength > MaximalHeaderSize) {
-      LOG(WARN) << "maximal header size is " << MaximalHeaderSize
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "maximal header size is " << MaximalHeaderSize
                 << ", request header size is " << headerLength;
 
       // header is too large
@@ -273,11 +273,11 @@ bool HttpCommTask::processRead(double startTime) {
       size_t slen = _readPosition - _startPosition;
 
       if (slen == 11 && std::memcmp(sptr, "VST/1.1\r\n\r\n", 11) == 0) {
-        LOG(WARN) << "got VST request on HTTP port";
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "got VST request on HTTP port";
         return false;
       }
 
-      LOG(TRACE) << "HTTP READ FOR " << (void*)this << ": "
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "HTTP READ FOR " << (void*)this << ": "
                  << std::string(sptr, slen);
 
       // check that we know, how to serve this request and update the connection
@@ -314,7 +314,7 @@ bool HttpCommTask::processRead(double startTime) {
       // and ports
       _incompleteRequest->setProtocol(_protocol);
 
-      LOG(TRACE) << "server port " << _connectionInfo.serverPort
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "server port " << _connectionInfo.serverPort
                  << ", client port " << _connectionInfo.clientPort;
 
       // set body start to current position
@@ -401,7 +401,7 @@ bool HttpCommTask::processRead(double startTime) {
             l = 6;
           }
 
-          LOG(WARN) << "got corrupted HTTP request '" << std::string(sptr, l)
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "got corrupted HTTP request '" << std::string(sptr, l)
                     << "'";
 
           // bad request, method not allowed
@@ -417,7 +417,7 @@ bool HttpCommTask::processRead(double startTime) {
             _incompleteRequest->header(StaticStrings::Expect, found);
 
         if (found && StringUtils::trim(expect) == "100-continue") {
-          LOG(TRACE) << "received a 100-continue request";
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "received a 100-continue request";
 
           WriteBuffer buffer(new StringBuffer(TRI_UNKNOWN_MEM_ZONE), nullptr);
 
@@ -477,7 +477,7 @@ bool HttpCommTask::processRead(double startTime) {
                                   _bodyLength);
     }
 
-    LOG(TRACE) << std::string(_readBuffer.c_str() + _bodyPosition, _bodyLength);
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << std::string(_readBuffer.c_str() + _bodyPosition, _bodyLength);
 
     // remove body from read buffer and reset read position
     _readRequestBody = false;
@@ -508,18 +508,18 @@ bool HttpCommTask::processRead(double startTime) {
   if (connectionType == "close") {
     // client has sent an explicit "Connection: Close" header. we should close
     // the connection
-    LOG(DEBUG) << "connection close requested by client";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "connection close requested by client";
     _closeRequested = true;
   } else if (_incompleteRequest->isHttp10() && connectionType != "keep-alive") {
     // HTTP 1.0 request, and no "Connection: Keep-Alive" header sent
     // we should close the connection
-    LOG(DEBUG) << "no keep-alive, connection close requested by client";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "no keep-alive, connection close requested by client";
     _closeRequested = true;
 
   } else if (!_useKeepAliveTimer) {
     // if keepAliveTimeout was set to 0.0, we'll close even keep-alive
     // connections immediately
-    LOG(DEBUG) << "keep-alive disabled by admin";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "keep-alive disabled by admin";
     _closeRequested = true;
   }
 
@@ -623,12 +623,12 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
     // content-length header was sent but the request method does not support
     // that
     // we'll warn but read the body anyway
-    LOG(WARN) << "received HTTP GET/HEAD request with content-length, this "
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "received HTTP GET/HEAD request with content-length, this "
                  "should not happen";
   }
 
   if ((size_t)bodyLength > MaximalBodySize) {
-    LOG(WARN) << "maximal body size is " << MaximalBodySize
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "maximal body size is " << MaximalBodySize
               << ", request body size is " << bodyLength;
 
     // request entity too large
@@ -657,7 +657,7 @@ void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
                                StaticStrings::CorsMethods);
 
   if (!_origin.empty()) {
-    LOG(TRACE) << "got CORS preflight request";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "got CORS preflight request";
     std::string const allowHeaders = StringUtils::trim(
         request->header(StaticStrings::AccessControlRequestHeaders));
 
@@ -675,7 +675,7 @@ void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
       response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowHeaders,
                                    allowHeaders);
 
-      LOG(TRACE) << "client requested validation of the following headers: "
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "client requested validation of the following headers: "
                  << allowHeaders;
     }
 

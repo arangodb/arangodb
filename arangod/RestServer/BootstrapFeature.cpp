@@ -159,11 +159,11 @@ void BootstrapFeature::start() {
   // Start service properly:
   rest::RestHandlerFactory::setMaintenance(false);
 
-  LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB (version " << ARANGODB_VERSION_FULL
             << ") is ready for business. Have fun!";
 
   if (_bark) {
-    LOG(INFO) << "The dog says: wau wau!";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "The dog says: wau wau!";
   }
 
   _isReady = true;

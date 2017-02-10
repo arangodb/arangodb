@@ -28,15 +28,22 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Indexes/IndexFactory.h"
 #include "MMFiles/MMFilesCollectorCache.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+namespace v8 {
+class Isolate;
+}
 namespace arangodb {
+
 class LogicalCollection;
 class PhysicalCollection;
+class TransactionCollection;
+class TransactionState;
 
 class StorageEngine : public application_features::ApplicationFeature {
  public:
@@ -63,8 +70,12 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual void start() {}
   virtual void stop() {}
+  virtual bool inRecovery() { return false; }
   virtual void recoveryDone(TRI_vocbase_t* vocbase) {}
+  virtual int writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) = 0;
 
+  virtual TransactionState* createTransactionState(TRI_vocbase_t*) = 0;
+  virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
 
   // create storage-engine specific collection
   virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*) = 0;
@@ -101,10 +112,32 @@ class StorageEngine : public application_features::ApplicationFeature {
   // return the path for a collection
   virtual std::string collectionPath(TRI_vocbase_t const* vocbase, TRI_voc_cid_t id) const = 0;
 
-  virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) = 0;
+  //virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) = 0;
 
   // database, collection and index management
   // -----------------------------------------
+
+
+  // TODO add pre / post conditions
+  using Database = TRI_vocbase_t;
+  using CollectionView = LogicalCollection;
+  // if not stated other wise functions may throw and the caller has to take care of error handling
+  // the return values will be the usual  TRI_ERROR_* codes 
+  
+  virtual Database* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) = 0;
+  Database* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade){
+    int status;
+    Database* rv = openDatabase(args, isUpgrade, status);
+    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
+    TRI_ASSERT(rv != nullptr);
+    return rv;
+  }
+
+  //return empty string when not found
+  virtual std::string getName(Database*) const = 0;
+  virtual std::string getPath(Database*) const = 0;
+  virtual std::string getName(Database*, CollectionView*) const = 0;
+  virtual std::string getPath(Database*, CollectionView*) const = 0;
 
   // asks the storage engine to create a database as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server that
@@ -114,7 +147,15 @@ class StorageEngine : public application_features::ApplicationFeature {
   // so that subsequent database creation requests will not fail.
   // the WAL entry for the database creation will be written *after* the call
   // to "createDatabase" returns
-  virtual TRI_vocbase_t* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) = 0;
+  //no way to aquire id within this function?!
+  virtual Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) = 0;
+  Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args ){
+    int status;
+    Database* rv = createDatabase(id, args, status);
+    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
+    TRI_ASSERT(rv != nullptr);
+    return rv;
+  }
 
   // asks the storage engine to drop the specified database and persist the
   // deletion info. Note that physical deletion of the database data must not
@@ -123,14 +164,32 @@ class StorageEngine : public application_features::ApplicationFeature {
   // but let's an async task perform the actual deletion.
   // the WAL entry for database deletion will be written *after* the call
   // to "prepareDropDatabase" returns
-  virtual int prepareDropDatabase(TRI_vocbase_t* vocbase) = 0;
+  //
+  // is done under a lock in database feature
+  virtual void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker, int& status) = 0;
+  void prepareDropDatabase(Database* db, bool useWriteMarker){
+    int status = 0;
+    prepareDropDatabase(db, status);
+    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
+  };
+
+  /// @brief wait until a database directory disappears
+  //
+  // should not require a lock
+  virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) = 0;
 
   // perform a physical deletion of the database
-  virtual int dropDatabase(TRI_vocbase_t* vocbase) = 0;
+  virtual void dropDatabase(Database*, int& status) = 0;
+  void dropDatabase(Database* db){
+    int status;
+    dropDatabase(db, status);
+    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
+  };
+  
 
-  /// @brief wait until a database directory disappears -- FIXME force WAIT or Delete Add keyword Database to signature
-  virtual int waitUntilDeletion(TRI_voc_tick_t id, bool force) = 0;
 
+
+public:
   // asks the storage engine to create a collection as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server
   // that no other active collection with the same name and id exists in the same
@@ -251,6 +310,12 @@ class StorageEngine : public application_features::ApplicationFeature {
   /// @brief transfer markers into a collection
   virtual int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
                               MMFilesOperationsType const&) = 0;
+
+  // AQL functions
+  // -------------
+
+  /// @brief Add engine specific AQL functions.
+  virtual void addAqlFunctions() const = 0;
 
  protected:
   arangodb::LogicalCollection* registerCollection(

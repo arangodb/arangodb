@@ -123,12 +123,12 @@ BaseTraverserEngine::~BaseTraverserEngine() {
   for (auto const& shard : _locked) {
     TRI_voc_cid_t cid = resolver->getCollectionIdLocal(shard);
     if (cid == 0) {
-      LOG(ERR) << "Failed to unlock shard " << shard << ": not found";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Failed to unlock shard " << shard << ": not found";
       continue;
     }
     int res = _trx->unlock(_trx->trxCollection(cid), AccessMode::Type::READ);
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "Failed to unlock shard " << shard << ": "
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Failed to unlock shard " << shard << ": "
                << TRI_errno_string(res);
     }
   }
@@ -306,7 +306,7 @@ bool BaseTraverserEngine::lockCollection(std::string const& shard) {
   _trx->orderDitch(cid); // will throw when it fails 
   int res = _trx->lock(_trx->trxCollection(cid), AccessMode::Type::READ);
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "Logging Shard " << shard << " lead to exception '"
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Logging Shard " << shard << " lead to exception '"
              << TRI_errno_string(res) << "' (" << res << ") ";
     return false;
   }

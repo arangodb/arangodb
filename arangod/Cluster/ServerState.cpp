@@ -381,7 +381,7 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
 void mkdir (std::string const& path) {
   if (!TRI_IsDirectory(path.c_str())) {
     if (!arangodb::basics::FileUtils::createDirectory(path)) {
-      LOG(FATAL) << "Couldn't create file directory " << path << " (UUID)";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Couldn't create file directory " << path << " (UUID)";
       FATAL_ERROR_EXIT();
     }
   }
@@ -389,7 +389,9 @@ void mkdir (std::string const& path) {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create an id for a specified role
+/// TODO: why are the parameters passed by value here?
 //////////////////////////////////////////////////////////////////////////////
+
 std::string ServerState::createIdForRole(AgencyComm comm,
                                          ServerState::RoleEnum role,
                                          std::string id) {
@@ -444,7 +446,7 @@ std::string ServerState::createIdForRole(AgencyComm comm,
   
   AgencyCommResult result = comm.getValues("Plan/" + agencyKey);
   if (!result.successful()) {
-    LOG(FATAL) << "Couldn't fetch Plan/" << agencyKey
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Couldn't fetch Plan/" << agencyKey
                << " from agency. Agency is not initialized?";
     FATAL_ERROR_EXIT();
   }
@@ -452,7 +454,7 @@ std::string ServerState::createIdForRole(AgencyComm comm,
   VPackSlice servers = result.slice()[0].get(
     std::vector<std::string>({AgencyCommManager::path(), "Plan", agencyKey}));
   if (!servers.isObject()) {
-    LOG(FATAL) << "Plan/" << agencyKey << " in agency is no object. "
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Plan/" << agencyKey << " in agency is no object. "
                << "Agency not initialized?";
     FATAL_ERROR_EXIT();
   }
@@ -1063,7 +1065,7 @@ bool ServerState::storeRole(RoleEnum role) {
       try {
         builder.add(VPackValue("none"));
       } catch (...) {
-        LOG(FATAL) << "out of memory";
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "out of memory";
         FATAL_ERROR_EXIT();
       }
 
@@ -1073,7 +1075,7 @@ bool ServerState::storeRole(RoleEnum role) {
       try {
         builder.add(VPackValue("none"));
       } catch (...) {
-        LOG(FATAL) << "out of memory";
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "out of memory";
         FATAL_ERROR_EXIT();
       }
 
@@ -1084,7 +1086,7 @@ bool ServerState::storeRole(RoleEnum role) {
       try {
         builder.add(VPackValue(keyName));
       } catch (...) {
-        LOG(FATAL) << "out of memory";
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "out of memory";
         FATAL_ERROR_EXIT();
       }
 
@@ -1106,7 +1108,7 @@ bool ServerState::storeRole(RoleEnum role) {
         AgencyCommResult result = comm.sendTransactionWithFailover(*trx.get(), 0.0);
         if (!result.successful()) {
           if (fatalError) {
-            LOG(FATAL) << "unable to register server in agency";
+            LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to register server in agency";
             FATAL_ERROR_EXIT();
           } else {
             return false;

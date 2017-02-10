@@ -210,7 +210,7 @@ int TraversalBlock::shutdown(int errorCode) {
           if (!res->errorMessage.empty()) {
             message += std::string(": ") + res->errorMessage;
           }
-          LOG(ERR) << message;
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << message;
         }
       }
     }
@@ -381,8 +381,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
       _usedConstant = false; // must reset this variable because otherwise the traverser's start vertex may not be reset properly
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
-        // returnBlock(cur);
-        delete cur;
+        returnBlock(cur);
         _pos = 0;
       } else {
         initializePaths(cur, _pos);
@@ -432,8 +431,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
       _usedConstant = false; // must reset this variable because otherwise the traverser's start vertex may not be reset properly
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
-        // returnBlock(cur);
-        delete cur;
+        returnBlock(cur);
         _pos = 0;
       } else {
         initializePaths(cur, _pos);

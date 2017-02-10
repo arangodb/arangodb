@@ -21,22 +21,19 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-// In order to implement a new IndexIterator the folling functions need to be
+// In order to implement a new IndexIterator the following functions need to be
 // implmeneted.
 //
 // typeName() returns a string descibing the type of the indexIterator
 //
-// The next() function of the IndexIterator returns DocumentIdentifierTokens that are
-// created from RevisionIds. If there is nothing more to return a default
-// constructed IndesLookupResult is returend.
+// The next() function of the IndexIterator expects a callback taking DocumentIdentifierTokens
+// that are created from RevisionIds. In addition it expects a limit.
+// The iterator has to walk through the Index and call the callback with at most limit
+// many elements. On the next iteration it has to continue after the last returned Token.
 //
 // reset() resets the iterator
 //
 // optional - default implementation provided:
-//
-// nextBabies() gets more than one result, the function is meant to increase
-// performance when receiving a single result from the index is more expensive
-// per item than the item costs when receiving multiple results.
 //
 // skip(trySkip, skipped) tries to skip the next trySkip elements
 //
@@ -63,6 +60,12 @@ class Transaction;
 /// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself
 class IndexIterator {
+ protected:
+  typedef std::function<void(DocumentIdentifierToken const& token)> TokenCallback;
+  typedef std::function<void(DocumentIdentifierToken const& token,
+                             arangodb::velocypack::Slice extra)>
+      ExtraCallback;
+
  public:
   IndexIterator(IndexIterator const&) = delete;
   IndexIterator& operator=(IndexIterator const&) = delete;
@@ -77,9 +80,12 @@ class IndexIterator {
   LogicalCollection* collection() const { return _collection; }
   arangodb::Transaction* transaction() const { return _trx; }
 
-  virtual DocumentIdentifierToken next();
+  virtual bool hasExtra() const;
 
-  virtual void nextBabies(std::vector<DocumentIdentifierToken>&, size_t);
+  virtual bool next(TokenCallback const& callback, size_t limit) = 0;
+  virtual bool nextExtra(ExtraCallback const& callback, size_t limit);
+
+//  virtual DocumentIdentifierToken next();
 
   virtual void reset();
 
@@ -103,9 +109,9 @@ class EmptyIndexIterator final : public IndexIterator {
 
     char const* typeName() const override { return "empty-index-iterator"; }
 
-    DocumentIdentifierToken next() override { return DocumentIdentifierToken(); }
-
-    void nextBabies(std::vector<DocumentIdentifierToken>&, size_t) override {}
+    bool next(TokenCallback const&, size_t) override {
+      return false;
+    }
 
     void reset() override {}
 
@@ -141,15 +147,11 @@ class MultiIndexIterator final : public IndexIterator {
     
     char const* typeName() const override { return "multi-index-iterator"; }
 
-    /// @brief Get the next element
+    /// @brief Get the next elements
     ///        If one iterator is exhausted, the next one is used.
-    ///        A nullptr indicates that all iterators are exhausted
-    DocumentIdentifierToken next() override;
-
-    /// @brief Get at most the next limit many elements
-    ///        If one iterator is exhausted, the next one will be used.
-    ///        An empty result vector indicates that all iterators are exhausted
-    void nextBabies(std::vector<DocumentIdentifierToken>&, size_t) override;
+    ///        If callback is called less than limit many times
+    ///        all iterators are exhausted
+    bool next(TokenCallback const& callback, size_t limit) override;
 
     /// @brief Reset the cursor
     ///        This will reset ALL internal iterators and start all over again

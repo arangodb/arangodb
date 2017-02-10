@@ -70,7 +70,7 @@ void Logger::setLogLevel(std::string const& levelName) {
 
   if (v.empty() || v.size() > 2) {
     Logger::setLogLevel(LogLevel::INFO);
-    LOG(ERR) << "strange log level '" << levelName
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName
              << "', using log level 'info'";
     return;
   }
@@ -100,10 +100,10 @@ void Logger::setLogLevel(std::string const& levelName) {
   } else {
     if (isGeneral) {
       Logger::setLogLevel(LogLevel::INFO);
-      LOG(ERR) << "strange log level '" << levelName
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName
                << "', using log level 'info'";
     } else {
-      LOG(ERR) << "strange log level '" << levelName << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
     }
 
     return;
@@ -111,6 +111,7 @@ void Logger::setLogLevel(std::string const& levelName) {
 
   if (isGeneral) {
     Logger::setLogLevel(level);
+    LogTopic::setLogLevel(std::string("fixme"), level);
   } else {
     LogTopic::setLogLevel(v[0], level);
   }

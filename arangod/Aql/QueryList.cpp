@@ -206,7 +206,7 @@ int QueryList::kill(TRI_voc_tick_t id) {
   }
 
   // log outside the lock
-  LOG(WARN) << "killing AQL query " << id << " '" << queryString << "'";
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << id << " '" << queryString << "'";
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -228,9 +228,9 @@ uint64_t QueryList::killAll(bool silent) {
   
 
     if (silent) {
-      LOG(TRACE) << "killing AQL query " << entry->query->id() << " '" << queryString << "'";
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "killing AQL query " << entry->query->id() << " '" << queryString << "'";
     } else {
-      LOG(WARN) << "killing AQL query " << entry->query->id() << " '" << queryString << "'";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << entry->query->id() << " '" << queryString << "'";
     }
   }
 

@@ -29,7 +29,7 @@
 #include "MMFiles/fulltext-index.h"
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
-#include "Utils/TransactionState.h"
+#include "StorageEngine/TransactionState.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -117,7 +117,7 @@ MMFilesFulltextIndex::MMFilesFulltextIndex(TRI_idx_iid_t iid,
 
 MMFilesFulltextIndex::~MMFilesFulltextIndex() {
   if (_fulltextIndex != nullptr) {
-    LOG(TRACE) << "destroying fulltext index";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "destroying fulltext index";
     TRI_FreeFtsIndex(_fulltextIndex);
   }
 }
@@ -219,13 +219,13 @@ int MMFilesFulltextIndex::insert(arangodb::Transaction*, TRI_voc_rid_t revisionI
    
   if (words.empty()) {
     // TODO: distinguish the cases "empty wordlist" and "out of memory"
-    // LOG(WARN) << "could not build wordlist";
+    // LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not build wordlist";
     return res;
   }
 
   // TODO: use status codes
   if (!TRI_InsertWordsMMFilesFulltextIndex(_fulltextIndex, revisionId, words)) {
-    LOG(ERR) << "adding document to fulltext index failed";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "adding document to fulltext index failed";
     res = TRI_ERROR_INTERNAL;
   }
   return res;
@@ -244,7 +244,7 @@ int MMFilesFulltextIndex::unload() {
 }
 
 int MMFilesFulltextIndex::cleanup() {
-  LOG(TRACE) << "fulltext cleanup called";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "fulltext cleanup called";
 
   int res = TRI_ERROR_NO_ERROR;
 

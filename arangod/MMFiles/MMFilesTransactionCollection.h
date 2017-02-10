@@ -21,39 +21,54 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_TRANSACTION_COLLECTION_H
-#define ARANGOD_UTILS_TRANSACTION_COLLECTION_H 1
+#ifndef ARANGOD_MMFILES_TRANSACTION_COLLECTION_H
+#define ARANGOD_MMFILES_TRANSACTION_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "StorageEngine/TransactionCollection.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
                                 
 namespace arangodb {
-class LogicalCollection;
 struct MMFilesDocumentOperation;
-struct TransactionState;
+class Transaction;
+class TransactionState;
 
 /// @brief collection used in a transaction
-struct TransactionCollection {
-  friend struct TransactionState;
-
-  TransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel)
-      : _transaction(trx), _cid(cid), _accessType(accessType), _nestingLevel(nestingLevel), _collection(nullptr), _operations(nullptr),
-        _originalRevision(0), _lockType(AccessMode::Type::NONE), _compactionLocked(false), _waitForSync(false) {}
-
+class MMFilesTransactionCollection final : public TransactionCollection {
  public:
+
+  MMFilesTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel);
+  ~MMFilesTransactionCollection();
+  
+  /// @brief request a main-level lock for a collection
+  int lock() override;
+ 
   /// @brief request a lock for a collection
-  int lock(AccessMode::Type, int nestingLevel);
+  int lock(AccessMode::Type, int nestingLevel) override;
 
   /// @brief request an unlock for a collection
-  int unlock(AccessMode::Type, int nestingLevel);
+  int unlock(AccessMode::Type, int nestingLevel) override;
 
   /// @brief check whether a collection is locked in a specific mode in a transaction
-  bool isLocked(AccessMode::Type, int nestingLevel) const;
+  bool isLocked(AccessMode::Type, int nestingLevel) const override;
   
   /// @brief check whether a collection is locked at all
-  bool isLocked() const;
+  bool isLocked() const override;
+  
+  /// @brief whether or not any write operations for the collection happened
+  bool hasOperations() const override;
 
+  void freeOperations(Transaction* activeTrx, bool mustRollback) override;
+
+  bool canAccess(AccessMode::Type accessType) const override;
+  int updateUsage(AccessMode::Type accessType, int nestingLevel) override;
+  int use(int nestingLevel) override;
+  void unuse(int nestingLevel) override;
+  void release() override;
+  
+  void addOperation(MMFilesDocumentOperation* operation);
+  
  private:
   /// @brief request a lock for a collection
   int doLock(AccessMode::Type, int nestingLevel);
@@ -61,18 +76,17 @@ struct TransactionCollection {
   /// @brief request an unlock for a collection
   int doUnlock(AccessMode::Type, int nestingLevel);
 
- public:
-  TransactionState* _transaction;     // the transaction
-  TRI_voc_cid_t const _cid;                  // collection id
-  AccessMode::Type _accessType;  // access type (read|write)
-  int _nestingLevel;  // the transaction level that added this collection
-  LogicalCollection* _collection;  // vocbase collection pointer
+  bool isWrite(AccessMode::Type type) const;
+
+ private:
   std::vector<MMFilesDocumentOperation*>* _operations;
   TRI_voc_rid_t _originalRevision;   // collection revision at trx start
-  AccessMode::Type _lockType;  // collection lock type
-  bool
-      _compactionLocked;  // was the compaction lock grabbed for the collection?
+  int _nestingLevel;  // the transaction level that added this collection
+  bool _compactionLocked;  // was the compaction lock grabbed for the collection?
   bool _waitForSync;      // whether or not the collection has waitForSync
+  
+  AccessMode::Type _accessType;  // access type (read|write)
+  AccessMode::Type _lockType;  // collection lock type
 };
 
 }

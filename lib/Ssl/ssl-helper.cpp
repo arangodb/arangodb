@@ -69,7 +69,7 @@ boost::optional<boost::asio::ssl::context> arangodb::sslContext(
       break;
 
     default:
-      LOG(ERR) << "unknown SSL protocol method";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown SSL protocol method";
       return boost::none;
   }
 
@@ -78,21 +78,21 @@ boost::optional<boost::asio::ssl::context> arangodb::sslContext(
   if (sslctx.native_handle() == nullptr) {
     // could not create SSL context - this is mostly due to the OpenSSL
     // library not having been initialized
-    LOG(FATAL) << "unable to create SSL context";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to create SSL context";
     FATAL_ERROR_EXIT();
   }
 
   // load our keys and certificates
   if (!SSL_CTX_use_certificate_chain_file(sslctx.native_handle(),
                                           keyfile.c_str())) {
-    LOG(ERR) << "cannot read certificate from '" << keyfile
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read certificate from '" << keyfile
              << "': " << lastSSLError();
     return boost::none;
   }
 
   if (!SSL_CTX_use_PrivateKey_file(sslctx.native_handle(), keyfile.c_str(),
                                    SSL_FILETYPE_PEM)) {
-    LOG(ERR) << "cannot read key from '" << keyfile << "': " << lastSSLError();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read key from '" << keyfile << "': " << lastSSLError();
     return boost::none;
   }
 

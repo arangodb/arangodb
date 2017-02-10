@@ -414,14 +414,14 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead,
     static int64_t nextProcessed = 10 * 1000 * 1000;
 
     if (totalRead >= nextProcessed) {
-      LOG(INFO) << "processed " << totalRead << " bytes of input file";
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "processed " << totalRead << " bytes of input file";
       nextProcessed += 10 * 1000 * 1000;
     }
   } else {
     double pct = 100.0 * ((double)totalRead / (double)totalLength);
 
     if (pct >= nextProgress && totalLength >= 1024) {
-      LOG(INFO) << "processed " << totalRead << " bytes (" << (int)nextProgress
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "processed " << totalRead << " bytes (" << (int)nextProgress
                 << "%) of input file";
       nextProgress = (double)((int)(pct + ProgressStep));
     }
@@ -648,7 +648,7 @@ bool ImportHelper::checkCreateCollection() {
     return true;
   }
 
-  LOG(ERR) << "unable to create collection '" << _collectionName << "', server returned status code: " << static_cast<int>(code); 
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to create collection '" << _collectionName << "', server returned status code: " << static_cast<int>(code); 
   _hasError = true;
   return false;
 }
@@ -747,7 +747,7 @@ void ImportHelper::handleResult(SimpleHttpResult* result) {
   if (details.isArray()) {
     for (VPackSlice const& detail : VPackArrayIterator(details)) {
       if (detail.isString()) {
-        LOG(WARN) << "" << detail.copyString();
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << detail.copyString();
       }
     }
   }

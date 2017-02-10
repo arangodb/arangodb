@@ -219,7 +219,7 @@ class SimpleHttpClient {
     _errorMessage = message;
 
     if (_warn || forceWarn) {
-      LOG(WARN) << "" << _errorMessage;
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << _errorMessage;
     }
   }
 

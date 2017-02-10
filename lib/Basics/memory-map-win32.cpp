@@ -117,7 +117,7 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
     // .........................................................................
     fileHandle = INVALID_HANDLE_VALUE;
     if ((flags & MAP_ANONYMOUS) != MAP_ANONYMOUS) {
-      LOG(DEBUG) << "File descriptor is invalid however memory map flag is not anonymous";
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "File descriptor is invalid however memory map flag is not anonymous";
       return TRI_ERROR_SYS_ERROR;
     }
   }
@@ -134,7 +134,7 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
     // ...........................................................................
 
     if (fileHandle == INVALID_HANDLE_VALUE) {
-      LOG(DEBUG) << "File descriptor converted to an invalid handle";
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "File descriptor converted to an invalid handle";
       return TRI_ERROR_SYS_ERROR;
     }
   }
@@ -210,7 +210,7 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
   // ...........................................................................
   if (*mmHandle == nullptr) {
     DWORD errorCode = GetLastError();
-    LOG(DEBUG) << "File descriptor converted to an invalid handle: " << errorCode;
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "File descriptor converted to an invalid handle: " << errorCode;
     return TRI_ERROR_SYS_ERROR;
   }
 
@@ -235,10 +235,10 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
     // TODO: map the error codes of windows to the TRI_ERROR (see function DWORD
     // WINAPI GetLastError(void) );
     if (errorCode == ERROR_NOT_ENOUGH_MEMORY) {
-      LOG(DEBUG) << "MapViewOfFile failed with out of memory error " << errorCode;
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "MapViewOfFile failed with out of memory error " << errorCode;
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-    LOG(DEBUG) << "MapViewOfFile failed with error code = " << errorCode;
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "MapViewOfFile failed with error code = " << errorCode;
     return TRI_ERROR_SYS_ERROR;
   }
 

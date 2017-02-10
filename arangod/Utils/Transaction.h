@@ -39,11 +39,11 @@
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #define LOG_TRX(trx, level)  \
-  LOG(TRACE) << "trx #" << trx->_id << "." << level << " (" << Transaction::statusString(trx->_status) << "): " 
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->_id << "." << level << " (" << Transaction::statusString(trx->_status) << "): " 
 
 #else
 
-#define LOG_TRX(...) while (0) LOG(TRACE)
+#define LOG_TRX(...) while (0) LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
 
 #endif
 
@@ -86,8 +86,8 @@ class ManagedDocumentResult;
 struct OperationCursor;
 struct OperationOptions;
 class TransactionContext;
-struct TransactionState;
-struct TransactionCollection;
+class TransactionState;
+class TransactionCollection;
 
 class Transaction {
   friend class traverser::BaseTraverserEngine;
