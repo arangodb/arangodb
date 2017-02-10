@@ -236,6 +236,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                            TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) = 0;
 
+  virtual void createIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
+                                    arangodb::velocypack::Slice const& data, bool useMarker, int&) = 0;
+
   // asks the storage engine to drop the specified index and persist the deletion
   // info. Note that physical deletion of the index must not be carried out by this call,
   // as there may still be users of the index. It is recommended that this operation
@@ -246,6 +249,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                          TRI_idx_iid_t id) = 0;
 
+  virtual void dropIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
+                                    arangodb::velocypack::Slice const& data, bool useMarker, int&) = 0;
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate
   // information about indexes.
