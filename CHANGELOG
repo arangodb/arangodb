@@ -1,6 +1,12 @@
 v3.1.11 (XXXX-XX-XX)
 --------------------
 
+* fixed a race in async task cancellation via `require("@arangodb/tasks").unregisterTask()`
+
+* fixed spuriously hanging threads in cluster AQL that could sit idle for a few minutes
+
+* fixed potential numeric overflow for big index ids in index deletion API
+
 * fixed sort issue in cluster, occurring when one of the local sort buffers of a
   GatherNode was empty
 
@@ -8,6 +14,7 @@ v3.1.11 (XXXX-XX-XX)
   leading to speedup of some join queries
 
 * supervision deals with demised coordinators correctly again
+
 
 v3.1.10 (2017-02-02)
 --------------------
