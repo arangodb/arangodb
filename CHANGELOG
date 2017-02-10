@@ -1,6 +1,8 @@
 v3.1.11 (XXXX-XX-XX)
 --------------------
 
+* ui: fixed #2308
+
 * fixed a race in async task cancellation via `require("@arangodb/tasks").unregisterTask()`
 
 * fixed spuriously hanging threads in cluster AQL that could sit idle for a few minutes
