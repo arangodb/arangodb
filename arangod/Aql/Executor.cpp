@@ -349,7 +349,7 @@ void Executor::HandleV8Error(v8::TryCatch& tryCatch,
 
       if (buffer) {
         std::string script(buffer->c_str(), buffer->length());
-        LOG(ERR) << details << " " << script;
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << details << " " << script;
         details += "\nSee log for more details";
       }
       if (*stacktrace && stacktrace.length() > 0) {
@@ -366,7 +366,7 @@ void Executor::HandleV8Error(v8::TryCatch& tryCatch,
     }
     if (buffer) {
       std::string script(buffer->c_str(), buffer->length());
-      LOG(ERR) << msg << " " << script;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << script;
       msg += " See log for details";
     }
     // we can't figure out what kind of error occurred and throw a generic error
@@ -380,7 +380,7 @@ void Executor::HandleV8Error(v8::TryCatch& tryCatch,
     }
     if (buffer) {
       std::string script(buffer->c_str(), buffer->length());
-      LOG(ERR) << msg << " " << script;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << script;
       msg += " See log for details";
     }
 

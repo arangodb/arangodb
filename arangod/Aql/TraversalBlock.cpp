@@ -210,7 +210,7 @@ int TraversalBlock::shutdown(int errorCode) {
           if (!res->errorMessage.empty()) {
             message += std::string(": ") + res->errorMessage;
           }
-          LOG(ERR) << message;
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << message;
         }
       }
     }

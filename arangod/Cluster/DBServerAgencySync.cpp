@@ -78,13 +78,13 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true);
 
   if (context == nullptr) {
-    LOG(INFO) << "DBServerAgencySync::execute no V8 context";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "DBServerAgencySync::execute no V8 context";
     return result;
   }
 
   double now = TRI_microtime();
   if (now - startTime > 5.0) {
-    LOG(INFO) << "DBServerAgencySync::execute took more than 5s to get free V8 context, starting handle-plan-change now";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "DBServerAgencySync::execute took more than 5s to get free V8 context, starting handle-plan-change now";
   }
 
   TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));

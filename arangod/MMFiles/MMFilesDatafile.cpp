@@ -210,8 +210,8 @@ static MMFilesDatafile* CreateAnonymousDatafile(TRI_voc_fid_t fid,
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
 
-    LOG(ERR) << "cannot memory map anonymous region: " << TRI_last_error();
-    LOG(ERR) << "The database directory might reside on a shared folder "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot memory map anonymous region: " << TRI_last_error();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "The database directory might reside on a shared folder "
                 "(VirtualBox, VMWare) or an NFS "
                 "mounted volume which does not allow memory mapped files.";
     return nullptr;
@@ -256,8 +256,8 @@ static MMFilesDatafile* CreatePhysicalDatafile(std::string const& filename,
     // remove empty file
     TRI_UnlinkFile(filename.c_str());
 
-    LOG(ERR) << "cannot memory map file '" << filename << "': '" << TRI_errno_string(res) << "'";
-    LOG(ERR) << "The database directory might reside on a shared folder "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot memory map file '" << filename << "': '" << TRI_errno_string(res) << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "The database directory might reside on a shared folder "
                 "(VirtualBox, VMWare) or an NFS-mounted volume which does not allow memory mapped files.";
     return nullptr;
   }
@@ -328,7 +328,7 @@ MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, TRI_voc_fi
   // sanity check maximal size
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) >
       maximalSize) {
-    LOG(ERR) << "cannot create datafile, maximal size '" << (unsigned int)maximalSize << "' is too small";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create datafile, maximal size '" << (unsigned int)maximalSize << "' is too small";
     TRI_set_errno(TRI_ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL);
 
     return nullptr;
@@ -355,7 +355,7 @@ MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, TRI_voc_fi
     int res = datafile->writeInitialHeaderMarker(fid, maximalSize);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "cannot write header to datafile '" << datafile->getName() << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot write header to datafile '" << datafile->getName() << "'";
       TRI_UNMMFile(const_cast<char*>(datafile->data()), datafile->initSize(), datafile->fd(),
                    &datafile->_mmHandle);
 
@@ -364,7 +364,7 @@ MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, TRI_voc_fi
     }
   }
 
-  LOG(DEBUG) << "created datafile '" << datafile->getName() << "' of size " << maximalSize << " and page-size " << pageSize;
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "created datafile '" << datafile->getName() << "' of size " << maximalSize << " and page-size " << pageSize;
 
   return datafile.release();
 }
@@ -460,7 +460,7 @@ int MMFilesDatafile::reserveElement(TRI_voc_size_t size, TRI_df_marker_t** posit
 
   if (_state != TRI_DF_STATE_WRITE) {
     if (_state == TRI_DF_STATE_READ) {
-      LOG(ERR) << "cannot reserve marker, datafile is read-only";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot reserve marker, datafile is read-only";
 
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
@@ -496,7 +496,7 @@ int MMFilesDatafile::reserveElement(TRI_voc_size_t size, TRI_df_marker_t** posit
     _lastError = TRI_set_errno(TRI_ERROR_ARANGO_DATAFILE_FULL);
     _full = true;
 
-    LOG(TRACE) << "cannot write marker, not enough space";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot write marker, not enough space";
 
     return TRI_ERROR_ARANGO_DATAFILE_FULL;
   }
@@ -567,7 +567,7 @@ int MMFilesDatafile::writeElement(void* position, TRI_df_marker_t const* marker,
 
   if (_state != TRI_DF_STATE_WRITE) {
     if (_state == TRI_DF_STATE_READ) {
-      LOG(ERR) << "cannot write marker, datafile is read-only";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot write marker, datafile is read-only";
 
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
@@ -580,7 +580,7 @@ int MMFilesDatafile::writeElement(void* position, TRI_df_marker_t const* marker,
   // out of bounds check for writing into a datafile
   if (position == nullptr || position < (void*)_data ||
       position >= (void*)(_data + maximalSize())) {
-    LOG(ERR) << "logic error. writing out of bounds of datafile '" << getName() << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "logic error. writing out of bounds of datafile '" << getName() << "'";
     return TRI_ERROR_ARANGO_ILLEGAL_STATE;
   }
 
@@ -598,11 +598,11 @@ int MMFilesDatafile::writeElement(void* position, TRI_df_marker_t const* marker,
         _lastError = TRI_set_errno(TRI_ERROR_SYS_ERROR);
       }
 
-      LOG(ERR) << "msync failed with: " << TRI_last_error();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "msync failed with: " << TRI_last_error();
 
       return _lastError;
     } else {
-      LOG(TRACE) << "msync succeeded " << (void*) position << ", size " << marker->getSize();
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "msync succeeded " << (void*) position << ", size " << marker->getSize();
     }
   }
 
@@ -670,7 +670,7 @@ bool TRI_IterateDatafile(MMFilesDatafile* datafile,
                          void* data) {
   TRI_ASSERT(iterator != nullptr);
 
-  LOG(TRACE) << "iterating over datafile '" << datafile->getName() << "', fid: " << datafile->fid();
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "iterating over datafile '" << datafile->getName() << "', fid: " << datafile->fid();
 
   char const* ptr = datafile->data();
   char const* end = ptr + datafile->currentSize();
@@ -714,7 +714,7 @@ bool TRI_IterateDatafile(MMFilesDatafile* datafile,
 /// also may set datafile's min/max tick values
 bool TRI_IterateDatafile(MMFilesDatafile* datafile,
                          std::function<bool(TRI_df_marker_t const*, MMFilesDatafile*)> const& cb) {
-  LOG(TRACE) << "iterating over datafile '" << datafile->getName() << "', fid: " << datafile->fid();
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "iterating over datafile '" << datafile->getName() << "', fid: " << datafile->fid();
 
   char const* ptr = datafile->data();
   char const* end = ptr + datafile->currentSize();
@@ -760,7 +760,7 @@ int MMFilesDatafile::rename(std::string const& filename) {
   TRI_ASSERT(!filename.empty());
 
   if (TRI_ExistsFile(filename.c_str())) {
-    LOG(ERR) << "cannot overwrite datafile '" << filename << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot overwrite datafile '" << filename << "'";
 
     _lastError = TRI_ERROR_ARANGO_DATAFILE_ALREADY_EXISTS;
     return TRI_ERROR_ARANGO_DATAFILE_ALREADY_EXISTS;
@@ -829,7 +829,7 @@ int MMFilesDatafile::seal() {
       _lastError = TRI_errno();
     }
 
-    LOG(ERR) << "msync failed with: " << TRI_last_error();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "msync failed with: " << TRI_last_error();
   }
 
   // everything is now synced
@@ -889,7 +889,7 @@ bool MMFilesDatafile::tryRepair(std::string const& path) {
 
   // set to read/write access
   if (!datafile->readWrite()) {
-    LOG(ERR) << "unable to change file protection for datafile '" << datafile->getName() << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to change file protection for datafile '" << datafile->getName() << "'";
     return false;
   }
 
@@ -1021,7 +1021,7 @@ int MMFilesDatafile::close() {
 
     if (res != TRI_ERROR_NO_ERROR) {
       // leave file open here as it will still be memory-mapped
-      LOG(ERR) << "munmap failed with: " << res;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "munmap failed with: " << res;
       _state = TRI_DF_STATE_WRITE_ERROR;
       _lastError = res;
       return res;
@@ -1032,7 +1032,7 @@ int MMFilesDatafile::close() {
       int res = TRI_CLOSE(_fd);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG(ERR) << "unable to close datafile '" << getName() << "': " << res;
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to close datafile '" << getName() << "': " << res;
       }
     }
 
@@ -1046,11 +1046,11 @@ int MMFilesDatafile::close() {
   
   if (_state == TRI_DF_STATE_CLOSED) {
     TRI_ASSERT(_fd == -1);
-    LOG(TRACE) << "closing an already closed datafile '" << getName() << "'";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "closing an already closed datafile '" << getName() << "'";
     return TRI_ERROR_NO_ERROR;
   } 
         
-  LOG(ERR) << "attempting to close datafile with an invalid state";
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "attempting to close datafile with an invalid state";
   
   return TRI_ERROR_ARANGO_ILLEGAL_STATE;
 }
@@ -1091,7 +1091,7 @@ int MMFilesDatafile::truncateAndSeal(TRI_voc_size_t position) {
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) >
       maximalSize) {
-    LOG(ERR) << "cannot create datafile '" << getName() << "', maximal size " << maximalSize << " is too small";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create datafile '" << getName() << "', maximal size " << maximalSize << " is too small";
     return TRI_ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL;
   }
 
@@ -1104,7 +1104,7 @@ int MMFilesDatafile::truncateAndSeal(TRI_voc_size_t position) {
 
   if (fd < 0) {
     TRI_SYSTEM_ERROR();
-    LOG(ERR) << "cannot create new datafile '" << filename << "': " << TRI_GET_ERRORBUF;
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create new datafile '" << filename << "': " << TRI_GET_ERRORBUF;
 
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
@@ -1120,7 +1120,7 @@ int MMFilesDatafile::truncateAndSeal(TRI_voc_size_t position) {
     // remove empty file
     TRI_UnlinkFile(filename.c_str());
 
-    LOG(ERR) << "cannot seek in new datafile '" << filename << "': " << TRI_GET_ERRORBUF;
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot seek in new datafile '" << filename << "': " << TRI_GET_ERRORBUF;
 
     return TRI_ERROR_SYS_ERROR;
   }
@@ -1136,7 +1136,7 @@ int MMFilesDatafile::truncateAndSeal(TRI_voc_size_t position) {
     // remove empty file
     TRI_UnlinkFile(filename.c_str());
 
-    LOG(ERR) << "cannot create datafile '" << filename << "': " << TRI_GET_ERRORBUF;
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create datafile '" << filename << "': " << TRI_GET_ERRORBUF;
 
     return TRI_ERROR_SYS_ERROR;
   }
@@ -1153,8 +1153,8 @@ int MMFilesDatafile::truncateAndSeal(TRI_voc_size_t position) {
     // remove empty file
     TRI_UnlinkFile(filename.c_str());
 
-    LOG(ERR) << "cannot memory map file '" << filename << "': " << TRI_GET_ERRORBUF;
-    LOG(ERR) << "The database directory might reside on a shared folder "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot memory map file '" << filename << "': " << TRI_GET_ERRORBUF;
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "The database directory might reside on a shared folder "
                 "(VirtualBox, VMWare) or an NFS "
                 "mounted volume which does not allow memory mapped files.";
 
@@ -1169,7 +1169,7 @@ int MMFilesDatafile::truncateAndSeal(TRI_voc_size_t position) {
 
   if (res < 0) {
     TRI_CLOSE(_fd);
-    LOG(ERR) << "munmap failed with: " << res;
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "munmap failed with: " << res;
     return res;
   }
 
@@ -1223,7 +1223,7 @@ int MMFilesDatafile::truncateAndSeal(TRI_voc_size_t position) {
 bool MMFilesDatafile::check(bool ignoreFailures) {
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(isPhysical());
-  LOG(TRACE) << "checking markers in datafile '" << getName() << "'";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "checking markers in datafile '" << getName() << "'";
 
   char const* ptr = _data;
   char const* end = ptr + _currentSize;
@@ -1231,7 +1231,7 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
   TRI_voc_size_t currentSize = 0;
 
   if (_currentSize == 0) {
-    LOG(WARN) << "current size is 0 in read-only datafile '" << getName() << "', trying to fix";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "current size is 0 in read-only datafile '" << getName() << "', trying to fix";
 
     end = _data + _maximalSize;
   }
@@ -1246,11 +1246,11 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
     TRI_df_marker_type_t const type = marker->getType();
 
 #ifdef DEBUG_DATAFILE
-    LOG(TRACE) << "MARKER: size " << size << ", tick " << tick << ", crc " << marker->getCrc() << ", type " << type;
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "MARKER: size " << size << ", tick " << tick << ", crc " << marker->getCrc() << ", type " << type;
 #endif
 
     if (size == 0) {
-      LOG(DEBUG) << "reached end of datafile '" << getName() << "' data, current size " << currentSize;
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "reached end of datafile '" << getName() << "' data, current size " << currentSize;
 
       _currentSize = currentSize;
       _next = _data + _currentSize;
@@ -1268,7 +1268,7 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
       _next = _data + _currentSize;
       _state = TRI_DF_STATE_OPEN_ERROR;
 
-      LOG(WARN) << "marker in datafile '" << getName() << "' too small, size " << size << ", should be at least " << sizeof(TRI_df_marker_t);
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "marker in datafile '" << getName() << "' too small, size " << size << ", should be at least " << sizeof(TRI_df_marker_t);
 
       return false;
     }
@@ -1284,9 +1284,9 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
       _next = _data + _currentSize;
       _state = TRI_DF_STATE_OPEN_ERROR;
 
-      LOG(WARN) << "marker in datafile '" << getName() << "' points with size " << size << " beyond end of file";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "marker in datafile '" << getName() << "' points with size " << size << " beyond end of file";
       if (lastGood != nullptr) {
-        LOG(INFO) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
+        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
       }
       printMarker(marker, static_cast<TRI_voc_size_t>(end - ptr), _data, end);
 
@@ -1298,7 +1298,7 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
     if (!TRI_IsValidMarkerDatafile(marker)) {
       if (type == 0 && size < 128) {
         // ignore markers with type 0 and a small size
-        LOG(WARN) << "ignoring suspicious marker in datafile '" << getName() << "': type: " << type << ", size: " << size;
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "ignoring suspicious marker in datafile '" << getName() << "': type: " << type << ", size: " << size;
       } else {
         if (ignoreFailures) {
           return fix(currentSize);
@@ -1309,9 +1309,9 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
         _next = _data + _currentSize;
         _state = TRI_DF_STATE_OPEN_ERROR;
 
-        LOG(WARN) << "marker in datafile '" << getName() << "' is corrupt: type: " << type << ", size: " << size;
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "marker in datafile '" << getName() << "' is corrupt: type: " << type << ", size: " << size;
         if (lastGood != nullptr) {
-          LOG(INFO) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
+          LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
         }
         printMarker(marker, size, _data, end); 
 
@@ -1344,7 +1344,7 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
             if (isFollowedByNullBytes) {
               // only last marker in datafile was corrupt. fix the datafile in
               // place
-              LOG(WARN) << "datafile '" << getName() << "' automatically truncated at last marker";
+              LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "datafile '" << getName() << "' automatically truncated at last marker";
               ignoreFailures = true;
             } else {
               // there is some other stuff following. now inspect it...
@@ -1377,23 +1377,23 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
           _next = _data + _currentSize;
           _state = TRI_DF_STATE_OPEN_ERROR;
 
-          LOG(WARN) << "crc mismatch found in datafile '" << getName() << "' of size "
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "crc mismatch found in datafile '" << getName() << "' of size "
                     << _maximalSize << ", at position " << currentSize;
 
-          LOG(WARN) << "crc mismatch found inside marker of type '" << TRI_NameMarkerDatafile(marker) 
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "crc mismatch found inside marker of type '" << TRI_NameMarkerDatafile(marker) 
                     << "' and size " << size
                     << ". expected crc: " << CalculateCrcValue(marker) << ", actual crc: " << marker->getCrc();
 
           if (lastGood != nullptr) {
-            LOG(INFO) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
+            LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
           }
           printMarker(marker, size, _data, end); 
 
           if (nextMarkerOk) {
-            LOG(INFO) << "data directly following this marker looks ok so repairing the marker manually may recover it...";
-            LOG(INFO) << "to truncate the file at this marker, please restart the server with the parameter '--wal.ignore-logfile-errors true' if the error happening during WAL recovery, or with parameter '--database.ignore-datafile-errors true' if it happened after WAL recovery";
+            LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "data directly following this marker looks ok so repairing the marker manually may recover it...";
+            LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "to truncate the file at this marker, please restart the server with the parameter '--wal.ignore-logfile-errors true' if the error happening during WAL recovery, or with parameter '--database.ignore-datafile-errors true' if it happened after WAL recovery";
           } else {
-            LOG(WARN) << "data directly following this marker cannot be analyzed";
+            LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "data directly following this marker cannot be analyzed";
           }
 
           return false;
@@ -1413,7 +1413,7 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
     currentSize += static_cast<TRI_voc_size_t>(alignedSize);
 
     if (marker->getType() == TRI_DF_MARKER_FOOTER) {
-      LOG(DEBUG) << "found footer, reached end of datafile '" << getName() << "', current size " << currentSize;
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "found footer, reached end of datafile '" << getName() << "', current size " << currentSize;
 
       _isSealed = true;
       _currentSize = currentSize;
@@ -1430,9 +1430,9 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
 }
 
 void MMFilesDatafile::printMarker(TRI_df_marker_t const* marker, TRI_voc_size_t size, char const* begin, char const* end) const {
-  LOG(INFO) << "raw marker data following:";
-  LOG(INFO) << "type: " << TRI_NameMarkerDatafile(marker) << ", size: " << marker->getSize() << ", crc: " << marker->getCrc();
-  LOG(INFO) << "(expected layout: size (4 bytes), crc (4 bytes), type and tick (8 bytes), payload following)";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "raw marker data following:";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "type: " << TRI_NameMarkerDatafile(marker) << ", size: " << marker->getSize() << ", crc: " << marker->getCrc();
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "(expected layout: size (4 bytes), crc (4 bytes), type and tick (8 bytes), payload following)";
   char const* p = reinterpret_cast<char const*>(marker);
   char const* e = reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::AlignedSize<size_t>(size);
 
@@ -1474,12 +1474,12 @@ void MMFilesDatafile::printMarker(TRI_df_marker_t const* marker, TRI_voc_size_t 
       }
     }
 
-    LOG(INFO) << line << "  " << raw;
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << line << "  " << raw;
     line.clear();
     raw.clear();
 
     if (printed >= 2048) {
-      LOG(INFO) << "(output truncated due to excessive length)";
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "(output truncated due to excessive length)";
       break;
     }
   }
@@ -1487,9 +1487,9 @@ void MMFilesDatafile::printMarker(TRI_df_marker_t const* marker, TRI_voc_size_t 
 
 /// @brief fixes a corrupted datafile
 bool MMFilesDatafile::fix(TRI_voc_size_t currentSize) {
-  LOG(WARN) << "datafile '" << getName() << "' is corrupted at position " << currentSize;
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "datafile '" << getName() << "' is corrupted at position " << currentSize;
 
-  LOG(WARN) << "setting datafile '" << getName() << "' to read-only and ignoring all data from this file beyond this position";
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "setting datafile '" << getName() << "' to read-only and ignoring all data from this file beyond this position";
 
   _currentSize = currentSize;
   TRI_ASSERT(_initSize == _maximalSize);
@@ -1681,7 +1681,7 @@ bool MMFilesDatafile::tryRepair() {
           if (isFollowedByNullBytes) {
             // only last marker in datafile was corrupt. fix the datafile in
             // place
-            LOG(INFO) << "truncating datafile '" << getName() << "' at position " << currentSize;
+            LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "truncating datafile '" << getName() << "' at position " << currentSize;
             int res = truncateAndSeal(currentSize);
             return (res == TRI_ERROR_NO_ERROR);
           }
@@ -1718,9 +1718,9 @@ bool MMFilesDatafile::tryRepair() {
               bool ok = sync(ptr, (ptr + size));
 
               if (ok) {
-                LOG(INFO) << "zeroed single invalid marker in datafile '" << getName() << "' at position " << currentSize;
+                LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "zeroed single invalid marker in datafile '" << getName() << "' at position " << currentSize;
               } else {
-                LOG(ERR) << "could not zero single invalid marker in datafile '" << getName() << "' at position " << currentSize;
+                LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not zero single invalid marker in datafile '" << getName() << "' at position " << currentSize;
                 return false;
               }
             } else {
@@ -1765,7 +1765,7 @@ MMFilesDatafile* MMFilesDatafile::open(std::string const& filename, bool ignoreF
     TRI_UNMMFile(const_cast<char*>(datafile->data()), datafile->initSize(), datafile->fd(), &datafile->_mmHandle);
     TRI_CLOSE(datafile->fd());
 
-    LOG(ERR) << "datafile '" << datafile->getName() << "' is corrupt";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "datafile '" << datafile->getName() << "' is corrupt";
     // must free datafile here
 
     return nullptr;
@@ -1774,7 +1774,7 @@ MMFilesDatafile* MMFilesDatafile::open(std::string const& filename, bool ignoreF
   // change to read-write if no footer has been found
   if (!datafile->_isSealed) {
     if (!datafile->readWrite()) {
-      LOG(ERR) << "unable to change memory protection for memory backed by datafile '" << datafile->getName() << "'. please check file permissions and mount options.";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to change memory protection for memory backed by datafile '" << datafile->getName() << "'. please check file permissions and mount options.";
       return nullptr;
     }
     datafile->setState(TRI_DF_STATE_WRITE); 
@@ -1802,7 +1802,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
     TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-    LOG(ERR) << "cannot open datafile '" << filename << "': '" << TRI_GET_ERRORBUF << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot open datafile '" << filename << "': '" << TRI_GET_ERRORBUF << "'";
 
     return nullptr;
   }
@@ -1816,7 +1816,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     TRI_CLOSE(fd);
 
-    LOG(ERR) << "cannot get status of datafile '" << filename << "': " << TRI_GET_ERRORBUF;
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot get status of datafile '" << filename << "': " << TRI_GET_ERRORBUF;
 
     return nullptr;
   }
@@ -1828,7 +1828,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
     TRI_CLOSE(fd);
 
-    LOG(ERR) << "datafile '" << filename << "' is corrupt, size is only " << size;
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "datafile '" << filename << "' is corrupt, size is only " << size;
 
     return nullptr;
   }
@@ -1847,7 +1847,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
   bool ok = TRI_ReadPointer(fd, &buffer[0], toRead);
 
   if (!ok) {
-    LOG(ERR) << "cannot read datafile header from '" << filename << "': " << TRI_last_error();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read datafile header from '" << filename << "': " << TRI_last_error();
 
     TRI_CLOSE(fd);
     return nullptr;
@@ -1863,7 +1863,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
   if (!ok) {
     if (IsMarker28(ptr)) {
       TRI_CLOSE(fd);
-      LOG(ERR) << "datafile found from older version of ArangoDB. "
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "datafile found from older version of ArangoDB. "
                << "Please dump data from that version with arangodump "
                << "and reload it into this ArangoDB instance with arangorestore";
       FATAL_ERROR_EXIT();
@@ -1871,7 +1871,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
 
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
 
-    LOG(ERR) << "corrupted datafile header read from '" << filename << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "corrupted datafile header read from '" << filename << "'";
 
     if (!ignoreErrors) {
       TRI_CLOSE(fd);
@@ -1884,7 +1884,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
     if (header->_version != TRI_DF_VERSION) {
       TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
 
-      LOG(ERR) << "unknown datafile version '" << header->_version << "' in datafile '" << filename << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown datafile version '" << header->_version << "' in datafile '" << filename << "'";
 
       if (!ignoreErrors) {
         TRI_CLOSE(fd);
@@ -1895,7 +1895,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
 
   // check the maximal size
   if (size > header->_maximalSize) {
-    LOG(DEBUG) << "datafile '" << filename << "' has size " << size << ", but maximal size is " << header->_maximalSize;
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "datafile '" << filename << "' has size " << size << ", but maximal size is " << header->_maximalSize;
   }
 
   // map datafile into memory
@@ -1907,8 +1907,8 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
     TRI_set_errno(res);
     TRI_CLOSE(fd);
 
-    LOG(ERR) << "cannot memory map datafile '" << filename << "': " << TRI_errno_string(res);
-    LOG(ERR) << "The database directory might reside on a shared folder "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot memory map datafile '" << filename << "': " << TRI_errno_string(res);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "The database directory might reside on a shared folder "
                 "(VirtualBox, VMWare) or an NFS-mounted volume which does not allow memory mapped files.";
     return nullptr;
   }

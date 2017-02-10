@@ -89,7 +89,7 @@ std::unordered_set<std::string> EngineSelectorFeature::availableEngineNames() {
 // return all available storage engines
 std::unordered_map<std::string, std::string> EngineSelectorFeature::availableEngines() { 
   return std::unordered_map<std::string, std::string>{
-    {MMFilesEngine::EngineName, MMFilesEngine::FeatureName},
-    {RocksDBEngine::EngineName, RocksDBEngine::FeatureName}
+    {MMFilesEngine::EngineName, MMFilesEngine::FeatureName}
+    //,{RocksDBEngine::EngineName, RocksDBEngine::FeatureName}
   };
 }

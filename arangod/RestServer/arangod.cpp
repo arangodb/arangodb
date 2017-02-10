@@ -49,6 +49,7 @@
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
+#include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
@@ -121,6 +122,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new AgencyFeature(&server));
     server.addFeature(new aql::AqlFunctionFeature(&server));
     server.addFeature(new AuthenticationFeature(&server));
+    server.addFeature(new AqlFeature(&server));
     server.addFeature(new BootstrapFeature(&server));
     server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
     server.addFeature(new ClusterFeature(&server));
@@ -183,7 +185,7 @@ static int runServer(int argc, char** argv) {
     // storage engines
     server.addFeature(new MMFilesEngine(&server));
     server.addFeature(new MMFilesWalRecoveryFeature(&server));
-    server.addFeature(new RocksDBEngine(&server));
+    //server.addFeature(new RocksDBEngine(&server));
 
     try {
       server.run(argc, argv);
@@ -192,11 +194,11 @@ static int runServer(int argc, char** argv) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG(ERR) << "arangod terminated because of an unhandled exception: "
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangod terminated because of an unhandled exception: "
                << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG(ERR) << "arangod terminated because of an unhandled exception of "
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangod terminated because of an unhandled exception of "
                   "unknown type";
       ret = EXIT_FAILURE;
     }
@@ -204,10 +206,10 @@ static int runServer(int argc, char** argv) {
 
     return context.exit(ret);
   } catch (std::exception const& ex) {
-    LOG(ERR) << "arangod terminated because of an unhandled exception: "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangod terminated because of an unhandled exception: "
              << ex.what();
   } catch (...) {
-    LOG(ERR) << "arangod terminated because of an unhandled exception of "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangod terminated because of an unhandled exception of "
                 "unknown type";
   }
   exit(EXIT_FAILURE);

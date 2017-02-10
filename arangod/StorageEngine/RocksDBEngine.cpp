@@ -21,6 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
+
 #include "RocksDBEngine.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
@@ -140,7 +142,8 @@ int RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-TRI_vocbase_t* RocksDBEngine::openDatabase(VPackSlice const& parameters, bool isUpgrade) {
+TRI_vocbase_t* RocksDBEngine::openDatabase(VPackSlice const& parameters, bool isUpgrade, int& status) {
+  status = TRI_ERROR_BAD_PARAMETER;
   return nullptr;
 }
 
@@ -152,7 +155,8 @@ TRI_vocbase_t* RocksDBEngine::openDatabase(VPackSlice const& parameters, bool is
 // so that subsequent database creation requests will not fail.
 // the WAL entry for the database creation will be written *after* the call
 // to "createDatabase" returns
-TRI_vocbase_t* RocksDBEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) {
+TRI_vocbase_t* RocksDBEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data, int& status) {
+  status = TRI_ERROR_BAD_PARAMETER;
   return nullptr;
 }
 
@@ -163,18 +167,18 @@ TRI_vocbase_t* RocksDBEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocy
 // but let's an async task perform the actual deletion. 
 // the WAL entry for database deletion will be written *after* the call
 // to "prepareDropDatabase" returns
-int RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase) {
-  return TRI_ERROR_NO_ERROR;
+void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase, bool usemarker, int& status) {
+  status = TRI_ERROR_NO_ERROR;
 }
 
 // perform a physical deletion of the database      
-int RocksDBEngine::dropDatabase(TRI_vocbase_t* vocbase) {
-  return TRI_ERROR_NO_ERROR;
+void RocksDBEngine::dropDatabase(TRI_vocbase_t* vocbase, int& status) {
+  status = TRI_ERROR_NO_ERROR;
 }
 
 /// @brief wait until a database directory disappears
-int RocksDBEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force) {
-  return TRI_ERROR_NO_ERROR;
+void RocksDBEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force, int &status) {
+  status =TRI_ERROR_NO_ERROR;
 }
 
 
@@ -290,7 +294,7 @@ bool RocksDBEngine::cleanupCompactionBlockers(TRI_vocbase_t* vocbase) {
 
   size_t n = (*it).second.size();
 
-  for (size_t i = 0; i < n; /* no hoisting */) {
+  for (size_t i = 0; i < n;) { //no hoisting
     auto& blocker = (*it).second[i];
 
     if (blocker._expires < now) {
@@ -446,14 +450,14 @@ void RocksDBEngine::addAqlFunctions() const {
 
 void RocksDBEngine::verifyDirectories() {
   if (!TRI_IsDirectory(_basePath.c_str())) {
-    LOG(ERR) << "database path '" << _basePath << "' is not a directory";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "database path '" << _basePath << "' is not a directory";
 
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_INVALID);
   }
 
   if (!TRI_IsWritable(_basePath.c_str())) {
     // database directory is not writable for the current user... bad luck
-    LOG(ERR) << "database directory '" << _basePath
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "database directory '" << _basePath
              << "' is not writable for current user";
 
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
@@ -466,7 +470,7 @@ void RocksDBEngine::verifyDirectories() {
     int res = TRI_CreateDirectory(_databasePath.c_str(), systemError, errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "unable to create database directory '"
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to create database directory '"
                << _databasePath << "': " << errorMessage;
 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
@@ -474,8 +478,10 @@ void RocksDBEngine::verifyDirectories() {
   }
 
   if (!TRI_IsWritable(_databasePath.c_str())) {
-    LOG(ERR) << "database directory '" << _databasePath << "' is not writable";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "database directory '" << _databasePath << "' is not writable";
 
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
   }
 }
+
+*/

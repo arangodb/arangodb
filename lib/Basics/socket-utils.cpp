@@ -38,7 +38,7 @@ int TRI_closesocket(TRI_socket_t s) {
     if (res != 0) {
       // Windows complains about shutting down a socket that was not bound
       // so we will not print out the error here
-      // LOG(WARN) << "socket shutdown error: " << WSAGetLastError();
+      // LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "socket shutdown error: " << WSAGetLastError();
     } else {
       char buf[256];
       int len;
@@ -49,7 +49,7 @@ int TRI_closesocket(TRI_socket_t s) {
     res = closesocket(s.fileHandle);
 
     if (res != 0) {
-      LOG(WARN) << "socket close error: " << WSAGetLastError();
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "socket close error: " << WSAGetLastError();
     }
     // We patch libev on Windows lightly to not really distinguish between
     // socket handles and file descriptors, therefore, we do not have to do the
@@ -71,7 +71,7 @@ int TRI_closesocket(TRI_socket_t s) {
 
     if (res == -1) {
       int myerrno = errno;
-      LOG(WARN) << "socket close error: " << myerrno << ": " << strerror(myerrno);
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "socket close error: " << myerrno << ": " << strerror(myerrno);
     }
   }
 #endif

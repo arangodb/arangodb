@@ -252,7 +252,7 @@ void AsyncJobManager::initAsyncJob(RestHandler* handler, char const* hdr) {
   AsyncCallbackContext* ctx = nullptr;
 
   if (hdr != nullptr) {
-    LOG(DEBUG) << "Found header X-Arango-Coordinator in async request";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Found header X-Arango-Coordinator in async request";
     ctx = new AsyncCallbackContext(std::string(hdr));
   }
 

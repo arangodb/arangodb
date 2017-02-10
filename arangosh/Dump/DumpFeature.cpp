@@ -130,7 +130,7 @@ void DumpFeature::validateOptions(
   if (1 == n) {
     _outputDirectory = positionals[0];
   } else if (1 < n) {
-    LOG(FATAL) << "expecting at most one directory, got " +
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "expecting at most one directory, got " +
                       StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
   }
@@ -144,7 +144,7 @@ void DumpFeature::validateOptions(
   }
 
   if (_tickStart < _tickEnd) {
-    LOG(FATAL) << "invalid values for --tick-start or --tick-end";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid values for --tick-start or --tick-end";
     FATAL_ERROR_EXIT();
   }
 
@@ -173,13 +173,13 @@ void DumpFeature::prepare() {
 
   if (_outputDirectory.empty() ||
       (TRI_ExistsFile(_outputDirectory.c_str()) && !isDirectory)) {
-    LOG(FATAL) << "cannot write to output directory '" << _outputDirectory
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot write to output directory '" << _outputDirectory
                << "'";
     FATAL_ERROR_EXIT();
   }
 
   if (isDirectory && !isEmptyDirectory && !_overwrite) {
-    LOG(FATAL) << "output directory '" << _outputDirectory
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "output directory '" << _outputDirectory
                << "' already exists. use \"--overwrite true\" to "
                   "overwrite data in it";
     FATAL_ERROR_EXIT();
@@ -192,7 +192,7 @@ void DumpFeature::prepare() {
                                   errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "unable to create output directory '" << _outputDirectory
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to create output directory '" << _outputDirectory
                << "': " << errorMessage;
       FATAL_ERROR_EXIT();
     }
@@ -975,7 +975,7 @@ void DumpFeature::start() {
   try {
     _httpClient = client->createHttpClient();
   } catch (...) {
-    LOG(FATAL) << "cannot create server connection, giving up!";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
 
@@ -987,10 +987,10 @@ void DumpFeature::start() {
   std::string const versionString = _httpClient->getServerVersion();
 
   if (!_httpClient->isConnected()) {
-    LOG(ERR) << "Could not connect to endpoint '" << client->endpoint()
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not connect to endpoint '" << client->endpoint()
              << "', database: '" << dbName << "', username: '"
              << client->username() << "'";
-    LOG(FATAL) << "Error message: '" << _httpClient->getErrorMessage() << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Error message: '" << _httpClient->getErrorMessage() << "'";
 
     FATAL_ERROR_EXIT();
   }
@@ -1003,7 +1003,7 @@ void DumpFeature::start() {
 
   if (version.first < 3) {
     // we can connect to 3.x
-    LOG(ERR) << "Error: got incompatible server version '" << versionString
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Error: got incompatible server version '" << versionString
              << "'";
 
     if (!_force) {
@@ -1015,16 +1015,16 @@ void DumpFeature::start() {
 
   if (_clusterMode) {
     if (_tickStart != 0 || _tickEnd != 0) {
-      LOG(ERR) << "Error: cannot use tick-start or tick-end on a cluster";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Error: cannot use tick-start or tick-end on a cluster";
       FATAL_ERROR_EXIT();
     }
   }
 
   if (!_httpClient->isConnected()) {
-    LOG(ERR) << "Lost connection to endpoint '" << client->endpoint()
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Lost connection to endpoint '" << client->endpoint()
              << "', database: '" << dbName << "', username: '"
              << client->username() << "'";
-    LOG(FATAL) << "Error message: '" << _httpClient->getErrorMessage() << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Error message: '" << _httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -1060,18 +1060,18 @@ void DumpFeature::start() {
       res = runClusterDump(errorMsg);
     }
   } catch (std::exception const& ex) {
-    LOG(ERR) << "caught exception " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG(ERR) << "Error: caught unknown exception";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Error: caught unknown exception";
     res = TRI_ERROR_INTERNAL;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (!errorMsg.empty()) {
-      LOG(ERR) << errorMsg;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << errorMsg;
     } else {
-      LOG(ERR) << "An error occurred";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "An error occurred";
     }
     ret = EXIT_FAILURE;
   }

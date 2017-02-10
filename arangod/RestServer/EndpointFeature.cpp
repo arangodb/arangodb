@@ -74,7 +74,7 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   if (_backlogSize > SOMAXCONN) {
-    LOG(WARN) << "value for --tcp.backlog-size exceeds default system "
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "value for --tcp.backlog-size exceeds default system "
                  "header SOMAXCONN value "
               << SOMAXCONN << ". trying to use " << SOMAXCONN << " anyway";
   }
@@ -84,7 +84,7 @@ void EndpointFeature::prepare() {
   buildEndpointLists();
 
   if (_endpointList.empty()) {
-    LOG(FATAL) << "no endpoints have been specified, giving up, please use the "
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "no endpoints have been specified, giving up, please use the "
                   "'--server.endpoint' option";
     FATAL_ERROR_EXIT();
   }
@@ -115,7 +115,7 @@ void EndpointFeature::buildEndpointLists() {
     bool ok = _endpointList.add((*i), static_cast<int>(_backlogSize), _reuseAddress);
 
     if (!ok) {
-      LOG(FATAL) << "invalid endpoint '" << (*i) << "'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid endpoint '" << (*i) << "'";
       FATAL_ERROR_EXIT();
     }
   }

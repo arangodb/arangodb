@@ -70,6 +70,9 @@ class MMFilesEngine final : public StorageEngine {
   // initialize engine
   void start() override;
   void stop() override;
+      
+  
+  bool inRecovery() override;
 
   // called when recovery is finished
   void recoveryDone(TRI_vocbase_t* vocbase) override;
@@ -82,6 +85,33 @@ class MMFilesEngine final : public StorageEngine {
 
   // inventory functionality
   // -----------------------
+
+
+
+  Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) override {
+    status = TRI_ERROR_NO_ERROR;
+    return createDatabaseMMFiles(id,args);
+  }
+
+  void dropDatabase(Database* database, int& status) override;
+
+  std::string getName(Database* db) const override {
+    return db->name();
+  }
+
+  std::string getPath(Database* db) const override {
+    return databaseDirectory(db->id());
+  }
+
+  std::string getName(Database*, CollectionView*) const override {
+    throw std::logic_error("not implemented");
+    return "not implemented";
+  }
+
+  std::string getPath(Database*, CollectionView* coll) const override {
+    throw std::logic_error("not implemented");
+    return collectionDirectory(0, 0);
+  }
 
   // fill the Builder object with an array of databases that were detected
   // by the storage engine. this method must sort out databases that were not
@@ -103,13 +133,15 @@ class MMFilesEngine final : public StorageEngine {
   std::string databasePath(TRI_vocbase_t const* vocbase) const override { 
     return databaseDirectory(vocbase->id()); 
   }
-  
+ 
   // return the path for a collection
   std::string collectionPath(TRI_vocbase_t const* vocbase, TRI_voc_cid_t id) const override { 
     return collectionDirectory(vocbase->id(), id); 
   }
 
-  TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) override;
+
+
+  virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade, int&) override;
 
   // database, collection and index management
   // -----------------------------------------
@@ -122,7 +154,7 @@ class MMFilesEngine final : public StorageEngine {
   // so that subsequent database creation requests will not fail.
   // the WAL entry for the database creation will be written *after* the call
   // to "createDatabase" returns
-  TRI_vocbase_t* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) override;
+  TRI_vocbase_t* createDatabaseMMFiles(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data);
 
   // asks the storage engine to drop the specified database and persist the 
   // deletion info. Note that physical deletion of the database data must not 
@@ -130,15 +162,19 @@ class MMFilesEngine final : public StorageEngine {
   // It is recommended that this operation only sets a deletion flag for the database 
   // but let's an async task perform the actual deletion. 
   // the WAL entry for database deletion will be written *after* the call
-  // to "prepareDropDatabase" returns
-  int prepareDropDatabase(TRI_vocbase_t* vocbase) override;
+  // to "prepareDropDatabase" returns == TODO UPDATE
+  void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker, int& status) override;
   
   // perform a physical deletion of the database      
-  int dropDatabase(TRI_vocbase_t* vocbase) override;
+  int dropDatabaseMMFiles(TRI_vocbase_t* vocbase);
   
   /// @brief wait until a database directory disappears
-  int waitUntilDeletion(TRI_voc_tick_t id, bool force) override;
+  void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
   
+  
+  /// @brief writes a create-database marker into the log
+  int writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice);
+
   // asks the storage engine to create a collection as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server 
   // that no other active collection with the same name and id exists in the same
@@ -341,6 +377,9 @@ class MMFilesEngine final : public StorageEngine {
   int beginShutdownCompactor(TRI_vocbase_t* vocbase);
   // stop and delete the compactor thread for the database
   int stopCompactor(TRI_vocbase_t* vocbase);
+  
+  /// @brief writes a drop-database marker into the log
+  int writeDropMarker(TRI_voc_tick_t id);
 
  public:
   static std::string const EngineName;

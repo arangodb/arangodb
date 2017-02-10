@@ -113,7 +113,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
 
     if (res != TRI_ERROR_NO_ERROR) {
       c->removeRevision(revisionId, false);
-      LOG(ERR) << "inserting document into primary index failed with error: " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "inserting document into primary index failed with error: " << TRI_errno_string(res);
 
       return res;
     }
@@ -270,7 +270,7 @@ bool MMFilesCollection::OpenIterator(TRI_df_marker_t const* marker, MMFilesColle
       FindDatafileStats(data, datafile->fid());
     }
 
-    LOG(TRACE) << "skipping marker type " << TRI_NameMarkerDatafile(marker);
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "skipping marker type " << TRI_NameMarkerDatafile(marker);
     res = TRI_ERROR_NO_ERROR;
   }
 
@@ -363,7 +363,7 @@ int MMFilesCollection::sealDatafile(MMFilesDatafile* datafile, bool isCompactor)
   int res = datafile->seal();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "failed to seal journal '" << datafile->getName()
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to seal journal '" << datafile->getName()
              << "': " << TRI_errno_string(res);
     return res;
   }
@@ -376,9 +376,9 @@ int MMFilesCollection::sealDatafile(MMFilesDatafile* datafile, bool isCompactor)
     res = datafile->rename(filename);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      LOG(TRACE) << "closed file '" << datafile->getName() << "'";
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "closed file '" << datafile->getName() << "'";
     } else {
-      LOG(ERR) << "failed to rename datafile '" << datafile->getName()
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to rename datafile '" << datafile->getName()
                << "' to '" << filename << "': " << TRI_errno_string(res);
     }
   }
@@ -696,10 +696,10 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
   TRI_ASSERT(datafile != nullptr);
 
   if (isCompactor) {
-    LOG(TRACE) << "created new compactor '" << datafile->getName()
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "created new compactor '" << datafile->getName()
                << "'";
   } else {
-    LOG(TRACE) << "created new journal '" << datafile->getName() << "'";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "created new journal '" << datafile->getName() << "'";
   }
 
   // create a collection header, still in the temporary file
@@ -711,7 +711,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection header in file '"
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create collection header in file '"
              << datafile->getName() << "': " << TRI_errno_string(res);
 
     // close the journal and remove it
@@ -736,7 +736,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
 
   if (res != TRI_ERROR_NO_ERROR) {
     int res = datafile->_lastError;
-    LOG(ERR) << "cannot create collection header in file '"
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create collection header in file '"
              << datafile->getName() << "': " << TRI_last_error();
 
     // close the datafile and remove it
@@ -759,7 +759,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
     int res = datafile->rename(filename);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "failed to rename journal '" << datafile->getName()
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to rename journal '" << datafile->getName()
                << "' to '" << filename << "': " << TRI_errno_string(res);
 
       std::string temp(datafile->getName());
@@ -769,7 +769,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
       THROW_ARANGO_EXCEPTION(res);
     } 
       
-    LOG(TRACE) << "renamed journal from '" << datafile->getName()
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "renamed journal from '" << datafile->getName()
                << "' to '" << filename << "'";
   }
 
@@ -925,7 +925,7 @@ std::vector<MMFilesCollection::DatafileDescription> MMFilesCollection::datafiles
 
   auto apply = [&dataMin, &dataMax, &result](MMFilesDatafile const* datafile, bool isJournal) {
     DatafileDescription entry = {datafile, datafile->_dataMin, datafile->_dataMax, datafile->_tickMax, isJournal};
-    LOG(TRACE) << "checking datafile " << datafile->fid() << " with data range " << datafile->_dataMin << " - " << datafile->_dataMax << ", tick max: " << datafile->_tickMax;
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "checking datafile " << datafile->fid() << " with data range " << datafile->_dataMin << " - " << datafile->_dataMax << ", tick max: " << datafile->_tickMax;
 
     if (datafile->_dataMin == 0 || datafile->_dataMax == 0) {
       // datafile doesn't have any data
@@ -962,7 +962,7 @@ std::vector<MMFilesCollection::DatafileDescription> MMFilesCollection::datafiles
 
 bool MMFilesCollection::applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                         std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {
-  LOG(TRACE) << "getting datafiles in data range " << dataMin << " - " << dataMax;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "getting datafiles in data range " << dataMin << " - " << dataMax;
 
   std::vector<DatafileDescription> datafiles = datafilesInRange(dataMin, dataMax);
   // now we have a list of datafiles...
@@ -1105,7 +1105,7 @@ int MMFilesCollection::iterateMarkersOnLoad(arangodb::Transaction* trx) {
 
   iterateDatafiles(cb);
     
-  LOG(TRACE) << "found " << openState._documents << " document markers, " 
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found " << openState._documents << " document markers, " 
              << openState._deletions << " deletion markers for collection '" << _logicalCollection->name() << "'";
   
   if (_logicalCollection->version() <= LogicalCollection::VERSION_30 && 
@@ -1114,7 +1114,7 @@ int MMFilesCollection::iterateMarkersOnLoad(arangodb::Transaction* trx) {
     // a collection from 3.0 or earlier with a _rev value that is higher than we can handle safely
     _logicalCollection->setRevisionError();
 
-    LOG(WARN) << "collection '" << _logicalCollection->name() << "' contains _rev values that are higher than expected for an ArangoDB 3.1 database. If this collection was created or used with a pre-release or development version of ArangoDB 3.1, please restart the server with option '--database.check-30-revisions false' to suppress this warning. If this collection was created with an ArangoDB 3.0, please dump the 3.0 database with arangodump and restore it in 3.1 with arangorestore.";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "collection '" << _logicalCollection->name() << "' contains _rev values that are higher than expected for an ArangoDB 3.1 database. If this collection was created or used with a pre-release or development version of ArangoDB 3.1, please restart the server with option '--database.check-30-revisions false' to suppress this warning. If this collection was created with an ArangoDB 3.0, please dump the 3.0 database with arangodump and restore it in 3.1 with arangorestore.";
     if (application_features::ApplicationServer::server->getFeature<DatabaseFeature>("Database")->fail30Revisions()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE, std::string("collection '") + _logicalCollection->name() + "' contains _rev values from 3.0 and needs to be migrated using dump/restore");
     }

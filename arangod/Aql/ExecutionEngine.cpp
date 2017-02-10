@@ -578,7 +578,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     auto body = std::make_shared<std::string const>(result.slice().toJson());
 
-    //LOG(ERR) << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get());
+    //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get());
     // << "\n";
 
     auto cc = arangodb::ClusterComm::instance();
@@ -649,7 +649,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       }
     }
 
-    //LOG(ERR) << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
+    //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
 
     if (nrok != (int)shardIds->size()) {
       if (errorCode == TRI_ERROR_NO_ERROR) {
@@ -661,7 +661,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
   /// @brief distributePlansToShards, for a single Scatter/Gather block
   void distributePlansToShards(EngineInfo* info, QueryId connectedId) {
-    //LOG(ERR) << "distributePlansToShards: " << info.id;
+    //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "distributePlansToShards: " << info.id;
     Collection* collection = info->getCollection();
 
     auto auxiliaryCollections = info->getAuxiliaryCollections();
@@ -1039,7 +1039,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
       EngineInfo* info = &(*it);
-      //LOG(ERR) << "Doing engine: " << it->id << " location:"
+      //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Doing engine: " << it->id << " location:"
       //          << it->location;
       if (info->location == COORDINATOR) {
         // create a coordinator-based engine
@@ -1305,7 +1305,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
               if (!res->errorMessage.empty()) {
                 std::string msg("while trying to unregister query ");
                 msg += queryId + ": " + res->stringifyErrorMessage();
-                LOG(WARN) << msg;
+                LOG_TOPIC(WARN, arangodb::Logger::FIXME) << msg;
               }
             } else {
               // Remove query from registry:
@@ -1341,7 +1341,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
               if (!res->errorMessage.empty()) {
                 std::string msg("while trying to unregister traverser engine ");
                 msg += traverserId + ": " + res->stringifyErrorMessage();
-                LOG(WARN) << msg;
+                LOG_TOPIC(WARN, arangodb::Logger::FIXME) << msg;
               }
             }
           }

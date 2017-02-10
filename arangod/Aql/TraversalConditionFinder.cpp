@@ -158,7 +158,7 @@ static inline bool IsSupportedNode(AstNode const* node) {
       return false;
     default:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      LOG(ERR) << "Traversal Optimizer encountered node: " << node->getTypeString();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Traversal Optimizer encountered node: " << node->getTypeString();
 #endif
       return false;
   }
@@ -249,7 +249,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
           default:
             // Other types cannot be optimized
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-            LOG(ERR) << "Failed type: " << node->getTypeString();
+            LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Failed type: " << node->getTypeString();
             node->dump(0);
 #endif
             notSupported = true;

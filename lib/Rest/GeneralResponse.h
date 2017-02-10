@@ -156,7 +156,7 @@ class GeneralResponse {
 
   void addPayloadPreconditions() { 
     if (_vpackPayloads.size() != 0) {
-      LOG(ERR) << "Payload set twice";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Payload set twice";
       TRI_ASSERT(_vpackPayloads.size() == 0);
     }
   }

@@ -359,18 +359,18 @@ void V8Task::work() {
             TRI_GET_GLOBALS();
 
             v8g->_canceled = true;
-            LOG(WARN)
+            LOG_TOPIC(WARN, arangodb::Logger::FIXME)
                 << "caught non-catchable exception (aka termination) in job";
           }
         }
       } catch (arangodb::basics::Exception const& ex) {
-        LOG(ERR) << "caught exception in V8 user task: "
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in V8 user task: "
                  << TRI_errno_string(ex.code()) << " " << ex.what();
       } catch (std::bad_alloc const&) {
-        LOG(ERR) << "caught exception in V8 user task: "
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in V8 user task: "
                  << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
       } catch (...) {
-        LOG(ERR) << "caught unknown exception in V8 user task";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception in V8 user task";
       }
     }
   }

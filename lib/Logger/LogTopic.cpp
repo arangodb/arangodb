@@ -48,6 +48,7 @@ LogTopic Logger::COMPACTOR("compactor");
 LogTopic Logger::CONFIG("config");
 LogTopic Logger::DATAFILES("datafiles", LogLevel::INFO);
 LogTopic Logger::DEVEL("development", LogLevel::FATAL);
+LogTopic Logger::FIXME("fixme", LogLevel::INFO);
 LogTopic Logger::GRAPHS("graphs", LogLevel::INFO);
 LogTopic Logger::HEARTBEAT("heartbeat", LogLevel::INFO);
 LogTopic Logger::MEMORY("memory", LogLevel::FATAL);  // suppress
@@ -86,7 +87,7 @@ void LogTopic::setLogLevel(std::string const& name, LogLevel level) {
   auto it = _names.find(name);
 
   if (it == _names.end()) {
-    LOG(ERR) << "strange topic '" << name << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange topic '" << name << "'";
     return;
   }
 
@@ -116,6 +117,10 @@ LogTopic::LogTopic(std::string const& name, LogLevel level)
     : _id(NEXT_TOPIC_ID.fetch_add(1, std::memory_order_seq_cst)),
       _name(name),
       _level(level) {
+  if (name != "fixme") {
+    _displayName = std::string("{") + name + "} ";
+  }
+
   try {
     MUTEX_LOCKER(guard, _namesLock);
     _names[name] = this;

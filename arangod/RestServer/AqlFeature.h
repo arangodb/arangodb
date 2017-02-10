@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,26 +17,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "PageSizeFeature.h"
-#include "Logger/Logger.h"
+#ifndef APPLICATION_FEATURES_AQL_FEATURE_H
+#define APPLICATION_FEATURES_AQL_FEATURE_H 1
 
-using namespace arangodb;
-using namespace arangodb::basics;
+#include "ApplicationFeatures/ApplicationFeature.h"
 
-size_t PageSizeFeature::PageSize = 0;
+#include "Basics/Mutex.h"
 
-PageSizeFeature::PageSizeFeature(
-    application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "PageSize") {
-  setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+namespace arangodb {
+class AqlFeature final : public application_features::ApplicationFeature {
+  static AqlFeature* _AQL;
+  static Mutex _aqlFeatureMutex;
+ public:
+  explicit AqlFeature(application_features::ApplicationServer*);
+
+ public:
+  static AqlFeature* lease();
+  static void unlease();
+  void start() override final;
+  void stop() override final;
+ 
+ private:
+  uint64_t _numberLeases;
+  bool _isStopped;
+};
 }
 
-void PageSizeFeature::prepare() {
-  PageSize = static_cast<size_t>(getpagesize());
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "page size is " << PageSize;
-}
+#endif

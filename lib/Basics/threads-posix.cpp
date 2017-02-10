@@ -93,7 +93,7 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
       TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(thread_data_t), false));
 
   if (d == nullptr) {
-    LOG(ERR) << "could not start thread: out of memory";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not start thread: out of memory";
     return false;
   }
 
@@ -105,7 +105,7 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 
   if (rc != 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG(ERR) << "could not start thread: " << strerror(errno);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not start thread: " << strerror(errno);
 
     TRI_Free(TRI_CORE_MEM_ZONE, d);
     return false;
@@ -157,7 +157,7 @@ void TRI_SetProcessorAffinity(TRI_thread_t* thread, size_t core) {
   int s = pthread_setaffinity_np(*thread, sizeof(cpu_set_t), &cpuset);
 
   if (s != 0) {
-    LOG(ERR) << "cannot set affinity to core " << core << ": "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot set affinity to core " << core << ": "
              << strerror(errno);
   }
 
@@ -171,7 +171,7 @@ void TRI_SetProcessorAffinity(TRI_thread_t* thread, size_t core) {
                                (thread_policy_t)&policy, 1);
 
   if (res != KERN_SUCCESS) {
-    LOG(ERR) << "cannot set affinity to core " << core << ": "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot set affinity to core " << core << ": "
              << strerror(errno);
   }
 
