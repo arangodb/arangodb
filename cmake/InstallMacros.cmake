@@ -217,10 +217,5 @@ macro(detect_binary_id_type sourceVar)
     if (FILE_CHECKSUM_LEN EQUAL 40)
       set(${sourceVar} true)
     endif()
-<<<<<<< HEAD
-    execute_process(COMMAND ${CMAKE_OBJCOPY} --only-keep-debug ${FILE} ${STRIP_DIR}/${STRIP_FILE})
-    set(FILE ${STRIP_DIR}/${STRIP_FILE})
-=======
->>>>>>> ac5207cf7d44f27960813ce5cde91f67bba48ccc
   endif()
 endmacro()
