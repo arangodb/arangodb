@@ -489,7 +489,7 @@ if (USE_MAINTAINER_MODE)
   find_program(AWK_EXECUTABLE awk)
 endif ()
 
-include(dbugInformation)
+include(debugInformation.cmake)
 find_program(FILE_EXECUTABLE file)
 detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
 
