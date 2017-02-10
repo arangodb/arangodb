@@ -48,7 +48,8 @@ class TraverserEngineRegistry {
   ///        It can be referred to by the returned
   ///        ID. If the returned ID is 0 something
   ///        internally went wrong.
-  TraverserEngineID createNew(TRI_vocbase_t*, arangodb::velocypack::Slice);
+  TraverserEngineID createNew(TRI_vocbase_t*, arangodb::velocypack::Slice,
+                              double ttl = 600.0);
 
   /// @brief Get the engine with the given ID.
   ///        TODO Test what happens if this pointer
@@ -60,8 +61,19 @@ class TraverserEngineRegistry {
 
   /// @brief Returns the engine with the given id.
   ///        NOTE: Caller is NOT allowed to use the
-  ///        engine after this return.
-  void returnEngine(TraverserEngineID);
+  ///        engine after this return. If the ttl
+  ///        is negative (the default), then the old
+  ///        one is taken again.
+  void returnEngine(TraverserEngineID, double ttl = -1.0);
+
+  /// @brief expireEngines, this deletes all expired engines from the registry
+  void expireEngines();
+
+  /// @brief return number of registered engines
+  size_t numberRegisteredEngines();
+
+  /// @brief destroy all registered engines
+  void destroyAll();
 
  private:
   

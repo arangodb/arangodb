@@ -31,9 +31,9 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesToken.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
-#include "Utils/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
@@ -108,20 +108,20 @@ MMFilesPrimaryIndexIterator::~MMFilesPrimaryIndexIterator() {
   }
 }
 
-DocumentIdentifierToken MMFilesPrimaryIndexIterator::next() {
-  while (_iterator.valid()) {
+bool MMFilesPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  TRI_ASSERT(limit > 0);
+  if (!_iterator.valid() || limit == 0) {
+    return false;
+  }
+  while (_iterator.valid() && limit > 0) {
     MMFilesSimpleIndexElement result = _index->lookupKey(_trx, _iterator.value());
     _iterator.next();
-
     if (result) {
-      // found a result
-      return MMFilesToken{result.revisionId()};
+      cb(MMFilesToken{result.revisionId()});
+      --limit;
     }
-
-    // found no result. now go to next lookup value in _keys
   }
-
-  return MMFilesToken{};
+  return _iterator.valid();
 }
 
 void MMFilesPrimaryIndexIterator::reset() { _iterator.reset(); }
@@ -134,37 +134,22 @@ AllIndexIterator::AllIndexIterator(LogicalCollection* collection,
                    bool reverse)
     : IndexIterator(collection, trx, mmdr, index), _index(indexImpl), _reverse(reverse), _total(0) {}
 
-DocumentIdentifierToken AllIndexIterator::next() {
-  MMFilesSimpleIndexElement element;
-  if (_reverse) {
-    element = _index->findSequentialReverse(&_context, _position);
-  } else {
-    element = _index->findSequential(&_context, _position, _total);
-  }
-  if (element) {
-    return MMFilesToken{element.revisionId()};
-  }
-  return MMFilesToken{};
-}
-
-void AllIndexIterator::nextBabies(std::vector<DocumentIdentifierToken>& buffer, size_t limit) {
-  size_t atMost = limit;
-
-  buffer.clear();
-  if (atMost > 0) {
-    buffer.reserve(atMost);
-  }
-
-  while (atMost > 0) {
-    DocumentIdentifierToken result = next();
-
-    if (result == 0) {
-      return;
+bool AllIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  while (limit > 0) {
+    MMFilesSimpleIndexElement element;
+    if (_reverse) {
+      element = _index->findSequentialReverse(&_context, _position);
+    } else {
+      element = _index->findSequential(&_context, _position, _total);
     }
-
-    buffer.emplace_back(result);
-    --atMost;
+    if (element) {
+      cb(MMFilesToken{element.revisionId()});
+      --limit;
+    } else {
+      return false;
+    }
   }
+  return true;
 }
 
 void AllIndexIterator::reset() { _position.reset(); }
@@ -175,12 +160,18 @@ AnyIndexIterator::AnyIndexIterator(LogicalCollection* collection, arangodb::Tran
                                    MMFilesPrimaryIndexImpl const* indexImpl)
     : IndexIterator(collection, trx, mmdr, index), _index(indexImpl), _step(0), _total(0) {}
 
-DocumentIdentifierToken AnyIndexIterator::next() {
-  MMFilesSimpleIndexElement element = _index->findRandom(&_context, _initial, _position, _step, _total);
-  if (element) {
-    return MMFilesToken{element.revisionId()};
+bool AnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  while (limit > 0) {
+    MMFilesSimpleIndexElement element =
+        _index->findRandom(&_context, _initial, _position, _step, _total);
+    if (element) {
+      cb(MMFilesToken{element.revisionId()});
+      --limit;
+    } else {
+      return false;
+    }
   }
-  return MMFilesToken{};
+  return true;
 }
 
 void AnyIndexIterator::reset() {
@@ -236,14 +227,14 @@ void MMFilesPrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 
 int MMFilesPrimaryIndex::insert(arangodb::Transaction*, TRI_voc_rid_t, VPackSlice const&, bool) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG(WARN) << "insert() called for primary index";
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "insert() called for primary index";
 #endif
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "insert() called for primary index");
 }
 
 int MMFilesPrimaryIndex::remove(arangodb::Transaction*, TRI_voc_rid_t, VPackSlice const&, bool) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG(WARN) << "remove() called for primary index";
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "remove() called for primary index";
 #endif
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "remove() called for primary index");
 }

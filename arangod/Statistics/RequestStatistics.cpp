@@ -95,7 +95,7 @@ RequestStatistics* RequestStatistics::acquire() {
     statistics->_released = false;
   } else {
     statistics = nullptr;
-    LOG(TRACE) << "no free element on statistics queue";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no free element on statistics queue";
   }
 
   return statistics;

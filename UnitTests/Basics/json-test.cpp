@@ -31,16 +31,12 @@
 #include <boost/test/unit_test.hpp>
 
 #include "Basics/json.h"
+#include "Basics/files.h"
 #include "Basics/directories.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 
-#if _WIN32
-#include "Basics/win-utils.h"
-#define FIX_ICU_ENV     TRI_FixIcuDataEnv(SBIN_DIRECTORY)
-#else
-#define FIX_ICU_ENV
-#endif
+#include "UnitTests/Basics/icu-helper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
@@ -58,19 +54,8 @@
 
 struct CJsonSetup {
   CJsonSetup () {
-    FIX_ICU_ENV;
-    if (!arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("", SBIN_DIRECTORY)) {
-      std::string msg =
-        "cannot initialize ICU; please make sure ICU*dat is available; "
-        "the variable ICU_DATA='";
-      if (getenv("ICU_DATA") != nullptr) {
-        msg += getenv("ICU_DATA");
-      }
-      msg += "' should point the directory containing the ICU*dat file.";
-      BOOST_TEST_MESSAGE(msg);
-      BOOST_CHECK_EQUAL(false, true);
-    }
     BOOST_TEST_MESSAGE("setup json");
+    IcuInitializer::setup(boost::unit_test::framework::master_test_suite().argv[0]);
   }
 
   ~CJsonSetup () {

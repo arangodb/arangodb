@@ -78,7 +78,7 @@ void V8PlatformFeature::validateOptions(
   
   if (0 < _v8MaxHeap) {
     if (_v8MaxHeap > (std::numeric_limits<int>::max)()) {
-      LOG(FATAL) << "value for '--javascript.v8-max-heap' exceeds maximum value " << (std::numeric_limits<int>::max)();
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "value for '--javascript.v8-max-heap' exceeds maximum value " << (std::numeric_limits<int>::max)();
       FATAL_ERROR_EXIT();
     }
   }
@@ -153,7 +153,7 @@ void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
   size_t stillFree = heapSizeLimit - usedHeadSize;
 
   if (stillFree <= LIMIT_ABS && freed <= minFreed) {
-    LOG(WARN) << "reached heap-size limit, interrupting V8 execution ("
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "reached heap-size limit, interrupting V8 execution ("
               << "heap size limit " << heapSizeLimit << ", used "
               << usedHeadSize << ")";
 

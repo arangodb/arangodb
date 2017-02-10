@@ -137,7 +137,7 @@ void RestoreFeature::validateOptions(
   if (1 == n) {
     _inputDirectory = positionals[0];
   } else if (1 < n) {
-    LOG(FATAL) << "expecting at most one directory, got " +
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "expecting at most one directory, got " +
                       StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
   }
@@ -162,12 +162,12 @@ void RestoreFeature::prepare() {
   // .............................................................................
 
   if (_inputDirectory == "" || !TRI_IsDirectory(_inputDirectory.c_str())) {
-    LOG(FATAL) << "input directory '" << _inputDirectory << "' does not exist";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "input directory '" << _inputDirectory << "' does not exist";
     FATAL_ERROR_EXIT();
   }
 
   if (!_importStructure && !_importData) {
-    LOG(FATAL)
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "Error: must specify either --create-collection or --import-data";
     FATAL_ERROR_EXIT();
   }
@@ -662,7 +662,7 @@ void RestoreFeature::start() {
   try {
     _httpClient = client->createHttpClient();
   } catch (...) {
-    LOG(FATAL) << "cannot create server connection, giving up!";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
 
@@ -683,8 +683,8 @@ void RestoreFeature::start() {
     int res = tryCreateDatabase(client, dbName);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "Could not create database '" << dbName << "'";
-      LOG(FATAL) << _httpClient->getErrorMessage() << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not create database '" << dbName << "'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
       FATAL_ERROR_EXIT();
     }
 
@@ -696,9 +696,9 @@ void RestoreFeature::start() {
   }
 
   if (!_httpClient->isConnected()) {
-    LOG(ERR) << "Could not connect to endpoint "
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not connect to endpoint "
              << _httpClient->getEndpointSpecification();
-    LOG(FATAL) << _httpClient->getErrorMessage() << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -710,10 +710,10 @@ void RestoreFeature::start() {
 
   if (version.first < 3) {
     // we can connect to 3.x
-    LOG(ERR) << "got incompatible server version '" << versionString << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got incompatible server version '" << versionString << "'";
 
     if (!_force) {
-      LOG(FATAL) << "giving up!";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "giving up!";
       FATAL_ERROR_EXIT();
     }
   }
@@ -732,18 +732,18 @@ void RestoreFeature::start() {
   try {
     res = processInputDirectory(errorMsg);
   } catch (std::exception const& ex) {
-    LOG(ERR) << "caught exception " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG(ERR) << "Error: caught unknown exception";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Error: caught unknown exception";
     res = TRI_ERROR_INTERNAL;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (!errorMsg.empty()) {
-      LOG(ERR) << errorMsg;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << errorMsg;
     } else {
-      LOG(ERR) << "An error occurred";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "An error occurred";
     }
     ret = EXIT_FAILURE;
   }

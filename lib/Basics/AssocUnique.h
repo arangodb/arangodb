@@ -162,7 +162,7 @@ class AssocUnique {
     // entries
     static uint64_t const NotificationSizeThreshold = 131072;
 
-    LOG(TRACE) << "resizing hash " << cb << ", target size: " << targetSize;
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "resizing hash " << cb << ", target size: " << targetSize;
 
     double start = TRI_microtime();
     if (targetSize > NotificationSizeThreshold) {
@@ -207,7 +207,7 @@ class AssocUnique {
 
     b = std::move(copy);
 
-    LOG(TRACE) << "resizing hash " << cb << " done";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "resizing hash " << cb << " done";
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
         << "[timer] " << Logger::FIXED(TRI_microtime() - start)

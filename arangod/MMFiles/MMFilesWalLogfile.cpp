@@ -46,7 +46,7 @@ MMFilesWalLogfile* MMFilesWalLogfile::createNew(std::string const& filename, MMF
     int res = TRI_errno();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "unable to create logfile '" << filename << "': " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to create logfile '" << filename << "': " << TRI_errno_string(res);
       return nullptr;
     }
   }
@@ -65,12 +65,12 @@ MMFilesWalLogfile* MMFilesWalLogfile::openExisting(std::string const& filename, 
     int res = TRI_errno();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "unable to open logfile '" << filename << "': " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to open logfile '" << filename << "': " << TRI_errno_string(res);
       return nullptr;
     }
 
     // cannot figure out the type of error
-    LOG(ERR) << "unable to open logfile '" << filename << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to open logfile '" << filename << "'";
     return nullptr;
   }
 

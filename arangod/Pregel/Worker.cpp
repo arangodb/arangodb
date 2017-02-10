@@ -62,7 +62,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   _workerAggregators.reset(new AggregatorHandler(algo));
   _graphStore.reset(new GraphStore<V, E>(vocbase, _algorithm->inputFormat()));
   _nextGSSSendMessageCount = 0;
-  _messageBatchSize = _algorithm->messageBatchSize(0, 0, 0, 0);
+  _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats, 0);
 
   if (_messageCombiner) {
     _readCache = new CombiningInCache<M>(&_config, _messageFormat.get(),
@@ -482,9 +482,8 @@ void Worker<V, E, M>::_finishedProcessing() {
 
     // adaptive message buffering
     ThreadPool* pool = PregelFeature::instance()->threadPool();
-    _messageBatchSize = _algorithm->messageBatchSize(
-        _expectedGSS - 1, _messageStats.sendCount, pool->numThreads(),
-        _messageStats.superstepRuntimeSecs);
+    _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats,
+                                                     pool->numThreads());
     _messageStats.resetTracking();
     LOG(INFO) << "Batch size: " << _messageBatchSize;
   }

@@ -24,6 +24,5 @@
 
 using namespace arangodb;
 
-thread_local size_t JobGuard::_isBusy = 0;
 thread_local size_t JobGuard::_isWorking = 0;
 thread_local size_t JobGuard::_isBlocked = 0;

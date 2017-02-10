@@ -62,12 +62,12 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
   try {
     ok = _agency.registerCallback(cb->key, getEndpointUrl(rand));
     if (!ok) {
-      LOG(ERR) << "Registering callback failed";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Registering callback failed";
     }
   } catch (std::exception const& e) {
-    LOG(ERR) << "Couldn't register callback " << e.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Couldn't register callback " << e.what();
   } catch (...) {
-    LOG(ERR) << "Couldn't register callback. Unknown exception";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Couldn't register callback. Unknown exception";
   }
   if (!ok) {
     WRITE_LOCKER(locker, _lock);

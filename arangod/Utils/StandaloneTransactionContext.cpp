@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StandaloneTransactionContext.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/TransactionState.h"
 
 using namespace arangodb;
 

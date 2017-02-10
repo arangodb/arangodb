@@ -123,7 +123,7 @@ void SortBlock::doSorting() {
     // blocks in newbuffer
 
     count = 0;
-    RegisterId const nrregs = _buffer.front()->getNrRegs();
+    RegisterId const nrRegs = _buffer.front()->getNrRegs();
 
     std::unordered_map<AqlValue, AqlValue> cache;
 
@@ -131,7 +131,7 @@ void SortBlock::doSorting() {
 
     while (count < sum) {
       size_t sizeNext = (std::min)(sum - count, DefaultBatchSize());
-      AqlItemBlock* next = new AqlItemBlock(_engine->getQuery()->resourceMonitor(), sizeNext, nrregs);
+      AqlItemBlock* next = requestBlock(sizeNext, nrRegs);
 
       try {
         TRI_IF_FAILURE("SortBlock::doSortingInner") {
@@ -146,7 +146,7 @@ void SortBlock::doSorting() {
       cache.clear();
       // only copy as much as needed!
       for (size_t i = 0; i < sizeNext; i++) {
-        for (RegisterId j = 0; j < nrregs; j++) {
+        for (RegisterId j = 0; j < nrRegs; j++) {
           auto a =
               _buffer[coords[count].first]->getValue(coords[count].second, j);
           // If we have already dealt with this value for the next

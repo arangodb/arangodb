@@ -22,7 +22,6 @@
 
 #include "ScriptFeature.h"
 
-#include "Basics/messages.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -74,7 +73,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
       V8DealerFeature::DEALER->enterContext(database->systemDatabase(), true);
 
   if (context == nullptr) {
-    LOG(FATAL) << "cannot acquire V8 context";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";
     FATAL_ERROR_EXIT();
   }
 
@@ -90,11 +89,11 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
     {
       v8::Context::Scope contextScope(localContext);
       for (auto script : scripts) {
-        LOG(TRACE) << "executing script '" << script << "'";
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "executing script '" << script << "'";
         bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, script.c_str(), true);
 
         if (!r) {
-          LOG(FATAL) << "cannot load script '" << script << "', giving up";
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot load script '" << script << "', giving up";
           FATAL_ERROR_EXIT();
         }
       }
@@ -118,7 +117,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
           localContext->Global()->Get(mainFuncName));
 
       if (main.IsEmpty() || main->IsUndefined()) {
-        LOG(FATAL) << "no main function defined, giving up";
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "no main function defined, giving up";
         FATAL_ERROR_EXIT();
       } else {
         v8::Handle<v8::Value> args[] = {params};
@@ -137,15 +136,15 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
             ok = TRI_ObjectToDouble(result) == 0;
           }
         } catch (arangodb::basics::Exception const& ex) {
-          LOG(ERR) << "caught exception " << TRI_errno_string(ex.code()) << ": "
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << TRI_errno_string(ex.code()) << ": "
                    << ex.what();
           ok = false;
         } catch (std::bad_alloc const&) {
-          LOG(ERR) << "caught exception "
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception "
                    << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
           ok = false;
         } catch (...) {
-          LOG(ERR) << "caught unknown exception";
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception";
           ok = false;
         }
       }

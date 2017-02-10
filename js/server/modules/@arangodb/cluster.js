@@ -1810,8 +1810,7 @@ function shardDistribution () {
   var result = {};
   for (var i = 0; i < colls.length; ++i) {
     var collName = colls[i].name();
-    var collInfo = global.ArangoClusterInfo.getCollectionInfo(dbName,
-      collName);
+    var collInfo = global.ArangoClusterInfo.getCollectionInfo(dbName, collName);
     var shards = collInfo.shards;
     var collInfoCurrent = {};
     var shardNames = Object.keys(shards);
@@ -2053,7 +2052,9 @@ function waitForSyncRepl (dbName, collList) {
     return true;
   }
   let n = collList.length;
-  let count = 10 * n;   // wait for up to 10 * collList.length seconds
+  let count = 30 * n;   // wait for up to 30 * collList.length seconds
+                        // usually, this is much faster, but under load
+                        // when many unittests run, things may take longer
   let ok = [...Array(n)].map(v => false);
   while (--count > 0) {
     let allOk = true;

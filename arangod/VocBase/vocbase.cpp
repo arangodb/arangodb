@@ -54,7 +54,6 @@
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
-#include "Utils/TransactionState.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
@@ -86,8 +85,8 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
     auto it = _collectionsByName.emplace(name, collection.get());
         
     if (!it.second) {
-      LOG(ERR) << "duplicate entry for collection name '" << name << "'";
-      LOG(ERR) << "collection id " << cid
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "duplicate entry for collection name '" << name << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "collection id " << cid
               << " has same name as already added collection "
               << _collectionsByName[name]->cid();
 
@@ -101,7 +100,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
       if (!it2.second) {
         _collectionsByName.erase(name);
 
-        LOG(ERR) << "duplicate collection identifier " << collection->cid()
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "duplicate collection identifier " << collection->cid()
                 << " for name '" << name << "'";
 
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
@@ -158,7 +157,7 @@ int TRI_vocbase_t::writeDropCollectionMarker(TRI_voc_cid_t collectionId,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(WARN) << "could not save collection drop marker in log: "
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save collection drop marker in log: "
               << TRI_errno_string(res);
   }
 
@@ -217,7 +216,7 @@ bool TRI_vocbase_t::UnloadCollectionCallback(LogicalCollection* collection) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     std::string const colName(collection->name());
-    LOG(ERR) << "failed to close collection '" << colName
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to close collection '" << colName
              << "': " << TRI_last_error();
 
     collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
@@ -237,7 +236,7 @@ bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection* collecti
     WRITE_LOCKER_EVENTUAL(statusLock, collection->_lock, 1000); 
 
     if (collection->status() != TRI_VOC_COL_STATUS_DELETED) {
-      LOG(ERR) << "someone resurrected the collection '" << name << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "someone resurrected the collection '" << name << "'";
       return false;
     }
   } // release status lock
@@ -436,15 +435,15 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     try {
       collection->open(ignoreDatafileErrors);
     } catch (arangodb::basics::Exception const& ex) {
-      LOG(ERR) << "caught exception while opening collection '" << collection->name() << "': " << ex.what();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception while opening collection '" << collection->name() << "': " << ex.what();
       collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
       return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
     } catch (std::exception const& ex) {
-      LOG(ERR) << "caught exception while opening collection '" << collection->name() << "': " << ex.what();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception while opening collection '" << collection->name() << "': " << ex.what();
       collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
       return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
     } catch (...) {
-      LOG(ERR) << "caught unknown exception while opening collection '" << collection->name() << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception while opening collection '" << collection->name() << "'";
       collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
       return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
     }
@@ -464,7 +463,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   }
 
   std::string const colName(collection->name());
-  LOG(ERR) << "unknown collection status " << collection->status() << " for '"
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown collection status " << collection->status() << " for '"
            << colName << "'";
 
   return TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -804,7 +803,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     res = TRI_ERROR_INTERNAL;
   }
 
-  LOG(WARN) << "could not save collection create marker in log: "
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save collection create marker in log: "
             << TRI_errno_string(res);
 
   // TODO: what to do here?
@@ -1016,7 +1015,7 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(WARN) << "could not save collection rename marker in log: "
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save collection rename marker in log: "
                 << TRI_errno_string(res);
     }
   }
@@ -1315,33 +1314,23 @@ std::string TRI_RidToString(TRI_voc_rid_t rid) {
 }
 
 /// @brief Convert a string into a revision ID, no check variant
-TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld, bool warn) {
-  return TRI_StringToRid(ridStr.c_str(), ridStr.size(), isOld, warn);
-}
-
-/// @brief Convert a string into a revision ID, no check variant
 TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool warn) {
   bool isOld;
   return TRI_StringToRid(p, len, isOld, warn);
 }
 
-/// @brief Convert a string into a revision ID, no check variant
+/// @brief Convert a string into a revision ID, returns 0 if format invalid
+TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld, bool warn) {
+  return TRI_StringToRid(ridStr.c_str(), ridStr.size(), isOld, warn);
+}
+
+/// @brief Convert a string into a revision ID, returns 0 if format invalid
 TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld, bool warn) {
   if (len > 0 && *p >= '1' && *p <= '9') {
-    // Remove this case before the year 3887 AD because then it will
-    // start to clash with encoded timestamps:
-    char const* e = p + len;
-    TRI_voc_rid_t r = 0;
-    do  {
-      r += *p - '0';
-      if (++p == e) {
-        break;
-      }
-      r *= 10;
-    } while (true);
+    TRI_voc_rid_t r = arangodb::basics::StringUtils::uint64_check(p, len);
     if (warn && r > tickLimit) {
       // An old tick value that could be confused with a time stamp
-      LOG(WARN)
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
         << "Saw old _rev value that could be confused with a time stamp!";
     }
     isOld = true;
@@ -1349,28 +1338,5 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld, bool warn)
   }
   isOld = false;
   return HybridLogicalClock::decodeTimeStamp(p, len);
-}
-
-/// @brief Convert a string into a revision ID, returns 0 if format invalid
-TRI_voc_rid_t TRI_StringToRidWithCheck(std::string const& ridStr, bool& isOld, bool warn) {
-  return TRI_StringToRidWithCheck(ridStr.c_str(), ridStr.size(), isOld, warn);
-}
-
-/// @brief Convert a string into a revision ID, returns 0 if format invalid
-TRI_voc_rid_t TRI_StringToRidWithCheck(char const* p, size_t len, bool& isOld, bool warn) {
-  if (len > 0 && *p >= '1' && *p <= '9') {
-    // Remove this case before the year 3887 AD because then it will
-    // start to clash with encoded timestamps:
-    TRI_voc_rid_t r = arangodb::basics::StringUtils::uint64_check(p, len);
-    if (warn && r > tickLimit) {
-      // An old tick value that could be confused with a time stamp
-      LOG(WARN)
-        << "Saw old _rev value that could be confused with a time stamp!";
-    }
-    isOld = true;
-    return r;
-  }
-  isOld = false;
-  return HybridLogicalClock::decodeTimeStampWithCheck(p, len);
 }
 

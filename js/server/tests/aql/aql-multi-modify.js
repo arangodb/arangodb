@@ -412,11 +412,11 @@ function ahuacatlMultiModifySuite () {
     },
 
     testMultiRemove2 : function () {
-      AQL_EXECUTE("FOR i IN 1..2000 INSERT { _key: CONCAT('test' + i) } IN @@cn1 INSERT { _key: CONCAT('test' + i) } IN @@cn2", { "@cn1" : cn1, "@cn2" : cn2 });
+      AQL_EXECUTE("FOR i IN 1..2000 INSERT { _key: CONCAT('test', i) } IN @@cn1 INSERT { _key: CONCAT('test', i) } IN @@cn2", { "@cn1" : cn1, "@cn2" : cn2 });
       assertEqual(2000, c1.count());
       assertEqual(2000, c2.count());
       
-      AQL_EXECUTE("FOR i IN 1..2000 REMOVE { _key: CONCAT('test' + i) } IN @@cn1 REMOVE { _key: CONCAT('test' + i) } IN @@cn2", { "@cn1" : cn1, "@cn2" : cn2 });
+      AQL_EXECUTE("FOR i IN 1..2000 REMOVE { _key: CONCAT('test', i) } IN @@cn1 REMOVE { _key: CONCAT('test', i) } IN @@cn2", { "@cn1" : cn1, "@cn2" : cn2 });
       assertEqual(0, c1.count());
       assertEqual(0, c2.count());
     }

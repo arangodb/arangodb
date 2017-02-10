@@ -29,10 +29,12 @@
 #include <functional>
 
 #include "Basics/Common.h"
-#include "GraphFormat.h"
-#include "MessageCombiner.h"
-#include "MessageFormat.h"
-#include "WorkerContext.h"
+#include "Pregel/GraphFormat.h"
+#include "Pregel/MessageCombiner.h"
+#include "Pregel/MessageFormat.h"
+#include "Pregel/WorkerContext.h"
+#include "Pregel/WorkerConfig.h"
+#include "Pregel/Statistics.h"
 
 namespace arangodb {
 namespace pregel {
@@ -99,13 +101,13 @@ struct Algorithm : IAlgorithm {
     return std::set<std::string>();
   }
 
-  virtual uint32_t messageBatchSize(uint64_t gss, uint64_t sendCount,
-                                    uint64_t threadCount,
-                                    double superstepDuration) const {
-    if (gss == 0) {
+  virtual uint32_t messageBatchSize(WorkerConfig const& config,
+                                    MessageStats const& stats,
+                                    uint64_t threadCount) const {
+    if (config.localSuperstep() == 0) {
       return 500;
     } else {
-      double msgsPerSec = sendCount / superstepDuration;
+      double msgsPerSec = stats.sendCount / stats.superstepRuntimeSecs;
       msgsPerSec /= threadCount;  // per thread
       msgsPerSec *= 0.06;
       return msgsPerSec > 250.0 ? (uint32_t)msgsPerSec : 250;

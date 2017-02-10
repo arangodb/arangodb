@@ -46,7 +46,6 @@ DatabasePathFeature::DatabasePathFeature(ApplicationServer* server)
   startsAfter("Random");
   startsAfter("Temp");
   startsAfter("WorkMonitor");
-  startsAfter("Statistics");
 }
 
 void DatabasePathFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -63,13 +62,13 @@ void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> option
   if (1 == positionals.size()) {
     _directory = positionals[0];
   } else if (1 < positionals.size()) {
-    LOG(FATAL) << "expected at most one database directory, got '"
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "expected at most one database directory, got '"
                << StringUtils::join(positionals, ",") << "'";
     FATAL_ERROR_EXIT();
   }
 
   if (_directory.empty()) {
-    LOG(FATAL) << "no database path has been supplied, giving up, please use "
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "no database path has been supplied, giving up, please use "
                   "the '--database.directory' option";
     FATAL_ERROR_EXIT();
   }
@@ -80,7 +79,7 @@ void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> option
   auto ctx = ArangoGlobalContext::CONTEXT;
     
   if (ctx == nullptr) {
-    LOG(ERR) << "failed to get global context.";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to get global context.";
     FATAL_ERROR_EXIT();
   }
 
@@ -97,9 +96,9 @@ void DatabasePathFeature::start() {
                                            systemErrorStr);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      LOG(INFO) << "created database directory '" << _directory << "'.";
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "created database directory '" << _directory << "'.";
     } else {
-      LOG(FATAL) << "unable to create database directory '" << _directory << "': " << systemErrorStr;
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to create database directory '" << _directory << "': " << systemErrorStr;
       FATAL_ERROR_EXIT();
     }
   }

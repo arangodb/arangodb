@@ -74,7 +74,7 @@ void FileDescriptorsFeature::start() {
   int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
   if (res == 0) {
-    LOG(INFO) << "file-descriptors (nofiles) hard limit is "
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "file-descriptors (nofiles) hard limit is "
               << StringifyLimitValue(rlim.rlim_max) << ", soft limit is "
               << StringifyLimitValue(rlim.rlim_cur);
   }
@@ -88,18 +88,18 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
     int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
     if (res != 0) {
-      LOG(FATAL) << "cannot get the file descriptor limit: " << strerror(errno);
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot get the file descriptor limit: " << strerror(errno);
       FATAL_ERROR_EXIT();
     }
 
-    LOG(DEBUG) << "file-descriptors (nofiles) hard limit is "
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "file-descriptors (nofiles) hard limit is "
                << StringifyLimitValue(rlim.rlim_max) << ", soft limit is "
                << StringifyLimitValue(rlim.rlim_cur);
 
     bool changed = false;
 
     if (rlim.rlim_max < _descriptorsMinimum) {
-      LOG(DEBUG) << "hard limit " << rlim.rlim_max
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "hard limit " << rlim.rlim_max
                  << " is too small, trying to raise";
 
       rlim.rlim_max = _descriptorsMinimum;
@@ -108,14 +108,14 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
       res = setrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res < 0) {
-        LOG(FATAL) << "cannot raise the file descriptor limit to "
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot raise the file descriptor limit to "
                    << _descriptorsMinimum << ": " << strerror(errno);
         FATAL_ERROR_EXIT();
       }
 
       changed = true;
     } else if (rlim.rlim_cur < _descriptorsMinimum) {
-      LOG(DEBUG) << "soft limit " << rlim.rlim_cur
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "soft limit " << rlim.rlim_cur
                  << " is too small, trying to raise";
 
       rlim.rlim_cur = _descriptorsMinimum;
@@ -123,7 +123,7 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
       res = setrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res < 0) {
-        LOG(FATAL) << "cannot raise the file descriptor limit to "
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot raise the file descriptor limit to "
                    << _descriptorsMinimum << ": " << strerror(errno);
         FATAL_ERROR_EXIT();
       }
@@ -135,12 +135,12 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
       res = getrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res != 0) {
-        LOG(FATAL) << "cannot get the file descriptor limit: "
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot get the file descriptor limit: "
                    << strerror(errno);
         FATAL_ERROR_EXIT();
       }
 
-      LOG(INFO) << "file-descriptors (nofiles) new hard limit is "
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "file-descriptors (nofiles) new hard limit is "
                 << StringifyLimitValue(rlim.rlim_max) << ", new soft limit is "
                 << StringifyLimitValue(rlim.rlim_cur);
     }

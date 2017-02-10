@@ -24,10 +24,10 @@
 #ifndef ARANGOD_UTILS_REPLICATION_TRANSACTION_H
 #define ARANGOD_UTILS_REPLICATION_TRANSACTION_H 1
 
+#include "Basics/Common.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
-#include "Utils/TransactionState.h"
-#include "VocBase/ticks.h"
 
 struct TRI_vocbase_t;
 

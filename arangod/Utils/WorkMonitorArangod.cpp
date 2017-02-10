@@ -198,13 +198,13 @@ bool WorkMonitor::cancelAql(WorkDescription* desc) {
   if (vocbase != nullptr) {
     uint64_t id = desc->_data._aql._id;
 
-    LOG(WARN) << "cancel query " << id << " in " << vocbase;
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cancel query " << id << " in " << vocbase;
 
     auto queryList = vocbase->queryList();
     auto res = queryList->kill(id);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(DEBUG) << "cannot kill query " << id;
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot kill query " << id;
     }
   }
 

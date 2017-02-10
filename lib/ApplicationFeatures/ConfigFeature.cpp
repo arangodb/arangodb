@@ -61,9 +61,9 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--define,-D", "define key=value for a @key@ entry in config file",
                            new VectorParameter<StringParameter>(&_defines));
 
-  options->addOption("--check-configuration",
-                     "check the configuration and exit",
-                     new BooleanParameter(&_checkConfiguration));
+  options->addHiddenOption("--check-configuration",
+                           "check the configuration and exit",
+                           new BooleanParameter(&_checkConfiguration));
 }
 
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,
@@ -113,7 +113,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     auto name = files[i];
 
     if (seen.find(name) != seen.end()) {
-      LOG(FATAL) << "circular includes, seen '" << name << "' twice";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "circular includes, seen '" << name << "' twice";
       FATAL_ERROR_EXIT();
     }
 

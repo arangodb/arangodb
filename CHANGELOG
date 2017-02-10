@@ -1,16 +1,53 @@
 devel
 -----
 
+* moved V8 code into a git submodule
+  this requires running the command
+  
+      git submodule update --init --recursive
+
+  once after a source code update or fresh checkout
+
+* updated V8 version to 5.7.0.0
+
+* change undocumented behaviour in case of invalid revision ids in
+  If-Match and If-None-Match headers from 400 (BAD) to 412 (PRECONDITION
+  FAILED).
+
+* change undocumented behaviour in case of invalid revision ids in
+  JavaScript document operations from 1239 ("illegal document revision")
+  to 1200 ("conflict").
+
+v3.2.alpha1 (2017-02-05)
+------------------------
+
+* added figure `httpRequests` to AQL query statistics
+  
+* removed revisions cache intermediate layer implementation
+ 
+* obsoleted startup options `--database.revision-cache-chunk-size` and
+  `--database.revision-cache-target-size` 
+
 * fix potential port number over-/underruns
 
 * added startup option `--log.shorten-filenames` for controlling whether filenames
   in log message should be shortened to just the filename with the absolute path
 
-* removed IndexThreadFeature, made --database.index-threads option obsolete
+* removed IndexThreadFeature, made `--database.index-threads` option obsolete
 
 * changed index filling to make it more parallel, dispatch tasks to boost::asio
 
 * more detailed stacktraces in Foxx apps
+
+
+v3.1.11 (XXXX-XX-XX)
+--------------------
+
+* fixed sort issue in cluster, occurring when one of the local sort buffers of a
+  GatherNode was empty
+
+* reduce number of HTTP requests made for certain kinds of join queries in cluster,
+  leading to speedup of some join queries
 
 
 v3.1.10 (2017-XX-XX)

@@ -42,68 +42,41 @@ using namespace arangodb::basics;
 using namespace arangodb::aql;
 using namespace arangodb::traverser;
 
-TraversalNode::EdgeConditionBuilder::EdgeConditionBuilder(
+TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn)
-    : _tn(tn), _modCondition(nullptr), _containsCondition(false) {
-  _modCondition =
-      _tn->_plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-}
+    : EdgeConditionBuilder(tn->_plan->getAst()->createNodeNaryOperator(
+          NODE_TYPE_OPERATOR_NARY_AND)),
+      _tn(tn) {}
 
-TraversalNode::EdgeConditionBuilder::EdgeConditionBuilder(
+TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn, arangodb::velocypack::Slice const& condition)
-    : _tn(tn), _modCondition(nullptr), _containsCondition(false) {
-  _modCondition = new AstNode(_tn->_plan->getAst(), condition);
-  TRI_ASSERT(_modCondition != nullptr);
-  TRI_ASSERT(_modCondition->type == NODE_TYPE_OPERATOR_NARY_AND);
+    : EdgeConditionBuilder(new AstNode(tn->_plan->getAst(), condition)),
+      _tn(tn) {
 }
 
-TraversalNode::EdgeConditionBuilder::EdgeConditionBuilder(
-    TraversalNode const* tn, EdgeConditionBuilder const* other)
-    : _tn(tn),
-      _modCondition(other->_modCondition),
-      _containsCondition(other->_containsCondition) {}
-
-void TraversalNode::EdgeConditionBuilder::addConditionPart(
-    AstNode const* part) {
-  _modCondition->addMember(part);
+TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
+    TraversalNode const* tn, TraversalEdgeConditionBuilder const* other)
+    : EdgeConditionBuilder(other->_modCondition), _tn(tn) {
+  _fromCondition = other->_fromCondition;
+  _toCondition = other->_toCondition;
+  _containsCondition = other->_containsCondition;
 }
 
-AstNode* TraversalNode::EdgeConditionBuilder::getOutboundCondition() {
-  if (_containsCondition) {
-    _modCondition->changeMember(_modCondition->numMembers() - 1,
-                                _tn->_fromCondition);
-  } else {
-    for (auto& it : _tn->_globalEdgeConditions) {
-      _modCondition->addMember(it);
-    }
-    TRI_ASSERT(_tn->_fromCondition != nullptr);
-    TRI_ASSERT(_tn->_fromCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
-    _modCondition->addMember(_tn->_fromCondition);
-    _containsCondition = true;
-  }
-  TRI_ASSERT(_modCondition->numMembers() > 0);
-  return _modCondition;
-};
+void TraversalNode::TraversalEdgeConditionBuilder::buildFromCondition() {
+  // TODO Move computation in here.
+  _fromCondition = _tn->_fromCondition;
+}
 
-AstNode* TraversalNode::EdgeConditionBuilder::getInboundCondition() {
-  if (_containsCondition) {
-    _modCondition->changeMember(_modCondition->numMembers() - 1, _tn->_toCondition);
-  } else {
-    for (auto& it : _tn->_globalEdgeConditions) {
-      _modCondition->addMember(it);
-    }
-    TRI_ASSERT(_tn->_toCondition != nullptr);
-    TRI_ASSERT(_tn->_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
-    _modCondition->addMember(_tn->_toCondition);
-    _containsCondition = true;
-  }
-  TRI_ASSERT(_modCondition->numMembers() > 0);
-  return _modCondition;
-};
+void TraversalNode::TraversalEdgeConditionBuilder::buildToCondition() {
+  // TODO Move computation in here.
+  _toCondition = _tn->_toCondition;
+}
 
-void TraversalNode::EdgeConditionBuilder::toVelocyPack(VPackBuilder& builder, bool verbose) const {
+void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(
+    VPackBuilder& builder, bool verbose) {
   if (_containsCondition) {
     _modCondition->removeMemberUnchecked(_modCondition->numMembers() - 1);
+    _containsCondition = false;
   }
   _modCondition->toVelocyPack(builder, verbose);
 }
@@ -632,7 +605,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
   if (list.isObject()) {
     for (auto const& cond : VPackObjectIterator(list)) {
       std::string key = cond.key.copyString();
-      auto ecbuilder = std::make_unique<EdgeConditionBuilder>(this, cond.value);
+      auto ecbuilder = std::make_unique<TraversalEdgeConditionBuilder>(this, cond.value);
       _edgeConditions.emplace(StringUtils::uint64(key), std::move(ecbuilder));
     }
   }
@@ -815,7 +788,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
   if (!_edgeConditions.empty()) {
     nodes.add(VPackValue("edgeConditions"));
     nodes.openObject();
-    for (auto const& it : _edgeConditions) {
+    for (auto& it : _edgeConditions) {
       nodes.add(VPackValue(basics::StringUtils::itoa(it.first)));
       it.second->toVelocyPack(nodes, verbose);
     }
@@ -894,7 +867,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   for (auto const& it : _edgeConditions) {
     // Copy the builder
-    auto ecBuilder = std::make_unique<EdgeConditionBuilder>(this, it.second.get());
+    auto ecBuilder = std::make_unique<TraversalEdgeConditionBuilder>(this, it.second.get());
     c->_edgeConditions.emplace(it.first, std::move(ecBuilder));
   }
 
@@ -964,7 +937,12 @@ void TraversalNode::prepareOptions() {
 
   size_t numEdgeColls = _edgeColls.size();
   bool res = false;
-  EdgeConditionBuilder globalEdgeConditionBuilder(this);
+  TraversalEdgeConditionBuilder globalEdgeConditionBuilder(this);
+
+  for (auto& it : _globalEdgeConditions) {
+    globalEdgeConditionBuilder.addConditionPart(it);
+  }
+ 
   Ast* ast = _plan->getAst();
   auto trx = ast->query()->trx();
 
@@ -1036,6 +1014,10 @@ void TraversalNode::prepareOptions() {
     auto& infos = ins.first->second;
     infos.reserve(numEdgeColls);
     auto& builder = it.second;
+
+    for (auto& it : _globalEdgeConditions) {
+      builder->addConditionPart(it);
+    }
 
     for (size_t i = 0; i < numEdgeColls; ++i) {
       std::string usedField;
@@ -1145,7 +1127,7 @@ void TraversalNode::registerCondition(bool isConditionOnEdge,
   if (isConditionOnEdge) {
     auto const& it = _edgeConditions.find(conditionLevel);
     if (it == _edgeConditions.end()) {
-      auto builder = std::make_unique<EdgeConditionBuilder>(this);
+      auto builder = std::make_unique<TraversalEdgeConditionBuilder>(this);
       builder->addConditionPart(condition);
       _edgeConditions.emplace(conditionLevel, std::move(builder));
     } else {

@@ -48,7 +48,7 @@ void LockfileFeature::start() {
   int res = TRI_VerifyLockFile(_lockFilename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(FATAL) << "database is locked, please check the lock file '" << _lockFilename << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "database is locked, please check the lock file '" << _lockFilename << "'";
     FATAL_ERROR_EXIT();
   }
   
@@ -57,7 +57,7 @@ void LockfileFeature::start() {
   }
   
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(FATAL)
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "cannot lock the database directory, please check the lock file '"
         << _lockFilename << "': " << TRI_errno_string(res);
     FATAL_ERROR_EXIT();
@@ -66,7 +66,7 @@ void LockfileFeature::start() {
   res = TRI_CreateLockFile(_lockFilename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(FATAL)
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "cannot lock the database directory, please check the lock file '"
         << _lockFilename << "': " << TRI_errno_string(res);
     FATAL_ERROR_EXIT();
