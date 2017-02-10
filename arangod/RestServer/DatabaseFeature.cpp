@@ -43,10 +43,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-//#include "MMFiles/MMFilesLogfileManager.h"   // instance::isInRecovery / waitForCollector
-//#include "MMFiles/MMFilesPersistentIndex.h"  // RocksDBFeature used in MMFiles
-//#include "MMFiles/MMFilesWalMarker.h"      // MMFiles write ahead log marker
-//#include "MMFiles/MMFilesWalSlots.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
@@ -163,26 +159,6 @@ void DatabaseManagerThread::run() {
               TRI_RemoveDirectory(path.c_str());
             }
           }
-
-<<<<<<< HEAD
-          // To shutdown the database (which destroys all LogicalCollection
-          // objects of all collections) we need to make sure that the
-          // Collector does not interfere. Therefore we execute the shutdown
-          // in a phase in which the collector thread does not have any
-          // queued operations, a service which it offers:
-          auto callback = [&database]() {
-            database->shutdown();
-            usleep(10000);
-          };
-          while (!MMFilesLogfileManager::instance()
-                  ->executeWhileNothingQueued(callback)) {
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Trying to shutdown dropped database, waiting for phase in which the collector thread does not have queued operations.";
-            usleep(500000);
-          }
-
-=======
->>>>>>> fd3f3a88e7e1641526d1b9e34eb6f09c2e20743a
-          engine->dropDatabase(database);
         }
 
         delete database;
