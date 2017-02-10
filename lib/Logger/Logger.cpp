@@ -111,6 +111,7 @@ void Logger::setLogLevel(std::string const& levelName) {
 
   if (isGeneral) {
     Logger::setLogLevel(level);
+    LogTopic::setLogLevel(std::string("fixme"), level);
   } else {
     LogTopic::setLogLevel(v[0], level);
   }
