@@ -145,7 +145,7 @@ class Agent : public arangodb::Thread {
   void beginShutdown() override final;
 
   /// @brief Report appended entries from AgentCallback
-  void reportIn(std::string const& id, index_t idx);
+  void reportIn(std::string const&, index_t, size_t = 0);
 
   /// @brief Wait for slaves to confirm appended entries
   raft_commit_t waitFor(index_t last_entry, double timeout = 2.0);
@@ -294,6 +294,7 @@ class Agent : public arangodb::Thread {
 
   std::map<std::string, TimePoint> _lastAcked;
   std::map<std::string, TimePoint> _lastSent;
+  std::map<std::string, TimePoint> _earliestPackage;
 
   /**< @brief RAFT consistency lock:
      _spearhead
@@ -304,6 +305,9 @@ class Agent : public arangodb::Thread {
      _nextCompactionAfter
    */
   mutable arangodb::Mutex _ioLock;
+
+  // lock for _leaderCommitIndex
+  mutable arangodb::Mutex _liLock;
 
   // @brief guard _activator 
   mutable arangodb::Mutex _activatorLock;

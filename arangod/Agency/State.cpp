@@ -109,36 +109,46 @@ bool State::persist(arangodb::consensus::index_t index, term_t term,
   return (res == TRI_ERROR_NO_ERROR);
 }
 
+
 /// Log transaction (leader)
 std::vector<arangodb::consensus::index_t> State::log(
-    query_t const& transaction, std::vector<bool> const& appl, term_t term) {
-  std::vector<arangodb::consensus::index_t> idx(appl.size());
-  std::vector<bool> good = appl;
+  query_t const& transactions, std::vector<bool> const& applicable, term_t term) {
+  
+  std::vector<arangodb::consensus::index_t> idx(applicable.size());
+  
   size_t j = 0;
-  auto const& slice = transaction->slice();
+  
+  auto const& slice = transactions->slice();
 
   if (!slice.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(30000,
-                                   "Agency request syntax is [[<queries>]]");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      30000, "Agency syntax requires array of transactions [[<queries>]]");
   }
 
-  if (slice.length() != good.size()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(30000,
-                                   "Agency request syntax is [[<queries>]]");
-  }
-
-  MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
+  TRI_ASSERT(slice.length() == applicable.size());
+  
+  MUTEX_LOCKER(mutexLocker, _logLock); 
+  
   for (auto const& i : VPackArrayIterator(slice)) {
-    TRI_ASSERT(i.isArray());
-    std::string clientId;
-    if (good[j]) {
+
+    if (!i.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        30000,
+        "Transaction syntax is [{<operations>}, {<preconditions>}, \"clientId\"]"
+        );
+    }
+
+    if (applicable[j]) {
+
       std::shared_ptr<Buffer<uint8_t>> buf =
           std::make_shared<Buffer<uint8_t>>();
       buf->append((char const*)i[0].begin(), i[0].byteSize());
 
+      std::string clientId;
       if (i.length()==3) {
         clientId = i[2].copyString();
       }
+      
       TRI_ASSERT(!_log.empty()); // log must not ever be empty
       idx[j] = _log.back().index + 1;
       _log.push_back(log_t(idx[j], term, buf, clientId));  // log to RAM
@@ -146,10 +156,12 @@ std::vector<arangodb::consensus::index_t> State::log(
         std::pair<std::string, arangodb::consensus::index_t>(clientId, idx[j]));
       persist(idx[j], term, i[0], clientId);               // log to disk
     }
+    
     ++j;
   }
 
   return idx;
+  
 }
 
 /// Log transaction (leader)
