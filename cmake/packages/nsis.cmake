@@ -114,6 +114,7 @@ list(APPEND CLEAN_PACKAGES_LIST remove_packages)
 set(SYMSRVDIR $ENV{SYMSRV})
 if (NOT ${SYMSRVDIR} STREQUAL "")
   message("Storing symbols:")
+  include(../../arangod/CMakeList.txt)
   add_custom_command(TARGET ${BIN_ARANGOD} POST_BUILD
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
     COMMAND "find -name \\*pdb |grep -v Release |grep -v Debug |grep -v 3rdParty |grep -v vc120.pdb  > pdbfiles_list.txt"
