@@ -217,6 +217,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     if (index > _confirmed[peerId]) {  // progress this follower?
       _confirmed[peerId] = index;
       if (toLog > 0) { // We want to reset the wait time only if a package callback
+        LOG_TOPIC(TRACE, Logger::AGENCY) << "Got call back of " << toLog << " logs";
         _earliestPackage[peerId] = system_clock::now();
       }
     }
@@ -324,7 +325,7 @@ bool Agent::recvAppendEntriesRPC(
 void Agent::sendAppendEntriesRPC() {
 
   std::chrono::duration<int, std::ratio<1, 1000000>> const dt (
-    (_config.waitForSync() ? 10000 : 500));
+    (_config.waitForSync() ? 40000 : 2000));
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr only happens during controlled shutdown
