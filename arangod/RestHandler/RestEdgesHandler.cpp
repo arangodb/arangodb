@@ -51,6 +51,9 @@ RestStatus RestEdgesHandler::execute() {
     case rest::RequestType::GET:
       readEdges();
       break;
+    case rest::RequestType::POST:
+      readEdgesForMultipleVertices();
+      break;
     default:
       generateNotImplemented("ILLEGAL " + EDGES_PATH);
       break;
@@ -164,6 +167,48 @@ bool RestEdgesHandler::getEdgesForVertex(
   return true;
 }
 
+bool RestEdgesHandler::parseDirection(TRI_edge_direction_e& direction) {
+  bool found;
+  std::string dir = _request->value("direction", found);
+
+  if (!found || dir.empty()) {
+    dir = "any";
+  }
+
+  std::string dirString(dir);
+
+  if (dirString == "any") {
+    direction = TRI_EDGE_ANY;
+  } else if (dirString == "out" || dirString == "outbound") {
+    direction = TRI_EDGE_OUT;
+  } else if (dirString == "in" || dirString == "inbound") {
+    direction = TRI_EDGE_IN;
+  } else {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "<direction> must by any, in, or out, not: " + dirString);
+    return false;
+  }
+  return true;
+}
+
+bool RestEdgesHandler::validateCollection(std::string const& name) {
+  CollectionNameResolver resolver(_vocbase);
+  TRI_col_type_e colType = resolver.getCollectionTypeCluster(name);
+  if (colType == TRI_COL_TYPE_UNKNOWN) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return false;
+  }
+
+  if (colType != TRI_COL_TYPE_EDGE) {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    return false;
+  }
+  return true;
+}
+
 // read in- or outbound edges
 bool RestEdgesHandler::readEdges() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
@@ -178,43 +223,16 @@ bool RestEdgesHandler::readEdges() {
   }
 
   std::string collectionName = suffixes[0];
-  CollectionNameResolver resolver(_vocbase);
-  TRI_col_type_e colType = resolver.getCollectionTypeCluster(collectionName);
-  if (colType == TRI_COL_TYPE_UNKNOWN) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  if (!validateCollection(collectionName)) {
     return false;
   }
 
-  if (colType != TRI_COL_TYPE_EDGE) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+  TRI_edge_direction_e direction;
+  if (!parseDirection(direction)) {
     return false;
   }
 
   bool found;
-  std::string dir = _request->value("direction", found);
-
-  if (!found || dir.empty()) {
-    dir = "any";
-  }
-
-  std::string dirString(dir);
-  TRI_edge_direction_e direction;
-
-  if (dirString == "any") {
-    direction = TRI_EDGE_ANY;
-  } else if (dirString == "out" || dirString == "outbound") {
-    direction = TRI_EDGE_OUT;
-  } else if (dirString == "in" || dirString == "inbound") {
-    direction = TRI_EDGE_IN;
-  } else {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "<direction> must by any, in, or out, not: " + dirString);
-    return false;
-  }
-
   std::string const& startVertex = _request->value("vertex", found);
 
   if (!found || startVertex.empty()) {
@@ -281,6 +299,139 @@ bool RestEdgesHandler::readEdges() {
     return false;
   }
 
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (ServerState::instance()->isDBServer()) {
+      // If we are a DBserver, we want to use the cluster-wide collection
+      // name for error reporting:
+      collectionName = trx.resolver()->getCollectionName(trx.cid());
+    }
+    generateTransactionError(collectionName, res, "");
+    return false;
+  }
+
+  resultBuilder.add("error", VPackValue(false));
+  resultBuilder.add("code", VPackValue(200));
+  resultBuilder.add("stats", VPackValue(VPackValueType::Object));
+  resultBuilder.add("scannedIndex", VPackValue(scannedIndex));
+  resultBuilder.add("filtered", VPackValue(filtered));
+  resultBuilder.close();  // inner object
+  resultBuilder.close();
+
+  // and generate a response
+  generateResult(rest::ResponseCode::OK, resultBuilder.slice(),
+                 trx.transactionContext());
+
+  return true;
+}
+
+// Internal function to receive all edges for a list of vertices
+// Not publicly documented on purpose.
+// NOTE: It ONLY except _id strings. Nothing else
+bool RestEdgesHandler::readEdgesForMultipleVertices() {
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+
+  if (suffixes.size() != 1) {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected POST " + EDGES_PATH +
+                      "/<collection-identifier>?direction=<direction>");
+    return false;
+  }
+
+  bool parseSuccess = true;
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+
+  if (!parseSuccess) {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected POST " + EDGES_PATH +
+                      "/<collection-identifier>?direction=<direction>");
+    // A body is required
+    return false;
+  }
+  VPackSlice body = parsedBody->slice();
+
+  if (!body.isArray()) {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "Expected an array of vertex _id's in body parameter");
+    return false;
+  }
+
+  std::string collectionName = suffixes[0];
+  if (!validateCollection(collectionName)) {
+    return false;
+  }
+
+  TRI_edge_direction_e direction;
+  if (!parseDirection(direction)) {
+    return false;
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    rest::ResponseCode responseCode;
+    VPackBuilder resultDocument;
+    resultDocument.openObject();
+
+    for (auto const& it : VPackArrayIterator(body)) {
+      if (it.isString()) {
+        std::string vertexString(it.copyString());
+
+        int res = getFilteredEdgesOnCoordinator(
+            _vocbase->name(), collectionName, vertexString, direction,
+            responseCode, resultDocument);
+        if (res != TRI_ERROR_NO_ERROR) {
+          generateError(responseCode, res);
+          return false;
+        }
+      }
+    }
+    resultDocument.add("error", VPackValue(false));
+    resultDocument.add("code", VPackValue(200));
+    resultDocument.close();
+
+    generateResult(rest::ResponseCode::OK, resultDocument.slice());
+    return true;
+  }
+
+  // find and load collection given by name or identifier
+  SingleCollectionTransaction trx(
+      StandaloneTransactionContext::Create(_vocbase), collectionName,
+      AccessMode::Type::READ);
+
+  // .............................................................................
+  // inside read transaction
+  // .............................................................................
+
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collectionName, res, "");
+    return false;
+  }
+
+
+  size_t filtered = 0;
+  size_t scannedIndex = 0;
+
+  VPackBuilder resultBuilder;
+  resultBuilder.openObject();
+  // build edges
+  resultBuilder.add(VPackValue("edges"));  // only key
+  resultBuilder.openArray();
+
+  for (auto const& it : VPackArrayIterator(body)) {
+    if (it.isString()) {
+      std::string startVertex = it.copyString();
+
+      // We ignore if this fails
+      getEdgesForVertex(startVertex, collectionName, direction, trx,
+                        resultBuilder, scannedIndex, filtered);
+    }
+  }
+  resultBuilder.close();
+
+  res = trx.finish(res);
   if (res != TRI_ERROR_NO_ERROR) {
     if (ServerState::instance()->isDBServer()) {
       // If we are a DBserver, we want to use the cluster-wide collection
