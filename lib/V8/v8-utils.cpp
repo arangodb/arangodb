@@ -1769,9 +1769,13 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
     msg = ls + "!" + msg;
   }
 
-  LogTopic* topic = ts.empty() ? &Logger::FIXME : LogTopic::lookup(ts);
+  LogTopic* topic = ts.empty() ? nullptr : LogTopic::lookup(ts);
 
-  LOG_TOPIC_RAW(ll, *topic) << msg;
+  if (topic == nullptr) {
+    LOG_TOPIC_RAW(ll, Logger::FIXME) << msg;
+  } else {
+    LOG_TOPIC_RAW(ll, *topic) << msg;
+  }
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
