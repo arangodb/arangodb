@@ -589,7 +589,7 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
 
   size_t attempts {0};
   while (attempts++ < 300) {
-    AgencyReadTransaction readValueTrx({AgencyCommManager::path() + "/" + targetIdStr, AgencyCommManager::path() + "/" + targetUrl});
+    AgencyReadTransaction readValueTrx(std::vector<std::string>{AgencyCommManager::path() + "/" + targetIdStr, AgencyCommManager::path() + "/" + targetUrl});
     AgencyCommResult result = comm.sendTransactionWithFailover(readValueTrx, 0.0);
     
     if (!result.successful()) {
