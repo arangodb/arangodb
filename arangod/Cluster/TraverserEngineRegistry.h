@@ -72,6 +72,9 @@ class TraverserEngineRegistry {
   /// @brief return number of registered engines
   size_t numberRegisteredEngines();
 
+  /// @brief destroy all registered engines
+  void destroyAll();
+
  private:
   
   void destroy(TraverserEngineID, bool doLock);
