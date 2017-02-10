@@ -36,7 +36,7 @@ class AgentCallback : public arangodb::ClusterCommCallback {
  public:
   AgentCallback();
 
-  AgentCallback(Agent*, std::string const&, index_t);
+  AgentCallback(Agent*, std::string const&, index_t, size_t);
 
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
 
@@ -47,6 +47,7 @@ class AgentCallback : public arangodb::ClusterCommCallback {
   index_t _last;
   std::string _slaveID;
   double _startTime;
+  size_t _toLog;
 };
 }
 }  // namespace

@@ -145,6 +145,7 @@ class Logger {
   static LogTopic REQUESTS;
   static LogTopic STARTUP;
   static LogTopic SUPERVISION;
+  static LogTopic SYSCALL;
   static LogTopic THREADS;
   static LogTopic V8;
 
