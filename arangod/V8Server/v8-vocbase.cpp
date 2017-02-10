@@ -3032,7 +3032,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   v8::Handle<v8::Object> v = WrapVocBase(isolate, vocbase);
   if (v.IsEmpty()) {
-    LOG(ERR) << "out of memory when initializing VocBase";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "out of memory when initializing VocBase";
   } else {
     TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("db"),
                                  v);

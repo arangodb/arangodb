@@ -169,12 +169,12 @@ static arangodb::Mutex ExternalProcessesLock;
 #ifndef _WIN32
 static bool CreatePipes(int* pipe_server_to_child, int* pipe_child_to_server) {
   if (pipe(pipe_server_to_child) == -1) {
-    LOG(ERR) << "cannot create pipe";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create pipe";
     return false;
   }
 
   if (pipe(pipe_child_to_server) == -1) {
-    LOG(ERR) << "cannot create pipe";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create pipe";
 
     close(pipe_server_to_child[0]);
     close(pipe_server_to_child[1]);
@@ -240,7 +240,7 @@ static void StartExternalProcess(TRI_external_t* external, bool usePipes) {
 
   // parent
   if (processPid == -1) {
-    LOG(ERR) << "fork failed";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "fork failed";
 
     if (usePipes) {
       close(pipe_server_to_child[0]);
@@ -253,7 +253,7 @@ static void StartExternalProcess(TRI_external_t* external, bool usePipes) {
     return;
   }
 
-  LOG(DEBUG) << "fork succeeded, child pid: " << processPid;
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "fork succeeded, child pid: " << processPid;
 
   if (usePipes) {
     close(pipe_server_to_child[0]);
@@ -281,7 +281,7 @@ static bool createPipes(HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
 
   // create a pipe for the child process's STDOUT
   if (!CreatePipe(hChildStdoutRd, hChildStdoutWr, &saAttr, 0)) {
-    LOG(ERR) << ""
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << ""
              << "stdout pipe creation failed";
     return false;
   }
@@ -290,7 +290,7 @@ static bool createPipes(HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
   if (!CreatePipe(hChildStdinRd, hChildStdinWr, &saAttr, 0)) {
     CloseHandle(hChildStdoutRd);
     CloseHandle(hChildStdoutWr);
-    LOG(ERR) << "stdin pipe creation failed";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "stdin pipe creation failed";
     return false;
   }
 
@@ -387,7 +387,7 @@ static bool startProcess(TRI_external_t* external, HANDLE rd, HANDLE wr) {
   
   args = makeWindowsArgs(external);
   if (args == NULL) {
-    LOG(ERR) << "execute of '" << external->_executable
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "execute of '" << external->_executable
              << "' failed making args";
     return false;
   }
@@ -420,7 +420,7 @@ static bool startProcess(TRI_external_t* external, HANDLE rd, HANDLE wr) {
 
   if (bFuncRetn == FALSE) {
     TRI_SYSTEM_ERROR();
-    LOG(ERR) << "execute of '" << external->_executable
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "execute of '" << external->_executable
              << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
     return false;
   } else {
@@ -856,7 +856,7 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
     return;
   }
 
-  LOG(DEBUG) << "adding process " << external->_pid << " to list";
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "adding process " << external->_pid << " to list";
 
   // Note that the following deals with different types under windows,
   // however, this code here can be written in a platform-independent
@@ -903,7 +903,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
         std::string("the pid you're looking for is not in our list: ") +
         arangodb::basics::StringUtils::itoa(static_cast<int64_t>(pid._pid));
     status._status = TRI_EXT_NOT_FOUND;
-    LOG(WARN) << "checkExternal: pid not found: " << pid._pid;
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "checkExternal: pid not found: " << pid._pid;
 
     return status;
   }
@@ -946,7 +946,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
       }
     } else if (res == -1) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG(WARN) << "waitpid returned error for pid " << external->_pid << " ("
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "waitpid returned error for pid " << external->_pid << " ("
                 << wait << "): " << TRI_last_error();
       status._errorMessage =
           std::string("waitpid returned error for pid ") +
@@ -968,7 +968,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
         external->_exitStatus = 0;
       }
     } else {
-      LOG(WARN) << "unexpected waitpid result for pid " << external->_pid
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unexpected waitpid result for pid " << external->_pid
                 << ": " << res;
       status._errorMessage =
           std::string("unexpected waitpid result for pid ") +
@@ -985,7 +985,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
         if (result == WAIT_FAILED) {
           FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
                         windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
-          LOG(WARN) << "could not wait for subprocess with pid "
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not wait for subprocess with pid "
                     << external->_pid << ": " << windowsErrorBuf;
           status._errorMessage =
               std::string("could not wait for subprocess with pid ") +
@@ -1000,7 +1000,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
         switch (result) {
           case WAIT_ABANDONED:
             wantGetExitCode = true;
-            LOG(WARN) << "WAIT_ABANDONED while waiting for subprocess with pid "
+            LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "WAIT_ABANDONED while waiting for subprocess with pid "
                       << external->_pid;
             break;
           case WAIT_OBJECT_0:
@@ -1014,7 +1014,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
           case WAIT_FAILED:
             FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
                           windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
-            LOG(WARN) << "could not wait for subprocess with pid "
+            LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not wait for subprocess with pid "
                       << external->_pid << ": " << windowsErrorBuf;
             status._errorMessage =
                 std::string("could not wait for subprocess with PID '") +
@@ -1024,7 +1024,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
             status._exitStatus = GetLastError();
           default:
             wantGetExitCode = true;
-            LOG(WARN)
+            LOG_TOPIC(WARN, arangodb::Logger::FIXME)
                 << "unexpected status while waiting for subprocess with pid "
                 << external->_pid;
         }
@@ -1032,7 +1032,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
       if (wantGetExitCode) {
         DWORD exitCode = STILL_ACTIVE;
         if (!GetExitCodeProcess(external->_process, &exitCode)) {
-          LOG(WARN) << "exit status could not be determined for pid "
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "exit status could not be determined for pid "
                     << external->_pid;
           status._errorMessage =
               std::string("exit status could not be determined for pid ") +
@@ -1056,7 +1056,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
     }
 #endif
   } else {
-    LOG(WARN) << "unexpected process status " << external->_status << ": "
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unexpected process status " << external->_status << ": "
               << external->_exitStatus;
     status._errorMessage =
         std::string("unexpected process status ") +
@@ -1118,15 +1118,15 @@ static bool OurKillProcess(TRI_external_t* pid) {
 
   // kill worker process
   if (0 != TerminateProcess(pid->_process, uExitCode)) {
-    LOG(TRACE) << "kill of worker process succeeded";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "kill of worker process succeeded";
   } else {
     DWORD e1 = GetLastError();
     BOOL ok = GetExitCodeProcess(pid->_process, &exitCode);
 
     if (ok) {
-      LOG(DEBUG) << "worker process already dead: " << exitCode;
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "worker process already dead: " << exitCode;
     } else {
-      LOG(WARN) << "kill of worker process failed: " << exitCode;
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "kill of worker process failed: " << exitCode;
       ok = false;
     }
   }
@@ -1152,7 +1152,7 @@ static bool OurKillProcessPID(DWORD pid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_KillExternalProcess(TRI_external_id_t pid, int signal) {
-  LOG(DEBUG) << "killing process: " << pid._pid;
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "killing process: " << pid._pid;
 
   TRI_external_t* external = nullptr;  // just to please the compiler
   {
@@ -1169,7 +1169,7 @@ bool TRI_KillExternalProcess(TRI_external_id_t pid, int signal) {
   }
 
   if (external == nullptr) {
-    LOG(DEBUG) << "kill: process not found: " << pid._pid;
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "kill: process not found: " << pid._pid;
 #ifndef _WIN32
     // Kill just in case:
     if (0 == kill(pid._pid, signal)) {
@@ -1211,7 +1211,7 @@ bool TRI_KillExternalProcess(TRI_external_id_t pid, int signal) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_SuspendExternalProcess(TRI_external_id_t pid) {
-  LOG(DEBUG) << "suspending process: " << pid._pid;
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "suspending process: " << pid._pid;
 
 #ifndef _WIN32
   return 0 == kill(pid._pid, SIGSTOP);
@@ -1225,7 +1225,7 @@ bool TRI_SuspendExternalProcess(TRI_external_id_t pid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ContinueExternalProcess(TRI_external_id_t pid) {
-  LOG(DEBUG) << "continueing process: " << pid._pid;
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "continueing process: " << pid._pid;
 
 #ifndef _WIN32
   return 0 == kill(pid._pid, SIGCONT);

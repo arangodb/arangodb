@@ -133,7 +133,7 @@ void MMFilesCleanupThread::run() {
     }
   }
 
-  LOG(TRACE) << "shutting down cleanup thread";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "shutting down cleanup thread";
 }
 
 /// @brief clean up cursors
@@ -145,7 +145,7 @@ void MMFilesCleanupThread::cleanupCursors(bool force) {
   try {
     cursors->garbageCollect(force);
   } catch (...) {
-    LOG(WARN) << "caught exception during cursor cleanup";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception during cursor cleanup";
   }
 }
 
@@ -290,7 +290,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
       }
     } else {
       // unknown type
-      LOG(FATAL) << "unknown ditch type '" << type << "'"; FATAL_ERROR_EXIT();
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unknown ditch type '" << type << "'"; FATAL_ERROR_EXIT();
     }
 
     // next iteration

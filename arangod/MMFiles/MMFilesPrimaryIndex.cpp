@@ -227,14 +227,14 @@ void MMFilesPrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 
 int MMFilesPrimaryIndex::insert(arangodb::Transaction*, TRI_voc_rid_t, VPackSlice const&, bool) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG(WARN) << "insert() called for primary index";
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "insert() called for primary index";
 #endif
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "insert() called for primary index");
 }
 
 int MMFilesPrimaryIndex::remove(arangodb::Transaction*, TRI_voc_rid_t, VPackSlice const&, bool) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG(WARN) << "remove() called for primary index";
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "remove() called for primary index";
 #endif
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "remove() called for primary index");
 }

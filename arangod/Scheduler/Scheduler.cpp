@@ -182,7 +182,7 @@ Scheduler::~Scheduler() {
   } catch (...) {
     // probably out of memory here...
     // must not throw in the dtor
-    LOG(ERR) << "unable to delete old scheduler threads";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to delete old scheduler threads";
   }
 }
 
@@ -224,7 +224,7 @@ bool Scheduler::start(ConditionVariable* cv) {
   _jobQueue->start();
 
   // done
-  LOG(TRACE) << "all scheduler threads are up and running";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "all scheduler threads are up and running";
   return true;
 }
 
@@ -414,7 +414,7 @@ void Scheduler::initializeSignalHandlers() {
   int res = sigaction(SIGPIPE, &action, 0);
 
   if (res < 0) {
-    LOG(ERR) << "cannot initialize signal handlers for pipe";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot initialize signal handlers for pipe";
   }
 #endif
 }

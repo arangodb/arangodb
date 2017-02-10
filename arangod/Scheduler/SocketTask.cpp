@@ -339,7 +339,7 @@ void SocketTask::cancelKeepAlive() {
 // caller must hold the _readLock
 bool SocketTask::reserveMemory() {
   if (_readBuffer.reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
-    LOG(WARN) << "out of memory while reading from client";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "out of memory while reading from client";
     closeStream();
     return false;
   }
@@ -502,7 +502,7 @@ void SocketTask::closeReceiveStream() {
     try {
       _peer->shutdownReceive();
     } catch (boost::system::system_error& err) {
-      LOG(WARN) << "shutdown receive stream "
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "shutdown receive stream "
                 << " failed with: " << err.what();
     }
 

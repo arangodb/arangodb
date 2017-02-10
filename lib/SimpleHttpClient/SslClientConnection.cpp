@@ -151,7 +151,7 @@ static void sslTlsTrace(int direction, int sslVersion, int contentType,
     else
       tlsRtName = "";
 
-    LOG(TRACE) << "SSL connection trace: " << (direction ? "out" : "in") << ", " << tlsRtName << ", " << sslMessageType(sslVersion, *static_cast<char const*>(buf));
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "SSL connection trace: " << (direction ? "out" : "in") << ", " << tlsRtName << ", " << sslMessageType(sslVersion, *static_cast<char const*>(buf));
   }
 }
 #endif
@@ -368,7 +368,7 @@ bool SslClientConnection::connectSocket() {
     return false;
   }
 
-  LOG(TRACE) << "SSL connection opened: " 
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "SSL connection opened: " 
              << SSL_get_cipher(_ssl) << ", " 
              << SSL_get_cipher_version(_ssl) 
              << " (" << SSL_get_cipher_bits(_ssl, 0) << " bits)"; 

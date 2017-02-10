@@ -2029,7 +2029,7 @@ static int restoreDataParser(char const* ptr, char const* pos,
   }
 
   if (key.empty()) {
-    LOG(ERR) << "GOT EXCEPTION 5";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GOT EXCEPTION 5";
     errorMsg = invalidMsg;
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -2697,7 +2697,7 @@ void RestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  LOG(TRACE) << "requested collection dump for collection '" << collection
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "requested collection dump for collection '" << collection
              << "', tickStart: " << tickStart << ", tickEnd: " << tickEnd;
 
   if (flush) {
