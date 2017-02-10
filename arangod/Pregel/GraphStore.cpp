@@ -301,39 +301,37 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   LogicalCollection* collection = cursor->collection();
   uint64_t number = collection->numberDocuments();
   _graphFormat->willLoadVertices(number);
-
-  std::vector<DocumentIdentifierToken> result;
-  result.reserve(1000);
-  while (cursor->hasMore()) {
-    cursor->getMoreTokens(result, 1000);
-    for (auto const& element : result) {
-      if (collection->readDocument(trx.get(), mmdr, element)) {
-        VPackSlice document(mmdr.vpack());
-        if (document.isExternal()) {
-          document = document.resolveExternal();
-        }
-
-        VertexEntry& ventry = _index[vertexOffset];
-        ventry._shard = sourceShard;
-        ventry._key = document.get(StaticStrings::KeyString).copyString();
-        ventry._edgeDataOffset = edgeOffset;
-
-        // load vertex data
-        std::string documentId = trx->extractIdString(document);
-        if (_graphFormat->estimatedVertexSize() > 0) {
-          ventry._vertexDataOffset = vertexOffset;
-          V* ptr = _vertexData.data() + vertexOffset;
-          _graphFormat->copyVertexData(documentId, document, ptr, sizeof(V));
-        }
-        // load edges
-        for (ShardID const& it : edgeShards) {
-          _loadEdges(trx.get(), it, ventry, documentId);
-        }
-        vertexOffset++;
-        edgeOffset += ventry._edgeCount;
+  
+  auto cb = [&] (DocumentIdentifierToken const& token) {
+    if (collection->readDocument(trx.get(), mmdr, token)) {
+      VPackSlice document(mmdr.vpack());
+      if (document.isExternal()) {
+        document = document.resolveExternal();
       }
+      
+      VertexEntry& ventry = _index[vertexOffset];
+      ventry._shard = sourceShard;
+      ventry._key = document.get(StaticStrings::KeyString).copyString();
+      ventry._edgeDataOffset = edgeOffset;
+      
+      // load vertex data
+      std::string documentId = trx->extractIdString(document);
+      if (_graphFormat->estimatedVertexSize() > 0) {
+        ventry._vertexDataOffset = vertexOffset;
+        V* ptr = _vertexData.data() + vertexOffset;
+        _graphFormat->copyVertexData(documentId, document, ptr, sizeof(V));
+      }
+      // load edges
+      for (ShardID const& it : edgeShards) {
+        _loadEdges(trx.get(), it, ventry, documentId);
+      }
+      vertexOffset++;
+      edgeOffset += ventry._edgeCount;
     }
+  };
+  while (cursor->getMore(cb, 1000)) {
   }
+
   // Add all new vertices
   _localVerticeCount += (vertexOffset - originalVertexOffset);
 
@@ -361,39 +359,33 @@ void GraphStore<V, E>::_loadEdges(Transaction* trx, ShardID const& edgeShard,
   }
 
   LogicalCollection* collection = cursor->collection();
-  std::vector<DocumentIdentifierToken> result;
-  result.reserve(1000);
-  while (cursor->hasMore()) {
-    cursor->getMoreTokens(result, 1000);
-    for (auto const& element : result) {
-      if (collection->readDocument(trx, mmdr, element)) {
-        VPackSlice document(mmdr.vpack());
-        if (document.isExternal()) {
-          document = document.resolveExternal();
+  auto cb = [&] (DocumentIdentifierToken const& token) {
+    if (collection->readDocument(trx, mmdr, token)) {
+      VPackSlice document(mmdr.vpack());
+      if (document.isExternal()) {
+        document = document.resolveExternal();
+      }
+      
+      // LOG_TOPIC(INFO, Logger::PREGEL) << "Loaded Edge: " << document.toJson();
+      std::string toValue =
+      document.get(StaticStrings::ToString).copyString();
+      std::size_t pos = toValue.find('/');
+      std::string collectionName = toValue.substr(0, pos);
+      
+      // If this is called from loadDocument we didn't preallocate the vector
+      if (_edges.size() <= offset) {
+        if (!_config->lazyLoading()) {
+          LOG_TOPIC(ERR, Logger::PREGEL) << "WTF";
         }
-
-        // LOG_TOPIC(INFO, Logger::PREGEL) << "Loaded Edge: " << document.toJson();
-        std::string toValue =
-            document.get(StaticStrings::ToString).copyString();
-        std::size_t pos = toValue.find('/');
-        std::string collectionName = toValue.substr(0, pos);
-
-        // If this is called from loadDocument we didn't preallocate the vector
-        if (_edges.size() <= offset) {
-          if (!_config->lazyLoading()) {
-            LOG_TOPIC(ERR, Logger::PREGEL) << "WTF";
-          }
-          _edges.push_back(Edge<E>());
-        }
-        Edge<E>& edge(_edges[offset]);
-        edge._toKey = toValue.substr(pos + 1, toValue.length() - pos - 1);
-
-        auto collInfo =
-            Utils::resolveCollection(_config->database(), collectionName,
-                                     _config->collectionPlanIdMap());
-        if (!collInfo) {
-          continue;
-        }
+        _edges.push_back(Edge<E>());
+      }
+      Edge<E>& edge(_edges[offset]);
+      edge._toKey = toValue.substr(pos + 1, toValue.length() - pos - 1);
+      
+      auto collInfo =
+      Utils::resolveCollection(_config->database(), collectionName,
+                               _config->collectionPlanIdMap());
+      if (collInfo) {
         // resolve the shard of the target vertex.
         ShardID responsibleShard;
         Utils::resolveShard(collInfo.get(), StaticStrings::KeyString,
@@ -403,13 +395,16 @@ void GraphStore<V, E>::_loadEdges(Transaction* trx, ShardID const& edgeShard,
         _graphFormat->copyEdgeData(document, edge.data(), sizeof(E));
         if (edge._sourceShard == (prgl_shard_t)-1 ||
             edge._targetShard == (prgl_shard_t)-1) {
-          continue;
+          return;
         }
         offset++;
       }
+      
     }
+  };
+  while (cursor->getMore(cb, 1000)) {
   }
-
+  
   // Add up all added elements
   size_t added = offset - originalOffset;
   vertexEntry._edgeCount += added;

@@ -169,8 +169,9 @@ bool Conductor::_startGlobalStep() {
     if (_storeResults) {
       _finalizeWorkers();
     } else {// just stop the timer
-        _endTimeSecs = TRI_microtime();
-        LOG(INFO) << "Done execution took" << totalRuntimeSecs() << " s";
+      _endTimeSecs = TRI_microtime();
+      LOG_TOPIC(INFO, Logger::PREGEL) << "Done execution took"
+                                      << totalRuntimeSecs() << " s";
     }
     return false;
   }
