@@ -111,6 +111,8 @@ void Logger::setLogLevel(std::string const& levelName) {
 
   if (isGeneral) {
     Logger::setLogLevel(level);
+    // setting the log level for topic "fixme" is required here, too,
+    // as "fixme" is the previous general log topic...
     LogTopic::setLogLevel(std::string("fixme"), level);
   } else {
     LogTopic::setLogLevel(v[0], level);
