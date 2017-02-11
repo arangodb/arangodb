@@ -47,14 +47,13 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::pregel;
 
-
 #ifdef TRI_SHOW_LOCK_TIME
 
 #define MY_READ_LOCKER(obj, lock) \
 ReadLocker<ReadWriteLock> obj(&lock, __FILE__, __LINE__)
 
 #define MY_WRITE_LOCKER(obj, lock) \
-WriteLocker<std::decay<decltype (lock)>::type> obj(&lock, __FILE__, __LINE__)
+WriteLocker<ReadWriteLock> obj(&lock, __FILE__, __LINE__)
 
 #else
 
