@@ -121,17 +121,25 @@ void ArrayInCache<M>::_set(prgl_shard_t shard, std::string const& key,
 }
 
 template <typename M>
-void ArrayInCache<M>::mergeCache(InCache<M> const* otherCache) {
+void ArrayInCache<M>::mergeCache(WorkerConfig const& config, InCache<M> const* otherCache) {
   ArrayInCache<M>* other = (ArrayInCache<M>*)otherCache;
   this->_containedMessageCount += other->_containedMessageCount;
-
-  for (auto const& pair : other->_shardMap) {
-    MUTEX_LOCKER(guard, this->_bucketLocker[pair.first]);
-    HMap& vertexMap(_shardMap[pair.first]);
-    for (auto& vertexMessage : pair.second) {
-      std::vector<M>& a = vertexMap[vertexMessage.first];
-      std::vector<M> const& b = vertexMessage.second;
-      a.insert(a.end(), b.begin(), b.end());
+  
+  // ranomize access to buckets
+  std::set<prgl_shard_t> const& shardIDs = config.localPregelShardIDs();
+  std::vector<prgl_shard_t> randomized(shardIDs.begin(), shardIDs.end());
+  std::random_shuffle(randomized.begin(), randomized.end());
+  for (prgl_shard_t shardId : randomized) {
+    auto const& it = other->_shardMap.find(shardId);
+    if (it != other->_shardMap.end()) {
+      MUTEX_LOCKER(guard, this->_bucketLocker[shardId]);
+      HMap& myVertexMap = _shardMap[shardId];
+      
+      for (auto& vertexMessage : it->second) {
+        std::vector<M>& a = myVertexMap[vertexMessage.first];
+        std::vector<M> const& b = vertexMessage.second;
+        a.insert(a.end(), b.begin(), b.end());
+      }
     }
   }
 }
@@ -215,20 +223,28 @@ void CombiningInCache<M>::_set(prgl_shard_t shard, std::string const& key,
 }
 
 template <typename M>
-void CombiningInCache<M>::mergeCache(InCache<M> const* otherCache) {
+void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
+                                     InCache<M> const* otherCache) {
   CombiningInCache<M>* other = (CombiningInCache<M>*)otherCache;
   this->_containedMessageCount += other->_containedMessageCount;
-
-  for (auto const& pair : other->_shardMap) {
-    MUTEX_LOCKER(guard, this->_bucketLocker[pair.first]);
-
-    HMap& vertexMap = _shardMap[pair.first];
-    for (auto& vertexMessage : pair.second) {
-      auto vmsg = vertexMap.find(vertexMessage.first);
-      if (vmsg != vertexMap.end()) {  // got a message for the same vertex
-        _combiner->combine(vmsg->second, vertexMessage.second);
-      } else {
-        vertexMap.insert(vertexMessage);
+  
+  // ranomize access to buckets
+  std::set<prgl_shard_t> const& shardIDs = config.localPregelShardIDs();
+  std::vector<prgl_shard_t> randomized(shardIDs.begin(), shardIDs.end());
+  std::random_shuffle(randomized.begin(), randomized.end());
+  for (prgl_shard_t shardId : randomized) {
+    auto const& it = other->_shardMap.find(shardId);
+    if (it != other->_shardMap.end()) {
+      MUTEX_LOCKER(guard, this->_bucketLocker[shardId]);
+      HMap& myVertexMap = _shardMap[shardId];
+      
+      for (auto& vertexMessage : it->second) {
+        auto vmsg = myVertexMap.find(vertexMessage.first);
+        if (vmsg != myVertexMap.end()) {  // got a message for the same vertex
+          _combiner->combine(vmsg->second, vertexMessage.second);
+        } else {
+          myVertexMap.insert(vertexMessage);
+        }
       }
     }
   }

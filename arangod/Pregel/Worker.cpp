@@ -390,7 +390,7 @@ bool Worker<V, E, M>::_processVertices(
   }
 
   // merge thread local messages, _writeCache does locking
-  _writeCache->mergeCache(inCache.get());
+  _writeCache->mergeCache(_config, inCache.get());
   // TODO ask how to implement message sending without waiting for a response
 
   MessageStats stats;
@@ -452,8 +452,9 @@ void Worker<V, E, M>::_finishedProcessing() {
       size_t total = _graphStore->localVertexCount();
       if (total > currentAVCount) {
         if (_config.asynchronousMode()) {
+          // just process these vertices in the next superstep
           ReadLocker<ReadWriteLock> rguard(&_cacheRWLock);
-          _writeCache->mergeCache(_readCache);  // compute in next superstep
+          _writeCache->mergeCache(_config, _readCache);  // compute in next superstep
           _messageStats.sendCount += _readCache->containedMessageCount();
         } else {
           // TODO call _startProcessing ???
