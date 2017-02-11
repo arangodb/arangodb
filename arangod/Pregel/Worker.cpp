@@ -53,7 +53,7 @@ using namespace arangodb::pregel;
 #define MY_READ_LOCKER(obj, lock) \
 ReadLocker<ReadWriteLock> obj(&lock, __FILE__, __LINE__)
 
-#define MYWRITE_LOCKER(obj, lock) \
+#define MY_WRITE_LOCKER(obj, lock) \
 WriteLocker<std::decay<decltype (lock)>::type> obj(&lock, __FILE__, __LINE__)
 
 #else
