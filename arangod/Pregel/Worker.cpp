@@ -47,6 +47,23 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::pregel;
 
+
+#ifdef TRI_SHOW_LOCK_TIME
+
+#define MY_READ_LOCKER(obj, lock) \
+ReadLocker<ReadWriteLock> obj(&lock, __FILE__, __LINE__)
+
+#define MYWRITE_LOCKER(obj, lock) \
+WriteLocker<std::decay<decltype (lock)>::type> obj(&lock, __FILE__, __LINE__)
+
+#else
+
+#define MY_READ_LOCKER(obj, lock) ReadLocker<ReadWriteLock> obj(&lock)
+
+#define MY_WRITE_LOCKER(obj, lock) WriteLocker<ReadWriteLock> obj(&lock)
+
+#endif
+
 template <typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
                         VPackSlice initConfig)
@@ -172,7 +189,7 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
   if (_config.asynchronousMode()) {
     TRI_ASSERT(_readCache->containedMessageCount() == 0);
     TRI_ASSERT(_writeCache->containedMessageCount() == 0);
-    WriteLocker<ReadWriteLock> wguard(&_cacheRWLock);
+    MY_WRITE_LOCKER(wguard, _cacheRWLock);
     std::swap(_readCache, _writeCacheNextGSS);
     _writeCache->clear();
     _requestedNextGSS = false;  // only relevant for async
@@ -180,7 +197,7 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
     _nextGSSSendMessageCount = 0;
   } else {
     TRI_ASSERT(_readCache->containedMessageCount() == 0);
-    WriteLocker<ReadWriteLock> wguard(&_cacheRWLock);
+    MY_WRITE_LOCKER(wguard, _cacheRWLock);
     std::swap(_readCache, _writeCache);
     _config._localSuperstep = gss;
   }
@@ -214,7 +231,7 @@ void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
   if (gss == _config._globalSuperstep) {
     {  // make sure the pointer is not changed while
        // parsing messages
-      ReadLocker<ReadWriteLock> guard(&_cacheRWLock);
+      MY_READ_LOCKER(guard, _cacheRWLock);
       // handles locking for us
       _writeCache->parseMessages(data);
     }
@@ -226,7 +243,7 @@ void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
     }
   } else if (_config.asynchronousMode() &&
              gss == _config._globalSuperstep + 1) {
-    ReadLocker<ReadWriteLock> guard(&_cacheRWLock);
+    MY_READ_LOCKER(guard, _cacheRWLock);
     _writeCacheNextGSS->parseMessages(data);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -453,7 +470,7 @@ void Worker<V, E, M>::_finishedProcessing() {
       if (total > currentAVCount) {
         if (_config.asynchronousMode()) {
           // just process these vertices in the next superstep
-          ReadLocker<ReadWriteLock> rguard(&_cacheRWLock);
+          MY_READ_LOCKER(guard, _cacheRWLock);
           _writeCache->mergeCache(_config, _readCache);  // compute in next superstep
           _messageStats.sendCount += _readCache->containedMessageCount();
         } else {
@@ -527,7 +544,7 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::_continueAsync() {
   if (_state == WorkerState::IDLE && _writeCache->containedMessageCount() > 0) {
     {  // swap these pointers atomically
-      WriteLocker<ReadWriteLock> guard(&_cacheRWLock);
+      MY_WRITE_LOCKER(guard, _cacheRWLock);
       std::swap(_readCache, _writeCache);
     }
     // overwrite conductor values with local values
