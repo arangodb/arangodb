@@ -140,13 +140,7 @@ void ArrayOutCache<M>::flushMessages() {
   size_t nrDone = 0;
   ClusterComm::instance()->performRequests(requests, 120, nrDone,
                                            LogTopic("Pregel message transfer"));
-  // readResults(requests);
-  for (auto const& req : requests) {
-    auto& res = req.result;
-    if (res.status == CL_COMM_RECEIVED) {
-      LOG_TOPIC(INFO, Logger::PREGEL) << res.answer->payload().toJson();
-    }
-  }
+  Utils::printResponses(requests);
   this->clear();
 }
 
@@ -195,7 +189,7 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
       vertexMap.emplace(key, data);
 
       if (++(this->_containedMessages) >= this->_batchSize) {
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Hit buffer limit";
+        //LOG_TOPIC(INFO, Logger::PREGEL) << "Hit buffer limit";
         flushMessages();
       }
     }

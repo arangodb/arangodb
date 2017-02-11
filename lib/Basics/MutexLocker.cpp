@@ -76,3 +76,24 @@ void MutexLocker::unlock() {
     _isLocked = false;
   }
 }
+
+TryMutexLocker::TryMutexLocker(Mutex* mutex) : _mutex(mutex), _isLocked(true) {
+  _isLocked = _mutex->tryLock();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases the lock
+////////////////////////////////////////////////////////////////////////////////
+
+TryMutexLocker::~TryMutexLocker() {
+  if (_isLocked) {
+    _mutex->unlock();
+  }
+}
+
+void TryMutexLocker::unlock() {
+  if (_isLocked) {
+    _mutex->unlock();
+    _isLocked = false;
+  }
+}
