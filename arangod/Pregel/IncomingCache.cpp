@@ -233,6 +233,7 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
   std::vector<prgl_shard_t> randomized(shardIDs.begin(), shardIDs.end());
   std::random_shuffle(randomized.begin(), randomized.end());
   
+  double t = TRI_microtime();
   size_t i = 0;
   do {
     i = (i + 1) % randomized.size();
@@ -247,8 +248,10 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
         }
         continue;
       }
-      randomized.erase(randomized.begin() + i);
-      
+      t = TRI_microtime() - t;
+      if (t > TRI_SHOW_LOCK_THRESHOLD) {
+        LOG_TOPIC(INFO, Logger::PREGEL) << "Getting a bucket took " << t;
+      }
       HMap& myVertexMap = _shardMap[shardId];
       for (auto& vertexMessage : it->second) {
         auto vmsg = myVertexMap.find(vertexMessage.first);
@@ -258,7 +261,10 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
           myVertexMap.insert(vertexMessage);
         }
       }
+      t = TRI_microtime();
     }
+    
+    randomized.erase(randomized.begin() + i);
   } while (randomized.size() > 0);
 }
 
