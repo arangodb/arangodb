@@ -501,55 +501,6 @@ void SkiplistInLookupBuilder::buildSearchValues() {
 }
   
 MMFilesSkiplistIterator::MMFilesSkiplistIterator(LogicalCollection* collection, arangodb::Transaction* trx,
-                                   ManagedDocumentResult* mmdr,
-                                   arangodb::MMFilesSkiplistIndex const* index,
-                                   bool reverse, Node* left, Node* right)
-    : IndexIterator(collection, trx, mmdr, index),
-      _reverse(reverse),
-      _leftEndPoint(left),
-      _rightEndPoint(right) {
-  reset(); // Initializes the cursor
-}
-
-/// @brief Reset the cursor
-void MMFilesSkiplistIterator::reset() {
-  if (_reverse) {
-    _cursor = _rightEndPoint;
-  } else {
-    _cursor = _leftEndPoint;
-  }
-}
-
-
-/// @brief Get the next elements in the skiplist
-bool MMFilesSkiplistIterator::next(TokenCallback const& cb, size_t limit) {
-  while (limit > 0) {
-    if (_cursor == nullptr) {
-      return false;
-    }
-    Node* tmp = _cursor;
-    if (_reverse) {
-      if (_cursor == _leftEndPoint) {
-        _cursor = nullptr;
-      } else {
-        _cursor = _cursor->prevNode();
-      }
-    } else {
-      if (_cursor == _rightEndPoint) {
-        _cursor = nullptr;
-      } else {
-        _cursor = _cursor->nextNode();
-      }
-    }
-    TRI_ASSERT(tmp != nullptr);
-    TRI_ASSERT(tmp->document() != nullptr);
-    cb(MMFilesToken{tmp->document()->revisionId()});
-    --limit;
-  }
-  return true;
-}
-
-MMFilesSkiplistIterator2::MMFilesSkiplistIterator2(LogicalCollection* collection, arangodb::Transaction* trx,
     ManagedDocumentResult* mmdr,
     arangodb::MMFilesSkiplistIndex const* index,
     TRI_Skiplist const* skiplist, size_t numPaths,
@@ -572,7 +523,7 @@ MMFilesSkiplistIterator2::MMFilesSkiplistIterator2(LogicalCollection* collection
 
 /// @brief Checks if the interval is valid. It is declared invalid if
 ///        one border is nullptr or the right is lower than left.
-bool MMFilesSkiplistIterator2::intervalValid(void* userData, Node* left, Node* right) const {
+bool MMFilesSkiplistIterator::intervalValid(void* userData, Node* left, Node* right) const {
   if (left == nullptr) {
     return false;
   }
@@ -591,7 +542,7 @@ bool MMFilesSkiplistIterator2::intervalValid(void* userData, Node* left, Node* r
 }
 
 /// @brief Reset the cursor
-void MMFilesSkiplistIterator2::reset() {
+void MMFilesSkiplistIterator::reset() {
   // If _intervals is empty at this point
   // the cursor does not contain any
   // document at all. Reset is pointless
@@ -606,7 +557,7 @@ void MMFilesSkiplistIterator2::reset() {
   }
 }
 
-bool MMFilesSkiplistIterator2::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesSkiplistIterator::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     if (_cursor == nullptr) {
       // We are exhausted already, sorry
@@ -636,7 +587,7 @@ bool MMFilesSkiplistIterator2::next(TokenCallback const& cb, size_t limit) {
   return true;
 }
 
-void MMFilesSkiplistIterator2::forwardCursor() {
+void MMFilesSkiplistIterator::forwardCursor() {
   _currentInterval++;
   if (_currentInterval < _intervals.size()) {
     auto const& interval = _intervals[_currentInterval];
@@ -653,7 +604,7 @@ void MMFilesSkiplistIterator2::forwardCursor() {
   }
 }
 
-void MMFilesSkiplistIterator2::initNextInterval() {
+void MMFilesSkiplistIterator::initNextInterval() {
   // We will always point the cursor to the resulting interval if any.
   // We do not take responsibility for the Nodes!
   Node* rightBorder = nullptr;
@@ -1285,15 +1236,15 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
   if (usesIn) {
     auto builder = std::make_unique<SkiplistInLookupBuilder>(
         trx, mapping, reference, reverse);
-    return new MMFilesSkiplistIterator2(_collection, trx, mmdr, this,
-                                        _skiplistIndex, numPaths(), CmpElmElm,
-                                        reverse, builder.release());
+    return new MMFilesSkiplistIterator(_collection, trx, mmdr, this,
+                                       _skiplistIndex, numPaths(), CmpElmElm,
+                                       reverse, builder.release());
   }
   auto builder =
       std::make_unique<SkiplistLookupBuilder>(trx, mapping, reference, reverse);
-  return new MMFilesSkiplistIterator2(_collection, trx, mmdr, this,
-                                      _skiplistIndex, numPaths(), CmpElmElm,
-                                      reverse, builder.release());
+  return new MMFilesSkiplistIterator(_collection, trx, mmdr, this,
+                                     _skiplistIndex, numPaths(), CmpElmElm,
+                                     reverse, builder.release());
 }
 
 bool MMFilesSkiplistIndex::supportsFilterCondition(
