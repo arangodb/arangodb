@@ -250,7 +250,7 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
       }
       t = TRI_microtime() - t;
       if (t > TRI_SHOW_LOCK_THRESHOLD) {
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Getting a bucket took " << t;
+        LOG_TOPIC(INFO, Logger::PREGEL) << "Waitng for bucket took " << t << "s. Bucket " << shardId;
       }
       HMap& myVertexMap = _shardMap[shardId];
       for (auto& vertexMessage : it->second) {
