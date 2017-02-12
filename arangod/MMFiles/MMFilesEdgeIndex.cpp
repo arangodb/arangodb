@@ -175,52 +175,6 @@ void MMFilesEdgeIndexIterator::reset() {
   _lastElement = MMFilesSimpleIndexElement();
 }
   
-AnyDirectionMMFilesEdgeIndexIterator::AnyDirectionMMFilesEdgeIndexIterator(LogicalCollection* collection,
-                                arangodb::Transaction* trx,
-                                ManagedDocumentResult* mmdr,
-                                arangodb::MMFilesEdgeIndex const* index,
-                                MMFilesEdgeIndexIterator* outboundIterator,
-                                MMFilesEdgeIndexIterator* inboundIterator)
-    : IndexIterator(collection, trx, mmdr, index),
-      _outbound(outboundIterator),
-      _inbound(inboundIterator),
-      _useInbound(false) {}
-
-bool AnyDirectionMMFilesEdgeIndexIterator::next(TokenCallback const& cb,
-                                                size_t limit) {
-  auto inWrapper = [&](DocumentIdentifierToken const& res) {
-    if (_seen.find(res) == _seen.end()) {
-      --limit;
-      cb(res);
-    }
-  };
-
-  auto outWrapper = [&](DocumentIdentifierToken const& res) {
-    _seen.emplace(res);
-    --limit;
-    cb(res);
-  };
-
-  while (limit > 0) {
-    if (_useInbound) {
-      return _inbound->next(inWrapper, limit);
-    } else {
-      _outbound->next(outWrapper, limit);
-      if (limit > 0) {
-        _useInbound = true;
-      }
-    }
-  }
-  return true;
-}
-
-void AnyDirectionMMFilesEdgeIndexIterator::reset() {
-  _useInbound = false;
-  _seen.clear();
-  _outbound->reset();
-  _inbound->reset();
-}
-
 MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection)
     : Index(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(

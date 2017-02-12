@@ -71,33 +71,6 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
   MMFilesSimpleIndexElement _lastElement;
 };
 
-class AnyDirectionMMFilesEdgeIndexIterator final : public IndexIterator {
- public:
-  AnyDirectionMMFilesEdgeIndexIterator(LogicalCollection* collection,
-                                arangodb::Transaction* trx,
-                                ManagedDocumentResult* mmdr,
-                                arangodb::MMFilesEdgeIndex const* index,
-                                MMFilesEdgeIndexIterator* outboundIterator,
-                                MMFilesEdgeIndexIterator* inboundIterator);
-
-  ~AnyDirectionMMFilesEdgeIndexIterator() {
-    delete _outbound;
-    delete _inbound;
-  }
-
-  char const* typeName() const override { return "any-edge-index-iterator"; }
-
-  bool next(TokenCallback const& cb, size_t limit) override;
-
-  void reset() override;
-
- private:
-  MMFilesEdgeIndexIterator* _outbound;
-  MMFilesEdgeIndexIterator* _inbound;
-  std::unordered_set<DocumentIdentifierToken> _seen;
-  bool _useInbound;
-};
-
 class MMFilesEdgeIndex final : public Index {
  public:
   MMFilesEdgeIndex() = delete;
