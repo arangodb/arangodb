@@ -405,13 +405,19 @@ bool Worker<V, E, M>::_processVertices(
     _nextGSSSendMessageCount += outCache->sendCountNextGSS();
   }
 
+  double t = TRI_microtime();
   // merge thread local messages, _writeCache does locking
   _writeCache->mergeCache(_config, inCache.get());
   // TODO ask how to implement message sending without waiting for a response
-
+  t = TRI_microtime() - t;
+  
   MessageStats stats;
   stats.sendCount = outCache->sendCount();
   stats.superstepRuntimeSecs = TRI_microtime() - start;
+  if (t > 0.005) {
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Total " << stats.superstepRuntimeSecs << " s merge took "
+    << t << " s";
+  }
 
   bool lastThread = false;
   {  // only one thread at a time
