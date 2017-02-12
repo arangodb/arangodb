@@ -91,7 +91,7 @@ bool ClusterTraverser::getVertex(VPackSlice edge,
 }
 
 bool ClusterTraverser::getSingleVertex(VPackSlice edge, VPackSlice comp,
-                                       size_t depth, VPackSlice& result) {
+                                       uint64_t depth, VPackSlice& result) {
   bool res = _vertexGetter->getSingleVertex(edge, comp, depth, result);
   if (res) {
     if (_vertices.find(result) == _vertices.end()) {
