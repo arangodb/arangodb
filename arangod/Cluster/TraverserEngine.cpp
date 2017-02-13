@@ -117,24 +117,14 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
 }
 
 BaseTraverserEngine::~BaseTraverserEngine() {
-  /*
-  auto resolver = _trx->resolver();
-  // TODO Do we need this or will delete trx do this already?
-  for (auto const& shard : _locked) {
-    TRI_voc_cid_t cid = resolver->getCollectionIdLocal(shard);
-    if (cid == 0) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Failed to unlock shard " << shard << ": not found";
-      continue;
-    }
-    int res = _trx->unlock(_trx->trxCollection(cid), AccessMode::Type::READ);
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Failed to unlock shard " << shard << ": "
-               << TRI_errno_string(res);
-    }
-  }
-  */
   if (_trx) {
-    _trx->commit();
+    try {
+      _trx->commit();
+    } catch (...) {
+      // If we could not commit
+      // we are in a bad state.
+      // This is a READ-ONLY trx
+    }
   }
   delete _query;
 }
