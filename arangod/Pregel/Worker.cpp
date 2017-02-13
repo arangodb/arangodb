@@ -63,6 +63,8 @@ WriteLocker<ReadWriteLock> obj(&lock, __FILE__, __LINE__)
 
 #endif
 
+
+
 template <typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
                         VPackSlice initConfig)
@@ -79,27 +81,11 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   _graphStore.reset(new GraphStore<V, E>(vocbase, _algorithm->inputFormat()));
   _nextGSSSendMessageCount = 0;
   if (_config.asynchronousMode()) {
-    _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats, 0);
+    _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats);
   } else {
     _messageBatchSize = 5000;
   }
-
-  if (_messageCombiner) {
-    _readCache = new CombiningInCache<M>(&_config, _messageFormat.get(),
-                                         _messageCombiner.get());
-    _writeCache = new CombiningInCache<M>(&_config, _messageFormat.get(),
-                                          _messageCombiner.get());
-    if (_config.asynchronousMode()) {
-      _writeCacheNextGSS = new CombiningInCache<M>(
-          &_config, _messageFormat.get(), _messageCombiner.get());
-    }
-  } else {
-    _readCache = new ArrayInCache<M>(&_config, _messageFormat.get());
-    _writeCache = new ArrayInCache<M>(&_config, _messageFormat.get());
-    if (_config.asynchronousMode()) {
-      _writeCacheNextGSS = new ArrayInCache<M>(&_config, _messageFormat.get());
-    }
-  }
+  _initializeMessageCaches();
 
   std::function<void()> callback = [this] {
     VPackBuilder package;
@@ -145,7 +131,47 @@ Worker<V, E, M>::~Worker() {
   delete _readCache;
   delete _writeCache;
   delete _writeCacheNextGSS;
+  for (InCache<M>* cache : _inCaches) {
+    delete cache;
+  }
+  for (OutCache<M>* cache : _outCaches) {
+    delete cache;
+  }
   _writeCache = nullptr;
+}
+
+
+template <typename V, typename E, typename M>
+void Worker<V, E, M>::_initializeMessageCaches() {
+  const size_t p = _config.parallelism();
+  if (_messageCombiner) {
+    _readCache = new CombiningInCache<M>(&_config, _messageFormat.get(),
+                                         _messageCombiner.get());
+    _writeCache = new CombiningInCache<M>(&_config, _messageFormat.get(),
+                                          _messageCombiner.get());
+    if (_config.asynchronousMode()) {
+      _writeCacheNextGSS = new CombiningInCache<M>(
+                                                   &_config, _messageFormat.get(), _messageCombiner.get());
+    }
+    for (size_t i = 0; i < p; i++) {
+      auto incoming = std::make_unique<CombiningInCache<M>>(nullptr, _messageFormat.get(),
+                                                            _messageCombiner.get());
+      _inCaches.push_back(incoming.get());
+      _outCaches.push_back(
+      new CombiningOutCache<M>(&_config, incoming.release(), _writeCacheNextGSS));
+    }
+  } else {
+    _readCache = new ArrayInCache<M>(&_config, _messageFormat.get());
+    _writeCache = new ArrayInCache<M>(&_config, _messageFormat.get());
+    if (_config.asynchronousMode()) {
+      _writeCacheNextGSS = new ArrayInCache<M>(&_config, _messageFormat.get());
+    }
+    for (size_t i = 0; i < p; i++) {
+      _inCaches.push_back(new ArrayInCache<M>(nullptr, _messageFormat.get()));
+      _outCaches.push_back(
+                           new ArrayOutCache<M>(&_config, _inCaches.back(), _writeCacheNextGSS));
+    }
+  }
 }
 
 template <typename V, typename E, typename M>
@@ -186,17 +212,17 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
   _config._globalSuperstep = gss;
   // write cache becomes the readable cache
   if (_config.asynchronousMode()) {
+    MY_WRITE_LOCKER(wguard, _cacheRWLock);// by design shouldn't be necessary
     TRI_ASSERT(_readCache->containedMessageCount() == 0);
     TRI_ASSERT(_writeCache->containedMessageCount() == 0);
-    MY_WRITE_LOCKER(wguard, _cacheRWLock);
     std::swap(_readCache, _writeCacheNextGSS);
     _writeCache->clear();
     _requestedNextGSS = false;  // only relevant for async
     _messageStats.sendCount = _nextGSSSendMessageCount;
     _nextGSSSendMessageCount = 0;
   } else {
-    TRI_ASSERT(_readCache->containedMessageCount() == 0);
     MY_WRITE_LOCKER(wguard, _cacheRWLock);
+    TRI_ASSERT(_readCache->containedMessageCount() == 0);
     std::swap(_readCache, _writeCache);
     _config._localSuperstep = gss;
   }
@@ -297,23 +323,24 @@ void Worker<V, E, M>::_startProcessing() {
 
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   size_t total = _graphStore->localVertexCount();
-  size_t delta = total / pool->numThreads();
+  size_t delta = total / _config.parallelism();
   size_t start = 0, end = delta;
-  if (delta >= 100 && total >= 100) {
-    _runningThreads = total / delta;  // rounds-up unsigned integers
-  } else {
+  if (delta < 100 || total < 100) {
     _runningThreads = 1;
     end = total;
+  } else {
+    _runningThreads = total / delta;  // rounds-up unsigned integers
   }
+  size_t i = 0;
   do {
-    pool->enqueue([this, start, end] {
+    pool->enqueue([this, start, end, i] {
       if (_state != WorkerState::COMPUTING) {
         LOG_TOPIC(INFO, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
       }
       auto vertices = _graphStore->vertexIterator(start, end);
       // should work like a join operation
-      if (_processVertices(vertices) && _state == WorkerState::COMPUTING) {
+      if (_processVertices(i, vertices) && _state == WorkerState::COMPUTING) {
         _finishedProcessing();  // last thread turns the lights out
       }
     });
@@ -321,7 +348,9 @@ void Worker<V, E, M>::_startProcessing() {
     if (total < end + delta) {  // swallow the rest
       end = total;
     }
+    i++;
   } while (start != total);
+  TRI_ASSERT(_runningThreads == i);
 }
 
 template <typename V, typename E, typename M>
@@ -335,32 +364,13 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 
 // internally called in a WORKER THREAD!!
 template <typename V, typename E, typename M>
-bool Worker<V, E, M>::_processVertices(
+bool Worker<V, E, M>::_processVertices(size_t threadId,
     RangeIterator<VertexEntry>& vertexIterator) {
   double start = TRI_microtime();
 
   // thread local caches
-  std::unique_ptr<InCache<M>> inCache;
-  std::unique_ptr<OutCache<M>> outCache;
-  if (_messageCombiner) {
-    inCache.reset(new CombiningInCache<M>(nullptr, _messageFormat.get(),
-                                          _messageCombiner.get()));
-    if (_config.asynchronousMode()) {
-      outCache.reset(new CombiningOutCache<M>(
-          &_config, (CombiningInCache<M>*)inCache.get(), _writeCacheNextGSS));
-    } else {
-      outCache.reset(new CombiningOutCache<M>(
-          &_config, (CombiningInCache<M>*)inCache.get()));
-    }
-  } else {
-    inCache.reset(new ArrayInCache<M>(nullptr, _messageFormat.get()));
-    if (_config.asynchronousMode()) {
-      outCache.reset(
-          new ArrayOutCache<M>(&_config, inCache.get(), _writeCacheNextGSS));
-    } else {
-      outCache.reset(new ArrayOutCache<M>(&_config, inCache.get()));
-    }
-  }
+  InCache<M> *inCache = _inCaches[threadId];
+  OutCache<M> *outCache = _outCaches[threadId];
   outCache->setBatchSize(_messageBatchSize);
   if (_config.asynchronousMode()) {
     outCache->sendToNextGSS(_requestedNextGSS);
@@ -372,7 +382,7 @@ bool Worker<V, E, M>::_processVertices(
       _algorithm->createComputation(&_config));
   _initializeVertexContext(vertexComputation.get());
   vertexComputation->_workerAggregators = &workerAggregator;
-  vertexComputation->_cache = outCache.get();
+  vertexComputation->_cache = outCache;
   if (!_config.asynchronousMode()) {
     // Should cause enterNextGlobalSuperstep to do nothing
     vertexComputation->_enterNextGSS = true;
@@ -407,7 +417,7 @@ bool Worker<V, E, M>::_processVertices(
 
   double t = TRI_microtime();
   // merge thread local messages, _writeCache does locking
-  _writeCache->mergeCache(_config, inCache.get());
+  _writeCache->mergeCache(_config, inCache);
   // TODO ask how to implement message sending without waiting for a response
   t = TRI_microtime() - t;
   
@@ -418,6 +428,9 @@ bool Worker<V, E, M>::_processVertices(
     LOG_TOPIC(INFO, Logger::PREGEL) << "Total " << stats.superstepRuntimeSecs << " s merge took "
     << t << " s";
   }
+  
+  inCache->clear();
+  outCache->clear();
 
   bool lastThread = false;
   {  // only one thread at a time
@@ -483,13 +496,15 @@ void Worker<V, E, M>::_finishedProcessing() {
           _runningThreads = 1;
           auto addedVertices =
               _graphStore->vertexIterator(currentAVCount, total);
-          _processVertices(addedVertices);
+          _processVertices(0, addedVertices);
         }
       }
     }
-    // no need to keep old messages around
-    _readCache->clear();
-
+    { // locking shouldn't matter here, just to be safe
+      MY_WRITE_LOCKER(guard, _cacheRWLock);
+      _readCache->clear(); // no need to keep old messages around
+    }
+    
     // only set the state here, because _processVertices checks for it
     _state = WorkerState::IDLE;
     _expectedGSS = _config._globalSuperstep + 1;
@@ -507,11 +522,11 @@ void Worker<V, E, M>::_finishedProcessing() {
     }
     package.close();
 
-    size_t tn = PregelFeature::instance()->threadPool()->numThreads();
     if (_config.asynchronousMode()) {
       // async adaptive message buffering
-      _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats, tn);
+      _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats);
     } else {
+      uint32_t tn = _config.parallelism();
       uint32_t s = _messageStats.sendCount / tn / 2UL;
       _messageBatchSize = s > 1000 ? s : 1000;
     }
@@ -608,12 +623,15 @@ void Worker<V, E, M>::startRecovery(VPackSlice const& data) {
   // else if (method.compareString(Utils::rollback) == 0)
 
   _state = WorkerState::RECOVERING;
-  _writeCache->clear();
-  _readCache->clear();
-  if (_writeCacheNextGSS) {
-    _writeCacheNextGSS->clear();
+  {
+    MY_WRITE_LOCKER(guard, _cacheRWLock);
+    _writeCache->clear();
+    _readCache->clear();
+    if (_writeCacheNextGSS) {
+      _writeCacheNextGSS->clear();
+    }
   }
-
+  
   VPackBuilder copy(data);
   // hack to determine newly added vertices
   _preRecoveryTotal = _graphStore->localVertexCount();
@@ -677,11 +695,6 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
   }
 
   _expectedGSS = data.get(Utils::globalSuperstepKey).getUInt();
-  _writeCache->clear();
-  _readCache->clear();
-  if (_writeCacheNextGSS) {
-    _writeCacheNextGSS->clear();
-  }
   _messageStats.resetTracking();
   _state = WorkerState::IDLE;
   LOG_TOPIC(INFO, Logger::PREGEL) << "Recovery finished";

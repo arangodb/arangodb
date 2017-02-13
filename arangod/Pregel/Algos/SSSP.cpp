@@ -53,12 +53,11 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
 };
 
 uint32_t SSSPAlgorithm::messageBatchSize(WorkerConfig const& config,
-                                         MessageStats const& stats,
-                                         uint64_t threadCount) const {
+                                         MessageStats const& stats) const {
   if (config.localSuperstep() <= 2) {
     return 1;
   } else {
-    return Algorithm::messageBatchSize(config, stats, threadCount);
+    return Algorithm::messageBatchSize(config, stats);
   }
 }
 

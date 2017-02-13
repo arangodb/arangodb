@@ -68,7 +68,6 @@ class OutCache {
   bool shouldFlushCache();
 
  public:
-  OutCache(WorkerConfig* state, InCache<M>* cache);
   OutCache(WorkerConfig* state, InCache<M>* cache, InCache<M>* nextGSSCache);
   virtual ~OutCache(){};
 
@@ -97,8 +96,6 @@ class ArrayOutCache : public OutCache<M> {
       _shardMap;
 
  public:
-  ArrayOutCache(WorkerConfig* state, InCache<M>* cache)
-      : OutCache<M>(state, cache) {}
   ArrayOutCache(WorkerConfig* state, InCache<M>* cache,
                 InCache<M>* nextGSSCache)
       : OutCache<M>(state, cache, nextGSSCache) {}
@@ -119,7 +116,6 @@ class CombiningOutCache : public OutCache<M> {
       _shardMap;
 
  public:
-  CombiningOutCache(WorkerConfig* state, CombiningInCache<M>* cache);
   CombiningOutCache(WorkerConfig* state, CombiningInCache<M>* cache,
                     InCache<M>* nextPhase);
   ~CombiningOutCache();
