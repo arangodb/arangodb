@@ -142,8 +142,6 @@ class Transaction {
     }
     std::vector<std::vector<std::string>> fieldNames() const;
 
-    bool isMMFilesEdgeIndex() const;
-
    public:
     std::shared_ptr<arangodb::Index> getIndex() const;
   };
@@ -177,8 +175,7 @@ class Transaction {
   /// @brief Type of cursor
   enum class CursorType {
     ALL = 0,
-    ANY,
-    INDEX
+    ANY
   };
 
   /// @brief return database of transaction
@@ -319,9 +316,6 @@ class Transaction {
   /// @brief return the name of a collection
   std::string collectionName(TRI_voc_cid_t cid); 
   
-  /// @brief return the edge index handle of collection
-  IndexHandle edgeIndexHandle(std::string const&); 
-  
   /// @brief Iterate over all elements of the collection.
   void invokeOnAllElements(std::string const& collectionName,
                            std::function<bool(arangodb::DocumentIdentifierToken const&)>);
@@ -451,8 +445,6 @@ class Transaction {
   /// calling this method
   std::unique_ptr<OperationCursor> indexScan(std::string const& collectionName,
                                              CursorType cursorType,
-                                             IndexHandle const& indexId,
-                                             VPackSlice const search,
                                              ManagedDocumentResult*,
                                              uint64_t skip, uint64_t limit,
                                              uint64_t batchSize, bool reverse);

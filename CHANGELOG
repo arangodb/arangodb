@@ -1,6 +1,11 @@
 devel
 -----
 
+* Removed undocumented internal HTTP API:
+  * PUT _api/edges
+  
+  The documented GET _api/edges and the undocumented POST _api/edges remains unmodified.
+
 * moved V8 code into a git submodule
   this requires running the command
   

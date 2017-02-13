@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_GRAPHS_H 1
 
 #include "Basics/Common.h"
+#include "Aql/VariableGenerator.h"
 
 namespace arangodb {
 
@@ -82,14 +83,62 @@ class EdgeConditionBuilder {
   void addConditionPart(AstNode const*);
 
   // Get the complete condition for outbound edges
-  AstNode const* getOutboundCondition();
+  AstNode* getOutboundCondition();
 
   // Get the complete condition for inbound edges
-  AstNode const* getInboundCondition();
+  AstNode* getInboundCondition();
 
  private:
   // Internal helper to swap _from and _to parts
   void swapSides(AstNode* condition);
+};
+
+// Wrapper around EdgeConditionBuilder that takes responsibility for all
+// AstNodes created with it. Can be used outside of an AQL query.
+class EdgeConditionBuilderContainer final : public EdgeConditionBuilder {
+ public:
+  EdgeConditionBuilderContainer();
+
+  ~EdgeConditionBuilderContainer();
+
+  // Get a pointer to the used variable
+  Variable const* getVariable() const;
+
+  // Set the id of the searched vertex
+  // NOTE: This class does not take responsiblity for the string.
+  // So caller needs to make sure it does not run out of scope
+  // as long as these conditions are used.
+  void setVertexId(std::string const&);
+
+ protected:
+  // Create the _fromCondition for the first time.
+  void buildFromCondition() override;
+
+  // Create the _toCondition for the first time.
+  void buildToCondition() override;
+
+ private:
+  // Create the equality node using the given access
+  AstNode* createEqCheck(AstNode const* access);
+
+  // Create a node with access of attr on the variable
+  AstNode* createAttributeAccess(std::string const& attr);
+
+ private:
+  // List of AstNodes this container is responsible for
+  std::vector<AstNode*> _astNodes;
+
+  // The variable node that is used to hold the edge
+  AstNode* _varNode;
+
+  // The value the edge is compared to
+  AstNode* _compareNode;
+
+  // Reference to the exchangeable variable node
+  Variable* _var;
+
+  // Reference to the VariableGenerator
+  VariableGenerator _varGen;
 };
 
 class Graph {

@@ -104,14 +104,6 @@ class TransactionState {
   /// TODO: implement this in base class
   virtual bool hasFailedOperations() const = 0;
 
-  /// @brief get the transaction id for usage in a marker
-  TRI_voc_tid_t idForMarker() {
-    if (isSingleOperation()) {
-      return 0;
-    }
-    return _id;
-  }
-
  protected:
   /// @brief find a collection in the transaction's list of collections
   TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;

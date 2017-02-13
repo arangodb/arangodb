@@ -32,7 +32,6 @@
 
 namespace arangodb {
 
-class MMFilesEdgeIndex;
 class LogicalCollection;
 class ManagedDocumentResult;
 

@@ -230,8 +230,7 @@ actions.defineHttp({
         actions.resultUnsupported(req, res);
       } else {
         var name = body.collection;
-        var id = parseInt(name, 10) || name;
-        var collection = db._collection(id);
+        var collection = db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);

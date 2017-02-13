@@ -190,17 +190,6 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
                                       arangodb::aql::Variable const*,
                                       bool) const override;
 
-  /// @brief creates an IndexIterator for the given VelocyPackSlices
-  ///        Each slice represents the field at the same position. (order
-  ///        matters)
-  ///        And each slice has to be an object of one of the following types:
-  ///        1) {"eq": <compareValue>} // The value in index is exactly this
-  ///        2) {"in": <compareValues>} // The value in index os one of them
-  IndexIterator* iteratorForSlice(arangodb::Transaction*,
-                                  ManagedDocumentResult*,
-                                  arangodb::velocypack::Slice const,
-                                  bool) const override;
-
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
