@@ -456,7 +456,6 @@ class LogicalCollection {
   int checkRevision(transaction::Methods*, TRI_voc_rid_t expected,
                     TRI_voc_rid_t found);
 
- private:
   int updateDocument(transaction::Methods*, TRI_voc_rid_t oldRevisionId,
                      velocypack::Slice const& oldDoc,
                      TRI_voc_rid_t newRevisionId,
@@ -464,6 +463,7 @@ class LogicalCollection {
                      MMFilesDocumentOperation&, MMFilesWalMarker const*,
                      bool& waitForSync);
 
+ private:
   // TODO REMOVE HERE is now in SE Collection
   int insertPrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
                          velocypack::Slice const&);
@@ -499,14 +499,6 @@ class LogicalCollection {
                            velocypack::Slice const& toSlice,
                            bool isEdgeCollection, std::string const& rev,
                            velocypack::Builder& builder);
-
-  /// @brief merge two objects for update
-  void mergeObjectsForUpdate(transaction::Methods* trx,
-                             velocypack::Slice const& oldValue,
-                             velocypack::Slice const& newValue,
-                             bool isEdgeCollection, std::string const& rev,
-                             bool mergeObjects, bool keepNull,
-                             velocypack::Builder& b);
 
   /// @brief new object for remove, must have _key set
   void newObjectForRemove(transaction::Methods* trx,

@@ -115,6 +115,14 @@ class PhysicalCollection {
                      OperationOptions& options,
                      TRI_voc_tick_t& resultMarkerTick, bool lock) = 0;
 
+  virtual int update(arangodb::transaction::Methods* trx,
+                     VPackSlice const newSlice, ManagedDocumentResult& result,
+                     OperationOptions& options,
+                     TRI_voc_tick_t& resultMarkerTick, bool lock,
+                     TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                     TRI_voc_rid_t const& revisionId,
+                     arangodb::velocypack::Slice const key) = 0;
+
   virtual int remove(arangodb::transaction::Methods* trx,
                      arangodb::velocypack::Slice const slice,
                      arangodb::ManagedDocumentResult& previous,
@@ -130,6 +138,16 @@ class PhysicalCollection {
                              TRI_voc_tick_t& resultMarkerTick, bool lock,
                              TRI_voc_rid_t const& revisionId,
                              arangodb::velocypack::Slice const toRemove) = 0;
+
+ protected:
+
+  /// @brief merge two objects for update
+  void mergeObjectsForUpdate(transaction::Methods* trx,
+                             velocypack::Slice const& oldValue,
+                             velocypack::Slice const& newValue,
+                             bool isEdgeCollection, std::string const& rev,
+                             bool mergeObjects, bool keepNull,
+                             velocypack::Builder& b);
 
  protected:
   LogicalCollection* _logicalCollection;

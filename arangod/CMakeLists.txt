@@ -348,6 +348,7 @@ SET(ARANGOD_SOURCES
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
   VocBase/PathEnumerator.cpp
+  VocBase/PhysicalCollection.cpp
   VocBase/SingleServerTraverser.cpp
   VocBase/TransactionManager.cpp
   VocBase/Traverser.cpp
