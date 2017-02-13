@@ -32,7 +32,7 @@
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
-Aggregator* Aggregator::fromTypeString(Transaction* trx,
+Aggregator* Aggregator::fromTypeString(TransactionMethods* trx,
                                        std::string const& type) {
   if (type == "LENGTH" || type == "COUNT") {
     return new AggregatorLength(trx);
@@ -67,7 +67,7 @@ Aggregator* Aggregator::fromTypeString(Transaction* trx,
   return nullptr;
 }
 
-Aggregator* Aggregator::fromVPack(Transaction* trx,
+Aggregator* Aggregator::fromVPack(TransactionMethods* trx,
                                   arangodb::velocypack::Slice const& slice,
                                   char const* variableName) {
   VPackSlice variable = slice.get(variableName);

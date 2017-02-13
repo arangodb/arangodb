@@ -63,7 +63,7 @@ void FixedVarExpressionContext::setVariableValue(Variable const* var,
 }
 
 void FixedVarExpressionContext::serializeAllVariables(
-    Transaction* trx, VPackBuilder& builder) const {
+    TransactionMethods* trx, VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenArray());
   for (auto const& it : _vars) {
     builder.openArray();

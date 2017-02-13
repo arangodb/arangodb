@@ -38,7 +38,7 @@ class Transaction;
 }
 
 namespace arangodb {
-class Transaction;
+class TransactionMethods;
 class TransactionCollection;
 
 /// @brief transaction type
@@ -85,7 +85,7 @@ class TransactionState {
   }
 
   /// @brief update the status of a transaction
-  void updateStatus(Transaction::Status status);
+  void updateStatus(TransactionMethods::Status status);
   
   /// @brief whether or not a specific hint is set for the transaction
   bool hasHint(TransactionHints::Hint hint) const {
@@ -96,10 +96,10 @@ class TransactionState {
   virtual int beginTransaction(TransactionHints hints, int nestingLevel) = 0;
 
   /// @brief commit a transaction
-  virtual int commitTransaction(Transaction* trx, int nestingLevel) = 0;
+  virtual int commitTransaction(TransactionMethods* trx, int nestingLevel) = 0;
 
   /// @brief abort a transaction
-  virtual int abortTransaction(Transaction* trx, int nestingLevel) = 0;
+  virtual int abortTransaction(TransactionMethods* trx, int nestingLevel) = 0;
 
   /// TODO: implement this in base class
   virtual bool hasFailedOperations() const = 0;
@@ -114,7 +114,7 @@ class TransactionState {
   }
 
   /// @brief free all operations for a transaction
-  void freeOperations(Transaction* activeTrx);
+  void freeOperations(TransactionMethods* activeTrx);
 
   /// @brief release collection locks for a transaction
   int releaseCollections();
@@ -127,7 +127,7 @@ class TransactionState {
   TRI_vocbase_t* _vocbase;            // vocbase
   TRI_voc_tid_t _id;                  // local trx id
   AccessMode::Type _type;             // access type (read|write)
-  Transaction::Status _status;        // current status
+  TransactionMethods::Status _status;        // current status
 
  protected:
   SmallVector<TransactionCollection*>::allocator_type::arena_type _arena; // memory for collections

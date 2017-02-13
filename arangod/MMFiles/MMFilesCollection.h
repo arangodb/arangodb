@@ -54,7 +54,7 @@ class MMFilesCollection final : public PhysicalCollection {
     TRI_voc_fid_t _fid;
     std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer*> _stats;
     DatafileStatisticsContainer* _dfi;
-    Transaction* _trx;
+    TransactionMethods* _trx;
     ManagedDocumentResult _mmdr;
     IndexLookupContext _context;
     uint64_t _deletions;
@@ -63,7 +63,7 @@ class MMFilesCollection final : public PhysicalCollection {
     int64_t _initialCount;
     bool const _trackKeys;
 
-    OpenIteratorState(LogicalCollection* collection, Transaction* trx) 
+    OpenIteratorState(LogicalCollection* collection, TransactionMethods* trx) 
         : _collection(collection),
           _primaryIndex(collection->primaryIndex()),
           _tid(0),
@@ -161,7 +161,7 @@ class MMFilesCollection final : public PhysicalCollection {
   Ditches* ditches() const override { return &_ditches; }
   
   /// @brief iterate all markers of a collection on load
-  int iterateMarkersOnLoad(Transaction* trx) override;
+  int iterateMarkersOnLoad(TransactionMethods* trx) override;
 
  private:
   static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,

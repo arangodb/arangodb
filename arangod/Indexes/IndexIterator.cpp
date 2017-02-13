@@ -30,7 +30,7 @@
 using namespace arangodb;
   
 IndexIterator::IndexIterator(LogicalCollection* collection, 
-                             Transaction* trx, 
+                             TransactionMethods* trx, 
                              ManagedDocumentResult* mmdr, 
                              arangodb::Index const* index)
       : _collection(collection), 

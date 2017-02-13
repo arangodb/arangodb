@@ -156,7 +156,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // extract the properties from the object
 
   // "lockTimeout"
-  double lockTimeout = Transaction::DefaultLockTimeout;
+  double lockTimeout = TransactionMethods::DefaultLockTimeout;
 
   if (object->Has(TRI_V8_ASCII_STRING("lockTimeout"))) {
     static std::string const timeoutError =

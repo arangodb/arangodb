@@ -31,7 +31,7 @@
 
 namespace arangodb {
 
-class UserTransaction final : public Transaction {
+class UserTransaction final : public TransactionMethods {
  public:
   /// @brief create the transaction
   UserTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
@@ -40,7 +40,7 @@ class UserTransaction final : public Transaction {
                       std::vector<std::string> const& exclusiveCollections,
                       double lockTimeout, bool waitForSync,
                       bool allowImplicitCollections)
-      : Transaction(transactionContext) {
+      : TransactionMethods(transactionContext) {
     addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
 
     if (lockTimeout >= 0.0) {

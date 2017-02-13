@@ -48,7 +48,7 @@ static ExecutionCondition const NotInCoordinator = [] {
          !arangodb::ServerState::instance()->isCoordinator();
 };
 
-static AqlValue buildGeoResult(Transaction* trx,
+static AqlValue buildGeoResult(TransactionMethods* trx,
                                LogicalCollection* collection,
                                arangodb::aql::Query* query,
                                GeoCoordinates* cors,
@@ -134,7 +134,7 @@ static AqlValue buildGeoResult(Transaction* trx,
 
 /// @brief Load geoindex for collection name
 static arangodb::MMFilesGeoIndex* getGeoIndex(
-    Transaction* trx, TRI_voc_cid_t const& cid,
+    TransactionMethods* trx, TRI_voc_cid_t const& cid,
     std::string const& collectionName) {
   // NOTE:
   // Due to trx lock the shared_index stays valid
@@ -172,7 +172,7 @@ static arangodb::MMFilesGeoIndex* getGeoIndex(
 
 /// @brief function FULLTEXT
 AqlValue MMFilesAqlFunctions::Fulltext(
-    arangodb::aql::Query* query, Transaction* trx,
+    arangodb::aql::Query* query, TransactionMethods* trx,
     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "FULLTEXT", 3, 4);
 
@@ -311,7 +311,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
 
 /// @brief function NEAR
 AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
-                                   Transaction* trx,
+                                   TransactionMethods* trx,
                                    VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "NEAR", 3, 5);
 
@@ -374,7 +374,7 @@ AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
 
 /// @brief function WITHIN
 AqlValue MMFilesAqlFunctions::Within(
-    arangodb::aql::Query* query, Transaction* trx,
+    arangodb::aql::Query* query, TransactionMethods* trx,
     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "WITHIN", 4, 5);
 

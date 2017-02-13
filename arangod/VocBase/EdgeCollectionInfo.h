@@ -29,7 +29,7 @@
 
 namespace arangodb {
 class ManagedDocumentResult;
-class Transaction;
+class TransactionMethods;
 
 namespace traverser {
 
@@ -46,7 +46,7 @@ class EdgeCollectionInfo {
   /// @brief the underlying transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  Transaction* _trx;
+  TransactionMethods* _trx;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief edge collection name
@@ -55,10 +55,10 @@ class EdgeCollectionInfo {
   std::string _collectionName;
 
   /// @brief index used for forward iteration
-  Transaction::IndexHandle _forwardIndexId;
+  TransactionMethods::IndexHandle _forwardIndexId;
 
   /// @brief index used for backward iteration
-  Transaction::IndexHandle _backwardIndexId;
+  TransactionMethods::IndexHandle _backwardIndexId;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Temporary builder for index search values
@@ -75,7 +75,7 @@ class EdgeCollectionInfo {
 
  public:
 
-  EdgeCollectionInfo(Transaction* trx,
+  EdgeCollectionInfo(TransactionMethods* trx,
                      std::string const& collectionName,
                      TRI_edge_direction_e const direction,
                      std::string const& weightAttribute,
@@ -111,7 +111,7 @@ class EdgeCollectionInfo {
 
   double weightEdge(arangodb::velocypack::Slice const);
   
-  Transaction* trx() const { return _trx; }
+  TransactionMethods* trx() const { return _trx; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Return name of the wrapped collection

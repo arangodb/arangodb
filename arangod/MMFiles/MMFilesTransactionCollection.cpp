@@ -111,7 +111,7 @@ void MMFilesTransactionCollection::addOperation(MMFilesDocumentOperation* operat
   _operations->push_back(operation);
 }
   
-void MMFilesTransactionCollection::freeOperations(Transaction* activeTrx, bool mustRollback) {
+void MMFilesTransactionCollection::freeOperations(TransactionMethods* activeTrx, bool mustRollback) {
   if (!hasOperations()) {
     return;
   }
@@ -311,10 +311,10 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (Transaction::_makeNolockHeaders != nullptr) {
+  if (TransactionMethods::_makeNolockHeaders != nullptr) {
     std::string collName(_collection->name());
-    auto it = Transaction::_makeNolockHeaders->find(collName);
-    if (it != Transaction::_makeNolockHeaders->end()) {
+    auto it = TransactionMethods::_makeNolockHeaders->find(collName);
+    if (it != TransactionMethods::_makeNolockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "LockCollection blocked: " << collName << std::endl;
@@ -359,10 +359,10 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (Transaction::_makeNolockHeaders != nullptr) {
+  if (TransactionMethods::_makeNolockHeaders != nullptr) {
     std::string collName(_collection->name());
-    auto it = Transaction::_makeNolockHeaders->find(collName);
-    if (it != Transaction::_makeNolockHeaders->end()) {
+    auto it = TransactionMethods::_makeNolockHeaders->find(collName);
+    if (it != TransactionMethods::_makeNolockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "UnlockCollection blocked: " << collName << std::endl;

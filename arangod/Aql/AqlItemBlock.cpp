@@ -568,7 +568,7 @@ AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
 ///                      corresponding position
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                      such that actual indices start at 2
-void AqlItemBlock::toVelocyPack(Transaction* trx,
+void AqlItemBlock::toVelocyPack(TransactionMethods* trx,
                                 VPackBuilder& result) const {
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;

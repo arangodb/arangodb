@@ -72,7 +72,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
                                                         MMFilesCollection::OpenIteratorState* state) {
   LogicalCollection* collection = state->_collection;
   MMFilesCollection* c = static_cast<MMFilesCollection*>(collection->getPhysical());
-  Transaction* trx = state->_trx;
+  TransactionMethods* trx = state->_trx;
   TRI_ASSERT(trx != nullptr);
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
@@ -81,7 +81,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
   VPackSlice keySlice;
   TRI_voc_rid_t revisionId;
 
-  Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+  TransactionMethods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
   c->setRevision(revisionId, false);
 
@@ -168,14 +168,14 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* m
                                                         MMFilesCollection::OpenIteratorState* state) {
   LogicalCollection* collection = state->_collection;
   MMFilesCollection* c = static_cast<MMFilesCollection*>(collection->getPhysical());
-  Transaction* trx = state->_trx;
+  TransactionMethods* trx = state->_trx;
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
   
   VPackSlice keySlice;
   TRI_voc_rid_t revisionId;
 
-  Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+  TransactionMethods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
   c->setRevision(revisionId, false);
   if (state->_trackKeys) {
@@ -1088,7 +1088,7 @@ void MMFilesCollection::finishCompaction() {
 }
 
 /// @brief iterate all markers of the collection
-int MMFilesCollection::iterateMarkersOnLoad(Transaction* trx) {
+int MMFilesCollection::iterateMarkersOnLoad(TransactionMethods* trx) {
   // initialize state for iteration
   OpenIteratorState openState(_logicalCollection, trx);
 

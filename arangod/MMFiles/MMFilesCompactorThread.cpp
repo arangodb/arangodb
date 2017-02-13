@@ -69,7 +69,7 @@ static char const* ReasonNothingToCompact =
 /// @brief compaction state
 namespace arangodb {
 struct CompactionContext {
-  Transaction* _trx;
+  TransactionMethods* _trx;
   LogicalCollection* _collection;
   MMFilesDatafile* _compactor;
   DatafileStatisticsContainer _dfi;
@@ -236,7 +236,7 @@ int MMFilesCompactorThread::removeDatafile(LogicalCollection* collection,
 
 /// @brief calculate the target size for the compactor to be created
 MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getCompactionContext(
-    Transaction* trx, LogicalCollection* collection,
+    TransactionMethods* trx, LogicalCollection* collection,
     std::vector<compaction_info_t> const& toCompact) {
   CompactionInitialContext context(trx, collection);
 
@@ -274,7 +274,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
         VPackSlice const slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
         TRI_ASSERT(slice.isObject());
 
-        VPackSlice keySlice = Transaction::extractKeyFromDocument(slice);
+        VPackSlice keySlice = TransactionMethods::extractKeyFromDocument(slice);
 
         // check if the document is still active
         auto primaryIndex = collection->primaryIndex();
@@ -363,7 +363,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       VPackSlice const slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
       TRI_ASSERT(slice.isObject());
 
-      VPackSlice keySlice = Transaction::extractKeyFromDocument(slice);
+      VPackSlice keySlice = TransactionMethods::extractKeyFromDocument(slice);
 
       // check if the document is still active
       auto primaryIndex = collection->primaryIndex();

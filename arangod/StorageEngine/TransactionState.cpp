@@ -45,7 +45,7 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase)
     : _vocbase(vocbase), 
       _id(0), 
       _type(AccessMode::Type::READ),
-      _status(Transaction::Status::CREATED),
+      _status(TransactionMethods::Status::CREATED),
       _arena(),
       _collections{_arena}, // assign arena to vector 
       _rocksTransaction(nullptr),
@@ -55,11 +55,11 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase)
       _hasOperations(false), 
       _waitForSync(false),
       _beginWritten(false), 
-      _timeout(Transaction::DefaultLockTimeout) {}
+      _timeout(TransactionMethods::DefaultLockTimeout) {}
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
-  TRI_ASSERT(_status != Transaction::Status::RUNNING);
+  TRI_ASSERT(_status != TransactionMethods::Status::RUNNING);
 
   delete _rocksTransaction;
 
@@ -86,8 +86,8 @@ std::vector<std::string> TransactionState::collectionNames() const {
 
 /// @brief return the collection from a transaction
 TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid, AccessMode::Type accessType) {
-  TRI_ASSERT(_status == Transaction::Status::CREATED ||
-             _status == Transaction::Status::RUNNING);
+  TRI_ASSERT(_status == TransactionMethods::Status::CREATED ||
+             _status == TransactionMethods::Status::RUNNING);
 
   size_t unused;
   TransactionCollection* trxCollection = findCollection(cid, unused);
@@ -118,7 +118,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   // upgrade transaction type if required
   if (nestingLevel == 0) {
     if (!force) {
-      TRI_ASSERT(_status == Transaction::Status::CREATED);
+      TRI_ASSERT(_status == TransactionMethods::Status::CREATED);
     }
 
     if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_type)) {
@@ -281,16 +281,16 @@ void TransactionState::clearQueryCache() {
 }
 
 /// @brief update the status of a transaction
-void TransactionState::updateStatus(Transaction::Status status) {
-  TRI_ASSERT(_status == Transaction::Status::CREATED ||
-             _status == Transaction::Status::RUNNING);
+void TransactionState::updateStatus(TransactionMethods::Status status) {
+  TRI_ASSERT(_status == TransactionMethods::Status::CREATED ||
+             _status == TransactionMethods::Status::RUNNING);
 
-  if (_status == Transaction::Status::CREATED) {
-    TRI_ASSERT(status == Transaction::Status::RUNNING ||
-               status == Transaction::Status::ABORTED);
-  } else if (_status == Transaction::Status::RUNNING) {
-    TRI_ASSERT(status == Transaction::Status::COMMITTED ||
-               status == Transaction::Status::ABORTED);
+  if (_status == TransactionMethods::Status::CREATED) {
+    TRI_ASSERT(status == TransactionMethods::Status::RUNNING ||
+               status == TransactionMethods::Status::ABORTED);
+  } else if (_status == TransactionMethods::Status::RUNNING) {
+    TRI_ASSERT(status == TransactionMethods::Status::COMMITTED ||
+               status == TransactionMethods::Status::ABORTED);
   }
 
   _status = status;

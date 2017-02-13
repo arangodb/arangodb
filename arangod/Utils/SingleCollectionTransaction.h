@@ -33,7 +33,7 @@ namespace arangodb {
 class DocumentDitch;
 class TransactionContext;
 
-class SingleCollectionTransaction : public Transaction {
+class SingleCollectionTransaction : public TransactionMethods {
 
  public:
   //////////////////////////////////////////////////////////////////////////////

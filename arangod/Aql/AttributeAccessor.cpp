@@ -68,7 +68,7 @@ void AttributeAccessor::replaceVariable(std::unordered_map<VariableId, Variable 
 }
 
 /// @brief execute the accessor
-AqlValue AttributeAccessor::getSystem(Transaction* trx,
+AqlValue AttributeAccessor::getSystem(TransactionMethods* trx,
                                       ExpressionContext* context, bool& mustDestroy) {
   AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
   // get the AQL value
@@ -89,7 +89,7 @@ AqlValue AttributeAccessor::getSystem(Transaction* trx,
 }
 
 /// @brief execute the accessor
-AqlValue AttributeAccessor::getDynamic(Transaction* trx,
+AqlValue AttributeAccessor::getDynamic(TransactionMethods* trx,
                                        ExpressionContext* context, bool& mustDestroy) {
   AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
   // get the AQL value

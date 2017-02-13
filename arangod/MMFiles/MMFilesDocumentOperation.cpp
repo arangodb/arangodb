@@ -88,7 +88,7 @@ void MMFilesDocumentOperation::setRevisions(DocumentDescriptor const& oldRevisio
   }
 }
 
-void MMFilesDocumentOperation::revert(Transaction* trx) {
+void MMFilesDocumentOperation::revert(TransactionMethods* trx) {
   TRI_ASSERT(trx != nullptr);
   
   if (_status == StatusType::SWAPPED || _status == StatusType::REVERTED) {
@@ -153,9 +153,9 @@ void MMFilesDocumentOperation::revert(Transaction* trx) {
     }
    
     // let the primary index entry point to the correct document 
-    MMFilesSimpleIndexElement* element = _collection->primaryIndex()->lookupKeyRef(trx, Transaction::extractKeyFromDocument(newDoc));
+    MMFilesSimpleIndexElement* element = _collection->primaryIndex()->lookupKeyRef(trx, TransactionMethods::extractKeyFromDocument(newDoc));
     if (element != nullptr && element->revisionId() != 0) {
-      VPackSlice keySlice(Transaction::extractKeyFromDocument(oldDoc));
+      VPackSlice keySlice(TransactionMethods::extractKeyFromDocument(oldDoc));
       element->updateRevisionId(oldRevisionId, static_cast<uint32_t>(keySlice.begin() - oldDoc.begin()));
     }
     _collection->updateRevision(oldRevisionId, oldDoc.begin(), 0, false);

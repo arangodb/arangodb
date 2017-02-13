@@ -44,7 +44,7 @@ class MMFilesGeoIndexIterator final : public IndexIterator {
  public:
 
 /// @brief Construct an MMFilesGeoIndexIterator based on Ast Conditions
-  MMFilesGeoIndexIterator(LogicalCollection* collection, Transaction* trx, 
+  MMFilesGeoIndexIterator(LogicalCollection* collection, TransactionMethods* trx, 
                    ManagedDocumentResult* mmdr,
                    MMFilesGeoIndex const* index,
                    arangodb::aql::AstNode const*,
@@ -107,7 +107,7 @@ friend class MMFilesGeoIndexIterator;
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
   
-  IndexIterator* iteratorForCondition(Transaction*,
+  IndexIterator* iteratorForCondition(TransactionMethods*,
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
@@ -128,18 +128,18 @@ friend class MMFilesGeoIndexIterator;
 
   bool matchesDefinition(VPackSlice const& info) const override;
 
-  int insert(Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int insert(TransactionMethods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int remove(TransactionMethods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
   int unload() override;
 
   /// @brief looks up all points within a given radius
-  GeoCoordinates* withinQuery(Transaction*, double, double,
+  GeoCoordinates* withinQuery(TransactionMethods*, double, double,
                               double) const;
 
   /// @brief looks up the nearest points
-  GeoCoordinates* nearQuery(Transaction*, double, double,
+  GeoCoordinates* nearQuery(TransactionMethods*, double, double,
                             size_t) const;
 
   bool isSame(std::vector<std::string> const& location, bool geoJson) const {

@@ -51,7 +51,7 @@ struct Variable;
 class LogicalCollection;
 class MMFilesPrimaryIndex;
 class PersistentIndex;
-class Transaction;
+class TransactionMethods;
 
 /// @brief Iterator structure for RocksDB. We require a start and stop node
 class PersistentIndexIterator final : public IndexIterator {
@@ -59,7 +59,7 @@ class PersistentIndexIterator final : public IndexIterator {
   friend class PersistentIndex;
 
  public:
-  PersistentIndexIterator(LogicalCollection* collection, Transaction* trx, 
+  PersistentIndexIterator(LogicalCollection* collection, TransactionMethods* trx, 
                   ManagedDocumentResult* mmdr,
                   arangodb::PersistentIndex const* index,
                   arangodb::MMFilesPrimaryIndex* primaryIndex,
@@ -150,9 +150,9 @@ class PersistentIndex final : public MMFilesPathBasedIndex {
     return value;
   }
 
-  int insert(Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int insert(TransactionMethods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int remove(TransactionMethods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
   int unload() override;
 
@@ -162,7 +162,7 @@ class PersistentIndex final : public MMFilesPathBasedIndex {
   ///
   /// Warning: who ever calls this function is responsible for destroying
   /// the velocypack::Slice and the PersistentIndexIterator* results
-  PersistentIndexIterator* lookup(Transaction*, 
+  PersistentIndexIterator* lookup(TransactionMethods*, 
                           ManagedDocumentResult* mmdr,
                           arangodb::velocypack::Slice const,
                           bool reverse) const;
@@ -175,7 +175,7 @@ class PersistentIndex final : public MMFilesPathBasedIndex {
                              arangodb::aql::Variable const*, size_t,
                              double&, size_t&) const override;
 
-  IndexIterator* iteratorForCondition(Transaction*,
+  IndexIterator* iteratorForCondition(TransactionMethods*,
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,

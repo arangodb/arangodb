@@ -633,7 +633,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
   if (found) {
     _nolockHeaderSet =
         new std::unordered_set<std::string>{std::string(shardId)};
-    Transaction::_makeNolockHeaders = _nolockHeaderSet;
+    TransactionMethods::_makeNolockHeaders = _nolockHeaderSet;
   }
 }
 
@@ -643,7 +643,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
 
 void RestVocbaseBaseHandler::finalizeExecute() {
   if (_nolockHeaderSet != nullptr) {
-    Transaction::_makeNolockHeaders = nullptr;
+    TransactionMethods::_makeNolockHeaders = nullptr;
     delete _nolockHeaderSet;
     _nolockHeaderSet = nullptr;
   }

@@ -144,7 +144,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       VPackSlice slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
-      state->documentOperations[collectionId][Transaction::extractKeyFromDocument(slice).copyString()] = marker;
+      state->documentOperations[collectionId][TransactionMethods::extractKeyFromDocument(slice).copyString()] = marker;
       state->operationsCount[collectionId]++;
       break;
     }
@@ -575,7 +575,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     
     VPackSlice keySlice;
     TRI_voc_rid_t revisionId = 0;
-    Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+    TransactionMethods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
     bool wasAdjusted = false;
     MMFilesSimpleIndexElement element = collection->primaryIndex()->lookupKey(&trx, keySlice);
@@ -607,7 +607,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     
     VPackSlice keySlice;
     TRI_voc_rid_t revisionId = 0;
-    Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+    TransactionMethods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
     MMFilesSimpleIndexElement found = collection->primaryIndex()->lookupKey(&trx, keySlice);
 

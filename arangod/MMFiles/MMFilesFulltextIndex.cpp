@@ -211,7 +211,7 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-int MMFilesFulltextIndex::insert(Transaction*, TRI_voc_rid_t revisionId,
+int MMFilesFulltextIndex::insert(TransactionMethods*, TRI_voc_rid_t revisionId,
                           VPackSlice const& doc, bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
 
@@ -231,7 +231,7 @@ int MMFilesFulltextIndex::insert(Transaction*, TRI_voc_rid_t revisionId,
   return res;
 }
 
-int MMFilesFulltextIndex::remove(Transaction*, TRI_voc_rid_t revisionId,
+int MMFilesFulltextIndex::remove(TransactionMethods*, TRI_voc_rid_t revisionId,
                           VPackSlice const& doc, bool isRollback) {
   TRI_DeleteDocumentMMFilesFulltextIndex(_fulltextIndex, revisionId);
 

@@ -64,7 +64,7 @@ struct V8Expression {
 
   /// @brief execute the expression
   AqlValue execute(v8::Isolate* isolate, Query* query,
-                    Transaction*, ExpressionContext* context, bool& mustDestroy);
+                    TransactionMethods*, ExpressionContext* context, bool& mustDestroy);
 
   /// @brief the isolate used when executing and destroying the expression
   v8::Isolate* isolate;

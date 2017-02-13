@@ -91,9 +91,9 @@ struct ConstDistanceExpanderLocal {
         if (collection->readDocument(_block->transaction(), *mmdr, element)) {
           VPackSlice edge(mmdr->vpack());
           VPackSlice from =
-              Transaction::extractFromFromDocument(edge);
+              TransactionMethods::extractFromFromDocument(edge);
           if (from == v) {
-            VPackSlice to = Transaction::extractToFromDocument(edge);
+            VPackSlice to = TransactionMethods::extractToFromDocument(edge);
             if (to != v) {
               resEdges.emplace_back(edge);
               neighbors.emplace_back(to);
@@ -146,9 +146,9 @@ struct ConstDistanceExpanderCluster {
 
       VPackSlice edges = result.slice().get("edges");
       for (auto const& edge : VPackArrayIterator(edges)) {
-        VPackSlice from = Transaction::extractFromFromDocument(edge);
+        VPackSlice from = TransactionMethods::extractFromFromDocument(edge);
         if (from == v) {
-          VPackSlice to = Transaction::extractToFromDocument(edge);
+          VPackSlice to = TransactionMethods::extractToFromDocument(edge);
           if (to != v) {
             resEdges.emplace_back(edge);
             neighbors.emplace_back(to);
@@ -229,8 +229,8 @@ struct EdgeWeightExpanderLocal {
         if (collection->readDocument(_block->transaction(), *mmdr, element)) {
           VPackSlice edge(mmdr->vpack());
           VPackSlice from =
-              Transaction::extractFromFromDocument(edge);
-          VPackSlice to = Transaction::extractToFromDocument(edge);
+              TransactionMethods::extractFromFromDocument(edge);
+          VPackSlice to = TransactionMethods::extractToFromDocument(edge);
           double currentWeight = edgeCollection->weightEdge(edge);
           if (from == source) {
             inserter(candidates, result, from, to, currentWeight, edge);
@@ -307,8 +307,8 @@ struct EdgeWeightExpanderCluster {
 
       VPackSlice edges = edgesBuilder.slice().get("edges");
       for (auto const& edge : VPackArrayIterator(edges)) {
-        VPackSlice from = Transaction::extractFromFromDocument(edge);
-        VPackSlice to = Transaction::extractToFromDocument(edge);
+        VPackSlice from = TransactionMethods::extractFromFromDocument(edge);
+        VPackSlice to = TransactionMethods::extractToFromDocument(edge);
         double currentWeight = edgeCollection->weightEdge(edge);
         if (from == source) {
           inserter(from, to, currentWeight, edge);

@@ -29,7 +29,7 @@
 
 namespace arangodb {
 class LogicalCollection;
-class Transaction;
+class TransactionMethods;
 
 struct MMFilesDocumentOperation {
   enum class StatusType : uint8_t {
@@ -72,7 +72,7 @@ struct MMFilesDocumentOperation {
     _status = StatusType::HANDLED;
   }
   
-  void revert(Transaction*);
+  void revert(TransactionMethods*);
 
  private:
   LogicalCollection* _collection;

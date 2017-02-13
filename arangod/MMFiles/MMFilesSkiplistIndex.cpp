@@ -118,7 +118,7 @@ VPackSlice const* BaseSkiplistLookupBuilder::getUpperLookup() const {
 bool BaseSkiplistLookupBuilder::includeUpper() const { return _includeUpper; }
 
 SkiplistLookupBuilder::SkiplistLookupBuilder(
-    Transaction* trx,
+    TransactionMethods* trx,
     std::vector<std::vector<arangodb::aql::AstNode const*>>& ops,
     arangodb::aql::Variable const* var, bool reverse)
     : BaseSkiplistLookupBuilder(trx) {
@@ -255,7 +255,7 @@ bool SkiplistLookupBuilder::next() {
 }
 
 SkiplistInLookupBuilder::SkiplistInLookupBuilder(
-    Transaction* trx,
+    TransactionMethods* trx,
     std::vector<std::vector<arangodb::aql::AstNode const*>>& ops,
     arangodb::aql::Variable const* var, bool reverse)
     : BaseSkiplistLookupBuilder(trx), _dataBuilder(trx), _done(false) {
@@ -500,7 +500,7 @@ void SkiplistInLookupBuilder::buildSearchValues() {
   }
 }
   
-MMFilesSkiplistIterator::MMFilesSkiplistIterator(LogicalCollection* collection, Transaction* trx,
+MMFilesSkiplistIterator::MMFilesSkiplistIterator(LogicalCollection* collection, TransactionMethods* trx,
     ManagedDocumentResult* mmdr,
     arangodb::MMFilesSkiplistIndex const* index,
     TRI_Skiplist const* skiplist, size_t numPaths,
@@ -707,7 +707,7 @@ void MMFilesSkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 /// @brief inserts a document into a skiplist index
-int MMFilesSkiplistIndex::insert(Transaction* trx, TRI_voc_rid_t revisionId, 
+int MMFilesSkiplistIndex::insert(TransactionMethods* trx, TRI_voc_rid_t revisionId, 
                           VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
@@ -758,7 +758,7 @@ int MMFilesSkiplistIndex::insert(Transaction* trx, TRI_voc_rid_t revisionId,
 }
 
 /// @brief removes a document from a skiplist index
-int MMFilesSkiplistIndex::remove(Transaction* trx, TRI_voc_rid_t revisionId,
+int MMFilesSkiplistIndex::remove(TransactionMethods* trx, TRI_voc_rid_t revisionId,
                           VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
@@ -1210,7 +1210,7 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
 }
 
 IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
-    Transaction* trx, 
+    TransactionMethods* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {

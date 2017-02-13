@@ -1079,11 +1079,11 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
 
   std::unordered_map<std::string, std::string> headersCopy(headerFields);
   if (destination.substr(0, 6) == "shard:") {
-    if (Transaction::_makeNolockHeaders != nullptr) {
+    if (TransactionMethods::_makeNolockHeaders != nullptr) {
       // LOCKING-DEBUG
       // std::cout << "Found Nolock header\n";
-      auto it = Transaction::_makeNolockHeaders->find(result->shardID);
-      if (it != Transaction::_makeNolockHeaders->end()) {
+      auto it = TransactionMethods::_makeNolockHeaders->find(result->shardID);
+      if (it != TransactionMethods::_makeNolockHeaders->end()) {
         // LOCKING-DEBUG
         // std::cout << "Found our shard\n";
         headersCopy["X-Arango-Nolock"] = result->shardID;

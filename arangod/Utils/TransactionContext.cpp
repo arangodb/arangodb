@@ -55,7 +55,7 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
   
   std::string toString(VPackSlice const& value, VPackOptions const* options,
                        VPackSlice const& base) override final {
-    return Transaction::extractIdString(resolver, value, base);
+    return TransactionMethods::extractIdString(resolver, value, base);
   }
 
   TRI_vocbase_t* vocbase;

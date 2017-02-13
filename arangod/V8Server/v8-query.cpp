@@ -223,7 +223,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // We directly read the entire cursor. so batchsize == limit
   std::unique_ptr<OperationCursor> opCursor =
-      trx.indexScan(collectionName, Transaction::CursorType::ALL, nullptr, skip,
+      trx.indexScan(collectionName, TransactionMethods::CursorType::ALL, nullptr, skip,
                     limit, limit, false);
 
   if (opCursor->failed()) {
@@ -393,10 +393,10 @@ static void JS_ChecksumCollection(
     collection->readDocument(&trx, mmdr, token);
     VPackSlice const slice(mmdr.vpack());
 
-    uint64_t localHash = Transaction::extractKeyFromDocument(slice).hashString(); 
+    uint64_t localHash = TransactionMethods::extractKeyFromDocument(slice).hashString(); 
 
     if (withRevisions) {
-      localHash += Transaction::extractRevSliceFromDocument(slice).hash();
+      localHash += TransactionMethods::extractRevSliceFromDocument(slice).hash();
     }
 
     if (withData) {

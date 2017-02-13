@@ -41,7 +41,7 @@ class PathEnumerator;
 
 class SingleServerEdgeCursor : public EdgeCursor {
  private:
-  Transaction* _trx;
+  TransactionMethods* _trx;
   ManagedDocumentResult* _mmdr;
   std::vector<std::vector<OperationCursor*>> _cursors;
   size_t _currentCursor;
@@ -51,7 +51,7 @@ class SingleServerEdgeCursor : public EdgeCursor {
   std::vector<size_t> const* _internalCursorMapping;
 
  public:
-  SingleServerEdgeCursor(ManagedDocumentResult* mmdr, Transaction* trx, size_t, std::vector<size_t> const* mapping = nullptr);
+  SingleServerEdgeCursor(ManagedDocumentResult* mmdr, TransactionMethods* trx, size_t, std::vector<size_t> const* mapping = nullptr);
 
   ~SingleServerEdgeCursor() {
     for (auto& it : _cursors) {
@@ -73,7 +73,7 @@ class SingleServerEdgeCursor : public EdgeCursor {
 class SingleServerTraverser final : public Traverser {
 
  public:
-  SingleServerTraverser(TraverserOptions*, Transaction*, ManagedDocumentResult*);
+  SingleServerTraverser(TraverserOptions*, TransactionMethods*, ManagedDocumentResult*);
 
   ~SingleServerTraverser();
 

@@ -40,7 +40,7 @@ namespace velocypack {
 class Slice;
 }
 
-class Transaction;
+class TransactionMethods;
 
 namespace aql {
 

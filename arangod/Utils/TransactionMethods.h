@@ -39,7 +39,7 @@
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #define LOG_TRX(trx, level)  \
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->_id << "." << level << " (" << Transaction::statusString(trx->_status) << "): " 
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->_id << "." << level << " (" << TransactionMethods::statusString(trx->_status) << "): " 
 
 #else
 
@@ -89,7 +89,7 @@ class TransactionContext;
 class TransactionState;
 class TransactionCollection;
 
-class Transaction {
+class TransactionMethods {
   friend class traverser::BaseTraverserEngine;
 
  public:
@@ -106,15 +106,15 @@ class Transaction {
   /// @brief return the status of the transaction as a string
   static char const* statusString(Status status) {
     switch (status) {
-      case Transaction::Status::UNDEFINED:
+      case TransactionMethods::Status::UNDEFINED:
         return "undefined";
-      case Transaction::Status::CREATED:
+      case TransactionMethods::Status::CREATED:
         return "created";
-      case Transaction::Status::RUNNING:
+      case TransactionMethods::Status::RUNNING:
         return "running";
-      case Transaction::Status::COMMITTED:
+      case TransactionMethods::Status::COMMITTED:
         return "committed";
-      case Transaction::Status::ABORTED:
+      case TransactionMethods::Status::ABORTED:
         return "aborted";
     }
 
@@ -126,7 +126,7 @@ class Transaction {
   static constexpr double DefaultLockTimeout = 30.0; 
 
   class IndexHandle {
-    friend class Transaction;
+    friend class TransactionMethods;
     std::shared_ptr<arangodb::Index> _index;
    public:
     IndexHandle() = default;
@@ -151,21 +151,21 @@ class Transaction {
   
   double const TRX_FOLLOWER_TIMEOUT = 3.0;
 
-  /// @brief Transaction
+  /// @brief TransactionMethods
  private:
-  Transaction() = delete;
-  Transaction(Transaction const&) = delete;
-  Transaction& operator=(Transaction const&) = delete;
+  TransactionMethods() = delete;
+  TransactionMethods(TransactionMethods const&) = delete;
+  TransactionMethods& operator=(TransactionMethods const&) = delete;
 
  protected:
 
   /// @brief create the transaction
-  explicit Transaction(std::shared_ptr<TransactionContext> transactionContext);
+  explicit TransactionMethods(std::shared_ptr<TransactionContext> transactionContext);
 
  public:
 
   /// @brief destroy the transaction
-  virtual ~Transaction();
+  virtual ~TransactionMethods();
 
  public:
 
@@ -470,7 +470,7 @@ class Transaction {
   virtual int lockCollections();
 
   /// @brief Clone this transaction. Only works for selected sub-classes
-  virtual Transaction* clone() const;
+  virtual TransactionMethods* clone() const;
   
  private:
   
@@ -619,7 +619,7 @@ class Transaction {
   bool sortOrs(arangodb::aql::Ast* ast,
                arangodb::aql::AstNode* root,
                arangodb::aql::Variable const* variable,
-               std::vector<Transaction::IndexHandle>& usedIndexes);
+               std::vector<TransactionMethods::IndexHandle>& usedIndexes);
 
   /// @brief findIndexHandleForAndNode
   std::pair<bool, bool> findIndexHandleForAndNode(
@@ -627,7 +627,7 @@ class Transaction {
       arangodb::aql::Variable const* reference,
       arangodb::aql::SortCondition const* sortCondition,
       size_t itemsInCollection,
-      std::vector<Transaction::IndexHandle>& usedIndexes,
+      std::vector<TransactionMethods::IndexHandle>& usedIndexes,
       arangodb::aql::AstNode*& specializedCondition,
       bool& isSparse) const;
 
@@ -636,7 +636,7 @@ class Transaction {
                                  arangodb::aql::AstNode*& node,
                                  arangodb::aql::Variable const* reference,
                                  size_t itemsInCollection,
-                                 Transaction::IndexHandle& usedIndex) const;
+                                 TransactionMethods::IndexHandle& usedIndex) const;
 
   /// @brief Get one index by id for a collection name, coordinator case
   std::shared_ptr<arangodb::Index> indexForCollectionCoordinator(
@@ -743,7 +743,7 @@ class Transaction {
 
 class StringBufferLeaser {
  public:
-  explicit StringBufferLeaser(Transaction*); 
+  explicit StringBufferLeaser(TransactionMethods*); 
   explicit StringBufferLeaser(TransactionContext*); 
   ~StringBufferLeaser();
   arangodb::basics::StringBuffer* stringBuffer() const { return _stringBuffer; }
@@ -756,7 +756,7 @@ class StringBufferLeaser {
 
 class TransactionBuilderLeaser {
  public:
-  explicit TransactionBuilderLeaser(Transaction*); 
+  explicit TransactionBuilderLeaser(TransactionMethods*); 
   explicit TransactionBuilderLeaser(TransactionContext*); 
   ~TransactionBuilderLeaser();
   inline arangodb::velocypack::Builder* builder() const { return _builder; }

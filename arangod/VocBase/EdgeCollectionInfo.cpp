@@ -26,7 +26,7 @@
 
 using namespace arangodb::traverser;
 
-EdgeCollectionInfo::EdgeCollectionInfo(Transaction* trx,
+EdgeCollectionInfo::EdgeCollectionInfo(TransactionMethods* trx,
                                        std::string const& collectionName,
                                        TRI_edge_direction_e const direction,
                                        std::string const& weightAttribute,

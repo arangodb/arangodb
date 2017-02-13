@@ -53,7 +53,7 @@ class SortCondition;
 struct Variable;
 }
 
-class Transaction;
+class TransactionMethods;
 }
 
 namespace arangodb {
@@ -238,13 +238,13 @@ class Index {
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
-  virtual int insert(Transaction*, TRI_voc_rid_t revisionId,
+  virtual int insert(TransactionMethods*, TRI_voc_rid_t revisionId,
                      arangodb::velocypack::Slice const&, bool isRollback) = 0;
-  virtual int remove(Transaction*, TRI_voc_rid_t revisionId,
+  virtual int remove(TransactionMethods*, TRI_voc_rid_t revisionId,
                      arangodb::velocypack::Slice const&, bool isRollback) = 0;
 
   virtual void batchInsert(
-      Transaction*,
+      TransactionMethods*,
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
       arangodb::basics::LocalTaskQueue* queue = nullptr);
 
@@ -256,7 +256,7 @@ class Index {
   virtual int drop();
 
   // give index a hint about the expected size
-  virtual int sizeHint(Transaction*, size_t);
+  virtual int sizeHint(TransactionMethods*, size_t);
 
   virtual bool hasBatchInsert() const;
 
@@ -268,7 +268,7 @@ class Index {
                                      arangodb::aql::Variable const*, size_t,
                                      double&, size_t&) const;
 
-  virtual IndexIterator* iteratorForCondition(Transaction*,
+  virtual IndexIterator* iteratorForCondition(TransactionMethods*,
                                               ManagedDocumentResult*,
                                               arangodb::aql::AstNode const*,
                                               arangodb::aql::Variable const*,
