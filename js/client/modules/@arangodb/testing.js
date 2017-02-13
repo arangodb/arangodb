@@ -1255,7 +1255,7 @@ function shutdownInstance (instanceInfo, options) {
   let agentsKilled = false;
   let nrAgents = n - nonagencies.length;
 
-  let timeout = 60;
+  let timeout = 666;
   if (options.valgrind) {
     timeout *= 10;
   }
@@ -1283,7 +1283,11 @@ function shutdownInstance (instanceInfo, options) {
 
       if (arangod.exitStatus.status === 'RUNNING') {
 
-        if ((require('internal').time() - shutdownTime) > timeout) {
+        let localTimeout = timeout;
+        if (arangod.role === 'agent') {
+          localTimeout = localTimeout + 60;
+        }
+        if ((require('internal').time() - shutdownTime) > localTimeout) {
           print('forcefully terminating ' + yaml.safeDump(arangod.pid) +
             ' after ' + timeout + 's grace period; marking crashy.');
           serverCrashed = true;
