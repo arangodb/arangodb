@@ -59,14 +59,14 @@ Export XGMML
 *--xgmml-label-only* set to true will only export the label without any attributes in edges or nodes.
 
 
-## export with collection defined
+## export based on collections
 
     unix> arangoexport --type xgmml --graph-name mygraph --collection vertex --collection edge
 
 This exports the a unnamed graph with vertex collection *vertex* and edge collection *edge* into the xgmml file *mygraph.xgmml*.
 
 
-## export with graph defined
+## export based on a named graph
 
     unix> arangoexport --type xgmml --graph-name mygraph
 
@@ -77,11 +77,11 @@ This exports the named graph mygraph into the xgmml file *mygraph.xgmml*.
 
     unix> arangoexport --type xgmml --graph-name mygraph --xgmml-label-only true
 
-This exports the named graph mygraph into the xgmml file *mygraph.xgmml* without the *<att>*
+This exports the named graph mygraph into the xgmml file *mygraph.xgmml* without the *&lt;att&gt;* tag in nodes and edges.
 
 
 ## export XGMML with a specific label
 
     unix> arangoexport --type xgmml --graph-name mygraph --xgmml-label-attribute name
 
-This exports the named graph mygraph into the xgmml file *mygraph.xgmml* with a label from documents attribute *name* instead of the default attribute *label*
+This exports the named graph mygraph into the xgmml file *mygraph.xgmml* with a label from documents attribute *name* instead of the default attribute *label*.
