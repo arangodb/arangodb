@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 
 struct TRI_vocbase_t;
 

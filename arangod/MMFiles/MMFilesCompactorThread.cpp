@@ -69,7 +69,7 @@ static char const* ReasonNothingToCompact =
 /// @brief compaction state
 namespace arangodb {
 struct CompactionContext {
-  arangodb::Transaction* _trx;
+  Transaction* _trx;
   LogicalCollection* _collection;
   MMFilesDatafile* _compactor;
   DatafileStatisticsContainer _dfi;
@@ -236,7 +236,7 @@ int MMFilesCompactorThread::removeDatafile(LogicalCollection* collection,
 
 /// @brief calculate the target size for the compactor to be created
 MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getCompactionContext(
-    arangodb::Transaction* trx, LogicalCollection* collection,
+    Transaction* trx, LogicalCollection* collection,
     std::vector<compaction_info_t> const& toCompact) {
   CompactionInitialContext context(trx, collection);
 

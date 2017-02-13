@@ -31,7 +31,7 @@
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesTransactionCollection.h"
 #include "StorageEngine/TransactionCollection.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 #include "VocBase/ticks.h"
@@ -122,7 +122,7 @@ int MMFilesTransactionState::beginTransaction(TransactionHints hints, int nestin
 }
 
 /// @brief commit a transaction
-int MMFilesTransactionState::commitTransaction(arangodb::Transaction* activeTrx, int nestingLevel) {
+int MMFilesTransactionState::commitTransaction(Transaction* activeTrx, int nestingLevel) {
   LOG_TRX(this, nestingLevel) << "committing " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == Transaction::Status::RUNNING);
@@ -168,7 +168,7 @@ int MMFilesTransactionState::commitTransaction(arangodb::Transaction* activeTrx,
 }
 
 /// @brief abort and rollback a transaction
-int MMFilesTransactionState::abortTransaction(arangodb::Transaction* activeTrx, int nestingLevel) {
+int MMFilesTransactionState::abortTransaction(Transaction* activeTrx, int nestingLevel) {
   LOG_TRX(this, nestingLevel) << "aborting " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == Transaction::Status::RUNNING);
@@ -330,7 +330,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
 }
 
 /// @brief free all operations for a transaction
-void MMFilesTransactionState::freeOperations(arangodb::Transaction* activeTrx) {
+void MMFilesTransactionState::freeOperations(Transaction* activeTrx) {
   bool const mustRollback = (_status == Transaction::Status::ABORTED);
      
   TRI_ASSERT(activeTrx != nullptr);

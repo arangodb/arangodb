@@ -322,8 +322,8 @@ SET(ARANGOD_SOURCES
   Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
   Utils/StandaloneTransactionContext.cpp
-  Utils/Transaction.cpp
   Utils/TransactionContext.cpp
+  Utils/TransactionMethods.cpp
   Utils/V8TransactionContext.cpp
   Utils/WorkMonitorArangod.cpp
   V8Server/FoxxQueuesFeature.cpp

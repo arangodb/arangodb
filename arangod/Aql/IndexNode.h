@@ -31,7 +31,7 @@
 #include "Aql/Variable.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 
 #include <velocypack/Slice.h>
 
@@ -75,7 +75,7 @@ class IndexNode : public ExecutionNode {
   Condition* condition() const { return _condition; }
 
   /// @brief return the transaction for the node
-  arangodb::Transaction* trx() const;
+  Transaction* trx() const;
 
   /// @brief whether or not all indexes are accessed in reverse order
   bool reverse() const { return _reverse; }

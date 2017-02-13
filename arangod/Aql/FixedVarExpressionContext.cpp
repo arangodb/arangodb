@@ -63,7 +63,7 @@ void FixedVarExpressionContext::setVariableValue(Variable const* var,
 }
 
 void FixedVarExpressionContext::serializeAllVariables(
-    arangodb::Transaction* trx, VPackBuilder& builder) const {
+    Transaction* trx, VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenArray());
   for (auto const& it : _vars) {
     builder.openArray();

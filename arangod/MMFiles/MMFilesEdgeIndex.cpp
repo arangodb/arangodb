@@ -35,7 +35,7 @@
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -105,7 +105,7 @@ static bool IsEqualElementEdgeByKey(void* userData, MMFilesSimpleIndexElement co
   }
 }
   
-MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx,
+MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(LogicalCollection* collection, Transaction* trx,
                                      ManagedDocumentResult* mmdr,
                                      arangodb::MMFilesEdgeIndex const* index,
                                      TRI_MMFilesEdgeIndexHash_t const* indexImpl,
@@ -392,7 +392,7 @@ void MMFilesEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   // builder.add("buckets", VPackValue(_numBuckets));
 }
 
-int MMFilesEdgeIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+int MMFilesEdgeIndex::insert(Transaction* trx, TRI_voc_rid_t revisionId,
                       VPackSlice const& doc, bool isRollback) {
   MMFilesSimpleIndexElement fromElement(buildFromElement(revisionId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(revisionId, doc));
@@ -412,7 +412,7 @@ int MMFilesEdgeIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionI
   return TRI_ERROR_NO_ERROR;
 }
 
-int MMFilesEdgeIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+int MMFilesEdgeIndex::remove(Transaction* trx, TRI_voc_rid_t revisionId,
                       VPackSlice const& doc, bool isRollback) {
   MMFilesSimpleIndexElement fromElement(buildFromElement(revisionId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(revisionId, doc));
@@ -432,7 +432,7 @@ int MMFilesEdgeIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionI
   }
 }
 
-void MMFilesEdgeIndex::batchInsert(arangodb::Transaction* trx,
+void MMFilesEdgeIndex::batchInsert(Transaction* trx,
                            std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
     arangodb::basics::LocalTaskQueue* queue) {
   if (documents.empty()) {
@@ -489,7 +489,7 @@ int MMFilesEdgeIndex::unload() {
 }
 
 /// @brief provides a size hint for the edge index
-int MMFilesEdgeIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
+int MMFilesEdgeIndex::sizeHint(Transaction* trx, size_t size) {
   // we assume this is called when setting up the index and the index
   // is still empty
   TRI_ASSERT(_edgesFrom->size() == 0);
@@ -525,7 +525,7 @@ bool MMFilesEdgeIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
-    arangodb::Transaction* trx, 
+    Transaction* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
@@ -609,7 +609,7 @@ void MMFilesEdgeIndex::expandInSearchValues(VPackSlice const slice,
 
 /// @brief create the iterator
 IndexIterator* MMFilesEdgeIndex::createEqIterator(
-    arangodb::Transaction* trx, 
+    Transaction* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
@@ -632,7 +632,7 @@ IndexIterator* MMFilesEdgeIndex::createEqIterator(
 
 /// @brief create the iterator
 IndexIterator* MMFilesEdgeIndex::createInIterator(
-    arangodb::Transaction* trx, 
+    Transaction* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {

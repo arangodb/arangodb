@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Aql/Collection.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {

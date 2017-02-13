@@ -27,7 +27,7 @@
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 
 using namespace arangodb::aql;
 
@@ -68,7 +68,7 @@ void AttributeAccessor::replaceVariable(std::unordered_map<VariableId, Variable 
 }
 
 /// @brief execute the accessor
-AqlValue AttributeAccessor::getSystem(arangodb::Transaction* trx,
+AqlValue AttributeAccessor::getSystem(Transaction* trx,
                                       ExpressionContext* context, bool& mustDestroy) {
   AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
   // get the AQL value
@@ -89,7 +89,7 @@ AqlValue AttributeAccessor::getSystem(arangodb::Transaction* trx,
 }
 
 /// @brief execute the accessor
-AqlValue AttributeAccessor::getDynamic(arangodb::Transaction* trx,
+AqlValue AttributeAccessor::getDynamic(Transaction* trx,
                                        ExpressionContext* context, bool& mustDestroy) {
   AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
   // get the AQL value

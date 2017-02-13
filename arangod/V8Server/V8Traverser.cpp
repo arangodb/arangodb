@@ -32,7 +32,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::traverser;
 
-ShortestPathOptions::ShortestPathOptions(arangodb::Transaction* trx)
+ShortestPathOptions::ShortestPathOptions(Transaction* trx)
     : BasicOptions(trx),
       direction("outbound"),
       useWeight(false),

@@ -143,24 +143,24 @@ class HashedCollectBlock : public ExecutionBlock {
 
   /// @brief hasher for a vector of AQL values
   struct GroupKeyHash {
-    GroupKeyHash(arangodb::Transaction* trx, size_t num)
+    GroupKeyHash(Transaction* trx, size_t num)
         : _trx(trx), _num(num) {}
 
     size_t operator()(std::vector<AqlValue> const& value) const;
 
-    arangodb::Transaction* _trx;
+    Transaction* _trx;
     size_t const _num;
   };
 
   /// @brief comparator for a vector of AQL values
   struct GroupKeyEqual {
-    explicit GroupKeyEqual(arangodb::Transaction* trx)
+    explicit GroupKeyEqual(Transaction* trx)
         : _trx(trx) {}
 
     bool operator()(std::vector<AqlValue> const&,
                     std::vector<AqlValue> const&) const;
 
-    arangodb::Transaction* _trx;
+    Transaction* _trx;
   };
 };
 

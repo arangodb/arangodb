@@ -26,7 +26,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationResult.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"

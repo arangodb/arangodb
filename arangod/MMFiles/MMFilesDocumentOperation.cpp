@@ -23,7 +23,7 @@
 
 #include "MMFilesDocumentOperation.h"
 #include "Indexes/IndexIterator.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
@@ -88,7 +88,7 @@ void MMFilesDocumentOperation::setRevisions(DocumentDescriptor const& oldRevisio
   }
 }
 
-void MMFilesDocumentOperation::revert(arangodb::Transaction* trx) {
+void MMFilesDocumentOperation::revert(Transaction* trx) {
   TRI_ASSERT(trx != nullptr);
   
   if (_status == StatusType::SWAPPED || _status == StatusType::REVERTED) {

@@ -21,12 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_TRANSACTION_STATE_H
-#define ARANGOD_UTILS_TRANSACTION_STATE_H 1
+#ifndef ARANGOD_STORAGE_ENGINE_TRANSACTION_STATE_H
+#define ARANGOD_STORAGE_ENGINE_TRANSACTION_STATE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "Utils/TransactionHints.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
@@ -114,7 +114,7 @@ class TransactionState {
   }
 
   /// @brief free all operations for a transaction
-  void freeOperations(arangodb::Transaction* activeTrx);
+  void freeOperations(Transaction* activeTrx);
 
   /// @brief release collection locks for a transaction
   int releaseCollections();

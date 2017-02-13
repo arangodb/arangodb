@@ -119,12 +119,12 @@ class Expression {
   }
 
   /// @brief execute the expression
-  AqlValue execute(arangodb::Transaction* trx, ExpressionContext* ctx,
+  AqlValue execute(Transaction* trx, ExpressionContext* ctx,
                    bool& mustDestroy);
 
   /// @brief execute the expression
   /// DEPRECATED
-  AqlValue execute(arangodb::Transaction* trx, AqlItemBlock const*, size_t,
+  AqlValue execute(Transaction* trx, AqlItemBlock const*, size_t,
                    std::vector<Variable const*> const&,
                    std::vector<RegisterId> const&, bool& mustDestroy);
 
@@ -213,7 +213,7 @@ class Expression {
 
   /// @brief find a value in an array
   bool findInArray(AqlValue const&, AqlValue const&,
-                   arangodb::Transaction*,
+                   Transaction*,
                    AstNode const*) const;
 
   /// @brief analyze the expression (determine its type etc.)
@@ -221,108 +221,108 @@ class Expression {
 
   /// @brief build the expression (if appropriate, compile it into
   /// executable code)
-  void buildExpression(arangodb::Transaction*);
+  void buildExpression(Transaction*);
 
   /// @brief execute an expression of type SIMPLE
   AqlValue executeSimpleExpression(AstNode const*,
-                                   arangodb::Transaction*,
+                                   Transaction*,
                                    bool& mustDestroy, bool);
 
   /// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
   AqlValue executeSimpleExpressionAttributeAccess(
-      AstNode const*, arangodb::Transaction*, bool& mustDestroy);
+      AstNode const*, Transaction*, bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
   AqlValue executeSimpleExpressionIndexedAccess(
-      AstNode const*, arangodb::Transaction*,
+      AstNode const*, Transaction*,
       bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with ARRAY
   AqlValue executeSimpleExpressionArray(AstNode const*,
-                                        arangodb::Transaction*,
+                                        Transaction*,
                                         bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with OBJECT
   AqlValue executeSimpleExpressionObject(AstNode const*,
-                                         arangodb::Transaction*,
+                                         Transaction*,
                                          bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with VALUE
   AqlValue executeSimpleExpressionValue(AstNode const*, 
-                                        arangodb::Transaction*,
+                                        Transaction*,
                                         bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with REFERENCE
   AqlValue executeSimpleExpressionReference(AstNode const*,
-                                            arangodb::Transaction*,
+                                            Transaction*,
                                             bool& mustDestroy,
                                             bool);
 
   /// @brief execute an expression of type SIMPLE with FCALL
   AqlValue executeSimpleExpressionFCall(AstNode const*,
-                                        arangodb::Transaction*,
+                                        Transaction*,
                                         bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with RANGE
   AqlValue executeSimpleExpressionRange(AstNode const*,
-                                        arangodb::Transaction*,
+                                        Transaction*,
                                         bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with NOT
-  AqlValue executeSimpleExpressionNot(AstNode const*, arangodb::Transaction*,
+  AqlValue executeSimpleExpressionNot(AstNode const*, Transaction*,
                                        bool& mustDestroy);
   
   /// @brief execute an expression of type SIMPLE with +
-  AqlValue executeSimpleExpressionPlus(AstNode const*, arangodb::Transaction*,
+  AqlValue executeSimpleExpressionPlus(AstNode const*, Transaction*,
                                        bool& mustDestroy);
   
   /// @brief execute an expression of type SIMPLE with -
-  AqlValue executeSimpleExpressionMinus(AstNode const*, arangodb::Transaction*,
+  AqlValue executeSimpleExpressionMinus(AstNode const*, Transaction*,
                                         bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with AND 
   AqlValue executeSimpleExpressionAnd(AstNode const*,
-                                      arangodb::Transaction*,
+                                      Transaction*,
                                       bool& mustDestroy);
   
   /// @brief execute an expression of type SIMPLE with OR 
   AqlValue executeSimpleExpressionOr(AstNode const*,
-                                     arangodb::Transaction*,
+                                     Transaction*,
                                      bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with NARY AND or OR
   AqlValue executeSimpleExpressionNaryAndOr(AstNode const*,
-                                            arangodb::Transaction*,
+                                            Transaction*,
                                             bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with COMPARISON
   AqlValue executeSimpleExpressionComparison(
-      AstNode const*, arangodb::Transaction*,
+      AstNode const*, Transaction*,
       bool& mustDestroy);
   
   /// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
   AqlValue executeSimpleExpressionArrayComparison(
-      AstNode const*, arangodb::Transaction*,
+      AstNode const*, Transaction*,
       bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with TERNARY
   AqlValue executeSimpleExpressionTernary(AstNode const*,
-                                          arangodb::Transaction*,
+                                          Transaction*,
                                           bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with EXPANSION
   AqlValue executeSimpleExpressionExpansion(AstNode const*,
-                                            arangodb::Transaction*,
+                                            Transaction*,
                                             bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with EXPANSION
   AqlValue executeSimpleExpressionIterator(AstNode const*,
-                                           arangodb::Transaction*,
+                                           Transaction*,
                                            bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
   AqlValue executeSimpleExpressionArithmetic(
-      AstNode const*, arangodb::Transaction*, 
+      AstNode const*, Transaction*, 
       bool& mustDestroy);
 
  private:

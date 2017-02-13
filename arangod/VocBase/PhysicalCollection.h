@@ -93,7 +93,7 @@ class PhysicalCollection {
   virtual void finishCompaction() = 0;
 
   /// @brief iterate all markers of a collection on load
-  virtual int iterateMarkersOnLoad(arangodb::Transaction* trx) = 0;
+  virtual int iterateMarkersOnLoad(Transaction* trx) = 0;
   
   virtual uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const = 0;
   virtual uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const = 0;

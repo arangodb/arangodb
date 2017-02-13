@@ -39,30 +39,30 @@ struct Aggregator {
   Aggregator(Aggregator const&) = delete;
   Aggregator& operator=(Aggregator const&) = delete;
 
-  explicit Aggregator(arangodb::Transaction* trx) : trx(trx) {}
+  explicit Aggregator(Transaction* trx) : trx(trx) {}
   virtual ~Aggregator() = default;
   virtual char const* name() const = 0;
   virtual void reset() = 0;
   virtual void reduce(AqlValue const&) = 0;
   virtual AqlValue stealValue() = 0;
 
-  static Aggregator* fromTypeString(arangodb::Transaction*,
+  static Aggregator* fromTypeString(Transaction*,
                                     std::string const&);
-  static Aggregator* fromVPack(arangodb::Transaction*,
+  static Aggregator* fromVPack(Transaction*,
                                arangodb::velocypack::Slice const&, char const*);
 
   static bool isSupported(std::string const&);
   static bool requiresInput(std::string const&);
 
-  arangodb::Transaction* trx;
+  Transaction* trx;
 
   arangodb::velocypack::Builder builder;
 };
 
 struct AggregatorLength final : public Aggregator {
-  explicit AggregatorLength(arangodb::Transaction* trx)
+  explicit AggregatorLength(Transaction* trx)
       : Aggregator(trx), count(0) {}
-  AggregatorLength(arangodb::Transaction* trx, uint64_t initialCount)
+  AggregatorLength(Transaction* trx, uint64_t initialCount)
       : Aggregator(trx), count(initialCount) {}
 
   char const* name() const override final { return "LENGTH"; }
@@ -75,7 +75,7 @@ struct AggregatorLength final : public Aggregator {
 };
 
 struct AggregatorMin final : public Aggregator {
-  explicit AggregatorMin(arangodb::Transaction* trx)
+  explicit AggregatorMin(Transaction* trx)
       : Aggregator(trx), value() {}
 
   ~AggregatorMin();
@@ -90,7 +90,7 @@ struct AggregatorMin final : public Aggregator {
 };
 
 struct AggregatorMax final : public Aggregator {
-  explicit AggregatorMax(arangodb::Transaction* trx)
+  explicit AggregatorMax(Transaction* trx)
       : Aggregator(trx), value() {}
 
   ~AggregatorMax();
@@ -105,7 +105,7 @@ struct AggregatorMax final : public Aggregator {
 };
 
 struct AggregatorSum final : public Aggregator {
-  explicit AggregatorSum(arangodb::Transaction* trx)
+  explicit AggregatorSum(Transaction* trx)
       : Aggregator(trx), sum(0.0), invalid(false) {}
 
   char const* name() const override final { return "SUM"; }
@@ -119,7 +119,7 @@ struct AggregatorSum final : public Aggregator {
 };
 
 struct AggregatorAverage final : public Aggregator {
-  explicit AggregatorAverage(arangodb::Transaction* trx)
+  explicit AggregatorAverage(Transaction* trx)
       : Aggregator(trx), count(0), sum(0.0), invalid(false) {}
 
   char const* name() const override final { return "AVERAGE"; }
@@ -134,7 +134,7 @@ struct AggregatorAverage final : public Aggregator {
 };
 
 struct AggregatorVarianceBase : public Aggregator {
-  AggregatorVarianceBase(arangodb::Transaction* trx, bool population)
+  AggregatorVarianceBase(Transaction* trx, bool population)
       : Aggregator(trx),
         population(population),
         count(0),
@@ -153,7 +153,7 @@ struct AggregatorVarianceBase : public Aggregator {
 };
 
 struct AggregatorVariance final : public AggregatorVarianceBase {
-  AggregatorVariance(arangodb::Transaction* trx, bool population)
+  AggregatorVariance(Transaction* trx, bool population)
       : AggregatorVarianceBase(trx, population) {}
 
   char const* name() const override final {
@@ -167,7 +167,7 @@ struct AggregatorVariance final : public AggregatorVarianceBase {
 };
 
 struct AggregatorStddev final : public AggregatorVarianceBase {
-  AggregatorStddev(arangodb::Transaction* trx, bool population)
+  AggregatorStddev(Transaction* trx, bool population)
       : AggregatorVarianceBase(trx, population) {}
 
   char const* name() const override final {

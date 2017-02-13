@@ -71,14 +71,14 @@ class IndexIterator {
   IndexIterator& operator=(IndexIterator const&) = delete;
   IndexIterator() = delete;
 
-  IndexIterator(LogicalCollection*, arangodb::Transaction*, ManagedDocumentResult*, arangodb::Index const*);
+  IndexIterator(LogicalCollection*, Transaction*, ManagedDocumentResult*, arangodb::Index const*);
 
   virtual ~IndexIterator();
 
   virtual char const* typeName() const = 0;
 
   LogicalCollection* collection() const { return _collection; }
-  arangodb::Transaction* transaction() const { return _trx; }
+  Transaction* transaction() const { return _trx; }
 
   virtual bool hasExtra() const;
 
@@ -93,7 +93,7 @@ class IndexIterator {
 
  protected:
   LogicalCollection* _collection;
-  arangodb::Transaction* _trx;
+  Transaction* _trx;
   ManagedDocumentResult* _mmdr;
   IndexLookupContext _context;
   bool _responsible;
@@ -102,7 +102,7 @@ class IndexIterator {
 /// @brief Special iterator if the condition cannot have any result
 class EmptyIndexIterator final : public IndexIterator {
   public:
-    EmptyIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, ManagedDocumentResult* mmdr, arangodb::Index const* index) 
+    EmptyIndexIterator(LogicalCollection* collection, Transaction* trx, ManagedDocumentResult* mmdr, arangodb::Index const* index) 
         : IndexIterator(collection, trx, mmdr, index) {}
 
     ~EmptyIndexIterator() {}
@@ -128,7 +128,7 @@ class EmptyIndexIterator final : public IndexIterator {
 class MultiIndexIterator final : public IndexIterator {
 
   public:
-   MultiIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx,
+   MultiIndexIterator(LogicalCollection* collection, Transaction* trx,
                       ManagedDocumentResult* mmdr,
                       arangodb::Index const* index,
                       std::vector<IndexIterator*> const& iterators)

@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 
 #include <velocypack/Slice.h>
 
@@ -261,7 +261,7 @@ class Condition {
   void deduplicateInOperation(AstNode*);
 
   /// @brief merge the values from two IN operations
-  AstNode* mergeInOperations(arangodb::Transaction* trx, AstNode const*, AstNode const*);
+  AstNode* mergeInOperations(Transaction* trx, AstNode const*, AstNode const*);
 
   /// @brief merges the current node with the sub nodes of same type
   AstNode* collapse(AstNode const*);

@@ -39,7 +39,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -72,7 +72,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
                                                         MMFilesCollection::OpenIteratorState* state) {
   LogicalCollection* collection = state->_collection;
   MMFilesCollection* c = static_cast<MMFilesCollection*>(collection->getPhysical());
-  arangodb::Transaction* trx = state->_trx;
+  Transaction* trx = state->_trx;
   TRI_ASSERT(trx != nullptr);
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
@@ -168,7 +168,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* m
                                                         MMFilesCollection::OpenIteratorState* state) {
   LogicalCollection* collection = state->_collection;
   MMFilesCollection* c = static_cast<MMFilesCollection*>(collection->getPhysical());
-  arangodb::Transaction* trx = state->_trx;
+  Transaction* trx = state->_trx;
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
   
@@ -1088,7 +1088,7 @@ void MMFilesCollection::finishCompaction() {
 }
 
 /// @brief iterate all markers of the collection
-int MMFilesCollection::iterateMarkersOnLoad(arangodb::Transaction* trx) {
+int MMFilesCollection::iterateMarkersOnLoad(Transaction* trx) {
   // initialize state for iteration
   OpenIteratorState openState(_logicalCollection, trx);
 

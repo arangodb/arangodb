@@ -1660,7 +1660,7 @@ void LogicalCollection::createInitialIndexes() {
 
 /// @brief iterator for index open
 bool LogicalCollection::openIndex(VPackSlice const& description,
-                                  arangodb::Transaction* trx) {
+                                  Transaction* trx) {
   // VelocyPack must be an index description
   if (!description.isObject()) {
     return false;
@@ -1678,7 +1678,7 @@ bool LogicalCollection::openIndex(VPackSlice const& description,
 }
 
 /// @brief enumerate all indexes of the collection, but don't fill them yet
-int LogicalCollection::detectIndexes(arangodb::Transaction* trx) {
+int LogicalCollection::detectIndexes(Transaction* trx) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   VPackBuilder builder;
   engine->getCollectionInfo(_vocbase, _cid, builder, true, UINT64_MAX);
@@ -1701,7 +1701,7 @@ LogicalCollection::indexList() const {
 }
 
 int LogicalCollection::fillIndexes(
-    arangodb::Transaction* trx,
+    Transaction* trx,
     std::vector<std::shared_ptr<arangodb::Index>> const& indexes,
     bool skipPersistent) {
   // distribute the work to index threads plus this thread
@@ -2440,7 +2440,7 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
 }
 
 /// @brief removes a document or edge
-int LogicalCollection::remove(arangodb::Transaction* trx,
+int LogicalCollection::remove(Transaction* trx,
                               VPackSlice const slice, OperationOptions& options,
                               TRI_voc_tick_t& resultMarkerTick, bool lock,
                               TRI_voc_rid_t& prevRev,
@@ -2590,7 +2590,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
 }
 
 /// @brief removes a document or edge, fast path function for database documents
-int LogicalCollection::remove(arangodb::Transaction* trx,
+int LogicalCollection::remove(Transaction* trx,
                               TRI_voc_rid_t oldRevisionId,
                               VPackSlice const oldDoc,
                               OperationOptions& options,
@@ -2690,7 +2690,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
 }
 
 /// @brief rolls back a document operation
-int LogicalCollection::rollbackOperation(arangodb::Transaction* trx,
+int LogicalCollection::rollbackOperation(Transaction* trx,
                                          TRI_voc_document_operation_e type,
                                          TRI_voc_rid_t oldRevisionId,
                                          VPackSlice const& oldDoc,
@@ -2758,7 +2758,7 @@ void LogicalCollection::sizeHint(Transaction* trx, int64_t hint) {
 
 /// @brief initializes an index with a set of existing documents
 void LogicalCollection::fillIndex(
-    arangodb::basics::LocalTaskQueue* queue, arangodb::Transaction* trx,
+    arangodb::basics::LocalTaskQueue* queue, Transaction* trx,
     arangodb::Index* idx,
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
     bool skipPersistent) {
@@ -2785,9 +2785,9 @@ void LogicalCollection::fillIndex(
 
 /// @brief read unlocks a collection
 int LogicalCollection::endRead(bool useDeadlockDetector) {
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+  if (Transaction::_makeNolockHeaders != nullptr) {
+    auto it = Transaction::_makeNolockHeaders->find(name());
+    if (it != Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "EndRead blocked: " << _name << std::endl;
@@ -2812,9 +2812,9 @@ int LogicalCollection::endRead(bool useDeadlockDetector) {
 
 /// @brief write unlocks a collection
 int LogicalCollection::endWrite(bool useDeadlockDetector) {
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+  if (Transaction::_makeNolockHeaders != nullptr) {
+    auto it = Transaction::_makeNolockHeaders->find(name());
+    if (it != Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "EndWrite blocked: " << _name <<
@@ -2842,9 +2842,9 @@ int LogicalCollection::endWrite(bool useDeadlockDetector) {
 /// @brief read locks a collection, with a timeout (in µseconds)
 int LogicalCollection::beginReadTimed(bool useDeadlockDetector,
                                       double timeout) {
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+  if (Transaction::_makeNolockHeaders != nullptr) {
+    auto it = Transaction::_makeNolockHeaders->find(name());
+    if (it != Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "BeginReadTimed blocked: " << _name <<
@@ -2940,9 +2940,9 @@ int LogicalCollection::beginReadTimed(bool useDeadlockDetector,
 /// @brief write locks a collection, with a timeout
 int LogicalCollection::beginWriteTimed(bool useDeadlockDetector,
                                        double timeout) {
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+  if (Transaction::_makeNolockHeaders != nullptr) {
+    auto it = Transaction::_makeNolockHeaders->find(name());
+    if (it != Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "BeginWriteTimed blocked: " << _name <<
@@ -3038,7 +3038,7 @@ int LogicalCollection::beginWriteTimed(bool useDeadlockDetector,
 /// @brief looks up a document by key, low level worker
 /// the caller must make sure the read lock on the collection is held
 /// the key must be a string slice, no revision check is performed
-int LogicalCollection::lookupDocument(arangodb::Transaction* trx,
+int LogicalCollection::lookupDocument(Transaction* trx,
                                       VPackSlice const key,
                                       ManagedDocumentResult& result) {
   if (!key.isString()) {
@@ -3066,7 +3066,7 @@ int LogicalCollection::checkRevision(Transaction* trx, TRI_voc_rid_t expected,
 /// @brief updates an existing document, low level worker
 /// the caller must make sure the write lock on the collection is held
 int LogicalCollection::updateDocument(
-    arangodb::Transaction* trx, TRI_voc_rid_t oldRevisionId,
+    Transaction* trx, TRI_voc_rid_t oldRevisionId,
     VPackSlice const& oldDoc, TRI_voc_rid_t newRevisionId,
     VPackSlice const& newDoc, MMFilesDocumentOperation& operation,
     MMFilesWalMarker const* marker, bool& waitForSync) {
@@ -3120,7 +3120,7 @@ int LogicalCollection::updateDocument(
 
 /// @brief insert a document, low level worker
 /// the caller must make sure the write lock on the collection is held
-int LogicalCollection::insertDocument(arangodb::Transaction* trx,
+int LogicalCollection::insertDocument(Transaction* trx,
                                       TRI_voc_rid_t revisionId,
                                       VPackSlice const& doc,
                                       MMFilesDocumentOperation& operation,
@@ -3155,7 +3155,7 @@ int LogicalCollection::insertDocument(arangodb::Transaction* trx,
 }
 
 /// @brief creates a new entry in the primary index
-int LogicalCollection::insertPrimaryIndex(arangodb::Transaction* trx,
+int LogicalCollection::insertPrimaryIndex(Transaction* trx,
                                           TRI_voc_rid_t revisionId,
                                           VPackSlice const& doc) {
   TRI_IF_FAILURE("InsertPrimaryIndex") { return TRI_ERROR_DEBUG; }
@@ -3165,7 +3165,7 @@ int LogicalCollection::insertPrimaryIndex(arangodb::Transaction* trx,
 }
 
 /// @brief deletes an entry from the primary index
-int LogicalCollection::deletePrimaryIndex(arangodb::Transaction* trx,
+int LogicalCollection::deletePrimaryIndex(Transaction* trx,
                                           TRI_voc_rid_t revisionId,
                                           VPackSlice const& doc) {
   TRI_IF_FAILURE("DeletePrimaryIndex") { return TRI_ERROR_DEBUG; }
@@ -3174,7 +3174,7 @@ int LogicalCollection::deletePrimaryIndex(arangodb::Transaction* trx,
 }
 
 /// @brief creates a new entry in the secondary indexes
-int LogicalCollection::insertSecondaryIndexes(arangodb::Transaction* trx,
+int LogicalCollection::insertSecondaryIndexes(Transaction* trx,
                                               TRI_voc_rid_t revisionId,
                                               VPackSlice const& doc,
                                               bool isRollback) {
@@ -3218,7 +3218,7 @@ int LogicalCollection::insertSecondaryIndexes(arangodb::Transaction* trx,
 }
 
 /// @brief deletes an entry from the secondary indexes
-int LogicalCollection::deleteSecondaryIndexes(arangodb::Transaction* trx,
+int LogicalCollection::deleteSecondaryIndexes(Transaction* trx,
                                               TRI_voc_rid_t revisionId,
                                               VPackSlice const& doc,
                                               bool isRollback) {
@@ -3383,7 +3383,7 @@ void LogicalCollection::newObjectForReplace(
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
 void LogicalCollection::mergeObjectsForUpdate(
-    arangodb::Transaction* trx, VPackSlice const& oldValue,
+    Transaction* trx, VPackSlice const& oldValue,
     VPackSlice const& newValue, bool isEdgeCollection, std::string const& rev,
     bool mergeObjects, bool keepNull, VPackBuilder& b) {
   b.openObject();
@@ -3554,7 +3554,7 @@ bool LogicalCollection::readRevisionConditional(Transaction* trx,
 }
 
 // TODO ONLY TEMP wrapper
-bool LogicalCollection::readDocument(arangodb::Transaction* trx, ManagedDocumentResult& result, DocumentIdentifierToken const& token) {
+bool LogicalCollection::readDocument(Transaction* trx, ManagedDocumentResult& result, DocumentIdentifierToken const& token) {
   // TODO This only works for MMFiles Engine. Has to be moved => StorageEngine
   auto tkn = static_cast<MMFilesToken const*>(&token);
   return readRevision(trx, result, tkn->revisionId());

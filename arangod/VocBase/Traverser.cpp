@@ -23,7 +23,7 @@
 
 #include "Traverser.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/TraverserOptions.h"
@@ -161,7 +161,7 @@ void Traverser::UniqueVertexGetter::reset(VPackSlice startVertex) {
   _returnedVertices.emplace(hashed);
 }
 
-Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, arangodb::Transaction* trx,
+Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, Transaction* trx,
                      arangodb::ManagedDocumentResult* mmdr)
     : _trx(trx),
       _mmdr(mmdr),

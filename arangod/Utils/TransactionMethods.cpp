@@ -21,7 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Transaction.h"
+#include "TransactionMethods.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
@@ -194,7 +194,7 @@ void Transaction::setAllowImplicitCollections(bool value) {
 bool Transaction::sortOrs(arangodb::aql::Ast* ast,
                     arangodb::aql::AstNode* root,
                     arangodb::aql::Variable const* variable,
-                    std::vector<arangodb::Transaction::IndexHandle>& usedIndexes) {
+                    std::vector<Transaction::IndexHandle>& usedIndexes) {
   if (root == nullptr) {
     return true;
   }
@@ -213,7 +213,7 @@ bool Transaction::sortOrs(arangodb::aql::Ast* ast,
     return false;
   }
 
-  typedef std::pair<arangodb::aql::AstNode*, arangodb::Transaction::IndexHandle> ConditionData;
+  typedef std::pair<arangodb::aql::AstNode*, Transaction::IndexHandle> ConditionData;
   std::vector<ConditionData*> conditionData;
 
   auto cleanup = [&conditionData]() -> void {
@@ -3402,13 +3402,13 @@ OperationResult Transaction::buildCountResult(std::vector<std::pair<std::string,
 }
 
 /// @brief constructor, leases a StringBuffer
-StringBufferLeaser::StringBufferLeaser(arangodb::Transaction* trx) 
+StringBufferLeaser::StringBufferLeaser(Transaction* trx) 
       : _transactionContext(trx->transactionContextPtr()),
         _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
 }
 
 /// @brief constructor, leases a StringBuffer
-StringBufferLeaser::StringBufferLeaser(arangodb::TransactionContext* transactionContext) 
+StringBufferLeaser::StringBufferLeaser(TransactionContext* transactionContext) 
       : _transactionContext(transactionContext), 
         _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
 }
@@ -3419,14 +3419,14 @@ StringBufferLeaser::~StringBufferLeaser() {
 }
   
 /// @brief constructor, leases a builder
-TransactionBuilderLeaser::TransactionBuilderLeaser(arangodb::Transaction* trx) 
+TransactionBuilderLeaser::TransactionBuilderLeaser(Transaction* trx) 
       : _transactionContext(trx->transactionContextPtr()), 
         _builder(_transactionContext->leaseBuilder()) {
   TRI_ASSERT(_builder != nullptr);
 }
 
 /// @brief constructor, leases a builder
-TransactionBuilderLeaser::TransactionBuilderLeaser(arangodb::TransactionContext* transactionContext) 
+TransactionBuilderLeaser::TransactionBuilderLeaser(TransactionContext* transactionContext) 
       : _transactionContext(transactionContext), 
         _builder(_transactionContext->leaseBuilder()) {
   TRI_ASSERT(_builder != nullptr);

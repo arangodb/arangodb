@@ -48,14 +48,14 @@ class MMFilesCompactorThread final : public Thread {
 
   /// @brief auxiliary struct used when initializing compaction
   struct CompactionInitialContext {
-    arangodb::Transaction* _trx;
+    Transaction* _trx;
     LogicalCollection* _collection;
     int64_t _targetSize;
     TRI_voc_fid_t _fid;
     bool _keepDeletions;
     bool _failed;
 
-    CompactionInitialContext(arangodb::Transaction* trx, LogicalCollection* collection)
+    CompactionInitialContext(Transaction* trx, LogicalCollection* collection)
         : _trx(trx), _collection(collection), _targetSize(0), _fid(0), _keepDeletions(false), _failed(false) {}
   };
 
@@ -76,7 +76,7 @@ class MMFilesCompactorThread final : public Thread {
  private:
   /// @brief calculate the target size for the compactor to be created
   CompactionInitialContext getCompactionContext(
-    arangodb::Transaction* trx, LogicalCollection* collection,
+    Transaction* trx, LogicalCollection* collection,
     std::vector<compaction_info_t> const& toCompact);
 
   /// @brief compact the specified datafiles

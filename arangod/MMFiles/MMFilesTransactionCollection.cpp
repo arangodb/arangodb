@@ -26,7 +26,7 @@
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "StorageEngine/TransactionState.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "Utils/TransactionHints.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
@@ -311,10 +311,10 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+  if (Transaction::_makeNolockHeaders != nullptr) {
     std::string collName(_collection->name());
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+    auto it = Transaction::_makeNolockHeaders->find(collName);
+    if (it != Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "LockCollection blocked: " << collName << std::endl;
@@ -359,10 +359,10 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+  if (Transaction::_makeNolockHeaders != nullptr) {
     std::string collName(_collection->name());
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+    auto it = Transaction::_makeNolockHeaders->find(collName);
+    if (it != Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "UnlockCollection blocked: " << collName << std::endl;

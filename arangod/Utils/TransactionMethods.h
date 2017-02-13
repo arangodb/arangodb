@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_TRANSACTION_H
-#define ARANGOD_UTILS_TRANSACTION_H 1
+#ifndef ARANGOD_UTILS_TRANSACTION_METHODS_H
+#define ARANGOD_UTILS_TRANSACTION_METHODS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -619,7 +619,7 @@ class Transaction {
   bool sortOrs(arangodb::aql::Ast* ast,
                arangodb::aql::AstNode* root,
                arangodb::aql::Variable const* variable,
-               std::vector<arangodb::Transaction::IndexHandle>& usedIndexes);
+               std::vector<Transaction::IndexHandle>& usedIndexes);
 
   /// @brief findIndexHandleForAndNode
   std::pair<bool, bool> findIndexHandleForAndNode(
@@ -743,21 +743,21 @@ class Transaction {
 
 class StringBufferLeaser {
  public:
-  explicit StringBufferLeaser(arangodb::Transaction*); 
-  explicit StringBufferLeaser(arangodb::TransactionContext*); 
+  explicit StringBufferLeaser(Transaction*); 
+  explicit StringBufferLeaser(TransactionContext*); 
   ~StringBufferLeaser();
   arangodb::basics::StringBuffer* stringBuffer() const { return _stringBuffer; }
   arangodb::basics::StringBuffer* operator->() const { return _stringBuffer; }
   arangodb::basics::StringBuffer* get() const { return _stringBuffer; }
  private:
-  arangodb::TransactionContext* _transactionContext;
+  TransactionContext* _transactionContext;
   arangodb::basics::StringBuffer* _stringBuffer;
 };
 
 class TransactionBuilderLeaser {
  public:
-  explicit TransactionBuilderLeaser(arangodb::Transaction*); 
-  explicit TransactionBuilderLeaser(arangodb::TransactionContext*); 
+  explicit TransactionBuilderLeaser(Transaction*); 
+  explicit TransactionBuilderLeaser(TransactionContext*); 
   ~TransactionBuilderLeaser();
   inline arangodb::velocypack::Builder* builder() const { return _builder; }
   inline arangodb::velocypack::Builder* operator->() const { return _builder; }
@@ -768,7 +768,7 @@ class TransactionBuilderLeaser {
     return res;
   }
  private:
-  arangodb::TransactionContext* _transactionContext;
+  TransactionContext* _transactionContext;
   arangodb::velocypack::Builder* _builder;
 };
 

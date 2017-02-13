@@ -35,7 +35,7 @@
 using namespace arangodb;
 
 MMFilesGeoIndexIterator::MMFilesGeoIndexIterator(LogicalCollection* collection,
-                                     arangodb::Transaction* trx,
+                                     Transaction* trx,
                                      ManagedDocumentResult* mmdr,
                                      MMFilesGeoIndex const* index,
                                      arangodb::aql::AstNode const* cond,
@@ -224,7 +224,7 @@ DocumentIdentifierToken MMFilesGeoIndex::toDocumentIdentifierToken(uint64_t inte
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesGeoIndex::iteratorForCondition(
-    arangodb::Transaction* trx,
+    Transaction* trx,
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool) const {
@@ -377,7 +377,7 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-int MMFilesGeoIndex::insert(arangodb::Transaction*, TRI_voc_rid_t revisionId,
+int MMFilesGeoIndex::insert(Transaction*, TRI_voc_rid_t revisionId,
                      VPackSlice const& doc, bool isRollback) {
   double latitude;
   double longitude;
@@ -444,7 +444,7 @@ int MMFilesGeoIndex::insert(arangodb::Transaction*, TRI_voc_rid_t revisionId,
   return TRI_ERROR_NO_ERROR;
 }
 
-int MMFilesGeoIndex::remove(arangodb::Transaction*, TRI_voc_rid_t revisionId, 
+int MMFilesGeoIndex::remove(Transaction*, TRI_voc_rid_t revisionId, 
                      VPackSlice const& doc, bool isRollback) {
   double latitude = 0.0;
   double longitude = 0.0;
@@ -523,7 +523,7 @@ int MMFilesGeoIndex::unload() {
 }
 
 /// @brief looks up all points within a given radius
-GeoCoordinates* MMFilesGeoIndex::withinQuery(arangodb::Transaction* trx, double lat,
+GeoCoordinates* MMFilesGeoIndex::withinQuery(Transaction* trx, double lat,
                                        double lon, double radius) const {
   GeoCoordinate gc;
   gc.latitude = lat;
@@ -533,7 +533,7 @@ GeoCoordinates* MMFilesGeoIndex::withinQuery(arangodb::Transaction* trx, double 
 }
 
 /// @brief looks up the nearest points
-GeoCoordinates* MMFilesGeoIndex::nearQuery(arangodb::Transaction* trx, double lat,
+GeoCoordinates* MMFilesGeoIndex::nearQuery(Transaction* trx, double lat,
                                      double lon, size_t count) const {
   GeoCoordinate gc;
   gc.latitude = lat;

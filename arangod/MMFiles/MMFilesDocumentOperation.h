@@ -72,7 +72,7 @@ struct MMFilesDocumentOperation {
     _status = StatusType::HANDLED;
   }
   
-  void revert(arangodb::Transaction*);
+  void revert(Transaction*);
 
  private:
   LogicalCollection* _collection;

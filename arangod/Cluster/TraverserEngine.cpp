@@ -22,12 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraverserEngine.h"
-
 #include "Basics/Exceptions.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/TransactionContext.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/TraverserOptions.h"
 
@@ -35,6 +35,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::traverser;
 
 static const std::string OPTIONS = "options";
@@ -313,7 +314,7 @@ bool BaseTraverserEngine::lockCollection(std::string const& shard) {
   return true;
 }
 
-std::shared_ptr<arangodb::TransactionContext> BaseTraverserEngine::context() const {
+std::shared_ptr<TransactionContext> BaseTraverserEngine::context() const {
   return _trx->transactionContext();
 }
 

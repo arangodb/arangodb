@@ -30,7 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
 #include "MMFiles/MMFilesToken.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -500,7 +500,7 @@ void SkiplistInLookupBuilder::buildSearchValues() {
   }
 }
   
-MMFilesSkiplistIterator::MMFilesSkiplistIterator(LogicalCollection* collection, arangodb::Transaction* trx,
+MMFilesSkiplistIterator::MMFilesSkiplistIterator(LogicalCollection* collection, Transaction* trx,
     ManagedDocumentResult* mmdr,
     arangodb::MMFilesSkiplistIndex const* index,
     TRI_Skiplist const* skiplist, size_t numPaths,
@@ -707,7 +707,7 @@ void MMFilesSkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 /// @brief inserts a document into a skiplist index
-int MMFilesSkiplistIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId, 
+int MMFilesSkiplistIndex::insert(Transaction* trx, TRI_voc_rid_t revisionId, 
                           VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
@@ -758,7 +758,7 @@ int MMFilesSkiplistIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revis
 }
 
 /// @brief removes a document from a skiplist index
-int MMFilesSkiplistIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+int MMFilesSkiplistIndex::remove(Transaction* trx, TRI_voc_rid_t revisionId,
                           VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
@@ -1210,7 +1210,7 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
 }
 
 IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
-    arangodb::Transaction* trx, 
+    Transaction* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {

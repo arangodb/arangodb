@@ -150,9 +150,9 @@ class PersistentIndex final : public MMFilesPathBasedIndex {
     return value;
   }
 
-  int insert(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int insert(Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int remove(Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
   int unload() override;
 
@@ -162,7 +162,7 @@ class PersistentIndex final : public MMFilesPathBasedIndex {
   ///
   /// Warning: who ever calls this function is responsible for destroying
   /// the velocypack::Slice and the PersistentIndexIterator* results
-  PersistentIndexIterator* lookup(arangodb::Transaction*, 
+  PersistentIndexIterator* lookup(Transaction*, 
                           ManagedDocumentResult* mmdr,
                           arangodb::velocypack::Slice const,
                           bool reverse) const;
@@ -175,7 +175,7 @@ class PersistentIndex final : public MMFilesPathBasedIndex {
                              arangodb::aql::Variable const*, size_t,
                              double&, size_t&) const override;
 
-  IndexIterator* iteratorForCondition(arangodb::Transaction*,
+  IndexIterator* iteratorForCondition(Transaction*,
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,

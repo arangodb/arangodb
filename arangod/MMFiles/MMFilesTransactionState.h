@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 #include "StorageEngine/TransactionState.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "Utils/TransactionHints.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
@@ -96,7 +96,7 @@ class MMFilesTransactionState final : public TransactionState {
   int writeCommitMarker();
 
   /// @brief free all operations for a transaction
-  void freeOperations(arangodb::Transaction* activeTrx);
+  void freeOperations(Transaction* activeTrx);
 };
 
 }

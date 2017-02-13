@@ -161,7 +161,7 @@ class InitialSyncer : public Syncer {
   /// @brief apply the data from a collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDump(arangodb::Transaction&,
+  int applyCollectionDump(Transaction&,
                           std::string const&,
                           httpclient::SimpleHttpResult*, uint64_t&,
                           std::string&);

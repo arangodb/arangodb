@@ -31,13 +31,13 @@ namespace aql {
 struct Function;
 
 struct MMFilesAqlFunctions : public Functions {
-  static AqlValue Fulltext(arangodb::aql::Query*, arangodb::Transaction*,
+  static AqlValue Fulltext(arangodb::aql::Query*, Transaction*,
                            VPackFunctionParameters const&);
 
-   static AqlValue Near(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Near(arangodb::aql::Query*, Transaction*,
                         VPackFunctionParameters const&);
 
-   static AqlValue Within(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Within(arangodb::aql::Query*, Transaction*,
                           VPackFunctionParameters const&);
 
   static void RegisterFunctions();

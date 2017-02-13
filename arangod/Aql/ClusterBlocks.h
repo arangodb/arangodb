@@ -99,7 +99,7 @@ class GatherBlock : public ExecutionBlock {
   /// @brief OurLessThan: comparison method for elements of _gatherBlockPos
   class OurLessThan {
    public:
-    OurLessThan(arangodb::Transaction* trx,
+    OurLessThan(Transaction* trx,
                 std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
                 std::vector<SortElementBlock>& sortRegisters)
         : _trx(trx),
@@ -110,7 +110,7 @@ class GatherBlock : public ExecutionBlock {
                     std::pair<size_t, size_t> const& b);
 
    private:
-    arangodb::Transaction* _trx;
+    Transaction* _trx;
     std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
     std::vector<SortElementBlock>& _sortRegisters;
   };

@@ -26,17 +26,14 @@
 
 #include "Basics/Common.h"
 
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "Utils/V8TransactionContext.h"
 
 namespace arangodb {
 
 class UserTransaction final : public Transaction {
  public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
   UserTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
                       std::vector<std::string> const& readCollections,
                       std::vector<std::string> const& writeCollections,
@@ -69,11 +66,6 @@ class UserTransaction final : public Transaction {
     setAllowImplicitCollections(allowImplicitCollections);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief end the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  ~UserTransaction() {}
 };
 }
 
