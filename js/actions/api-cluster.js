@@ -561,7 +561,10 @@ actions.defineHttp({
         let oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary);
         actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
           'Primary does not have the given oldSecondary as ' +
-          'its secondary, current value: ' + JSON.stringify(oldValue));
+          'its secondary, current value: '
+          + JSON.stringify(
+            fetchKey(oldValue, 'arango', 'Plan', 'DBServers', body.primary)
+          ));
         return;
       }
       throw e;
@@ -577,27 +580,32 @@ actions.defineHttp({
 function changeAllShardReponsibilities (oldServer, newServer) {
   // This is only called when we have the write lock and we "only" have to
   // make sure that either all or none of the shards are moved.
-  var collections = ArangoAgency.get('Plan/Collections');
-  collections = collections.arango.Plan.Collections;
+  var databases = ArangoAgency.get('Plan/Collections');
+  databases = databases.arango.Plan.Collections;
 
   let operations = {};
   let preconditions = {};
-  Object.keys(collections).forEach(function (collectionKey) {
-    var collection = collections[collectionKey];
-    var old = _.cloneDeep(collection);
+  Object.keys(databases).forEach(function(databaseName) {
+    var collections = databases[databaseName];
 
-    Object.keys(collection.shards).forEach(function (shardKey) {
-      var servers = collection.shards[shardKey];
-      collection.shards[shardKey] = servers.map(function (server) {
-        if (server === oldServer) {
-          return newServer;
-        } else {
-          return server;
-        }
+    Object.keys(collections).forEach(function(collectionKey) {
+      var collection = collections[collectionKey];
+
+      Object.keys(collection.shards).forEach(function (shardKey) {
+        var servers = collection.shards[shardKey];
+        var oldServers = _.cloneDeep(servers);
+        servers = servers.map(function(server) {
+          if (server === oldServer) {
+            return newServer;
+          } else {
+            return server;
+          }
+        });
+        let key = '/arango/Plan/Collections/' + databaseName + '/' + collectionKey + '/shards/' + shardKey;
+        operations[key] = servers;
+        preconditions[key] = {'old': oldServers};
       });
     });
-    operations[collectionKey] = collection;
-    preconditions[collectionKey] = old;
   });
   return {operations, preconditions};
 }
@@ -678,25 +686,24 @@ actions.defineHttp({
     }
 
     let operations = {};
-    operations['Plan/DBServers/' + body.secondary] = body.primary;
-    operations['Plan/DBServers/' + body.primary] = {'op': 'delete'};
-    operations['Plan/Version'] = {'op': 'increment'};
+    operations['/arango/Plan/DBServers/' + body.secondary] = body.primary;
+    operations['/arango/Plan/DBServers/' + body.primary] = {'op': 'delete'};
+    operations['/arango/Plan/Version'] = {'op': 'increment'};
 
     let preconditions = {};
-    preconditions['Plan/DBServers/' + body.primary] = {'old': body.secondary};
+    preconditions['/arango/Plan/DBServers/' + body.primary] = {'old': body.secondary};
 
     let shardChanges = changeAllShardReponsibilities(body.primary, body.secondary);
     operations = Object.assign(operations, shardChanges.operations);
     preconditions = Object.assign(preconditions, shardChanges.preconditions);
-
+    
     try {
       global.ArangoAgency.write([[operations, preconditions]]);
     } catch (e) {
       if (e.code === 412) {
         let oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary);
         actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
-          'Primary does not have the given oldSecondary as ' +
-          'its secondary, current value: ' + oldValue);
+          'Could not change primary to secondary.')
         return;
       }
       throw e;
