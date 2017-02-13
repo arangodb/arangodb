@@ -30,6 +30,7 @@ You may use it like this: (we disable syntax highlighting here)
     @startDocuBlockInline AQLEXP_01_axplainer
     @EXAMPLE_ARANGOSH_OUTPUT{AQLEXP_01_axplainer}
     ~addIgnoreCollection("test")
+    ~db._drop("test");
     db._create("test"); 
     for (i = 0; i < 100; ++i) { db.test.save({ value: i }); }
     db.test.ensureIndex({ type: "skiplist", fields: [ "value" ] });
