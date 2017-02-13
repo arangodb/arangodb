@@ -218,7 +218,7 @@ class TraversalNode : public ExecutionNode {
   /// @brief register a filter condition on a given search depth.
   ///        If this condition is not fulfilled a traversal will abort.
   ///        The condition will contain the local variable for it's accesses.
-  void registerCondition(bool, size_t, AstNode const*);
+  void registerCondition(bool, uint64_t, AstNode const*);
 
   /// @brief register a filter condition for all search depths
   ///        If this condition is not fulfilled a traversal will abort.
@@ -328,11 +328,11 @@ class TraversalNode : public ExecutionNode {
   std::vector<AstNode const*> _globalVertexConditions;
 
   /// @brief List of all depth specific conditions for edges
-  std::unordered_map<size_t, std::unique_ptr<TraversalEdgeConditionBuilder>>
+  std::unordered_map<uint64_t, std::unique_ptr<TraversalEdgeConditionBuilder>>
       _edgeConditions;
 
   /// @brief List of all depth specific conditions for vertices
-  std::unordered_map<size_t, AstNode*> _vertexConditions;
+  std::unordered_map<uint64_t, AstNode*> _vertexConditions;
 
   /// @brief Flag if options are already prepared. After
   ///        this flag was set the node cannot be cloned

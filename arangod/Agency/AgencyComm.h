@@ -621,9 +621,11 @@ class AgencyComm {
 
   uint64_t uniqid(uint64_t, double);
 
-  bool registerCallback(std::string const& key, std::string const& endpoint);
+  AgencyCommResult registerCallback(std::string const& key,
+                                    std::string const& endpoint);
 
-  bool unregisterCallback(std::string const& key, std::string const& endpoint);
+  AgencyCommResult unregisterCallback(std::string const& key,
+                                      std::string const& endpoint);
 
   void updateEndpoints(arangodb::velocypack::Slice const&);
 

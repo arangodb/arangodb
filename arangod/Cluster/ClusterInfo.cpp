@@ -885,7 +885,14 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   // AgencyCallback for this.
   auto agencyCallback = std::make_shared<AgencyCallback>(
       ac, "Current/Databases/" + name, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+
+  auto regres = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (!regres.successful()) {
+    LOG_TOPIC(DEBUG, Logger::CLUSTER) <<
+      "Could not register call back with error: " << regres.errorCode() <<
+      " - " << regres.errorMessage();
+  }
+
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   AgencyOperation newVal("Plan/Databases/" + name,
@@ -980,7 +987,14 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+
+  auto regres = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (!regres.successful()) {
+    LOG_TOPIC(DEBUG, Logger::CLUSTER) <<
+      "Could not register call back with error: " << regres.errorCode() <<
+      " - " << regres.errorMessage();
+  }
+  
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   // Transact to agency
@@ -1136,7 +1150,14 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   auto agencyCallback = std::make_shared<AgencyCallback>(
       ac, "Current/Collections/" + databaseName + "/" + collectionID,
       dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+
+  auto regres = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (!regres.successful()) {
+    LOG_TOPIC(DEBUG, Logger::CLUSTER) <<
+      "Could not register call back with error: " << regres.errorCode() <<
+      " - " << regres.errorMessage();
+  }
+  
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   VPackBuilder builder;
@@ -1264,7 +1285,14 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+
+  auto regres = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (!regres.successful()) {
+    LOG_TOPIC(DEBUG, Logger::CLUSTER) <<
+      "Could not register call back with error: " << regres.errorCode() <<
+      " - " << regres.errorMessage();
+  }
+  
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   size_t numberOfShards = 0;
@@ -1747,7 +1775,14 @@ int ClusterInfo::ensureIndexCoordinator(
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+
+  auto regres = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (!regres.successful()) {
+    LOG_TOPIC(DEBUG, Logger::CLUSTER) <<
+      "Could not register call back with error: " << regres.errorCode() <<
+      " - " << regres.errorMessage();
+  }
+  
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   AgencyOperation newValue(key, AgencyValueOperationType::SET,
@@ -1774,6 +1809,7 @@ int ClusterInfo::ensureIndexCoordinator(
       errorMsg += trx.toJson();
       errorMsg += "ClientId: " + result._clientId + " ";
       errorMsg += " ResultCode: " + std::to_string(result.errorCode()) + " ";
+      errorMsg += " Result: " + result.errorMessage() + " ";
       errorMsg += std::string(__FILE__) + ":" + std::to_string(__LINE__);
       resultBuilder = *resBuilder;
     }
@@ -1913,7 +1949,14 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
+
+  auto regres = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  if (!regres.successful()) {
+    LOG_TOPIC(DEBUG, Logger::CLUSTER) <<
+      "Could not register call back with error: " << regres.errorCode() <<
+      " - " << regres.errorMessage();
+  }
+  
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   loadPlan();

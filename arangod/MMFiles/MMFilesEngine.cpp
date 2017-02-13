@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesEngine.h"
@@ -544,11 +545,6 @@ TRI_vocbase_t* MMFilesEngine::createDatabaseMMFiles(TRI_voc_tick_t id, arangodb:
 
   int res = 0;
   waitUntilDeletion(id, true, res);
-  
-  // //assert?!
-  // if (res != TRI_ERROR_NO_ERROR) {
-  //   THROW_ARANGO_EXCEPTION(res);
-  // }
 
   res = createDatabaseDirectory(id, name);
 
@@ -842,6 +838,29 @@ void MMFilesEngine::createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collection
   }
 }
 
+void MMFilesEngine::createIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
+                          arangodb::velocypack::Slice const& data, bool writeMarker, int& status){
+
+  status = TRI_ERROR_NO_ERROR;
+  if (!writeMarker) {
+    return;
+  }
+
+  try {
+    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX,
+                                   vocbase->id(), collectionId, data);
+
+    MMFilesWalSlotInfoCopy slotInfo =
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
+    status=slotInfo.errorCode;
+  } catch (arangodb::basics::Exception const& ex) {
+    status = ex.code();
+  } catch (...) {
+    status = TRI_ERROR_INTERNAL;
+  }
+
+};
+
 // asks the storage engine to drop the specified index and persist the deletion 
 // info. Note that physical deletion of the index must not be carried out by this call, 
 // as there may still be users of the index. It is recommended that this operation
@@ -860,6 +879,29 @@ void MMFilesEngine::dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot remove index definition in file '" << filename << "': " << TRI_errno_string(res);
   }
 }
+
+void MMFilesEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
+                          arangodb::velocypack::Slice const& data, bool writeMarker, int& error){
+
+  error = TRI_ERROR_NO_ERROR;
+  if (!writeMarker) {
+    return;
+  }
+
+  try {
+    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_INDEX,
+                                   vocbase->id(), collectionId, data);
+
+    MMFilesWalSlotInfoCopy slotInfo =
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
+    error=slotInfo.errorCode;
+  } catch (arangodb::basics::Exception const& ex) {
+    error = ex.code();
+  } catch (...) {
+    error = TRI_ERROR_INTERNAL;
+  }
+};
+
   
 void MMFilesEngine::unloadCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId) {
   signalCleanup(vocbase);

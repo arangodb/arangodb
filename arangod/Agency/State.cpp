@@ -69,6 +69,15 @@ State::State(std::string const& endpoint)
 /// Default dtor
 State::~State() {}
 
+inline static std::string timestamp() {
+  std::time_t t = std::time(nullptr);
+  char mbstr[100];
+  return
+    std::strftime(
+      mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S %Z", std::localtime(&t)) ?
+    std::string(mbstr) : std::string();
+}
+
 inline static std::string stringify(arangodb::consensus::index_t index) {
   std::ostringstream i_str;
   i_str << std::setw(20) << std::setfill('0') << index;
@@ -79,31 +88,36 @@ inline static std::string stringify(arangodb::consensus::index_t index) {
 bool State::persist(arangodb::consensus::index_t index, term_t term,
                     arangodb::velocypack::Slice const& entry,
                     std::string const& clientId) const {
+
   Builder body;
-  body.add(VPackValue(VPackValueType::Object));
-  body.add("_key", Value(stringify(index)));
-  body.add("term", Value(term));
-  body.add("request", entry);
-  body.add("clientId", Value(clientId));
-  body.close();
+  {
+    VPackObjectBuilder b(&body);
+    body.add("_key", Value(stringify(index)));
+    body.add("term", Value(term));
+    body.add("request", entry);
+    body.add("clientId", Value(clientId));
+    body.add("timestamp", Value(timestamp()));
+  }
   
   TRI_ASSERT(_vocbase != nullptr);
   auto transactionContext =
     std::make_shared<StandaloneTransactionContext>(_vocbase);
-  SingleCollectionTransaction trx(transactionContext, "log",
-                                  AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(
+    transactionContext, "log", AccessMode::Type::WRITE);
   
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
+  
   OperationResult result;
   try {
     result = trx.insert("log", body.slice(), _options);
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to persist log entry:"
-                                   << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "Failed to persist log entry:" << e.what();
   }
+  
   res = trx.finish(result.code);
 
   return (res == TRI_ERROR_NO_ERROR);

@@ -42,6 +42,7 @@ install:
 before_script: "bash -c Installation/travisCI/before_script.sh"
 script: "bash -c Installation/travisCI/build.sh"
 after_failure: "bash -c Installation/travisCI/after_failure.sh"
+after_script: "bash -c Installation/travisCI/after_script.sh"
 
 notifications:
   slack:

@@ -499,7 +499,7 @@ if (USE_MAINTAINER_MODE)
   find_program(AWK_EXECUTABLE awk)
 endif ()
 
-include(ArangoDBInstall)
+include(debugInformation)
 find_program(FILE_EXECUTABLE file)
 detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
 
@@ -838,6 +838,7 @@ if (MSVC)
   include(generate_product_version)
 endif()
 
+include(ArangoDBInstall)
 if (NOT(SKIP_PACKAGING))
   include(packages/packages)
 endif()

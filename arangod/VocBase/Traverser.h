@@ -184,7 +184,7 @@ class Traverser {
                            std::vector<arangodb::velocypack::Slice>&);
 
     virtual bool getSingleVertex(arangodb::velocypack::Slice,
-                                 arangodb::velocypack::Slice, size_t,
+                                 arangodb::velocypack::Slice, uint64_t,
                                  arangodb::velocypack::Slice&);
 
     virtual void reset(arangodb::velocypack::Slice);
@@ -208,7 +208,7 @@ class Traverser {
                    std::vector<arangodb::velocypack::Slice>&) override;
 
     bool getSingleVertex(arangodb::velocypack::Slice,
-                         arangodb::velocypack::Slice, size_t,
+                         arangodb::velocypack::Slice, uint64_t,
                          arangodb::velocypack::Slice&) override;
 
     void reset(arangodb::velocypack::Slice) override;
@@ -268,7 +268,7 @@ class Traverser {
   ///        Returns true if the vertex passes filtering conditions
 
   virtual bool getSingleVertex(arangodb::velocypack::Slice,
-                               arangodb::velocypack::Slice, size_t,
+                               arangodb::velocypack::Slice, uint64_t,
                                arangodb::velocypack::Slice&) = 0;
  public:
  
@@ -329,9 +329,9 @@ class Traverser {
   bool hasMore() { return !_done; }
 
   bool edgeMatchesConditions(arangodb::velocypack::Slice,
-                             arangodb::velocypack::Slice, size_t, size_t);
+                             arangodb::velocypack::Slice, uint64_t, size_t);
 
-  bool vertexMatchesConditions(arangodb::velocypack::Slice, size_t);
+  bool vertexMatchesConditions(arangodb::velocypack::Slice, uint64_t);
 
   void allowOptimizedNeighbors();
 

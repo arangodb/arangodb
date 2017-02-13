@@ -56,8 +56,9 @@ class IniFileParser {
         "^[ \t]*(([-_A-Za-z0-9]*\\.)?[-_A-Za-z0-9]*)[ \t]*=[ \t]*(.*?)?[ \t]*$",
         std::regex::ECMAScript);
     // an include line
-    _matchers.include = std::regex(
-        "^[ \t]*@include[ \t]*([-_A-Za-z0-9/\\.]*)[ \t]*$", std::regex::ECMAScript);
+    _matchers.include =
+        std::regex("^[ \t]*@include[ \t]*([-_A-Za-z0-9/\\.]*)[ \t]*$",
+                   std::regex::ECMAScript);
   }
 
   // parse a config file. returns true if all is well, false otherwise
@@ -108,10 +109,24 @@ class IniFileParser {
         isEnterprise = true;
       } else if (std::regex_match(line, match, _matchers.include)) {
         // found include
-        std::string option;
-        std::string value(match[1].str());
+        std::string include(match[1].str());
 
-        _includes.emplace_back(value);
+        if (!basics::StringUtils::isSuffix(include, ".conf")) {
+          include += ".conf";
+        }
+
+        if (_seen.find(include) != _seen.end()) {
+          LOG_TOPIC(FATAL, Logger::CONFIG) << "recursive include of file '"
+                                           << include << "'";
+          FATAL_ERROR_EXIT();
+        }
+
+        _seen.insert(include);
+
+        LOG_TOPIC(DEBUG, Logger::CONFIG) << "reading include file '" << include
+                                         << "'";
+
+        parse(include);
       } else if (std::regex_match(line, match, _matchers.assignment)) {
         // found assignment
         std::string option;
@@ -151,12 +166,9 @@ class IniFileParser {
     return true;
   }
 
-  // seen includes
-  std::vector<std::string> const& includes() const { return _includes; }
-
  private:
   ProgramOptions* _options;
-  std::vector<std::string> _includes;
+  std::set<std::string> _seen;
 
   struct {
     std::regex comment;

@@ -46,11 +46,15 @@ class LogTopic {
 
   LogTopic(std::string const& name, LogLevel level);
 
-  LogTopic(LogTopic const& that) : _id(that._id), _name(that._name), _displayName(that._displayName) {
+  LogTopic(LogTopic const& that)
+      : _id(that._id), _name(that._name), _displayName(that._displayName) {
     _level.store(that._level, std::memory_order_relaxed);
   }
 
-  LogTopic(LogTopic&& that) noexcept : _id(that._id), _name(std::move(that._name)), _displayName(std::move(that._displayName)) {
+  LogTopic(LogTopic&& that) noexcept
+      : _id(that._id),
+        _name(std::move(that._name)),
+        _displayName(std::move(that._displayName)) {
     _level.store(that._level, std::memory_order_relaxed);
   }
 

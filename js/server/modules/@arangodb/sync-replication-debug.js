@@ -40,8 +40,4 @@ exports.setup = function() {
     }, keyValue);
     return value;
   };
-  global.ArangoAgency.lockRead = function() { return true; };
-  global.ArangoAgency.lockWrite = function() { return true; };
-  global.ArangoAgency.unlockRead = function() { return true; };
-  global.ArangoAgency.unlockWrite = function() { return true; };
 };
