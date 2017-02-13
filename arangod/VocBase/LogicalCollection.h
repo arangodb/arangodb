@@ -395,10 +395,13 @@ class LogicalCollection {
                         TRI_voc_rid_t newRevisionId,
                         velocypack::Slice const& newDoc);
 
+  // TODO MOVE ME
   int beginReadTimed(bool useDeadlockDetector, double timeout = 0.0);
   int beginWriteTimed(bool useDeadlockDetector, double timeout = 0.0);
   int endRead(bool useDeadlockDetector);
   int endWrite(bool useDeadlockDetector);
+  // END TODO MOVE ME
+
   bool readDocument(transaction::Methods*, ManagedDocumentResult& result, DocumentIdentifierToken const& token);
   bool readDocumentConditional(transaction::Methods*, ManagedDocumentResult& result, DocumentIdentifierToken const& token, TRI_voc_tick_t maxTick, bool excludeWal);
 
@@ -445,12 +448,15 @@ class LogicalCollection {
   bool openIndex(velocypack::Slice const&, transaction::Methods*);
 
   // SECTION: Index access (local only)
+  // Needs to be moved to SE specific Part
+ public:
   int lookupDocument(transaction::Methods*, VPackSlice const,
                      ManagedDocumentResult& result);
 
   int checkRevision(transaction::Methods*, TRI_voc_rid_t expected,
                     TRI_voc_rid_t found);
 
+ private:
   int updateDocument(transaction::Methods*, TRI_voc_rid_t oldRevisionId,
                      velocypack::Slice const& oldDoc,
                      TRI_voc_rid_t newRevisionId,
@@ -603,6 +609,7 @@ class LogicalCollection {
   mutable basics::ReadWriteLock
       _lock;  // lock protecting the status and name
 
+  // TODO MOVE ME
   mutable basics::ReadWriteLock
       _idxLock;  // lock protecting the indexes
 

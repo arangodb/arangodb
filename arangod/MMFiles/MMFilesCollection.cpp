@@ -1481,4 +1481,233 @@ int MMFilesCollection::insertDocument(arangodb::transaction::Methods* trx,
   return static_cast<MMFilesTransactionState*>(trx->state())->addOperation(revisionId, operation, marker, waitForSync);
 }
 
+int MMFilesCollection::remove(arangodb::transaction::Methods* trx, VPackSlice const slice,
+                              ManagedDocumentResult& previous,
+                              OperationOptions& options,
+                              TRI_voc_tick_t& resultMarkerTick, bool lock,
+                              TRI_voc_rid_t const& revisionId,
+                              TRI_voc_rid_t& prevRev,
+                              VPackSlice const toRemove) {
+  prevRev = 0;
 
+  TRI_IF_FAILURE("RemoveDocumentNoMarker") {
+    // test what happens when no marker can be created
+    return TRI_ERROR_DEBUG;
+  }
+
+  TRI_IF_FAILURE("RemoveDocumentNoMarkerExcept") {
+    // test what happens if no marker can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  // create marker
+  MMFilesCrudMarker removeMarker(
+      TRI_DF_MARKER_VPACK_REMOVE,
+      static_cast<MMFilesTransactionState*>(trx->state())->idForMarker(),
+      toRemove);
+
+  MMFilesWalMarker const* marker;
+  if (options.recoveryMarker == nullptr) {
+    marker = &removeMarker;
+  } else {
+    marker = options.recoveryMarker;
+  }
+
+  TRI_IF_FAILURE("RemoveDocumentNoLock") {
+    // test what happens if no lock can be acquired
+    return TRI_ERROR_DEBUG;
+  }
+
+  VPackSlice key;
+  if (slice.isString()) {
+    key = slice;
+  } else {
+    key = slice.get(StaticStrings::KeyString);
+  }
+  TRI_ASSERT(!key.isNone());
+
+  MMFilesDocumentOperation operation(_logicalCollection,
+                                     TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+
+  bool const useDeadlockDetector =
+      (lock && !trx->isSingleOperationTransaction());
+  arangodb::CollectionWriteLocker collectionLocker(_logicalCollection,
+                                                   useDeadlockDetector, lock);
+
+  // get the previous revision
+  int res = _logicalCollection->lookupDocument(trx, key, previous);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  uint8_t const* vpack = previous.vpack();
+  VPackSlice oldDoc(vpack);
+  TRI_voc_rid_t oldRevisionId = arangodb::transaction::Methods::extractRevFromDocument(oldDoc);
+  prevRev = oldRevisionId;
+
+  // Check old revision:
+  if (!options.ignoreRevs && slice.isObject()) {
+    TRI_voc_rid_t expectedRevisionId = TRI_ExtractRevisionId(slice);
+    int res = _logicalCollection->checkRevision(trx, expectedRevisionId,
+                                                oldRevisionId);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+
+  // we found a document to remove
+  try {
+    operation.setRevisions(DocumentDescriptor(oldRevisionId, oldDoc.begin()),
+                           DocumentDescriptor());
+
+    // delete from indexes
+    res = deleteSecondaryIndexes(trx, oldRevisionId, oldDoc, false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    res = deletePrimaryIndex(trx, oldRevisionId, oldDoc);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    operation.indexed();
+
+    TRI_IF_FAILURE("RemoveDocumentNoOperation") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    
+    try {
+      removeRevision(oldRevisionId, true);
+    } catch (...) {
+    }
+
+    TRI_IF_FAILURE("RemoveDocumentNoOperationExcept") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    res =
+        static_cast<MMFilesTransactionState*>(trx->state())
+            ->addOperation(revisionId, operation, marker, options.waitForSync);
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
+    res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    operation.revert(trx);
+  } else {
+    // store the tick that was used for removing the document
+    resultMarkerTick = operation.tick();
+  }
+  return res;
+}
+
+/// @brief removes a document or edge, fast path function for database documents
+int MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
+                                      TRI_voc_rid_t oldRevisionId,
+                                      VPackSlice const oldDoc,
+                                      OperationOptions& options,
+                                      TRI_voc_tick_t& resultMarkerTick,
+                                      bool lock,
+                                      TRI_voc_rid_t const& revisionId,
+                                      VPackSlice const toRemove) {
+  TRI_IF_FAILURE("RemoveDocumentNoMarker") {
+    // test what happens when no marker can be created
+    return TRI_ERROR_DEBUG;
+  }
+
+  TRI_IF_FAILURE("RemoveDocumentNoMarkerExcept") {
+    // test what happens if no marker can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  // create marker
+  MMFilesCrudMarker removeMarker(
+      TRI_DF_MARKER_VPACK_REMOVE,
+      static_cast<MMFilesTransactionState*>(trx->state())->idForMarker(),
+      toRemove);
+
+  MMFilesWalMarker const* marker = &removeMarker;
+
+  TRI_IF_FAILURE("RemoveDocumentNoLock") {
+    // test what happens if no lock can be acquired
+    return TRI_ERROR_DEBUG;
+  }
+
+  VPackSlice key = arangodb::transaction::Methods::extractKeyFromDocument(oldDoc);
+  TRI_ASSERT(!key.isNone());
+
+  MMFilesDocumentOperation operation(_logicalCollection,
+                                     TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+
+  bool const useDeadlockDetector =
+      (lock && !trx->isSingleOperationTransaction());
+  arangodb::CollectionWriteLocker collectionLocker(_logicalCollection,
+                                                   useDeadlockDetector, lock);
+
+  operation.setRevisions(DocumentDescriptor(oldRevisionId, oldDoc.begin()),
+                         DocumentDescriptor());
+
+  // delete from indexes
+  int res;
+  try {
+    res = deleteSecondaryIndexes(trx, oldRevisionId, oldDoc, false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    res = deletePrimaryIndex(trx, oldRevisionId, oldDoc);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    operation.indexed();
+  
+    try {
+      removeRevision(oldRevisionId, true);
+    } catch (...) {
+    }
+
+    TRI_IF_FAILURE("RemoveDocumentNoOperation") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    TRI_IF_FAILURE("RemoveDocumentNoOperationExcept") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    res =
+        static_cast<MMFilesTransactionState*>(trx->state())
+            ->addOperation(revisionId, operation, marker, options.waitForSync);
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
+    res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    operation.revert(trx);
+  } else {
+    // store the tick that was used for removing the document
+    resultMarkerTick = operation.tick();
+  }
+
+  return res;
+
+}
