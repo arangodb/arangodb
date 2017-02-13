@@ -24,6 +24,7 @@
 #include "Job.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 bool arangodb::consensus::compareServerLists(Slice plan, Slice current) {
   if (!plan.isArray() || !current.isArray()) {

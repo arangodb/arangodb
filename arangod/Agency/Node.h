@@ -27,6 +27,9 @@
 #include "AgencyCommon.h"
 
 #include <velocypack/Buffer.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <type_traits>
@@ -49,8 +52,6 @@ enum Operation {
   ERASE,
   REPLACE
 };
-
-using namespace arangodb::velocypack;
 
 class StoreException : public std::exception {
  public:
@@ -161,10 +162,10 @@ class Node {
   bool handle(arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
-  void toBuilder(Builder&, bool showHidden = false) const;
+  void toBuilder(arangodb::velocypack::Builder&, bool showHidden = false) const;
 
   /// @brief Create Builder representing this store
-  void toObject(Builder&, bool showHidden = false) const;
+  void toObject(arangodb::velocypack::Builder&, bool showHidden = false) const;
 
   /// @brief Access children
   Children& children();
@@ -173,10 +174,10 @@ class Node {
   Children const& children() const;
 
   /// @brief Create slice from value
-  Slice slice() const;
+  arangodb::velocypack::Slice slice() const;
 
   /// @brief Get value type
-  ValueType valueType() const;
+  arangodb::velocypack::ValueType valueType() const;
 
   /// @brief Add observer for this node
   bool addObserver(std::string const&);
@@ -221,7 +222,7 @@ class Node {
   std::string getString() const;
 
   /// @brief Get array value
-  Slice getArray() const;
+  arangodb::velocypack::Slice getArray() const;
 
  protected:
   /// @brief Add time to live entry
@@ -237,8 +238,8 @@ class Node {
   Store* _store;           ///< @brief Store
   Children _children;      ///< @brief child nodes
   TimePoint _ttl;          ///< @brief my expiry
-  std::vector<Buffer<uint8_t>> _value; ///< @brief my value
-  mutable Buffer<uint8_t> _vecBuf;
+  std::vector<arangodb::velocypack::Buffer<uint8_t>> _value; ///< @brief my value
+  mutable arangodb::velocypack::Buffer<uint8_t> _vecBuf;
   mutable bool _vecBufDirty;
   bool _isArray;
 };
