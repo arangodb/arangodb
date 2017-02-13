@@ -282,12 +282,8 @@ void ClusterFeature::prepare() {
 
   ServerState::instance()->setLocalInfo(_myLocalInfo);
 
-  if (!_myId.empty()) {
-    ServerState::instance()->setId(_myId);
-  }
-
-  if (!ServerState::instance()->registerWithRole(_requestedRole, _myAddress)) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Couldn't register at agency.";
+  if (!ServerState::instance()->integrateIntoCluster(_requestedRole, _myAddress, _myId)) {
+    LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't integrate into cluster.";
     FATAL_ERROR_EXIT();
   }
 

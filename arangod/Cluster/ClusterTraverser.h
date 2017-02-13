@@ -65,7 +65,7 @@ class ClusterTraverser final : public Traverser {
   ///        Returns true if the vertex passes filtering conditions
 
   bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::Slice,
-                       size_t, arangodb::velocypack::Slice&) override;
+                       uint64_t, arangodb::velocypack::Slice&) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of a vertex into an AQLValue

@@ -49,6 +49,7 @@ FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit)
 To get the nearest two locations:
 
 @EXAMPLE_ARANGOSH_OUTPUT{007_collectionNear}
+~ db._drop("geo");
 ~ db._create("geo");
   db.geo.ensureIndex({ type: "geo", fields: [ "loc" ] });
   |for (var i = -90;  i <= 90;  i += 10) { 

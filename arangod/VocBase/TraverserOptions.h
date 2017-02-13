@@ -98,8 +98,8 @@ struct TraverserOptions {
   arangodb::Transaction* _trx;
  protected:
   std::vector<LookupInfo> _baseLookupInfos;
-  std::unordered_map<size_t, std::vector<LookupInfo>> _depthLookupInfo;
-  std::unordered_map<size_t, aql::Expression*> _vertexExpressions;
+  std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
+  std::unordered_map<uint64_t, aql::Expression*> _vertexExpressions;
   aql::Expression* _baseVertexExpression;
   aql::Variable const* _tmpVar;
   aql::FixedVarExpressionContext* _ctx;
@@ -151,15 +151,15 @@ struct TraverserOptions {
   ///        for DBServer traverser engines.
   void buildEngineInfo(arangodb::velocypack::Builder&) const;
 
-  bool vertexHasFilter(size_t) const;
+  bool vertexHasFilter(uint64_t) const;
 
   bool evaluateEdgeExpression(arangodb::velocypack::Slice,
-                              arangodb::velocypack::Slice, size_t,
+                              arangodb::velocypack::Slice, uint64_t,
                               size_t) const;
 
-  bool evaluateVertexExpression(arangodb::velocypack::Slice, size_t) const;
+  bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t) const;
 
-  EdgeCursor* nextCursor(ManagedDocumentResult*, arangodb::velocypack::Slice, size_t) const;
+  EdgeCursor* nextCursor(ManagedDocumentResult*, arangodb::velocypack::Slice, uint64_t) const;
 
   void clearVariableValues();
 
@@ -171,10 +171,10 @@ struct TraverserOptions {
 
  private:
   EdgeCursor* nextCursorLocal(ManagedDocumentResult*,
-                              arangodb::velocypack::Slice, size_t,
+                              arangodb::velocypack::Slice, uint64_t,
                               std::vector<LookupInfo>&) const;
 
-  EdgeCursor* nextCursorCoordinator(arangodb::velocypack::Slice, size_t) const;
+  EdgeCursor* nextCursorCoordinator(arangodb::velocypack::Slice, uint64_t) const;
 };
 
 }

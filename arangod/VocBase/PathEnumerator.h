@@ -222,10 +222,10 @@ class BreadthFirstEnumerator final : public PathEnumerator {
   /// @brief Marker for the search depth. Used to abort searching.
   //////////////////////////////////////////////////////////////////////////////
 
-   size_t _currentDepth;
+   uint64_t _currentDepth;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief position in _toSerach. If this is >= _toSearch.size() we are done
+  /// @brief position in _toSearch. If this is >= _toSearch.size() we are done
   ///        with this depth.
   //////////////////////////////////////////////////////////////////////////////
 
@@ -288,7 +288,7 @@ class NeighborsEnumerator final : public PathEnumerator {
       _lastDepth;
 
   std::unordered_set<arangodb::basics::VPackHashedSlice, arangodb::basics::VelocyPackHelper::VPackHashedStringHash, arangodb::basics::VelocyPackHelper::VPackHashedStringEqual>::iterator _iterator;
-  size_t _searchDepth;
+  uint64_t _searchDepth;
  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Vector storing the position at current search depth

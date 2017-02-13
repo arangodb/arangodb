@@ -2095,3 +2095,4 @@ exports.executePlanForDatabases = executePlanForDatabases;
 exports.executePlanForCollections = executePlanForCollections;
 exports.updateCurrentForDatabases = updateCurrentForDatabases;
 exports.updateCurrentForCollections = updateCurrentForCollections;
+exports.fetchKey = fetchKey;
