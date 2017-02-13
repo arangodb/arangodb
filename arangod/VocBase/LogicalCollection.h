@@ -458,11 +458,8 @@ class LogicalCollection {
                      velocypack::Slice const& newDoc,
                      MMFilesDocumentOperation&, MMFilesWalMarker const*,
                      bool& waitForSync);
-  int insertDocument(transaction::Methods*, TRI_voc_rid_t revisionId,
-                     velocypack::Slice const&,
-                     MMFilesDocumentOperation&, MMFilesWalMarker const*,
-                     bool& waitForSync);
 
+  // TODO REMOVE HERE is now in SE Collection
   int insertPrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
                          velocypack::Slice const&);
 
@@ -476,6 +473,7 @@ class LogicalCollection {
   int deleteSecondaryIndexes(transaction::Methods*, TRI_voc_rid_t revisionId,
                              velocypack::Slice const&,
                              bool isRollback);
+  // END OF REMOVE
 
   // SECTION: Document pre commit preperation (only local)
 
@@ -586,10 +584,13 @@ class LogicalCollection {
 
   TRI_vocbase_t* _vocbase;
 
-  // SECTION: Local Only
+  // SECTION: Local Only has to be moved to PhysicalCollection
+ public:
+  // TODO MOVE ME
   size_t _cleanupIndexes;
   size_t _persistentIndexes;
   std::string _path;
+ protected:
 
   std::unique_ptr<PhysicalCollection> _physical;
 

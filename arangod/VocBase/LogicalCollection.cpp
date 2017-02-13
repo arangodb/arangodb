@@ -2026,93 +2026,8 @@ int LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
     newSlice = slice;
   }
 
-  // create marker
-  MMFilesCrudMarker insertMarker(
-      TRI_DF_MARKER_VPACK_DOCUMENT,
-      static_cast<MMFilesTransactionState*>(trx->state())->idForMarker(), newSlice);
-
-  MMFilesWalMarker const* marker;
-  if (options.recoveryMarker == nullptr) {
-    marker = &insertMarker;
-  } else {
-    marker = options.recoveryMarker;
-  }
-
-  // now insert into indexes
-  TRI_IF_FAILURE("InsertDocumentNoLock") {
-    // test what happens if no lock can be acquired
-    return TRI_ERROR_DEBUG;
-  }
-
-  MMFilesDocumentOperation operation(this, TRI_VOC_DOCUMENT_OPERATION_INSERT);
-
-  TRI_IF_FAILURE("InsertDocumentNoHeader") {
-    // test what happens if no header can be acquired
-    return TRI_ERROR_DEBUG;
-  }
-
-  TRI_IF_FAILURE("InsertDocumentNoHeaderExcept") {
-    // test what happens if no header can be acquired
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  TRI_voc_rid_t revisionId = transaction::Methods::extractRevFromDocument(newSlice);
-  VPackSlice doc(marker->vpack());
-  operation.setRevisions(DocumentDescriptor(),
-                         DocumentDescriptor(revisionId, doc.begin()));
-
-  try {
-    insertRevision(revisionId, marker->vpack(), 0, true);
-    // and go on with the insertion...
-  } catch (basics::Exception const& ex) {
-    return ex.code();
-  } catch (std::bad_alloc const&) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  } catch (...) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  {
-    // use lock?
-    bool const useDeadlockDetector =
-        (lock && !trx->isSingleOperationTransaction());
-    try {
-      arangodb::CollectionWriteLocker collectionLocker(
-          this, useDeadlockDetector, lock);
-
-      try {
-        // insert into indexes
-        res = insertDocument(trx, revisionId, doc, operation, marker,
-                             options.waitForSync);
-      } catch (basics::Exception const& ex) {
-        res = ex.code();
-      } catch (std::bad_alloc const&) {
-        res = TRI_ERROR_OUT_OF_MEMORY;
-      } catch (...) {
-        res = TRI_ERROR_INTERNAL;
-      }
-    } catch (...) {
-      // the collectionLocker may have thrown in its constructor...
-      // if it did, then we need to manually remove the revision id
-      // from the list of revisions
-      try {
-        removeRevision(revisionId, false);
-      } catch (...) {
-      }
-      throw;
-    }
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      operation.revert(trx);
-    }
-  }
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    readRevision(trx, result, revisionId);
-
-    // store the tick that was used for writing the document
-    resultMarkerTick = operation.tick();
-  }
+  res = getPhysical()->insert(trx, newSlice, result, options, resultMarkerTick,
+                              lock);
 
   return res;
 }
@@ -3116,42 +3031,6 @@ int LogicalCollection::updateDocument(
   }
 
   return static_cast<MMFilesTransactionState*>(trx->state())->addOperation(newRevisionId, operation, marker, waitForSync);
-}
-
-/// @brief insert a document, low level worker
-/// the caller must make sure the write lock on the collection is held
-int LogicalCollection::insertDocument(transaction::Methods* trx,
-                                      TRI_voc_rid_t revisionId,
-                                      VPackSlice const& doc,
-                                      MMFilesDocumentOperation& operation,
-                                      MMFilesWalMarker const* marker,
-                                      bool& waitForSync) {
-  // insert into primary index first
-  int res = insertPrimaryIndex(trx, revisionId, doc);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // insert has failed
-    return res;
-  }
-
-  // insert into secondary indexes
-  res = insertSecondaryIndexes(trx, revisionId, doc, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    deleteSecondaryIndexes(trx, revisionId, doc, true);
-    deletePrimaryIndex(trx, revisionId, doc);
-    return res;
-  }
-
-  operation.indexed();
-
-  TRI_IF_FAILURE("InsertDocumentNoOperation") { return TRI_ERROR_DEBUG; }
-
-  TRI_IF_FAILURE("InsertDocumentNoOperationExcept") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  return static_cast<MMFilesTransactionState*>(trx->state())->addOperation(revisionId, operation, marker, waitForSync);
 }
 
 /// @brief creates a new entry in the primary index

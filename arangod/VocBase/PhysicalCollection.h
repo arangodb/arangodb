@@ -33,12 +33,14 @@
 struct TRI_df_marker_t;
 
 namespace arangodb {
-class Ditches;
-class LogicalCollection;
 namespace transaction {
 class Methods;
 }
-;
+
+class Ditches;
+class LogicalCollection;
+class ManagedDocumentResult;
+struct OperationOptions;
 
 class PhysicalCollection {
  protected:
@@ -105,6 +107,12 @@ class PhysicalCollection {
   virtual bool updateRevisionConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal) = 0;
   virtual void removeRevision(TRI_voc_rid_t revisionId, bool updateStats) = 0;
   
+  virtual int insert(arangodb::transaction::Methods* trx,
+                     arangodb::velocypack::Slice const newSlice,
+                     arangodb::ManagedDocumentResult& result,
+                     OperationOptions& options,
+                     TRI_voc_tick_t& resultMarkerTick, bool lock) = 0;
+
  protected:
   LogicalCollection* _logicalCollection;
 };
