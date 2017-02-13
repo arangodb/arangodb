@@ -30,6 +30,7 @@
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -144,7 +145,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       VPackSlice slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
-      state->documentOperations[collectionId][TransactionMethods::extractKeyFromDocument(slice).copyString()] = marker;
+      state->documentOperations[collectionId][transaction::Methods::extractKeyFromDocument(slice).copyString()] = marker;
       state->operationsCount[collectionId]++;
       break;
     }
@@ -575,7 +576,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     
     VPackSlice keySlice;
     TRI_voc_rid_t revisionId = 0;
-    TransactionMethods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+    transaction::Methods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
     bool wasAdjusted = false;
     MMFilesSimpleIndexElement element = collection->primaryIndex()->lookupKey(&trx, keySlice);
@@ -607,7 +608,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     
     VPackSlice keySlice;
     TRI_voc_rid_t revisionId = 0;
-    TransactionMethods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+    transaction::Methods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
     MMFilesSimpleIndexElement found = collection->primaryIndex()->lookupKey(&trx, keySlice);
 
@@ -678,7 +679,7 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
                << collection->name() << "'";
     updateDatafileStatistics(collection, cache);
 
-    collection->decreaseUncollectedLogfileEntries(cache->totalOperationsCount);
+    static_cast<arangodb::MMFilesCollection*>(collection->getPhysical())->decreaseUncollectedLogfileEntries(cache->totalOperationsCount);
 
     res = TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {

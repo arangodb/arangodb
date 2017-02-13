@@ -34,7 +34,7 @@
 #include "Enterprise/Cluster/SmartGraphTraverser.h"
 #endif
 #include "Utils/OperationCursor.h"
-#include "Utils/TransactionMethods.h"
+#include "Transaction/Methods.h"
 #include "V8/v8-globals.h"
 #include "VocBase/SingleServerTraverser.h"
 #include "VocBase/ticks.h"

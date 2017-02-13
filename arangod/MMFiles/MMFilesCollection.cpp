@@ -43,7 +43,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Utils/TransactionMethods.h"
+#include "Transaction/Methods.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -76,7 +76,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
                                                         MMFilesCollection::OpenIteratorState* state) {
   LogicalCollection* collection = state->_collection;
   MMFilesCollection* c = static_cast<MMFilesCollection*>(collection->getPhysical());
-  TransactionMethods* trx = state->_trx;
+  transaction::Methods* trx = state->_trx;
   TRI_ASSERT(trx != nullptr);
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
@@ -85,7 +85,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
   VPackSlice keySlice;
   TRI_voc_rid_t revisionId;
 
-  TransactionMethods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+  transaction::Methods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
   c->setRevision(revisionId, false);
 
@@ -172,14 +172,14 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* m
                                                         MMFilesCollection::OpenIteratorState* state) {
   LogicalCollection* collection = state->_collection;
   MMFilesCollection* c = static_cast<MMFilesCollection*>(collection->getPhysical());
-  TransactionMethods* trx = state->_trx;
+  transaction::Methods* trx = state->_trx;
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
   
   VPackSlice keySlice;
   TRI_voc_rid_t revisionId;
 
-  TransactionMethods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+  transaction::Methods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
   c->setRevision(revisionId, false);
   if (state->_trackKeys) {
@@ -299,7 +299,11 @@ bool MMFilesCollection::OpenIterator(TRI_df_marker_t const* marker, MMFilesColle
 }
 
 MMFilesCollection::MMFilesCollection(LogicalCollection* collection)
-    : PhysicalCollection(collection), _ditches(collection), _initialCount(0), _lastRevision(0) {}
+    : PhysicalCollection(collection)
+    , _ditches(collection)
+    , _initialCount(0), _lastRevision(0)
+    , _uncollectedLogfileEntries(0)
+    {}
 
 MMFilesCollection::~MMFilesCollection() { 
   try {
@@ -1092,7 +1096,7 @@ void MMFilesCollection::finishCompaction() {
 }
 
 /// @brief iterate all markers of the collection
-int MMFilesCollection::iterateMarkersOnLoad(TransactionMethods* trx) {
+int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
   // initialize state for iteration
   OpenIteratorState openState(_logicalCollection, trx);
 
@@ -1138,7 +1142,7 @@ int MMFilesCollection::iterateMarkersOnLoad(TransactionMethods* trx) {
   return TRI_ERROR_NO_ERROR;
 }
 
-int MMFilesCollection::insert(TransactionMethods* trx,
+int MMFilesCollection::insert(transaction::Methods* trx,
                               VPackSlice const newSlice,
                               ManagedDocumentResult& result,
                               OperationOptions& options,
@@ -1175,7 +1179,7 @@ int MMFilesCollection::insert(TransactionMethods* trx,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  TRI_voc_rid_t revisionId = TransactionMethods::extractRevFromDocument(newSlice);
+  TRI_voc_rid_t revisionId = transaction::Methods::extractRevFromDocument(newSlice);
   VPackSlice doc(marker->vpack());
   operation.setRevisions(DocumentDescriptor(),
                          DocumentDescriptor(revisionId, doc.begin()));
@@ -1239,6 +1243,11 @@ int MMFilesCollection::insert(TransactionMethods* trx,
     resultMarkerTick = operation.tick();
   }
   return res;
+}
+
+bool MMFilesCollection::isFullyCollected() const {
+  int64_t uncollected = _uncollectedLogfileEntries.load();
+  return (uncollected == 0);
 }
 
 MMFilesDocumentPosition MMFilesCollection::lookupRevision(TRI_voc_rid_t revisionId) const {
@@ -1319,7 +1328,7 @@ void MMFilesCollection::removeRevision(TRI_voc_rid_t revisionId, bool updateStat
 }
 
 /// @brief creates a new entry in the primary index
-int MMFilesCollection::insertPrimaryIndex(TransactionMethods* trx,
+int MMFilesCollection::insertPrimaryIndex(transaction::Methods* trx,
                                           TRI_voc_rid_t revisionId,
                                           VPackSlice const& doc) {
   TRI_IF_FAILURE("InsertPrimaryIndex") { return TRI_ERROR_DEBUG; }
@@ -1329,7 +1338,7 @@ int MMFilesCollection::insertPrimaryIndex(TransactionMethods* trx,
 }
 
 /// @brief deletes an entry from the primary index
-int MMFilesCollection::deletePrimaryIndex(arangodb::TransactionMethods* trx,
+int MMFilesCollection::deletePrimaryIndex(arangodb::transaction::Methods* trx,
                                           TRI_voc_rid_t revisionId,
                                           VPackSlice const& doc) {
   TRI_IF_FAILURE("DeletePrimaryIndex") { return TRI_ERROR_DEBUG; }
@@ -1338,7 +1347,7 @@ int MMFilesCollection::deletePrimaryIndex(arangodb::TransactionMethods* trx,
 }
 
 /// @brief creates a new entry in the secondary indexes
-int MMFilesCollection::insertSecondaryIndexes(arangodb::TransactionMethods* trx,
+int MMFilesCollection::insertSecondaryIndexes(arangodb::transaction::Methods* trx,
                                               TRI_voc_rid_t revisionId,
                                               VPackSlice const& doc,
                                               bool isRollback) {
@@ -1384,7 +1393,7 @@ int MMFilesCollection::insertSecondaryIndexes(arangodb::TransactionMethods* trx,
 }
 
 /// @brief deletes an entry from the secondary indexes
-int MMFilesCollection::deleteSecondaryIndexes(arangodb::TransactionMethods* trx,
+int MMFilesCollection::deleteSecondaryIndexes(arangodb::transaction::Methods* trx,
                                               TRI_voc_rid_t revisionId,
                                               VPackSlice const& doc,
                                               bool isRollback) {
@@ -1428,7 +1437,7 @@ int MMFilesCollection::deleteSecondaryIndexes(arangodb::TransactionMethods* trx,
 ///        This function guarantees all or nothing,
 ///        If it returns NO_ERROR all indexes are filled.
 ///        If it returns an error no documents are inserted
-int MMFilesCollection::insertIndexes(arangodb::TransactionMethods* trx,
+int MMFilesCollection::insertIndexes(arangodb::transaction::Methods* trx,
                                      TRI_voc_rid_t revisionId,
                                      VPackSlice const& doc) {
   // insert into primary index first
@@ -1451,7 +1460,7 @@ int MMFilesCollection::insertIndexes(arangodb::TransactionMethods* trx,
 
 /// @brief insert a document, low level worker
 /// the caller must make sure the write lock on the collection is held
-int MMFilesCollection::insertDocument(arangodb::TransactionMethods* trx,
+int MMFilesCollection::insertDocument(arangodb::transaction::Methods* trx,
                                       TRI_voc_rid_t revisionId,
                                       VPackSlice const& doc,
                                       MMFilesDocumentOperation& operation,
@@ -1472,7 +1481,7 @@ int MMFilesCollection::insertDocument(arangodb::TransactionMethods* trx,
   return static_cast<MMFilesTransactionState*>(trx->state())->addOperation(revisionId, operation, marker, waitForSync);
 }
 
-int MMFilesCollection::remove(TransactionMethods* trx, VPackSlice const slice,
+int MMFilesCollection::remove(arangodb::transaction::Methods* trx, VPackSlice const slice,
                               ManagedDocumentResult& previous,
                               OperationOptions& options,
                               TRI_voc_tick_t& resultMarkerTick, bool lock,
@@ -1534,7 +1543,7 @@ int MMFilesCollection::remove(TransactionMethods* trx, VPackSlice const slice,
 
   uint8_t const* vpack = previous.vpack();
   VPackSlice oldDoc(vpack);
-  TRI_voc_rid_t oldRevisionId = TransactionMethods::extractRevFromDocument(oldDoc);
+  TRI_voc_rid_t oldRevisionId = arangodb::transaction::Methods::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
 
   // Check old revision:
@@ -1604,7 +1613,7 @@ int MMFilesCollection::remove(TransactionMethods* trx, VPackSlice const slice,
 }
 
 /// @brief removes a document or edge, fast path function for database documents
-int MMFilesCollection::removeFastPath(TransactionMethods* trx,
+int MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
                                       TRI_voc_rid_t oldRevisionId,
                                       VPackSlice const oldDoc,
                                       OperationOptions& options,
@@ -1635,7 +1644,7 @@ int MMFilesCollection::removeFastPath(TransactionMethods* trx,
     return TRI_ERROR_DEBUG;
   }
 
-  VPackSlice key = TransactionMethods::extractKeyFromDocument(oldDoc);
+  VPackSlice key = arangodb::transaction::Methods::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(!key.isNone());
 
   MMFilesDocumentOperation operation(_logicalCollection,

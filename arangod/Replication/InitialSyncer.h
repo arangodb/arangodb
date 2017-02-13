@@ -161,7 +161,7 @@ class InitialSyncer : public Syncer {
   /// @brief apply the data from a collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDump(TransactionMethods&,
+  int applyCollectionDump(transaction::Methods&,
                           std::string const&,
                           httpclient::SimpleHttpResult*, uint64_t&,
                           std::string&);

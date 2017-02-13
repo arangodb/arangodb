@@ -473,7 +473,7 @@ bool InitialSyncer::checkAborted() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::applyCollectionDump(
-    TransactionMethods& trx, std::string const& collectionName,
+    transaction::Methods& trx, std::string const& collectionName,
     SimpleHttpResult* response, uint64_t& markersProcessed,
     std::string& errorMsg) {
   std::string const invalidMsg = "received invalid JSON data for collection " +

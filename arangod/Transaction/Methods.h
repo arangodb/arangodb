@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_TRANSACTION_METHODS_H
-#define ARANGOD_UTILS_TRANSACTION_METHODS_H 1
+#ifndef ARANGOD_TRANSACTION_METHODS_H
+#define ARANGOD_TRANSACTION_METHODS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -39,7 +39,7 @@
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #define LOG_TRX(trx, level)  \
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->_id << "." << level << " (" << TransactionMethods::statusString(trx->_status) << "): " 
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->_id << "." << level << " (" << transaction::Methods::statusString(trx->_status) << "): " 
 
 #else
 
@@ -89,7 +89,9 @@ class TransactionContext;
 class TransactionState;
 class TransactionCollection;
 
-class TransactionMethods {
+namespace transaction {
+
+class Methods {
   friend class traverser::BaseTraverserEngine;
 
  public:
@@ -106,15 +108,15 @@ class TransactionMethods {
   /// @brief return the status of the transaction as a string
   static char const* statusString(Status status) {
     switch (status) {
-      case TransactionMethods::Status::UNDEFINED:
+      case transaction::Methods::Status::UNDEFINED:
         return "undefined";
-      case TransactionMethods::Status::CREATED:
+      case transaction::Methods::Status::CREATED:
         return "created";
-      case TransactionMethods::Status::RUNNING:
+      case transaction::Methods::Status::RUNNING:
         return "running";
-      case TransactionMethods::Status::COMMITTED:
+      case transaction::Methods::Status::COMMITTED:
         return "committed";
-      case TransactionMethods::Status::ABORTED:
+      case transaction::Methods::Status::ABORTED:
         return "aborted";
     }
 
@@ -126,7 +128,8 @@ class TransactionMethods {
   static constexpr double DefaultLockTimeout = 30.0; 
 
   class IndexHandle {
-    friend class TransactionMethods;
+    friend class transaction::Methods;
+    
     std::shared_ptr<arangodb::Index> _index;
    public:
     IndexHandle() = default;
@@ -151,21 +154,21 @@ class TransactionMethods {
   
   double const TRX_FOLLOWER_TIMEOUT = 3.0;
 
-  /// @brief TransactionMethods
+  /// @brief transaction::Methods
  private:
-  TransactionMethods() = delete;
-  TransactionMethods(TransactionMethods const&) = delete;
-  TransactionMethods& operator=(TransactionMethods const&) = delete;
+  Methods() = delete;
+  Methods(Methods const&) = delete;
+  Methods& operator=(Methods const&) = delete;
 
  protected:
 
   /// @brief create the transaction
-  explicit TransactionMethods(std::shared_ptr<TransactionContext> transactionContext);
+  explicit Methods(std::shared_ptr<TransactionContext> transactionContext);
 
  public:
 
   /// @brief destroy the transaction
-  virtual ~TransactionMethods();
+  virtual ~Methods();
 
  public:
 
@@ -470,7 +473,7 @@ class TransactionMethods {
   virtual int lockCollections();
 
   /// @brief Clone this transaction. Only works for selected sub-classes
-  virtual TransactionMethods* clone() const;
+  virtual transaction::Methods* clone() const;
   
  private:
   
@@ -619,7 +622,7 @@ class TransactionMethods {
   bool sortOrs(arangodb::aql::Ast* ast,
                arangodb::aql::AstNode* root,
                arangodb::aql::Variable const* variable,
-               std::vector<TransactionMethods::IndexHandle>& usedIndexes);
+               std::vector<transaction::Methods::IndexHandle>& usedIndexes);
 
   /// @brief findIndexHandleForAndNode
   std::pair<bool, bool> findIndexHandleForAndNode(
@@ -627,7 +630,7 @@ class TransactionMethods {
       arangodb::aql::Variable const* reference,
       arangodb::aql::SortCondition const* sortCondition,
       size_t itemsInCollection,
-      std::vector<TransactionMethods::IndexHandle>& usedIndexes,
+      std::vector<transaction::Methods::IndexHandle>& usedIndexes,
       arangodb::aql::AstNode*& specializedCondition,
       bool& isSparse) const;
 
@@ -636,7 +639,7 @@ class TransactionMethods {
                                  arangodb::aql::AstNode*& node,
                                  arangodb::aql::Variable const* reference,
                                  size_t itemsInCollection,
-                                 TransactionMethods::IndexHandle& usedIndex) const;
+                                 transaction::Methods::IndexHandle& usedIndex) const;
 
   /// @brief Get one index by id for a collection name, coordinator case
   std::shared_ptr<arangodb::Index> indexForCollectionCoordinator(
@@ -741,9 +744,11 @@ class TransactionMethods {
   static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
 };
 
+}
+
 class StringBufferLeaser {
  public:
-  explicit StringBufferLeaser(TransactionMethods*); 
+  explicit StringBufferLeaser(transaction::Methods*); 
   explicit StringBufferLeaser(TransactionContext*); 
   ~StringBufferLeaser();
   arangodb::basics::StringBuffer* stringBuffer() const { return _stringBuffer; }
@@ -756,7 +761,7 @@ class StringBufferLeaser {
 
 class TransactionBuilderLeaser {
  public:
-  explicit TransactionBuilderLeaser(TransactionMethods*); 
+  explicit TransactionBuilderLeaser(transaction::Methods*); 
   explicit TransactionBuilderLeaser(TransactionContext*); 
   ~TransactionBuilderLeaser();
   inline arangodb::velocypack::Builder* builder() const { return _builder; }

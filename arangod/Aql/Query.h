@@ -42,8 +42,11 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class TransactionMethods;
 class TransactionContext;
+
+namespace transaction {
+class Methods;
+}
 
 namespace velocypack {
 class Builder;
@@ -121,7 +124,7 @@ class Query {
  public:
 
   /// @brief Inject a transaction from outside. Use with care!
-  void injectTransaction (TransactionMethods* trx) {
+  void injectTransaction (transaction::Methods* trx) {
     _trx = trx;
     init();
   }
@@ -265,7 +268,7 @@ class Query {
   void engine(ExecutionEngine* engine) { _engine = engine; }
 
   /// @brief return the transaction, if prepared
-  inline TransactionMethods* trx() { return _trx; }
+  inline transaction::Methods* trx() { return _trx; }
 
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
@@ -443,7 +446,7 @@ class Query {
   /// @brief the transaction object, in a distributed query every part of
   /// the query has its own transaction object. The transaction object is
   /// created in the prepare method.
-  TransactionMethods* _trx;
+  transaction::Methods* _trx;
 
   /// @brief the ExecutionEngine object, if the query is prepared
   ExecutionEngine* _engine;

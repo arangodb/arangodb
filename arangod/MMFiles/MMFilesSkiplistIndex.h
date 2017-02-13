@@ -30,7 +30,7 @@
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPathBasedIndex.h"
 #include "MMFiles/MMFilesSkiplist.h"
-#include "Utils/TransactionMethods.h"
+#include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -43,7 +43,10 @@ struct Variable;
 }
 
 class MMFilesSkiplistIndex;
-class TransactionMethods;
+namespace transaction {
+class Methods;
+}
+;
 
 
 /// @brief Abstract Builder for lookup values in skiplist index
@@ -61,7 +64,7 @@ class BaseSkiplistLookupBuilder {
   arangodb::velocypack::Slice _upperSlice;
 
  public:
-  explicit BaseSkiplistLookupBuilder(TransactionMethods* trx) :
+  explicit BaseSkiplistLookupBuilder(transaction::Methods* trx) :
     _lowerBuilder(trx), _upperBuilder(trx)
   {
     _isEquality = true;
@@ -109,7 +112,7 @@ class SkiplistLookupBuilder : public BaseSkiplistLookupBuilder {
 
   public:
    SkiplistLookupBuilder(
-       TransactionMethods* trx,
+       transaction::Methods* trx,
        std::vector<std::vector<arangodb::aql::AstNode const*>>&,
        arangodb::aql::Variable const*, bool);
 
@@ -142,7 +145,7 @@ class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
 
   public:
    SkiplistInLookupBuilder(
-       TransactionMethods* trx,
+       transaction::Methods* trx,
        std::vector<std::vector<arangodb::aql::AstNode const*>>&,
        arangodb::aql::Variable const*, bool);
 
@@ -192,7 +195,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
                     MMFilesSkiplistCmpType)> _CmpElmElm;
 
  public:
-  MMFilesSkiplistIterator(LogicalCollection* collection, TransactionMethods* trx,
+  MMFilesSkiplistIterator(LogicalCollection* collection, transaction::Methods* trx,
       ManagedDocumentResult* mmdr,
       arangodb::MMFilesSkiplistIndex const* index,
       TRI_Skiplist const* skiplist, size_t numPaths,
@@ -291,9 +294,9 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
   void toVelocyPack(VPackBuilder&, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  int insert(TransactionMethods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int insert(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(TransactionMethods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int remove(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
   
   int unload() override;
 
@@ -305,7 +308,7 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
                              arangodb::aql::Variable const*, size_t,
                              double&, size_t&) const override;
 
-  IndexIterator* iteratorForCondition(TransactionMethods*,
+  IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,

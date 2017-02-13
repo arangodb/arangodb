@@ -33,11 +33,14 @@
 struct TRI_df_marker_t;
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
+
 class Ditches;
 class LogicalCollection;
 class ManagedDocumentResult;
 struct OperationOptions;
-class TransactionMethods;
 
 class PhysicalCollection {
  protected:
@@ -50,7 +53,7 @@ class PhysicalCollection {
 
   virtual TRI_voc_rid_t revision() const = 0;
   
-  // Used for TransactionMethods rollback
+  // Used for transaction::Methods rollback
   virtual void setRevision(TRI_voc_rid_t revision, bool force) = 0;
   
   virtual int64_t initialCount() const = 0;
@@ -95,7 +98,7 @@ class PhysicalCollection {
   virtual void finishCompaction() = 0;
 
   /// @brief iterate all markers of a collection on load
-  virtual int iterateMarkersOnLoad(TransactionMethods* trx) = 0;
+  virtual int iterateMarkersOnLoad(transaction::Methods* trx) = 0;
   
   virtual uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const = 0;
   virtual uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const = 0;
@@ -103,14 +106,16 @@ class PhysicalCollection {
   virtual void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) = 0;
   virtual bool updateRevisionConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal) = 0;
   virtual void removeRevision(TRI_voc_rid_t revisionId, bool updateStats) = 0;
+
+  virtual bool isFullyCollected() const = 0;
   
-  virtual int insert(arangodb::TransactionMethods* trx,
+  virtual int insert(arangodb::transaction::Methods* trx,
                      arangodb::velocypack::Slice const newSlice,
                      arangodb::ManagedDocumentResult& result,
                      OperationOptions& options,
                      TRI_voc_tick_t& resultMarkerTick, bool lock) = 0;
 
-  virtual int remove(TransactionMethods* trx,
+  virtual int remove(arangodb::transaction::Methods* trx,
                      arangodb::velocypack::Slice const slice,
                      arangodb::ManagedDocumentResult& previous,
                      OperationOptions& options,
@@ -118,7 +123,7 @@ class PhysicalCollection {
                      TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev,
                      arangodb::velocypack::Slice const toRemove) = 0;
 
-  virtual int removeFastPath(TransactionMethods* trx,
+  virtual int removeFastPath(arangodb::transaction::Methods* trx,
                              TRI_voc_rid_t oldRevisionId,
                              arangodb::velocypack::Slice const oldDoc,
                              OperationOptions& options,

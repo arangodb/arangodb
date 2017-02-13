@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
-#include "Utils/TransactionMethods.h"
+#include "Transaction/Methods.h"
 #include "Transaction/Hints.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
@@ -38,7 +38,10 @@ class Transaction;
 }
 
 namespace arangodb {
-class TransactionMethods;
+namespace transaction {
+class Methods;
+}
+;
 class TransactionCollection;
 
 /// @brief transaction type
@@ -85,7 +88,7 @@ class TransactionState {
   }
 
   /// @brief update the status of a transaction
-  void updateStatus(TransactionMethods::Status status);
+  void updateStatus(transaction::Methods::Status status);
   
   /// @brief whether or not a specific hint is set for the transaction
   bool hasHint(transaction::Hints::Hint hint) const {
@@ -96,10 +99,10 @@ class TransactionState {
   virtual int beginTransaction(transaction::Hints hints, int nestingLevel) = 0;
 
   /// @brief commit a transaction
-  virtual int commitTransaction(TransactionMethods* trx, int nestingLevel) = 0;
+  virtual int commitTransaction(transaction::Methods* trx, int nestingLevel) = 0;
 
   /// @brief abort a transaction
-  virtual int abortTransaction(TransactionMethods* trx, int nestingLevel) = 0;
+  virtual int abortTransaction(transaction::Methods* trx, int nestingLevel) = 0;
 
   /// TODO: implement this in base class
   virtual bool hasFailedOperations() const = 0;
@@ -114,7 +117,7 @@ class TransactionState {
   }
 
   /// @brief free all operations for a transaction
-  void freeOperations(TransactionMethods* activeTrx);
+  void freeOperations(transaction::Methods* activeTrx);
 
   /// @brief release collection locks for a transaction
   int releaseCollections();
@@ -127,7 +130,7 @@ class TransactionState {
   TRI_vocbase_t* _vocbase;            // vocbase
   TRI_voc_tid_t _id;                  // local trx id
   AccessMode::Type _type;             // access type (read|write)
-  TransactionMethods::Status _status;        // current status
+  transaction::Methods::Status _status;        // current status
 
  protected:
   SmallVector<TransactionCollection*>::allocator_type::arena_type _arena; // memory for collections

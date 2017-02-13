@@ -23,7 +23,7 @@
 
 #include "SingleServerTraverser.h"
 #include "Basics/StringRef.h"
-#include "Utils/TransactionMethods.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -37,7 +37,7 @@ using namespace arangodb::traverser;
 ///        On all other cases this function throws.
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FetchDocumentById(TransactionMethods* trx,
+static int FetchDocumentById(transaction::Methods* trx,
                              StringRef const& id,
                              ManagedDocumentResult& result) {
   size_t pos = id.find('/');
@@ -56,7 +56,7 @@ static int FetchDocumentById(TransactionMethods* trx,
 }
 
 SingleServerEdgeCursor::SingleServerEdgeCursor(ManagedDocumentResult* mmdr,
-    TransactionMethods* trx,
+    transaction::Methods* trx,
     size_t nrCursors, std::vector<size_t> const* mapping)
     : _trx(trx),
       _mmdr(mmdr), 
@@ -172,7 +172,7 @@ bool SingleServerEdgeCursor::readAll(std::unordered_set<VPackSlice>& result,
 }
 
 SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts,
-                                             TransactionMethods* trx,
+                                             transaction::Methods* trx,
                                              ManagedDocumentResult* mmdr)
     : Traverser(opts, trx, mmdr) {}
 

@@ -43,8 +43,8 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
       _mmdr(new ManagedDocumentResult),
       _cursor(_trx->indexScan(
           _collection->getName(),
-          (ep->_random ? TransactionMethods::CursorType::ANY
-                       : TransactionMethods::CursorType::ALL),
+          (ep->_random ? transaction::Methods::CursorType::ANY
+                       : transaction::Methods::CursorType::ALL),
           _mmdr.get(), 0, UINT64_MAX, 1000, false)),
       _mustStoreResult(true) {
   TRI_ASSERT(_cursor->successful());

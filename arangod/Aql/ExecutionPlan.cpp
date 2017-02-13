@@ -69,7 +69,7 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
 }
 
 static std::unique_ptr<traverser::TraverserOptions> CreateTraversalOptions(
-    TransactionMethods* trx, AstNode const* direction, AstNode const* optionsNode) {
+    transaction::Methods* trx, AstNode const* direction, AstNode const* optionsNode) {
 
   auto options = std::make_unique<traverser::TraverserOptions>(trx);
 

@@ -350,7 +350,7 @@ bool MMFilesWalRecoverState::InitialScanMarker(TRI_df_marker_t const* marker,
                                     MMFilesDatafileHelper::VPackOffset(type));
       if (payloadSlice.isObject()) {
         TRI_voc_rid_t revisionId =
-            TransactionMethods::extractRevFromDocument(payloadSlice);
+            transaction::Methods::extractRevFromDocument(payloadSlice);
         if (revisionId != UINT64_MAX && revisionId > state->maxRevisionId) {
           state->maxRevisionId = revisionId;
         }

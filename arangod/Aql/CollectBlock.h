@@ -34,7 +34,10 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
-class TransactionMethods;
+namespace transaction {
+class Methods;
+}
+;
 
 namespace aql {
 struct Aggregator;
@@ -143,24 +146,24 @@ class HashedCollectBlock : public ExecutionBlock {
 
   /// @brief hasher for a vector of AQL values
   struct GroupKeyHash {
-    GroupKeyHash(TransactionMethods* trx, size_t num)
+    GroupKeyHash(transaction::Methods* trx, size_t num)
         : _trx(trx), _num(num) {}
 
     size_t operator()(std::vector<AqlValue> const& value) const;
 
-    TransactionMethods* _trx;
+    transaction::Methods* _trx;
     size_t const _num;
   };
 
   /// @brief comparator for a vector of AQL values
   struct GroupKeyEqual {
-    explicit GroupKeyEqual(TransactionMethods* trx)
+    explicit GroupKeyEqual(transaction::Methods* trx)
         : _trx(trx) {}
 
     bool operator()(std::vector<AqlValue> const&,
                     std::vector<AqlValue> const&) const;
 
-    TransactionMethods* _trx;
+    transaction::Methods* _trx;
   };
 };
 

@@ -125,7 +125,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   // now sort all markers without the read-lock
   std::sort(_vpack.begin(), _vpack.end(),
             [](uint8_t const* lhs, uint8_t const* rhs) -> bool {
-    return (StringRef(TransactionMethods::extractKeyFromDocument(VPackSlice(lhs))) < StringRef(TransactionMethods::extractKeyFromDocument(VPackSlice(rhs))));
+    return (StringRef(transaction::Methods::extractKeyFromDocument(VPackSlice(lhs))) < StringRef(transaction::Methods::extractKeyFromDocument(VPackSlice(rhs))));
   });
 }
 
@@ -154,13 +154,13 @@ std::tuple<std::string, std::string, uint64_t> CollectionKeys::hashChunk(
 
     // we can get away with the fast hash function here, as key values are 
     // restricted to strings
-    hash ^= TransactionMethods::extractKeyFromDocument(current).hashString();
-    hash ^= TransactionMethods::extractRevSliceFromDocument(current).hash();
+    hash ^= transaction::Methods::extractKeyFromDocument(current).hashString();
+    hash ^= transaction::Methods::extractRevSliceFromDocument(current).hash();
   }
 
   return std::make_tuple(
-    TransactionMethods::extractKeyFromDocument(first).copyString(),
-    TransactionMethods::extractKeyFromDocument(last).copyString(),
+    transaction::Methods::extractKeyFromDocument(first).copyString(),
+    transaction::Methods::extractKeyFromDocument(last).copyString(),
     hash);
 }
 

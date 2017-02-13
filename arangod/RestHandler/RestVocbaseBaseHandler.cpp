@@ -33,7 +33,7 @@
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Utils/TransactionMethods.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -633,7 +633,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
   if (found) {
     _nolockHeaderSet =
         new std::unordered_set<std::string>{std::string(shardId)};
-    TransactionMethods::_makeNolockHeaders = _nolockHeaderSet;
+    transaction::Methods::_makeNolockHeaders = _nolockHeaderSet;
   }
 }
 
@@ -643,7 +643,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
 
 void RestVocbaseBaseHandler::finalizeExecute() {
   if (_nolockHeaderSet != nullptr) {
-    TransactionMethods::_makeNolockHeaders = nullptr;
+    transaction::Methods::_makeNolockHeaders = nullptr;
     delete _nolockHeaderSet;
     _nolockHeaderSet = nullptr;
   }

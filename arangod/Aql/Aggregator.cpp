@@ -23,7 +23,7 @@
 
 #include "Aggregator.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Utils/TransactionMethods.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -32,7 +32,7 @@
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
-Aggregator* Aggregator::fromTypeString(TransactionMethods* trx,
+Aggregator* Aggregator::fromTypeString(transaction::Methods* trx,
                                        std::string const& type) {
   if (type == "LENGTH" || type == "COUNT") {
     return new AggregatorLength(trx);
@@ -67,7 +67,7 @@ Aggregator* Aggregator::fromTypeString(TransactionMethods* trx,
   return nullptr;
 }
 
-Aggregator* Aggregator::fromVPack(TransactionMethods* trx,
+Aggregator* Aggregator::fromVPack(transaction::Methods* trx,
                                   arangodb::velocypack::Slice const& slice,
                                   char const* variableName) {
   VPackSlice variable = slice.get(variableName);

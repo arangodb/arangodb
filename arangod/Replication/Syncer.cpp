@@ -370,7 +370,7 @@ arangodb::LogicalCollection* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, 
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::applyCollectionDumpMarker(
-    TransactionMethods& trx, std::string const& collectionName,
+    transaction::Methods& trx, std::string const& collectionName,
     TRI_replication_operation_e type, VPackSlice const& old, 
     VPackSlice const& slice, std::string& errorMsg) {
 

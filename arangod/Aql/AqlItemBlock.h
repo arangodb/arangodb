@@ -276,7 +276,7 @@ class AqlItemBlock {
 
   /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
-  void toVelocyPack(TransactionMethods* trx,
+  void toVelocyPack(transaction::Methods* trx,
                     arangodb::velocypack::Builder&) const;
 
  private:

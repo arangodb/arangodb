@@ -25,7 +25,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Utils/OperationCursor.h"
-#include "Utils/TransactionMethods.h"
+#include "Transaction/Methods.h"
 #include "VocBase/EdgeCollectionInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -91,9 +91,9 @@ struct ConstDistanceExpanderLocal {
         if (collection->readDocument(_block->transaction(), *mmdr, element)) {
           VPackSlice edge(mmdr->vpack());
           VPackSlice from =
-              TransactionMethods::extractFromFromDocument(edge);
+              transaction::Methods::extractFromFromDocument(edge);
           if (from == v) {
-            VPackSlice to = TransactionMethods::extractToFromDocument(edge);
+            VPackSlice to = transaction::Methods::extractToFromDocument(edge);
             if (to != v) {
               resEdges.emplace_back(edge);
               neighbors.emplace_back(to);
@@ -146,9 +146,9 @@ struct ConstDistanceExpanderCluster {
 
       VPackSlice edges = result.slice().get("edges");
       for (auto const& edge : VPackArrayIterator(edges)) {
-        VPackSlice from = TransactionMethods::extractFromFromDocument(edge);
+        VPackSlice from = transaction::Methods::extractFromFromDocument(edge);
         if (from == v) {
-          VPackSlice to = TransactionMethods::extractToFromDocument(edge);
+          VPackSlice to = transaction::Methods::extractToFromDocument(edge);
           if (to != v) {
             resEdges.emplace_back(edge);
             neighbors.emplace_back(to);
@@ -229,8 +229,8 @@ struct EdgeWeightExpanderLocal {
         if (collection->readDocument(_block->transaction(), *mmdr, element)) {
           VPackSlice edge(mmdr->vpack());
           VPackSlice from =
-              TransactionMethods::extractFromFromDocument(edge);
-          VPackSlice to = TransactionMethods::extractToFromDocument(edge);
+              transaction::Methods::extractFromFromDocument(edge);
+          VPackSlice to = transaction::Methods::extractToFromDocument(edge);
           double currentWeight = edgeCollection->weightEdge(edge);
           if (from == source) {
             inserter(candidates, result, from, to, currentWeight, edge);
@@ -307,8 +307,8 @@ struct EdgeWeightExpanderCluster {
 
       VPackSlice edges = edgesBuilder.slice().get("edges");
       for (auto const& edge : VPackArrayIterator(edges)) {
-        VPackSlice from = TransactionMethods::extractFromFromDocument(edge);
-        VPackSlice to = TransactionMethods::extractToFromDocument(edge);
+        VPackSlice from = transaction::Methods::extractFromFromDocument(edge);
+        VPackSlice to = transaction::Methods::extractToFromDocument(edge);
         double currentWeight = edgeCollection->weightEdge(edge);
         if (from == source) {
           inserter(from, to, currentWeight, edge);

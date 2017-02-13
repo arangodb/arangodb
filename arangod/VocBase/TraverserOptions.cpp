@@ -138,7 +138,7 @@ void arangodb::traverser::TraverserOptions::LookupInfo::buildEngineInfo(
 }
 
 arangodb::traverser::TraverserOptions::TraverserOptions(
-    TransactionMethods* trx, VPackSlice const& slice)
+    transaction::Methods* trx, VPackSlice const& slice)
     : _trx(trx),
       _baseVertexExpression(nullptr),
       _tmpVar(nullptr),

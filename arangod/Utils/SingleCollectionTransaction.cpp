@@ -26,7 +26,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationResult.h"
-#include "Utils/TransactionMethods.h"
+#include "Transaction/Methods.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
@@ -40,7 +40,7 @@ using namespace arangodb;
 SingleCollectionTransaction::SingleCollectionTransaction(
   std::shared_ptr<TransactionContext> transactionContext, TRI_voc_cid_t cid, 
   AccessMode::Type accessType)
-      : TransactionMethods(transactionContext),
+      : transaction::Methods(transactionContext),
         _cid(cid),
         _trxCollection(nullptr),
         _documentCollection(nullptr),
@@ -59,7 +59,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 SingleCollectionTransaction::SingleCollectionTransaction(
   std::shared_ptr<TransactionContext> transactionContext,
   std::string const& name, AccessMode::Type accessType)
-      : TransactionMethods(transactionContext),
+      : transaction::Methods(transactionContext),
         _cid(0),
         _trxCollection(nullptr),
         _documentCollection(nullptr),

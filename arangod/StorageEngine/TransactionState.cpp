@@ -28,7 +28,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
-#include "Utils/TransactionMethods.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 #include "VocBase/ticks.h"
@@ -45,7 +45,7 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase)
     : _vocbase(vocbase), 
       _id(0), 
       _type(AccessMode::Type::READ),
-      _status(TransactionMethods::Status::CREATED),
+      _status(transaction::Methods::Status::CREATED),
       _arena(),
       _collections{_arena}, // assign arena to vector 
       _rocksTransaction(nullptr),
@@ -55,11 +55,11 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase)
       _hasOperations(false), 
       _waitForSync(false),
       _beginWritten(false), 
-      _timeout(TransactionMethods::DefaultLockTimeout) {}
+      _timeout(transaction::Methods::DefaultLockTimeout) {}
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
-  TRI_ASSERT(_status != TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(_status != transaction::Methods::Status::RUNNING);
 
   delete _rocksTransaction;
 
@@ -86,8 +86,8 @@ std::vector<std::string> TransactionState::collectionNames() const {
 
 /// @brief return the collection from a transaction
 TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid, AccessMode::Type accessType) {
-  TRI_ASSERT(_status == TransactionMethods::Status::CREATED ||
-             _status == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(_status == transaction::Methods::Status::CREATED ||
+             _status == transaction::Methods::Status::RUNNING);
 
   size_t unused;
   TransactionCollection* trxCollection = findCollection(cid, unused);
@@ -118,7 +118,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   // upgrade transaction type if required
   if (nestingLevel == 0) {
     if (!force) {
-      TRI_ASSERT(_status == TransactionMethods::Status::CREATED);
+      TRI_ASSERT(_status == transaction::Methods::Status::CREATED);
     }
 
     if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_type)) {
@@ -281,16 +281,16 @@ void TransactionState::clearQueryCache() {
 }
 
 /// @brief update the status of a transaction
-void TransactionState::updateStatus(TransactionMethods::Status status) {
-  TRI_ASSERT(_status == TransactionMethods::Status::CREATED ||
-             _status == TransactionMethods::Status::RUNNING);
+void TransactionState::updateStatus(transaction::Methods::Status status) {
+  TRI_ASSERT(_status == transaction::Methods::Status::CREATED ||
+             _status == transaction::Methods::Status::RUNNING);
 
-  if (_status == TransactionMethods::Status::CREATED) {
-    TRI_ASSERT(status == TransactionMethods::Status::RUNNING ||
-               status == TransactionMethods::Status::ABORTED);
-  } else if (_status == TransactionMethods::Status::RUNNING) {
-    TRI_ASSERT(status == TransactionMethods::Status::COMMITTED ||
-               status == TransactionMethods::Status::ABORTED);
+  if (_status == transaction::Methods::Status::CREATED) {
+    TRI_ASSERT(status == transaction::Methods::Status::RUNNING ||
+               status == transaction::Methods::Status::ABORTED);
+  } else if (_status == transaction::Methods::Status::RUNNING) {
+    TRI_ASSERT(status == transaction::Methods::Status::COMMITTED ||
+               status == transaction::Methods::Status::ABORTED);
   }
 
   _status = status;

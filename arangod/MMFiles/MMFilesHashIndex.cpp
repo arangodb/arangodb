@@ -42,7 +42,7 @@
 using namespace arangodb;
 
 LookupBuilder::LookupBuilder(
-    TransactionMethods* trx, arangodb::aql::AstNode const* node,
+    transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields)
     : _builder(trx), _usesIn(false), _isEmpty(false), _inStorage(trx) {
@@ -285,7 +285,7 @@ static bool IsEqualKeyElementUnique(void* userData, VPackSlice const* left,
 }
 
 MMFilesHashIndexIterator::MMFilesHashIndexIterator(LogicalCollection* collection,
-                                     TransactionMethods* trx,
+                                     transaction::Methods* trx,
                                      ManagedDocumentResult* mmdr,
                                      MMFilesHashIndex const* index,
                                      arangodb::aql::AstNode const* node,
@@ -330,7 +330,7 @@ void MMFilesHashIndexIterator::reset() {
 }
   
 MMFilesHashIndexIteratorVPack::MMFilesHashIndexIteratorVPack(LogicalCollection* collection,
-                                               TransactionMethods* trx, 
+                                               transaction::Methods* trx, 
                                                ManagedDocumentResult* mmdr,
                                                MMFilesHashIndex const* index,
                                                std::unique_ptr<arangodb::velocypack::Builder>& searchValues)
@@ -589,7 +589,7 @@ bool MMFilesHashIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-int MMFilesHashIndex::insert(TransactionMethods* trx, TRI_voc_rid_t revisionId,
+int MMFilesHashIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                       VPackSlice const& doc, bool isRollback) {
   if (_unique) {
     return insertUnique(trx, revisionId, doc, isRollback);
@@ -599,7 +599,7 @@ int MMFilesHashIndex::insert(TransactionMethods* trx, TRI_voc_rid_t revisionId,
 }
 
 /// @brief removes an entry from the hash array part of the hash index
-int MMFilesHashIndex::remove(TransactionMethods* trx, TRI_voc_rid_t revisionId,
+int MMFilesHashIndex::remove(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                       VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesHashIndexElement*> elements;
   int res = fillElement<MMFilesHashIndexElement>(elements, revisionId, doc);
@@ -630,7 +630,7 @@ int MMFilesHashIndex::remove(TransactionMethods* trx, TRI_voc_rid_t revisionId,
   return res;
 }
 
-void MMFilesHashIndex::batchInsert(TransactionMethods* trx,
+void MMFilesHashIndex::batchInsert(transaction::Methods* trx,
                            std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
                            arangodb::basics::LocalTaskQueue* queue) {
   TRI_ASSERT(queue != nullptr);
@@ -652,7 +652,7 @@ int MMFilesHashIndex::unload() {
 }
 
 /// @brief provides a size hint for the hash index
-int MMFilesHashIndex::sizeHint(TransactionMethods* trx, size_t size) {
+int MMFilesHashIndex::sizeHint(transaction::Methods* trx, size_t size) {
   if (_sparse) {
     // for sparse indexes, we assume that we will have less index entries
     // than if the index would be fully populated
@@ -670,7 +670,7 @@ int MMFilesHashIndex::sizeHint(TransactionMethods* trx, size_t size) {
 }
 
 /// @brief locates entries in the hash index given VelocyPack slices
-int MMFilesHashIndex::lookup(TransactionMethods* trx,
+int MMFilesHashIndex::lookup(transaction::Methods* trx,
                       VPackSlice key,
                       std::vector<MMFilesHashIndexElement*>& documents) const {
   if (key.isNone()) {
@@ -701,7 +701,7 @@ int MMFilesHashIndex::lookup(TransactionMethods* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-int MMFilesHashIndex::insertUnique(TransactionMethods* trx, TRI_voc_rid_t revisionId, 
+int MMFilesHashIndex::insertUnique(transaction::Methods* trx, TRI_voc_rid_t revisionId, 
                             VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesHashIndexElement*> elements;
   int res = fillElement<MMFilesHashIndexElement>(elements, revisionId, doc);
@@ -744,7 +744,7 @@ int MMFilesHashIndex::insertUnique(TransactionMethods* trx, TRI_voc_rid_t revisi
 }
 
 void MMFilesHashIndex::batchInsertUnique(
-    TransactionMethods* trx,
+    transaction::Methods* trx,
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
     arangodb::basics::LocalTaskQueue* queue) {
   TRI_ASSERT(queue != nullptr);
@@ -801,7 +801,7 @@ void MMFilesHashIndex::batchInsertUnique(
   queue->enqueueCallback(cbTask);
 }
 
-int MMFilesHashIndex::insertMulti(TransactionMethods* trx, TRI_voc_rid_t revisionId,
+int MMFilesHashIndex::insertMulti(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                            VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesHashIndexElement*> elements;
   int res = fillElement<MMFilesHashIndexElement>(elements, revisionId, doc);
@@ -863,7 +863,7 @@ int MMFilesHashIndex::insertMulti(TransactionMethods* trx, TRI_voc_rid_t revisio
 }
 
 void MMFilesHashIndex::batchInsertMulti(
-    TransactionMethods* trx,
+    transaction::Methods* trx,
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
     arangodb::basics::LocalTaskQueue* queue) {
   TRI_ASSERT(queue != nullptr);
@@ -920,7 +920,7 @@ void MMFilesHashIndex::batchInsertMulti(
   queue->enqueueCallback(cbTask);
 }
 
-int MMFilesHashIndex::removeUniqueElement(TransactionMethods* trx,
+int MMFilesHashIndex::removeUniqueElement(transaction::Methods* trx,
                                    MMFilesHashIndexElement* element,
                                    bool isRollback) {
   TRI_IF_FAILURE("RemoveHashIndex") { return TRI_ERROR_DEBUG; }
@@ -940,7 +940,7 @@ int MMFilesHashIndex::removeUniqueElement(TransactionMethods* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-int MMFilesHashIndex::removeMultiElement(TransactionMethods* trx,
+int MMFilesHashIndex::removeMultiElement(transaction::Methods* trx,
                                   MMFilesHashIndexElement* element,
                                   bool isRollback) {
   TRI_IF_FAILURE("RemoveHashIndex") { return TRI_ERROR_DEBUG; }
@@ -972,7 +972,7 @@ bool MMFilesHashIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesHashIndex::iteratorForCondition(
-    TransactionMethods* trx,
+    transaction::Methods* trx,
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool) const {

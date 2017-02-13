@@ -47,7 +47,7 @@ typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice, MMFilesSimpleI
 
 class MMFilesEdgeIndexIterator final : public IndexIterator {
  public:
-  MMFilesEdgeIndexIterator(LogicalCollection* collection, TransactionMethods* trx,
+  MMFilesEdgeIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                     ManagedDocumentResult* mmdr,
                     arangodb::MMFilesEdgeIndex const* index,
                     TRI_MMFilesEdgeIndexHash_t const* indexImpl,
@@ -112,19 +112,19 @@ class MMFilesEdgeIndex final : public Index {
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  int insert(TransactionMethods*, TRI_voc_rid_t,
+  int insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(TransactionMethods*, TRI_voc_rid_t,
+  int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  void batchInsert(TransactionMethods*,
+  void batchInsert(transaction::Methods*,
                    std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
                    arangodb::basics::LocalTaskQueue*) override;
 
   int unload() override;
 
-  int sizeHint(TransactionMethods*, size_t) override;
+  int sizeHint(transaction::Methods*, size_t) override;
 
   bool hasBatchInsert() const override { return true; }
 
@@ -136,7 +136,7 @@ class MMFilesEdgeIndex final : public Index {
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(TransactionMethods*,
+  IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
@@ -153,12 +153,12 @@ class MMFilesEdgeIndex final : public Index {
 
  private:
   /// @brief create the iterator
-  IndexIterator* createEqIterator(TransactionMethods*,
+  IndexIterator* createEqIterator(transaction::Methods*,
                                   ManagedDocumentResult*,
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
 
-  IndexIterator* createInIterator(TransactionMethods*,
+  IndexIterator* createInIterator(transaction::Methods*,
                                   ManagedDocumentResult*,
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;

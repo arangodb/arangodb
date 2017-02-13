@@ -44,6 +44,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 //#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesCollection.h" //remove
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesToken.h"
@@ -76,7 +77,7 @@ using Helper = arangodb::basics::VelocyPackHelper;
 class IndexFillerTask : public basics::LocalTask {
  public:
   IndexFillerTask(
-      basics::LocalTaskQueue* queue, TransactionMethods* trx,
+      basics::LocalTaskQueue* queue, transaction::Methods* trx,
       Index* idx,
       std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents)
       : LocalTask(queue), _trx(trx), _idx(idx), _documents(documents) {}
@@ -94,7 +95,7 @@ class IndexFillerTask : public basics::LocalTask {
   }
 
  private:
-  TransactionMethods* _trx;
+  transaction::Methods* _trx;
   Index* _idx;
   std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& _documents;
 };
@@ -230,7 +231,6 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
-      _uncollectedLogfileEntries(0),
       _isInitialIteration(false),
       _revisionError(false) {
   _keyGenerator.reset(KeyGenerator::factory(other.keyOptions()));
@@ -295,7 +295,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
-      _uncollectedLogfileEntries(0),
       _isInitialIteration(false),
       _revisionError(false) {
   if (!IsAllowedName(info)) {
@@ -602,26 +601,7 @@ bool LogicalCollection::IsAllowedName(bool allowSystem,
 
 /// @brief whether or not a collection is fully collected
 bool LogicalCollection::isFullyCollected() {
-  int64_t uncollected = _uncollectedLogfileEntries.load();
-
-  return (uncollected == 0);
-}
-
-void LogicalCollection::setNextCompactionStartIndex(size_t index) {
-  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-  _nextCompactionStartIndex = index;
-}
-
-size_t LogicalCollection::getNextCompactionStartIndex() {
-  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-  return _nextCompactionStartIndex;
-}
-
-void LogicalCollection::setCompactionStatus(char const* reason) {
-  TRI_ASSERT(reason != nullptr);
-
-  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-  _lastCompactionStatus = reason;
+  return getPhysical()->isFullyCollected();
 }
 
 uint64_t LogicalCollection::numberDocuments() const {
@@ -1193,7 +1173,12 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
 
     builder->add("lastTick", VPackValue(_maxTick));
     builder->add("uncollectedLogfileEntries",
-                 VPackValue(_uncollectedLogfileEntries));
+                 VPackValue(
+                   //MOVE TO PHYSICAL
+                   static_cast<arangodb::MMFilesCollection*>(getPhysical())
+                      ->uncollectedLogfileEntries()
+                 )
+                );
 
     // fills in compaction status
     char const* lastCompactionStatus = "-";
@@ -1426,7 +1411,7 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(
   return nullptr;
 }
 
-std::shared_ptr<Index> LogicalCollection::createIndex(TransactionMethods* trx,
+std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
                                                       VPackSlice const& info,
                                                       bool& created) {
   // TODO Get LOCK for the vocbase
@@ -1489,7 +1474,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(TransactionMethods* trx,
   return idx;
 }
 
-int LogicalCollection::restoreIndex(TransactionMethods* trx, VPackSlice const& info,
+int LogicalCollection::restoreIndex(transaction::Methods* trx, VPackSlice const& info,
                                     std::shared_ptr<arangodb::Index>& idx) {
   // The coordinator can never get into this state!
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -1660,7 +1645,7 @@ void LogicalCollection::createInitialIndexes() {
 
 /// @brief iterator for index open
 bool LogicalCollection::openIndex(VPackSlice const& description,
-                                  TransactionMethods* trx) {
+                                  transaction::Methods* trx) {
   // VelocyPack must be an index description
   if (!description.isObject()) {
     return false;
@@ -1678,7 +1663,7 @@ bool LogicalCollection::openIndex(VPackSlice const& description,
 }
 
 /// @brief enumerate all indexes of the collection, but don't fill them yet
-int LogicalCollection::detectIndexes(TransactionMethods* trx) {
+int LogicalCollection::detectIndexes(transaction::Methods* trx) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   VPackBuilder builder;
   engine->getCollectionInfo(_vocbase, _cid, builder, true, UINT64_MAX);
@@ -1701,7 +1686,7 @@ LogicalCollection::indexList() const {
 }
 
 int LogicalCollection::fillIndexes(
-    TransactionMethods* trx,
+    transaction::Methods* trx,
     std::vector<std::shared_ptr<arangodb::Index>> const& indexes,
     bool skipPersistent) {
   // distribute the work to index threads plus this thread
@@ -1925,12 +1910,12 @@ int LogicalCollection::cleanupIndexes() {
 }
 
 /// @brief reads an element from the document collection
-int LogicalCollection::read(TransactionMethods* trx, std::string const& key,
+int LogicalCollection::read(transaction::Methods* trx, std::string const& key,
                             ManagedDocumentResult& result, bool lock) {
   return read(trx, StringRef(key.c_str(), key.size()), result, lock);
 }
 
-int LogicalCollection::read(TransactionMethods* trx, StringRef const& key,
+int LogicalCollection::read(transaction::Methods* trx, StringRef const& key,
                             ManagedDocumentResult& result, bool lock) {
   TransactionBuilderLeaser builder(trx);
   builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
@@ -1964,7 +1949,7 @@ int LogicalCollection::read(TransactionMethods* trx, StringRef const& key,
 /// the read-cache
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogicalCollection::truncate(TransactionMethods* trx) {
+int LogicalCollection::truncate(transaction::Methods* trx) {
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1972,7 +1957,7 @@ int LogicalCollection::truncate(TransactionMethods* trx) {
 /// @brief inserts a document or edge into the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogicalCollection::insert(TransactionMethods* trx, VPackSlice const slice,
+int LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
                               ManagedDocumentResult& result,
                               OperationOptions& options,
                               TRI_voc_tick_t& resultMarkerTick, bool lock) {
@@ -2033,7 +2018,7 @@ int LogicalCollection::insert(TransactionMethods* trx, VPackSlice const slice,
 }
 
 /// @brief updates a document or edge in a collection
-int LogicalCollection::update(TransactionMethods* trx, VPackSlice const newSlice,
+int LogicalCollection::update(transaction::Methods* trx, VPackSlice const newSlice,
                               ManagedDocumentResult& result,
                               OperationOptions& options,
                               TRI_voc_tick_t& resultMarkerTick, bool lock,
@@ -2088,7 +2073,7 @@ int LogicalCollection::update(TransactionMethods* trx, VPackSlice const newSlice
 
   uint8_t const* vpack = previous.vpack();
   VPackSlice oldDoc(vpack);
-  TRI_voc_rid_t oldRevisionId = TransactionMethods::extractRevFromDocument(oldDoc);
+  TRI_voc_rid_t oldRevisionId = transaction::Methods::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
 
   TRI_IF_FAILURE("UpdateDocumentNoMarker") {
@@ -2189,7 +2174,7 @@ int LogicalCollection::update(TransactionMethods* trx, VPackSlice const newSlice
 }
 
 /// @brief replaces a document or edge in a collection
-int LogicalCollection::replace(TransactionMethods* trx, VPackSlice const newSlice,
+int LogicalCollection::replace(transaction::Methods* trx, VPackSlice const newSlice,
                                ManagedDocumentResult& result,
                                OperationOptions& options,
                                TRI_voc_tick_t& resultMarkerTick, bool lock,
@@ -2268,7 +2253,7 @@ int LogicalCollection::replace(TransactionMethods* trx, VPackSlice const newSlic
 
   uint8_t const* vpack = previous.vpack();
   VPackSlice oldDoc(vpack);
-  TRI_voc_rid_t oldRevisionId = TransactionMethods::extractRevFromDocument(oldDoc);
+  TRI_voc_rid_t oldRevisionId = transaction::Methods::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
 
   // Check old revision:
@@ -2355,7 +2340,7 @@ int LogicalCollection::replace(TransactionMethods* trx, VPackSlice const newSlic
 }
 
 /// @brief removes a document or edge
-int LogicalCollection::remove(TransactionMethods* trx,
+int LogicalCollection::remove(transaction::Methods* trx,
                               VPackSlice const slice, OperationOptions& options,
                               TRI_voc_tick_t& resultMarkerTick, bool lock,
                               TRI_voc_rid_t& prevRev,
@@ -2390,7 +2375,7 @@ int LogicalCollection::remove(TransactionMethods* trx,
 }
 
 /// @brief removes a document or edge, fast path function for database documents
-int LogicalCollection::remove(TransactionMethods* trx,
+int LogicalCollection::remove(transaction::Methods* trx,
                               TRI_voc_rid_t oldRevisionId,
                               VPackSlice const oldDoc,
                               OperationOptions& options,
@@ -2408,7 +2393,7 @@ int LogicalCollection::remove(TransactionMethods* trx,
 }
 
 /// @brief rolls back a document operation
-int LogicalCollection::rollbackOperation(TransactionMethods* trx,
+int LogicalCollection::rollbackOperation(transaction::Methods* trx,
                                          TRI_voc_document_operation_e type,
                                          TRI_voc_rid_t oldRevisionId,
                                          VPackSlice const& oldDoc,
@@ -2462,7 +2447,7 @@ int LogicalCollection::rollbackOperation(TransactionMethods* trx,
   return TRI_ERROR_INTERNAL;
 }
 
-void LogicalCollection::sizeHint(TransactionMethods* trx, int64_t hint) {
+void LogicalCollection::sizeHint(transaction::Methods* trx, int64_t hint) {
   if (hint <= 0) {
     return;
   }
@@ -2476,7 +2461,7 @@ void LogicalCollection::sizeHint(TransactionMethods* trx, int64_t hint) {
 
 /// @brief initializes an index with a set of existing documents
 void LogicalCollection::fillIndex(
-    arangodb::basics::LocalTaskQueue* queue, TransactionMethods* trx,
+    arangodb::basics::LocalTaskQueue* queue, transaction::Methods* trx,
     arangodb::Index* idx,
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
     bool skipPersistent) {
@@ -2503,9 +2488,9 @@ void LogicalCollection::fillIndex(
 
 /// @brief read unlocks a collection
 int LogicalCollection::endRead(bool useDeadlockDetector) {
-  if (TransactionMethods::_makeNolockHeaders != nullptr) {
-    auto it = TransactionMethods::_makeNolockHeaders->find(name());
-    if (it != TransactionMethods::_makeNolockHeaders->end()) {
+  if (transaction::Methods::_makeNolockHeaders != nullptr) {
+    auto it = transaction::Methods::_makeNolockHeaders->find(name());
+    if (it != transaction::Methods::_makeNolockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "EndRead blocked: " << _name << std::endl;
@@ -2530,9 +2515,9 @@ int LogicalCollection::endRead(bool useDeadlockDetector) {
 
 /// @brief write unlocks a collection
 int LogicalCollection::endWrite(bool useDeadlockDetector) {
-  if (TransactionMethods::_makeNolockHeaders != nullptr) {
-    auto it = TransactionMethods::_makeNolockHeaders->find(name());
-    if (it != TransactionMethods::_makeNolockHeaders->end()) {
+  if (transaction::Methods::_makeNolockHeaders != nullptr) {
+    auto it = transaction::Methods::_makeNolockHeaders->find(name());
+    if (it != transaction::Methods::_makeNolockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "EndWrite blocked: " << _name <<
@@ -2560,9 +2545,9 @@ int LogicalCollection::endWrite(bool useDeadlockDetector) {
 /// @brief read locks a collection, with a timeout (in µseconds)
 int LogicalCollection::beginReadTimed(bool useDeadlockDetector,
                                       double timeout) {
-  if (TransactionMethods::_makeNolockHeaders != nullptr) {
-    auto it = TransactionMethods::_makeNolockHeaders->find(name());
-    if (it != TransactionMethods::_makeNolockHeaders->end()) {
+  if (transaction::Methods::_makeNolockHeaders != nullptr) {
+    auto it = transaction::Methods::_makeNolockHeaders->find(name());
+    if (it != transaction::Methods::_makeNolockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "BeginReadTimed blocked: " << _name <<
@@ -2658,9 +2643,9 @@ int LogicalCollection::beginReadTimed(bool useDeadlockDetector,
 /// @brief write locks a collection, with a timeout
 int LogicalCollection::beginWriteTimed(bool useDeadlockDetector,
                                        double timeout) {
-  if (TransactionMethods::_makeNolockHeaders != nullptr) {
-    auto it = TransactionMethods::_makeNolockHeaders->find(name());
-    if (it != TransactionMethods::_makeNolockHeaders->end()) {
+  if (transaction::Methods::_makeNolockHeaders != nullptr) {
+    auto it = transaction::Methods::_makeNolockHeaders->find(name());
+    if (it != transaction::Methods::_makeNolockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "BeginWriteTimed blocked: " << _name <<
@@ -2756,7 +2741,7 @@ int LogicalCollection::beginWriteTimed(bool useDeadlockDetector,
 /// @brief looks up a document by key, low level worker
 /// the caller must make sure the read lock on the collection is held
 /// the key must be a string slice, no revision check is performed
-int LogicalCollection::lookupDocument(TransactionMethods* trx,
+int LogicalCollection::lookupDocument(transaction::Methods* trx,
                                       VPackSlice const key,
                                       ManagedDocumentResult& result) {
   if (!key.isString()) {
@@ -2773,7 +2758,7 @@ int LogicalCollection::lookupDocument(TransactionMethods* trx,
 }
 
 /// @brief checks the revision of a document
-int LogicalCollection::checkRevision(TransactionMethods* trx, TRI_voc_rid_t expected,
+int LogicalCollection::checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
                                      TRI_voc_rid_t found) {
   if (expected != 0 && found != expected) {
     return TRI_ERROR_ARANGO_CONFLICT;
@@ -2784,7 +2769,7 @@ int LogicalCollection::checkRevision(TransactionMethods* trx, TRI_voc_rid_t expe
 /// @brief updates an existing document, low level worker
 /// the caller must make sure the write lock on the collection is held
 int LogicalCollection::updateDocument(
-    TransactionMethods* trx, TRI_voc_rid_t oldRevisionId,
+    transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
     VPackSlice const& oldDoc, TRI_voc_rid_t newRevisionId,
     VPackSlice const& newDoc, MMFilesDocumentOperation& operation,
     MMFilesWalMarker const* marker, bool& waitForSync) {
@@ -2810,7 +2795,7 @@ int LogicalCollection::updateDocument(
 
   // update the index element (primary index only - other index have been
   // adjusted)
-  VPackSlice keySlice(TransactionMethods::extractKeyFromDocument(newDoc));
+  VPackSlice keySlice(transaction::Methods::extractKeyFromDocument(newDoc));
   MMFilesSimpleIndexElement* element = primaryIndex()->lookupKeyRef(trx, keySlice);
   if (element != nullptr && element->revisionId() != 0) {
     element->updateRevisionId(
@@ -2837,7 +2822,7 @@ int LogicalCollection::updateDocument(
 }
 
 /// @brief creates a new entry in the primary index
-int LogicalCollection::insertPrimaryIndex(TransactionMethods* trx,
+int LogicalCollection::insertPrimaryIndex(transaction::Methods* trx,
                                           TRI_voc_rid_t revisionId,
                                           VPackSlice const& doc) {
   TRI_IF_FAILURE("InsertPrimaryIndex") { return TRI_ERROR_DEBUG; }
@@ -2847,7 +2832,7 @@ int LogicalCollection::insertPrimaryIndex(TransactionMethods* trx,
 }
 
 /// @brief deletes an entry from the primary index
-int LogicalCollection::deletePrimaryIndex(TransactionMethods* trx,
+int LogicalCollection::deletePrimaryIndex(transaction::Methods* trx,
                                           TRI_voc_rid_t revisionId,
                                           VPackSlice const& doc) {
   TRI_IF_FAILURE("DeletePrimaryIndex") { return TRI_ERROR_DEBUG; }
@@ -2856,7 +2841,7 @@ int LogicalCollection::deletePrimaryIndex(TransactionMethods* trx,
 }
 
 /// @brief creates a new entry in the secondary indexes
-int LogicalCollection::insertSecondaryIndexes(TransactionMethods* trx,
+int LogicalCollection::insertSecondaryIndexes(transaction::Methods* trx,
                                               TRI_voc_rid_t revisionId,
                                               VPackSlice const& doc,
                                               bool isRollback) {
@@ -2900,7 +2885,7 @@ int LogicalCollection::insertSecondaryIndexes(TransactionMethods* trx,
 }
 
 /// @brief deletes an entry from the secondary indexes
-int LogicalCollection::deleteSecondaryIndexes(TransactionMethods* trx,
+int LogicalCollection::deleteSecondaryIndexes(transaction::Methods* trx,
                                               TRI_voc_rid_t revisionId,
                                               VPackSlice const& doc,
                                               bool isRollback) {
@@ -2939,7 +2924,7 @@ int LogicalCollection::deleteSecondaryIndexes(TransactionMethods* trx,
 
 /// @brief new object for insert, computes the hash of the key
 int LogicalCollection::newObjectForInsert(
-    TransactionMethods* trx, VPackSlice const& value, VPackSlice const& fromSlice,
+    transaction::Methods* trx, VPackSlice const& value, VPackSlice const& fromSlice,
     VPackSlice const& toSlice, bool isEdgeCollection, VPackBuilder& builder,
     bool isRestore) {
   TRI_voc_tick_t newRev = 0;
@@ -3027,7 +3012,7 @@ int LogicalCollection::newObjectForInsert(
 /// @brief new object for replace, oldValue must have _key and _id correctly
 /// set
 void LogicalCollection::newObjectForReplace(
-    TransactionMethods* trx, VPackSlice const& oldValue, VPackSlice const& newValue,
+    transaction::Methods* trx, VPackSlice const& oldValue, VPackSlice const& newValue,
     VPackSlice const& fromSlice, VPackSlice const& toSlice,
     bool isEdgeCollection, std::string const& rev, VPackBuilder& builder) {
   builder.openObject();
@@ -3065,7 +3050,7 @@ void LogicalCollection::newObjectForReplace(
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
 void LogicalCollection::mergeObjectsForUpdate(
-    TransactionMethods* trx, VPackSlice const& oldValue,
+    transaction::Methods* trx, VPackSlice const& oldValue,
     VPackSlice const& newValue, bool isEdgeCollection, std::string const& rev,
     bool mergeObjects, bool keepNull, VPackBuilder& b) {
   b.openObject();
@@ -3193,7 +3178,7 @@ void LogicalCollection::mergeObjectsForUpdate(
 }
 
 /// @brief new object for remove, must have _key set
-void LogicalCollection::newObjectForRemove(TransactionMethods* trx,
+void LogicalCollection::newObjectForRemove(transaction::Methods* trx,
                                            VPackSlice const& oldValue,
                                            std::string const& rev,
                                            VPackBuilder& builder) {
@@ -3210,7 +3195,7 @@ void LogicalCollection::newObjectForRemove(TransactionMethods* trx,
   builder.close();
 }
 
-bool LogicalCollection::readRevision(TransactionMethods* trx,
+bool LogicalCollection::readRevision(transaction::Methods* trx,
                                      ManagedDocumentResult& result,
                                      TRI_voc_rid_t revisionId) {
   uint8_t const* vpack = getPhysical()->lookupRevisionVPack(revisionId);
@@ -3221,7 +3206,7 @@ bool LogicalCollection::readRevision(TransactionMethods* trx,
   return false;
 }
 
-bool LogicalCollection::readRevisionConditional(TransactionMethods* trx,
+bool LogicalCollection::readRevisionConditional(transaction::Methods* trx,
                                                 ManagedDocumentResult& result,
                                                 TRI_voc_rid_t revisionId,
                                                 TRI_voc_tick_t maxTick,
@@ -3236,14 +3221,14 @@ bool LogicalCollection::readRevisionConditional(TransactionMethods* trx,
 }
 
 // TODO ONLY TEMP wrapper
-bool LogicalCollection::readDocument(TransactionMethods* trx, ManagedDocumentResult& result, DocumentIdentifierToken const& token) {
+bool LogicalCollection::readDocument(transaction::Methods* trx, ManagedDocumentResult& result, DocumentIdentifierToken const& token) {
   // TODO This only works for MMFiles Engine. Has to be moved => StorageEngine
   auto tkn = static_cast<MMFilesToken const*>(&token);
   return readRevision(trx, result, tkn->revisionId());
 }
 
 // TODO ONLY TEMP wrapper
-bool LogicalCollection::readDocumentConditional(TransactionMethods* trx,
+bool LogicalCollection::readDocumentConditional(transaction::Methods* trx,
                                                 ManagedDocumentResult& result,
                                                 DocumentIdentifierToken const& token,
                                                 TRI_voc_tick_t maxTick,
