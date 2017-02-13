@@ -7,17 +7,17 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
   { 
     <span class="hljs-string">"id"</span> : <span class="hljs-string">"statistics-gc"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-gc"</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1486057342.516909</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1486995512.759598</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">450</span>, 
-    <span class="hljs-string">"offset"</span> : <span class="hljs-number">350.495269</span>, 
+    <span class="hljs-string">"offset"</span> : <span class="hljs-number">412.1817</span>, 
     <span class="hljs-string">"command"</span> : <span class="hljs-string">"(function (params) { require('@arangodb/statistics').garbageCollector(); } )(params);"</span>, 
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
   }, 
   { 
     <span class="hljs-string">"id"</span> : <span class="hljs-string">"92"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"user-defined task"</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1486057332.765694</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1486995503.074551</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"offset"</span> : <span class="hljs-number">0.000001</span>, 
@@ -27,7 +27,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
   { 
     <span class="hljs-string">"id"</span> : <span class="hljs-string">"statistics-average-collector"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-average-collector"</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1486057342.516469</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1486995512.759395</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">900</span>, 
     <span class="hljs-string">"offset"</span> : <span class="hljs-number">20</span>, 
@@ -37,7 +37,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
   { 
     <span class="hljs-string">"id"</span> : <span class="hljs-string">"statistics-collector"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-collector"</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1486057342.51613</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1486995512.759263</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">10</span>, 
     <span class="hljs-string">"offset"</span> : <span class="hljs-number">1</span>, 
