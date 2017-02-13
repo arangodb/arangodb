@@ -144,6 +144,7 @@
   * [Arangoimp](Administration/Arangoimp.md)
   * [Arangodump](Administration/Arangodump.md)
   * [Arangorestore](Administration/Arangorestore.md)
+  * [Arangoexport](Administration/Arangoexport.md)
   * [Managing Users](Administration/ManagingUsers.md)
   * [Server Configuration](Administration/Configuration/README.md)
     * [Managing Endpoints](Administration/Configuration/Endpoint.md)
@@ -192,6 +193,7 @@
 #  * [Server Internals](Architecture/ServerInternals.md)
 #
 * [Release notes](ReleaseNotes/README.md)
+  * [Whats New in 3.2](ReleaseNotes/NewFeatures32.md)
   * [Whats New in 3.1](ReleaseNotes/NewFeatures31.md)
   * [Incompatible changes in 3.1](ReleaseNotes/UpgradingChanges31.md)
   * [Whats New in 3.0](ReleaseNotes/NewFeatures30.md)
