@@ -49,7 +49,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/TransactionContext.h"
-#include "Utils/TransactionHints.h"
+#include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
@@ -1503,7 +1503,7 @@ int RestReplicationHandler::processRestoreCollection(
         SingleCollectionTransaction trx(
             StandaloneTransactionContext::Create(_vocbase), col->cid(),
             AccessMode::Type::WRITE);
-        trx.addHint(TransactionHints::Hint::RECOVERY,
+        trx.addHint(transaction::Hints::Hint::RECOVERY,
                     false);  // to turn off waitForSync!
 
         res = trx.begin();
@@ -2259,7 +2259,7 @@ int RestReplicationHandler::processRestoreData(
   SingleCollectionTransaction trx(
       StandaloneTransactionContext::Create(_vocbase), colName,
       AccessMode::Type::WRITE);
-  trx.addHint(TransactionHints::Hint::RECOVERY,
+  trx.addHint(transaction::Hints::Hint::RECOVERY,
               false);  // to turn off waitForSync!
 
   int res = trx.begin();
@@ -3448,7 +3448,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
   auto trxContext = StandaloneTransactionContext::Create(_vocbase);
   SingleCollectionTransaction trx(trxContext, col->cid(), AccessMode::Type::READ);
-  trx.addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
+  trx.addHint(transaction::Hints::Hint::LOCK_ENTIRELY, false);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::SERVER_ERROR,

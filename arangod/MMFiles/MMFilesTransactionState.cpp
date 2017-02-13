@@ -56,7 +56,7 @@ MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase)
 MMFilesTransactionState::~MMFilesTransactionState() {}
   
 /// @brief start a transaction
-int MMFilesTransactionState::beginTransaction(TransactionHints hints, int nestingLevel) {
+int MMFilesTransactionState::beginTransaction(transaction::Hints hints, int nestingLevel) {
   LOG_TRX(this, nestingLevel) << "beginning " << AccessMode::typeString(_type) << " transaction";
 
   if (nestingLevel == 0) {
@@ -64,7 +64,7 @@ int MMFilesTransactionState::beginTransaction(TransactionHints hints, int nestin
 
     auto logfileManager = MMFilesLogfileManager::instance();
 
-    if (!hasHint(TransactionHints::Hint::NO_THROTTLING) &&
+    if (!hasHint(transaction::Hints::Hint::NO_THROTTLING) &&
         AccessMode::isWriteOrExclusive(_type) &&
         logfileManager->canBeThrottled()) {
       // write-throttling?
@@ -196,7 +196,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
   LogicalCollection* collection = operation.collection();
   bool const isSingleOperationTransaction = isSingleOperation();
 
-  if (hasHint(TransactionHints::Hint::RECOVERY)) {
+  if (hasHint(transaction::Hints::Hint::RECOVERY)) {
     // turn off all waitForSync operations during recovery
     waitForSync = false;
   } else if (!waitForSync) {
@@ -346,7 +346,7 @@ int MMFilesTransactionState::writeBeginMarker() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (hasHint(TransactionHints::Hint::NO_BEGIN_MARKER)) {
+  if (hasHint(transaction::Hints::Hint::NO_BEGIN_MARKER)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -389,7 +389,7 @@ int MMFilesTransactionState::writeAbortMarker() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (hasHint(TransactionHints::Hint::NO_ABORT_MARKER)) {
+  if (hasHint(transaction::Hints::Hint::NO_ABORT_MARKER)) {
     return TRI_ERROR_NO_ERROR;
   }
 

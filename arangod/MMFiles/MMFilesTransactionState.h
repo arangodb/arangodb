@@ -28,7 +28,7 @@
 #include "Basics/SmallVector.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/TransactionMethods.h"
-#include "Utils/TransactionHints.h"
+#include "Transaction/Hints.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
                                 
@@ -52,7 +52,7 @@ class MMFilesTransactionState final : public TransactionState {
   ~MMFilesTransactionState();
 
   /// @brief begin a transaction
-  int beginTransaction(TransactionHints hints, int nestingLevel) override;
+  int beginTransaction(transaction::Hints hints, int nestingLevel) override;
 
   /// @brief commit a transaction
   int commitTransaction(TransactionMethods* trx, int nestingLevel) override;

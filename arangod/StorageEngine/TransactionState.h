@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 #include "Utils/TransactionMethods.h"
-#include "Utils/TransactionHints.h"
+#include "Transaction/Hints.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
                                 
@@ -81,19 +81,19 @@ class TransactionState {
   
   /// @brief whether or not a transaction consists of a single operation
   bool isSingleOperation() const {
-    return hasHint(TransactionHints::Hint::SINGLE_OPERATION);
+    return hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
   /// @brief update the status of a transaction
   void updateStatus(TransactionMethods::Status status);
   
   /// @brief whether or not a specific hint is set for the transaction
-  bool hasHint(TransactionHints::Hint hint) const {
+  bool hasHint(transaction::Hints::Hint hint) const {
     return _hints.has(hint);
   }
 
   /// @brief begin a transaction
-  virtual int beginTransaction(TransactionHints hints, int nestingLevel) = 0;
+  virtual int beginTransaction(transaction::Hints hints, int nestingLevel) = 0;
 
   /// @brief commit a transaction
   virtual int commitTransaction(TransactionMethods* trx, int nestingLevel) = 0;
@@ -134,7 +134,7 @@ class TransactionState {
   SmallVector<TransactionCollection*> _collections; // list of participating collections
  public:
   rocksdb::Transaction* _rocksTransaction;
-  TransactionHints _hints;            // hints;
+  transaction::Hints _hints;            // hints;
   int _nestingLevel;
   bool _allowImplicit;
   bool _hasOperations;

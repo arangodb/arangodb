@@ -29,7 +29,7 @@
 #include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
 #include "Utils/OperationResult.h"
-#include "Utils/TransactionHints.h"
+#include "Transaction/Hints.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -204,10 +204,10 @@ class TransactionMethods {
   rocksdb::Transaction* rocksTransaction();
 
   /// @brief add a transaction hint
-  void addHint(TransactionHints::Hint hint, bool passthrough);
+  void addHint(transaction::Hints::Hint hint, bool passthrough);
 
   /// @brief remove a transaction hint
-  void removeHint(TransactionHints::Hint hint, bool passthrough);
+  void removeHint(transaction::Hints::Hint hint, bool passthrough);
 
   /// @brief return the registered error data
   std::string const getErrorData() const { return _errorData; }
@@ -693,7 +693,7 @@ class TransactionMethods {
   std::string _errorData;
 
   /// @brief transaction hints
-  TransactionHints _hints;
+  transaction::Hints _hints;
 
   /// @brief timeout for lock acquisition
   double _timeout;

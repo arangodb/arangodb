@@ -41,7 +41,7 @@ class UserTransaction final : public TransactionMethods {
                       double lockTimeout, bool waitForSync,
                       bool allowImplicitCollections)
       : TransactionMethods(transactionContext) {
-    addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
+    addHint(transaction::Hints::Hint::LOCK_ENTIRELY, false);
 
     if (lockTimeout >= 0.0) {
       setTimeout(lockTimeout);

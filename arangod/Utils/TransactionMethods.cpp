@@ -149,7 +149,7 @@ static OperationResult EmptyResult(bool waitForSync) {
 }
   
 /// @brief add a transaction hint
-void TransactionMethods::addHint(TransactionHints::Hint hint, bool passthrough) {
+void TransactionMethods::addHint(transaction::Hints::Hint hint, bool passthrough) {
   _hints.set(hint);
 
   if (passthrough && _state != nullptr) {
@@ -158,7 +158,7 @@ void TransactionMethods::addHint(TransactionHints::Hint hint, bool passthrough) 
 }
   
 /// @brief remove a transaction hint
-void TransactionMethods::removeHint(TransactionHints::Hint hint, bool passthrough) {
+void TransactionMethods::removeHint(transaction::Hints::Hint hint, bool passthrough) {
   _hints.unset(hint);
 
   if (passthrough && _state != nullptr) {

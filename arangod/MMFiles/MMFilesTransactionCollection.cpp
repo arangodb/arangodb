@@ -27,7 +27,7 @@
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/TransactionMethods.h"
-#include "Utils/TransactionHints.h"
+#include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 
@@ -116,7 +116,7 @@ void MMFilesTransactionCollection::freeOperations(TransactionMethods* activeTrx,
     return;
   }
   
-  bool const isSingleOperationTransaction = _transaction->_hints.has(TransactionHints::Hint::SINGLE_OPERATION);
+  bool const isSingleOperationTransaction = _transaction->_hints.has(transaction::Hints::Hint::SINGLE_OPERATION);
 
   if (mustRollback) {
     // revert all operations
@@ -149,8 +149,8 @@ void MMFilesTransactionCollection::freeOperations(TransactionMethods* activeTrx,
 
 bool MMFilesTransactionCollection::canAccess(AccessMode::Type accessType) const {
   if (_collection == nullptr) {
-    if (!_transaction->_hints.has(TransactionHints::Hint::LOCK_NEVER) ||
-        !_transaction->_hints.has(TransactionHints::Hint::NO_USAGE_LOCK)) {
+    if (!_transaction->_hints.has(transaction::Hints::Hint::LOCK_NEVER) ||
+        !_transaction->_hints.has(transaction::Hints::Hint::NO_USAGE_LOCK)) {
       // not opened. probably a mistake made by the caller
       return false;
     }
@@ -198,8 +198,8 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
 
   if (_collection == nullptr) {
     // open the collection
-    if (!_transaction->_hints.has(TransactionHints::Hint::LOCK_NEVER) &&
-        !_transaction->_hints.has(TransactionHints::Hint::NO_USAGE_LOCK)) {
+    if (!_transaction->_hints.has(transaction::Hints::Hint::LOCK_NEVER) &&
+        !_transaction->_hints.has(transaction::Hints::Hint::NO_USAGE_LOCK)) {
       // use and usage-lock
       TRI_vocbase_col_status_e status;
       LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
@@ -239,7 +239,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
   if (nestingLevel == 0 &&
       AccessMode::isWriteOrExclusive(_accessType)) {
     // read-lock the compaction lock
-    if (!_transaction->_hints.has(TransactionHints::Hint::NO_COMPACTION_LOCK)) {
+    if (!_transaction->_hints.has(transaction::Hints::Hint::NO_COMPACTION_LOCK)) {
       if (!_compactionLocked) {
         _collection->preventCompaction();
         _compactionLocked = true;
@@ -252,10 +252,10 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
     _originalRevision = _collection->revision();
   }
 
-  bool shouldLock = _transaction->_hints.has(TransactionHints::Hint::LOCK_ENTIRELY);
+  bool shouldLock = _transaction->_hints.has(transaction::Hints::Hint::LOCK_ENTIRELY);
 
   if (!shouldLock) {
-    shouldLock = (AccessMode::isWriteOrExclusive(_accessType) && !_transaction->_hints.has(TransactionHints::Hint::SINGLE_OPERATION));
+    shouldLock = (AccessMode::isWriteOrExclusive(_accessType) && !_transaction->_hints.has(transaction::Hints::Hint::SINGLE_OPERATION));
   }
 
   if (shouldLock && !isLocked()) {
@@ -279,7 +279,7 @@ void MMFilesTransactionCollection::unuse(int nestingLevel) {
 
   // the top level transaction releases all collections
   if (nestingLevel == 0 && _collection != nullptr) {
-    if (!_transaction->_hints.has(TransactionHints::Hint::NO_COMPACTION_LOCK)) {
+    if (!_transaction->_hints.has(transaction::Hints::Hint::NO_COMPACTION_LOCK)) {
       if (AccessMode::isWriteOrExclusive(_accessType) && _compactionLocked) {
         // read-unlock the compaction lock
         _collection->allowCompaction();
@@ -304,7 +304,7 @@ void MMFilesTransactionCollection::release() {
 
 /// @brief lock a collection
 int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel) {
-  if (_transaction->_hints.has(TransactionHints::Hint::LOCK_NEVER)) {
+  if (_transaction->_hints.has(transaction::Hints::Hint::LOCK_NEVER)) {
     // never lock
     return TRI_ERROR_NO_ERROR;
   }
@@ -327,12 +327,12 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   LogicalCollection* collection = _collection;
   TRI_ASSERT(collection != nullptr);
   double timeout = _transaction->_timeout;
-  if (_transaction->_hints.has(TransactionHints::Hint::TRY_LOCK)) {
+  if (_transaction->_hints.has(transaction::Hints::Hint::TRY_LOCK)) {
     // give up early if we cannot acquire the lock instantly
     timeout = 0.00000001;
   }
   
-  bool const useDeadlockDetector = !_transaction->_hints.has(TransactionHints::Hint::SINGLE_OPERATION);
+  bool const useDeadlockDetector = !_transaction->_hints.has(transaction::Hints::Hint::SINGLE_OPERATION);
 
   int res;
   if (!isWrite(type)) {
@@ -352,7 +352,7 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
 /// @brief unlock a collection
 int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLevel) {
-  if (_transaction->_hints.has(TransactionHints::Hint::LOCK_NEVER)) {
+  if (_transaction->_hints.has(transaction::Hints::Hint::LOCK_NEVER)) {
     // never unlock
     return TRI_ERROR_NO_ERROR;
   }
@@ -388,7 +388,7 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
     return TRI_ERROR_INTERNAL;
   }
 
-  bool const useDeadlockDetector = !_transaction->_hints.has(TransactionHints::Hint::SINGLE_OPERATION);
+  bool const useDeadlockDetector = !_transaction->_hints.has(transaction::Hints::Hint::SINGLE_OPERATION);
 
   LogicalCollection* collection = _collection;
   TRI_ASSERT(collection != nullptr);

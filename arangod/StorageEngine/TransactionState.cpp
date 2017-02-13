@@ -241,8 +241,8 @@ TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid, size_
 
 /// @brief release collection locks for a transaction
 int TransactionState::releaseCollections() {
-  if (hasHint(TransactionHints::Hint::LOCK_NEVER) ||
-      hasHint(TransactionHints::Hint::NO_USAGE_LOCK)) {
+  if (hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
+      hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
     return TRI_ERROR_NO_ERROR;
   }
 
