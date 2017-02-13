@@ -28,13 +28,14 @@
 #include "Basics/SmallVector.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Hints.h"
+#include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #define LOG_TRX(trx, level)  \
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->_id << "." << level << " (" << transaction::Methods::statusString(trx->_status) << "): " 
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->_id << "." << level << " (" << transaction::statusString(trx->_status) << "): " 
 
 #else
 
@@ -95,7 +96,7 @@ class TransactionState {
   }
 
   /// @brief update the status of a transaction
-  void updateStatus(transaction::Methods::Status status);
+  void updateStatus(transaction::Status status);
   
   /// @brief whether or not a specific hint is set for the transaction
   bool hasHint(transaction::Hints::Hint hint) const {
@@ -137,7 +138,7 @@ class TransactionState {
   TRI_vocbase_t* _vocbase;            // vocbase
   TRI_voc_tid_t _id;                  // local trx id
   AccessMode::Type _type;             // access type (read|write)
-  transaction::Methods::Status _status;        // current status
+  transaction::Status _status;        // current status
 
  protected:
   SmallVector<TransactionCollection*>::allocator_type::arena_type _arena; // memory for collections

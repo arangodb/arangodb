@@ -64,7 +64,7 @@ class MMFilesTransactionState final : public TransactionState {
   int abortTransaction(transaction::Methods* trx, int nestingLevel) override;
 
   bool hasFailedOperations() const override {
-    return (_hasOperations && _status == transaction::Methods::Status::ABORTED);
+    return (_hasOperations && _status == transaction::Status::ABORTED);
   }
   
   /// @brief add a WAL operation for a transaction collection
