@@ -564,10 +564,13 @@ void Constituent::run() {
         {
           MUTEX_LOCKER(guard, _castLock);
 
-          // in the beginning, pure random
+          // in the beginning, pure random, after that, we might have to
+          // wait for less than planned, since the last heartbeat we have
+          // seen is already some time ago, note that this waiting time
+          // can become negative:
           if (_lastHeartbeatSeen > 0.0) {
             double now = TRI_microtime();
-            randWait += static_cast<int64_t>(M * (now-_lastHeartbeatSeen));
+            randWait -= static_cast<int64_t>(M * (now-_lastHeartbeatSeen));
           }
         }
        
