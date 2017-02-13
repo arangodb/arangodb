@@ -462,7 +462,9 @@ It does not, if `SUMMARY.md` in `Books/ppbooks/` looks like this:
 If sub-chapters do not show in the navigation, try another browser (Firefox).
 Chrome's security policies are pretty strict about localhost and file://
 protocol. You may access the docs through a local web server to lift the
-restrictions.
+restrictions. You can use pythons build in http server for this.
+
+    ~/books$ python -m SimpleHTTPServer 8000
 
 To only regereneate one file (faster) you may specify a filter:
 

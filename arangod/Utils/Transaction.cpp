@@ -73,11 +73,6 @@ std::vector<std::vector<std::string>> Transaction::IndexHandle::fieldNames() con
   return _index->fieldNames();
 }
 
-/// @brief Only required by traversal should be removed ASAP
-bool Transaction::IndexHandle::isMMFilesEdgeIndex() const {
-  return _index->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX;
-}
-
 /// @brief IndexHandle getter method
 std::shared_ptr<arangodb::Index> Transaction::IndexHandle::getIndex() const {
   return _index;
@@ -1218,8 +1213,8 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
   ManagedDocumentResult mmdr;
 
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, Transaction::CursorType::ANY, IndexHandle(), 
-                {}, &mmdr, skip, limit, 1000, false);
+      indexScan(collectionName, Transaction::CursorType::ANY, &mmdr, skip,
+                limit, 1000, false);
 
   LogicalCollection* collection = cursor->collection();
   auto cb = [&] (DocumentIdentifierToken const& token) {
@@ -1319,20 +1314,6 @@ TRI_col_type_e Transaction::getCollectionType(std::string const& collectionName)
 /// @brief return the name of a collection
 std::string Transaction::collectionName(TRI_voc_cid_t cid) { 
   return resolver()->getCollectionName(cid);
-}
-
-/// @brief return the edge index handle of collection
-Transaction::IndexHandle Transaction::edgeIndexHandle(std::string const& collectionName) {
-  if (!isEdgeCollection(collectionName)) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
-  }
-  auto indexes = indexesForCollection(collectionName); 
-  for (auto idx : indexes) {
-    if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
-      return IndexHandle(idx);
-    }
-  }
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
 }
 
 /// @brief Iterate over all elements of the collection.
@@ -2543,8 +2524,8 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   ManagedDocumentResult mmdr;
 
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, Transaction::CursorType::ALL, IndexHandle(),
-                {}, &mmdr, skip, limit, 1000, false);
+      indexScan(collectionName, Transaction::CursorType::ALL, &mmdr, skip,
+                limit, 1000, false);
 
   if (cursor->failed()) {
     return OperationResult(cursor->code);
@@ -2974,7 +2955,6 @@ OperationCursor* Transaction::indexScanForCondition(
 /// calling this method
 std::unique_ptr<OperationCursor> Transaction::indexScan(
     std::string const& collectionName, CursorType cursorType,
-    IndexHandle const& indexId, VPackSlice const search, 
     ManagedDocumentResult* mmdr,
     uint64_t skip, uint64_t limit, uint64_t batchSize, bool reverse) {
   // For now we assume indexId is the iid part of the index.
@@ -2998,11 +2978,6 @@ std::unique_ptr<OperationCursor> Transaction::indexScan(
 
   switch (cursorType) {
     case CursorType::ANY: {
-      // We do not need search values
-      TRI_ASSERT(search.isNone());
-      // We do not need an index either
-      TRI_ASSERT(nullptr == indexId.getIndex());
-
       arangodb::MMFilesPrimaryIndex* idx = document->primaryIndex();
 
       if (idx == nullptr) {
@@ -3015,11 +2990,6 @@ std::unique_ptr<OperationCursor> Transaction::indexScan(
       break;
     }
     case CursorType::ALL: {
-      // We do not need search values
-      TRI_ASSERT(search.isNone());
-      // We do not need an index either
-      TRI_ASSERT(nullptr == indexId.getIndex());
-
       arangodb::MMFilesPrimaryIndex* idx = document->primaryIndex();
 
       if (idx == nullptr) {
@@ -3030,19 +3000,6 @@ std::unique_ptr<OperationCursor> Transaction::indexScan(
 
       iterator.reset(idx->allIterator(this, mmdr, reverse));
       break;
-    }
-    case CursorType::INDEX: {
-      auto idx = indexId.getIndex();
-      if (nullptr == idx) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "The index id cannot be empty.");
-      }
-      // Normalize the search values
-      // VPackBuilder expander;
-      // idx->expandInSearchValues(search, expander);
-
-      // Now collect the Iterator
-      iterator.reset(idx->iteratorForSlice(this, mmdr, search, reverse));
     }
   }
   if (iterator == nullptr) {

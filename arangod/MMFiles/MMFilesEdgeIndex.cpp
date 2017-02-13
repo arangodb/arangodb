@@ -175,52 +175,6 @@ void MMFilesEdgeIndexIterator::reset() {
   _lastElement = MMFilesSimpleIndexElement();
 }
   
-AnyDirectionMMFilesEdgeIndexIterator::AnyDirectionMMFilesEdgeIndexIterator(LogicalCollection* collection,
-                                arangodb::Transaction* trx,
-                                ManagedDocumentResult* mmdr,
-                                arangodb::MMFilesEdgeIndex const* index,
-                                MMFilesEdgeIndexIterator* outboundIterator,
-                                MMFilesEdgeIndexIterator* inboundIterator)
-    : IndexIterator(collection, trx, mmdr, index),
-      _outbound(outboundIterator),
-      _inbound(inboundIterator),
-      _useInbound(false) {}
-
-bool AnyDirectionMMFilesEdgeIndexIterator::next(TokenCallback const& cb,
-                                                size_t limit) {
-  auto inWrapper = [&](DocumentIdentifierToken const& res) {
-    if (_seen.find(res) == _seen.end()) {
-      --limit;
-      cb(res);
-    }
-  };
-
-  auto outWrapper = [&](DocumentIdentifierToken const& res) {
-    _seen.emplace(res);
-    --limit;
-    cb(res);
-  };
-
-  while (limit > 0) {
-    if (_useInbound) {
-      return _inbound->next(inWrapper, limit);
-    } else {
-      _outbound->next(outWrapper, limit);
-      if (limit > 0) {
-        _useInbound = true;
-      }
-    }
-  }
-  return true;
-}
-
-void AnyDirectionMMFilesEdgeIndexIterator::reset() {
-  _useInbound = false;
-  _seen.clear();
-  _outbound->reset();
-  _inbound->reset();
-}
-
 MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection)
     : Index(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
@@ -651,70 +605,6 @@ void MMFilesEdgeIndex::expandInSearchValues(VPackSlice const slice,
     }
   }
   builder.close();
-}
-
-/// @brief creates an IndexIterator for the given VelocyPackSlices.
-///        The searchValue is a an Array with exactly two Entries.
-///        If the first is set it means we are searching for _from (OUTBOUND),
-///        if the second is set we are searching for _to (INBOUND).
-///        if both are set we are search for ANY direction. Result is made
-///        DISTINCT.
-///        Each defined slice that is set has to be list of keys to search for.
-///        Each key needs to have the following formats:
-///
-///        1) {"eq": <compareValue>} // The value in index is exactly this
-///
-///        Reverse is not supported, hence ignored
-///        NOTE: The iterator is only valid as long as the slice points to
-///        a valid memory region.
-IndexIterator* MMFilesEdgeIndex::iteratorForSlice(
-    arangodb::Transaction* trx, 
-    ManagedDocumentResult* mmdr,
-    arangodb::velocypack::Slice const searchValues, bool) const {
-  if (!searchValues.isArray() || searchValues.length() != 2) {
-    // Invalid searchValue
-    return nullptr;
-  }
-
-  VPackArrayIterator it(searchValues);
-  TRI_ASSERT(it.valid());
-
-  VPackSlice const from = it.value();
-
-  it.next();
-  TRI_ASSERT(it.valid());
-  VPackSlice const to = it.value();
-
-  if (!from.isNull()) {
-    TRI_ASSERT(from.isArray());
-    if (!to.isNull()) {
-      // ANY search
-      TRI_ASSERT(to.isArray());
-      TransactionBuilderLeaser fromBuilder(trx);
-      std::unique_ptr<VPackBuilder> fromKeys(fromBuilder.steal());
-      fromKeys->add(from);
-      auto left = std::make_unique<MMFilesEdgeIndexIterator>(_collection, trx, mmdr, this, _edgesFrom, fromKeys);
-
-      TransactionBuilderLeaser toBuilder(trx);
-      std::unique_ptr<VPackBuilder> toKeys(toBuilder.steal());
-      toKeys->add(to);
-      auto right = std::make_unique<MMFilesEdgeIndexIterator>(_collection, trx, mmdr, this, _edgesTo, toKeys);
-      return new AnyDirectionMMFilesEdgeIndexIterator(_collection, trx, mmdr, this, left.release(), right.release());
-    }
-    // OUTBOUND search
-    TRI_ASSERT(to.isNull());
-    TransactionBuilderLeaser builder(trx);
-    std::unique_ptr<VPackBuilder> keys(builder.steal());
-    keys->add(from);
-    return new MMFilesEdgeIndexIterator(_collection, trx, mmdr, this, _edgesFrom, keys);
-  } else {
-    // INBOUND search
-    TRI_ASSERT(to.isArray());
-    TransactionBuilderLeaser builder(trx);
-    std::unique_ptr<VPackBuilder> keys(builder.steal());
-    keys->add(to);
-    return new MMFilesEdgeIndexIterator(_collection, trx, mmdr, this, _edgesTo, keys);
-  }
 }
 
 /// @brief create the iterator

@@ -98,6 +98,52 @@ else ()
 endif ()
 
 ################################################################################
+## arangoexport
+################################################################################
+
+if (MSVC)
+  generate_product_version(ProductVersionFiles_arangoexport
+    NAME arangoexport
+    FILE_DESCRIPTION ${ARANGO_EXPORT_FRIENDLY_STRING}
+    ICON ${ARANGO_ICON}
+    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+    VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
+    VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
+    VERSION_REVISION ${BUILD_ID}
+  )
+endif ()
+
+add_executable(${BIN_ARANGOEXPORT}
+  ${ProductVersionFiles_arangoexport}
+  ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  Export/ExportFeature.cpp
+  Export/arangoexport.cpp
+  Shell/ClientFeature.cpp
+  Shell/ConsoleFeature.cpp
+  V8Client/ArangoClientHelper.cpp
+)
+
+target_link_libraries(${BIN_ARANGOEXPORT}
+  ${LIB_ARANGO}
+  ${MSVC_LIBS}
+  ${SYSTEM_LIBRARIES}
+  boost_system
+  boost_boost
+)
+
+install(
+  TARGETS ${BIN_ARANGOEXPORT}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+install_config(arangoexport)
+
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangoexport zlibstatic v8_build) # v8_build includes ICU build
+else ()
+  add_dependencies(arangoexport zlibstatic) # v8_build includes ICU build
+endif ()
+
+################################################################################
 ## arangoimp
 ################################################################################
 

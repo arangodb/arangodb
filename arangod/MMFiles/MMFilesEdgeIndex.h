@@ -71,33 +71,6 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
   MMFilesSimpleIndexElement _lastElement;
 };
 
-class AnyDirectionMMFilesEdgeIndexIterator final : public IndexIterator {
- public:
-  AnyDirectionMMFilesEdgeIndexIterator(LogicalCollection* collection,
-                                arangodb::Transaction* trx,
-                                ManagedDocumentResult* mmdr,
-                                arangodb::MMFilesEdgeIndex const* index,
-                                MMFilesEdgeIndexIterator* outboundIterator,
-                                MMFilesEdgeIndexIterator* inboundIterator);
-
-  ~AnyDirectionMMFilesEdgeIndexIterator() {
-    delete _outbound;
-    delete _inbound;
-  }
-
-  char const* typeName() const override { return "any-edge-index-iterator"; }
-
-  bool next(TokenCallback const& cb, size_t limit) override;
-
-  void reset() override;
-
- private:
-  MMFilesEdgeIndexIterator* _outbound;
-  MMFilesEdgeIndexIterator* _inbound;
-  std::unordered_set<DocumentIdentifierToken> _seen;
-  bool _useInbound;
-};
-
 class MMFilesEdgeIndex final : public Index {
  public:
   MMFilesEdgeIndex() = delete;
@@ -177,24 +150,6 @@ class MMFilesEdgeIndex final : public Index {
   ///        entries.
   void expandInSearchValues(arangodb::velocypack::Slice const,
                             arangodb::velocypack::Builder&) const override;
-
-  /// @brief creates an IndexIterator for the given VelocyPackSlices.
-  ///        The searchValue is a an Array with exactly two Entries, one of them
-  ///        has to be NONE.
-  ///        If the first is set it means we are searching for _from (OUTBOUND),
-  ///        if the second is set we are searching for _to (INBOUND).
-  ///        The slice that is set has to be list of keys to search for.
-  ///        Each key needs to have the following formats:
-  ///
-  ///        1) {"eq": <compareValue>} // The value in index is exactly this
-  ///
-  ///        Reverse is not supported, hence ignored
-  ///        NOTE: The iterator is only valid as long as the slice points to
-  ///        a valid memory region.
-  IndexIterator* iteratorForSlice(arangodb::Transaction*,
-                                  ManagedDocumentResult*,
-                                  arangodb::velocypack::Slice const,
-                                  bool) const override;
 
  private:
   /// @brief create the iterator

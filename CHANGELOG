@@ -1,6 +1,11 @@
 devel
 -----
 
+* Removed undocumented internal HTTP API:
+  * PUT _api/edges
+  
+  The documented GET _api/edges and the undocumented POST _api/edges remains unmodified.
+
 * moved V8 code into a git submodule
   this requires running the command
   
@@ -17,6 +22,12 @@ devel
 * change undocumented behaviour in case of invalid revision ids in
   JavaScript document operations from 1239 ("illegal document revision")
   to 1200 ("conflict").
+
+* added data export tool, arangoexport.
+
+  arangoexport can be used to export collections to json and jsonl
+  and export a graph or collections to xgmml.
+
 
 v3.2.alpha1 (2017-02-05)
 ------------------------

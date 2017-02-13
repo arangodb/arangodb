@@ -448,22 +448,6 @@ IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
   return nullptr;
 }
 
-/// @brief creates an IndexIterator for the given slice
-IndexIterator* MMFilesPrimaryIndex::iteratorForSlice(
-    arangodb::Transaction* trx, 
-    ManagedDocumentResult* mmdr,
-    arangodb::velocypack::Slice const searchValues, bool) const {
-  if (!searchValues.isArray()) {
-    // Invalid searchValue
-    return nullptr;
-  }
-  // lease builder, but immediately pass it to the unique_ptr so we don't leak  
-  TransactionBuilderLeaser builder(trx);
-  std::unique_ptr<VPackBuilder> keys(builder.steal());
-  keys->add(searchValues);
-  return new MMFilesPrimaryIndexIterator(_collection, trx, mmdr, this, keys);
-}
-
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* MMFilesPrimaryIndex::specializeCondition(
     arangodb::aql::AstNode* node,

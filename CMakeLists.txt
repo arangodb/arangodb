@@ -15,7 +15,11 @@ if (POLICY CMP0017)
 endif ()
 
 if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release CACHE string "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel." FORCE)
+  set(CMAKE_BUILD_TYPE Release
+      CACHE string
+      "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
+      FORCE
+  )
 endif ()
 
 if (NOT (CMAKE_BUILD_TYPE STREQUAL "Debug"
@@ -23,9 +27,9 @@ if (NOT (CMAKE_BUILD_TYPE STREQUAL "Debug"
       OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
       OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
       OR CMAKE_BUILD_TYPE STREQUAL "None"))
+
   message(FATAL_ERROR "expecting CMAKE_BUILD_TYPE: None Debug Release RelWithDebInfo MinSizeRel, got ${CMAKE_BUILD_TYPE}.")
 endif ()
-add_definitions(-DCURL_STATICLIB=1)
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
 
@@ -67,12 +71,12 @@ if (DEBUG_SYNC_REPLICATION)
   add_definitions("-DDEBUG_SYNC_REPLICATION=1")
 endif ()
 
-################################################################################
-## ARANGODB
-################################################################################
+# ------------------------------------------------------------------------------
+# VERSION information
+# ------------------------------------------------------------------------------
 
 set(ARANGODB_VERSION_MAJOR      "3")
-set(ARANGODB_VERSION_MINOR      "1")
+set(ARANGODB_VERSION_MINOR      "2")
 set(ARANGODB_VERSION_REVISION   "devel")
 set(ARANGODB_PACKAGE_REVISION   "1")
 
@@ -92,6 +96,7 @@ set(ARANGODB_FRIENDLY_STRING "ArangoDB - the multi-model database")
 set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test program")
 set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - export")
 set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - importer")
+set(ARANGO_EXPORT_FRIENDLY_STRING     "arangoexport - dataexporter")
 set(ARANGO_IMP_FRIENDLY_STRING     "arangoimp - TSV/CSV/JSON importer")
 set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
 set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")
@@ -104,6 +109,7 @@ set(LIB_ARANGO_V8     arango_v8)
 set(BIN_ARANGOBENCH   arangobench)
 set(BIN_ARANGOD       arangod)
 set(BIN_ARANGODUMP    arangodump)
+set(BIN_ARANGOEXPORT  arangoexport)
 set(BIN_ARANGOIMP     arangoimp)
 set(BIN_ARANGORESTORE arangorestore)
 set(BIN_ARANGOSH      arangosh)
@@ -118,9 +124,9 @@ set(COPY_PACKAGES_LIST)
 set(CLEAN_PACKAGES_LIST)
 set(INSTALL_CONFIGFILES_LIST)
 
-################################################################################
-## VERSION FILES
-################################################################################
+# ------------------------------------------------------------------------------
+# update files containing VERSION information
+# ------------------------------------------------------------------------------
 
 if (${CMAKE_MAJOR_VERSION} EQUAL 2)
   set(ARANGODB_BUILD_DATE "YYYY-MM-DD HH:MM:SS")
@@ -143,6 +149,12 @@ configure_file (
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"
   "${CMAKE_CURRENT_SOURCE_DIR}/VERSION"
+  NEWLINE_STYLE UNIX
+)
+
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/js/common/tests/shell/shell-database.js.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/js/common/tests/shell/shell-database.js"
   NEWLINE_STYLE UNIX
 )
 
@@ -811,7 +823,13 @@ add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 ## cURL
 ################################################################################
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/curl/curl-7.50.3/include/ ${CMAKE_CURRENT_BINARY_DIR}/3rdParty/curl/curl-7.50.3/include/curl/)
+add_definitions(-DCURL_STATICLIB=1)
+
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/curl/curl-7.50.3/include/
+  ${CMAKE_CURRENT_BINARY_DIR}/3rdParty/curl/curl-7.50.3/include/curl/
+)
+
 ################################################################################
 ## PATHS, installation, packages
 ################################################################################
@@ -826,6 +844,7 @@ include(ArangoDBInstall)
 if (NOT(SKIP_PACKAGING))
   include(packages/packages)
 endif()
+
 ################################################################################
 ## ERRORS FILE
 ################################################################################
@@ -904,6 +923,7 @@ list(INSERT SYSTEM_LIBRARIES 0
 add_subdirectory(lib)
 add_subdirectory(arangosh)
 add_subdirectory(arangod)
+
 if (USE_BOOST_UNITTESTS)
   add_subdirectory(UnitTests)
 endif()
@@ -926,22 +946,23 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangosh      v8_build)
 endif ()
 
-#copy compile commands to source dir
+# copy compile commands to source dir
 if( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
-    message(STATUS "copy compile_commands.json")
-    EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
-        ${CMAKE_CURRENT_SOURCE_DIR}/compile_commands.json
-    )
+  message(STATUS "copy compile_commands.json")
+
+  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
+      ${CMAKE_CURRENT_SOURCE_DIR}/compile_commands.json
+  )
 endif()
 
 add_custom_target(packages
   DEPENDS ${PACKAGES_LIST}
-  )
+)
 
 add_custom_target(copy_packages
   DEPENDS ${COPY_PACKAGES_LIST}
-  )
+)
 
 add_custom_target(clean_packages
   DEPENDS ${CLEAN_PACKAGES_LIST}

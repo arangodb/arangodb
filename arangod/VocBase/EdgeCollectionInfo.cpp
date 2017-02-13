@@ -22,7 +22,6 @@
 
 #include "EdgeCollectionInfo.h"
 #include "Cluster/ClusterMethods.h"
-#include "MMFiles/MMFilesEdgeIndex.h"
 #include "Utils/OperationCursor.h"
 
 using namespace arangodb::traverser;
@@ -34,26 +33,37 @@ EdgeCollectionInfo::EdgeCollectionInfo(arangodb::Transaction* trx,
                                        double defaultWeight) 
     : _trx(trx),
       _collectionName(collectionName),
+      _searchBuilder(),
       _weightAttribute(weightAttribute),
       _defaultWeight(defaultWeight),
-      _forwardDir(direction) {
-
-  switch (direction) {
-    case TRI_EDGE_OUT:
-      _backwardDir = TRI_EDGE_IN;
-      break;
-    case TRI_EDGE_IN:
-      _backwardDir = TRI_EDGE_OUT;
-      break;
-    case TRI_EDGE_ANY:
-      _backwardDir = TRI_EDGE_ANY;
-      break;
-  }
+      _dir(direction) {
+  TRI_ASSERT(_dir == TRI_EDGE_OUT || _dir == TRI_EDGE_IN);
 
   if (!trx->isEdgeCollection(collectionName)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
-  _indexId = trx->edgeIndexHandle(collectionName);
+
+  auto var = _searchBuilder.getVariable();
+  if (_dir == TRI_EDGE_OUT) {
+    auto cond = _searchBuilder.getOutboundCondition();
+    bool worked = _trx->getBestIndexHandleForFilterCondition(
+        _collectionName, cond, var, 1000, _forwardIndexId);
+    TRI_ASSERT(worked); // We always have an edge Index
+    cond = _searchBuilder.getInboundCondition();
+    worked = _trx->getBestIndexHandleForFilterCondition(
+        _collectionName, cond, var, 1000,
+        _backwardIndexId);
+    TRI_ASSERT(worked); // We always have an edge Index
+  } else {
+    auto cond = _searchBuilder.getInboundCondition();
+    bool worked = _trx->getBestIndexHandleForFilterCondition(
+        _collectionName, cond, var, 1000, _forwardIndexId);
+    TRI_ASSERT(worked); // We always have an edge Index
+    cond = _searchBuilder.getOutboundCondition();
+    worked = _trx->getBestIndexHandleForFilterCondition(
+        _collectionName, cond, var, 1000, _backwardIndexId);
+    TRI_ASSERT(worked); // We always have an edge Index
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,21 +73,18 @@ EdgeCollectionInfo::EdgeCollectionInfo(arangodb::Transaction* trx,
 std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
     std::string const& vertexId,
     arangodb::ManagedDocumentResult* mmdr) {
-  _searchBuilder.clear();
-  MMFilesEdgeIndex::buildSearchValue(_forwardDir, vertexId, _searchBuilder);
-  return _trx->indexScan(_collectionName,
-                         arangodb::Transaction::CursorType::INDEX, _indexId,
-                         _searchBuilder.slice(), mmdr, 0, UINT64_MAX, 1000, false);
-}
-
-std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
-    VPackSlice const& vertexId,
-    arangodb::ManagedDocumentResult* mmdr) {
-  _searchBuilder.clear();
-  MMFilesEdgeIndex::buildSearchValue(_forwardDir, vertexId, _searchBuilder);
-  return _trx->indexScan(_collectionName,
-                         arangodb::Transaction::CursorType::INDEX, _indexId,
-                         _searchBuilder.slice(), mmdr, 0, UINT64_MAX, 1000, false);
+  _searchBuilder.setVertexId(vertexId);
+  std::unique_ptr<arangodb::OperationCursor> res;
+  if (_dir == TRI_EDGE_OUT) {
+    res.reset(_trx->indexScanForCondition(
+        _forwardIndexId, _searchBuilder.getOutboundCondition(),
+        _searchBuilder.getVariable(), mmdr, UINT64_MAX, 1000, false));
+  } else {
+    res.reset(_trx->indexScanForCondition(
+        _forwardIndexId, _searchBuilder.getInboundCondition(),
+        _searchBuilder.getVariable(), mmdr, UINT64_MAX, 1000, false));
+  }
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,7 +98,7 @@ int EdgeCollectionInfo::getEdgesCoordinator(VPackSlice const& vertexId,
   result.openObject();
   int res = getFilteredEdgesOnCoordinator(
       _trx->vocbase()->name(), _collectionName, vertexId.copyString(),
-      _forwardDir, responseCode, result);
+      _dir, responseCode, result);
   result.close();
   return res;
 }
@@ -103,21 +110,18 @@ int EdgeCollectionInfo::getEdgesCoordinator(VPackSlice const& vertexId,
 std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
     std::string const& vertexId,
     arangodb::ManagedDocumentResult* mmdr) {
-  _searchBuilder.clear();
-  MMFilesEdgeIndex::buildSearchValue(_backwardDir, vertexId, _searchBuilder);
-  return _trx->indexScan(_collectionName,
-                         arangodb::Transaction::CursorType::INDEX, _indexId,
-                         _searchBuilder.slice(), mmdr, 0, UINT64_MAX, 1000, false);
-}
-
-std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
-    VPackSlice const& vertexId,
-    arangodb::ManagedDocumentResult* mmdr) {
-  _searchBuilder.clear();
-  MMFilesEdgeIndex::buildSearchValue(_backwardDir, vertexId, _searchBuilder);
-  return _trx->indexScan(_collectionName,
-                         arangodb::Transaction::CursorType::INDEX, _indexId,
-                         _searchBuilder.slice(), mmdr, 0, UINT64_MAX, 1000, false);
+  _searchBuilder.setVertexId(vertexId);
+  std::unique_ptr<arangodb::OperationCursor> res;
+  if (_dir == TRI_EDGE_OUT) {
+    res.reset(_trx->indexScanForCondition(
+        _backwardIndexId, _searchBuilder.getInboundCondition(),
+        _searchBuilder.getVariable(), mmdr, UINT64_MAX, 1000, false));
+  } else {
+    res.reset(_trx->indexScanForCondition(
+        _backwardIndexId, _searchBuilder.getOutboundCondition(),
+        _searchBuilder.getVariable(), mmdr, UINT64_MAX, 1000, false));
+  }
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,9 +133,13 @@ int EdgeCollectionInfo::getReverseEdgesCoordinator(VPackSlice const& vertexId,
   TRI_ASSERT(result.isEmpty());
   arangodb::rest::ResponseCode responseCode;
   result.openObject();
+  TRI_edge_direction_e dir = TRI_EDGE_OUT;
+  if (_dir == TRI_EDGE_OUT) {
+    dir = TRI_EDGE_IN;
+  }
   int res = getFilteredEdgesOnCoordinator(
       _trx->vocbase()->name(), _collectionName, vertexId.copyString(),
-      _backwardDir, responseCode, result);
+      dir, responseCode, result);
   result.close();
   return res;
 }
