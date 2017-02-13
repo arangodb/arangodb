@@ -703,7 +703,7 @@ actions.defineHttp({
       if (e.code === 412) {
         let oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary);
         actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
-          'Could not change primary to secondary.')
+          'Could not change primary to secondary.');
         return;
       }
       throw e;
