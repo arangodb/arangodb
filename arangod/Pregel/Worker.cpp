@@ -500,15 +500,11 @@ void Worker<V, E, M>::_finishedProcessing() {
         }
       }
     }
-    { // locking shouldn't matter here, just to be safe
-      MY_WRITE_LOCKER(guard, _cacheRWLock);
-      _readCache->clear(); // no need to keep old messages around
-    }
-    
-    // only set the state here, because _processVertices checks for it
-    _state = WorkerState::IDLE;
+    _readCache->clear(); // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;
     _config._localSuperstep++;
+    // only set the state here, because _processVertices checks for it
+    _state = WorkerState::IDLE;
 
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
