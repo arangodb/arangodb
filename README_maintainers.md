@@ -500,8 +500,9 @@ generate
  - `./utils/generateExamples.sh --onlyThisOne geoIndexSelect` will only produce one example - *geoIndexSelect*
  - `./utils/generateExamples.sh --onlyThisOne 'MOD.*'` will only produce the examples matching that regex; Note that
    examples with enumerations in their name may base on others in their series - so you should generate the whole group.
- - `./utils/generateExamples.sh --server.endpoint tcp://127.0.0.1:8529` will utilize an existing arangod instead of starting a new one.
-   this does seriously cut down the execution time.
+ - running `onlyThisOne` in conjunction with a pre-started server cuts down the execution time even more.
+   In addition to the `--onlyThisOne ...` specify i.e. `--server.endpoint tcp://127.0.0.1:8529` to utilize your already running arangod.
+   Please note that examples may collide with existing collections like 'test' - you need to make sure your server is clean enough.
  - you can use generateExamples like that:
     `./utils/generateExamples.sh \
        --server.endpoint 'tcp://127.0.0.1:8529' \
