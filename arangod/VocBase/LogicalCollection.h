@@ -113,17 +113,17 @@ class LogicalCollection {
   // TODO: MOVE TO PHYSICAL?
   bool isFullyCollected(); //should not be exposed
 
-  void setNextCompactionStartIndex(size_t index){
+  void setNextCompactionStartIndex(size_t index) {
     MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
     _nextCompactionStartIndex = index;
   }
 
-  size_t getNextCompactionStartIndex(){
+  size_t getNextCompactionStartIndex() {
     MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
     return _nextCompactionStartIndex;
   }
 
-  void setCompactionStatus(char const* reason){
+  void setCompactionStatus(char const* reason) {
     TRI_ASSERT(reason != nullptr);
     MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
     _lastCompactionStatus = reason;
