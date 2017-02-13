@@ -360,6 +360,15 @@ done
 
 CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}"
 
+if test "`uname -o||true`" == "Cygwin"; then
+    (
+        cd 3rdParty/V8/v8/testing
+        rm -f gtest
+        ln -s googletest_subrepo/googletest gtest
+    )
+fi
+
+
 if test -n "$LASTREV"; then
     lines=`git diff ${LASTREV}: ${COMPILE_MATTERS} | wc -l`
 
