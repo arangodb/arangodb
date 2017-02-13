@@ -31,13 +31,13 @@
 
 namespace arangodb {
 
-class ExplicitTransaction final : public Transaction {
+class UserTransaction final : public Transaction {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  ExplicitTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
+  UserTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
                       std::vector<std::string> const& readCollections,
                       std::vector<std::string> const& writeCollections,
                       std::vector<std::string> const& exclusiveCollections,
@@ -73,7 +73,7 @@ class ExplicitTransaction final : public Transaction {
   /// @brief end the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  ~ExplicitTransaction() {}
+  ~UserTransaction() {}
 };
 }
 

@@ -62,7 +62,7 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Utils/ExplicitTransaction.h"
+#include "Utils/UserTransaction.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
@@ -365,7 +365,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
       std::make_shared<V8TransactionContext>(vocbase, embed);
 
   // start actual transaction
-  ExplicitTransaction trx(transactionContext, readCollections, writeCollections, exclusiveCollections,
+  UserTransaction trx(transactionContext, readCollections, writeCollections, exclusiveCollections,
                           lockTimeout, waitForSync, allowImplicitCollections);
 
   int res = trx.begin();
