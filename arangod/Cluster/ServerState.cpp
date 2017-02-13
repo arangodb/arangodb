@@ -401,12 +401,6 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
     FATAL_ERROR_EXIT();
   }
 
-  const std::string agencyKey = roleToAgencyKey(role);
-  const std::string planKey = "Plan/" + agencyKey + "/" + id;
-  const std::string currentKey = "Current/" + agencyKey + "/" + id;
-
-  _id = id;
-
   findAndSetRoleBlocking();
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "We successfully announced ourselves as "
     << roleToString(role) << " and our id is "
