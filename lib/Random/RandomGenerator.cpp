@@ -548,7 +548,7 @@ uint64_t RandomGenerator::interval(uint64_t right) {
   }
 
   uint32_t high = static_cast<uint32_t>(right >> 32);
-  uint32_t highMax = (static_cast<uint64_t>(high)) << 32;
+  uint64_t highMax = (static_cast<uint64_t>(high)) << 32;
   uint64_t highRandom = (static_cast<uint64_t>(interval(high))) << 32;
 
   if (highRandom == highMax) {

@@ -34,6 +34,7 @@
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesPersistentIndexKeyComparator.h"
 #include "MMFiles/MMFilesToken.h"
+#include "MMFiles/MMFilesTransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -325,7 +326,7 @@ int PersistentIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
     }
   }
 
-  auto rocksTransaction = trx->rocksTransaction();
+  auto rocksTransaction = static_cast<MMFilesTransactionState*>(trx->state())->rocksTransaction();
   TRI_ASSERT(rocksTransaction != nullptr);
 
   rocksdb::ReadOptions readOptions;
@@ -436,7 +437,7 @@ int PersistentIndex::remove(transaction::Methods* trx, TRI_voc_rid_t revisionId,
     values.emplace_back(std::move(value));
   }
   
-  auto rocksTransaction = trx->rocksTransaction();
+  auto rocksTransaction = static_cast<MMFilesTransactionState*>(trx->state())->rocksTransaction();
   TRI_ASSERT(rocksTransaction != nullptr);
 
   size_t const count = elements.size();

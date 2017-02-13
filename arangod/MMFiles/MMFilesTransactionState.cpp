@@ -51,17 +51,30 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
 
 /// @brief transaction type
 MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase)
-    : TransactionState(vocbase) {}
+    : TransactionState(vocbase),
+      _rocksTransaction(nullptr),
+      _hasOperations(false) {}
 
 /// @brief free a transaction container
-MMFilesTransactionState::~MMFilesTransactionState() {}
+MMFilesTransactionState::~MMFilesTransactionState() {
+  delete _rocksTransaction;
+}
+
+/// @brief get (or create) a rocksdb WriteTransaction
+rocksdb::Transaction* MMFilesTransactionState::rocksTransaction() {
+  if (_rocksTransaction == nullptr) {
+    _rocksTransaction = RocksDBFeature::instance()->db()->BeginTransaction(
+      rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
+  }
+  return _rocksTransaction;
+}
   
 /// @brief start a transaction
 int MMFilesTransactionState::beginTransaction(transaction::Hints hints, int nestingLevel) {
   LOG_TRX(this, nestingLevel) << "beginning " << AccessMode::typeString(_type) << " transaction";
 
   if (nestingLevel == 0) {
-    TRI_ASSERT(_status == transaction::Methods::Status::CREATED);
+    TRI_ASSERT(_status == transaction::Status::CREATED);
 
     auto logfileManager = MMFilesLogfileManager::instance();
 
@@ -97,7 +110,7 @@ int MMFilesTransactionState::beginTransaction(transaction::Hints hints, int nest
     }
   
   } else {
-    TRI_ASSERT(_status == transaction::Methods::Status::RUNNING);
+    TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
 
   int res = useCollections(nestingLevel);
@@ -105,14 +118,14 @@ int MMFilesTransactionState::beginTransaction(transaction::Hints hints, int nest
   if (res == TRI_ERROR_NO_ERROR) {
     // all valid
     if (nestingLevel == 0) {
-      updateStatus(transaction::Methods::Status::RUNNING);
+      updateStatus(transaction::Status::RUNNING);
 
       // defer writing of the begin marker until necessary!
     }
   } else {
     // something is wrong
     if (nestingLevel == 0) {
-      updateStatus(transaction::Methods::Status::ABORTED);
+      updateStatus(transaction::Status::ABORTED);
     }
 
     // free what we have got so far
@@ -126,7 +139,7 @@ int MMFilesTransactionState::beginTransaction(transaction::Hints hints, int nest
 int MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx, int nestingLevel) {
   LOG_TRX(this, nestingLevel) << "committing " << AccessMode::typeString(_type) << " transaction";
 
-  TRI_ASSERT(_status == transaction::Methods::Status::RUNNING);
+  TRI_ASSERT(_status == transaction::Status::RUNNING);
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -151,7 +164,7 @@ int MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx, 
       return res;
     }
 
-    updateStatus(transaction::Methods::Status::COMMITTED);
+    updateStatus(transaction::Status::COMMITTED);
 
     // if a write query, clear the query cache for the participating collections
     if (AccessMode::isWriteOrExclusive(_type) &&
@@ -172,14 +185,14 @@ int MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx, 
 int MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx, int nestingLevel) {
   LOG_TRX(this, nestingLevel) << "aborting " << AccessMode::typeString(_type) << " transaction";
 
-  TRI_ASSERT(_status == transaction::Methods::Status::RUNNING);
+  TRI_ASSERT(_status == transaction::Status::RUNNING);
 
   int res = TRI_ERROR_NO_ERROR;
 
   if (nestingLevel == 0) {
     res = writeAbortMarker();
 
-    updateStatus(transaction::Methods::Status::ABORTED);
+    updateStatus(transaction::Status::ABORTED);
 
     freeOperations(activeTrx);
   }
@@ -333,7 +346,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
 
 /// @brief free all operations for a transaction
 void MMFilesTransactionState::freeOperations(transaction::Methods* activeTrx) {
-  bool const mustRollback = (_status == transaction::Methods::Status::ABORTED);
+  bool const mustRollback = (_status == transaction::Status::ABORTED);
      
   TRI_ASSERT(activeTrx != nullptr);
    

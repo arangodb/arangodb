@@ -28,14 +28,22 @@
 #include "Basics/SmallVector.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Hints.h"
+#include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
-                                
-struct TRI_vocbase_t;
 
-namespace rocksdb {
-class Transaction;
-}
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+#define LOG_TRX(trx, level)  \
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->_id << "." << level << " (" << transaction::statusString(trx->_status) << "): " 
+
+#else
+
+#define LOG_TRX(...) while (0) LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+
+#endif
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace transaction {
@@ -88,7 +96,7 @@ class TransactionState {
   }
 
   /// @brief update the status of a transaction
-  void updateStatus(transaction::Methods::Status status);
+  void updateStatus(transaction::Status status);
   
   /// @brief whether or not a specific hint is set for the transaction
   bool hasHint(transaction::Hints::Hint hint) const {
@@ -130,17 +138,15 @@ class TransactionState {
   TRI_vocbase_t* _vocbase;            // vocbase
   TRI_voc_tid_t _id;                  // local trx id
   AccessMode::Type _type;             // access type (read|write)
-  transaction::Methods::Status _status;        // current status
+  transaction::Status _status;        // current status
 
  protected:
   SmallVector<TransactionCollection*>::allocator_type::arena_type _arena; // memory for collections
   SmallVector<TransactionCollection*> _collections; // list of participating collections
  public:
-  rocksdb::Transaction* _rocksTransaction;
   transaction::Hints _hints;            // hints;
   int _nestingLevel;
   bool _allowImplicit;
-  bool _hasOperations;
   bool _waitForSync;   // whether or not the transaction had a synchronous op
   bool _beginWritten;  // whether or not the begin marker was already written
   double _timeout;     // timeout for lock acquisition

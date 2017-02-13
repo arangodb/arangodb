@@ -64,7 +64,7 @@ class MMFilesTransactionState final : public TransactionState {
   int abortTransaction(transaction::Methods* trx, int nestingLevel) override;
 
   bool hasFailedOperations() const override {
-    return (_hasOperations && _status == transaction::Methods::Status::ABORTED);
+    return (_hasOperations && _status == transaction::Status::ABORTED);
   }
   
   /// @brief add a WAL operation for a transaction collection
@@ -77,6 +77,9 @@ class MMFilesTransactionState final : public TransactionState {
     }
     return _id;
   }
+  
+  /// @brief get (or create) a rocksdb WriteTransaction
+  rocksdb::Transaction* rocksTransaction();
 
  private:
   /// @brief whether or not a marker needs to be written
@@ -100,6 +103,10 @@ class MMFilesTransactionState final : public TransactionState {
 
   /// @brief free all operations for a transaction
   void freeOperations(transaction::Methods* activeTrx);
+  
+ private:
+  rocksdb::Transaction* _rocksTransaction;
+  bool _hasOperations;
 };
 
 }

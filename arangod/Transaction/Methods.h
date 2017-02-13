@@ -30,26 +30,12 @@
 #include "Cluster/ServerState.h"
 #include "Utils/OperationResult.h"
 #include "Transaction/Hints.h"
+#include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-#define LOG_TRX(trx, level)  \
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->_id << "." << level << " (" << transaction::Methods::statusString(trx->_status) << "): " 
-
-#else
-
-#define LOG_TRX(...) while (0) LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-
-#endif
-
-namespace rocksdb {
-class Transaction;
-}
 
 namespace arangodb {
 
@@ -95,34 +81,6 @@ class Methods {
   friend class traverser::BaseTraverserEngine;
 
  public:
-
-  /// @brief transaction statuses
-  enum class Status : uint32_t {
-    UNDEFINED = 0,
-    CREATED = 1,
-    RUNNING = 2,
-    COMMITTED = 3,
-    ABORTED = 4
-  };
-
-  /// @brief return the status of the transaction as a string
-  static char const* statusString(Status status) {
-    switch (status) {
-      case transaction::Methods::Status::UNDEFINED:
-        return "undefined";
-      case transaction::Methods::Status::CREATED:
-        return "created";
-      case transaction::Methods::Status::RUNNING:
-        return "running";
-      case transaction::Methods::Status::COMMITTED:
-        return "committed";
-      case transaction::Methods::Status::ABORTED:
-        return "aborted";
-    }
-
-    TRI_ASSERT(false);
-    return "unknown";
-  }
 
   /// @brief time (in seconds) that is spent waiting for a lock
   static constexpr double DefaultLockTimeout = 30.0; 
@@ -203,9 +161,6 @@ class Methods {
     return _transactionContextPtr;
   }
   
-  /// @brief get (or create) a rocksdb WriteTransaction
-  rocksdb::Transaction* rocksTransaction();
-
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint, bool passthrough);
 
