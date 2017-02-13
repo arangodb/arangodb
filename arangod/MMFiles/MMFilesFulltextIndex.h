@@ -65,9 +65,9 @@ class MMFilesFulltextIndex final : public Index {
 
   bool matchesDefinition(VPackSlice const&) const override;
 
-  int insert(TransactionMethods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int insert(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(TransactionMethods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int remove(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
   int unload() override;
 

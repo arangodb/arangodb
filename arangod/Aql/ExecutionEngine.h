@@ -27,11 +27,11 @@
 #include "Basics/Common.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/AqlTransaction.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/QueryRegistry.h"
-#include "Utils/AqlTransaction.h"
 
 namespace arangodb {
 namespace aql {
@@ -79,8 +79,8 @@ class ExecutionEngine {
     if (_root != nullptr && !_wasShutdown) {
       // Take care of locking prevention measures in the cluster:
       if (_lockedShards != nullptr) {
-        if (TransactionMethods::_makeNolockHeaders == _lockedShards) {
-          TransactionMethods::_makeNolockHeaders = _previouslyLockedShards;
+        if (transaction::Methods::_makeNolockHeaders == _lockedShards) {
+          transaction::Methods::_makeNolockHeaders = _previouslyLockedShards;
         }
         delete _lockedShards;
         _lockedShards = nullptr;

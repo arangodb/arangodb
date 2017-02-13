@@ -698,7 +698,7 @@ arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
       node->outVariable(), 
       _mmdr.get(),
       UINT64_MAX, 
-      TransactionMethods::defaultBatchSize(),
+      transaction::Methods::defaultBatchSize(),
       node->_reverse
     ));
   } else {

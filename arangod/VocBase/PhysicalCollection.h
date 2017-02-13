@@ -35,7 +35,10 @@ struct TRI_df_marker_t;
 namespace arangodb {
 class Ditches;
 class LogicalCollection;
-class TransactionMethods;
+namespace transaction {
+class Methods;
+}
+;
 
 class PhysicalCollection {
  protected:
@@ -48,7 +51,7 @@ class PhysicalCollection {
 
   virtual TRI_voc_rid_t revision() const = 0;
   
-  // Used for TransactionMethods rollback
+  // Used for transaction::Methods rollback
   virtual void setRevision(TRI_voc_rid_t revision, bool force) = 0;
   
   virtual int64_t initialCount() const = 0;
@@ -93,7 +96,7 @@ class PhysicalCollection {
   virtual void finishCompaction() = 0;
 
   /// @brief iterate all markers of a collection on load
-  virtual int iterateMarkersOnLoad(TransactionMethods* trx) = 0;
+  virtual int iterateMarkersOnLoad(transaction::Methods* trx) = 0;
   
   virtual uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const = 0;
   virtual uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const = 0;

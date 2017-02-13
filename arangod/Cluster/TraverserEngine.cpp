@@ -23,9 +23,9 @@
 
 #include "TraverserEngine.h"
 #include "Basics/Exceptions.h"
+#include "Aql/AqlTransaction.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
-#include "Utils/AqlTransaction.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -94,7 +94,7 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
   auto params = std::make_shared<VPackBuilder>();
   auto opts = std::make_shared<VPackBuilder>();
 
-  _trx = new arangodb::AqlTransaction(
+  _trx = new aql::AqlTransaction(
       arangodb::StandaloneTransactionContext::Create(vocbase),
       _collections.collections(), false);
   _query = new aql::Query(true, vocbase, "", 0, params, opts, aql::PART_DEPENDENT);

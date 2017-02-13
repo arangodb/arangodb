@@ -1889,7 +1889,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::applyCollectionDumpMarker(
-    TransactionMethods& trx, CollectionNameResolver const& resolver,
+    transaction::Methods& trx, CollectionNameResolver const& resolver,
     std::string const& collectionName, TRI_replication_operation_e type,
     VPackSlice const& old, VPackSlice const& slice, std::string& errorMsg) {
   if (type == REPLICATION_MARKER_DOCUMENT) {
@@ -2041,7 +2041,7 @@ static int restoreDataParser(char const* ptr, char const* pos,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::processRestoreDataBatch(
-    TransactionMethods& trx,
+    transaction::Methods& trx,
     std::string const& collectionName, bool useRevision, bool force,
     std::string& errorMsg) {
   std::string const invalidMsg =

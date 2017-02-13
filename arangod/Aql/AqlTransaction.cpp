@@ -29,6 +29,7 @@
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
+using namespace arangodb::aql;
 
 /// @brief add a collection to the transaction
 int AqlTransaction::processCollection(aql::Collection* collection) {

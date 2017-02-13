@@ -34,7 +34,10 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-class TransactionMethods;
+namespace transaction {
+class Methods;
+}
+;
 
 namespace basics {
 class StringBuffer;
@@ -119,12 +122,12 @@ class Expression {
   }
 
   /// @brief execute the expression
-  AqlValue execute(TransactionMethods* trx, ExpressionContext* ctx,
+  AqlValue execute(transaction::Methods* trx, ExpressionContext* ctx,
                    bool& mustDestroy);
 
   /// @brief execute the expression
   /// DEPRECATED
-  AqlValue execute(TransactionMethods* trx, AqlItemBlock const*, size_t,
+  AqlValue execute(transaction::Methods* trx, AqlItemBlock const*, size_t,
                    std::vector<Variable const*> const&,
                    std::vector<RegisterId> const&, bool& mustDestroy);
 
@@ -213,7 +216,7 @@ class Expression {
 
   /// @brief find a value in an array
   bool findInArray(AqlValue const&, AqlValue const&,
-                   TransactionMethods*,
+                   transaction::Methods*,
                    AstNode const*) const;
 
   /// @brief analyze the expression (determine its type etc.)
@@ -221,108 +224,108 @@ class Expression {
 
   /// @brief build the expression (if appropriate, compile it into
   /// executable code)
-  void buildExpression(TransactionMethods*);
+  void buildExpression(transaction::Methods*);
 
   /// @brief execute an expression of type SIMPLE
   AqlValue executeSimpleExpression(AstNode const*,
-                                   TransactionMethods*,
+                                   transaction::Methods*,
                                    bool& mustDestroy, bool);
 
   /// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
   AqlValue executeSimpleExpressionAttributeAccess(
-      AstNode const*, TransactionMethods*, bool& mustDestroy);
+      AstNode const*, transaction::Methods*, bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
   AqlValue executeSimpleExpressionIndexedAccess(
-      AstNode const*, TransactionMethods*,
+      AstNode const*, transaction::Methods*,
       bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with ARRAY
   AqlValue executeSimpleExpressionArray(AstNode const*,
-                                        TransactionMethods*,
+                                        transaction::Methods*,
                                         bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with OBJECT
   AqlValue executeSimpleExpressionObject(AstNode const*,
-                                         TransactionMethods*,
+                                         transaction::Methods*,
                                          bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with VALUE
   AqlValue executeSimpleExpressionValue(AstNode const*, 
-                                        TransactionMethods*,
+                                        transaction::Methods*,
                                         bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with REFERENCE
   AqlValue executeSimpleExpressionReference(AstNode const*,
-                                            TransactionMethods*,
+                                            transaction::Methods*,
                                             bool& mustDestroy,
                                             bool);
 
   /// @brief execute an expression of type SIMPLE with FCALL
   AqlValue executeSimpleExpressionFCall(AstNode const*,
-                                        TransactionMethods*,
+                                        transaction::Methods*,
                                         bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with RANGE
   AqlValue executeSimpleExpressionRange(AstNode const*,
-                                        TransactionMethods*,
+                                        transaction::Methods*,
                                         bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with NOT
-  AqlValue executeSimpleExpressionNot(AstNode const*, TransactionMethods*,
+  AqlValue executeSimpleExpressionNot(AstNode const*, transaction::Methods*,
                                        bool& mustDestroy);
   
   /// @brief execute an expression of type SIMPLE with +
-  AqlValue executeSimpleExpressionPlus(AstNode const*, TransactionMethods*,
+  AqlValue executeSimpleExpressionPlus(AstNode const*, transaction::Methods*,
                                        bool& mustDestroy);
   
   /// @brief execute an expression of type SIMPLE with -
-  AqlValue executeSimpleExpressionMinus(AstNode const*, TransactionMethods*,
+  AqlValue executeSimpleExpressionMinus(AstNode const*, transaction::Methods*,
                                         bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with AND 
   AqlValue executeSimpleExpressionAnd(AstNode const*,
-                                      TransactionMethods*,
+                                      transaction::Methods*,
                                       bool& mustDestroy);
   
   /// @brief execute an expression of type SIMPLE with OR 
   AqlValue executeSimpleExpressionOr(AstNode const*,
-                                     TransactionMethods*,
+                                     transaction::Methods*,
                                      bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with NARY AND or OR
   AqlValue executeSimpleExpressionNaryAndOr(AstNode const*,
-                                            TransactionMethods*,
+                                            transaction::Methods*,
                                             bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with COMPARISON
   AqlValue executeSimpleExpressionComparison(
-      AstNode const*, TransactionMethods*,
+      AstNode const*, transaction::Methods*,
       bool& mustDestroy);
   
   /// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
   AqlValue executeSimpleExpressionArrayComparison(
-      AstNode const*, TransactionMethods*,
+      AstNode const*, transaction::Methods*,
       bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with TERNARY
   AqlValue executeSimpleExpressionTernary(AstNode const*,
-                                          TransactionMethods*,
+                                          transaction::Methods*,
                                           bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with EXPANSION
   AqlValue executeSimpleExpressionExpansion(AstNode const*,
-                                            TransactionMethods*,
+                                            transaction::Methods*,
                                             bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with EXPANSION
   AqlValue executeSimpleExpressionIterator(AstNode const*,
-                                           TransactionMethods*,
+                                           transaction::Methods*,
                                            bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
   AqlValue executeSimpleExpressionArithmetic(
-      AstNode const*, TransactionMethods*, 
+      AstNode const*, transaction::Methods*, 
       bool& mustDestroy);
 
  private:

@@ -21,18 +21,19 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_AQL_TRANSACTION_H
-#define ARANGOD_UTILS_AQL_TRANSACTION_H 1
+#ifndef ARANGOD_AQL_AQL_TRANSACTION_H
+#define ARANGOD_AQL_AQL_TRANSACTION_H 1
 
 #include "Basics/Common.h"
 #include "Aql/Collection.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Utils/TransactionMethods.h"
+#include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
+namespace aql {
 
-class AqlTransaction final : public TransactionMethods {
+class AqlTransaction final : public transaction::Methods {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction and add all collections from the query
@@ -43,7 +44,7 @@ class AqlTransaction final : public TransactionMethods {
       std::shared_ptr<TransactionContext> transactionContext, 
       std::map<std::string, aql::Collection*> const* collections,
       bool isMainTransaction)
-      : TransactionMethods(transactionContext),
+      : transaction::Methods(transactionContext),
         _collections(*collections) {
     if (!isMainTransaction) {
       addHint(transaction::Hints::Hint::LOCK_NEVER, true);
@@ -118,7 +119,7 @@ class AqlTransaction final : public TransactionMethods {
   /// AQL query running on the coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  TransactionMethods* clone() const override {
+  transaction::Methods* clone() const override {
     return new AqlTransaction(StandaloneTransactionContext::Create(_vocbase),
         &_collections, false);
   }
@@ -142,6 +143,8 @@ class AqlTransaction final : public TransactionMethods {
  private:
   std::map<std::string, aql::Collection*> _collections;
 };
+
+}
 }
 
 #endif

@@ -26,7 +26,7 @@
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
-#include "Utils/TransactionMethods.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -37,7 +37,7 @@ using namespace arangodb::aql;
 /// @brief constructor
 IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             Collection const* collection, Variable const* outVariable,
-            std::vector<TransactionMethods::IndexHandle> const& indexes,
+            std::vector<transaction::Methods::IndexHandle> const& indexes,
             Condition* condition, bool reverse)
       : ExecutionNode(plan, id),
         _vocbase(vocbase),
@@ -53,7 +53,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 }
 
 /// @brief return the transaction for the node
-TransactionMethods* IndexNode::trx() const {
+transaction::Methods* IndexNode::trx() const {
   return _plan->getAst()->query()->trx();
 };
 

@@ -102,6 +102,7 @@ SET(ARANGOD_SOURCES
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
+  Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
   Aql/Ast.cpp
   Aql/AstNode.cpp
@@ -308,11 +309,9 @@ SET(ARANGOD_SOURCES
   Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
   StorageEngine/EngineSelectorFeature.cpp
-  #StorageEngine/RocksDBEngine.cpp
-  #StorageEngine/RocksDBIndexFactory.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
-  Utils/AqlTransaction.cpp
+  Transaction/Methods.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp
@@ -323,7 +322,6 @@ SET(ARANGOD_SOURCES
   Utils/SingleCollectionTransaction.cpp
   Utils/StandaloneTransactionContext.cpp
   Utils/TransactionContext.cpp
-  Utils/TransactionMethods.cpp
   Utils/V8TransactionContext.cpp
   Utils/WorkMonitorArangod.cpp
   V8Server/FoxxQueuesFeature.cpp

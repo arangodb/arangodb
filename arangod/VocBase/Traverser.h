@@ -36,7 +36,10 @@
 namespace arangodb {
 
 class ManagedDocumentResult;
-class TransactionMethods;
+namespace transaction {
+class Methods;
+}
+;
 
 namespace velocypack {
 class Builder;
@@ -76,13 +79,13 @@ class ShortestPath {
   /// @brief Builds only the last edge pointing to the vertex at position as
   /// VelocyPack
 
-  void edgeToVelocyPack(TransactionMethods*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
+  void edgeToVelocyPack(transaction::Methods*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the vertex at position as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void vertexToVelocyPack(TransactionMethods*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
+  void vertexToVelocyPack(transaction::Methods*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the amount of read documents
@@ -127,21 +130,21 @@ class TraversalPath {
   ///        }
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void pathToVelocyPack(TransactionMethods*,
+  virtual void pathToVelocyPack(transaction::Methods*,
                                 arangodb::velocypack::Builder&) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last edge on the path as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void lastEdgeToVelocyPack(TransactionMethods*,
+  virtual void lastEdgeToVelocyPack(transaction::Methods*,
                                     arangodb::velocypack::Builder&) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last vertex as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual aql::AqlValue lastVertexToAqlValue(TransactionMethods*) = 0;
+  virtual aql::AqlValue lastVertexToAqlValue(transaction::Methods*) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the amount of read documents
@@ -223,7 +226,7 @@ class Traverser {
   /// @brief Constructor. This is an abstract only class.
   //////////////////////////////////////////////////////////////////////////////
 
-  Traverser(TraverserOptions* opts, TransactionMethods* trx, ManagedDocumentResult*);
+  Traverser(TraverserOptions* opts, transaction::Methods* trx, ManagedDocumentResult*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destructor
@@ -338,7 +341,7 @@ class Traverser {
  protected:
 
   /// @brief Outer top level transaction
-  TransactionMethods* _trx;
+  transaction::Methods* _trx;
 
   ManagedDocumentResult* _mmdr;
 

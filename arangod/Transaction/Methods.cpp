@@ -21,7 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "TransactionMethods.h"
+#include "Methods.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
@@ -69,17 +69,17 @@
 using namespace arangodb;
   
 /// @brief Get the field names of the used index
-std::vector<std::vector<std::string>> TransactionMethods::IndexHandle::fieldNames() const {
+std::vector<std::vector<std::string>> transaction::Methods::IndexHandle::fieldNames() const {
   return _index->fieldNames();
 }
 
 /// @brief IndexHandle getter method
-std::shared_ptr<arangodb::Index> TransactionMethods::IndexHandle::getIndex() const {
+std::shared_ptr<arangodb::Index> transaction::Methods::IndexHandle::getIndex() const {
   return _index;
 }
 
 /// @brief IndexHandle toVelocyPack method passthrough
-void TransactionMethods::IndexHandle::toVelocyPack(
+void transaction::Methods::IndexHandle::toVelocyPack(
     arangodb::velocypack::Builder& builder,
     bool withFigures) const {
   _index->toVelocyPack(builder, withFigures);
@@ -149,7 +149,7 @@ static OperationResult EmptyResult(bool waitForSync) {
 }
   
 /// @brief add a transaction hint
-void TransactionMethods::addHint(transaction::Hints::Hint hint, bool passthrough) {
+void transaction::Methods::addHint(transaction::Hints::Hint hint, bool passthrough) {
   _hints.set(hint);
 
   if (passthrough && _state != nullptr) {
@@ -158,7 +158,7 @@ void TransactionMethods::addHint(transaction::Hints::Hint hint, bool passthrough
 }
   
 /// @brief remove a transaction hint
-void TransactionMethods::removeHint(transaction::Hints::Hint hint, bool passthrough) {
+void transaction::Methods::removeHint(transaction::Hints::Hint hint, bool passthrough) {
   _hints.unset(hint);
 
   if (passthrough && _state != nullptr) {
@@ -167,20 +167,20 @@ void TransactionMethods::removeHint(transaction::Hints::Hint hint, bool passthro
 }
   
 /// @brief whether or not the transaction consists of a single operation only
-bool TransactionMethods::isSingleOperationTransaction() const {
+bool transaction::Methods::isSingleOperationTransaction() const {
   return _state->isSingleOperation();
 }
   
 /// @brief get the status of the transaction
-TransactionMethods::Status TransactionMethods::getStatus() const {
+transaction::Methods::Status transaction::Methods::getStatus() const {
   if (_state != nullptr) {
     return _state->_status;
   }
-  return TransactionMethods::Status::UNDEFINED;
+  return transaction::Methods::Status::UNDEFINED;
 }
   
 /// @brief set the allowImplicitCollections property
-void TransactionMethods::setAllowImplicitCollections(bool value) {
+void transaction::Methods::setAllowImplicitCollections(bool value) {
   _allowImplicitCollections = value;
     
   if (_state != nullptr) {
@@ -191,10 +191,10 @@ void TransactionMethods::setAllowImplicitCollections(bool value) {
 /// @brief sort ORs for the same attribute so they are in ascending value
 /// order. this will only work if the condition is for a single attribute
 /// the usedIndexes vector may also be re-sorted
-bool TransactionMethods::sortOrs(arangodb::aql::Ast* ast,
+bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast,
                     arangodb::aql::AstNode* root,
                     arangodb::aql::Variable const* variable,
-                    std::vector<TransactionMethods::IndexHandle>& usedIndexes) {
+                    std::vector<transaction::Methods::IndexHandle>& usedIndexes) {
   if (root == nullptr) {
     return true;
   }
@@ -213,7 +213,7 @@ bool TransactionMethods::sortOrs(arangodb::aql::Ast* ast,
     return false;
   }
 
-  typedef std::pair<arangodb::aql::AstNode*, TransactionMethods::IndexHandle> ConditionData;
+  typedef std::pair<arangodb::aql::AstNode*, transaction::Methods::IndexHandle> ConditionData;
   std::vector<ConditionData*> conditionData;
 
   auto cleanup = [&conditionData]() -> void {
@@ -413,11 +413,11 @@ bool TransactionMethods::sortOrs(arangodb::aql::Ast* ast,
   return true;
 }
 
-std::pair<bool, bool> TransactionMethods::findIndexHandleForAndNode(
+std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     std::vector<std::shared_ptr<Index>> indexes, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
-    std::vector<TransactionMethods::IndexHandle>& usedIndexes,
+    std::vector<transaction::Methods::IndexHandle>& usedIndexes,
     arangodb::aql::AstNode*& specializedCondition,
     bool& isSparse) const {
   std::shared_ptr<Index> bestIndex;
@@ -504,12 +504,12 @@ std::pair<bool, bool> TransactionMethods::findIndexHandleForAndNode(
   return std::make_pair(bestSupportsFilter, bestSupportsSort);
 }
 
-bool TransactionMethods::findIndexHandleForAndNode(
+bool transaction::Methods::findIndexHandleForAndNode(
     std::vector<std::shared_ptr<Index>> indexes,
     arangodb::aql::AstNode*& node,
     arangodb::aql::Variable const* reference,
     size_t itemsInCollection,
-    TransactionMethods::IndexHandle& usedIndex) const {
+    transaction::Methods::IndexHandle& usedIndex) const {
   std::shared_ptr<Index> bestIndex;
   double bestCost = 0.0;
 
@@ -553,11 +553,11 @@ bool TransactionMethods::findIndexHandleForAndNode(
 /// @brief if this pointer is set to an actual set, then for each request
 /// sent to a shardId using the ClusterComm library, an X-Arango-Nolock
 /// header is generated.
-thread_local std::unordered_set<std::string>* TransactionMethods::_makeNolockHeaders =
+thread_local std::unordered_set<std::string>* transaction::Methods::_makeNolockHeaders =
     nullptr;
   
       
-TransactionMethods::TransactionMethods(std::shared_ptr<TransactionContext> transactionContext)
+transaction::Methods::Methods(std::shared_ptr<TransactionContext> transactionContext)
     : _serverRole(ServerState::ROLE_UNDEFINED),
       _setupState(TRI_ERROR_NO_ERROR),
       _nestingLevel(0),
@@ -584,7 +584,7 @@ TransactionMethods::TransactionMethods(std::shared_ptr<TransactionContext> trans
 }
    
 /// @brief destroy the transaction
-TransactionMethods::~TransactionMethods() {
+transaction::Methods::~Methods() {
   if (_state == nullptr) {
     return;
   }
@@ -592,11 +592,11 @@ TransactionMethods::~TransactionMethods() {
   if (isEmbeddedTransaction()) {
     _state->_nestingLevel--;
   } else {
-    if (getStatus() == TransactionMethods::Status::RUNNING) {
+    if (getStatus() == transaction::Methods::Status::RUNNING) {
       // auto abort a running transaction
       try {
         this->abort();
-        TRI_ASSERT(getStatus() != TransactionMethods::Status::RUNNING);
+        TRI_ASSERT(getStatus() != transaction::Methods::Status::RUNNING);
       } catch (...) {
         // must never throw because we are in a dtor
       }
@@ -608,12 +608,12 @@ TransactionMethods::~TransactionMethods() {
 }
   
 /// @brief return the names of all collections used in the transaction
-std::vector<std::string> TransactionMethods::collectionNames() const {
+std::vector<std::string> transaction::Methods::collectionNames() const {
   return _state->collectionNames();
 }
   
 /// @brief return the collection name resolver
-CollectionNameResolver const* TransactionMethods::resolver() {
+CollectionNameResolver const* transaction::Methods::resolver() {
   if (_resolver == nullptr) {
     _resolver = _transactionContextPtr->getResolver();
     TRI_ASSERT(_resolver != nullptr);
@@ -622,18 +622,18 @@ CollectionNameResolver const* TransactionMethods::resolver() {
 }
   
 /// @brief return the transaction collection for a document collection
-TransactionCollection* TransactionMethods::trxCollection(TRI_voc_cid_t cid) const {
+TransactionCollection* transaction::Methods::trxCollection(TRI_voc_cid_t cid) const {
   TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(getStatus() == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(getStatus() == transaction::Methods::Status::RUNNING);
 
   return _state->collection(cid, AccessMode::Type::READ);
 }
 
 /// @brief order a ditch for a collection
-DocumentDitch* TransactionMethods::orderDitch(TRI_voc_cid_t cid) {
+DocumentDitch* transaction::Methods::orderDitch(TRI_voc_cid_t cid) {
   TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(getStatus() == TransactionMethods::Status::RUNNING ||
-             getStatus() == TransactionMethods::Status::CREATED);
+  TRI_ASSERT(getStatus() == transaction::Methods::Status::RUNNING ||
+             getStatus() == transaction::Methods::Status::CREATED);
 
   if (_ditchCache.cid == cid) {
     return _ditchCache.ditch;
@@ -660,12 +660,12 @@ DocumentDitch* TransactionMethods::orderDitch(TRI_voc_cid_t cid) {
 }
   
 /// @brief whether or not a ditch has been created for the collection
-bool TransactionMethods::hasDitch(TRI_voc_cid_t cid) const {
+bool transaction::Methods::hasDitch(TRI_voc_cid_t cid) const {
   return (_transactionContext->ditch(cid) != nullptr);
 }
   
 /// @brief get (or create) a rocksdb WriteTransaction
-rocksdb::Transaction* TransactionMethods::rocksTransaction() {
+rocksdb::Transaction* transaction::Methods::rocksTransaction() {
   if (_state->_rocksTransaction == nullptr) {
     _state->_rocksTransaction = RocksDBFeature::instance()->db()->BeginTransaction(
       rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
@@ -674,7 +674,7 @@ rocksdb::Transaction* TransactionMethods::rocksTransaction() {
 }
   
 /// @brief extract the _key attribute from a slice
-StringRef TransactionMethods::extractKeyPart(VPackSlice const slice) {
+StringRef transaction::Methods::extractKeyPart(VPackSlice const slice) {
   // extract _key
   if (slice.isObject()) {
     VPackSlice k = slice.get(StaticStrings::KeyString);
@@ -695,7 +695,7 @@ StringRef TransactionMethods::extractKeyPart(VPackSlice const slice) {
 }
 
 /// @brief creates an id string from a custom _id value and the _key string
-std::string TransactionMethods::makeIdFromCustom(CollectionNameResolver const* resolver,
+std::string transaction::Methods::makeIdFromCustom(CollectionNameResolver const* resolver,
                                           VPackSlice const& id, 
                                           VPackSlice const& key) {
   TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
@@ -726,13 +726,13 @@ std::string TransactionMethods::makeIdFromCustom(CollectionNameResolver const* r
 
 /// @brief extract the _id attribute from a slice, and convert it into a 
 /// string
-std::string TransactionMethods::extractIdString(VPackSlice slice) {
+std::string transaction::Methods::extractIdString(VPackSlice slice) {
   return extractIdString(resolver(), slice, VPackSlice());
 }
 
 /// @brief extract the _id attribute from a slice, and convert it into a 
 /// string, static method
-std::string TransactionMethods::extractIdString(CollectionNameResolver const* resolver,
+std::string transaction::Methods::extractIdString(CollectionNameResolver const* resolver,
                                          VPackSlice slice,
                                          VPackSlice const& base) {
   VPackSlice id;
@@ -800,7 +800,7 @@ std::string TransactionMethods::extractIdString(CollectionNameResolver const* re
 /// @brief quick access to the _key attribute in a database document
 /// the document must have at least two attributes, and _key is supposed to
 /// be the first one
-VPackSlice TransactionMethods::extractKeyFromDocument(VPackSlice slice) {
+VPackSlice transaction::Methods::extractKeyFromDocument(VPackSlice slice) {
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
@@ -831,7 +831,7 @@ VPackSlice TransactionMethods::extractKeyFromDocument(VPackSlice slice) {
 /// the document must have at least two attributes, and _id is supposed to
 /// be the second one
 /// note that this may return a Slice of type Custom!
-VPackSlice TransactionMethods::extractIdFromDocument(VPackSlice slice) {
+VPackSlice transaction::Methods::extractIdFromDocument(VPackSlice slice) {
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
@@ -864,7 +864,7 @@ VPackSlice TransactionMethods::extractIdFromDocument(VPackSlice slice) {
 /// @brief quick access to the _from attribute in a database document
 /// the document must have at least five attributes: _key, _id, _from, _to
 /// and _rev (in this order)
-VPackSlice TransactionMethods::extractFromFromDocument(VPackSlice slice) {
+VPackSlice transaction::Methods::extractFromFromDocument(VPackSlice slice) {
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
@@ -898,7 +898,7 @@ VPackSlice TransactionMethods::extractFromFromDocument(VPackSlice slice) {
 /// @brief quick access to the _to attribute in a database document
 /// the document must have at least five attributes: _key, _id, _from, _to
 /// and _rev (in this order)
-VPackSlice TransactionMethods::extractToFromDocument(VPackSlice slice) {
+VPackSlice transaction::Methods::extractToFromDocument(VPackSlice slice) {
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
@@ -931,7 +931,7 @@ VPackSlice TransactionMethods::extractToFromDocument(VPackSlice slice) {
 /// @brief extract _key and _rev from a document, in one go
 /// this is an optimized version used when loading collections, WAL 
 /// collection and compaction
-void TransactionMethods::extractKeyAndRevFromDocument(VPackSlice slice, 
+void transaction::Methods::extractKeyAndRevFromDocument(VPackSlice slice, 
                                                VPackSlice& keySlice, 
                                                TRI_voc_rid_t& revisionId) {
   if (slice.isExternal()) {
@@ -982,7 +982,7 @@ void TransactionMethods::extractKeyAndRevFromDocument(VPackSlice slice,
 }
 
 /// @brief extract _rev from a database document
-TRI_voc_rid_t TransactionMethods::extractRevFromDocument(VPackSlice slice) {
+TRI_voc_rid_t transaction::Methods::extractRevFromDocument(VPackSlice slice) {
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2); 
 
@@ -1016,7 +1016,7 @@ TRI_voc_rid_t TransactionMethods::extractRevFromDocument(VPackSlice slice) {
   }
 }
 
-VPackSlice TransactionMethods::extractRevSliceFromDocument(VPackSlice slice) {
+VPackSlice transaction::Methods::extractRevSliceFromDocument(VPackSlice slice) {
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2); 
 
@@ -1039,7 +1039,7 @@ VPackSlice TransactionMethods::extractRevSliceFromDocument(VPackSlice slice) {
 
 /// @brief build a VPack object with _id, _key and _rev, the result is
 /// added to the builder in the argument as a single object.
-void TransactionMethods::buildDocumentIdentity(LogicalCollection* collection,
+void transaction::Methods::buildDocumentIdentity(LogicalCollection* collection,
                                         VPackBuilder& builder,
                                         TRI_voc_cid_t cid,
                                         StringRef const& key,
@@ -1093,7 +1093,7 @@ void TransactionMethods::buildDocumentIdentity(LogicalCollection* collection,
 }
 
 /// @brief begin the transaction
-int TransactionMethods::begin() {
+int transaction::Methods::begin() {
   if (_state == nullptr) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
@@ -1104,7 +1104,7 @@ int TransactionMethods::begin() {
 
   if (!_isReal) {
     if (_nestingLevel == 0) {
-      _state->_status = TransactionMethods::Status::RUNNING;
+      _state->_status = transaction::Methods::Status::RUNNING;
     }
     return TRI_ERROR_NO_ERROR;
   }
@@ -1113,15 +1113,15 @@ int TransactionMethods::begin() {
 }
   
 /// @brief commit / finish the transaction
-int TransactionMethods::commit() {
-  if (_state == nullptr || getStatus() != TransactionMethods::Status::RUNNING) {
+int transaction::Methods::commit() {
+  if (_state == nullptr || getStatus() != transaction::Methods::Status::RUNNING) {
     // transaction not created or not running
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
   if (!_isReal) {
     if (_nestingLevel == 0) {
-      _state->_status = TransactionMethods::Status::COMMITTED;
+      _state->_status = transaction::Methods::Status::COMMITTED;
     }
     return TRI_ERROR_NO_ERROR;
   }
@@ -1130,15 +1130,15 @@ int TransactionMethods::commit() {
 }
   
 /// @brief abort the transaction
-int TransactionMethods::abort() {
-  if (_state == nullptr || getStatus() != TransactionMethods::Status::RUNNING) {
+int transaction::Methods::abort() {
+  if (_state == nullptr || getStatus() != transaction::Methods::Status::RUNNING) {
     // transaction not created or not running
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
   if (!_isReal) {
     if (_nestingLevel == 0) {
-      _state->_status = TransactionMethods::Status::ABORTED;
+      _state->_status = transaction::Methods::Status::ABORTED;
     }
 
     return TRI_ERROR_NO_ERROR;
@@ -1148,7 +1148,7 @@ int TransactionMethods::abort() {
 }
   
 /// @brief finish a transaction (commit or abort), based on the previous state
-int TransactionMethods::finish(int errorNum) {
+int transaction::Methods::finish(int errorNum) {
   if (errorNum == TRI_ERROR_NO_ERROR) {
     // there was no previous error, so we'll commit
     return this->commit();
@@ -1161,21 +1161,21 @@ int TransactionMethods::finish(int errorNum) {
   return errorNum;
 }
 
-std::string TransactionMethods::name(TRI_voc_cid_t cid) const {
+std::string transaction::Methods::name(TRI_voc_cid_t cid) const {
   auto c = trxCollection(cid);
   TRI_ASSERT(c != nullptr);
   return c->collectionName();
 }
 
 /// @brief read any (random) document
-OperationResult TransactionMethods::any(std::string const& collectionName) {
+OperationResult transaction::Methods::any(std::string const& collectionName) {
   return any(collectionName, 0, 1);
 }
 
 /// @brief read all master pointers, using skip and limit.
 /// The resualt guarantees that all documents are contained exactly once
 /// as long as the collection is not modified.
-OperationResult TransactionMethods::any(std::string const& collectionName,
+OperationResult transaction::Methods::any(std::string const& collectionName,
                                  uint64_t skip, uint64_t limit) {
   if (ServerState::isCoordinator(_serverRole)) {
     return anyCoordinator(collectionName, skip, limit);
@@ -1184,13 +1184,13 @@ OperationResult TransactionMethods::any(std::string const& collectionName,
 }
 
 /// @brief fetches documents in a collection in random order, coordinator
-OperationResult TransactionMethods::anyCoordinator(std::string const&, uint64_t,
+OperationResult transaction::Methods::anyCoordinator(std::string const&, uint64_t,
                                             uint64_t) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief fetches documents in a collection in random order, local
-OperationResult TransactionMethods::anyLocal(std::string const& collectionName,
+OperationResult transaction::Methods::anyLocal(std::string const& collectionName,
                                       uint64_t skip, uint64_t limit) {
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
@@ -1213,7 +1213,7 @@ OperationResult TransactionMethods::anyLocal(std::string const& collectionName,
   ManagedDocumentResult mmdr;
 
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, TransactionMethods::CursorType::ANY, &mmdr, skip,
+      indexScan(collectionName, transaction::Methods::CursorType::ANY, &mmdr, skip,
                 limit, 1000, false);
 
   LogicalCollection* collection = cursor->collection();
@@ -1240,7 +1240,7 @@ OperationResult TransactionMethods::anyLocal(std::string const& collectionName,
                          TRI_ERROR_NO_ERROR, false);
 }
   
-TRI_voc_cid_t TransactionMethods::addCollectionAtRuntime(TRI_voc_cid_t cid, 
+TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(TRI_voc_cid_t cid, 
                                        std::string const& collectionName,
                                        AccessMode::Type type) {
   auto collection = this->trxCollection(cid);
@@ -1268,7 +1268,7 @@ TRI_voc_cid_t TransactionMethods::addCollectionAtRuntime(TRI_voc_cid_t cid,
 }
 
 /// @brief add a collection to the transaction for read, at runtime
-TRI_voc_cid_t TransactionMethods::addCollectionAtRuntime(std::string const& collectionName) {
+TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(std::string const& collectionName) {
   if (collectionName == _collectionCache.name && !collectionName.empty()) {
     return _collectionCache.cid;
   }
@@ -1294,17 +1294,17 @@ TRI_voc_cid_t TransactionMethods::addCollectionAtRuntime(std::string const& coll
 }
 
 /// @brief return the type of a collection
-bool TransactionMethods::isEdgeCollection(std::string const& collectionName) {
+bool transaction::Methods::isEdgeCollection(std::string const& collectionName) {
   return getCollectionType(collectionName) == TRI_COL_TYPE_EDGE;
 }
 
 /// @brief return the type of a collection
-bool TransactionMethods::isDocumentCollection(std::string const& collectionName) {
+bool transaction::Methods::isDocumentCollection(std::string const& collectionName) {
   return getCollectionType(collectionName) == TRI_COL_TYPE_DOCUMENT;
 }
 
 /// @brief return the type of a collection
-TRI_col_type_e TransactionMethods::getCollectionType(std::string const& collectionName) {
+TRI_col_type_e transaction::Methods::getCollectionType(std::string const& collectionName) {
   if (ServerState::isCoordinator(_serverRole)) {
     return resolver()->getCollectionTypeCluster(collectionName);
   }
@@ -1312,14 +1312,14 @@ TRI_col_type_e TransactionMethods::getCollectionType(std::string const& collecti
 }
 
 /// @brief return the name of a collection
-std::string TransactionMethods::collectionName(TRI_voc_cid_t cid) { 
+std::string transaction::Methods::collectionName(TRI_voc_cid_t cid) { 
   return resolver()->getCollectionName(cid);
 }
 
 /// @brief Iterate over all elements of the collection.
-void TransactionMethods::invokeOnAllElements(std::string const& collectionName,
+void transaction::Methods::invokeOnAllElements(std::string const& collectionName,
                                       std::function<bool(DocumentIdentifierToken const&)> callback) {
-  TRI_ASSERT(getStatus() == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(getStatus() == transaction::Methods::Status::RUNNING);
   if (ServerState::isCoordinator(_serverRole)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -1352,12 +1352,12 @@ void TransactionMethods::invokeOnAllElements(std::string const& collectionName,
 ///        If there was an error the code is returned and it is guaranteed
 ///        that result remains unmodified.
 ///        Does not care for revision handling!
-int TransactionMethods::documentFastPath(std::string const& collectionName,
+int transaction::Methods::documentFastPath(std::string const& collectionName,
                                   ManagedDocumentResult* mmdr,
                                   VPackSlice const value,
                                   VPackBuilder& result,
                                   bool shouldLock) {
-  TRI_ASSERT(getStatus() == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(getStatus() == transaction::Methods::Status::RUNNING);
   if (!value.isObject() && !value.isString()) {
     // must provide a document object or string
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1380,7 +1380,7 @@ int TransactionMethods::documentFastPath(std::string const& collectionName,
 
   orderDitch(cid); // will throw when it fails
 
-  StringRef key(TransactionMethods::extractKeyPart(value));
+  StringRef key(transaction::Methods::extractKeyPart(value));
   if (key.empty()) {
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
@@ -1414,10 +1414,10 @@ int TransactionMethods::documentFastPath(std::string const& collectionName,
 ///        If there was an error the code is returned 
 ///        Does not care for revision handling!
 ///        Must only be called on a local server, not in cluster case!
-int TransactionMethods::documentFastPathLocal(std::string const& collectionName,
+int transaction::Methods::documentFastPathLocal(std::string const& collectionName,
                                        std::string const& key,
                                        ManagedDocumentResult& result) {
-  TRI_ASSERT(getStatus() == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(getStatus() == transaction::Methods::Status::RUNNING);
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
@@ -1439,7 +1439,7 @@ int TransactionMethods::documentFastPathLocal(std::string const& collectionName,
 }
 
 /// @brief Create Cluster Communication result for document
-OperationResult TransactionMethods::clusterResultDocument(
+OperationResult transaction::Methods::clusterResultDocument(
     rest::ResponseCode const& responseCode,
     std::shared_ptr<VPackBuilder> const& resultBody,
     std::unordered_map<int, size_t> const& errorCounter) const {
@@ -1459,7 +1459,7 @@ OperationResult TransactionMethods::clusterResultDocument(
 }
 
 /// @brief Create Cluster Communication result for insert
-OperationResult TransactionMethods::clusterResultInsert(
+OperationResult transaction::Methods::clusterResultInsert(
     rest::ResponseCode const& responseCode,
     std::shared_ptr<VPackBuilder> const& resultBody,
     std::unordered_map<int, size_t> const& errorCounter) const {
@@ -1484,7 +1484,7 @@ OperationResult TransactionMethods::clusterResultInsert(
 }
 
 /// @brief Create Cluster Communication result for modify
-OperationResult TransactionMethods::clusterResultModify(
+OperationResult transaction::Methods::clusterResultModify(
     rest::ResponseCode const& responseCode,
     std::shared_ptr<VPackBuilder> const& resultBody,
     std::unordered_map<int, size_t> const& errorCounter) const {
@@ -1514,7 +1514,7 @@ OperationResult TransactionMethods::clusterResultModify(
 }
 
 /// @brief Helper create a Cluster Communication remove result
-OperationResult TransactionMethods::clusterResultRemove(
+OperationResult transaction::Methods::clusterResultRemove(
     rest::ResponseCode const& responseCode,
     std::shared_ptr<VPackBuilder> const& resultBody,
     std::unordered_map<int, size_t> const& errorCounter) const {
@@ -1538,10 +1538,10 @@ OperationResult TransactionMethods::clusterResultRemove(
 }
 
 /// @brief return one or multiple documents from a collection
-OperationResult TransactionMethods::document(std::string const& collectionName,
+OperationResult transaction::Methods::document(std::string const& collectionName,
                                       VPackSlice const value,
                                       OperationOptions& options) {
-  TRI_ASSERT(getStatus() == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(getStatus() == transaction::Methods::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
@@ -1557,7 +1557,7 @@ OperationResult TransactionMethods::document(std::string const& collectionName,
 
 /// @brief read one or multiple documents in a collection, coordinator
 #ifndef USE_ENTERPRISE
-OperationResult TransactionMethods::documentCoordinator(std::string const& collectionName,
+OperationResult transaction::Methods::documentCoordinator(std::string const& collectionName,
                                                  VPackSlice const value,
                                                  OperationOptions& options) {
   auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -1566,7 +1566,7 @@ OperationResult TransactionMethods::documentCoordinator(std::string const& colle
   auto resultBody = std::make_shared<VPackBuilder>();
 
   if (!value.isArray()) {
-    StringRef key(TransactionMethods::extractKeyPart(value));
+    StringRef key(transaction::Methods::extractKeyPart(value));
     if (key.empty()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
     }
@@ -1583,7 +1583,7 @@ OperationResult TransactionMethods::documentCoordinator(std::string const& colle
 #endif
 
 /// @brief read one or multiple documents in a collection, local
-OperationResult TransactionMethods::documentLocal(std::string const& collectionName,
+OperationResult transaction::Methods::documentLocal(std::string const& collectionName,
                                            VPackSlice const value,
                                            OperationOptions& options) {
   TIMER_START(TRANSACTION_DOCUMENT_LOCAL);
@@ -1599,7 +1599,7 @@ OperationResult TransactionMethods::documentLocal(std::string const& collectionN
   auto workOnOneDocument = [&](VPackSlice const value, bool isMultiple) -> int {
     TIMER_START(TRANSACTION_DOCUMENT_EXTRACT);
 
-    StringRef key(TransactionMethods::extractKeyPart(value));
+    StringRef key(transaction::Methods::extractKeyPart(value));
     if (key.empty()) {
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
     }
@@ -1626,7 +1626,7 @@ OperationResult TransactionMethods::documentLocal(std::string const& collectionN
     uint8_t const* vpack = result.vpack();
   
     if (expectedRevision != 0) {
-      TRI_voc_rid_t foundRevision = TransactionMethods::extractRevFromDocument(VPackSlice(vpack));
+      TRI_voc_rid_t foundRevision = transaction::Methods::extractRevFromDocument(VPackSlice(vpack));
       if (expectedRevision != foundRevision) {
         if (!isMultiple) {
           // still return
@@ -1675,10 +1675,10 @@ OperationResult TransactionMethods::documentLocal(std::string const& collectionN
 /// @brief create one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-OperationResult TransactionMethods::insert(std::string const& collectionName,
+OperationResult transaction::Methods::insert(std::string const& collectionName,
                                     VPackSlice const value,
                                     OperationOptions const& options) {
-  TRI_ASSERT(getStatus() == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(getStatus() == transaction::Methods::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
@@ -1702,7 +1702,7 @@ OperationResult TransactionMethods::insert(std::string const& collectionName,
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
 #ifndef USE_ENTERPRISE
-OperationResult TransactionMethods::insertCoordinator(std::string const& collectionName,
+OperationResult transaction::Methods::insertCoordinator(std::string const& collectionName,
                                                VPackSlice const value,
                                                OperationOptions& options) {
 
@@ -1741,7 +1741,7 @@ static double chooseTimeout(size_t count) {
 /// @brief create one or multiple documents in a collection, local
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-OperationResult TransactionMethods::insertLocal(std::string const& collectionName,
+OperationResult transaction::Methods::insertLocal(std::string const& collectionName,
                                          VPackSlice const value,
                                          OperationOptions& options) {
   TIMER_START(TRANSACTION_INSERT_LOCAL);
@@ -1781,12 +1781,12 @@ OperationResult TransactionMethods::insertLocal(std::string const& collectionNam
     uint8_t const* vpack = result.vpack();
     TRI_ASSERT(vpack != nullptr);
     
-    StringRef keyString(TransactionMethods::extractKeyFromDocument(VPackSlice(vpack)));
+    StringRef keyString(transaction::Methods::extractKeyFromDocument(VPackSlice(vpack)));
 
     TIMER_START(TRANSACTION_INSERT_BUILD_DOCUMENT_IDENTITY);
 
     buildDocumentIdentity(collection, resultBuilder, cid, keyString, 
-        TransactionMethods::extractRevFromDocument(VPackSlice(vpack)), 0,
+        transaction::Methods::extractRevFromDocument(VPackSlice(vpack)), 0,
         nullptr, options.returnNew ? vpack : nullptr);
 
     TIMER_STOP(TRANSACTION_INSERT_BUILD_DOCUMENT_IDENTITY);
@@ -1932,10 +1932,10 @@ OperationResult TransactionMethods::insertLocal(std::string const& collectionNam
 /// @brief update/patch one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-OperationResult TransactionMethods::update(std::string const& collectionName,
+OperationResult transaction::Methods::update(std::string const& collectionName,
                                     VPackSlice const newValue,
                                     OperationOptions const& options) {
-  TRI_ASSERT(getStatus() == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(getStatus() == transaction::Methods::Status::RUNNING);
 
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
@@ -1959,7 +1959,7 @@ OperationResult TransactionMethods::update(std::string const& collectionName,
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
 #ifndef USE_ENTERPRISE
-OperationResult TransactionMethods::updateCoordinator(std::string const& collectionName,
+OperationResult transaction::Methods::updateCoordinator(std::string const& collectionName,
                                                VPackSlice const newValue,
                                                OperationOptions& options) {
 
@@ -1983,10 +1983,10 @@ OperationResult TransactionMethods::updateCoordinator(std::string const& collect
 /// @brief replace one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-OperationResult TransactionMethods::replace(std::string const& collectionName,
+OperationResult transaction::Methods::replace(std::string const& collectionName,
                                      VPackSlice const newValue,
                                      OperationOptions const& options) {
-  TRI_ASSERT(getStatus() == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(getStatus() == transaction::Methods::Status::RUNNING);
 
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
@@ -2010,7 +2010,7 @@ OperationResult TransactionMethods::replace(std::string const& collectionName,
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
 #ifndef USE_ENTERPRISE
-OperationResult TransactionMethods::replaceCoordinator(std::string const& collectionName,
+OperationResult transaction::Methods::replaceCoordinator(std::string const& collectionName,
                                                 VPackSlice const newValue,
                                                 OperationOptions& options) {
   auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -2033,7 +2033,7 @@ OperationResult TransactionMethods::replaceCoordinator(std::string const& collec
 /// @brief replace one or multiple documents in a collection, local
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-OperationResult TransactionMethods::modifyLocal(
+OperationResult transaction::Methods::modifyLocal(
     std::string const& collectionName,
     VPackSlice const newValue,
     OperationOptions& options,
@@ -2242,10 +2242,10 @@ OperationResult TransactionMethods::modifyLocal(
 /// @brief remove one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-OperationResult TransactionMethods::remove(std::string const& collectionName,
+OperationResult transaction::Methods::remove(std::string const& collectionName,
                                     VPackSlice const value,
                                     OperationOptions const& options) {
-  TRI_ASSERT(getStatus() == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(getStatus() == transaction::Methods::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray() && !value.isString()) {
     // must provide a document object or an array of documents
@@ -2268,7 +2268,7 @@ OperationResult TransactionMethods::remove(std::string const& collectionName,
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
 #ifndef USE_ENTERPRISE
-OperationResult TransactionMethods::removeCoordinator(std::string const& collectionName,
+OperationResult transaction::Methods::removeCoordinator(std::string const& collectionName,
                                                VPackSlice const value,
                                                OperationOptions& options) {
 
@@ -2290,7 +2290,7 @@ OperationResult TransactionMethods::removeCoordinator(std::string const& collect
 /// @brief remove one or multiple documents in a collection, local
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-OperationResult TransactionMethods::removeLocal(std::string const& collectionName,
+OperationResult transaction::Methods::removeLocal(std::string const& collectionName,
                                          VPackSlice const value,
                                          OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
@@ -2483,10 +2483,10 @@ OperationResult TransactionMethods::removeLocal(std::string const& collectionNam
 }
 
 /// @brief fetches all documents in a collection
-OperationResult TransactionMethods::all(std::string const& collectionName,
+OperationResult transaction::Methods::all(std::string const& collectionName,
                                  uint64_t skip, uint64_t limit,
                                  OperationOptions const& options) {
-  TRI_ASSERT(getStatus() == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(getStatus() == transaction::Methods::Status::RUNNING);
   
   OperationOptions optionsCopy = options;
 
@@ -2498,14 +2498,14 @@ OperationResult TransactionMethods::all(std::string const& collectionName,
 }
 
 /// @brief fetches all documents in a collection, coordinator
-OperationResult TransactionMethods::allCoordinator(std::string const& collectionName,
+OperationResult transaction::Methods::allCoordinator(std::string const& collectionName,
                                             uint64_t skip, uint64_t limit, 
                                             OperationOptions& options) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief fetches all documents in a collection, local
-OperationResult TransactionMethods::allLocal(std::string const& collectionName,
+OperationResult transaction::Methods::allLocal(std::string const& collectionName,
                                       uint64_t skip, uint64_t limit,
                                       OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
@@ -2524,7 +2524,7 @@ OperationResult TransactionMethods::allLocal(std::string const& collectionName,
   ManagedDocumentResult mmdr;
 
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, TransactionMethods::CursorType::ALL, &mmdr, skip,
+      indexScan(collectionName, transaction::Methods::CursorType::ALL, &mmdr, skip,
                 limit, 1000, false);
 
   if (cursor->failed()) {
@@ -2556,9 +2556,9 @@ OperationResult TransactionMethods::allLocal(std::string const& collectionName,
 }
 
 /// @brief remove all documents in a collection
-OperationResult TransactionMethods::truncate(std::string const& collectionName,
+OperationResult transaction::Methods::truncate(std::string const& collectionName,
                                       OperationOptions const& options) {
-  TRI_ASSERT(getStatus() == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(getStatus() == transaction::Methods::Status::RUNNING);
   
   OperationOptions optionsCopy = options;
   OperationResult result;
@@ -2575,7 +2575,7 @@ OperationResult TransactionMethods::truncate(std::string const& collectionName,
 
 /// @brief remove all documents in a collection, coordinator
 #ifndef USE_ENTERPRISE
-OperationResult TransactionMethods::truncateCoordinator(std::string const& collectionName,
+OperationResult transaction::Methods::truncateCoordinator(std::string const& collectionName,
                                                  OperationOptions& options) {
   return OperationResult(
       arangodb::truncateCollectionOnCoordinator(_vocbase->name(),
@@ -2584,7 +2584,7 @@ OperationResult TransactionMethods::truncateCoordinator(std::string const& colle
 #endif
 
 /// @brief remove all documents in a collection, local
-OperationResult TransactionMethods::truncateLocal(std::string const& collectionName,
+OperationResult transaction::Methods::truncateLocal(std::string const& collectionName,
                                            OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   
@@ -2688,8 +2688,8 @@ OperationResult TransactionMethods::truncateLocal(std::string const& collectionN
 }
 
 /// @brief count the number of documents in a collection
-OperationResult TransactionMethods::count(std::string const& collectionName, bool aggregate) {
-  TRI_ASSERT(getStatus() == TransactionMethods::Status::RUNNING);
+OperationResult transaction::Methods::count(std::string const& collectionName, bool aggregate) {
+  TRI_ASSERT(getStatus() == transaction::Methods::Status::RUNNING);
 
   if (ServerState::isCoordinator(_serverRole)) {
     return countCoordinator(collectionName, aggregate);
@@ -2700,7 +2700,7 @@ OperationResult TransactionMethods::count(std::string const& collectionName, boo
 
 /// @brief count the number of documents in a collection
 #ifndef USE_ENTERPRISE
-OperationResult TransactionMethods::countCoordinator(std::string const& collectionName, 
+OperationResult transaction::Methods::countCoordinator(std::string const& collectionName, 
                                               bool aggregate) {
   std::vector<std::pair<std::string, uint64_t>> count;
   int res = arangodb::countOnCoordinator(_vocbase->name(), collectionName, count);
@@ -2714,7 +2714,7 @@ OperationResult TransactionMethods::countCoordinator(std::string const& collecti
 #endif
 
 /// @brief count the number of documents in a collection
-OperationResult TransactionMethods::countLocal(std::string const& collectionName) {
+OperationResult transaction::Methods::countLocal(std::string const& collectionName) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   
   int res = lock(trxCollection(cid), AccessMode::Type::READ);
@@ -2743,7 +2743,7 @@ OperationResult TransactionMethods::countLocal(std::string const& collectionName
 /// @brief Gets the best fitting index for an AQL condition.
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-std::pair<bool, bool> TransactionMethods::getBestIndexHandlesForFilterCondition(
+std::pair<bool, bool> transaction::Methods::getBestIndexHandlesForFilterCondition(
     std::string const& collectionName, arangodb::aql::Ast* ast,
     arangodb::aql::AstNode* root,
     arangodb::aql::Variable const* reference,
@@ -2808,7 +2808,7 @@ std::pair<bool, bool> TransactionMethods::getBestIndexHandlesForFilterCondition(
 ///        and the Condition stays unmodified. Also does not care for sorting
 ///        Returns false if no index could be found.
 
-bool TransactionMethods::getBestIndexHandleForFilterCondition(
+bool transaction::Methods::getBestIndexHandleForFilterCondition(
     std::string const& collectionName, arangodb::aql::AstNode*& node,
     arangodb::aql::Variable const* reference, size_t itemsInCollection,
     IndexHandle& usedIndex) {
@@ -2833,7 +2833,7 @@ bool TransactionMethods::getBestIndexHandleForFilterCondition(
 /// @brief Checks if the index supports the filter condition.
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-bool TransactionMethods::supportsFilterCondition(
+bool transaction::Methods::supportsFilterCondition(
     IndexHandle const& indexHandle,
     arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
@@ -2853,7 +2853,7 @@ bool TransactionMethods::supportsFilterCondition(
 ///        Returns the covered attributes, and sets the first bool value
 ///        to isSorted and the second bool value to isSparse
 std::vector<std::vector<arangodb::basics::AttributeName>>
-TransactionMethods::getIndexFeatures(IndexHandle const& indexHandle, bool& isSorted,
+transaction::Methods::getIndexFeatures(IndexHandle const& indexHandle, bool& isSorted,
                               bool& isSparse) {
   
   auto idx = indexHandle.getIndex(); 
@@ -2870,7 +2870,7 @@ TransactionMethods::getIndexFeatures(IndexHandle const& indexHandle, bool& isSor
 /// @brief Gets the best fitting index for an AQL sort condition
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-std::pair<bool, bool> TransactionMethods::getIndexForSortCondition(
+std::pair<bool, bool> transaction::Methods::getIndexForSortCondition(
     std::string const& collectionName,
     arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
@@ -2918,7 +2918,7 @@ std::pair<bool, bool> TransactionMethods::getIndexForSortCondition(
 /// @brief factory for OperationCursor objects from AQL
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-OperationCursor* TransactionMethods::indexScanForCondition(
+OperationCursor* transaction::Methods::indexScanForCondition(
     IndexHandle const& indexId,
     arangodb::aql::AstNode const* condition, arangodb::aql::Variable const* var,
     ManagedDocumentResult* mmdr,
@@ -2953,7 +2953,7 @@ OperationCursor* TransactionMethods::indexScanForCondition(
 /// @brief factory for OperationCursor objects
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-std::unique_ptr<OperationCursor> TransactionMethods::indexScan(
+std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
     std::string const& collectionName, CursorType cursorType,
     ManagedDocumentResult* mmdr,
     uint64_t skip, uint64_t limit, uint64_t batchSize, bool reverse) {
@@ -3016,21 +3016,21 @@ std::unique_ptr<OperationCursor> TransactionMethods::indexScan(
 }
   
 /// @brief return the collection
-arangodb::LogicalCollection* TransactionMethods::documentCollection(
+arangodb::LogicalCollection* transaction::Methods::documentCollection(
       TransactionCollection const* trxCollection) const {
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(trxCollection != nullptr);
-  TRI_ASSERT(getStatus() == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(getStatus() == transaction::Methods::Status::RUNNING);
   TRI_ASSERT(trxCollection->collection() != nullptr);
 
   return trxCollection->collection();
 }
 
 /// @brief return the collection
-arangodb::LogicalCollection* TransactionMethods::documentCollection(
+arangodb::LogicalCollection* transaction::Methods::documentCollection(
       TRI_voc_cid_t cid) const {
   TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(getStatus() == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(getStatus() == transaction::Methods::Status::RUNNING);
   
   auto trxCollection = _state->collection(cid, AccessMode::Type::READ);
 
@@ -3044,7 +3044,7 @@ arangodb::LogicalCollection* TransactionMethods::documentCollection(
 }
   
 /// @brief add a collection by id, with the name supplied
-int TransactionMethods::addCollection(TRI_voc_cid_t cid, char const* name,
+int transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
                     AccessMode::Type type) {
   int res = this->addCollection(cid, type);
 
@@ -3056,13 +3056,13 @@ int TransactionMethods::addCollection(TRI_voc_cid_t cid, char const* name,
 }
 
 /// @brief add a collection by id, with the name supplied
-int TransactionMethods::addCollection(TRI_voc_cid_t cid, std::string const& name,
+int transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const& name,
                     AccessMode::Type type) {
   return addCollection(cid, name.c_str(), type);
 }
 
 /// @brief add a collection by id
-int TransactionMethods::addCollection(TRI_voc_cid_t cid, AccessMode::Type type) {
+int transaction::Methods::addCollection(TRI_voc_cid_t cid, AccessMode::Type type) {
   if (_state == nullptr) {
     return registerError(TRI_ERROR_INTERNAL);
   }
@@ -3078,8 +3078,8 @@ int TransactionMethods::addCollection(TRI_voc_cid_t cid, AccessMode::Type type) 
 
   Status const status = getStatus();
 
-  if (status == TransactionMethods::Status::COMMITTED ||
-      status == TransactionMethods::Status::ABORTED) {
+  if (status == transaction::Methods::Status::COMMITTED ||
+      status == transaction::Methods::Status::ABORTED) {
     // transaction already finished?
     return registerError(TRI_ERROR_TRANSACTION_INTERNAL);
   }
@@ -3092,7 +3092,7 @@ int TransactionMethods::addCollection(TRI_voc_cid_t cid, AccessMode::Type type) 
 }
 
 /// @brief add a collection by name
-int TransactionMethods::addCollection(std::string const& name, AccessMode::Type type) {
+int transaction::Methods::addCollection(std::string const& name, AccessMode::Type type) {
   if (_setupState != TRI_ERROR_NO_ERROR) {
     return _setupState;
   }
@@ -3102,9 +3102,9 @@ int TransactionMethods::addCollection(std::string const& name, AccessMode::Type 
 }
   
 /// @brief test if a collection is already locked
-bool TransactionMethods::isLocked(LogicalCollection* document,
+bool transaction::Methods::isLocked(LogicalCollection* document,
                 AccessMode::Type type) {
-  if (_state == nullptr || getStatus() != TransactionMethods::Status::RUNNING) {
+  if (_state == nullptr || getStatus() != transaction::Methods::Status::RUNNING) {
     return false;
   }
 
@@ -3115,9 +3115,9 @@ bool TransactionMethods::isLocked(LogicalCollection* document,
 }
 
 /// @brief read- or write-lock a collection
-int TransactionMethods::lock(TransactionCollection* trxCollection,
+int transaction::Methods::lock(TransactionCollection* trxCollection,
            AccessMode::Type type) {
-  if (_state == nullptr || getStatus() != TransactionMethods::Status::RUNNING) {
+  if (_state == nullptr || getStatus() != transaction::Methods::Status::RUNNING) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
@@ -3125,9 +3125,9 @@ int TransactionMethods::lock(TransactionCollection* trxCollection,
 }
 
 /// @brief read- or write-unlock a collection
-int TransactionMethods::unlock(TransactionCollection* trxCollection,
+int transaction::Methods::unlock(TransactionCollection* trxCollection,
              AccessMode::Type type) {
-  if (_state == nullptr || getStatus() != TransactionMethods::Status::RUNNING) {
+  if (_state == nullptr || getStatus() != transaction::Methods::Status::RUNNING) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
@@ -3135,7 +3135,7 @@ int TransactionMethods::unlock(TransactionCollection* trxCollection,
 }
   
 /// @brief get list of indexes for a collection
-std::vector<std::shared_ptr<Index>> TransactionMethods::indexesForCollection(
+std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
     std::string const& collectionName) {
 
   if (ServerState::isCoordinator(_serverRole)) {
@@ -3151,18 +3151,18 @@ std::vector<std::shared_ptr<Index>> TransactionMethods::indexesForCollection(
 
 /// @brief Lock all collections. Only works for selected sub-classes
 
-int TransactionMethods::lockCollections() {
+int transaction::Methods::lockCollections() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief Clone this transaction. Only works for selected sub-classes
 
-TransactionMethods* TransactionMethods::clone() const {
+transaction::Methods* transaction::Methods::clone() const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief Get all indexes for a collection name, coordinator case
-std::shared_ptr<Index> TransactionMethods::indexForCollectionCoordinator(
+std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
     std::string const& name, std::string const& id) const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collectionInfo = clusterInfo->getCollection(_vocbase->name(), name);
@@ -3179,7 +3179,7 @@ std::shared_ptr<Index> TransactionMethods::indexForCollectionCoordinator(
 
 /// @brief Get all indexes for a collection name, coordinator case
 std::vector<std::shared_ptr<Index>>
-TransactionMethods::indexesForCollectionCoordinator(std::string const& name) const {
+transaction::Methods::indexesForCollectionCoordinator(std::string const& name) const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collectionInfo = clusterInfo->getCollection(_vocbase->name(), name);
   return collectionInfo->getIndexes();
@@ -3187,7 +3187,7 @@ TransactionMethods::indexesForCollectionCoordinator(std::string const& name) con
 
 /// @brief get the index by it's identifier. Will either throw or
 ///        return a valid index. nullptr is impossible.
-TransactionMethods::IndexHandle TransactionMethods::getIndexByIdentifier(
+transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
     std::string const& collectionName, std::string const& indexHandle) {
 
   if (ServerState::isCoordinator(_serverRole)) {
@@ -3240,7 +3240,7 @@ TransactionMethods::IndexHandle TransactionMethods::getIndexByIdentifier(
 }
 
 /// @brief add a collection to an embedded transaction
-int TransactionMethods::addCollectionEmbedded(TRI_voc_cid_t cid, AccessMode::Type type) {
+int transaction::Methods::addCollectionEmbedded(TRI_voc_cid_t cid, AccessMode::Type type) {
   TRI_ASSERT(_state != nullptr);
 
   int res = _state->addCollection(cid, type, _nestingLevel, false, _allowImplicitCollections);
@@ -3257,12 +3257,12 @@ int TransactionMethods::addCollectionEmbedded(TRI_voc_cid_t cid, AccessMode::Typ
 }
 
 /// @brief add a collection to a top-level transaction
-int TransactionMethods::addCollectionToplevel(TRI_voc_cid_t cid, AccessMode::Type type) {
+int transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid, AccessMode::Type type) {
   TRI_ASSERT(_state != nullptr);
 
   int res;
 
-  if (getStatus() != TransactionMethods::Status::CREATED) {
+  if (getStatus() != transaction::Methods::Status::CREATED) {
     // transaction already started?
     res = TRI_ERROR_TRANSACTION_INTERNAL;
   } else {
@@ -3283,7 +3283,7 @@ int TransactionMethods::addCollectionToplevel(TRI_voc_cid_t cid, AccessMode::Typ
 /// @brief initialize the transaction
 /// this will first check if the transaction is embedded in a parent
 /// transaction. if not, it will create a transaction of its own
-int TransactionMethods::setupTransaction() {
+int transaction::Methods::setupTransaction() {
   // check in the context if we are running embedded
   _state = _transactionContext->getParentTransaction();
 
@@ -3301,7 +3301,7 @@ int TransactionMethods::setupTransaction() {
 }
   
 /// @brief set up an embedded transaction
-int TransactionMethods::setupEmbedded() {
+int transaction::Methods::setupEmbedded() {
   TRI_ASSERT(_nestingLevel == 0);
 
   _nestingLevel = ++_state->_nestingLevel;
@@ -3315,7 +3315,7 @@ int TransactionMethods::setupEmbedded() {
 }
 
 /// @brief set up a top-level transaction
-int TransactionMethods::setupToplevel() {
+int transaction::Methods::setupToplevel() {
   TRI_ASSERT(_nestingLevel == 0);
 
   // we are not embedded. now start our own transaction
@@ -3335,11 +3335,11 @@ int TransactionMethods::setupToplevel() {
 }
 
 /// @brief free transaction
-void TransactionMethods::freeTransaction() {
+void transaction::Methods::freeTransaction() {
   TRI_ASSERT(!isEmbeddedTransaction());
 
   if (_state != nullptr) {
-    TRI_ASSERT(getStatus() != TransactionMethods::Status::RUNNING);
+    TRI_ASSERT(getStatus() != transaction::Methods::Status::RUNNING);
     auto id = _state->_id;
     bool hasFailedOperations = _state->hasFailedOperations();
     delete _state;
@@ -3351,11 +3351,11 @@ void TransactionMethods::freeTransaction() {
   }
 }
   
-bool TransactionMethods::isCluster() {
+bool transaction::Methods::isCluster() {
   return arangodb::ServerState::instance()->isRunningInCluster(_serverRole);
 }
 
-int TransactionMethods::resolveId(char const* handle, size_t length,
+int transaction::Methods::resolveId(char const* handle, size_t length,
                            TRI_voc_cid_t& cid,
                            char const*& key,
                            size_t& outLength) {
@@ -3382,7 +3382,7 @@ int TransactionMethods::resolveId(char const* handle, size_t length,
   return TRI_ERROR_NO_ERROR;
 }
   
-OperationResult TransactionMethods::buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool aggregate) {
+OperationResult transaction::Methods::buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool aggregate) {
   VPackBuilder resultBuilder;
 
   if (aggregate) {
@@ -3402,7 +3402,7 @@ OperationResult TransactionMethods::buildCountResult(std::vector<std::pair<std::
 }
 
 /// @brief constructor, leases a StringBuffer
-StringBufferLeaser::StringBufferLeaser(TransactionMethods* trx) 
+StringBufferLeaser::StringBufferLeaser(transaction::Methods* trx) 
       : _transactionContext(trx->transactionContextPtr()),
         _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
 }
@@ -3419,7 +3419,7 @@ StringBufferLeaser::~StringBufferLeaser() {
 }
   
 /// @brief constructor, leases a builder
-TransactionBuilderLeaser::TransactionBuilderLeaser(TransactionMethods* trx) 
+TransactionBuilderLeaser::TransactionBuilderLeaser(transaction::Methods* trx) 
       : _transactionContext(trx->transactionContextPtr()), 
         _builder(_transactionContext->leaseBuilder()) {
   TRI_ASSERT(_builder != nullptr);

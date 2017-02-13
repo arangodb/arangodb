@@ -41,11 +41,11 @@ namespace traverser {
 // Should not be used directly, use specialization instead.
 struct BasicOptions {
 
-  TransactionMethods* _trx;
+  transaction::Methods* _trx;
 
  protected:
 
-  explicit BasicOptions(TransactionMethods* trx)
+  explicit BasicOptions(transaction::Methods* trx)
       : _trx(trx) {}
 
   virtual ~BasicOptions() {
@@ -57,7 +57,7 @@ struct BasicOptions {
 
  public:
 
-  TransactionMethods* trx() { return _trx; }
+  transaction::Methods* trx() { return _trx; }
 
 };
 
@@ -73,7 +73,7 @@ struct ShortestPathOptions : BasicOptions {
   arangodb::velocypack::Builder startBuilder;
   arangodb::velocypack::Builder endBuilder;
 
-  explicit ShortestPathOptions(TransactionMethods* trx);
+  explicit ShortestPathOptions(transaction::Methods* trx);
 
   void setStart(std::string const&);
   void setEnd(std::string const&);

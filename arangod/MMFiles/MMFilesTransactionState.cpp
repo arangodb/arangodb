@@ -31,7 +31,7 @@
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesTransactionCollection.h"
 #include "StorageEngine/TransactionCollection.h"
-#include "Utils/TransactionMethods.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 #include "VocBase/ticks.h"
@@ -60,7 +60,7 @@ int MMFilesTransactionState::beginTransaction(transaction::Hints hints, int nest
   LOG_TRX(this, nestingLevel) << "beginning " << AccessMode::typeString(_type) << " transaction";
 
   if (nestingLevel == 0) {
-    TRI_ASSERT(_status == TransactionMethods::Status::CREATED);
+    TRI_ASSERT(_status == transaction::Methods::Status::CREATED);
 
     auto logfileManager = MMFilesLogfileManager::instance();
 
@@ -96,7 +96,7 @@ int MMFilesTransactionState::beginTransaction(transaction::Hints hints, int nest
     }
   
   } else {
-    TRI_ASSERT(_status == TransactionMethods::Status::RUNNING);
+    TRI_ASSERT(_status == transaction::Methods::Status::RUNNING);
   }
 
   int res = useCollections(nestingLevel);
@@ -104,14 +104,14 @@ int MMFilesTransactionState::beginTransaction(transaction::Hints hints, int nest
   if (res == TRI_ERROR_NO_ERROR) {
     // all valid
     if (nestingLevel == 0) {
-      updateStatus(TransactionMethods::Status::RUNNING);
+      updateStatus(transaction::Methods::Status::RUNNING);
 
       // defer writing of the begin marker until necessary!
     }
   } else {
     // something is wrong
     if (nestingLevel == 0) {
-      updateStatus(TransactionMethods::Status::ABORTED);
+      updateStatus(transaction::Methods::Status::ABORTED);
     }
 
     // free what we have got so far
@@ -122,10 +122,10 @@ int MMFilesTransactionState::beginTransaction(transaction::Hints hints, int nest
 }
 
 /// @brief commit a transaction
-int MMFilesTransactionState::commitTransaction(TransactionMethods* activeTrx, int nestingLevel) {
+int MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx, int nestingLevel) {
   LOG_TRX(this, nestingLevel) << "committing " << AccessMode::typeString(_type) << " transaction";
 
-  TRI_ASSERT(_status == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(_status == transaction::Methods::Status::RUNNING);
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -150,7 +150,7 @@ int MMFilesTransactionState::commitTransaction(TransactionMethods* activeTrx, in
       return res;
     }
 
-    updateStatus(TransactionMethods::Status::COMMITTED);
+    updateStatus(transaction::Methods::Status::COMMITTED);
 
     // if a write query, clear the query cache for the participating collections
     if (AccessMode::isWriteOrExclusive(_type) &&
@@ -168,17 +168,17 @@ int MMFilesTransactionState::commitTransaction(TransactionMethods* activeTrx, in
 }
 
 /// @brief abort and rollback a transaction
-int MMFilesTransactionState::abortTransaction(TransactionMethods* activeTrx, int nestingLevel) {
+int MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx, int nestingLevel) {
   LOG_TRX(this, nestingLevel) << "aborting " << AccessMode::typeString(_type) << " transaction";
 
-  TRI_ASSERT(_status == TransactionMethods::Status::RUNNING);
+  TRI_ASSERT(_status == transaction::Methods::Status::RUNNING);
 
   int res = TRI_ERROR_NO_ERROR;
 
   if (nestingLevel == 0) {
     res = writeAbortMarker();
 
-    updateStatus(TransactionMethods::Status::ABORTED);
+    updateStatus(transaction::Methods::Status::ABORTED);
 
     freeOperations(activeTrx);
   }
@@ -330,8 +330,8 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
 }
 
 /// @brief free all operations for a transaction
-void MMFilesTransactionState::freeOperations(TransactionMethods* activeTrx) {
-  bool const mustRollback = (_status == TransactionMethods::Status::ABORTED);
+void MMFilesTransactionState::freeOperations(transaction::Methods* activeTrx) {
+  bool const mustRollback = (_status == transaction::Methods::Status::ABORTED);
      
   TRI_ASSERT(activeTrx != nullptr);
    

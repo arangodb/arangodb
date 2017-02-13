@@ -59,7 +59,7 @@ V8Expression::~V8Expression() {
 
 /// @brief execute the expression
 AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
-                               TransactionMethods* trx,
+                               transaction::Methods* trx,
                                ExpressionContext* context,
                                bool& mustDestroy) {
   bool const hasRestrictions = !_attributeRestrictions.empty();

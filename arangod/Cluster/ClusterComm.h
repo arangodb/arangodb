@@ -39,7 +39,7 @@
 #include "SimpleHttpClient/Communicator.h"
 #include "SimpleHttpClient/SimpleHttpCommunicatorResult.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "Utils/TransactionMethods.h"
+#include "Transaction/Methods.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {

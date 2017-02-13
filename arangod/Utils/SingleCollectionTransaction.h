@@ -25,7 +25,7 @@
 #define ARANGOD_UTILS_SINGLE_COLLECTION_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-#include "Utils/TransactionMethods.h"
+#include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 
@@ -33,7 +33,7 @@ namespace arangodb {
 class DocumentDitch;
 class TransactionContext;
 
-class SingleCollectionTransaction : public TransactionMethods {
+class SingleCollectionTransaction : public transaction::Methods {
 
  public:
   //////////////////////////////////////////////////////////////////////////////

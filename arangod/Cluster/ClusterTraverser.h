@@ -32,7 +32,10 @@
 namespace arangodb {
 class CollectionNameResolver;
 class ManagedDocumentResult;
-class TransactionMethods;
+namespace transaction {
+class Methods;
+}
+;
 
 namespace traverser {
 class ClusterEdgeCursor;
@@ -47,7 +50,7 @@ class ClusterTraverser final : public Traverser {
       TraverserOptions* opts,
       ManagedDocumentResult* mmdr,
       std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-      std::string const& dbname, TransactionMethods* trx);
+      std::string const& dbname, transaction::Methods* trx);
 
   ~ClusterTraverser() {}
 

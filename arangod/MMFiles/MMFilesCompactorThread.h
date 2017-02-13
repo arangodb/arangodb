@@ -36,7 +36,10 @@ struct TRI_vocbase_t;
 namespace arangodb {
 struct CompactionContext;
 class LogicalCollection;
-class TransactionMethods;
+namespace transaction {
+class Methods;
+}
+;
 
 class MMFilesCompactorThread final : public Thread {
  private:
@@ -48,14 +51,14 @@ class MMFilesCompactorThread final : public Thread {
 
   /// @brief auxiliary struct used when initializing compaction
   struct CompactionInitialContext {
-    TransactionMethods* _trx;
+    transaction::Methods* _trx;
     LogicalCollection* _collection;
     int64_t _targetSize;
     TRI_voc_fid_t _fid;
     bool _keepDeletions;
     bool _failed;
 
-    CompactionInitialContext(TransactionMethods* trx, LogicalCollection* collection)
+    CompactionInitialContext(transaction::Methods* trx, LogicalCollection* collection)
         : _trx(trx), _collection(collection), _targetSize(0), _fid(0), _keepDeletions(false), _failed(false) {}
   };
 
@@ -76,7 +79,7 @@ class MMFilesCompactorThread final : public Thread {
  private:
   /// @brief calculate the target size for the compactor to be created
   CompactionInitialContext getCompactionContext(
-    TransactionMethods* trx, LogicalCollection* collection,
+    transaction::Methods* trx, LogicalCollection* collection,
     std::vector<compaction_info_t> const& toCompact);
 
   /// @brief compact the specified datafiles
