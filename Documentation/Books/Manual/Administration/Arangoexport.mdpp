@@ -5,16 +5,16 @@ To export data from an ArangoDB server instance, you will need to invoke _arango
 _arangoexport_ can be invoked by executing
 the following command:
 
-    unix> arangoexport --output-directory "dump"
+    unix> arangoexport --collection test --output-directory "dump"
 
 
 Export JSON
 -----------
-To export collections as json or jsonl add *--collection collection name*
 
 
 Export JSONL
 ------------
+
 
 Export XGMML
 ------------
@@ -22,7 +22,8 @@ Export XGMML
 
 *--xgmml-label-attribute* specify the name of the attribute that will become the label in the xgmml file.
 
-*--xgmml-label-only* set to true it will only export the label without any attributes in edges or nodes.
+*--xgmml-label-only* set to true will only export the label without any attributes in edges or nodes.
+
 
 ## export with collection defined
 
@@ -36,3 +37,17 @@ This exports the a unnamed graph with vertex collection *vertex* and edge collec
     unix> arangoexport --type xgmml --graph-name mygraph
 
 This exports the named graph mygraph into the xgmml file *mygraph.xgmml*.
+
+
+## export XGMML without attributes
+
+    unix> arangoexport --type xgmml --graph-name mygraph --xgmml-label-only true
+
+This exports the named graph mygraph into the xgmml file *mygraph.xgmml* without the *<att>*
+
+
+## export XGMML with a specific label
+
+    unix> arangoexport --type xgmml --graph-name mygraph --xgmml-label-attribute name
+
+This exports the named graph mygraph into the xgmml file *mygraph.xgmml* with a label from documents attribute *name* instead of the default attribute *label*
