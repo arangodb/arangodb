@@ -19,6 +19,8 @@ v3.1.11 (XXXX-XX-XX)
 
 * supervision deals with demised coordinators correctly again
 
+* implement a timeout in TraverserEngineRegistry
+
 
 v3.1.10 (2017-02-02)
 --------------------
