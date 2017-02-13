@@ -323,6 +323,7 @@ elseif (WIN32)
   foreach (MS_TARGET_CONF ${V8_TARGET_ARCHS})
     string(TOLOWER ${MS_TARGET_CONF} MS_TARGET_CONF_LOWER)
 
+    
     ExternalProject_Add(v8_build_${MS_TARGET_CONF_LOWER}
       BUILD_IN_SOURCE
         TRUE
@@ -339,6 +340,24 @@ elseif (WIN32)
     )
 
     add_dependencies(v8_build v8_build_${MS_TARGET_CONF_LOWER})
+
+    # in windows we can't solve this via symlinks, so we attempt to guess one of the /I dirs in the build tree:
+    set(v8_build_include_dir "${CMAKE_CURRENT_BINARY_DIR}/build/${MS_TARGET_CONF_LOWER}/obj/global_intermediate/testing/gtest/include/gtest/")
+    ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} unfuck_v8
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${v8_build_include_dir}
+      DEPENDEES
+        v8_build_${MS_TARGET_CONF_LOWER}
+      DEPENDERS
+        build 
+      )
+    message("COMMAND ${CMAKE_COMMAND} -E copy ${V8_DIR}/testing/googletest_subrepo/googletest/*   ${v8_build_include_dir}/")
+    ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} unfuck_v8_2
+      COMMAND ${CMAKE_COMMAND} -E copy ${V8_DIR}/testing/googletest_subrepo/googletest/include/gtest/gtest_prod.h ${v8_build_include_dir}
+      DEPENDEES
+        unfuck_v8
+      DEPENDERS
+        build
+      )
 
     # and now ICU...
 
