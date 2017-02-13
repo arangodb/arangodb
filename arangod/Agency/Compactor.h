@@ -21,36 +21,50 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_AGENT_CALLBACK_H
-#define ARANGOD_CONSENSUS_AGENT_CALLBACK_H 1
+#ifndef ARANGOD_CONSENSUS_COMPACTOR_H
+#define ARANGOD_CONSENSUS_COMPACTOR_H 1
 
 #include "Agency/AgencyCommon.h"
-#include "Cluster/ClusterComm.h"
+#include "Basics/ConditionVariable.h"
+#include "Basics/Thread.h"
 
 namespace arangodb {
 namespace consensus {
 
+// Forward declaration
 class Agent;
 
-class AgentCallback : public arangodb::ClusterCommCallback {
- public:
-  AgentCallback();
+class Compactor : public arangodb::Thread {
 
-  AgentCallback(Agent*, std::string const&, index_t, size_t);
+public:
 
-  virtual bool operator()(arangodb::ClusterCommResult*) override final;
+  // @brief Construct with agent pointer
+  explicit Compactor(Agent* _agent);
 
-  void shutdown();
+  virtual ~Compactor();
 
- private:
-  Agent* _agent;
-  index_t _last;
-  std::string _slaveID;
-  size_t _toLog;
-  double _startTime;
+  /// @brief 1. Deal with appendEntries to slaves.
+  ///        2. Report success of write processes.
+  void run() override final;
 
+  /// @brief Start orderly shutdown of threads
+  void beginShutdown() override final;
+
+  /// @brief Wake up compaction
+  void wakeUp();
+
+  /// @brief Do compaction
+  void compact();
+  
+private:
+  
+  Agent* _agent; //< @brief Agent
+  basics::ConditionVariable _cv;
+  long _waitInterval; //< @brief Wait interval 
+  
 };
-}
-}  // namespace
+
+
+}}
 
 #endif

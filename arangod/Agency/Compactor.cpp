@@ -21,36 +21,66 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_AGENT_CALLBACK_H
-#define ARANGOD_CONSENSUS_AGENT_CALLBACK_H 1
+#include "Compactor.h"
 
-#include "Agency/AgencyCommon.h"
-#include "Cluster/ClusterComm.h"
+#include "Basics/ConditionLocker.h"
+#include "Agency/Agent.h"
 
-namespace arangodb {
-namespace consensus {
 
-class Agent;
+using namespace arangodb::consensus;
 
-class AgentCallback : public arangodb::ClusterCommCallback {
- public:
-  AgentCallback();
 
-  AgentCallback(Agent*, std::string const&, index_t, size_t);
-
-  virtual bool operator()(arangodb::ClusterCommResult*) override final;
-
-  void shutdown();
-
- private:
-  Agent* _agent;
-  index_t _last;
-  std::string _slaveID;
-  size_t _toLog;
-  double _startTime;
-
-};
+// @brief Construct with agent
+Compactor::Compactor(Agent* agent) :
+  Thread("Compactor"), _agent(agent), _waitInterval(1000000) {
 }
-}  // namespace
 
-#endif
+
+/// Dtor shuts down thread
+Compactor::~Compactor() {
+  //shutdown();
+}
+
+
+// @brief Run
+void Compactor::run () {
+
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting compator personality";
+
+  CONDITION_LOCKER(guard, _cv);
+      
+  while (true) {
+    _cv.wait();
+    
+    if (this->isStopping()) {
+      break;
+    }
+    
+    _agent->compact();
+  }
+  
+}
+
+
+// @brief Wake up compaction
+void Compactor::wakeUp () {
+  {
+    CONDITION_LOCKER(guard, _cv);
+    guard.broadcast();
+  }
+}
+
+
+// @brief Begin shutdown
+void Compactor::beginShutdown() {
+
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Shutting down compator personality";
+    
+  Thread::beginShutdown();
+
+  {
+    CONDITION_LOCKER(guard, _cv);
+    guard.broadcast();
+  }
+  
+}
