@@ -89,7 +89,7 @@ bool Traverser::VertexGetter::getVertex(
 
 bool Traverser::VertexGetter::getSingleVertex(VPackSlice edge,
                                               VPackSlice cmp,
-                                              size_t depth,
+                                              uint64_t depth,
                                               VPackSlice& result) {
   VPackSlice from = Transaction::extractFromFromDocument(edge);
   if (from != cmp) {
@@ -132,7 +132,7 @@ bool Traverser::UniqueVertexGetter::getVertex(
 }
 
 bool Traverser::UniqueVertexGetter::getSingleVertex(
-  VPackSlice edge, VPackSlice cmp, size_t depth, VPackSlice& result) {
+  VPackSlice edge, VPackSlice cmp, uint64_t depth, VPackSlice& result) {
   result = Transaction::extractFromFromDocument(edge);
 
   if (cmp == result) {
@@ -181,7 +181,7 @@ Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, arangodb::Tran
 
 bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
                                                            VPackSlice vid,
-                                                           size_t depth,
+                                                           uint64_t depth,
                                                            size_t cursorId) {
   if (!_opts->evaluateEdgeExpression(e, vid, depth, cursorId)) {
     ++_filteredPaths;
@@ -190,7 +190,7 @@ bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
   return true;
 }
 
-bool arangodb::traverser::Traverser::vertexMatchesConditions(VPackSlice v, size_t depth) {
+bool arangodb::traverser::Traverser::vertexMatchesConditions(VPackSlice v, uint64_t depth) {
   TRI_ASSERT(v.isString());
   if (_opts->vertexHasFilter(depth)) {
     aql::AqlValue vertex = fetchVertexData(v);

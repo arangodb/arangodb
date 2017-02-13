@@ -46,8 +46,9 @@ class AgentCallback : public arangodb::ClusterCommCallback {
   Agent* _agent;
   index_t _last;
   std::string _slaveID;
-  double _startTime;
   size_t _toLog;
+  double _startTime;
+
 };
 }
 }  // namespace

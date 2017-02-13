@@ -31,7 +31,7 @@
 
 using ClusterEdgeCursor = arangodb::traverser::ClusterEdgeCursor;
 
-ClusterEdgeCursor::ClusterEdgeCursor(VPackSlice v, size_t depth,
+ClusterEdgeCursor::ClusterEdgeCursor(VPackSlice v, uint64_t depth,
                                      arangodb::traverser::ClusterTraverser* traverser)
     : _position(0) {
       TransactionBuilderLeaser leased(traverser->_trx);

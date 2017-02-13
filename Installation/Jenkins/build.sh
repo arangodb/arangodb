@@ -578,7 +578,7 @@ ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
 (cd ${SOURCE_DIR}; git rev-parse HEAD > last_compiled_version.sha)
 
 if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
-    ${PACKAGE_MAKE} packages
+    ${PACKAGE_MAKE} packages || exit 1
 fi
 # and install
 
@@ -588,8 +588,8 @@ if test -n "${TARGET_DIR}";  then
     mkdir -p "${TARGET_DIR}"
     dir="${TARGET_DIR}"
     if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
-        ${PACKAGE_MAKE} copy_packages
-        ${PACKAGE_MAKE} clean_packages
+        ${PACKAGE_MAKE} copy_packages || exit 1
+        ${PACKAGE_MAKE} clean_packages || exit 1
     else
         # we re-use a generic cpack tarball:
         ${PACKAGE_MAKE} TGZ_package

@@ -1000,8 +1000,8 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
   return oldValue;
 }
 
-bool AgencyComm::registerCallback(std::string const& key,
-                                  std::string const& endpoint) {
+AgencyCommResult AgencyComm::registerCallback(std::string const& key,
+                                              std::string const& endpoint) {
   VPackBuilder builder;
   builder.add(VPackValue(endpoint));
 
@@ -1010,11 +1010,11 @@ bool AgencyComm::registerCallback(std::string const& key,
   AgencyWriteTransaction transaction(operation);
 
   auto result = sendTransactionWithFailover(transaction);
-  return result.successful();
+  return result;
 }
 
-bool AgencyComm::unregisterCallback(std::string const& key,
-                                    std::string const& endpoint) {
+AgencyCommResult AgencyComm::unregisterCallback(std::string const& key,
+                                                std::string const& endpoint) {
   VPackBuilder builder;
   builder.add(VPackValue(endpoint));
 
@@ -1023,7 +1023,7 @@ bool AgencyComm::unregisterCallback(std::string const& key,
   AgencyWriteTransaction transaction(operation);
 
   auto result = sendTransactionWithFailover(transaction);
-  return result.successful();
+  return result;
 }
 
 bool AgencyComm::lockRead(std::string const& key, double ttl, double timeout) {
@@ -1533,7 +1533,8 @@ AgencyCommResult AgencyComm::send(
   if (cc == nullptr) {
     // nullptr only happens during controlled shutdown
     result._message = "could not send request to agency because of shutdown";
-    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "could not send request to agency";
+    LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
+      << "could not send request to agency because of shutdown";
 
     return result;
   }

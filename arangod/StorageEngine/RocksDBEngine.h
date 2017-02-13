@@ -70,26 +70,6 @@ class RocksDBEngine final : public StorageEngine {
   // inventory functionality
   // -----------------------
 
-  //return empty string when not found
-  virtual std::string getName(Database*) const {
-    throw std::logic_error("not implemented");
-    return TRI_ERROR_NO_ERROR;
-  };
-  virtual std::string getPath(Database*) const {
-    throw std::logic_error("not implemented");
-    return TRI_ERROR_NO_ERROR;
-  };
-  virtual std::string getName(Database*, CollectionView*) const override {
-    throw std::logic_error("not implemented");
-    return TRI_ERROR_NO_ERROR;
-  };
-  virtual std::string getPath(Database*, CollectionView*) const override {
-    throw std::logic_error("not implemented");
-    return TRI_ERROR_NO_ERROR;
-  };
-
-
-
   // fill the Builder object with an array of databases that were detected
   // by the storage engine. this method must sort out databases that were not
   // fully created (see "createDatabase" below). called at server start only

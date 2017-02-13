@@ -1129,7 +1129,7 @@ void TraversalNode::setCondition(arangodb::aql::Condition* condition) {
 }
 
 void TraversalNode::registerCondition(bool isConditionOnEdge,
-                                      size_t conditionLevel,
+                                      uint64_t conditionLevel,
                                       AstNode const* condition) {
   Ast::getReferencedVariables(condition, _conditionVariables);
   if (isConditionOnEdge) {
