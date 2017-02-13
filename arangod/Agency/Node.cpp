@@ -33,8 +33,9 @@
 #include <deque>
 #include <regex>
 
-using namespace arangodb::consensus;
 using namespace arangodb::basics;
+using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 struct NotEmpty {
   bool operator()(const std::string& s) { return !s.empty(); }
