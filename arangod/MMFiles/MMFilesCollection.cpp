@@ -295,7 +295,11 @@ bool MMFilesCollection::OpenIterator(TRI_df_marker_t const* marker, MMFilesColle
 }
 
 MMFilesCollection::MMFilesCollection(LogicalCollection* collection)
-    : PhysicalCollection(collection), _ditches(collection), _initialCount(0), _lastRevision(0) {}
+    : PhysicalCollection(collection)
+    , _ditches(collection)
+    , _initialCount(0), _lastRevision(0)
+    , _uncollectedLogfileEntries(0)
+    {}
 
 MMFilesCollection::~MMFilesCollection() { 
   try {
@@ -1132,6 +1136,11 @@ int MMFilesCollection::iterateMarkersOnLoad(arangodb::Transaction* trx) {
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+bool MMFilesCollection::isFullyCollected() const {
+  int64_t uncollected = _uncollectedLogfileEntries.load();
+  return (uncollected == 0);
 }
 
 MMFilesDocumentPosition MMFilesCollection::lookupRevision(TRI_voc_rid_t revisionId) const {

@@ -30,6 +30,7 @@
 #include <vector>
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 FailedLeader::FailedLeader(Node const& snapshot, Agent* agent,
                            std::string const& jobId, std::string const& creator,

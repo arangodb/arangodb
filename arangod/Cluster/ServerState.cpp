@@ -360,18 +360,18 @@ bool ServerState::registerShortName(std::string const& id, ServerState::RoleEnum
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to integrate into a cluster
 ////////////////////////////////////////////////////////////////////////////////
-bool ServerState::integrateIntoCluster(ServerState::RoleEnum const& role,
+bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
                                        std::string const& myAddress,
                                        std::string const& myId) {
   // id supplied via command line this is deprecated
   if (!myId.empty()) {
     if (!hasPersistedId()) {
       setId(myId);
-      ServerState::RoleEnum roleInAgency = getRole();
+      role = getRole();
 
       // we are known to the agency under our old id!
-      if (roleInAgency != ServerState::ROLE_UNDEFINED) {
-        registerShortName(myId, roleInAgency);
+      if (role != ServerState::ROLE_UNDEFINED) {
+        registerShortName(myId, role);
         writePersistedId(myId);
       } else {
         LOG_TOPIC(FATAL, Logger::STARTUP) << "started with --cluster.my-id but id unknown in agency!";
@@ -397,50 +397,9 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum const& role,
   }
   setId(id);
 
-  registerAtAgency(comm, role, id);
-
-  const std::string agencyKey = roleToAgencyKey(role);
-  const std::string planKey = "Plan/" + agencyKey + "/" + id;
-  const std::string currentKey = "Current/" + agencyKey + "/" + id;
-
-  auto builder = std::make_shared<VPackBuilder>();
-  result = comm.getValues(planKey);
-  bool found = true;
-  if (!result.successful()) {
-    found = false;
-  } else {
-    VPackSlice plan = result.slice()[0].get(std::vector<std::string>(
-          {AgencyCommManager::path(), "Plan", agencyKey, id}));
-    if (!plan.isString()) {
-      found = false;
-    } else {
-      builder->add(plan);
-    }
+  if (!registerAtAgency(comm, role, id)) {
+    FATAL_ERROR_EXIT();
   }
-  if (!found) {
-    // mop: hmm ... we are registered but not part of the Plan :O
-    // create a plan for ourselves :)
-    builder->add(VPackValue("none"));
-
-    VPackSlice plan = builder->slice();
-
-    comm.setValue(planKey, plan, 0.0);
-    if (!result.successful()) {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "Couldn't create plan "
-        << result.errorMessage();
-      return false;
-    }
-  }
-
-  result = comm.setValue(currentKey, builder->slice(), 0.0);
-
-  if (!result.successful()) {
-    LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not talk to agency! "
-      << result.errorMessage();
-    return false;
-  }
-
-  _id = id;
 
   findAndSetRoleBlocking();
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "We successfully announced ourselves as "
@@ -554,7 +513,7 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
     if (!result.successful()) {
       LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't fetch Plan/" << agencyKey
         << " from agency. Agency is not initialized?";
-      FATAL_ERROR_EXIT();
+      return false;
     }
 
     VPackSlice servers = result.slice()[0].get(
@@ -562,7 +521,7 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
     if (!servers.isObject()) {
       LOG_TOPIC(FATAL, Logger::STARTUP) << "Plan/" << agencyKey << " in agency is no object. "
         << "Agency not initialized?";
-      FATAL_ERROR_EXIT();
+      return false;
     }
 
     VPackSlice entry = servers.get(id);
@@ -570,16 +529,28 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
       << id << " found in existing keys: " << (!entry.isNone());
 
     std::string planUrl = "Plan/" + agencyKey + "/" + id;
+    std::string currentUrl = "Current/" + agencyKey + "/" + id;
 
     AgencyGeneralTransaction reg;
     reg.operations.push_back( // Plan entry if not exists
         operationType(
           AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
           AgencyPrecondition(planUrl, AgencyPrecondition::Type::EMPTY, true)));
+
+    reg.operations.push_back( // Current entry if not exists
+        operationType(
+          AgencyOperation(currentUrl, AgencyValueOperationType::SET, builder.slice()),
+          AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true)));
     
-    // ok to fail (at least that was how it was before :S)
-    // XXX this should probably be sent as part of the transaction below
+    // ok to fail..if it failed we are already registered
     comm.sendTransactionWithFailover(reg, 0.0);
+  } else {
+    std::string currentUrl = "Current/" + agencyKey + "/" + _idOfPrimary;
+    AgencyCommResult result = comm.setValue(currentUrl, id, 0.0);
+    if (!result.successful()) {
+      LOG_TOPIC(FATAL, Logger::STARTUP) << "Could not register ourselves as secondary in Current";
+      return false;
+    }
   }
 
   std::string targetIdStr =
@@ -660,7 +631,6 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
   }
 
   LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't register shortname for " << id;
-  FATAL_ERROR_EXIT();
   return false;
 }
 
@@ -942,6 +912,17 @@ bool ServerState::redetermineRole() {
   RoleEnum oldRole = loadRole();
   if (role != oldRole) {
     LOG_TOPIC(INFO, Logger::CLUSTER) << "Changed role to: " << roleString;
+    if (oldRole == ROLE_PRIMARY && role == ROLE_SECONDARY) {
+      std::string oldId("Current/DBServers/" + _id);
+      AgencyOperation del(oldId, AgencySimpleOperationType::DELETE_OP);
+      AgencyOperation incrementVersion("Current/Version",
+          AgencySimpleOperationType::INCREMENT_OP);
+
+      AgencyWriteTransaction trx(std::vector<AgencyOperation> {del, incrementVersion});
+
+      AgencyComm comm;
+      comm.sendTransactionWithFailover(trx, 0.0);
+    }
     if (!storeRole(role)) {
       return false;
     }
@@ -1245,7 +1226,7 @@ bool ServerState::storeRole(RoleEnum role) {
                        ServerState::instance()->getPrimaryId());
       AgencyOperation addMe(myId, AgencyValueOperationType::SET,
                             builder.slice());
-      AgencyOperation incrementVersion("Plan/Version",
+      AgencyOperation incrementVersion("Current/Version",
                                        AgencySimpleOperationType::INCREMENT_OP);
       AgencyPrecondition precondition(myId, AgencyPrecondition::Type::EMPTY, false);
       trx.reset(new AgencyWriteTransaction({addMe, incrementVersion}, precondition));

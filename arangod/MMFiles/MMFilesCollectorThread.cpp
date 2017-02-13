@@ -30,6 +30,7 @@
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -678,7 +679,7 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
                << collection->name() << "'";
     updateDatafileStatistics(collection, cache);
 
-    collection->decreaseUncollectedLogfileEntries(cache->totalOperationsCount);
+    static_cast<arangodb::MMFilesCollection*>(collection->getPhysical())->decreaseUncollectedLogfileEntries(cache->totalOperationsCount);
 
     res = TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {

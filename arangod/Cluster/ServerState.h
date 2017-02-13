@@ -139,7 +139,7 @@ class ServerState {
   /// @brief get the server role
   RoleEnum getRole();
   
-  bool integrateIntoCluster(RoleEnum const&, std::string const&, std::string const&);
+  bool integrateIntoCluster(RoleEnum, std::string const&, std::string const&);
   
   bool unregister();
 
