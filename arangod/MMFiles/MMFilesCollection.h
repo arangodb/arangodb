@@ -162,6 +162,24 @@ class MMFilesCollection final : public PhysicalCollection {
   
   /// @brief iterate all markers of a collection on load
   int iterateMarkersOnLoad(arangodb::Transaction* trx) override;
+  
+  virtual bool isFullyCollected() const override;
+  
+  int64_t uncollectedLogfileEntries() const {
+    return _uncollectedLogfileEntries.load();
+  }
+
+  void increaseUncollectedLogfileEntries(int64_t value) {
+    _uncollectedLogfileEntries += value;
+  }
+
+  void decreaseUncollectedLogfileEntries(int64_t value) {
+    _uncollectedLogfileEntries -= value;
+    if (_uncollectedLogfileEntries < 0) {
+      _uncollectedLogfileEntries = 0;
+    }
+  }
+
 
  private:
   static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
@@ -221,6 +239,9 @@ class MMFilesCollection final : public PhysicalCollection {
   TRI_voc_rid_t _lastRevision;
   
   MMFilesRevisionsCache _revisionsCache;
+  
+  std::atomic<int64_t> _uncollectedLogfileEntries;
+
 };
 
 }

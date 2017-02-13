@@ -109,21 +109,6 @@ class LogicalCollection {
 
   // TODO: MOVE TO PHYSICAL?
   bool isFullyCollected();
-  int64_t uncollectedLogfileEntries() const {
-    return _uncollectedLogfileEntries.load();
-  }
-
-  void increaseUncollectedLogfileEntries(int64_t value) {
-    _uncollectedLogfileEntries += value;
-  }
-
-  void decreaseUncollectedLogfileEntries(int64_t value) {
-    _uncollectedLogfileEntries -= value;
-    if (_uncollectedLogfileEntries < 0) {
-      _uncollectedLogfileEntries = 0;
-    }
-  }
-
   void setNextCompactionStartIndex(size_t);
   size_t getNextCompactionStartIndex();
   void setCompactionStatus(char const*);
@@ -610,8 +595,6 @@ class LogicalCollection {
   size_t _nextCompactionStartIndex;
   char const* _lastCompactionStatus;
   double _lastCompactionStamp;
-
-  std::atomic<int64_t> _uncollectedLogfileEntries;
 
   /// @brief: flag that is set to true when the documents are
   /// initial enumerated and the primary index is built
