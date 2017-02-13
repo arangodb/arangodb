@@ -174,6 +174,19 @@ class MMFilesCollection final : public PhysicalCollection {
              OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
              bool lock) override;
 
+  int remove(TransactionMethods* trx, arangodb::velocypack::Slice const slice,
+             arangodb::ManagedDocumentResult& previous,
+             OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+             bool lock, TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev,
+             arangodb::velocypack::Slice const toRemove) override;
+
+  int removeFastPath(TransactionMethods* trx, TRI_voc_rid_t oldRevisionId,
+                     arangodb::velocypack::Slice const oldDoc,
+                     OperationOptions& options,
+                     TRI_voc_tick_t& resultMarkerTick, bool lock,
+                     TRI_voc_rid_t const& revisionId,
+                     arangodb::velocypack::Slice const toRemove) override;
+
  private:
   static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
                                               MMFilesDatafile* datafile,

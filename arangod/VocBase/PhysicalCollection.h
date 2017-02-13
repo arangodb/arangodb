@@ -110,6 +110,22 @@ class PhysicalCollection {
                      OperationOptions& options,
                      TRI_voc_tick_t& resultMarkerTick, bool lock) = 0;
 
+  virtual int remove(TransactionMethods* trx,
+                     arangodb::velocypack::Slice const slice,
+                     arangodb::ManagedDocumentResult& previous,
+                     OperationOptions& options,
+                     TRI_voc_tick_t& resultMarkerTick, bool lock,
+                     TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev,
+                     arangodb::velocypack::Slice const toRemove) = 0;
+
+  virtual int removeFastPath(TransactionMethods* trx,
+                             TRI_voc_rid_t oldRevisionId,
+                             arangodb::velocypack::Slice const oldDoc,
+                             OperationOptions& options,
+                             TRI_voc_tick_t& resultMarkerTick, bool lock,
+                             TRI_voc_rid_t const& revisionId,
+                             arangodb::velocypack::Slice const toRemove) = 0;
+
  protected:
   LogicalCollection* _logicalCollection;
 };
