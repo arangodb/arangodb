@@ -78,6 +78,7 @@ Create a geo index for a hash array attribute:
 
     @startDocuBlockInline geoIndexCreateForArrayAttribute2
     @EXAMPLE_ARANGOSH_OUTPUT{geoIndexCreateForArrayAttribute2}
+    ~db._drop("geo2")
     ~db._create("geo2")
     db.geo2.ensureIndex({ type: "geo", fields: [ "location.latitude", "location.longitude" ] });
     | for (i = -90;  i <= 90;  i += 10) {

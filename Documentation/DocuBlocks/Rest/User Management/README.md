@@ -42,6 +42,7 @@ from the request.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestCreateUser}
+    ~try { require("@arangodb/users").remove("admin@example"); } catch (err) {}
     var url = "/_api/user";
     var data = { user: "admin@example", passwd: "secure" };
     var response = logCurlRequest('POST', url, data);
@@ -49,6 +50,7 @@ from the request.
     assert(response.code === 201);
 
     logJsonResponse(response);
+    ~require("@arangodb/users").remove("admin@example");
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
