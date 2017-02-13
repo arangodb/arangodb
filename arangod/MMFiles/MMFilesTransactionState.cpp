@@ -52,7 +52,8 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
 /// @brief transaction type
 MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase)
     : TransactionState(vocbase),
-      _rocksTransaction(nullptr) {}
+      _rocksTransaction(nullptr),
+      _hasOperations(false) {}
 
 /// @brief free a transaction container
 MMFilesTransactionState::~MMFilesTransactionState() {

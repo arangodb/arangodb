@@ -29,8 +29,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Methods.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -46,7 +44,6 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase)
       _hints(),
       _nestingLevel(0), 
       _allowImplicit(true),
-      _hasOperations(false), 
       _waitForSync(false),
       _beginWritten(false), 
       _timeout(transaction::Methods::DefaultLockTimeout) {}

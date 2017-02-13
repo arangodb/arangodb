@@ -146,7 +146,6 @@ class TransactionState {
   transaction::Hints _hints;            // hints;
   int _nestingLevel;
   bool _allowImplicit;
-  bool _hasOperations;
   bool _waitForSync;   // whether or not the transaction had a synchronous op
   bool _beginWritten;  // whether or not the begin marker was already written
   double _timeout;     // timeout for lock acquisition
