@@ -21,6 +21,16 @@ v3.1.11 (XXXX-XX-XX)
 
 * implement a timeout in TraverserEngineRegistry
 
+* agent communication reduced in large batches of append entries RPCs
+
+* inception no longer estimates RAFT timings
+
+* compaction in agents has been moved to a separate thread
+
+* replicated logs hold local timestamps
+
+* supervision jobs failed leader and failed follower revisited for
+  function in precarious stability situations
 
 v3.1.10 (2017-02-02)
 --------------------
