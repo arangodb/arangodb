@@ -917,6 +917,9 @@ static TRI_action_result_t ExecuteActionVocbase(
     if (tryCatch.CanContinue()) {
       response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
 
+      std::string jsError = TRI_StringifyV8Exception(isolate, &tryCatch);
+      LOG_TOPIC(WARN, arangodb::Logger::V8) << "Caught an error while executing an action: " << jsError;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // TODO how to generalize this?
       if (response->transportType() ==
           Endpoint::TransportType::HTTP) {  // FIXME
@@ -924,6 +927,7 @@ static TRI_action_result_t ExecuteActionVocbase(
             ->body()
             .appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
       }
+#endif
     } else {
       v8g->_canceled = true;
       result.isValid = false;

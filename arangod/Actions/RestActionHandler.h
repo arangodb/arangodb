@@ -28,8 +28,6 @@
 
 #include "Actions/actions.h"
 
-class TRI_action_t;
-
 namespace arangodb {
 class RestActionHandler : public RestVocbaseBaseHandler {
  public:
