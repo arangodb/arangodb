@@ -27,6 +27,7 @@
 #include "Agency/Job.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 FailedFollower::FailedFollower(Node const& snapshot, Agent* agent,
                                std::string const& jobId,
@@ -124,7 +125,7 @@ bool FailedFollower::start() {
   std::string curPath =
       curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
 
-  Node const& current = _snapshot(curPath);
+  Node const& planned = _snapshot(planPath);
 
 
   // Copy todo to pending
@@ -169,7 +170,7 @@ bool FailedFollower::start() {
 
   // --- Add new server to the list
   pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
-  for(const auto& i : VPackArrayIterator(current.slice())) {
+  for(const auto& i : VPackArrayIterator(planned.slice())) {
     if (i.copyString() != _from) {
       pending.add(i);
     } else {

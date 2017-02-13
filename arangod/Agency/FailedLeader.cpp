@@ -26,7 +26,11 @@
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 
+#include <algorithm>
+#include <vector>
+
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 FailedLeader::FailedLeader(Node const& snapshot, Agent* agent,
                            std::string const& jobId, std::string const& creator,
@@ -111,13 +115,13 @@ bool FailedLeader::start() {
   std::string curPath =
       curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
 
-  Node const& current = _snapshot(curPath);
-  Node const& planned = _snapshot(planPath);
+  auto const& current = _snapshot(curPath).slice();
+  auto const& planned = _snapshot(planPath).slice();
 
-  if (current.slice().length() == 1) {
+  if (current.length() == 1) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << "Failed to change leadership for shard " + _shard + " from " + _from 
-      +  " to " + _to + ". No in-sync followers:" + current.slice().toJson();
+      +  " to " + _to + ". No in-sync followers:" + current.toJson();
     return false;
   }
 
@@ -161,11 +165,30 @@ bool FailedLeader::start() {
   pending.close();
 
   // --- Cyclic shift in sync servers
-  pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
-  for (size_t i = 1; i < current.slice().length(); ++i) {
-    pending.add(current.slice()[i]);
+  // 1. only proceed if any in sync
+  // 2. find 1st in sync that is is not in failedservers
+  // 3. put all in sync not failed up front
+  // 4. put failed leader
+  // 5. remaining in plan
+  //    Distribute shards like to come!
+  std::vector<std::string> planv;
+  for (auto const& i : VPackArrayIterator(planned)) {
+    planv.push_back(i.copyString());
   }
-  pending.add(current.slice()[0]);
+
+  pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
+  for (auto const& i : VPackArrayIterator(current)) {
+    std::string s = i.copyString();
+    if (s != _from) {
+      pending.add(i);
+      planv.erase(std::remove(planv.begin(), planv.end(), s), planv.end());
+    }
+  }
+  pending.add(VPackValue(_from));
+  for (auto const& i : planv) {
+    pending.add(VPackValue(i));
+  }
+
   pending.close();
 
   // --- Block shard
@@ -186,12 +209,12 @@ bool FailedLeader::start() {
 
   // --- Check that Current servers are as we expect
   pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
-  pending.add("old", current.slice());
+  pending.add("old", current);
   pending.close();
 
   // --- Check that Current servers are as we expect
   pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Object));
-  pending.add("old", planned.slice());
+  pending.add("old", planned);
   pending.close();
 
   // --- Check if shard is not blocked

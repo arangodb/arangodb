@@ -494,7 +494,7 @@ bool Index::implicitlyUnique() const {
 }
 
 void Index::batchInsert(
-    arangodb::Transaction* trx,
+    TransactionMethods* trx,
     std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&
         documents,
     arangodb::basics::LocalTaskQueue* queue) {
@@ -520,7 +520,7 @@ int Index::drop() {
 }
 
 /// @brief default implementation for sizeHint
-int Index::sizeHint(arangodb::Transaction*, size_t) {
+int Index::sizeHint(TransactionMethods*, size_t) {
   // do nothing
   return TRI_ERROR_NO_ERROR;
 }
@@ -555,7 +555,7 @@ bool Index::supportsSortCondition(arangodb::aql::SortCondition const*,
 }
 
 /// @brief default iterator factory method. does not create an iterator
-IndexIterator* Index::iteratorForCondition(arangodb::Transaction*,
+IndexIterator* Index::iteratorForCondition(TransactionMethods*,
                                            ManagedDocumentResult*,
                                            arangodb::aql::AstNode const*,
                                            arangodb::aql::Variable const*,

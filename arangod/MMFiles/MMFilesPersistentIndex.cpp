@@ -34,7 +34,7 @@
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesPersistentIndexKeyComparator.h"
 #include "MMFiles/MMFilesToken.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/utilities/optimistic_transaction_db.h>
@@ -84,7 +84,7 @@ static size_t sortWeight(arangodb::aql::AstNode const* node) {
 // ...........................................................................
   
 PersistentIndexIterator::PersistentIndexIterator(LogicalCollection* collection,
-                                 arangodb::Transaction* trx, 
+                                 TransactionMethods* trx, 
                                  ManagedDocumentResult* mmdr,
                                  arangodb::PersistentIndex const* index,
                                  arangodb::MMFilesPrimaryIndex* primaryIndex,
@@ -232,7 +232,7 @@ void PersistentIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 /// @brief inserts a document into the index
-int PersistentIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+int PersistentIndex::insert(TransactionMethods* trx, TRI_voc_rid_t revisionId,
                          VPackSlice const& doc, bool isRollback) {
   auto comparator = RocksDBFeature::instance()->comparator();
   std::vector<MMFilesSkiplistIndexElement*> elements;
@@ -259,7 +259,7 @@ int PersistentIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
   
   ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
-  VPackSlice const key = Transaction::extractKeyFromDocument(doc);
+  VPackSlice const key = TransactionMethods::extractKeyFromDocument(doc);
   std::string const prefix =
       buildPrefix(trx->vocbase()->id(), _collection->cid(), _iid);
 
@@ -389,7 +389,7 @@ int PersistentIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
 }
 
 /// @brief removes a document from the index
-int PersistentIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+int PersistentIndex::remove(TransactionMethods* trx, TRI_voc_rid_t revisionId,
                          VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
@@ -415,7 +415,7 @@ int PersistentIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
   
   ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
-  VPackSlice const key = Transaction::extractKeyFromDocument(doc);
+  VPackSlice const key = TransactionMethods::extractKeyFromDocument(doc);
   
   VPackBuilder builder;
   std::vector<std::string> values;
@@ -469,7 +469,7 @@ int PersistentIndex::drop() {
 /// @brief attempts to locate an entry in the index
 /// Warning: who ever calls this function is responsible for destroying
 /// the PersistentIndexIterator* results
-PersistentIndexIterator* PersistentIndex::lookup(arangodb::Transaction* trx,
+PersistentIndexIterator* PersistentIndex::lookup(TransactionMethods* trx,
                                       ManagedDocumentResult* mmdr,
                                       VPackSlice const searchValues,
                                       bool reverse) const {
@@ -857,7 +857,7 @@ bool PersistentIndex::supportsSortCondition(
 }
 
 IndexIterator* PersistentIndex::iteratorForCondition(
-    arangodb::Transaction* trx, 
+    TransactionMethods* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {

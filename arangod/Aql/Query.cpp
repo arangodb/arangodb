@@ -42,7 +42,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/V8TransactionContext.h"
@@ -1423,7 +1423,7 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
 }
 
 /// @brief create a TransactionContext
-std::shared_ptr<arangodb::TransactionContext>
+std::shared_ptr<TransactionContext>
 Query::createTransactionContext() {
   if (_contextOwnedByExterior) {
     // we can use v8

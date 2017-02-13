@@ -63,7 +63,7 @@ struct QueryResult {
   std::shared_ptr<arangodb::velocypack::Builder> result;
   std::shared_ptr<arangodb::velocypack::Builder> stats;
   std::shared_ptr<arangodb::velocypack::Builder> profile;
-  std::shared_ptr<arangodb::TransactionContext> context;
+  std::shared_ptr<TransactionContext> context;
 };
 }
 }

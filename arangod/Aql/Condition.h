@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 
 #include <velocypack/Slice.h>
 
@@ -227,7 +227,7 @@ class Condition {
   /// return value is a pair indicating whether the index can be used for
   /// filtering(first) and sorting(second)
   std::pair<bool, bool> findIndexes(EnumerateCollectionNode const*,
-                                    std::vector<Transaction::IndexHandle>&,
+                                    std::vector<TransactionMethods::IndexHandle>&,
                                     SortCondition const*);
 
   /// @brief get the attributes for a sub-condition that are const
@@ -261,7 +261,7 @@ class Condition {
   void deduplicateInOperation(AstNode*);
 
   /// @brief merge the values from two IN operations
-  AstNode* mergeInOperations(arangodb::Transaction* trx, AstNode const*, AstNode const*);
+  AstNode* mergeInOperations(TransactionMethods* trx, AstNode const*, AstNode const*);
 
   /// @brief merges the current node with the sub nodes of same type
   AstNode* collapse(AstNode const*);

@@ -27,17 +27,17 @@
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class ReplicationTransaction : public Transaction {
+class ReplicationTransaction : public TransactionMethods {
  public:
   /// @brief create the transaction
   ReplicationTransaction(TRI_vocbase_t* vocbase)
-      : Transaction(StandaloneTransactionContext::Create(vocbase)) {
+      : TransactionMethods(StandaloneTransactionContext::Create(vocbase)) {
 
     _vocbase->use();
   }

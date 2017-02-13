@@ -38,6 +38,7 @@ const functionsDocumentation = {
   'cluster_sync': 'cluster sync tests',
   'dump': 'dump tests',
   'dump_authentication': 'dump tests with authentication',
+  'export': 'export formats tests',
   'dfdb': 'start test',
   'endpoints': 'endpoints tests',
   'foxx_manager': 'foxx manager tests',
@@ -246,6 +247,7 @@ let ARANGODUMP_BIN;
 let ARANGOD_BIN;
 let ARANGOIMP_BIN;
 let ARANGORESTORE_BIN;
+let ARANGOEXPORT_BIN;
 let ARANGOSH_BIN;
 let CONFIG_ARANGODB_DIR;
 let CONFIG_RELATIVE_DIR;
@@ -1994,6 +1996,7 @@ let allTests = [
   'config',
   'dump',
   'dump_authentication',
+  'export',
   'dfdb',
   'endpoints',
   'http_server',
@@ -2706,6 +2709,7 @@ testFuncs.config = function (options) {
     'arangodump',
     'arangoimp',
     'arangorestore',
+    'arangoexport',
     'arangosh',
     'arango-dfdb',
     'foxx-manager'
@@ -2875,6 +2879,98 @@ testFuncs.dump = function (options) {
   print();
 
   return results;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: dump
+// //////////////////////////////////////////////////////////////////////////////
+
+testFuncs.export = function (options) {
+  const cluster = options.cluster ? '-cluster' : '';
+
+  print(CYAN + 'export tests...' + RESET);
+
+  const instanceInfo = startInstance('tcp', options, {}, 'export');
+
+  if (instanceInfo === false) {
+    return {
+      export: {
+        status: false,
+        message: 'failed to start server!'
+      }
+    };
+  }
+
+  print(CYAN + Date() + ': Setting up' + RESET);
+
+  const results = {};
+
+  function shutdown() {
+    print(CYAN + 'Shutting down...' + RESET);
+    shutdownInstance(instanceInfo, options);
+    print(CYAN + 'done.' + RESET);
+
+    print();
+
+    return results;
+  }
+
+  results.setup = runInArangosh(options, instanceInfo, makePathUnix('js/server/tests/export/export-setup' + cluster + '.js'));
+  if (!checkInstanceAlive(instanceInfo, options) || true !== results.setup.status) {
+    return shutdown();
+  }
+
+  print(CYAN + Date() + ': Export data' + RESET);
+
+  results.export = (() => {
+    const args = {
+      'configuration': fs.join(CONFIG_DIR, 'arangoexport.conf'),
+      'server.username': options.username,
+      'server.password': options.password,
+      'server.endpoint': instanceInfo.endpoint,
+      'server.database': 'UnitTestsExport',
+      'collection':'UnitTestsExport',
+      'type':'json',
+      'overwrite':true,
+      'output-directory':'export'
+    };
+
+    return executeAndWait(ARANGOEXPORT_BIN, toArgv(args), options);
+  })();
+
+
+/*
+    results.dump = runArangoDumpRestore(options, instanceInfo, 'dump',
+      'UnitTestsDumpSrc');
+
+    if (checkInstanceAlive(instanceInfo, options) &&
+      (results.dump.status === true)) {
+      print(CYAN + Date() + ': Dump and Restore - restore' + RESET);
+
+      results.restore = runArangoDumpRestore(options, instanceInfo, 'restore',
+        'UnitTestsDumpDst');
+
+      if (checkInstanceAlive(instanceInfo, options) &&
+        (results.restore.status === true)) {
+        print(CYAN + Date() + ': Dump and Restore - dump after restore' + RESET);
+
+        results.test = runInArangosh(options, instanceInfo,
+          makePathUnix('js/server/tests/dump/dump' + cluster + '.js'), {
+            'server.database': 'UnitTestsDumpDst'
+          });
+
+        if (checkInstanceAlive(instanceInfo, options) &&
+          (results.test.status === true)) {
+          print(CYAN + Date() + ': Dump and Restore - teardown' + RESET);
+
+          results.tearDown = runInArangosh(options, instanceInfo,
+            makePathUnix('js/server/tests/dump/dump-teardown' + cluster + '.js'));
+        }
+      }
+    }
+  }*/
+
+  return shutdown();
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -4270,6 +4366,7 @@ function unitTest (cases, options) {
   ARANGOD_BIN = fs.join(BIN_DIR, 'arangod' + executable_ext);
   ARANGOIMP_BIN = fs.join(BIN_DIR, 'arangoimp' + executable_ext);
   ARANGORESTORE_BIN = fs.join(BIN_DIR, 'arangorestore' + executable_ext);
+  ARANGOEXPORT_BIN = fs.join(BIN_DIR, 'arangoexport' + executable_ext);
   ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh' + executable_ext);
 
   CONFIG_ARANGODB_DIR = fs.join(TOP_DIR, builddir, 'etc', 'arangodb3');
@@ -4287,6 +4384,7 @@ function unitTest (cases, options) {
     ARANGOD_BIN,
     ARANGOIMP_BIN,
     ARANGORESTORE_BIN,
+    ARANGOEXPORT_BIN,
     ARANGOSH_BIN];
   for (let b = 0; b < checkFiles.length; ++b) {
     if (!fs.isFile(checkFiles[b])) {

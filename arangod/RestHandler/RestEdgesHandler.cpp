@@ -67,7 +67,7 @@ void RestEdgesHandler::readCursor(
     aql::AstNode* condition, aql::Variable const* var,
     std::string const& collectionName, SingleCollectionTransaction& trx,
     std::function<void(DocumentIdentifierToken const&)> cb) {
-  Transaction::IndexHandle indexId;
+  TransactionMethods::IndexHandle indexId;
   bool foundIdx = trx.getBestIndexHandleForFilterCondition(
       collectionName, condition, var, 1000, indexId);
   if (!foundIdx) {

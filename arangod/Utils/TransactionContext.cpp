@@ -28,7 +28,7 @@
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -55,7 +55,7 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
   
   std::string toString(VPackSlice const& value, VPackOptions const* options,
                        VPackSlice const& base) override final {
-    return Transaction::extractIdString(resolver, value, base);
+    return TransactionMethods::extractIdString(resolver, value, base);
   }
 
   TRI_vocbase_t* vocbase;

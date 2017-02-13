@@ -29,7 +29,7 @@
 #include "Aql/AqlValue.h"
 
 namespace arangodb {
-class Transaction;
+class TransactionMethods;
 
 namespace basics {
 class VPackStringBufferAdapter;
@@ -43,7 +43,7 @@ typedef std::function<bool()> ExecutionCondition;
 
 typedef SmallVector<AqlValue> VPackFunctionParameters;
 
-typedef std::function<AqlValue(arangodb::aql::Query*, arangodb::Transaction*,
+typedef std::function<AqlValue(arangodb::aql::Query*, TransactionMethods*,
                                 VPackFunctionParameters const&)>
     FunctionImplementation;
 
@@ -61,18 +61,18 @@ struct Functions {
 
    /// @brief extract a function parameter from the arguments
    static AqlValue ExtractFunctionParameterValue(
-       arangodb::Transaction*, VPackFunctionParameters const& parameters,
+       TransactionMethods*, VPackFunctionParameters const& parameters,
        size_t position);
 
    /// @brief extra a collection name from an AqlValue
    static std::string ExtractCollectionName(
-       arangodb::Transaction* trx, VPackFunctionParameters const& parameters,
+       TransactionMethods* trx, VPackFunctionParameters const& parameters,
        size_t position);
 
    /// @brief extract attribute names from the arguments
    static void ExtractKeys(std::unordered_set<std::string>& names,
                            arangodb::aql::Query* query,
-                           arangodb::Transaction* trx,
+                           TransactionMethods* trx,
                            VPackFunctionParameters const& parameters,
                            size_t startParameter, char const* functionName);
 
@@ -80,7 +80,7 @@ struct Functions {
    ///        Works for an array of objects as first parameter or arbitrary many
    ///        object parameters
    static AqlValue MergeParameters(arangodb::aql::Query* query,
-                                   arangodb::Transaction* trx,
+                                   TransactionMethods* trx,
                                    VPackFunctionParameters const& parameters,
                                    char const* funcName, bool recursive);
 
@@ -94,210 +94,210 @@ struct Functions {
    static void DestroyThreadContext();
 
    /// @brief helper function. not callable as a "normal" AQL function
-   static void Stringify(arangodb::Transaction* trx,
+   static void Stringify(TransactionMethods* trx,
                          arangodb::basics::VPackStringBufferAdapter& buffer,
                          VPackSlice const& slice);
 
-   static AqlValue IsNull(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue IsNull(arangodb::aql::Query*, TransactionMethods*,
                           VPackFunctionParameters const&);
-   static AqlValue IsBool(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue IsBool(arangodb::aql::Query*, TransactionMethods*,
                           VPackFunctionParameters const&);
-   static AqlValue IsNumber(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue IsNumber(arangodb::aql::Query*, TransactionMethods*,
                             VPackFunctionParameters const&);
-   static AqlValue IsString(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue IsString(arangodb::aql::Query*, TransactionMethods*,
                             VPackFunctionParameters const&);
-   static AqlValue IsArray(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue IsArray(arangodb::aql::Query*, TransactionMethods*,
                            VPackFunctionParameters const&);
-   static AqlValue IsObject(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue IsObject(arangodb::aql::Query*, TransactionMethods*,
                             VPackFunctionParameters const&);
-   static AqlValue Typename(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Typename(arangodb::aql::Query*, TransactionMethods*,
                             VPackFunctionParameters const&);
-   static AqlValue ToNumber(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue ToNumber(arangodb::aql::Query*, TransactionMethods*,
                             VPackFunctionParameters const&);
-   static AqlValue ToString(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue ToString(arangodb::aql::Query*, TransactionMethods*,
                             VPackFunctionParameters const&);
-   static AqlValue ToBool(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue ToBool(arangodb::aql::Query*, TransactionMethods*,
                           VPackFunctionParameters const&);
-   static AqlValue ToArray(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue ToArray(arangodb::aql::Query*, TransactionMethods*,
                            VPackFunctionParameters const&);
-   static AqlValue Length(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Length(arangodb::aql::Query*, TransactionMethods*,
                           VPackFunctionParameters const&);
-   static AqlValue First(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue First(arangodb::aql::Query*, TransactionMethods*,
                          VPackFunctionParameters const&);
-   static AqlValue Last(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Last(arangodb::aql::Query*, TransactionMethods*,
                         VPackFunctionParameters const&);
-   static AqlValue Nth(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Nth(arangodb::aql::Query*, TransactionMethods*,
                        VPackFunctionParameters const&);
-   static AqlValue Contains(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Contains(arangodb::aql::Query*, TransactionMethods*,
                             VPackFunctionParameters const&);
-   static AqlValue Concat(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Concat(arangodb::aql::Query*, TransactionMethods*,
                           VPackFunctionParameters const&);
    static AqlValue ConcatSeparator(arangodb::aql::Query*,
-                                   arangodb::Transaction*,
+                                   TransactionMethods*,
                                    VPackFunctionParameters const&);
-   static AqlValue Like(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Like(arangodb::aql::Query*, TransactionMethods*,
                         VPackFunctionParameters const&);
-   static AqlValue RegexTest(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue RegexTest(arangodb::aql::Query*, TransactionMethods*,
                              VPackFunctionParameters const&);
-   static AqlValue RegexReplace(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue RegexReplace(arangodb::aql::Query*, TransactionMethods*,
                                 VPackFunctionParameters const&);
-   static AqlValue Passthru(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Passthru(arangodb::aql::Query*, TransactionMethods*,
                             VPackFunctionParameters const&);
-   static AqlValue Unset(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Unset(arangodb::aql::Query*, TransactionMethods*,
                          VPackFunctionParameters const&);
-   static AqlValue UnsetRecursive(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue UnsetRecursive(arangodb::aql::Query*, TransactionMethods*,
                                   VPackFunctionParameters const&);
-   static AqlValue Keep(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Keep(arangodb::aql::Query*, TransactionMethods*,
                         VPackFunctionParameters const&);
-   static AqlValue Merge(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Merge(arangodb::aql::Query*, TransactionMethods*,
                          VPackFunctionParameters const&);
-   static AqlValue MergeRecursive(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue MergeRecursive(arangodb::aql::Query*, TransactionMethods*,
                                   VPackFunctionParameters const&);
-   static AqlValue Has(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Has(arangodb::aql::Query*, TransactionMethods*,
                        VPackFunctionParameters const&);
-   static AqlValue Attributes(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Attributes(arangodb::aql::Query*, TransactionMethods*,
                               VPackFunctionParameters const&);
-   static AqlValue Values(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Values(arangodb::aql::Query*, TransactionMethods*,
                           VPackFunctionParameters const&);
-   static AqlValue Min(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Min(arangodb::aql::Query*, TransactionMethods*,
                        VPackFunctionParameters const&);
-   static AqlValue Max(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Max(arangodb::aql::Query*, TransactionMethods*,
                        VPackFunctionParameters const&);
-   static AqlValue Sum(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Sum(arangodb::aql::Query*, TransactionMethods*,
                        VPackFunctionParameters const&);
-   static AqlValue Average(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Average(arangodb::aql::Query*, TransactionMethods*,
                            VPackFunctionParameters const&);
-   static AqlValue RandomToken(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue RandomToken(arangodb::aql::Query*, TransactionMethods*,
                                VPackFunctionParameters const&);
-   static AqlValue Md5(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Md5(arangodb::aql::Query*, TransactionMethods*,
                        VPackFunctionParameters const&);
-   static AqlValue Sha1(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Sha1(arangodb::aql::Query*, TransactionMethods*,
                         VPackFunctionParameters const&);
-   static AqlValue Hash(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Hash(arangodb::aql::Query*, TransactionMethods*,
                         VPackFunctionParameters const&);
-   static AqlValue Unique(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Unique(arangodb::aql::Query*, TransactionMethods*,
                           VPackFunctionParameters const&);
-   static AqlValue SortedUnique(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue SortedUnique(arangodb::aql::Query*, TransactionMethods*,
                                 VPackFunctionParameters const&);
-   static AqlValue Union(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Union(arangodb::aql::Query*, TransactionMethods*,
                          VPackFunctionParameters const&);
-   static AqlValue UnionDistinct(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue UnionDistinct(arangodb::aql::Query*, TransactionMethods*,
                                  VPackFunctionParameters const&);
-   static AqlValue Intersection(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Intersection(arangodb::aql::Query*, TransactionMethods*,
                                 VPackFunctionParameters const&);
-   static AqlValue Outersection(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Outersection(arangodb::aql::Query*, TransactionMethods*,
                                 VPackFunctionParameters const&);
-   static AqlValue Distance(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Distance(arangodb::aql::Query*, TransactionMethods*,
                             VPackFunctionParameters const&);
-   static AqlValue Flatten(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Flatten(arangodb::aql::Query*, TransactionMethods*,
                            VPackFunctionParameters const&);
-   static AqlValue Zip(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Zip(arangodb::aql::Query*, TransactionMethods*,
                        VPackFunctionParameters const&);
-   static AqlValue JsonStringify(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue JsonStringify(arangodb::aql::Query*, TransactionMethods*,
                                  VPackFunctionParameters const&);
-   static AqlValue JsonParse(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue JsonParse(arangodb::aql::Query*, TransactionMethods*,
                              VPackFunctionParameters const&);
    static AqlValue ParseIdentifier(arangodb::aql::Query*,
-                                   arangodb::Transaction*,
+                                   TransactionMethods*,
                                    VPackFunctionParameters const&);
-   static AqlValue Slice(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Slice(arangodb::aql::Query*, TransactionMethods*,
                          VPackFunctionParameters const&);
-   static AqlValue Minus(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Minus(arangodb::aql::Query*, TransactionMethods*,
                          VPackFunctionParameters const&);
-   static AqlValue Document(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Document(arangodb::aql::Query*, TransactionMethods*,
                             VPackFunctionParameters const&);
-   static AqlValue Round(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Round(arangodb::aql::Query*, TransactionMethods*,
                          VPackFunctionParameters const&);
-   static AqlValue Abs(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Abs(arangodb::aql::Query*, TransactionMethods*,
                        VPackFunctionParameters const&);
-   static AqlValue Ceil(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Ceil(arangodb::aql::Query*, TransactionMethods*,
                         VPackFunctionParameters const&);
-   static AqlValue Floor(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Floor(arangodb::aql::Query*, TransactionMethods*,
                          VPackFunctionParameters const&);
-   static AqlValue Sqrt(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Sqrt(arangodb::aql::Query*, TransactionMethods*,
                         VPackFunctionParameters const&);
-   static AqlValue Pow(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Pow(arangodb::aql::Query*, TransactionMethods*,
                        VPackFunctionParameters const&);
-   static AqlValue Log(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Log(arangodb::aql::Query*, TransactionMethods*,
                        VPackFunctionParameters const&);
-   static AqlValue Log2(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Log2(arangodb::aql::Query*, TransactionMethods*,
                         VPackFunctionParameters const&);
-   static AqlValue Log10(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Log10(arangodb::aql::Query*, TransactionMethods*,
                          VPackFunctionParameters const&);
-   static AqlValue Exp(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Exp(arangodb::aql::Query*, TransactionMethods*,
                        VPackFunctionParameters const&);
-   static AqlValue Exp2(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Exp2(arangodb::aql::Query*, TransactionMethods*,
                         VPackFunctionParameters const&);
-   static AqlValue Sin(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Sin(arangodb::aql::Query*, TransactionMethods*,
                        VPackFunctionParameters const&);
-   static AqlValue Cos(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Cos(arangodb::aql::Query*, TransactionMethods*,
                        VPackFunctionParameters const&);
-   static AqlValue Tan(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Tan(arangodb::aql::Query*, TransactionMethods*,
                        VPackFunctionParameters const&);
-   static AqlValue Asin(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Asin(arangodb::aql::Query*, TransactionMethods*,
                         VPackFunctionParameters const&);
-   static AqlValue Acos(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Acos(arangodb::aql::Query*, TransactionMethods*,
                         VPackFunctionParameters const&);
-   static AqlValue Atan(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Atan(arangodb::aql::Query*, TransactionMethods*,
                         VPackFunctionParameters const&);
-   static AqlValue Atan2(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Atan2(arangodb::aql::Query*, TransactionMethods*,
                          VPackFunctionParameters const&);
-   static AqlValue Radians(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Radians(arangodb::aql::Query*, TransactionMethods*,
                            VPackFunctionParameters const&);
-   static AqlValue Degrees(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Degrees(arangodb::aql::Query*, TransactionMethods*,
                            VPackFunctionParameters const&);
-   static AqlValue Pi(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Pi(arangodb::aql::Query*, TransactionMethods*,
                       VPackFunctionParameters const&);
-   static AqlValue Rand(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Rand(arangodb::aql::Query*, TransactionMethods*,
                         VPackFunctionParameters const&);
-   static AqlValue FirstDocument(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue FirstDocument(arangodb::aql::Query*, TransactionMethods*,
                                  VPackFunctionParameters const&);
-   static AqlValue FirstList(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue FirstList(arangodb::aql::Query*, TransactionMethods*,
                              VPackFunctionParameters const&);
-   static AqlValue Push(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Push(arangodb::aql::Query*, TransactionMethods*,
                         VPackFunctionParameters const&);
-   static AqlValue Pop(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Pop(arangodb::aql::Query*, TransactionMethods*,
                        VPackFunctionParameters const&);
-   static AqlValue Append(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Append(arangodb::aql::Query*, TransactionMethods*,
                           VPackFunctionParameters const&);
-   static AqlValue Unshift(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Unshift(arangodb::aql::Query*, TransactionMethods*,
                            VPackFunctionParameters const&);
-   static AqlValue Shift(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Shift(arangodb::aql::Query*, TransactionMethods*,
                          VPackFunctionParameters const&);
-   static AqlValue RemoveValue(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue RemoveValue(arangodb::aql::Query*, TransactionMethods*,
                                VPackFunctionParameters const&);
-   static AqlValue RemoveValues(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue RemoveValues(arangodb::aql::Query*, TransactionMethods*,
                                 VPackFunctionParameters const&);
-   static AqlValue RemoveNth(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue RemoveNth(arangodb::aql::Query*, TransactionMethods*,
                              VPackFunctionParameters const&);
-   static AqlValue NotNull(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue NotNull(arangodb::aql::Query*, TransactionMethods*,
                            VPackFunctionParameters const&);
    static AqlValue CurrentDatabase(arangodb::aql::Query*,
-                                   arangodb::Transaction*,
+                                   TransactionMethods*,
                                    VPackFunctionParameters const&);
    static AqlValue CollectionCount(arangodb::aql::Query*,
-                                   arangodb::Transaction*,
+                                   TransactionMethods*,
                                    VPackFunctionParameters const&);
-   static AqlValue VarianceSample(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue VarianceSample(arangodb::aql::Query*, TransactionMethods*,
                                   VPackFunctionParameters const&);
    static AqlValue VariancePopulation(arangodb::aql::Query*,
-                                      arangodb::Transaction*,
+                                      TransactionMethods*,
                                       VPackFunctionParameters const&);
-   static AqlValue StdDevSample(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue StdDevSample(arangodb::aql::Query*, TransactionMethods*,
                                 VPackFunctionParameters const&);
    static AqlValue StdDevPopulation(arangodb::aql::Query*,
-                                    arangodb::Transaction*,
+                                    TransactionMethods*,
                                     VPackFunctionParameters const&);
-   static AqlValue Median(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Median(arangodb::aql::Query*, TransactionMethods*,
                           VPackFunctionParameters const&);
-   static AqlValue Percentile(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Percentile(arangodb::aql::Query*, TransactionMethods*,
                               VPackFunctionParameters const&);
-   static AqlValue Range(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Range(arangodb::aql::Query*, TransactionMethods*,
                          VPackFunctionParameters const&);
-   static AqlValue Position(arangodb::aql::Query*, arangodb::Transaction*,
+   static AqlValue Position(arangodb::aql::Query*, TransactionMethods*,
                             VPackFunctionParameters const&);
    static AqlValue IsSameCollection(arangodb::aql::Query*,
-                                    arangodb::Transaction*,
+                                    TransactionMethods*,
                                     VPackFunctionParameters const&);
 };
 }

@@ -29,7 +29,7 @@
 #include "Aql/types.h"
 
 namespace arangodb {
-class Transaction;
+class TransactionMethods;
 
 namespace aql {
 
@@ -44,8 +44,8 @@ class AttributeAccessor {
   ~AttributeAccessor() = default;
 
   /// @brief execute the accessor
-  AqlValue getSystem(arangodb::Transaction* trx, ExpressionContext* context, bool& mustDestroy);
-  AqlValue getDynamic(arangodb::Transaction* trx, ExpressionContext* context, bool& mustDestroy);
+  AqlValue getSystem(TransactionMethods* trx, ExpressionContext* context, bool& mustDestroy);
+  AqlValue getDynamic(TransactionMethods* trx, ExpressionContext* context, bool& mustDestroy);
     
  public:
   void replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements);

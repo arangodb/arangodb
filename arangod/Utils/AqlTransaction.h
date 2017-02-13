@@ -27,12 +27,12 @@
 #include "Basics/Common.h"
 #include "Aql/Collection.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
 
-class AqlTransaction final : public Transaction {
+class AqlTransaction final : public TransactionMethods {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction and add all collections from the query
@@ -43,12 +43,12 @@ class AqlTransaction final : public Transaction {
       std::shared_ptr<TransactionContext> transactionContext, 
       std::map<std::string, aql::Collection*> const* collections,
       bool isMainTransaction)
-      : Transaction(transactionContext),
+      : TransactionMethods(transactionContext),
         _collections(*collections) {
     if (!isMainTransaction) {
-      addHint(TransactionHints::Hint::LOCK_NEVER, true);
+      addHint(transaction::Hints::Hint::LOCK_NEVER, true);
     } else {
-      addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
+      addHint(transaction::Hints::Hint::LOCK_ENTIRELY, false);
     }
 
     for (auto it : *collections) {
@@ -118,7 +118,7 @@ class AqlTransaction final : public Transaction {
   /// AQL query running on the coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  Transaction* clone() const override {
+  TransactionMethods* clone() const override {
     return new AqlTransaction(StandaloneTransactionContext::Create(_vocbase),
         &_collections, false);
   }

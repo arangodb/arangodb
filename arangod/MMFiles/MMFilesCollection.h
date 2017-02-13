@@ -55,7 +55,7 @@ class MMFilesCollection final : public PhysicalCollection {
     TRI_voc_fid_t _fid;
     std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer*> _stats;
     DatafileStatisticsContainer* _dfi;
-    arangodb::Transaction* _trx;
+    TransactionMethods* _trx;
     ManagedDocumentResult _mmdr;
     IndexLookupContext _context;
     uint64_t _deletions;
@@ -64,7 +64,7 @@ class MMFilesCollection final : public PhysicalCollection {
     int64_t _initialCount;
     bool const _trackKeys;
 
-    OpenIteratorState(LogicalCollection* collection, arangodb::Transaction* trx) 
+    OpenIteratorState(LogicalCollection* collection, TransactionMethods* trx) 
         : _collection(collection),
           _primaryIndex(collection->primaryIndex()),
           _tid(0),
@@ -162,13 +162,13 @@ class MMFilesCollection final : public PhysicalCollection {
   Ditches* ditches() const override { return &_ditches; }
   
   /// @brief iterate all markers of a collection on load
-  int iterateMarkersOnLoad(arangodb::Transaction* trx) override;
+  int iterateMarkersOnLoad(TransactionMethods* trx) override;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  int insert(arangodb::Transaction* trx,
+  int insert(arangodb::TransactionMethods* trx,
              arangodb::velocypack::Slice const newSlice,
              arangodb::ManagedDocumentResult& result,
              OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
@@ -215,7 +215,8 @@ class MMFilesCollection final : public PhysicalCollection {
   bool updateRevisionConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal) override;
   void removeRevision(TRI_voc_rid_t revisionId, bool updateStats) override;
 
-  int insertDocument(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+  int insertDocument(arangodb::TransactionMethods* trx,
+                     TRI_voc_rid_t revisionId,
                      arangodb::velocypack::Slice const& doc,
                      MMFilesDocumentOperation& operation,
                      MMFilesWalMarker const* marker, bool& waitForSync);
@@ -223,20 +224,20 @@ class MMFilesCollection final : public PhysicalCollection {
  private:
   // SECTION: Index storage
 
-  int insertIndexes(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+  int insertIndexes(TransactionMethods* trx, TRI_voc_rid_t revisionId,
                     velocypack::Slice const& doc);
 
-  int insertPrimaryIndex(Transaction*, TRI_voc_rid_t revisionId,
+  int insertPrimaryIndex(TransactionMethods*, TRI_voc_rid_t revisionId,
                          velocypack::Slice const&);
 
-  int deletePrimaryIndex(Transaction*, TRI_voc_rid_t revisionId,
+  int deletePrimaryIndex(TransactionMethods*, TRI_voc_rid_t revisionId,
                          velocypack::Slice const&);
 
-  int insertSecondaryIndexes(Transaction*, TRI_voc_rid_t revisionId,
+  int insertSecondaryIndexes(TransactionMethods*, TRI_voc_rid_t revisionId,
                              velocypack::Slice const&,
                              bool isRollback);
 
-  int deleteSecondaryIndexes(Transaction*, TRI_voc_rid_t revisionId,
+  int deleteSecondaryIndexes(TransactionMethods*, TRI_voc_rid_t revisionId,
                              velocypack::Slice const&,
                              bool isRollback);
  

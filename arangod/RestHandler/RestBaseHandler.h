@@ -55,7 +55,7 @@ class RestBaseHandler : public rest::RestHandler {
   // generates a result from VelocyPack
   template <typename Payload>
   void generateResult(rest::ResponseCode, Payload&&,
-                      std::shared_ptr<arangodb::TransactionContext> context);
+                      std::shared_ptr<TransactionContext> context);
 
   // generates an error
   void generateError(rest::ResponseCode, int);

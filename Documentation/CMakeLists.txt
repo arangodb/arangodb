@@ -17,6 +17,7 @@ if (USE_MAINTAINER_MODE)
     man1/arangodump.1
     man1/arangoimp.1
     man1/arangorestore.1
+    man1/arangoexport.1
     man1/arangosh.1
     man8/rcarangod.8
     man8/arangod.8

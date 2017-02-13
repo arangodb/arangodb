@@ -57,7 +57,7 @@
 #endif
 
 namespace arangodb {
-class Transaction;
+class TransactionMethods;
 
 namespace aql {
 class AqlItemBlock;
@@ -206,7 +206,7 @@ class ExecutionBlock {
 
   ExecutionNode const* getPlanNode() const { return _exeNode; }
   
-  arangodb::Transaction* transaction() const { return _trx; }
+  TransactionMethods* transaction() const { return _trx; }
 
  protected:
   /// @brief generic method to get or skip some
@@ -217,7 +217,7 @@ class ExecutionBlock {
   ExecutionEngine* _engine;
 
   /// @brief the transaction for this query
-  arangodb::Transaction* _trx;
+  TransactionMethods* _trx;
 
   /// @brief our corresponding ExecutionNode node
   ExecutionNode const* _exeNode;

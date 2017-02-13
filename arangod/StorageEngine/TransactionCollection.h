@@ -30,7 +30,7 @@
                                 
 namespace arangodb {
 class LogicalCollection;
-class Transaction;
+class TransactionMethods;
 class TransactionState;
 
 /// @brief collection used in a transaction
@@ -71,7 +71,7 @@ class TransactionCollection {
   /// @brief whether or not any write operations for the collection happened
   virtual bool hasOperations() const = 0;
   
-  virtual void freeOperations(Transaction* activeTrx, bool mustRollback) = 0;
+  virtual void freeOperations(TransactionMethods* activeTrx, bool mustRollback) = 0;
   
   virtual bool canAccess(AccessMode::Type accessType) const = 0;
   virtual int updateUsage(AccessMode::Type accessType, int nestingLevel) = 0;

@@ -27,8 +27,8 @@
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 #include "StorageEngine/TransactionState.h"
-#include "Utils/Transaction.h"
-#include "Utils/TransactionHints.h"
+#include "Utils/TransactionMethods.h"
+#include "Transaction/Hints.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
                                 
@@ -42,7 +42,7 @@ namespace arangodb {
 class LogicalCollection;
 struct MMFilesDocumentOperation;
 class MMFilesWalMarker;
-class Transaction;
+class TransactionMethods;
 class TransactionCollection;
 
 /// @brief transaction type
@@ -52,16 +52,16 @@ class MMFilesTransactionState final : public TransactionState {
   ~MMFilesTransactionState();
 
   /// @brief begin a transaction
-  int beginTransaction(TransactionHints hints, int nestingLevel) override;
+  int beginTransaction(transaction::Hints hints, int nestingLevel) override;
 
   /// @brief commit a transaction
-  int commitTransaction(Transaction* trx, int nestingLevel) override;
+  int commitTransaction(TransactionMethods* trx, int nestingLevel) override;
 
   /// @brief abort a transaction
-  int abortTransaction(Transaction* trx, int nestingLevel) override;
+  int abortTransaction(TransactionMethods* trx, int nestingLevel) override;
 
   bool hasFailedOperations() const override {
-    return (_hasOperations && _status == Transaction::Status::ABORTED);
+    return (_hasOperations && _status == TransactionMethods::Status::ABORTED);
   }
   
   /// @brief add a WAL operation for a transaction collection
@@ -96,7 +96,7 @@ class MMFilesTransactionState final : public TransactionState {
   int writeCommitMarker();
 
   /// @brief free all operations for a transaction
-  void freeOperations(arangodb::Transaction* activeTrx);
+  void freeOperations(TransactionMethods* activeTrx);
 };
 
 }

@@ -32,7 +32,7 @@
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -88,7 +88,7 @@ static bool IsEqualElementElement(void* userData, MMFilesSimpleIndexElement cons
 }
   
 MMFilesPrimaryIndexIterator::MMFilesPrimaryIndexIterator(LogicalCollection* collection,
-                       arangodb::Transaction* trx, 
+                       TransactionMethods* trx, 
                        ManagedDocumentResult* mmdr,
                        MMFilesPrimaryIndex const* index,
                        std::unique_ptr<VPackBuilder>& keys)
@@ -127,7 +127,7 @@ bool MMFilesPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
 void MMFilesPrimaryIndexIterator::reset() { _iterator.reset(); }
   
 AllIndexIterator::AllIndexIterator(LogicalCollection* collection,
-                   arangodb::Transaction* trx, 
+                   TransactionMethods* trx, 
                    ManagedDocumentResult* mmdr,
                    MMFilesPrimaryIndex const* index,
                    MMFilesPrimaryIndexImpl const* indexImpl,
@@ -154,7 +154,7 @@ bool AllIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
 void AllIndexIterator::reset() { _position.reset(); }
   
-AnyIndexIterator::AnyIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, 
+AnyIndexIterator::AnyIndexIterator(LogicalCollection* collection, TransactionMethods* trx, 
                                    ManagedDocumentResult* mmdr,
                                    MMFilesPrimaryIndex const* index,
                                    MMFilesPrimaryIndexImpl const* indexImpl)
@@ -225,14 +225,14 @@ void MMFilesPrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   _primaryIndex->appendToVelocyPack(builder);
 }
 
-int MMFilesPrimaryIndex::insert(arangodb::Transaction*, TRI_voc_rid_t, VPackSlice const&, bool) {
+int MMFilesPrimaryIndex::insert(TransactionMethods*, TRI_voc_rid_t, VPackSlice const&, bool) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "insert() called for primary index";
 #endif
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "insert() called for primary index");
 }
 
-int MMFilesPrimaryIndex::remove(arangodb::Transaction*, TRI_voc_rid_t, VPackSlice const&, bool) {
+int MMFilesPrimaryIndex::remove(TransactionMethods*, TRI_voc_rid_t, VPackSlice const&, bool) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "remove() called for primary index";
 #endif
@@ -247,7 +247,7 @@ int MMFilesPrimaryIndex::unload() {
 }
 
 /// @brief looks up an element given a key
-MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(arangodb::Transaction* trx,
+MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(TransactionMethods* trx,
                                            VPackSlice const& key) const {
   ManagedDocumentResult mmdr; 
   IndexLookupContext context(trx, _collection, &mmdr, 1); 
@@ -256,7 +256,7 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(arangodb::Transaction* 
 }
 
 /// @brief looks up an element given a key
-MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(arangodb::Transaction* trx,
+MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(TransactionMethods* trx,
                                            VPackSlice const& key,
                                            ManagedDocumentResult& mmdr) const {
   IndexLookupContext context(trx, _collection, &mmdr, 1); 
@@ -265,7 +265,7 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(arangodb::Transaction* 
 }
 
 /// @brief looks up an element given a key
-MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(arangodb::Transaction* trx,
+MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(TransactionMethods* trx,
                                                VPackSlice const& key) const {
   ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, 1); 
@@ -278,7 +278,7 @@ MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(arangodb::Transacti
 }
 
 /// @brief looks up an element given a key
-MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(arangodb::Transaction* trx,
+MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(TransactionMethods* trx,
                                                VPackSlice const& key,
                                                ManagedDocumentResult& mmdr) const {
   IndexLookupContext context(trx, _collection, &mmdr, 1); 
@@ -296,7 +296,7 @@ MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(arangodb::Transacti
 ///        Convention: position === 0 indicates a new start.
 ///        DEPRECATED
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequential(
-    arangodb::Transaction* trx, arangodb::basics::BucketPosition& position,
+    TransactionMethods* trx, arangodb::basics::BucketPosition& position,
     uint64_t& total) {
   ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, 1); 
@@ -305,7 +305,7 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequential(
 
 /// @brief request an iterator over all elements in the index in
 ///        a sequential order.
-IndexIterator* MMFilesPrimaryIndex::allIterator(arangodb::Transaction* trx,
+IndexIterator* MMFilesPrimaryIndex::allIterator(TransactionMethods* trx,
                                          ManagedDocumentResult* mmdr,
                                          bool reverse) const {
   return new AllIndexIterator(_collection, trx, mmdr, this, _primaryIndex, reverse);
@@ -314,7 +314,7 @@ IndexIterator* MMFilesPrimaryIndex::allIterator(arangodb::Transaction* trx,
 /// @brief request an iterator over all elements in the index in
 ///        a random order. It is guaranteed that each element is found
 ///        exactly once unless the collection is modified.
-IndexIterator* MMFilesPrimaryIndex::anyIterator(arangodb::Transaction* trx,
+IndexIterator* MMFilesPrimaryIndex::anyIterator(TransactionMethods* trx,
                                          ManagedDocumentResult* mmdr) const {
   return new AnyIndexIterator(_collection, trx, mmdr, this, _primaryIndex);
 }
@@ -325,7 +325,7 @@ IndexIterator* MMFilesPrimaryIndex::anyIterator(arangodb::Transaction* trx,
 ///        Convention: position === UINT64_MAX indicates a new start.
 ///        DEPRECATED
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequentialReverse(
-    arangodb::Transaction* trx, arangodb::basics::BucketPosition& position) {
+    TransactionMethods* trx, arangodb::basics::BucketPosition& position) {
   ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, 1); 
   return _primaryIndex->findSequentialReverse(&context, position);
@@ -333,7 +333,7 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequentialReverse(
 
 /// @brief adds a key/element to the index
 /// returns a status code, and *found will contain a found element (if any)
-int MMFilesPrimaryIndex::insertKey(arangodb::Transaction* trx, TRI_voc_rid_t revisionId, VPackSlice const& doc) {
+int MMFilesPrimaryIndex::insertKey(TransactionMethods* trx, TRI_voc_rid_t revisionId, VPackSlice const& doc) {
   ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, 1); 
   MMFilesSimpleIndexElement element(buildKeyElement(revisionId, doc));
@@ -341,7 +341,7 @@ int MMFilesPrimaryIndex::insertKey(arangodb::Transaction* trx, TRI_voc_rid_t rev
   return _primaryIndex->insert(&context, element);
 }
 
-int MMFilesPrimaryIndex::insertKey(arangodb::Transaction* trx, TRI_voc_rid_t revisionId, VPackSlice const& doc, ManagedDocumentResult& mmdr) {
+int MMFilesPrimaryIndex::insertKey(TransactionMethods* trx, TRI_voc_rid_t revisionId, VPackSlice const& doc, ManagedDocumentResult& mmdr) {
   IndexLookupContext context(trx, _collection, &mmdr, 1); 
   MMFilesSimpleIndexElement element(buildKeyElement(revisionId, doc));
   
@@ -349,12 +349,12 @@ int MMFilesPrimaryIndex::insertKey(arangodb::Transaction* trx, TRI_voc_rid_t rev
 }
 
 /// @brief removes an key/element from the index
-int MMFilesPrimaryIndex::removeKey(arangodb::Transaction* trx,
+int MMFilesPrimaryIndex::removeKey(TransactionMethods* trx,
                             TRI_voc_rid_t revisionId, VPackSlice const& doc) {
   ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, 1); 
   
-  VPackSlice keySlice(Transaction::extractKeyFromDocument(doc));
+  VPackSlice keySlice(TransactionMethods::extractKeyFromDocument(doc));
   MMFilesSimpleIndexElement found = _primaryIndex->removeByKey(&context, keySlice.begin());
 
   if (!found) {
@@ -364,11 +364,11 @@ int MMFilesPrimaryIndex::removeKey(arangodb::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-int MMFilesPrimaryIndex::removeKey(arangodb::Transaction* trx,
+int MMFilesPrimaryIndex::removeKey(TransactionMethods* trx,
                             TRI_voc_rid_t revisionId, VPackSlice const& doc, ManagedDocumentResult& mmdr) {
   IndexLookupContext context(trx, _collection, &mmdr, 1); 
   
-  VPackSlice keySlice(Transaction::extractKeyFromDocument(doc));
+  VPackSlice keySlice(TransactionMethods::extractKeyFromDocument(doc));
   MMFilesSimpleIndexElement found = _primaryIndex->removeByKey(&context, keySlice.begin());
 
   if (!found) {
@@ -379,7 +379,7 @@ int MMFilesPrimaryIndex::removeKey(arangodb::Transaction* trx,
 }
 
 /// @brief resizes the index
-int MMFilesPrimaryIndex::resize(arangodb::Transaction* trx, size_t targetSize) {
+int MMFilesPrimaryIndex::resize(TransactionMethods* trx, size_t targetSize) {
   ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, 1); 
   return _primaryIndex->resize(&context, targetSize);
@@ -411,7 +411,7 @@ bool MMFilesPrimaryIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
-    arangodb::Transaction* trx, 
+    TransactionMethods* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
@@ -459,7 +459,7 @@ arangodb::aql::AstNode* MMFilesPrimaryIndex::specializeCondition(
 
 /// @brief create the iterator, for a single attribute, IN operator
 IndexIterator* MMFilesPrimaryIndex::createInIterator(
-    arangodb::Transaction* trx, 
+    TransactionMethods* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
@@ -492,7 +492,7 @@ IndexIterator* MMFilesPrimaryIndex::createInIterator(
 
 /// @brief create the iterator, for a single attribute, EQ operator
 IndexIterator* MMFilesPrimaryIndex::createEqIterator(
-    arangodb::Transaction* trx, 
+    TransactionMethods* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
@@ -515,7 +515,7 @@ IndexIterator* MMFilesPrimaryIndex::createEqIterator(
 }
 
 /// @brief add a single value node to the iterator's keys
-void MMFilesPrimaryIndex::handleValNode(arangodb::Transaction* trx,
+void MMFilesPrimaryIndex::handleValNode(TransactionMethods* trx,
                                  VPackBuilder* keys,
                                  arangodb::aql::AstNode const* valNode,
                                  bool isId) const { 
@@ -559,7 +559,7 @@ void MMFilesPrimaryIndex::handleValNode(arangodb::Transaction* trx,
 
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::buildKeyElement(TRI_voc_rid_t revisionId, VPackSlice const& doc) const {
   TRI_ASSERT(doc.isObject());
-  VPackSlice value(Transaction::extractKeyFromDocument(doc));
+  VPackSlice value(TransactionMethods::extractKeyFromDocument(doc));
   TRI_ASSERT(value.isString());
   return MMFilesSimpleIndexElement(revisionId, value, static_cast<uint32_t>(value.begin() - doc.begin()));
 }

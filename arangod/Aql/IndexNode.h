@@ -31,7 +31,7 @@
 #include "Aql/Variable.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 
 #include <velocypack/Slice.h>
 
@@ -52,7 +52,7 @@ class IndexNode : public ExecutionNode {
  public:
   IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             Collection const* collection, Variable const* outVariable,
-            std::vector<Transaction::IndexHandle> const& indexes,
+            std::vector<TransactionMethods::IndexHandle> const& indexes,
             Condition* condition, bool reverse);
 
   IndexNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
@@ -75,7 +75,7 @@ class IndexNode : public ExecutionNode {
   Condition* condition() const { return _condition; }
 
   /// @brief return the transaction for the node
-  arangodb::Transaction* trx() const;
+  TransactionMethods* trx() const;
 
   /// @brief whether or not all indexes are accessed in reverse order
   bool reverse() const { return _reverse; }
@@ -107,7 +107,7 @@ class IndexNode : public ExecutionNode {
   double estimateCost(size_t&) const override final;
 
   /// @brief getIndexes, hand out the indexes used
-  std::vector<Transaction::IndexHandle> const& getIndexes() const { return _indexes; }
+  std::vector<TransactionMethods::IndexHandle> const& getIndexes() const { return _indexes; }
 
  private:
   /// @brief the database
@@ -120,7 +120,7 @@ class IndexNode : public ExecutionNode {
   Variable const* _outVariable;
 
   /// @brief the index
-  std::vector<Transaction::IndexHandle> _indexes;
+  std::vector<TransactionMethods::IndexHandle> _indexes;
 
   /// @brief the index(es) condition
   Condition* _condition;

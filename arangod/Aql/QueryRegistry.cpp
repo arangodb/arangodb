@@ -93,9 +93,9 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
                          _queries.find(vocbase->name())->second.end());
 
     // If we have set _makeNolockHeaders, we need to unset it:
-    if (Transaction::_makeNolockHeaders != nullptr) {
-      if (Transaction::_makeNolockHeaders == query->engine()->lockedShards()) {
-        Transaction::_makeNolockHeaders = nullptr;
+    if (TransactionMethods::_makeNolockHeaders != nullptr) {
+      if (TransactionMethods::_makeNolockHeaders == query->engine()->lockedShards()) {
+        TransactionMethods::_makeNolockHeaders = nullptr;
       }
       // else {
       // We have not set it, just leave it alone. This happens in particular
@@ -131,9 +131,9 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
 
   // If we had set _makeNolockHeaders, we need to reset it:
   if (qi->_query->engine()->lockedShards() != nullptr) {
-    if (Transaction::_makeNolockHeaders == nullptr) {
+    if (TransactionMethods::_makeNolockHeaders == nullptr) {
       // std::cout << "Setting _makeNolockHeaders\n";
-      Transaction::_makeNolockHeaders = qi->_query->engine()->lockedShards();
+      TransactionMethods::_makeNolockHeaders = qi->_query->engine()->lockedShards();
     } else {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Found strange lockedShards in thread, not overwriting!";
     }
@@ -164,16 +164,16 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
   }
 
   // If we have set _makeNolockHeaders, we need to unset it:
-  if (Transaction::_makeNolockHeaders != nullptr) {
-    if (Transaction::_makeNolockHeaders ==
+  if (TransactionMethods::_makeNolockHeaders != nullptr) {
+    if (TransactionMethods::_makeNolockHeaders ==
         qi->_query->engine()->lockedShards()) {
       // std::cout << "Resetting _makeNolockHeaders to nullptr\n";
-      Transaction::_makeNolockHeaders = nullptr;
+      TransactionMethods::_makeNolockHeaders = nullptr;
     } else {
-      if (Transaction::_makeNolockHeaders != nullptr) {
-        if (Transaction::_makeNolockHeaders ==
+      if (TransactionMethods::_makeNolockHeaders != nullptr) {
+        if (TransactionMethods::_makeNolockHeaders ==
             qi->_query->engine()->lockedShards()) {
-          Transaction::_makeNolockHeaders = nullptr;
+          TransactionMethods::_makeNolockHeaders = nullptr;
         }
         // else {
         // We have not set it, just leave it alone. This happens in particular
@@ -210,8 +210,8 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
   if (!qi->_isOpen) {
     // If we had set _makeNolockHeaders, we need to reset it:
     if (qi->_query->engine()->lockedShards() != nullptr) {
-      if (Transaction::_makeNolockHeaders == nullptr) {
-        Transaction::_makeNolockHeaders = qi->_query->engine()->lockedShards();
+      if (TransactionMethods::_makeNolockHeaders == nullptr) {
+        TransactionMethods::_makeNolockHeaders = qi->_query->engine()->lockedShards();
       } else {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Found strange lockedShards in thread, not overwriting!";
       }

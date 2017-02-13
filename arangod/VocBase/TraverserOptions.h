@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/FixedVarExpressionContext.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionMethods.h"
 
 namespace arangodb {
 class ManagedDocumentResult;
@@ -73,7 +73,7 @@ struct TraverserOptions {
   struct LookupInfo {
     // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
-    std::vector<arangodb::Transaction::IndexHandle> idxHandles;
+    std::vector<TransactionMethods::IndexHandle> idxHandles;
     aql::Expression* expression;
     aql::AstNode* indexCondition;
     // Flag if we have to update _from / _to in the index search condition
@@ -95,7 +95,7 @@ struct TraverserOptions {
   };
 
  public:
-  arangodb::Transaction* _trx;
+  TransactionMethods* _trx;
  protected:
   std::vector<LookupInfo> _baseLookupInfos;
   std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
@@ -117,7 +117,7 @@ struct TraverserOptions {
 
   UniquenessLevel uniqueEdges;
 
-  explicit TraverserOptions(arangodb::Transaction* trx)
+  explicit TraverserOptions(TransactionMethods* trx)
       : _trx(trx),
         _baseVertexExpression(nullptr),
         _tmpVar(nullptr),
@@ -130,7 +130,7 @@ struct TraverserOptions {
         uniqueVertices(UniquenessLevel::NONE),
         uniqueEdges(UniquenessLevel::PATH) {}
 
-  TraverserOptions(arangodb::Transaction*, arangodb::velocypack::Slice const&);
+  TraverserOptions(TransactionMethods*, arangodb::velocypack::Slice const&);
 
   TraverserOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
                    arangodb::velocypack::Slice);

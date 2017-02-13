@@ -45,7 +45,7 @@ class SimpleHttpClient;
 class SimpleHttpResult;
 }
 
-class Transaction;
+class TransactionMethods;
 
 class Syncer {
  public:
@@ -130,7 +130,7 @@ class Syncer {
   /// @brief apply a single marker from the collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDumpMarker(arangodb::Transaction&,
+  int applyCollectionDumpMarker(TransactionMethods&,
                                 std::string const&,
                                 TRI_replication_operation_e,
                                 arangodb::velocypack::Slice const&, 

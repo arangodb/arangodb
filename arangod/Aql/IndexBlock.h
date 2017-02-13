@@ -124,7 +124,7 @@ class IndexBlock final : public ExecutionBlock {
   size_t _currentIndex;
 
   /// @brief _indexes holds all Indexes used in this block
-  std::vector<Transaction::IndexHandle> _indexes;
+  std::vector<TransactionMethods::IndexHandle> _indexes;
 
   /// @brief _nonConstExpressions, list of all non const expressions, mapped
   /// by their _condition node path indexes

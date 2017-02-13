@@ -79,8 +79,8 @@ class ExecutionEngine {
     if (_root != nullptr && !_wasShutdown) {
       // Take care of locking prevention measures in the cluster:
       if (_lockedShards != nullptr) {
-        if (arangodb::Transaction::_makeNolockHeaders == _lockedShards) {
-          arangodb::Transaction::_makeNolockHeaders = _previouslyLockedShards;
+        if (TransactionMethods::_makeNolockHeaders == _lockedShards) {
+          TransactionMethods::_makeNolockHeaders = _previouslyLockedShards;
         }
         delete _lockedShards;
         _lockedShards = nullptr;
