@@ -161,9 +161,6 @@ class MMFilesCollection final : public PhysicalCollection {
   
   Ditches* ditches() const override { return &_ditches; }
   
-  /// @brief iterate all markers of a collection on load
-  int iterateMarkersOnLoad(transaction::Methods* trx) override;
-
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
@@ -173,6 +170,26 @@ class MMFilesCollection final : public PhysicalCollection {
              arangodb::ManagedDocumentResult& result,
              OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
              bool lock) override;
+  
+  /// @brief iterate all markers of a collection on load
+  int iterateMarkersOnLoad(arangodb::transaction::Methods* trx) override;
+  
+  virtual bool isFullyCollected() const override;
+  
+  int64_t uncollectedLogfileEntries() const {
+    return _uncollectedLogfileEntries.load();
+  }
+
+  void increaseUncollectedLogfileEntries(int64_t value) {
+    _uncollectedLogfileEntries += value;
+  }
+
+  void decreaseUncollectedLogfileEntries(int64_t value) {
+    _uncollectedLogfileEntries -= value;
+    if (_uncollectedLogfileEntries < 0) {
+      _uncollectedLogfileEntries = 0;
+    }
+  }
 
  private:
   static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
@@ -258,6 +275,9 @@ class MMFilesCollection final : public PhysicalCollection {
   TRI_voc_rid_t _lastRevision;
 
   MMFilesRevisionsCache _revisionsCache;
+  
+  std::atomic<int64_t> _uncollectedLogfileEntries;
+
 };
 
 }

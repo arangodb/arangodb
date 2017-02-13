@@ -52,6 +52,9 @@ This exports the collection *test* into the output directory *export* as jsonl. 
 
 Export XGMML
 ------------
+
+[XGMML](https://en.wikipedia.org/wiki/XGMML) is an XML application based on [GML](https://en.wikipedia.org/wiki/Graph_Modelling_Language). To view the XGMML file you can use for example [Cytoscape](http://cytoscape.org).
+
 ## XGMML specific options
 
 *--xgmml-label-attribute* specify the name of the attribute that will become the label in the xgmml file.

@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Hints.h"
@@ -140,7 +141,8 @@ void MMFilesTransactionCollection::freeOperations(transaction::Methods* activeTr
     _collection->setRevision(_originalRevision, true);
   } else if (!_collection->isVolatile() && !isSingleOperationTransaction) {
     // only count logfileEntries if the collection is durable
-    _collection->increaseUncollectedLogfileEntries(_operations->size());
+    arangodb::PhysicalCollection* collPtr = _collection->getPhysical();
+    static_cast<arangodb::MMFilesCollection*>(collPtr)->increaseUncollectedLogfileEntries(_operations->size());
   }
 
   delete _operations;

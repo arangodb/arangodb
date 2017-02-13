@@ -257,7 +257,7 @@ public:
   /// @brief Add engine specific AQL functions.
 
   void addAqlFunctions() const override;
-
+  
  private:
   /// @brief: check the initial markers in a datafile
   bool checkDatafileHeader(MMFilesDatafile* datafile, std::string const& filename) const;

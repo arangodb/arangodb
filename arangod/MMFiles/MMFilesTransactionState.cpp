@@ -25,6 +25,7 @@
 #include "Aql/QueryCache.h"
 #include "Logger/Logger.h"
 #include "Basics/Exceptions.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesLogfileManager.h"
@@ -298,7 +299,8 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
     arangodb::aql::QueryCache::instance()->invalidate(
         _vocbase, collection->name());
 
-    collection->increaseUncollectedLogfileEntries(1);
+    auto cptr = collection->getPhysical();
+    static_cast<arangodb::MMFilesCollection*>(cptr)->increaseUncollectedLogfileEntries(1);
   } else {
     // operation is buffered and might be rolled back
     TransactionCollection* trxCollection = this->collection(collection->cid(), AccessMode::Type::WRITE);

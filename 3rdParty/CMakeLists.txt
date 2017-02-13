@@ -4,6 +4,17 @@
 # External Projects used by ArangoDB
 # ------------------------------------------------------------------------------
 
+
+if(NOT EXISTS V8/v8/LICENSE OR
+   NOT EXISTS V8/v8/testing/gtest/LICENSE)
+ message(FATAL_ERROR "GIT sumbodules not checked out properly - aborting! Run: 
+git submodule update --recursive
+git submodule update --init --recursive
+On Windows you need to make sure git is recent enough and may create symlinks!
+")
+endif()
+
+
 include(ExternalProject)
 
 ################################################################################

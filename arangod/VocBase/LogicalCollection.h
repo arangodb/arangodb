@@ -111,27 +111,26 @@ class LogicalCollection {
   void isInitialIteration(bool value) { _isInitialIteration = value; }
 
   // TODO: MOVE TO PHYSICAL?
-  bool isFullyCollected();
-  int64_t uncollectedLogfileEntries() const {
-    return _uncollectedLogfileEntries.load();
+  bool isFullyCollected(); //should not be exposed
+
+  void setNextCompactionStartIndex(size_t index){
+    MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+    _nextCompactionStartIndex = index;
   }
 
-  void increaseUncollectedLogfileEntries(int64_t value) {
-    _uncollectedLogfileEntries += value;
+  size_t getNextCompactionStartIndex(){
+    MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+    return _nextCompactionStartIndex;
   }
 
-  void decreaseUncollectedLogfileEntries(int64_t value) {
-    _uncollectedLogfileEntries -= value;
-    if (_uncollectedLogfileEntries < 0) {
-      _uncollectedLogfileEntries = 0;
-    }
+  void setCompactionStatus(char const* reason){
+    TRI_ASSERT(reason != nullptr);
+    MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+    _lastCompactionStatus = reason;
   }
-
-  void setNextCompactionStartIndex(size_t);
-  size_t getNextCompactionStartIndex();
-  void setCompactionStatus(char const*);
   double lastCompactionStamp() const { return _lastCompactionStamp; }
   void lastCompactionStamp(double value) { _lastCompactionStamp = value; }
+
 
   void setRevisionError() { _revisionError = true; }
 
@@ -614,8 +613,6 @@ class LogicalCollection {
   size_t _nextCompactionStartIndex;
   char const* _lastCompactionStatus;
   double _lastCompactionStamp;
-
-  std::atomic<int64_t> _uncollectedLogfileEntries;
 
   /// @brief: flag that is set to true when the documents are
   /// initial enumerated and the primary index is built
