@@ -23,6 +23,12 @@ devel
   JavaScript document operations from 1239 ("illegal document revision")
   to 1200 ("conflict").
 
+* added data export tool, arangoexport.
+
+  arangoexport can be used to export collections to json and jsonl
+  and export a graph or collections to xgmml.
+
+
 v3.2.alpha1 (2017-02-05)
 ------------------------
 
