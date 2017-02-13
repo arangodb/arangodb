@@ -105,7 +105,7 @@ actions.defineHttp({
     let preconditions = {};
     preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
     // need to make sure it is not responsible for anything
-    if (node.Role == 'DBServer') {
+    if (node.Role === 'DBServer') {
       let used = [];
       preconditions = reducePlanServers(function(data, agencyKey, servers) {
         data[agencyKey] = {'old': servers};
