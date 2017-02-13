@@ -77,6 +77,9 @@ class MMFilesTransactionState final : public TransactionState {
     }
     return _id;
   }
+  
+  /// @brief get (or create) a rocksdb WriteTransaction
+  rocksdb::Transaction* rocksTransaction();
 
  private:
   /// @brief whether or not a marker needs to be written
@@ -100,6 +103,9 @@ class MMFilesTransactionState final : public TransactionState {
 
   /// @brief free all operations for a transaction
   void freeOperations(transaction::Methods* activeTrx);
+  
+ private:
+  rocksdb::Transaction* _rocksTransaction;
 };
 
 }

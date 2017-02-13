@@ -33,11 +33,6 @@
 #include "VocBase/modes.h"
 #include "VocBase/ticks.h"
 
-#include <rocksdb/db.h>
-#include <rocksdb/options.h>
-#include <rocksdb/utilities/optimistic_transaction_db.h>
-#include <rocksdb/utilities/transaction.h>
-
 using namespace arangodb;
 
 /// @brief transaction type
@@ -48,7 +43,6 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase)
       _status(transaction::Methods::Status::CREATED),
       _arena(),
       _collections{_arena}, // assign arena to vector 
-      _rocksTransaction(nullptr),
       _hints(),
       _nestingLevel(0), 
       _allowImplicit(true),
@@ -60,8 +54,6 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase)
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
   TRI_ASSERT(_status != transaction::Methods::Status::RUNNING);
-
-  delete _rocksTransaction;
 
   releaseCollections();
 

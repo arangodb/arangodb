@@ -36,21 +36,6 @@
 
 #include <velocypack/Slice.h>
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-#define LOG_TRX(trx, level)  \
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->_id << "." << level << " (" << transaction::Methods::statusString(trx->_status) << "): " 
-
-#else
-
-#define LOG_TRX(...) while (0) LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-
-#endif
-
-namespace rocksdb {
-class Transaction;
-}
-
 namespace arangodb {
 
 namespace basics {
@@ -203,9 +188,6 @@ class Methods {
     return _transactionContextPtr;
   }
   
-  /// @brief get (or create) a rocksdb WriteTransaction
-  rocksdb::Transaction* rocksTransaction();
-
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint, bool passthrough);
 

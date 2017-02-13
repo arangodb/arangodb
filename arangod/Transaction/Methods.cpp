@@ -57,9 +57,6 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 
-#include <rocksdb/utilities/optimistic_transaction_db.h>
-#include <rocksdb/utilities/transaction.h>
-
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Options.h>
@@ -663,16 +660,7 @@ DocumentDitch* transaction::Methods::orderDitch(TRI_voc_cid_t cid) {
 bool transaction::Methods::hasDitch(TRI_voc_cid_t cid) const {
   return (_transactionContext->ditch(cid) != nullptr);
 }
-  
-/// @brief get (or create) a rocksdb WriteTransaction
-rocksdb::Transaction* transaction::Methods::rocksTransaction() {
-  if (_state->_rocksTransaction == nullptr) {
-    _state->_rocksTransaction = RocksDBFeature::instance()->db()->BeginTransaction(
-      rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
-  }
-  return _state->_rocksTransaction;
-}
-  
+
 /// @brief extract the _key attribute from a slice
 StringRef transaction::Methods::extractKeyPart(VPackSlice const slice) {
   // extract _key

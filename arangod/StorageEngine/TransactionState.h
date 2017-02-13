@@ -30,12 +30,19 @@
 #include "Transaction/Hints.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
-                                
-struct TRI_vocbase_t;
 
-namespace rocksdb {
-class Transaction;
-}
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+#define LOG_TRX(trx, level)  \
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->_id << "." << level << " (" << transaction::Methods::statusString(trx->_status) << "): " 
+
+#else
+
+#define LOG_TRX(...) while (0) LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+
+#endif
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace transaction {
@@ -136,7 +143,6 @@ class TransactionState {
   SmallVector<TransactionCollection*>::allocator_type::arena_type _arena; // memory for collections
   SmallVector<TransactionCollection*> _collections; // list of participating collections
  public:
-  rocksdb::Transaction* _rocksTransaction;
   transaction::Hints _hints;            // hints;
   int _nestingLevel;
   bool _allowImplicit;

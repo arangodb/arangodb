@@ -51,10 +51,22 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
 
 /// @brief transaction type
 MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase)
-    : TransactionState(vocbase) {}
+    : TransactionState(vocbase),
+      _rocksTransaction(nullptr) {}
 
 /// @brief free a transaction container
-MMFilesTransactionState::~MMFilesTransactionState() {}
+MMFilesTransactionState::~MMFilesTransactionState() {
+  delete _rocksTransaction;
+}
+
+/// @brief get (or create) a rocksdb WriteTransaction
+rocksdb::Transaction* MMFilesTransactionState::rocksTransaction() {
+  if (_rocksTransaction == nullptr) {
+    _rocksTransaction = RocksDBFeature::instance()->db()->BeginTransaction(
+      rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
+  }
+  return _rocksTransaction;
+}
   
 /// @brief start a transaction
 int MMFilesTransactionState::beginTransaction(transaction::Hints hints, int nestingLevel) {
