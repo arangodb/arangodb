@@ -491,16 +491,7 @@ class LogicalCollection {
                          velocypack::Builder& builder,
                          bool isRestore);
 
-  /// @brief new object for replace
-  void newObjectForReplace(transaction::Methods* trx,
-                           velocypack::Slice const& oldValue,
-                           velocypack::Slice const& newValue,
-                           velocypack::Slice const& fromSlice,
-                           velocypack::Slice const& toSlice,
-                           bool isEdgeCollection, std::string const& rev,
-                           velocypack::Builder& builder);
-
-  /// @brief new object for remove, must have _key set
+ /// @brief new object for remove, must have _key set
   void newObjectForRemove(transaction::Methods* trx,
                           velocypack::Slice const& oldValue,
                           std::string const& rev,

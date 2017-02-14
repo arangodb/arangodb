@@ -123,6 +123,15 @@ class PhysicalCollection {
                      TRI_voc_rid_t const& revisionId,
                      arangodb::velocypack::Slice const key) = 0;
 
+  virtual int replace(transaction::Methods* trx,
+                      arangodb::velocypack::Slice const newSlice,
+                      ManagedDocumentResult& result, OperationOptions& options,
+                      TRI_voc_tick_t& resultMarkerTick, bool lock,
+                      TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                      TRI_voc_rid_t const revisionId,
+                      arangodb::velocypack::Slice const fromSlice,
+                      arangodb::velocypack::Slice const toSlice) = 0;
+
   virtual int remove(arangodb::transaction::Methods* trx,
                      arangodb::velocypack::Slice const slice,
                      arangodb::ManagedDocumentResult& previous,
@@ -147,8 +156,17 @@ class PhysicalCollection {
                              velocypack::Slice const& newValue,
                              bool isEdgeCollection, std::string const& rev,
                              bool mergeObjects, bool keepNull,
-                             velocypack::Builder& b);
+                             velocypack::Builder& builder);
 
+  /// @brief new object for replace
+  void newObjectForReplace(transaction::Methods* trx,
+                           velocypack::Slice const& oldValue,
+                           velocypack::Slice const& newValue,
+                           velocypack::Slice const& fromSlice,
+                           velocypack::Slice const& toSlice,
+                           bool isEdgeCollection, std::string const& rev,
+                           velocypack::Builder& builder);
+ 
  protected:
   LogicalCollection* _logicalCollection;
 };

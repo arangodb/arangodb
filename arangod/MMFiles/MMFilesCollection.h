@@ -199,6 +199,15 @@ class MMFilesCollection final : public PhysicalCollection {
              TRI_voc_rid_t const& revisionId,
              arangodb::velocypack::Slice const key) override;
 
+  int replace(transaction::Methods* trx,
+              arangodb::velocypack::Slice const newSlice,
+              ManagedDocumentResult& result, OperationOptions& options,
+              TRI_voc_tick_t& resultMarkerTick, bool lock,
+              TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+              TRI_voc_rid_t const revisionId,
+              arangodb::velocypack::Slice const fromSlice,
+              arangodb::velocypack::Slice const toSlice) override;
+
   int remove(arangodb::transaction::Methods* trx,
              arangodb::velocypack::Slice const slice,
              arangodb::ManagedDocumentResult& previous,

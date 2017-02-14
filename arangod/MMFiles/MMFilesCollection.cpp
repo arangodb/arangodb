@@ -1614,6 +1614,132 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
 
 }
 
+int MMFilesCollection::replace(
+    transaction::Methods* trx, VPackSlice const newSlice,
+    ManagedDocumentResult& result, OperationOptions& options,
+    TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
+    ManagedDocumentResult& previous, TRI_voc_rid_t const revisionId,
+    VPackSlice const fromSlice, VPackSlice const toSlice) {
+  bool const isEdgeCollection = (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
+  TRI_IF_FAILURE("ReplaceDocumentNoLock") { return TRI_ERROR_DEBUG; }
+
+  // get the previous revision
+  VPackSlice key = newSlice.get(StaticStrings::KeyString);
+  if (key.isNone()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+
+  bool const useDeadlockDetector =
+      (lock && !trx->isSingleOperationTransaction());
+  arangodb::CollectionWriteLocker collectionLocker(_logicalCollection, useDeadlockDetector,
+                                                   lock);
+
+  // get the previous revision
+  int res = _logicalCollection->lookupDocument(trx, key, previous);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  TRI_IF_FAILURE("ReplaceDocumentNoMarker") {
+    // test what happens when no marker can be created
+    return TRI_ERROR_DEBUG;
+  }
+
+  TRI_IF_FAILURE("ReplaceDocumentNoMarkerExcept") {
+    // test what happens when no marker can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  uint8_t const* vpack = previous.vpack();
+  VPackSlice oldDoc(vpack);
+  TRI_voc_rid_t oldRevisionId = transaction::Methods::extractRevFromDocument(oldDoc);
+  prevRev = oldRevisionId;
+
+  // Check old revision:
+  if (!options.ignoreRevs) {
+    TRI_voc_rid_t expectedRev = 0;
+    if (newSlice.isObject()) {
+      expectedRev = TRI_ExtractRevisionId(newSlice);
+    }
+    int res = _logicalCollection->checkRevision(trx, expectedRev, prevRev);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+
+  // merge old and new values
+  TransactionBuilderLeaser builder(trx);
+  newObjectForReplace(trx, oldDoc, newSlice, fromSlice, toSlice,
+                      isEdgeCollection, TRI_RidToString(revisionId),
+                      *builder.get());
+
+  if (ServerState::isDBServer(trx->serverRole())) {
+    // Need to check that no sharding keys have changed:
+    if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
+                                   trx->resolver()->getCollectionNameCluster(
+                                       _logicalCollection->planId()),
+                                   oldDoc, builder->slice(), false)) {
+      return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
+    }
+  }
+
+  // create marker
+  MMFilesCrudMarker replaceMarker(
+      TRI_DF_MARKER_VPACK_DOCUMENT,
+      static_cast<MMFilesTransactionState*>(trx->state())->idForMarker(), builder->slice());
+
+  MMFilesWalMarker const* marker;
+  if (options.recoveryMarker == nullptr) {
+    marker = &replaceMarker;
+  } else {
+    marker = options.recoveryMarker;
+  }
+
+  VPackSlice const newDoc(marker->vpack());
+
+  MMFilesDocumentOperation operation(_logicalCollection, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+
+  try {
+    insertRevision(revisionId, marker->vpack(), 0, true, true);
+    
+    operation.setRevisions(DocumentDescriptor(oldRevisionId, oldDoc.begin()),
+                           DocumentDescriptor(revisionId, newDoc.begin()));
+    
+    if (oldRevisionId == revisionId) {
+      // update with same revision id => can happen if isRestore = true
+      result.clear();
+    }
+
+    res = _logicalCollection->updateDocument(trx, oldRevisionId, oldDoc,
+                                             revisionId, newDoc, operation,
+                                             marker, options.waitForSync);
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
+    res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    operation.revert(trx);
+  } else {
+    if (oldRevisionId == revisionId) {
+      // update with same revision id => can happen if isRestore = true
+      result.clear();
+    }
+    _logicalCollection->readRevision(trx, result, revisionId);
+
+    if (options.waitForSync) {
+      // store the tick that was used for writing the new document
+      resultMarkerTick = operation.tick();
+    }
+  }
+
+  return res;
+}
+
 int MMFilesCollection::remove(arangodb::transaction::Methods* trx, VPackSlice const slice,
                               ManagedDocumentResult& previous,
                               OperationOptions& options,

@@ -24,6 +24,7 @@
 #include "PhysicalCollection.h"
 
 #include "Basics/StaticStrings.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -164,4 +165,41 @@ void PhysicalCollection::mergeObjectsForUpdate(
   b.close();
 }
 
+/// @brief new object for replace, oldValue must have _key and _id correctly
+/// set
+void PhysicalCollection::newObjectForReplace(
+    transaction::Methods* trx, VPackSlice const& oldValue,
+    VPackSlice const& newValue, VPackSlice const& fromSlice,
+    VPackSlice const& toSlice, bool isEdgeCollection, std::string const& rev,
+    VPackBuilder& builder) {
+  builder.openObject();
 
+  // add system attributes first, in this order:
+  // _key, _id, _from, _to, _rev
+
+  // _key
+  VPackSlice s = oldValue.get(StaticStrings::KeyString);
+  TRI_ASSERT(!s.isNone());
+  builder.add(StaticStrings::KeyString, s);
+
+  // _id
+  s = oldValue.get(StaticStrings::IdString);
+  TRI_ASSERT(!s.isNone());
+  builder.add(StaticStrings::IdString, s);
+
+  // _from and _to here
+  if (isEdgeCollection) {
+    TRI_ASSERT(!fromSlice.isNone());
+    TRI_ASSERT(!toSlice.isNone());
+    builder.add(StaticStrings::FromString, fromSlice);
+    builder.add(StaticStrings::ToString, toSlice);
+  }
+
+  // _rev
+  builder.add(StaticStrings::RevString, VPackValue(rev));
+
+  // add other attributes after the system attributes
+  TRI_SanitizeObjectWithEdges(newValue, builder);
+
+  builder.close();
+}
