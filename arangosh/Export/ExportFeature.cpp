@@ -92,14 +92,9 @@ void ExportFeature::collectOptions(
   options->addOption("--progress", "show progress",
                      new BooleanParameter(&_progress));
 
-  std::unordered_set<std::string> exportsWithUpperCase = {"json", "jsonl", "xgmml",
-                                                          "JSON", "JSONL", "XGMML"};
   std::unordered_set<std::string> exports = {"json", "jsonl", "xgmml"};
-  std::vector<std::string> exportsVector(exports.begin(), exports.end());
-  std::string exportsJoined = StringUtils::join(exportsVector, ", ");
   options->addOption(
-      "--type", "type of export (" + exportsJoined + ")",
-      new DiscreteValuesParameter<StringParameter>(&_typeExport, exportsWithUpperCase));
+      "--type", "type of export", new DiscreteValuesParameter<StringParameter>(&_typeExport, exports));
 }
 
 void ExportFeature::validateOptions(
