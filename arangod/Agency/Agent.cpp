@@ -1173,11 +1173,11 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
     << _lastAppliedIndex << " to " << _leaderCommitIndex;
   
   _spearhead.apply(
-    _state.slices(_lastAppliedIndex+1, _leaderCommitIndex),
+    _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1),
     _leaderCommitIndex, _constituent.term());
   
   _readDB.apply(
-    _state.slices(_lastAppliedIndex+1, _leaderCommitIndex),
+    _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1),
     _leaderCommitIndex, _constituent.term());
   _lastAppliedIndex = _leaderCommitIndex;
   
