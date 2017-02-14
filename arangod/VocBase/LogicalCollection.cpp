@@ -32,16 +32,13 @@
 #include "Basics/Timers.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/encoding.h"
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "RestServer/DatabaseFeature.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesCollection.h" //remove
 #include "MMFiles/MMFilesPrimaryIndex.h"
@@ -50,11 +47,14 @@
 #include "MMFiles/MMFilesTransactionState.h"
 #include "MMFiles/MMFilesWalMarker.h" //crud marker -- TODO remove
 #include "MMFiles/MMFilesWalSlots.h"  //TODO -- remove
+#include "RestServer/DatabaseFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/CollectionReadLocker.h"
-#include "Utils/CollectionWriteLocker.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -1916,7 +1916,7 @@ int LogicalCollection::read(transaction::Methods* trx, std::string const& key,
 
 int LogicalCollection::read(transaction::Methods* trx, StringRef const& key,
                             ManagedDocumentResult& result, bool lock) {
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
   return getPhysical()->read(trx, builder->slice(), result, lock);
 }
@@ -1969,7 +1969,7 @@ int LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
     }
   }
 
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   VPackSlice newSlice;
   int res = TRI_ERROR_NO_ERROR;
   if (options.recoveryMarker == nullptr) {
@@ -2117,7 +2117,7 @@ int LogicalCollection::remove(transaction::Methods* trx,
     revisionId = TRI_HybridLogicalClock();
   }
 
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   newObjectForRemove(trx, slice, TRI_RidToString(revisionId), *builder.get());
 
   return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick,
@@ -2470,6 +2470,17 @@ int LogicalCollection::beginWriteTimed(bool useDeadlockDetector,
   }
 }
 
+
+/// @brief creates a new entry in the primary index
+int LogicalCollection::insertPrimaryIndex(transaction::Methods* trx,
+                                          TRI_voc_rid_t revisionId,
+                                          VPackSlice const& doc) {
+  TRI_IF_FAILURE("InsertPrimaryIndex") { return TRI_ERROR_DEBUG; }
+
+  // insert into primary index
+  return primaryIndex()->insertKey(trx, revisionId, doc);
+}
+
 /// @brief deletes an entry from the primary index
 int LogicalCollection::deletePrimaryIndex(transaction::Methods* trx,
                                           TRI_voc_rid_t revisionId,
@@ -2604,10 +2615,10 @@ int LogicalCollection::newObjectForInsert(
     // _statisticsRaw and _statistics15 (which are the only system
     // collections)
     // must not be treated as shards but as local collections
-    MMFilesDatafileHelper::StoreNumber<uint64_t>(p, _planId, sizeof(uint64_t));
+    encoding::storeNumber<uint64_t>(p, _planId, sizeof(uint64_t));
   } else {
     // local server
-    MMFilesDatafileHelper::StoreNumber<uint64_t>(p, _cid, sizeof(uint64_t));
+    encoding::storeNumber<uint64_t>(p, _cid, sizeof(uint64_t));
   }
 
   // _from and _to

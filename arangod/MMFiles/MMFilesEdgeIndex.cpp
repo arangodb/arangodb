@@ -34,8 +34,9 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
-#include "Utils/CollectionNameResolver.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -462,7 +463,7 @@ void MMFilesEdgeIndex::batchInsert(transaction::Methods* trx,
 
   // _from
   for (auto const& it : documents) {
-    VPackSlice value(transaction::Methods::extractFromFromDocument(it.second));
+    VPackSlice value(transaction::helpers::extractFromFromDocument(it.second));
     fromElements->emplace_back(MMFilesSimpleIndexElement(
         it.first, value,
         static_cast<uint32_t>(value.begin() - it.second.begin())));
@@ -470,7 +471,7 @@ void MMFilesEdgeIndex::batchInsert(transaction::Methods* trx,
 
   // _to
   for (auto const& it : documents) {
-    VPackSlice value(transaction::Methods::extractToFromDocument(it.second));
+    VPackSlice value(transaction::helpers::extractToFromDocument(it.second));
     toElements->emplace_back(MMFilesSimpleIndexElement(
         it.first, value,
         static_cast<uint32_t>(value.begin() - it.second.begin())));
@@ -614,7 +615,7 @@ IndexIterator* MMFilesEdgeIndex::createEqIterator(
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
   keys->openArray();
 
@@ -637,7 +638,7 @@ IndexIterator* MMFilesEdgeIndex::createInIterator(
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
   keys->openArray();
 
@@ -680,14 +681,14 @@ void MMFilesEdgeIndex::handleValNode(VPackBuilder* keys,
 
 MMFilesSimpleIndexElement MMFilesEdgeIndex::buildFromElement(TRI_voc_rid_t revisionId, VPackSlice const& doc) const {
   TRI_ASSERT(doc.isObject());
-  VPackSlice value(transaction::Methods::extractFromFromDocument(doc));
+  VPackSlice value(transaction::helpers::extractFromFromDocument(doc));
   TRI_ASSERT(value.isString());
   return MMFilesSimpleIndexElement(revisionId, value, static_cast<uint32_t>(value.begin() - doc.begin()));
 }
 
 MMFilesSimpleIndexElement MMFilesEdgeIndex::buildToElement(TRI_voc_rid_t revisionId, VPackSlice const& doc) const {
   TRI_ASSERT(doc.isObject());
-  VPackSlice value(transaction::Methods::extractToFromDocument(doc));
+  VPackSlice value(transaction::helpers::extractToFromDocument(doc));
   TRI_ASSERT(value.isString());
   return MMFilesSimpleIndexElement(revisionId, value, static_cast<uint32_t>(value.begin() - doc.begin()));
 }

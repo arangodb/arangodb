@@ -311,6 +311,7 @@ SET(ARANGOD_SOURCES
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
+  Transaction/Helpers.cpp
   Transaction/Methods.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp

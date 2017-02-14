@@ -78,7 +78,7 @@ function get_api_index (req, res) {
   // /_api/index/<collection-name>/<index-identifier>
   // .............................................................................
   else if (req.suffix.length === 2) {
-    var name = decodeURIComponent(req.suffix[0]);
+    var name = req.suffix[0];
     var collection = arangodb.db._collection(name);
 
     if (collection === null) {
@@ -86,7 +86,7 @@ function get_api_index (req, res) {
       return;
     }
 
-    var iid = decodeURIComponent(req.suffix[1]);
+    var iid = req.suffix[1];
     try {
       var index = collection.index(name + '/' + iid);
       if (index !== null) {
@@ -169,7 +169,7 @@ function delete_api_index (req, res) {
     return;
   }
 
-  var name = decodeURIComponent(req.suffix[0]);
+  var name = req.suffix[0];
   var collection = arangodb.db._collection(name);
 
   if (collection === null) {

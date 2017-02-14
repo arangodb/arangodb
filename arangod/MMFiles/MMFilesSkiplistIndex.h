@@ -30,6 +30,7 @@
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPathBasedIndex.h"
 #include "MMFiles/MMFilesSkiplist.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -57,10 +58,10 @@ class BaseSkiplistLookupBuilder {
   bool _includeLower;
   bool _includeUpper;
 
-  TransactionBuilderLeaser _lowerBuilder;
+  transaction::BuilderLeaser _lowerBuilder;
   arangodb::velocypack::Slice _lowerSlice;
 
-  TransactionBuilderLeaser _upperBuilder;
+  transaction::BuilderLeaser _upperBuilder;
   arangodb::velocypack::Slice _upperSlice;
 
  public:
@@ -136,7 +137,7 @@ class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
       PosStruct(size_t f, size_t c, size_t m) : field(f), current(c), _max(m) {}
     };
 
-    TransactionBuilderLeaser _dataBuilder;
+    transaction::BuilderLeaser _dataBuilder;
     /// @brief keeps track of the positions in the in-lookup
     /// values. (field, inPosition, maxPosition)
     std::list<PosStruct> _inPositions;

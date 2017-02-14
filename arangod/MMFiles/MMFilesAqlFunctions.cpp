@@ -30,9 +30,9 @@
 #include "MMFiles/fulltext-result.h"
 #include "MMFiles/MMFilesFulltextIndex.h"
 #include "MMFiles/MMFilesGeoIndex.h"
-
 #include "StorageEngine/DocumentIdentifierToken.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -99,7 +99,7 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
 
   try {
     ManagedDocumentResult mmdr;
-    TransactionBuilderLeaser builder(trx);
+    transaction::BuilderLeaser builder(trx);
     builder->openArray();
     if (!attributeName.empty()) {
       // We have to copy the entire document
@@ -288,7 +288,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   
   TRI_ASSERT(trx->hasDitch(cid));
 
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   try {
     builder->openArray();
 

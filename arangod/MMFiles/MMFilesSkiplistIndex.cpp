@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
 #include "MMFiles/MMFilesToken.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -260,7 +261,7 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
     arangodb::aql::Variable const* var, bool reverse)
     : BaseSkiplistLookupBuilder(trx), _dataBuilder(trx), _done(false) {
   TRI_ASSERT(!ops.empty());  // We certainly do not need IN here
-  TransactionBuilderLeaser tmp(trx);
+  transaction::BuilderLeaser tmp(trx);
   std::set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackSorted<true>>
       unique_set(
           (arangodb::basics::VelocyPackHelper::VPackSorted<true>(reverse)));

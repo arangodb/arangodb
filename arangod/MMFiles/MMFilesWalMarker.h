@@ -25,6 +25,7 @@
 #define ARANGOD_STORAGE_ENGINE_MMFILES_WAL_MARKER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/encoding.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "VocBase/voc-types.h"
@@ -148,7 +149,7 @@ class MMFilesCrudMarker : public MMFilesWalMarker {
   /// @brief store the marker in the memory region starting at mem
   void store(char* mem) const override final { 
     // store transaction id
-    MMFilesDatafileHelper::StoreNumber<decltype(_transactionId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::TransactionIdOffset(_type), _transactionId, sizeof(decltype(_transactionId)));
+    encoding::storeNumber<decltype(_transactionId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::TransactionIdOffset(_type), _transactionId, sizeof(decltype(_transactionId)));
     // store VPack
     memcpy(mem + MMFilesDatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
   }
@@ -192,7 +193,7 @@ class MMFilesDatabaseMarker : public MMFilesWalMarker {
   /// @brief store the marker in the memory region starting at mem
   void store(char* mem) const override final { 
     // store database id
-    MMFilesDatafileHelper::StoreNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
+    encoding::storeNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
     // store VPack
     memcpy(mem + MMFilesDatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
   }
@@ -237,9 +238,9 @@ class MMFilesCollectionMarker : public MMFilesWalMarker {
   /// @brief store the marker in the memory region starting at mem
   void store(char* mem) const override final { 
     // store database id
-    MMFilesDatafileHelper::StoreNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
+    encoding::storeNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
     // store collection id
-    MMFilesDatafileHelper::StoreNumber<decltype(_collectionId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::CollectionIdOffset(_type), _collectionId, sizeof(decltype(_collectionId)));
+    encoding::storeNumber<decltype(_collectionId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::CollectionIdOffset(_type), _collectionId, sizeof(decltype(_collectionId)));
     // store VPack
     memcpy(mem + MMFilesDatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
   }
@@ -283,9 +284,9 @@ class MMFilesTransactionMarker : public MMFilesWalMarker {
   /// @brief store the marker in the memory region starting at mem
   void store(char* mem) const override final { 
     // store database id
-    MMFilesDatafileHelper::StoreNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
+    encoding::storeNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
     // store transaction id
-    MMFilesDatafileHelper::StoreNumber<decltype(_transactionId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::TransactionIdOffset(_type), _transactionId, sizeof(decltype(_transactionId)));
+    encoding::storeNumber<decltype(_transactionId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::TransactionIdOffset(_type), _transactionId, sizeof(decltype(_transactionId)));
   }
 
  private:

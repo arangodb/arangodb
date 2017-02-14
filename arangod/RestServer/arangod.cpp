@@ -150,7 +150,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new QueryRegistryFeature(&server));
     server.addFeature(new TraverserEngineRegistryFeature(&server));
     server.addFeature(new RandomFeature(&server));
-    server.addFeature(new RocksDBFeature(&server));
+    server.addFeature(new PersistentIndexFeature(&server));
     server.addFeature(new SchedulerFeature(&server));
     server.addFeature(new ScriptFeature(&server, &ret));
     server.addFeature(new ServerFeature(&server, &ret));

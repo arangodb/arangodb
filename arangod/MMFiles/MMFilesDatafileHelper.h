@@ -25,6 +25,7 @@
 #define ARANGOD_STORAGE_ENGINE_MMFILES_DATAFILE_HELPER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/encoding.h"
 #include "MMFiles/MMFilesDatafile.h"
 
 namespace arangodb {
@@ -56,15 +57,6 @@ constexpr inline TRI_voc_size_t JournalOverhead() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the 8-byte aligned size for the value
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-static constexpr inline T AlignedSize(T value) {
-  return (value + 7) - ((value + 7) & 7);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the 8-byte aligned size for the marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -72,35 +64,6 @@ template <typename T>
 static inline T AlignedMarkerSize(TRI_df_marker_t const* marker) {
   size_t value = marker->getSize();
   return static_cast<T>((value + 7) - ((value + 7) & 7));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief portably and safely reads a number
-////////////////////////////////////////////////////////////////////////////////
-  
-template <typename T>
-static inline T ReadNumber(uint8_t const* source, uint32_t length) {
-  T value = 0;
-  uint64_t x = 0;
-  uint8_t const* end = source + length;
-  do {
-    value += static_cast<T>(*source++) << x;
-    x += 8;
-  } while (source < end);
-  return value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief portably and safely stores a number
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-static inline void StoreNumber(uint8_t* dest, T value, uint32_t length) {
-  uint8_t* end = dest + length;
-  do {
-    *dest++ = static_cast<uint8_t>(value & 0xff);
-    value >>= 8;
-  } while (dest < end);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,7 +145,7 @@ static inline TRI_voc_tick_t DatabaseId(TRI_df_marker_t const* marker) noexcept 
       type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
       type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
       type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
-    return ReadNumber<TRI_voc_tick_t>(reinterpret_cast<uint8_t const*>(marker) + DatabaseIdOffset(type), sizeof(TRI_voc_tick_t));
+    return encoding::readNumber<TRI_voc_tick_t>(reinterpret_cast<uint8_t const*>(marker) + DatabaseIdOffset(type), sizeof(TRI_voc_tick_t));
   }
   return 0;
 }
@@ -217,7 +180,7 @@ static inline TRI_voc_tick_t CollectionId(TRI_df_marker_t const* marker) noexcep
       type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
       type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
       type == TRI_DF_MARKER_VPACK_DROP_INDEX) {
-    return ReadNumber<TRI_voc_cid_t>(reinterpret_cast<uint8_t const*>(marker) + CollectionIdOffset(type), sizeof(TRI_voc_cid_t));
+    return encoding::readNumber<TRI_voc_cid_t>(reinterpret_cast<uint8_t const*>(marker) + CollectionIdOffset(type), sizeof(TRI_voc_cid_t));
   }
   return 0;
 }
@@ -250,7 +213,7 @@ static inline TRI_voc_tick_t TransactionId(TRI_df_marker_t const* marker) noexce
       type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
       type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
       type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
-    return ReadNumber<TRI_voc_tid_t>(reinterpret_cast<uint8_t const*>(marker) + TransactionIdOffset(type), sizeof(TRI_voc_tid_t));
+    return encoding::readNumber<TRI_voc_tid_t>(reinterpret_cast<uint8_t const*>(marker) + TransactionIdOffset(type), sizeof(TRI_voc_tid_t));
   }
   return 0;
 }
@@ -304,8 +267,8 @@ static inline TRI_df_prologue_marker_t CreatePrologueMarker(TRI_voc_tick_t datab
   TRI_df_prologue_marker_t header;
   InitMarker(reinterpret_cast<TRI_df_marker_t*>(&header), TRI_DF_MARKER_PROLOGUE, sizeof(TRI_df_prologue_marker_t));
 
-  StoreNumber<decltype(databaseId)>(reinterpret_cast<uint8_t*>(&header) + DatabaseIdOffset(TRI_DF_MARKER_PROLOGUE), databaseId, sizeof(decltype(databaseId))); 
-  StoreNumber<decltype(collectionId)>(reinterpret_cast<uint8_t*>(&header) + CollectionIdOffset(TRI_DF_MARKER_PROLOGUE), collectionId, sizeof(decltype(collectionId))); 
+  encoding::storeNumber<decltype(databaseId)>(reinterpret_cast<uint8_t*>(&header) + DatabaseIdOffset(TRI_DF_MARKER_PROLOGUE), databaseId, sizeof(decltype(databaseId))); 
+  encoding::storeNumber<decltype(collectionId)>(reinterpret_cast<uint8_t*>(&header) + CollectionIdOffset(TRI_DF_MARKER_PROLOGUE), collectionId, sizeof(decltype(collectionId))); 
 
   return header;
 }

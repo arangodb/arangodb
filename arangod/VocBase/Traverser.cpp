@@ -23,6 +23,7 @@
 
 #include "Traverser.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/KeyGenerator.h"
@@ -60,7 +61,7 @@ void arangodb::traverser::ShortestPath::vertexToVelocyPack(transaction::Methods*
   size_t p = collection.find("/");
   TRI_ASSERT(p != std::string::npos);
 
-  TransactionBuilderLeaser searchBuilder(trx);
+  transaction::BuilderLeaser searchBuilder(trx);
   searchBuilder->add(VPackValue(collection.substr(p + 1)));
   collection = collection.substr(0, p);
 
@@ -75,9 +76,9 @@ void arangodb::traverser::ShortestPath::vertexToVelocyPack(transaction::Methods*
 bool Traverser::VertexGetter::getVertex(
     VPackSlice edge, std::vector<VPackSlice>& result) {
   VPackSlice cmp = result.back();
-  VPackSlice res = transaction::Methods::extractFromFromDocument(edge);
+  VPackSlice res = transaction::helpers::extractFromFromDocument(edge);
   if (cmp == res) {
-    res = transaction::Methods::extractToFromDocument(edge);
+    res = transaction::helpers::extractToFromDocument(edge);
   }
 
   if (!_traverser->vertexMatchesConditions(res, result.size())) {
@@ -91,11 +92,11 @@ bool Traverser::VertexGetter::getSingleVertex(VPackSlice edge,
                                               VPackSlice cmp,
                                               uint64_t depth,
                                               VPackSlice& result) {
-  VPackSlice from = transaction::Methods::extractFromFromDocument(edge);
+  VPackSlice from = transaction::helpers::extractFromFromDocument(edge);
   if (from != cmp) {
     result = from;
   } else {
-    result = transaction::Methods::extractToFromDocument(edge);
+    result = transaction::helpers::extractToFromDocument(edge);
   }
   return _traverser->vertexMatchesConditions(result, depth);
 }
@@ -105,11 +106,11 @@ void Traverser::VertexGetter::reset(arangodb::velocypack::Slice) {
 
 bool Traverser::UniqueVertexGetter::getVertex(
   VPackSlice edge, std::vector<VPackSlice>& result) {
-  VPackSlice toAdd = transaction::Methods::extractFromFromDocument(edge);
+  VPackSlice toAdd = transaction::helpers::extractFromFromDocument(edge);
   VPackSlice cmp = result.back();
 
   if (toAdd == cmp) {
-    toAdd = transaction::Methods::extractToFromDocument(edge);
+    toAdd = transaction::helpers::extractToFromDocument(edge);
   }
 
   arangodb::basics::VPackHashedSlice hashed(toAdd);
@@ -133,10 +134,10 @@ bool Traverser::UniqueVertexGetter::getVertex(
 
 bool Traverser::UniqueVertexGetter::getSingleVertex(
   VPackSlice edge, VPackSlice cmp, uint64_t depth, VPackSlice& result) {
-  result = transaction::Methods::extractFromFromDocument(edge);
+  result = transaction::helpers::extractFromFromDocument(edge);
 
   if (cmp == result) {
-    result = transaction::Methods::extractToFromDocument(edge);
+    result = transaction::helpers::extractToFromDocument(edge);
   }
   
   arangodb::basics::VPackHashedSlice hashed(result);

@@ -32,6 +32,7 @@
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPathBasedIndex.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -51,7 +52,7 @@ class MMFilesHashIndex;
 /// @brief Class to build Slice lookups out of AST Conditions
 class LookupBuilder {
  private:
-  TransactionBuilderLeaser _builder;
+  transaction::BuilderLeaser _builder;
   bool _usesIn;
   bool _isEmpty;
   size_t _coveredFields;
@@ -60,7 +61,7 @@ class LookupBuilder {
   std::unordered_map<
       size_t, std::pair<size_t, std::vector<arangodb::velocypack::Slice>>>
       _inPosition;
-  TransactionBuilderLeaser _inStorage;
+  transaction::BuilderLeaser _inStorage;
 
  public:
   LookupBuilder(

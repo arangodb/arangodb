@@ -25,6 +25,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
+#include "Transaction/Helpers.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -104,7 +105,7 @@ bool ClusterTraverser::getSingleVertex(VPackSlice edge, VPackSlice comp,
 
 void ClusterTraverser::fetchVertices() {
   _readDocuments += _verticesToFetch.size();
-  TransactionBuilderLeaser lease(_trx);
+  transaction::BuilderLeaser lease(_trx);
   fetchVerticesFromEngines(_dbname, _engines, _verticesToFetch, _vertices,
                            *(lease.get()));
   _verticesToFetch.clear();

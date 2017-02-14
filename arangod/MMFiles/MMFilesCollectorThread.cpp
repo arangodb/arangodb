@@ -27,6 +27,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/encoding.h"
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
 #include "Logger/Logger.h"
@@ -40,6 +41,7 @@
 #include "RestServer/TransactionManagerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Helpers.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -145,7 +147,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       VPackSlice slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
-      state->documentOperations[collectionId][transaction::Methods::extractKeyFromDocument(slice).copyString()] = marker;
+      state->documentOperations[collectionId][transaction::helpers::extractKeyFromDocument(slice).copyString()] = marker;
       state->operationsCount[collectionId]++;
       break;
     }
@@ -395,7 +397,7 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
       // reset collector status
       broadcastCollectorResult(res);
 
-      RocksDBFeature::syncWal();
+      PersistentIndexFeature::syncWal();
 
       _logfileManager->setCollectionDone(logfile);
     } else {
@@ -576,7 +578,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     
     VPackSlice keySlice;
     TRI_voc_rid_t revisionId = 0;
-    transaction::Methods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+    transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
     bool wasAdjusted = false;
     MMFilesSimpleIndexElement element = collection->primaryIndex()->lookupKey(&trx, keySlice);
@@ -591,12 +593,12 @@ void MMFilesCollectorThread::processCollectionMarker(
     if (wasAdjusted) {
       // revision is still active
       dfi.numberAlive++;
-      dfi.sizeAlive += MMFilesDatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
+      dfi.sizeAlive += encoding::alignedSize<int64_t>(datafileMarkerSize);
     } else {
       // somebody inserted a new revision of the document or the revision
       // was already moved by the compactor
       dfi.numberDead++;
-      dfi.sizeDead += MMFilesDatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
+      dfi.sizeDead += encoding::alignedSize<int64_t>(datafileMarkerSize);
     }
   } else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
     auto& dfi = cache->createDfi(fid);
@@ -608,7 +610,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     
     VPackSlice keySlice;
     TRI_voc_rid_t revisionId = 0;
-    transaction::Methods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+    transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
     MMFilesSimpleIndexElement found = collection->primaryIndex()->lookupKey(&trx, keySlice);
 
@@ -616,7 +618,7 @@ void MMFilesCollectorThread::processCollectionMarker(
         found.revisionId() > revisionId) {
       // somebody re-created the document with a newer revision
       dfi.numberDead++;
-      dfi.sizeDead += MMFilesDatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
+      dfi.sizeDead += encoding::alignedSize<int64_t>(datafileMarkerSize);
     }
   }
 }

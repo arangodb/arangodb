@@ -28,30 +28,32 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/encoding.h"
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterMethods.h"
 #include "Logger/Logger.h"
-#include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "MMFiles/MMFilesDatafile.h"
+#include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "MMFiles/MMFilesIndexElement.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesTransactionState.h"
+#include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Transaction/Methods.h"
-#include "MMFiles/MMFilesDatafileHelper.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 
 using namespace arangodb;
 
@@ -88,7 +90,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
   VPackSlice keySlice;
   TRI_voc_rid_t revisionId;
 
-  transaction::Methods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+  transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
   c->setRevision(revisionId, false);
 
@@ -157,9 +159,9 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
       int64_t size = static_cast<int64_t>(MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
 
       dfi->numberAlive--;
-      dfi->sizeAlive -= MMFilesDatafileHelper::AlignedSize<int64_t>(size);
+      dfi->sizeAlive -= encoding::alignedSize<int64_t>(size);
       dfi->numberDead++;
-      dfi->sizeDead += MMFilesDatafileHelper::AlignedSize<int64_t>(size);
+      dfi->sizeDead += encoding::alignedSize<int64_t>(size);
     }
 
     state->_dfi->numberAlive++;
@@ -182,7 +184,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* m
   VPackSlice keySlice;
   TRI_voc_rid_t revisionId;
 
-  transaction::Methods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+  transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
   c->setRevision(revisionId, false);
   if (state->_trackKeys) {
@@ -227,12 +229,12 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* m
     TRI_ASSERT(old.dataptr() != nullptr);
 
     uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
-    int64_t size = MMFilesDatafileHelper::AlignedSize<int64_t>(MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
+    int64_t size = encoding::alignedSize<int64_t>(MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
 
     dfi->numberAlive--;
-    dfi->sizeAlive -= MMFilesDatafileHelper::AlignedSize<int64_t>(size);
+    dfi->sizeAlive -= encoding::alignedSize<int64_t>(size);
     dfi->numberDead++;
-    dfi->sizeDead += MMFilesDatafileHelper::AlignedSize<int64_t>(size);
+    dfi->sizeDead += encoding::alignedSize<int64_t>(size);
     state->_dfi->numberDeletions++;
 
     state->_primaryIndex->removeKey(trx, oldRevisionId, VPackSlice(vpack), state->_mmdr);
@@ -1177,7 +1179,7 @@ void MMFilesCollection::truncate(transaction::Methods* trx, OperationOptions& op
   options.ignoreRevs = true;
 
   // create remove marker
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
  
   auto callback = [&](MMFilesSimpleIndexElement const& element) {
     TRI_voc_rid_t oldRevisionId = element.revisionId();
@@ -1238,7 +1240,7 @@ int MMFilesCollection::insert(transaction::Methods* trx,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  TRI_voc_rid_t revisionId = transaction::Methods::extractRevFromDocument(newSlice);
+  TRI_voc_rid_t revisionId = transaction::helpers::extractRevFromDocument(newSlice);
   VPackSlice doc(marker->vpack());
   operation.setRevisions(DocumentDescriptor(),
                          DocumentDescriptor(revisionId, doc.begin()));
@@ -1378,7 +1380,7 @@ void MMFilesCollection::removeRevision(TRI_voc_rid_t revisionId, bool updateStat
     if (old && !old.pointsToWal() && old.fid() != 0) {
       TRI_ASSERT(old.dataptr() != nullptr);
       uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
-      int64_t size = MMFilesDatafileHelper::AlignedSize<int64_t>(MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
+      int64_t size = encoding::alignedSize<int64_t>(MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
       _datafileStatistics.increaseDead(old.fid(), 1, size);
     }
   } else {
@@ -1568,7 +1570,7 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
   uint8_t const* vpack = previous.vpack();
   VPackSlice oldDoc(vpack);
   TRI_voc_rid_t oldRevisionId =
-      transaction::Methods::extractRevFromDocument(oldDoc);
+      transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
 
   TRI_IF_FAILURE("UpdateDocumentNoMarker") {
@@ -1600,7 +1602,7 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
   }
 
   // merge old and new values
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   if (options.recoveryMarker == nullptr) {
     mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
                           TRI_RidToString(revisionId), options.mergeObjects,
@@ -1709,7 +1711,7 @@ int MMFilesCollection::replace(
 
   uint8_t const* vpack = previous.vpack();
   VPackSlice oldDoc(vpack);
-  TRI_voc_rid_t oldRevisionId = transaction::Methods::extractRevFromDocument(oldDoc);
+  TRI_voc_rid_t oldRevisionId = transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
 
   // Check old revision:
@@ -1725,7 +1727,7 @@ int MMFilesCollection::replace(
   }
 
   // merge old and new values
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   newObjectForReplace(trx, oldDoc, newSlice, fromSlice, toSlice,
                       isEdgeCollection, TRI_RidToString(revisionId),
                       *builder.get());
@@ -1857,7 +1859,7 @@ int MMFilesCollection::remove(arangodb::transaction::Methods* trx, VPackSlice co
 
   uint8_t const* vpack = previous.vpack();
   VPackSlice oldDoc(vpack);
-  TRI_voc_rid_t oldRevisionId = arangodb::transaction::Methods::extractRevFromDocument(oldDoc);
+  TRI_voc_rid_t oldRevisionId = arangodb::transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
 
   // Check old revision:
@@ -1955,7 +1957,7 @@ int MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
     return TRI_ERROR_DEBUG;
   }
 
-  VPackSlice key = arangodb::transaction::Methods::extractKeyFromDocument(oldDoc);
+  VPackSlice key = arangodb::transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(!key.isNone());
 
   MMFilesDocumentOperation operation(_logicalCollection,
@@ -2063,7 +2065,7 @@ int MMFilesCollection::updateDocument(
 
   // update the index element (primary index only - other index have been
   // adjusted)
-  VPackSlice keySlice(transaction::Methods::extractKeyFromDocument(newDoc));
+  VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(newDoc));
   MMFilesSimpleIndexElement* element =
       _logicalCollection->primaryIndex()->lookupKeyRef(trx, keySlice);
   if (element != nullptr && element->revisionId() != 0) {
@@ -2089,15 +2091,3 @@ int MMFilesCollection::updateDocument(
 
   return static_cast<MMFilesTransactionState*>(trx->state())->addOperation(newRevisionId, operation, marker, waitForSync);
 }
-
-/// @brief creates a new entry in the primary index
-int LogicalCollection::insertPrimaryIndex(transaction::Methods* trx,
-                                          TRI_voc_rid_t revisionId,
-                                          VPackSlice const& doc) {
-  TRI_IF_FAILURE("InsertPrimaryIndex") { return TRI_ERROR_DEBUG; }
-
-  // insert into primary index
-  return primaryIndex()->insertKey(trx, revisionId, doc);
-}
-
-

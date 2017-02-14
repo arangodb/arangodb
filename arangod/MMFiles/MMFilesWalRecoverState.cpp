@@ -35,10 +35,11 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesWalSlots.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Hints.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>
@@ -350,7 +351,7 @@ bool MMFilesWalRecoverState::InitialScanMarker(TRI_df_marker_t const* marker,
                                     MMFilesDatafileHelper::VPackOffset(type));
       if (payloadSlice.isObject()) {
         TRI_voc_rid_t revisionId =
-            transaction::Methods::extractRevFromDocument(payloadSlice);
+            transaction::helpers::extractRevFromDocument(payloadSlice);
         if (revisionId != UINT64_MAX && revisionId > state->maxRevisionId) {
           state->maxRevisionId = revisionId;
         }
@@ -774,7 +775,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           return true;
         }
 
-        RocksDBFeature::dropIndex(databaseId, collectionId, indexId);
+        PersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
 
         std::string const indexName("index-" + std::to_string(indexId) +
                                     ".json");
@@ -852,7 +853,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           vocbase->dropCollection(collection, true, false);
         }
 
-        RocksDBFeature::dropCollection(databaseId, collectionId);
+        PersistentIndexFeature::dropCollection(databaseId, collectionId);
 
         // check if there is another collection with the same name as the one
         // that
@@ -971,7 +972,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           state->databaseFeature->dropDatabase(nameString, false, true, false);
         }
 
-        RocksDBFeature::dropDatabase(databaseId);
+        PersistentIndexFeature::dropDatabase(databaseId);
 
         vocbase = nullptr;
         /* TODO: check what TRI_ERROR_ARANGO_DATABASE_NOT_FOUND means here
@@ -1034,7 +1035,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         // ignore any potential error returned by this call
         col->dropIndex(indexId, false);
 
-        RocksDBFeature::dropIndex(databaseId, collectionId, indexId);
+        PersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
 
         // additionally remove the index file
         std::string const indexName("index-" + std::to_string(indexId) +
@@ -1076,7 +1077,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         if (collection != nullptr) {
           vocbase->dropCollection(collection, true, false);
         }
-        RocksDBFeature::dropCollection(databaseId, collectionId);
+        PersistentIndexFeature::dropCollection(databaseId, collectionId);
         break;
       }
 
@@ -1096,7 +1097,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           state->databaseFeature->dropDatabase(databaseId, false, true, false);
         }
 
-        RocksDBFeature::dropDatabase(databaseId);
+        PersistentIndexFeature::dropDatabase(databaseId);
         break;
       }
 
