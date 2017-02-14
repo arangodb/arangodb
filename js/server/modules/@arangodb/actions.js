@@ -2050,10 +2050,9 @@ exports.buildRouting = buildRouting;
 exports.buildRoutingTree = buildRoutingTree;
 exports.flattenRoutingTree = flattenRoutingTree;
 exports.nextRouting = nextRouting;
-exports.firstRouting = function firstRouting (method, url, routes) {
-  let parts = url;
-  if (typeof url === 'string') {
-    url.split('/').filter(s => s !== '');
+exports.firstRouting = function firstRouting (method, parts, routes) {
+  if (typeof parts === 'string') {
+    parts = parts.split('/').filter(s => s !== '');
   }
   return firstRouting(method, parts, routes);
 };
