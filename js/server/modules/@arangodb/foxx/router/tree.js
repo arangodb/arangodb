@@ -92,7 +92,7 @@ module.exports =
       const method = rawReq.requestType;
       let error;
 
-      for (const route of this.findRoutes(rawReq.suffix)) {
+      for (const route of this.findRoutes(rawReq.rawSuffix)) {
         const endpoint = route[route.length - 1].endpoint;
 
         try {

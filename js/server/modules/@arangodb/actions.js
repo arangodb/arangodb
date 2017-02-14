@@ -1104,9 +1104,11 @@ function nextRouting (state) {
       if (route.prefix) {
         state.prefix = '/' + state.parts.slice(0, route.depth - 1).join('/');
         state.suffix = state.parts.slice(route.depth - 1, state.parts.length);
+        state.rawSuffix = state.rawParts.slice(route.depth - 1, state.rawParts.length);
       } else {
         delete state.prefix;
         delete state.suffix;
+        delete state.rawSuffix;
       }
 
       state.urlParameters = {};
@@ -1126,6 +1128,7 @@ function nextRouting (state) {
   delete state.route;
   delete state.prefix;
   delete state.suffix;
+  delete state.rawSuffix;
   state.urlParameters = {};
 
   return state;
@@ -1135,7 +1138,7 @@ function nextRouting (state) {
 // @brief finds the first routing
 //
 
-function firstRouting (type, parts, routes) {
+function firstRouting (type, parts, routes, rawParts) {
   'use strict';
 
   var url = '/' + parts.join('/');
@@ -1145,6 +1148,7 @@ function firstRouting (type, parts, routes) {
       position: -1,
       urlParameters: {},
       parts,
+      rawParts,
       url
     };
   }
@@ -1154,6 +1158,7 @@ function firstRouting (type, parts, routes) {
     position: -1,
     urlParameters: {},
     parts,
+    rawParts,
     url
   });
 }
@@ -1173,7 +1178,7 @@ function routeRequest (req, res, routes) {
     routes = RoutingList[dbname];
   }
 
-  var action = firstRouting(req.requestType, req.suffix, routes);
+  var action = firstRouting(req.requestType, req.suffix, routes, req.rawSuffix);
 
   function execute () {
     if (action.route === undefined) {
@@ -1198,6 +1203,12 @@ function routeRequest (req, res, routes) {
       req.suffix = action.suffix;
     } else {
       delete req.suffix;
+    }
+
+    if (action.rawSuffix !== undefined) {
+      req.rawSuffix = action.rawSuffix;
+    } else {
+      delete req.rawSuffix;
     }
 
     if (action.urlParameters !== undefined) {
@@ -1987,7 +1998,7 @@ function pathHandler (req, res, options, next) {
   'use strict';
 
   var filepath, root, filename, encodedFilename;
-  filepath = req.suffix.length ? path.normalize(['', ...req.suffix.map((part) => decodeURIComponent(part))].join(path.sep)) : '';
+  filepath = req.suffix.length ? path.normalize(['', ...req.suffix.map((part) => part)].join(path.sep)) : '';
   root = options.path;
 
   if (options.root) {
