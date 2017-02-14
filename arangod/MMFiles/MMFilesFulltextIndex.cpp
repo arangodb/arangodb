@@ -211,7 +211,7 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-int MMFilesFulltextIndex::insert(arangodb::Transaction*, TRI_voc_rid_t revisionId,
+int MMFilesFulltextIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
                           VPackSlice const& doc, bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
 
@@ -231,7 +231,7 @@ int MMFilesFulltextIndex::insert(arangodb::Transaction*, TRI_voc_rid_t revisionI
   return res;
 }
 
-int MMFilesFulltextIndex::remove(arangodb::Transaction*, TRI_voc_rid_t revisionId,
+int MMFilesFulltextIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
                           VPackSlice const& doc, bool isRollback) {
   TRI_DeleteDocumentMMFilesFulltextIndex(_fulltextIndex, revisionId);
 

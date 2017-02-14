@@ -26,25 +26,22 @@
 
 #include "Basics/Common.h"
 
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 #include "Utils/V8TransactionContext.h"
 
 namespace arangodb {
 
-class ExplicitTransaction final : public Transaction {
+class UserTransaction final : public transaction::Methods {
  public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  ExplicitTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
+  UserTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
                       std::vector<std::string> const& readCollections,
                       std::vector<std::string> const& writeCollections,
                       std::vector<std::string> const& exclusiveCollections,
                       double lockTimeout, bool waitForSync,
                       bool allowImplicitCollections)
-      : Transaction(transactionContext) {
-    addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
+      : transaction::Methods(transactionContext) {
+    addHint(transaction::Hints::Hint::LOCK_ENTIRELY, false);
 
     if (lockTimeout >= 0.0) {
       setTimeout(lockTimeout);
@@ -69,11 +66,6 @@ class ExplicitTransaction final : public Transaction {
     setAllowImplicitCollections(allowImplicitCollections);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief end the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  ~ExplicitTransaction() {}
 };
 }
 

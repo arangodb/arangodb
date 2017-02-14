@@ -32,7 +32,10 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 class TransactionContext;
 
 namespace aql {
@@ -85,7 +88,7 @@ class BaseTraverserEngine {
   protected:
     std::unique_ptr<TraverserOptions> _opts;
     arangodb::aql::Query* _query;
-    arangodb::Transaction* _trx;
+    transaction::Methods* _trx;
     arangodb::aql::Collections _collections;
     std::unordered_set<std::string> _locked;
     std::unordered_map<std::string, std::vector<std::string>> _vertexShards;

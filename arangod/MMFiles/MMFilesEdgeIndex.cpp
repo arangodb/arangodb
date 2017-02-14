@@ -34,8 +34,9 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -105,7 +106,7 @@ static bool IsEqualElementEdgeByKey(void* userData, MMFilesSimpleIndexElement co
   }
 }
   
-MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx,
+MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                                      ManagedDocumentResult* mmdr,
                                      arangodb::MMFilesEdgeIndex const* index,
                                      TRI_MMFilesEdgeIndexHash_t const* indexImpl,
@@ -392,7 +393,7 @@ void MMFilesEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   // builder.add("buckets", VPackValue(_numBuckets));
 }
 
-int MMFilesEdgeIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+int MMFilesEdgeIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                       VPackSlice const& doc, bool isRollback) {
   MMFilesSimpleIndexElement fromElement(buildFromElement(revisionId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(revisionId, doc));
@@ -412,7 +413,7 @@ int MMFilesEdgeIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionI
   return TRI_ERROR_NO_ERROR;
 }
 
-int MMFilesEdgeIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+int MMFilesEdgeIndex::remove(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                       VPackSlice const& doc, bool isRollback) {
   MMFilesSimpleIndexElement fromElement(buildFromElement(revisionId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(revisionId, doc));
@@ -432,7 +433,7 @@ int MMFilesEdgeIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionI
   }
 }
 
-void MMFilesEdgeIndex::batchInsert(arangodb::Transaction* trx,
+void MMFilesEdgeIndex::batchInsert(transaction::Methods* trx,
                            std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
     arangodb::basics::LocalTaskQueue* queue) {
   if (documents.empty()) {
@@ -462,7 +463,7 @@ void MMFilesEdgeIndex::batchInsert(arangodb::Transaction* trx,
 
   // _from
   for (auto const& it : documents) {
-    VPackSlice value(Transaction::extractFromFromDocument(it.second));
+    VPackSlice value(transaction::Methods::extractFromFromDocument(it.second));
     fromElements->emplace_back(MMFilesSimpleIndexElement(
         it.first, value,
         static_cast<uint32_t>(value.begin() - it.second.begin())));
@@ -470,7 +471,7 @@ void MMFilesEdgeIndex::batchInsert(arangodb::Transaction* trx,
 
   // _to
   for (auto const& it : documents) {
-    VPackSlice value(Transaction::extractToFromDocument(it.second));
+    VPackSlice value(transaction::Methods::extractToFromDocument(it.second));
     toElements->emplace_back(MMFilesSimpleIndexElement(
         it.first, value,
         static_cast<uint32_t>(value.begin() - it.second.begin())));
@@ -489,7 +490,7 @@ int MMFilesEdgeIndex::unload() {
 }
 
 /// @brief provides a size hint for the edge index
-int MMFilesEdgeIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
+int MMFilesEdgeIndex::sizeHint(transaction::Methods* trx, size_t size) {
   // we assume this is called when setting up the index and the index
   // is still empty
   TRI_ASSERT(_edgesFrom->size() == 0);
@@ -525,7 +526,7 @@ bool MMFilesEdgeIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
-    arangodb::Transaction* trx, 
+    transaction::Methods* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
@@ -609,12 +610,12 @@ void MMFilesEdgeIndex::expandInSearchValues(VPackSlice const slice,
 
 /// @brief create the iterator
 IndexIterator* MMFilesEdgeIndex::createEqIterator(
-    arangodb::Transaction* trx, 
+    transaction::Methods* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
   keys->openArray();
 
@@ -632,12 +633,12 @@ IndexIterator* MMFilesEdgeIndex::createEqIterator(
 
 /// @brief create the iterator
 IndexIterator* MMFilesEdgeIndex::createInIterator(
-    arangodb::Transaction* trx, 
+    transaction::Methods* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
   keys->openArray();
 
@@ -680,14 +681,14 @@ void MMFilesEdgeIndex::handleValNode(VPackBuilder* keys,
 
 MMFilesSimpleIndexElement MMFilesEdgeIndex::buildFromElement(TRI_voc_rid_t revisionId, VPackSlice const& doc) const {
   TRI_ASSERT(doc.isObject());
-  VPackSlice value(Transaction::extractFromFromDocument(doc));
+  VPackSlice value(transaction::Methods::extractFromFromDocument(doc));
   TRI_ASSERT(value.isString());
   return MMFilesSimpleIndexElement(revisionId, value, static_cast<uint32_t>(value.begin() - doc.begin()));
 }
 
 MMFilesSimpleIndexElement MMFilesEdgeIndex::buildToElement(TRI_voc_rid_t revisionId, VPackSlice const& doc) const {
   TRI_ASSERT(doc.isObject());
-  VPackSlice value(Transaction::extractToFromDocument(doc));
+  VPackSlice value(transaction::Methods::extractToFromDocument(doc));
   TRI_ASSERT(value.isString());
   return MMFilesSimpleIndexElement(revisionId, value, static_cast<uint32_t>(value.begin() - doc.begin()));
 }

@@ -32,7 +32,8 @@
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPathBasedIndex.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -51,7 +52,7 @@ class MMFilesHashIndex;
 /// @brief Class to build Slice lookups out of AST Conditions
 class LookupBuilder {
  private:
-  TransactionBuilderLeaser _builder;
+  transaction::BuilderLeaser _builder;
   bool _usesIn;
   bool _isEmpty;
   size_t _coveredFields;
@@ -60,11 +61,11 @@ class LookupBuilder {
   std::unordered_map<
       size_t, std::pair<size_t, std::vector<arangodb::velocypack::Slice>>>
       _inPosition;
-  TransactionBuilderLeaser _inStorage;
+  transaction::BuilderLeaser _inStorage;
 
  public:
   LookupBuilder(
-      arangodb::Transaction*, arangodb::aql::AstNode const*,
+      transaction::Methods*, arangodb::aql::AstNode const*,
       arangodb::aql::Variable const*,
       std::vector<std::vector<arangodb::basics::AttributeName>> const&);
 
@@ -83,7 +84,7 @@ class MMFilesHashIndexIterator final : public IndexIterator {
  public:
   
 /// @brief Construct an MMFilesHashIndexIterator based on Ast Conditions
-  MMFilesHashIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, 
+  MMFilesHashIndexIterator(LogicalCollection* collection, transaction::Methods* trx, 
                     ManagedDocumentResult* mmdr,
                     MMFilesHashIndex const* index,
                     arangodb::aql::AstNode const*,
@@ -109,7 +110,7 @@ class MMFilesHashIndexIteratorVPack final : public IndexIterator {
   
 /// @brief Construct an MMFilesHashIndexIterator based on VelocyPack
   MMFilesHashIndexIteratorVPack(LogicalCollection* collection,
-      arangodb::Transaction* trx, 
+      transaction::Methods* trx, 
       ManagedDocumentResult* mmdr,
       MMFilesHashIndex const* index,
       std::unique_ptr<arangodb::velocypack::Builder>& searchValues);
@@ -163,20 +164,20 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   bool matchesDefinition(VPackSlice const& info) const override;
 
-  int insert(arangodb::Transaction*, TRI_voc_rid_t,
+  int insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(arangodb::Transaction*, TRI_voc_rid_t,
+  int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
   void batchInsert(
-      arangodb::Transaction*,
+      transaction::Methods*,
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
       arangodb::basics::LocalTaskQueue* queue = nullptr) override;
 
   int unload() override;
 
-  int sizeHint(arangodb::Transaction*, size_t) override;
+  int sizeHint(transaction::Methods*, size_t) override;
 
   bool hasBatchInsert() const override { return true; }
 
@@ -184,7 +185,7 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(arangodb::Transaction*,
+  IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
@@ -195,28 +196,28 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
  private:
   /// @brief locates entries in the hash index given a velocypack slice
-  int lookup(arangodb::Transaction*, arangodb::velocypack::Slice,
+  int lookup(transaction::Methods*, arangodb::velocypack::Slice,
              std::vector<MMFilesHashIndexElement*>&) const;
 
-  int insertUnique(arangodb::Transaction*, TRI_voc_rid_t,
+  int insertUnique(transaction::Methods*, TRI_voc_rid_t,
                    arangodb::velocypack::Slice const&, bool isRollback);
 
   void batchInsertUnique(
-      arangodb::Transaction*,
+      transaction::Methods*,
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
       arangodb::basics::LocalTaskQueue* queue = nullptr);
 
-  int insertMulti(arangodb::Transaction*, TRI_voc_rid_t,
+  int insertMulti(transaction::Methods*, TRI_voc_rid_t,
                   arangodb::velocypack::Slice const&, bool isRollback);
 
   void batchInsertMulti(
-      arangodb::Transaction*,
+      transaction::Methods*,
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
       arangodb::basics::LocalTaskQueue* queue = nullptr);
 
-  int removeUniqueElement(arangodb::Transaction*, MMFilesHashIndexElement*, bool);
+  int removeUniqueElement(transaction::Methods*, MMFilesHashIndexElement*, bool);
 
-  int removeMultiElement(arangodb::Transaction*, MMFilesHashIndexElement*, bool);
+  int removeMultiElement(transaction::Methods*, MMFilesHashIndexElement*, bool);
 
   bool accessFitsIndex(arangodb::aql::AstNode const* access,
                        arangodb::aql::AstNode const* other,

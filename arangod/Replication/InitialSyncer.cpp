@@ -473,7 +473,7 @@ bool InitialSyncer::checkAborted() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::applyCollectionDump(
-    arangodb::Transaction& trx, std::string const& collectionName,
+    transaction::Methods& trx, std::string const& collectionName,
     SimpleHttpResult* response, uint64_t& markersProcessed,
     std::string& errorMsg) {
   std::string const invalidMsg = "received invalid JSON data for collection " +
@@ -1639,7 +1639,7 @@ int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,
           "Database")
           ->forceSyncProperties();
 
-  return guard.collection()->update(slice, doSync);
+  return guard.collection()->updateProperties(slice, doSync);
 }
  
 ////////////////////////////////////////////////////////////////////////////////

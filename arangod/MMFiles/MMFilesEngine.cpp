@@ -29,6 +29,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/encoding.h"
 #include "Basics/files.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
@@ -137,7 +138,7 @@ MMFilesEngine::~MMFilesEngine() {
 // perform a physical deletion of the database
 void MMFilesEngine::dropDatabase(Database* database, int& status) {
   // delete persistent indexes for this database
-  RocksDBFeature::dropDatabase(database->id());
+  PersistentIndexFeature::dropDatabase(database->id());
 
   // To shutdown the database (which destroys all LogicalCollection
   // objects of all collections) we need to make sure that the
@@ -373,7 +374,7 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
       // delete persistent indexes for this database
       TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(
           basics::StringUtils::uint64(idSlice.copyString()));
-      RocksDBFeature::dropDatabase(id);
+      PersistentIndexFeature::dropDatabase(id);
 
       dropDatabaseDirectory(directory);
       continue;
@@ -721,7 +722,7 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalColl
   unregisterCollectionPath(vocbase->id(), collection->cid());
   
   // delete persistent indexes    
-  RocksDBFeature::dropCollection(vocbase->id(), collection->cid());
+  PersistentIndexFeature::dropCollection(vocbase->id(), collection->cid());
 
   // rename collection directory
   if (collection->path().empty()) {
@@ -1870,7 +1871,7 @@ bool MMFilesEngine::checkDatafileHeader(MMFilesDatafile* datafile, std::string c
 
   // skip the datafile header
   ptr +=
-      MMFilesDatafileHelper::AlignedSize<size_t>(sizeof(TRI_df_header_marker_t));
+      encoding::alignedSize<size_t>(sizeof(TRI_df_header_marker_t));
   TRI_col_header_marker_t const* cm =
       reinterpret_cast<TRI_col_header_marker_t const*>(ptr);
 
@@ -2199,7 +2200,7 @@ char* MMFilesEngine::nextFreeMarkerPosition(
     TRI_df_marker_type_t type, TRI_voc_size_t size, MMFilesCollectorCache* cache) {
   
   // align the specified size
-  size = MMFilesDatafileHelper::AlignedSize<TRI_voc_size_t>(size);
+  size = encoding::alignedSize<TRI_voc_size_t>(size);
 
   char* dst = nullptr; // will be modified by reserveJournalSpace()
   MMFilesDatafile* datafile = nullptr; // will be modified by reserveJournalSpace()

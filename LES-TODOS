@@ -94,6 +94,8 @@ MMFiles are known to the following files:
 - Implement new IndexIterator API nextExtra(callback, limit)
   - Geo
 
+- OperationOptions
+  - revoryMarker
 
 Questions
 ---------

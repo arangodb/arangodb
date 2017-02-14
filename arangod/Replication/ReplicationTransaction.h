@@ -21,23 +21,23 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_REPLICATION_TRANSACTION_H
-#define ARANGOD_UTILS_REPLICATION_TRANSACTION_H 1
+#ifndef ARANGOD_REPLICATION_REPLICATION_TRANSACTION_H
+#define ARANGOD_REPLICATION_REPLICATION_TRANSACTION_H 1
 
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class ReplicationTransaction : public Transaction {
+class ReplicationTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction
   ReplicationTransaction(TRI_vocbase_t* vocbase)
-      : Transaction(StandaloneTransactionContext::Create(vocbase)) {
+      : transaction::Methods(StandaloneTransactionContext::Create(vocbase)) {
 
     _vocbase->use();
   }
@@ -74,6 +74,7 @@ class ReplicationTransaction : public Transaction {
     return trxCollection;
   }
 };
+
 }
 
 #endif

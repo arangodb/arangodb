@@ -22,11 +22,13 @@
 
 #include "EdgeCollectionInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 
+using namespace arangodb;
 using namespace arangodb::traverser;
 
-EdgeCollectionInfo::EdgeCollectionInfo(arangodb::Transaction* trx,
+EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
                                        std::string const& collectionName,
                                        TRI_edge_direction_e const direction,
                                        std::string const& weightAttribute,

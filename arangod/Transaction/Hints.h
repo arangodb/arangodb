@@ -21,13 +21,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_TRANSACTION_HINTS_H
-#define ARANGOD_UTILS_TRANSACTION_HINTS_H 1
+#ifndef ARANGOD_TRANSACTION_HINTS_H
+#define ARANGOD_TRANSACTION_HINTS_H 1
 
 #include "Basics/Common.h"
 
 namespace arangodb {
-class TransactionHints {
+namespace transaction {
+
+class Hints {
  public:
   typedef uint32_t ValueType;
   
@@ -46,9 +48,9 @@ class TransactionHints {
     RECOVERY = 512
   };
 
-  TransactionHints() : _value(0) {}
-  explicit TransactionHints(Hint value) : _value(static_cast<ValueType>(value)) {}
-  explicit TransactionHints(ValueType value) : _value(value) {}
+  Hints() : _value(0) {}
+  explicit Hints(Hint value) : _value(static_cast<ValueType>(value)) {}
+  explicit Hints(ValueType value) : _value(value) {}
 
   inline bool has(ValueType value) const noexcept {
     return (_value & value) != 0;
@@ -78,6 +80,7 @@ class TransactionHints {
   ValueType _value;
 };
 
+}
 }
 
 #endif

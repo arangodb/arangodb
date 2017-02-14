@@ -21,35 +21,21 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_TRANSACTION_H
-#define ARANGOD_UTILS_TRANSACTION_H 1
+#ifndef ARANGOD_TRANSACTION_METHODS_H
+#define ARANGOD_TRANSACTION_METHODS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
 #include "Utils/OperationResult.h"
-#include "Utils/TransactionHints.h"
+#include "Transaction/Hints.h"
+#include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-#define LOG_TRX(trx, level)  \
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->_id << "." << level << " (" << Transaction::statusString(trx->_status) << "): " 
-
-#else
-
-#define LOG_TRX(...) while (0) LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-
-#endif
-
-namespace rocksdb {
-class Transaction;
-}
 
 namespace arangodb {
 
@@ -89,44 +75,19 @@ class TransactionContext;
 class TransactionState;
 class TransactionCollection;
 
-class Transaction {
+namespace transaction {
+
+class Methods {
   friend class traverser::BaseTraverserEngine;
 
  public:
-
-  /// @brief transaction statuses
-  enum class Status : uint32_t {
-    UNDEFINED = 0,
-    CREATED = 1,
-    RUNNING = 2,
-    COMMITTED = 3,
-    ABORTED = 4
-  };
-
-  /// @brief return the status of the transaction as a string
-  static char const* statusString(Status status) {
-    switch (status) {
-      case Transaction::Status::UNDEFINED:
-        return "undefined";
-      case Transaction::Status::CREATED:
-        return "created";
-      case Transaction::Status::RUNNING:
-        return "running";
-      case Transaction::Status::COMMITTED:
-        return "committed";
-      case Transaction::Status::ABORTED:
-        return "aborted";
-    }
-
-    TRI_ASSERT(false);
-    return "unknown";
-  }
 
   /// @brief time (in seconds) that is spent waiting for a lock
   static constexpr double DefaultLockTimeout = 30.0; 
 
   class IndexHandle {
-    friend class Transaction;
+    friend class transaction::Methods;
+    
     std::shared_ptr<arangodb::Index> _index;
    public:
     IndexHandle() = default;
@@ -151,21 +112,21 @@ class Transaction {
   
   double const TRX_FOLLOWER_TIMEOUT = 3.0;
 
-  /// @brief Transaction
+  /// @brief transaction::Methods
  private:
-  Transaction() = delete;
-  Transaction(Transaction const&) = delete;
-  Transaction& operator=(Transaction const&) = delete;
+  Methods() = delete;
+  Methods(Methods const&) = delete;
+  Methods& operator=(Methods const&) = delete;
 
  protected:
 
   /// @brief create the transaction
-  explicit Transaction(std::shared_ptr<TransactionContext> transactionContext);
+  explicit Methods(std::shared_ptr<TransactionContext> transactionContext);
 
  public:
 
   /// @brief destroy the transaction
-  virtual ~Transaction();
+  virtual ~Methods();
 
  public:
 
@@ -200,14 +161,11 @@ class Transaction {
     return _transactionContextPtr;
   }
   
-  /// @brief get (or create) a rocksdb WriteTransaction
-  rocksdb::Transaction* rocksTransaction();
-
   /// @brief add a transaction hint
-  void addHint(TransactionHints::Hint hint, bool passthrough);
+  void addHint(transaction::Hints::Hint hint, bool passthrough);
 
   /// @brief remove a transaction hint
-  void removeHint(TransactionHints::Hint hint, bool passthrough);
+  void removeHint(transaction::Hints::Hint hint, bool passthrough);
 
   /// @brief return the registered error data
   std::string const getErrorData() const { return _errorData; }
@@ -470,7 +428,7 @@ class Transaction {
   virtual int lockCollections();
 
   /// @brief Clone this transaction. Only works for selected sub-classes
-  virtual Transaction* clone() const;
+  virtual transaction::Methods* clone() const;
   
  private:
   
@@ -619,7 +577,7 @@ class Transaction {
   bool sortOrs(arangodb::aql::Ast* ast,
                arangodb::aql::AstNode* root,
                arangodb::aql::Variable const* variable,
-               std::vector<arangodb::Transaction::IndexHandle>& usedIndexes);
+               std::vector<transaction::Methods::IndexHandle>& usedIndexes);
 
   /// @brief findIndexHandleForAndNode
   std::pair<bool, bool> findIndexHandleForAndNode(
@@ -627,7 +585,7 @@ class Transaction {
       arangodb::aql::Variable const* reference,
       arangodb::aql::SortCondition const* sortCondition,
       size_t itemsInCollection,
-      std::vector<Transaction::IndexHandle>& usedIndexes,
+      std::vector<transaction::Methods::IndexHandle>& usedIndexes,
       arangodb::aql::AstNode*& specializedCondition,
       bool& isSparse) const;
 
@@ -636,7 +594,7 @@ class Transaction {
                                  arangodb::aql::AstNode*& node,
                                  arangodb::aql::Variable const* reference,
                                  size_t itemsInCollection,
-                                 Transaction::IndexHandle& usedIndex) const;
+                                 transaction::Methods::IndexHandle& usedIndex) const;
 
   /// @brief Get one index by id for a collection name, coordinator case
   std::shared_ptr<arangodb::Index> indexForCollectionCoordinator(
@@ -693,7 +651,7 @@ class Transaction {
   std::string _errorData;
 
   /// @brief transaction hints
-  TransactionHints _hints;
+  transaction::Hints _hints;
 
   /// @brief timeout for lock acquisition
   double _timeout;
@@ -741,37 +699,7 @@ class Transaction {
   static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
 };
 
-class StringBufferLeaser {
- public:
-  explicit StringBufferLeaser(arangodb::Transaction*); 
-  explicit StringBufferLeaser(arangodb::TransactionContext*); 
-  ~StringBufferLeaser();
-  arangodb::basics::StringBuffer* stringBuffer() const { return _stringBuffer; }
-  arangodb::basics::StringBuffer* operator->() const { return _stringBuffer; }
-  arangodb::basics::StringBuffer* get() const { return _stringBuffer; }
- private:
-  arangodb::TransactionContext* _transactionContext;
-  arangodb::basics::StringBuffer* _stringBuffer;
-};
-
-class TransactionBuilderLeaser {
- public:
-  explicit TransactionBuilderLeaser(arangodb::Transaction*); 
-  explicit TransactionBuilderLeaser(arangodb::TransactionContext*); 
-  ~TransactionBuilderLeaser();
-  inline arangodb::velocypack::Builder* builder() const { return _builder; }
-  inline arangodb::velocypack::Builder* operator->() const { return _builder; }
-  inline arangodb::velocypack::Builder* get() const { return _builder; }
-  inline arangodb::velocypack::Builder* steal() { 
-    arangodb::velocypack::Builder* res = _builder;
-    _builder = nullptr;
-    return res;
-  }
- private:
-  arangodb::TransactionContext* _transactionContext;
-  arangodb::velocypack::Builder* _builder;
-};
-
+}
 }
 
 #endif

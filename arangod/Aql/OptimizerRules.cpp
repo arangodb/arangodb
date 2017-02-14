@@ -44,7 +44,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Cluster/ClusterInfo.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 #include "VocBase/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include <boost/optional.hpp>
@@ -1773,7 +1773,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       // now check if any of the collection's indexes covers it
 
       Variable const* outVariable = enumerateCollectionNode->outVariable();
-      std::vector<arangodb::Transaction::IndexHandle> usedIndexes;
+      std::vector<transaction::Methods::IndexHandle> usedIndexes;
       auto trx = _plan->getAst()->query()->trx();
       size_t coveredAttributes = 0;
       auto resultPair = trx->getIndexForSortCondition(
@@ -1829,7 +1829,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(outVariable != nullptr);
 
     auto index = indexes[0];
-    arangodb::Transaction* trx = indexNode->trx();
+    transaction::Methods* trx = indexNode->trx();
     bool isSorted = false;
     bool isSparse = false;
     std::vector<std::vector<arangodb::basics::AttributeName>> fields =
@@ -4395,7 +4395,7 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, MMFilesGeoIndexInfo& f
   auto inode = new IndexNode(
           plan, plan->nextId(), first.collectionNode->vocbase(),
           first.collectionNode->collection(), first.collectionNode->outVariable(),
-          std::vector<Transaction::IndexHandle>{Transaction::IndexHandle{first.index}},
+          std::vector<transaction::Methods::IndexHandle>{transaction::Methods::IndexHandle{first.index}},
           condition.get(), false);
   plan->registerNode(inode);
   condition.release();

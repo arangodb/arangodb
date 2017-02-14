@@ -21,29 +21,43 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_MMFILES_AQL_FUNCTIONS_H
-#define ARANGOD_MMFILES_MMFILES_AQL_FUNCTIONS_H 1
+#ifndef ARANGOD_TRANSACTION_STATUS_H
+#define ARANGOD_TRANSACTION_STATUS_H 1
 
-#include "Aql/Functions.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
-namespace aql {
-struct Function;
+namespace transaction {
 
-struct MMFilesAqlFunctions : public Functions {
-  static AqlValue Fulltext(arangodb::aql::Query*, transaction::Methods*,
-                           VPackFunctionParameters const&);
-
-   static AqlValue Near(arangodb::aql::Query*, transaction::Methods*,
-                        VPackFunctionParameters const&);
-
-   static AqlValue Within(arangodb::aql::Query*, transaction::Methods*,
-                          VPackFunctionParameters const&);
-
-  static void RegisterFunctions();
+/// @brief transaction statuses
+enum class Status : uint32_t {
+  UNDEFINED = 0,
+  CREATED = 1,
+  RUNNING = 2,
+  COMMITTED = 3,
+  ABORTED = 4
 };
-} // namespace aql
-} // namespace arangodb
 
+/// @brief return the status of the transaction as a string
+static inline char const* statusString(Status status) {
+  switch (status) {
+    case transaction::Status::UNDEFINED:
+      return "undefined";
+    case transaction::Status::CREATED:
+      return "created";
+    case transaction::Status::RUNNING:
+      return "running";
+    case transaction::Status::COMMITTED:
+      return "committed";
+    case transaction::Status::ABORTED:
+      return "aborted";
+  }
+
+  TRI_ASSERT(false);
+  return "unknown";
+}
+
+}
+}
 
 #endif

@@ -27,6 +27,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Aql/AqlTransaction.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
@@ -42,8 +43,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
-#include "Utils/Transaction.h"
-#include "Utils/AqlTransaction.h"
+#include "Transaction/Methods.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
@@ -485,7 +485,7 @@ QueryResult Query::prepare(QueryRegistry* registry) {
     _isModificationQuery = parser->isModificationQuery();
 
     // create the transaction object, but do not start it yet
-    arangodb::AqlTransaction* trx = new arangodb::AqlTransaction(
+    AqlTransaction* trx = new AqlTransaction(
         createTransactionContext(), _collections.collections(),
         _part == PART_MAIN);
     _trx = trx;
@@ -1008,8 +1008,8 @@ QueryResult Query::explain() {
     enterState(LOADING_COLLECTIONS);
 
     // create the transaction object, but do not start it yet
-    _trx = new arangodb::AqlTransaction(createTransactionContext(),
-                                        _collections.collections(), true);
+    _trx = new AqlTransaction(createTransactionContext(),
+                              _collections.collections(), true);
 
     // we have an AST
     int res = _trx->begin();
@@ -1423,7 +1423,7 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
 }
 
 /// @brief create a TransactionContext
-std::shared_ptr<arangodb::TransactionContext>
+std::shared_ptr<TransactionContext>
 Query::createTransactionContext() {
   if (_contextOwnedByExterior) {
     // we can use v8

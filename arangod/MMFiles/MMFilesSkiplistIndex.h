@@ -30,7 +30,8 @@
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPathBasedIndex.h"
 #include "MMFiles/MMFilesSkiplist.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -43,7 +44,10 @@ struct Variable;
 }
 
 class MMFilesSkiplistIndex;
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 
 
 /// @brief Abstract Builder for lookup values in skiplist index
@@ -54,14 +58,14 @@ class BaseSkiplistLookupBuilder {
   bool _includeLower;
   bool _includeUpper;
 
-  TransactionBuilderLeaser _lowerBuilder;
+  transaction::BuilderLeaser _lowerBuilder;
   arangodb::velocypack::Slice _lowerSlice;
 
-  TransactionBuilderLeaser _upperBuilder;
+  transaction::BuilderLeaser _upperBuilder;
   arangodb::velocypack::Slice _upperSlice;
 
  public:
-  explicit BaseSkiplistLookupBuilder(Transaction* trx) :
+  explicit BaseSkiplistLookupBuilder(transaction::Methods* trx) :
     _lowerBuilder(trx), _upperBuilder(trx)
   {
     _isEquality = true;
@@ -109,7 +113,7 @@ class SkiplistLookupBuilder : public BaseSkiplistLookupBuilder {
 
   public:
    SkiplistLookupBuilder(
-       Transaction* trx,
+       transaction::Methods* trx,
        std::vector<std::vector<arangodb::aql::AstNode const*>>&,
        arangodb::aql::Variable const*, bool);
 
@@ -133,7 +137,7 @@ class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
       PosStruct(size_t f, size_t c, size_t m) : field(f), current(c), _max(m) {}
     };
 
-    TransactionBuilderLeaser _dataBuilder;
+    transaction::BuilderLeaser _dataBuilder;
     /// @brief keeps track of the positions in the in-lookup
     /// values. (field, inPosition, maxPosition)
     std::list<PosStruct> _inPositions;
@@ -142,7 +146,7 @@ class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
 
   public:
    SkiplistInLookupBuilder(
-       Transaction* trx,
+       transaction::Methods* trx,
        std::vector<std::vector<arangodb::aql::AstNode const*>>&,
        arangodb::aql::Variable const*, bool);
 
@@ -192,7 +196,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
                     MMFilesSkiplistCmpType)> _CmpElmElm;
 
  public:
-  MMFilesSkiplistIterator(LogicalCollection* collection, arangodb::Transaction* trx,
+  MMFilesSkiplistIterator(LogicalCollection* collection, transaction::Methods* trx,
       ManagedDocumentResult* mmdr,
       arangodb::MMFilesSkiplistIndex const* index,
       TRI_Skiplist const* skiplist, size_t numPaths,
@@ -291,9 +295,9 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
   void toVelocyPack(VPackBuilder&, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  int insert(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int insert(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+  int remove(transaction::Methods*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
   
   int unload() override;
 
@@ -305,7 +309,7 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
                              arangodb::aql::Variable const*, size_t,
                              double&, size_t&) const override;
 
-  IndexIterator* iteratorForCondition(arangodb::Transaction*,
+  IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
