@@ -51,7 +51,7 @@ v3.2.alpha1 (2017-02-05)
 * more detailed stacktraces in Foxx apps
 
 
-v3.1.11 (XXXX-XX-XX)
+v3.1.11 (2017-02-13)
 --------------------
 
 * ui: optimized smart graph creation usability
@@ -71,6 +71,21 @@ v3.1.11 (XXXX-XX-XX)
   leading to speedup of some join queries
 
 * supervision deals with demised coordinators correctly again
+
+* implement a timeout in TraverserEngineRegistry
+
+* agent communication reduced in large batches of append entries RPCs
+
+* inception no longer estimates RAFT timings
+
+* compaction in agents has been moved to a separate thread
+
+* replicated logs hold local timestamps
+
+* supervision jobs failed leader and failed follower revisited for
+  function in precarious stability situations
+
+* fixed bug in random number generator for 64bit int
 
 
 v3.1.10 (2017-02-02)

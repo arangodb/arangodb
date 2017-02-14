@@ -239,7 +239,7 @@ void ExportFeature::start() {
     }
   }
 
-  std::cout << "Processed " <<  _collections.size() << " collection(s), wrote " << exportedSize << " Byte(s), " << _httpRequestsDone << " HTTP request(s)" << std::endl;
+  std::cout << "Processed " <<  _collections.size() << " collection(s), wrote " << exportedSize << " byte(s), " << _httpRequestsDone << " HTTP request(s)" << std::endl;
 
   *_result = ret;
 }
@@ -310,13 +310,14 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
 
 void ExportFeature::writeCollectionBatch(int fd, VPackArrayIterator it, std::string const& fileName) {
   std::string line;
+  line.reserve(1024);
 
   for (auto const& doc : it) {
     line.clear();
 
     if (_firstLine && _typeExport == "json") {
       _firstLine = false;
-    } else if(!_firstLine && _typeExport == "json") {
+    } else if (!_firstLine && _typeExport == "json") {
       line.push_back(',');
     }
 
@@ -326,11 +327,11 @@ void ExportFeature::writeCollectionBatch(int fd, VPackArrayIterator it, std::str
   }
 }
 
-void ExportFeature::writeToFile(int fd, std::string& line, std::string const& fileName) {
-    if (!TRI_WritePointer(fd, line.c_str(), line.size())) {
-      std::string errorMsg = "cannot write to file '" + fileName + "'";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
-    }
+void ExportFeature::writeToFile(int fd, std::string const& line, std::string const& fileName) {
+  if (!TRI_WritePointer(fd, line.c_str(), line.size())) {
+    std::string errorMsg = "cannot write to file '" + fileName + "'";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
+  }
 }
 
 std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClient, std::string const& url, rest::RequestType requestType, std::string postBody) {
@@ -394,7 +395,7 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
     if (_progress) {
       std::cout << "# Export graph '" << _graphName << "'" << std::endl;
     }
-    std::string const url = "/_api/gharial/" + _graphName;
+    std::string const url = "/_api/gharial/" + StringUtils::urlEncode(_graphName);
     std::shared_ptr<VPackBuilder> parsedBody = httpCall(httpClient, url, rest::RequestType::GET);
     VPackSlice body = parsedBody->slice();
 
@@ -468,7 +469,7 @@ directed="1">
     writeGraphBatch(fd, VPackArrayIterator(body.get("result")), fileName);
 
     while (body.hasKey("id")) {
-      std::string const url = "/_api/cursor/"+body.get("id").copyString();
+      std::string const url = "/_api/cursor/" + body.get("id").copyString();
       parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
       body = parsedBody->slice();
 
@@ -532,7 +533,7 @@ void ExportFeature::writeGraphBatch(int fd, VPackArrayIterator it, std::string c
   }
 }
 
-void ExportFeature::xgmmlWriteOneAtt(int fd, std::string const& fileName, VPackSlice const& slice, std::string& name, int deep) {
+void ExportFeature::xgmmlWriteOneAtt(int fd, std::string const& fileName, VPackSlice const& slice, std::string const& name, int deep) {
   std::string value, type, xmlTag;
 
   if (deep == 0 &&
@@ -566,17 +567,17 @@ void ExportFeature::xgmmlWriteOneAtt(int fd, std::string const& fileName, VPackS
     }
 
   } else {
-    xmlTag = "  <att name=\"" + name + "\" type=\"string\" value=\"" + encode_char_entities(slice.toString()) + "\"/>\n";
+    xmlTag = "  <att name=\"" + encode_char_entities(name) + "\" type=\"string\" value=\"" + encode_char_entities(slice.toString()) + "\"/>\n";
     writeToFile(fd, xmlTag, fileName);
     return;
   }
 
   if (!type.empty()) {
-    xmlTag = "  <att name=\"" + name + "\" type=\"" + type + "\" value=\"" + encode_char_entities(value) + "\"/>\n";
+    xmlTag = "  <att name=\"" + encode_char_entities(name) + "\" type=\"" + type + "\" value=\"" + encode_char_entities(value) + "\"/>\n";
     writeToFile(fd, xmlTag, fileName);
 
   } else if (slice.isArray()) {
-    xmlTag = "  <att name=\"" + name + "\" type=\"list\">\n";
+    xmlTag = "  <att name=\"" + encode_char_entities(name) + "\" type=\"list\">\n";
     writeToFile(fd, xmlTag, fileName);
 
     for (auto const& val : VPackArrayIterator(slice)) {
@@ -587,12 +588,11 @@ void ExportFeature::xgmmlWriteOneAtt(int fd, std::string const& fileName, VPackS
     writeToFile(fd, xmlTag, fileName);
 
   } else if (slice.isObject()) {
-    xmlTag = "  <att name=\"" + name + "\" type=\"list\">\n";
+    xmlTag = "  <att name=\"" + encode_char_entities(name) + "\" type=\"list\">\n";
     writeToFile(fd, xmlTag, fileName);
 
     for (auto const& it : VPackObjectIterator(slice)) {
-      std::string name = encode_char_entities(it.key.copyString());
-      xgmmlWriteOneAtt(fd, fileName, it.value, name, deep + 1);
+      xgmmlWriteOneAtt(fd, fileName, it.value, it.key.copyString(), deep + 1);
     }
 
     xmlTag = "  </att>\n";

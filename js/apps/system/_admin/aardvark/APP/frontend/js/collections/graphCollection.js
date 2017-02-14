@@ -78,6 +78,7 @@
     },
 
     parse: function (res) {
+      console.log(res);
       if (!res.error) {
         return res.graphs;
       }
