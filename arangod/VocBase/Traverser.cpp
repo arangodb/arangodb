@@ -32,6 +32,8 @@
 #include <velocypack/Iterator.h> 
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
+
 using Traverser = arangodb::traverser::Traverser;
 /// @brief Class Shortest Path
 

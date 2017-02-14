@@ -25,6 +25,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Variable.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 size_t FixedVarExpressionContext::numRegisters() const {

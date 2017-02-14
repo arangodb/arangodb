@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Methods.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief create the accessor
