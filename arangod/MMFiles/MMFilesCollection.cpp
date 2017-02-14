@@ -1558,7 +1558,7 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
     if (newSlice.isObject()) {
       expectedRev = TRI_ExtractRevisionId(newSlice);
     }
-    int res = _logicalCollection->checkRevision(trx, expectedRev, prevRev);
+    int res = checkRevision(trx, expectedRev, prevRev);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -1616,9 +1616,8 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
       result.clear();
     }
 
-    res = _logicalCollection->updateDocument(trx, oldRevisionId, oldDoc,
-                                             revisionId, newDoc, operation,
-                                             marker, options.waitForSync);
+    res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, newDoc,
+                         operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -1690,7 +1689,7 @@ int MMFilesCollection::replace(
     if (newSlice.isObject()) {
       expectedRev = TRI_ExtractRevisionId(newSlice);
     }
-    int res = _logicalCollection->checkRevision(trx, expectedRev, prevRev);
+    int res = checkRevision(trx, expectedRev, prevRev);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -1739,9 +1738,8 @@ int MMFilesCollection::replace(
       result.clear();
     }
 
-    res = _logicalCollection->updateDocument(trx, oldRevisionId, oldDoc,
-                                             revisionId, newDoc, operation,
-                                             marker, options.waitForSync);
+    res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, newDoc,
+                         operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -1836,8 +1834,7 @@ int MMFilesCollection::remove(arangodb::transaction::Methods* trx, VPackSlice co
   // Check old revision:
   if (!options.ignoreRevs && slice.isObject()) {
     TRI_voc_rid_t expectedRevisionId = TRI_ExtractRevisionId(slice);
-    int res = _logicalCollection->checkRevision(trx, expectedRevisionId,
-                                                oldRevisionId);
+    int res = checkRevision(trx, expectedRevisionId, oldRevisionId);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -2016,6 +2013,72 @@ int MMFilesCollection::lookupDocument(transaction::Methods* trx,
   }
 
   return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+}
+
+/// @brief updates an existing document, low level worker
+/// the caller must make sure the write lock on the collection is held
+int MMFilesCollection::updateDocument(
+    transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
+    VPackSlice const& oldDoc, TRI_voc_rid_t newRevisionId,
+    VPackSlice const& newDoc, MMFilesDocumentOperation& operation,
+    MMFilesWalMarker const* marker, bool& waitForSync) {
+  // remove old document from secondary indexes
+  // (it will stay in the primary index as the key won't change)
+  int res = deleteSecondaryIndexes(trx, oldRevisionId, oldDoc, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // re-enter the document in case of failure, ignore errors during rollback
+    insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
+    return res;
+  }
+
+  // insert new document into secondary indexes
+  res = insertSecondaryIndexes(trx, newRevisionId, newDoc, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // rollback
+    deleteSecondaryIndexes(trx, newRevisionId, newDoc, true);
+    insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
+    return res;
+  }
+
+  // update the index element (primary index only - other index have been
+  // adjusted)
+  VPackSlice keySlice(transaction::Methods::extractKeyFromDocument(newDoc));
+  MMFilesSimpleIndexElement* element =
+      _logicalCollection->primaryIndex()->lookupKeyRef(trx, keySlice);
+  if (element != nullptr && element->revisionId() != 0) {
+    element->updateRevisionId(
+        newRevisionId,
+        static_cast<uint32_t>(keySlice.begin() - newDoc.begin()));
+  }
+
+  operation.indexed();
+   
+  if (oldRevisionId != newRevisionId) { 
+    try {
+      removeRevision(oldRevisionId, true);
+    } catch (...) {
+    }
+  }
+  
+  TRI_IF_FAILURE("UpdateDocumentNoOperation") { return TRI_ERROR_DEBUG; }
+
+  TRI_IF_FAILURE("UpdateDocumentNoOperationExcept") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  return static_cast<MMFilesTransactionState*>(trx->state())->addOperation(newRevisionId, operation, marker, waitForSync);
+}
+
+/// @brief creates a new entry in the primary index
+int LogicalCollection::insertPrimaryIndex(transaction::Methods* trx,
+                                          TRI_voc_rid_t revisionId,
+                                          VPackSlice const& doc) {
+  TRI_IF_FAILURE("InsertPrimaryIndex") { return TRI_ERROR_DEBUG; }
+
+  // insert into primary index
+  return primaryIndex()->insertKey(trx, revisionId, doc);
 }
 
 

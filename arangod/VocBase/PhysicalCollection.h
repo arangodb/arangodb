@@ -159,7 +159,7 @@ class PhysicalCollection {
                              velocypack::Slice const& newValue,
                              bool isEdgeCollection, std::string const& rev,
                              bool mergeObjects, bool keepNull,
-                             velocypack::Builder& builder);
+                             velocypack::Builder& builder) const;
 
   /// @brief new object for replace
   void newObjectForReplace(transaction::Methods* trx,
@@ -168,8 +168,11 @@ class PhysicalCollection {
                            velocypack::Slice const& fromSlice,
                            velocypack::Slice const& toSlice,
                            bool isEdgeCollection, std::string const& rev,
-                           velocypack::Builder& builder);
- 
+                           velocypack::Builder& builder) const;
+
+  int checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
+                    TRI_voc_rid_t found) const;
+
  protected:
   LogicalCollection* _logicalCollection;
 };

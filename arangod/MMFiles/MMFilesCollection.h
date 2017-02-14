@@ -308,6 +308,13 @@ class MMFilesCollection final : public PhysicalCollection {
     int lookupDocument(transaction::Methods*, velocypack::Slice const,
                        ManagedDocumentResult& result);
 
+    int updateDocument(transaction::Methods*, TRI_voc_rid_t oldRevisionId,
+                       velocypack::Slice const& oldDoc,
+                       TRI_voc_rid_t newRevisionId,
+                       velocypack::Slice const& newDoc,
+                       MMFilesDocumentOperation&, MMFilesWalMarker const*,
+                       bool& waitForSync);
+
    private:
     mutable arangodb::Ditches _ditches;
 

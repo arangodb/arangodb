@@ -447,20 +447,6 @@ class LogicalCollection {
   // @brief create index with the given definition.
   bool openIndex(velocypack::Slice const&, transaction::Methods*);
 
-  // SECTION: Index access (local only)
-  // Needs to be moved to SE specific Part
- public:
-  int checkRevision(transaction::Methods*, TRI_voc_rid_t expected,
-                    TRI_voc_rid_t found);
-
-  int updateDocument(transaction::Methods*, TRI_voc_rid_t oldRevisionId,
-                     velocypack::Slice const& oldDoc,
-                     TRI_voc_rid_t newRevisionId,
-                     velocypack::Slice const& newDoc,
-                     MMFilesDocumentOperation&, MMFilesWalMarker const*,
-                     bool& waitForSync);
-
- private:
   // TODO REMOVE HERE is now in SE Collection
   int insertPrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
                          velocypack::Slice const&);
