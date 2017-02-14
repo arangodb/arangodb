@@ -643,7 +643,7 @@
         if ($('#general-numberOfShards').val().length > 0) {
           newCollectionObject.options = {
             numberOfShards: $('#general-numberOfShards').val()
-          }
+          };
         }
       }
 
