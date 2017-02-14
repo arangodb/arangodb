@@ -44,7 +44,7 @@ struct OperationOptions;
 
 class PhysicalCollection {
  protected:
-  PhysicalCollection(LogicalCollection* collection) : _logicalCollection(collection) {}
+  explicit PhysicalCollection(LogicalCollection* collection) : _logicalCollection(collection) {}
 
  public:
   virtual ~PhysicalCollection() = default;
