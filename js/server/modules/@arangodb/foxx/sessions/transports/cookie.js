@@ -52,13 +52,13 @@ module.exports = function cookieTransport (cfg) {
     opts.httpOnly = cfg.httpOnly;
   }
   return {
-    get(req) {
+    get (req) {
       return req.cookie(name, opts);
     },
-    set(res, value) {
+    set (res, value) {
       res.cookie(name, value, Object.assign({}, opts, {ttl}));
     },
-    clear(res) {
+    clear (res) {
       res.cookie(name, '', Object.assign({}, opts, {ttl: -1 * 60 * 60 * 24}));
     }
   };

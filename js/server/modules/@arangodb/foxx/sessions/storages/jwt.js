@@ -37,7 +37,7 @@ module.exports = function jwtStorage (cfg) {
   const algorithm = cfg.algorithm || 'HS512';
   const ttl = (cfg.ttl || 60 * 60) * 1000;
   return {
-    fromClient(sid) {
+    fromClient (sid) {
       const token = crypto.jwtDecode(cfg.secret, sid, cfg.verify === false);
       if (token.exp < Date.now()) {
         return null;
@@ -48,7 +48,7 @@ module.exports = function jwtStorage (cfg) {
         data: token.payload
       };
     },
-    forClient(session) {
+    forClient (session) {
       const token = {
         uid: session.uid,
         iat: session.created,
@@ -57,7 +57,7 @@ module.exports = function jwtStorage (cfg) {
       };
       return crypto.jwtEncode(cfg.secret, token, algorithm);
     },
-    new() {
+    new () {
       return {
         uid: null,
         created: Date.now(),
