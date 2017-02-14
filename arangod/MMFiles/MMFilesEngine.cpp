@@ -137,7 +137,7 @@ MMFilesEngine::~MMFilesEngine() {
 // perform a physical deletion of the database
 void MMFilesEngine::dropDatabase(Database* database, int& status) {
   // delete persistent indexes for this database
-  RocksDBFeature::dropDatabase(database->id());
+  PersistentIndexFeature::dropDatabase(database->id());
 
   // To shutdown the database (which destroys all LogicalCollection
   // objects of all collections) we need to make sure that the
@@ -373,7 +373,7 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
       // delete persistent indexes for this database
       TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(
           basics::StringUtils::uint64(idSlice.copyString()));
-      RocksDBFeature::dropDatabase(id);
+      PersistentIndexFeature::dropDatabase(id);
 
       dropDatabaseDirectory(directory);
       continue;
@@ -721,7 +721,7 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalColl
   unregisterCollectionPath(vocbase->id(), collection->cid());
   
   // delete persistent indexes    
-  RocksDBFeature::dropCollection(vocbase->id(), collection->cid());
+  PersistentIndexFeature::dropCollection(vocbase->id(), collection->cid());
 
   // rename collection directory
   if (collection->path().empty()) {

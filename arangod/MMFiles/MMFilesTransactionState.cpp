@@ -63,7 +63,7 @@ MMFilesTransactionState::~MMFilesTransactionState() {
 /// @brief get (or create) a rocksdb WriteTransaction
 rocksdb::Transaction* MMFilesTransactionState::rocksTransaction() {
   if (_rocksTransaction == nullptr) {
-    _rocksTransaction = RocksDBFeature::instance()->db()->BeginTransaction(
+    _rocksTransaction = PersistentIndexFeature::instance()->db()->BeginTransaction(
       rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
   }
   return _rocksTransaction;
@@ -271,7 +271,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
     }
     if (localWaitForSync) {
       // also sync RocksDB WAL
-      RocksDBFeature::syncWal();
+      PersistentIndexFeature::syncWal();
     }
     operation.setTick(slotInfo.tick);
     fid = slotInfo.logfileId;
@@ -463,7 +463,7 @@ int MMFilesTransactionState::writeCommitMarker() {
 
     if (_waitForSync) {
       // also sync RocksDB WAL
-      RocksDBFeature::syncWal();
+      PersistentIndexFeature::syncWal();
     }
     
     TRI_IF_FAILURE("TransactionWriteCommitMarkerThrow") { 

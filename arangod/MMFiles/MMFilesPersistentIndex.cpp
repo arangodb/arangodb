@@ -140,7 +140,7 @@ void PersistentIndexIterator::reset() {
 }
 
 bool PersistentIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  auto comparator = RocksDBFeature::instance()->comparator();
+  auto comparator = PersistentIndexFeature::instance()->comparator();
   while (limit > 0) {
     if (!_cursor->Valid()) {
       // We are exhausted already, sorry
@@ -209,7 +209,7 @@ PersistentIndex::PersistentIndex(TRI_idx_iid_t iid,
                            arangodb::LogicalCollection* collection,
                            arangodb::velocypack::Slice const& info)
     : MMFilesPathBasedIndex(iid, collection, info, 0, true),
-      _db(RocksDBFeature::instance()->db()) {}
+      _db(PersistentIndexFeature::instance()->db()) {}
 
 /// @brief destroy the index
 PersistentIndex::~PersistentIndex() {}
@@ -235,7 +235,7 @@ void PersistentIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 /// @brief inserts a document into the index
 int PersistentIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                          VPackSlice const& doc, bool isRollback) {
-  auto comparator = RocksDBFeature::instance()->comparator();
+  auto comparator = PersistentIndexFeature::instance()->comparator();
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
@@ -463,7 +463,7 @@ int PersistentIndex::unload() {
 
 /// @brief called when the index is dropped
 int PersistentIndex::drop() {
-  return RocksDBFeature::instance()->dropIndex(_collection->vocbase()->id(),
+  return PersistentIndexFeature::instance()->dropIndex(_collection->vocbase()->id(),
                                                _collection->cid(), _iid);
 }
 

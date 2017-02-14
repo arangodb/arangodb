@@ -395,7 +395,7 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
       // reset collector status
       broadcastCollectorResult(res);
 
-      RocksDBFeature::syncWal();
+      PersistentIndexFeature::syncWal();
 
       _logfileManager->setCollectionDone(logfile);
     } else {

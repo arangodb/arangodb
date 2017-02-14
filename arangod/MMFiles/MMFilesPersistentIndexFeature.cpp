@@ -50,9 +50,9 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-static RocksDBFeature* Instance = nullptr;
+static PersistentIndexFeature* Instance = nullptr;
 
-RocksDBFeature::RocksDBFeature(
+PersistentIndexFeature::PersistentIndexFeature(
     application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "PersistentIndex"),
       _db(nullptr), _comparator(nullptr), _path(), _active(true),
@@ -69,7 +69,7 @@ RocksDBFeature::RocksDBFeature(
   startsAfter("DatabasePath");
 }
 
-RocksDBFeature::~RocksDBFeature() {
+PersistentIndexFeature::~PersistentIndexFeature() {
   try {
     delete _db;
   } catch (...) {
@@ -80,7 +80,7 @@ RocksDBFeature::~RocksDBFeature() {
   }
 }
 
-void RocksDBFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void PersistentIndexFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("rocksdb", "Configure the RocksDB engine");
 
   options->addOption(
@@ -175,7 +175,7 @@ void RocksDBFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new UInt64Parameter(&_compactionReadaheadSize));
 }
 
-void RocksDBFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void PersistentIndexFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_active) {
     forceDisable();
   } else {
@@ -201,7 +201,7 @@ void RocksDBFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 }
 
-void RocksDBFeature::start() {
+void PersistentIndexFeature::start() {
   Instance = this;
 
   if (!isEnabled()) {
@@ -264,7 +264,7 @@ void RocksDBFeature::start() {
   }
 }
 
-void RocksDBFeature::unprepare() {
+void PersistentIndexFeature::unprepare() {
   if (!isEnabled()) {
     return;
   }
@@ -283,11 +283,11 @@ void RocksDBFeature::unprepare() {
   syncWal();
 }
   
-RocksDBFeature* RocksDBFeature::instance() {
+PersistentIndexFeature* PersistentIndexFeature::instance() {
   return Instance;
 }
 
-int RocksDBFeature::syncWal() {
+int PersistentIndexFeature::syncWal() {
 #ifndef _WIN32
   // SyncWAL() always reports a "not implemented" error on Windows
   if (Instance == nullptr || !Instance->isEnabled()) {
@@ -306,7 +306,7 @@ int RocksDBFeature::syncWal() {
   return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBFeature::dropDatabase(TRI_voc_tick_t databaseId) {
+int PersistentIndexFeature::dropDatabase(TRI_voc_tick_t databaseId) {
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
@@ -314,7 +314,7 @@ int RocksDBFeature::dropDatabase(TRI_voc_tick_t databaseId) {
   return Instance->dropPrefix(PersistentIndex::buildPrefix(databaseId));
 }
 
-int RocksDBFeature::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
+int PersistentIndexFeature::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
@@ -322,7 +322,7 @@ int RocksDBFeature::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t coll
   return Instance->dropPrefix(PersistentIndex::buildPrefix(databaseId, collectionId));
 }
 
-int RocksDBFeature::dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId) {
+int PersistentIndexFeature::dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId) {
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
@@ -330,7 +330,7 @@ int RocksDBFeature::dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectio
   return Instance->dropPrefix(PersistentIndex::buildPrefix(databaseId, collectionId, indexId));
 }
 
-int RocksDBFeature::dropPrefix(std::string const& prefix) {
+int PersistentIndexFeature::dropPrefix(std::string const& prefix) {
   if (!isEnabled()) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -401,7 +401,7 @@ int RocksDBFeature::dropPrefix(std::string const& prefix) {
     // go on and delete the remaining keys (delete files in range does not necessarily
     // find them all, just complete files)
     
-    auto comparator = RocksDBFeature::instance()->comparator();
+    auto comparator = PersistentIndexFeature::instance()->comparator();
     rocksdb::DB* db = _db->GetBaseDB();
 
     rocksdb::WriteBatch batch;
