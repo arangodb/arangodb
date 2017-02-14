@@ -268,6 +268,12 @@ while [ $# -gt 0 ];  do
             shift
             ;;
 
+        --clientBuildDir)
+            shift
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCLIENT_BUILD_DIR=$1"
+            shift
+            ;;
+
         --cswgcc)
 	    export CC="/opt/csw/bin/gcc"
 	    export CXX="/opt/csw/bin/g++"
