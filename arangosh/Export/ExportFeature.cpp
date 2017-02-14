@@ -92,7 +92,7 @@ void ExportFeature::collectOptions(
   options->addOption("--progress", "show progress",
                      new BooleanParameter(&_progress));
 
-  std::unordered_set<std::string> exports = {"json", "jsonl", "xgmml"};
+  std::unordered_set<std::string> exports = {"json", "jsonl", "xgmml", "xml"};
   options->addOption(
       "--type", "type of export", new DiscreteValuesParameter<StringParameter>(&_typeExport, exports));
 }
@@ -122,8 +122,6 @@ void ExportFeature::validateOptions(
     LOG_TOPIC(FATAL, Logger::CONFIG) << "expecting at least one collection or one graph name";
     FATAL_ERROR_EXIT();
   }
-
-  std::transform(_typeExport.begin(), _typeExport.end(), _typeExport.begin(), ::tolower);
 
   if (_typeExport == "xgmml" && _graphName.empty() ) {
     LOG_TOPIC(FATAL, Logger::CONFIG) << "expecting a graph name to dump a graph";
@@ -211,11 +209,11 @@ void ExportFeature::start() {
 
   uint64_t exportedSize = 0;
 
-  if (_typeExport == "json" || _typeExport == "jsonl") {
+  if (_typeExport == "json" || _typeExport == "jsonl" || _typeExport == "xml") {
     if (_collections.size()) {
       collectionExport(httpClient.get());
 
-      for(auto const& collection : _collections) {
+      for (auto const& collection : _collections) {
         std::string filePath = _outputDirectory + TRI_DIR_SEPARATOR_STR + collection + "." + _typeExport;
         int64_t fileSize = TRI_SizeFile(filePath.c_str());
 
@@ -258,7 +256,6 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
     }
 
     int fd = -1;
-    TRI_DEFER(TRI_CLOSE(fd));
 
     std::string const url = "_api/cursor";
 
@@ -280,25 +277,37 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
       errorMsg = "cannot write to file '" + fileName + "'";
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
     }
+    
+    TRI_DEFER(TRI_CLOSE(fd));
 
     _firstLine = true;
     if (_typeExport == "json") {
-      std::string openingBracket = "[\n";
+      std::string openingBracket = "[";
       writeToFile(fd, openingBracket, fileName);
+    } else if (_typeExport == "xml") {
+      std::string xmlHeader = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
+                              "<collection name=\"";
+      xmlHeader.append(encode_char_entities(collection));
+      xmlHeader.append("\">\n");
+      writeToFile(fd, xmlHeader, fileName);
     }
 
     writeCollectionBatch(fd, VPackArrayIterator(body.get("result")), fileName);
 
     while (body.hasKey("id")) {
-      std::string const url = "/_api/cursor/"+body.get("id").copyString();
+      std::string const url = "/_api/cursor/" + body.get("id").copyString();
       parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
       body = parsedBody->slice();
 
       writeCollectionBatch(fd, VPackArrayIterator(body.get("result")), fileName);
     }
+
     if (_typeExport == "json") {
-      std::string closingBracket = "]\n";
-      writeToFile(fd, closingBracket , fileName);
+      std::string closingBracket = "\n]";
+      writeToFile(fd, closingBracket, fileName);
+    } else if (_typeExport == "xml") {
+      std::string xmlFooter = "</collection>";
+      writeToFile(fd, xmlFooter, fileName);
     }
   }
 }
@@ -307,18 +316,39 @@ void ExportFeature::writeCollectionBatch(int fd, VPackArrayIterator it, std::str
   std::string line;
   line.reserve(1024);
 
-  for (auto const& doc : it) {
-    line.clear();
-
-    if (_firstLine && _typeExport == "json") {
-      _firstLine = false;
-    } else if (!_firstLine && _typeExport == "json") {
-      line.push_back(',');
+  if (_typeExport == "jsonl") {
+    for (auto const& doc : it) {
+      line.clear();
+      line += doc.toJson();
+      line.push_back('\n');
+      writeToFile(fd, line, fileName);
     }
-
-    line += doc.toJson();
-    line.push_back('\n');
-    writeToFile(fd, line, fileName);
+  } else if (_typeExport == "json") {
+    for (auto const& doc : it) {
+      line.clear();
+      if (!_firstLine) {
+        line.append(",\n  ", 4);
+      } else {
+        line.append("\n  ", 3);
+        _firstLine = false;
+      }
+      line += doc.toJson();
+      writeToFile(fd, line, fileName);
+    }
+  } else if (_typeExport == "xml") {
+    for (auto const& doc : it) {
+      line.clear();
+      line.append("<doc key=\"");
+      line.append(encode_char_entities(doc.get("_key").copyString()));
+      line.append("\">\n");
+      writeToFile(fd, line, fileName);
+      for (auto const& att : VPackObjectIterator(doc)) {
+        xgmmlWriteOneAtt(fd, fileName, att.value, att.key.copyString(), 2);
+      }
+      line.clear();
+      line.append("</doc>\n");
+      writeToFile(fd, line, fileName);
+    }
   }
 }
 
@@ -492,8 +522,7 @@ void ExportFeature::writeGraphBatch(int fd, VPackArrayIterator it, std::string c
         writeToFile(fd, xmlTag, fileName);
 
         for (auto const& it : VPackObjectIterator(doc)) {
-          xmlTag = encode_char_entities(it.key.copyString());
-          xgmmlWriteOneAtt(fd, fileName, it.value, xmlTag);
+          xgmmlWriteOneAtt(fd, fileName, it.value, it.key.copyString());
         }
 
         xmlTag = "</edge>\n";
@@ -513,8 +542,7 @@ void ExportFeature::writeGraphBatch(int fd, VPackArrayIterator it, std::string c
         writeToFile(fd, xmlTag, fileName);
 
         for (auto const& it : VPackObjectIterator(doc)) {
-          xmlTag = encode_char_entities(it.key.copyString());
-          xgmmlWriteOneAtt(fd, fileName, it.value, xmlTag);
+          xgmmlWriteOneAtt(fd, fileName, it.value, it.key.copyString());
         }
 
         xmlTag = "</node>\n";
