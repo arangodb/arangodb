@@ -1926,8 +1926,8 @@ int LogicalCollection::read(transaction::Methods* trx, StringRef const& key,
 /// the read-cache
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogicalCollection::truncate(transaction::Methods* trx) {
-  return TRI_ERROR_NO_ERROR;
+void LogicalCollection::truncate(transaction::Methods* trx, OperationOptions& options) {
+  getPhysical()->truncate(trx, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2122,24 +2122,6 @@ int LogicalCollection::remove(transaction::Methods* trx,
 
   return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick,
                                lock, revisionId, prevRev, builder->slice());
-}
-
-/// @brief removes a document or edge, fast path function for database documents
-int LogicalCollection::remove(transaction::Methods* trx,
-                              TRI_voc_rid_t oldRevisionId,
-                              VPackSlice const oldDoc,
-                              OperationOptions& options,
-                              TRI_voc_tick_t& resultMarkerTick, bool lock) {
-  resultMarkerTick = 0;
-
-  TRI_voc_rid_t revisionId = TRI_HybridLogicalClock();
-
-  // create remove marker
-  TransactionBuilderLeaser builder(trx);
-  newObjectForRemove(trx, oldDoc, TRI_RidToString(revisionId), *builder.get());
-  return getPhysical()->removeFastPath(trx, oldRevisionId, oldDoc, options,
-                                       resultMarkerTick, lock, revisionId,
-                                       builder->slice());
 }
 
 /// @brief rolls back a document operation

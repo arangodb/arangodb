@@ -2585,33 +2585,9 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
   }
  
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-  
-  VPackBuilder keyBuilder;
-  auto primaryIndex = collection->primaryIndex();
-
-  options.ignoreRevs = true;
- 
-  TRI_voc_tick_t resultMarkerTick = 0;
-  ManagedDocumentResult mmdr;
-
-  auto callback = [&](MMFilesSimpleIndexElement const& element) {
-    TRI_voc_rid_t revisionId = element.revisionId();
-    if (collection->readRevision(this, mmdr, revisionId)) {
-      uint8_t const* vpack = mmdr.vpack();
-      int res =
-          collection->remove(this, revisionId, VPackSlice(vpack), options,
-                             resultMarkerTick, false);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-    }
-
-    return true;
-  };
 
   try {
-    primaryIndex->invokeOnAllElementsForRemoval(callback);
+    collection->truncate(this, options);
   }
   catch (basics::Exception const& ex) {
     unlock(trxCollection(cid), AccessMode::Type::WRITE);

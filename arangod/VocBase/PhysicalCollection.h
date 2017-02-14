@@ -109,6 +109,8 @@ class PhysicalCollection {
 
   virtual bool isFullyCollected() const = 0;
 
+  virtual void truncate(transaction::Methods* trx, OperationOptions& options) = 0;
+
   virtual int read(transaction::Methods*, arangodb::velocypack::Slice const key,
                    ManagedDocumentResult& result, bool) = 0;
 
@@ -142,14 +144,6 @@ class PhysicalCollection {
                      TRI_voc_tick_t& resultMarkerTick, bool lock,
                      TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev,
                      arangodb::velocypack::Slice const toRemove) = 0;
-
-  virtual int removeFastPath(arangodb::transaction::Methods* trx,
-                             TRI_voc_rid_t oldRevisionId,
-                             arangodb::velocypack::Slice const oldDoc,
-                             OperationOptions& options,
-                             TRI_voc_tick_t& resultMarkerTick, bool lock,
-                             TRI_voc_rid_t const& revisionId,
-                             arangodb::velocypack::Slice const toRemove) = 0;
 
  protected:
 

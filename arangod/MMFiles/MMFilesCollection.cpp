@@ -1171,6 +1171,35 @@ int MMFilesCollection::read(transaction::Methods* trx, VPackSlice const key,
   return TRI_ERROR_NO_ERROR;
 }
 
+void MMFilesCollection::truncate(transaction::Methods* trx, OperationOptions& options) {
+  auto primaryIndex = _logicalCollection->primaryIndex();
+
+  options.ignoreRevs = true;
+
+  // create remove marker
+  TransactionBuilderLeaser builder(trx);
+ 
+  auto callback = [&](MMFilesSimpleIndexElement const& element) {
+    TRI_voc_rid_t oldRevisionId = element.revisionId();
+    uint8_t const* vpack = lookupRevisionVPack(oldRevisionId);
+    if (vpack != nullptr) {
+      builder->clear();
+      VPackSlice oldDoc(vpack);
+      _logicalCollection->newObjectForRemove(trx, oldDoc, TRI_RidToString(oldRevisionId), *builder.get());
+      TRI_voc_rid_t revisionId = TRI_HybridLogicalClock();
+
+      int res = removeFastPath(trx, oldRevisionId, VPackSlice(vpack), options,
+                               revisionId, builder->slice());
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+
+    return true;
+  };
+  primaryIndex->invokeOnAllElementsForRemoval(callback);
+}
 
 int MMFilesCollection::insert(transaction::Methods* trx,
                               VPackSlice const newSlice,
@@ -1901,8 +1930,6 @@ int MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
                                       TRI_voc_rid_t oldRevisionId,
                                       VPackSlice const oldDoc,
                                       OperationOptions& options,
-                                      TRI_voc_tick_t& resultMarkerTick,
-                                      bool lock,
                                       TRI_voc_rid_t const& revisionId,
                                       VPackSlice const toRemove) {
   TRI_IF_FAILURE("RemoveDocumentNoMarker") {
@@ -1933,11 +1960,6 @@ int MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
 
   MMFilesDocumentOperation operation(_logicalCollection,
                                      TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-
-  bool const useDeadlockDetector =
-      (lock && !trx->isSingleOperationTransaction());
-  arangodb::CollectionWriteLocker collectionLocker(_logicalCollection,
-                                                   useDeadlockDetector, lock);
 
   operation.setRevisions(DocumentDescriptor(oldRevisionId, oldDoc.begin()),
                          DocumentDescriptor());
@@ -1987,9 +2009,6 @@ int MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
 
   if (res != TRI_ERROR_NO_ERROR) {
     operation.revert(trx);
-  } else {
-    // store the tick that was used for removing the document
-    resultMarkerTick = operation.tick();
   }
 
   return res;

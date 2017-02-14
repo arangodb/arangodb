@@ -65,7 +65,6 @@ class StringRef;
 namespace transaction {
 class Methods;
 }
-;
 
 class LogicalCollection {
   friend struct ::TRI_vocbase_t;
@@ -366,9 +365,10 @@ class LogicalCollection {
   int read(transaction::Methods*, StringRef const&,
            ManagedDocumentResult& result, bool);
 
-  /// @brief processes a truncate operation (note: currently this only clears
-  /// the read-cache
-  int truncate(transaction::Methods* trx);
+  /// @brief processes a truncate operation
+  /// NOTE: This function throws on error
+  void truncate(transaction::Methods* trx, OperationOptions&);
+
   int insert(transaction::Methods*, velocypack::Slice const,
              ManagedDocumentResult& result, OperationOptions&,
              TRI_voc_tick_t&, bool);
@@ -383,11 +383,6 @@ class LogicalCollection {
   int remove(transaction::Methods*, velocypack::Slice const,
              OperationOptions&, TRI_voc_tick_t&, bool,
              TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
-  /// @brief removes a document or edge, fast path function for database
-  /// documents
-  int remove(transaction::Methods*, TRI_voc_rid_t oldRevisionId,
-             velocypack::Slice const, OperationOptions&,
-             TRI_voc_tick_t&, bool);
 
   int rollbackOperation(transaction::Methods*, TRI_voc_document_operation_e,
                         TRI_voc_rid_t oldRevisionId,
@@ -474,12 +469,13 @@ class LogicalCollection {
                          velocypack::Builder& builder,
                          bool isRestore);
 
+ public: // TODO FIXME
  /// @brief new object for remove, must have _key set
   void newObjectForRemove(transaction::Methods* trx,
                           velocypack::Slice const& oldValue,
                           std::string const& rev,
                           velocypack::Builder& builder);
-
+ private:
   void increaseInternalVersion();
 
  protected:

@@ -185,6 +185,8 @@ class MMFilesCollection final : public PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
+  void truncate(transaction::Methods* trx, OperationOptions& options) override;
+
   int read(transaction::Methods*, arangodb::velocypack::Slice const key,
            ManagedDocumentResult& result, bool) override;
 
@@ -218,15 +220,16 @@ class MMFilesCollection final : public PhysicalCollection {
              bool lock, TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev,
              arangodb::velocypack::Slice const toRemove) override;
 
+ private:
+
   int removeFastPath(arangodb::transaction::Methods* trx,
                      TRI_voc_rid_t oldRevisionId,
                      arangodb::velocypack::Slice const oldDoc,
                      OperationOptions& options,
-                     TRI_voc_tick_t& resultMarkerTick, bool lock,
                      TRI_voc_rid_t const& revisionId,
-                     arangodb::velocypack::Slice const toRemove) override;
+                     arangodb::velocypack::Slice const toRemove);
 
- private:
+
   static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
                                               MMFilesDatafile* datafile,
                                               OpenIteratorState* state);

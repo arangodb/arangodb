@@ -394,7 +394,7 @@ void MMFilesPrimaryIndex::invokeOnAllElements(
 }
 
 void MMFilesPrimaryIndex::invokeOnAllElementsForRemoval(
-    std::function<bool(MMFilesSimpleIndexElement&)> work) {
+    std::function<bool(MMFilesSimpleIndexElement const&)> work) {
   _primaryIndex->invokeOnAllElementsForRemoval(work);
 }
 
