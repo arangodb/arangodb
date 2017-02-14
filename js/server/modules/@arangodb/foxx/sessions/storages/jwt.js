@@ -35,25 +35,26 @@ module.exports = function jwtStorage (cfg) {
   assert(cfg.algorithm === 'none' || cfg.secret, `Must pass a JWT secret for "${cfg.algorithm}" algorithm`);
   assert(cfg.algorithm !== 'none' || !cfg.secret, 'Must NOT pass a JWT secret for "none" algorithm');
   const algorithm = cfg.algorithm || 'HS512';
-  const ttl = (cfg.ttl || 60 * 60) * 1000;
+  const ttl = (cfg.ttl || 60 * 60);
+  const maxVal = cfg.maxExp || Infinity;
   return {
     fromClient (sid) {
       const token = crypto.jwtDecode(cfg.secret, sid, cfg.verify === false);
-      if (token.exp < Date.now()) {
+      if (Date.now() > token.exp * 1000 || token.exp > maxVal) {
         return null;
       }
       return {
         uid: token.uid,
-        created: token.iat,
+        created: token.iat * 1000,
         data: token.payload
       };
     },
     forClient (session) {
       const token = {
         uid: session.uid,
-        iat: session.created,
+        iat: Math.floor(session.created / 1000),
         payload: session.data,
-        exp: Date.now() + ttl
+        exp: Math.floor(Date.now() / 1000) + ttl
       };
       return crypto.jwtEncode(cfg.secret, token, algorithm);
     },
