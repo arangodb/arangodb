@@ -108,7 +108,10 @@ class PhysicalCollection {
   virtual void removeRevision(TRI_voc_rid_t revisionId, bool updateStats) = 0;
 
   virtual bool isFullyCollected() const = 0;
-  
+
+  virtual int read(transaction::Methods*, arangodb::velocypack::Slice const key,
+                   ManagedDocumentResult& result, bool) = 0;
+
   virtual int insert(arangodb::transaction::Methods* trx,
                      arangodb::velocypack::Slice const newSlice,
                      arangodb::ManagedDocumentResult& result,

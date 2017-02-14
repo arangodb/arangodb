@@ -185,6 +185,9 @@ class MMFilesCollection final : public PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
+  int read(transaction::Methods*, arangodb::velocypack::Slice const key,
+           ManagedDocumentResult& result, bool) override;
+
   int insert(arangodb::transaction::Methods* trx,
              arangodb::velocypack::Slice const newSlice,
              arangodb::ManagedDocumentResult& result,
@@ -301,6 +304,9 @@ class MMFilesCollection final : public PhysicalCollection {
 
     int deleteSecondaryIndexes(transaction::Methods*, TRI_voc_rid_t revisionId,
                                velocypack::Slice const&, bool isRollback);
+
+    int lookupDocument(transaction::Methods*, velocypack::Slice const,
+                       ManagedDocumentResult& result);
 
    private:
     mutable arangodb::Ditches _ditches;

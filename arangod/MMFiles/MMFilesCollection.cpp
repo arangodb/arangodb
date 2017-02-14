@@ -41,6 +41,7 @@
 #include "MMFiles/MMFilesTransactionState.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -1144,6 +1145,33 @@ int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
   return TRI_ERROR_NO_ERROR;
 }
 
+int MMFilesCollection::read(transaction::Methods* trx, VPackSlice const key,
+                            ManagedDocumentResult& result, bool lock) {
+  TRI_IF_FAILURE("ReadDocumentNoLock") {
+    // test what happens if no lock can be acquired
+    return TRI_ERROR_DEBUG;
+  }
+
+  TRI_IF_FAILURE("ReadDocumentNoLockExcept") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  bool const useDeadlockDetector =
+      (lock && !trx->isSingleOperationTransaction());
+  CollectionReadLocker collectionLocker(_logicalCollection, useDeadlockDetector,
+                                        lock);
+
+  int res = lookupDocument(trx, key, result);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  // we found a document
+  return TRI_ERROR_NO_ERROR;
+}
+
+
 int MMFilesCollection::insert(transaction::Methods* trx,
                               VPackSlice const newSlice,
                               ManagedDocumentResult& result,
@@ -1502,7 +1530,7 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
                                                    useDeadlockDetector, lock);
 
   // get the previous revision
-  int res = _logicalCollection->lookupDocument(trx, key, previous);
+  int res = lookupDocument(trx, key, previous);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1635,7 +1663,7 @@ int MMFilesCollection::replace(
                                                    lock);
 
   // get the previous revision
-  int res = _logicalCollection->lookupDocument(trx, key, previous);
+  int res = lookupDocument(trx, key, previous);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1794,7 +1822,7 @@ int MMFilesCollection::remove(arangodb::transaction::Methods* trx, VPackSlice co
                                                    useDeadlockDetector, lock);
 
   // get the previous revision
-  int res = _logicalCollection->lookupDocument(trx, key, previous);
+  int res = lookupDocument(trx, key, previous);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1969,3 +1997,25 @@ int MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
 
   return res;
 }
+
+/// @brief looks up a document by key, low level worker
+/// the caller must make sure the read lock on the collection is held
+/// the key must be a string slice, no revision check is performed
+int MMFilesCollection::lookupDocument(transaction::Methods* trx,
+                                      VPackSlice const key,
+                                      ManagedDocumentResult& result) {
+  if (!key.isString()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+  }
+
+  MMFilesSimpleIndexElement element =
+      _logicalCollection->primaryIndex()->lookupKey(trx, key, result);
+  if (element) {
+    _logicalCollection->readRevision(trx, result, element.revisionId());
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+}
+
+

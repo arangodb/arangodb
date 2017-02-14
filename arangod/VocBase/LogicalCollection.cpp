@@ -1918,29 +1918,7 @@ int LogicalCollection::read(transaction::Methods* trx, StringRef const& key,
                             ManagedDocumentResult& result, bool lock) {
   TransactionBuilderLeaser builder(trx);
   builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
-  VPackSlice slice = builder->slice();
-
-  TRI_IF_FAILURE("ReadDocumentNoLock") {
-    // test what happens if no lock can be acquired
-    return TRI_ERROR_DEBUG;
-  }
-
-  TRI_IF_FAILURE("ReadDocumentNoLockExcept") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  bool const useDeadlockDetector =
-      (lock && !trx->isSingleOperationTransaction());
-  CollectionReadLocker collectionLocker(this, useDeadlockDetector, lock);
-
-  int res = lookupDocument(trx, slice, result);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  // we found a document
-  return TRI_ERROR_NO_ERROR;
+  return getPhysical()->read(trx, builder->slice(), result, lock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2508,25 +2486,6 @@ int LogicalCollection::beginWriteTimed(bool useDeadlockDetector,
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
-}
-
-/// @brief looks up a document by key, low level worker
-/// the caller must make sure the read lock on the collection is held
-/// the key must be a string slice, no revision check is performed
-int LogicalCollection::lookupDocument(transaction::Methods* trx,
-                                      VPackSlice const key,
-                                      ManagedDocumentResult& result) {
-  if (!key.isString()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-  }
-
-  MMFilesSimpleIndexElement element = primaryIndex()->lookupKey(trx, key, result);
-  if (element) {
-    readRevision(trx, result, element.revisionId());
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
 }
 
 /// @brief checks the revision of a document

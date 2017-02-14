@@ -450,9 +450,6 @@ class LogicalCollection {
   // SECTION: Index access (local only)
   // Needs to be moved to SE specific Part
  public:
-  int lookupDocument(transaction::Methods*, VPackSlice const,
-                     ManagedDocumentResult& result);
-
   int checkRevision(transaction::Methods*, TRI_voc_rid_t expected,
                     TRI_voc_rid_t found);
 
