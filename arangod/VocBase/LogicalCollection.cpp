@@ -52,6 +52,7 @@
 #include "MMFiles/MMFilesWalSlots.h"  //TODO -- remove
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
@@ -1916,7 +1917,7 @@ int LogicalCollection::read(transaction::Methods* trx, std::string const& key,
 
 int LogicalCollection::read(transaction::Methods* trx, StringRef const& key,
                             ManagedDocumentResult& result, bool lock) {
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
   return getPhysical()->read(trx, builder->slice(), result, lock);
 }
@@ -1969,7 +1970,7 @@ int LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
     }
   }
 
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   VPackSlice newSlice;
   int res = TRI_ERROR_NO_ERROR;
   if (options.recoveryMarker == nullptr) {
@@ -2117,7 +2118,7 @@ int LogicalCollection::remove(transaction::Methods* trx,
     revisionId = TRI_HybridLogicalClock();
   }
 
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   newObjectForRemove(trx, slice, TRI_RidToString(revisionId), *builder.get());
 
   return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick,
@@ -2135,7 +2136,7 @@ int LogicalCollection::remove(transaction::Methods* trx,
   TRI_voc_rid_t revisionId = TRI_HybridLogicalClock();
 
   // create remove marker
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   newObjectForRemove(trx, oldDoc, TRI_RidToString(revisionId), *builder.get());
   return getPhysical()->removeFastPath(trx, oldRevisionId, oldDoc, options,
                                        resultMarkerTick, lock, revisionId,

@@ -39,6 +39,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -418,7 +419,7 @@ void Expression::buildExpression(transaction::Methods* trx) {
   if (_type == JSON) {
     TRI_ASSERT(_data == nullptr);
     // generate a constant value
-    TransactionBuilderLeaser builder(trx);
+    transaction::BuilderLeaser builder(trx);
     _node->toVelocyPackValue(*builder.get());
 
     _data = new uint8_t[static_cast<size_t>(builder->size())];
@@ -641,7 +642,7 @@ AqlValue Expression::executeSimpleExpressionArray(
     return AqlValue(VelocyPackHelper::EmptyArrayValue());
   }
 
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   builder->openArray();
 
   for (size_t i = 0; i < n; ++i) {
@@ -680,7 +681,7 @@ AqlValue Expression::executeSimpleExpressionObject(
   bool isUnique = true;
   bool const mustCheckUniqueness = node->mustCheckUniqueness();
 
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   builder->openObject();
 
   for (size_t i = 0; i < n; ++i) {
@@ -693,7 +694,7 @@ AqlValue Expression::executeSimpleExpressionObject(
       AqlValueGuard guard(result, localMustDestroy);
 
       // make sure key is a string, and convert it if not
-      StringBufferLeaser buffer(trx);
+      transaction::StringBufferLeaser buffer(trx);
       arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
       AqlValueMaterializer materializer(trx);
@@ -764,7 +765,7 @@ AqlValue Expression::executeSimpleExpressionObject(
     
     VPackSlice nonUnique = builder->slice();
      
-    TransactionBuilderLeaser unique(trx);
+    transaction::BuilderLeaser unique(trx);
     unique->openObject();
 
     size_t pos = 0;

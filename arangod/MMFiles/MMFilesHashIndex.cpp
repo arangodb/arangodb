@@ -33,6 +33,7 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/LogicalCollection.h"
 

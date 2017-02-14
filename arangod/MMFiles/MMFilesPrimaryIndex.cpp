@@ -32,6 +32,7 @@
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/LogicalCollection.h"
@@ -469,7 +470,7 @@ IndexIterator* MMFilesPrimaryIndex::createInIterator(
   TRI_ASSERT(valNode->isArray());
   
   // lease builder, but immediately pass it to the unique_ptr so we don't leak  
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
   keys->openArray();
   
@@ -500,7 +501,7 @@ IndexIterator* MMFilesPrimaryIndex::createEqIterator(
   bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
 
   // lease builder, but immediately pass it to the unique_ptr so we don't leak  
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
   keys->openArray();
 

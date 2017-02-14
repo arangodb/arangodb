@@ -31,27 +31,28 @@
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterMethods.h"
 #include "Logger/Logger.h"
-#include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "MMFiles/MMFilesDatafile.h"
+#include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "MMFiles/MMFilesIndexElement.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesTransactionState.h"
+#include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Transaction/Methods.h"
-#include "MMFiles/MMFilesDatafileHelper.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 
 using namespace arangodb;
 
@@ -1571,7 +1572,7 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
   }
 
   // merge old and new values
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   if (options.recoveryMarker == nullptr) {
     mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
                           TRI_RidToString(revisionId), options.mergeObjects,
@@ -1697,7 +1698,7 @@ int MMFilesCollection::replace(
   }
 
   // merge old and new values
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   newObjectForReplace(trx, oldDoc, newSlice, fromSlice, toSlice,
                       isEdgeCollection, TRI_RidToString(revisionId),
                       *builder.get());

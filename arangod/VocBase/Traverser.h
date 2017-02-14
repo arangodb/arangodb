@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
+#include "Transaction/Helpers.h"
 #include "VocBase/PathEnumerator.h"
 #include "VocBase/voc-types.h"
 
@@ -352,7 +353,7 @@ class Traverser {
   std::unique_ptr<VertexGetter> _vertexGetter;
 
   /// @brief Builder for the start value slice. Leased from transaction
-  TransactionBuilderLeaser _startIdBuilder;
+  transaction::BuilderLeaser _startIdBuilder;
 
   /// @brief counter for all read documents
   size_t _readDocuments;

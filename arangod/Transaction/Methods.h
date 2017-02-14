@@ -700,38 +700,6 @@ class Methods {
 };
 
 }
-
-class StringBufferLeaser {
- public:
-  explicit StringBufferLeaser(transaction::Methods*); 
-  explicit StringBufferLeaser(TransactionContext*); 
-  ~StringBufferLeaser();
-  arangodb::basics::StringBuffer* stringBuffer() const { return _stringBuffer; }
-  arangodb::basics::StringBuffer* operator->() const { return _stringBuffer; }
-  arangodb::basics::StringBuffer* get() const { return _stringBuffer; }
- private:
-  TransactionContext* _transactionContext;
-  arangodb::basics::StringBuffer* _stringBuffer;
-};
-
-class TransactionBuilderLeaser {
- public:
-  explicit TransactionBuilderLeaser(transaction::Methods*); 
-  explicit TransactionBuilderLeaser(TransactionContext*); 
-  ~TransactionBuilderLeaser();
-  inline arangodb::velocypack::Builder* builder() const { return _builder; }
-  inline arangodb::velocypack::Builder* operator->() const { return _builder; }
-  inline arangodb::velocypack::Builder* get() const { return _builder; }
-  inline arangodb::velocypack::Builder* steal() { 
-    arangodb::velocypack::Builder* res = _builder;
-    _builder = nullptr;
-    return res;
-  }
- private:
-  TransactionContext* _transactionContext;
-  arangodb::velocypack::Builder* _builder;
-};
-
 }
 
 #endif

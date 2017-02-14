@@ -46,6 +46,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationCursor.h"
@@ -2294,7 +2295,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
   auto workOnOneDocument = [&](VPackSlice value, bool isBabies) -> int {
     TRI_voc_rid_t actualRevision = 0;
     ManagedDocumentResult previous;
-    TransactionBuilderLeaser builder(this);
+    transaction::BuilderLeaser builder(this);
     StringRef key;
     if (value.isString()) {
       key = value;
@@ -3388,42 +3389,3 @@ OperationResult transaction::Methods::buildCountResult(std::vector<std::pair<std
   }
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
 }
-
-/// @brief constructor, leases a StringBuffer
-StringBufferLeaser::StringBufferLeaser(transaction::Methods* trx) 
-      : _transactionContext(trx->transactionContextPtr()),
-        _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
-}
-
-/// @brief constructor, leases a StringBuffer
-StringBufferLeaser::StringBufferLeaser(TransactionContext* transactionContext) 
-      : _transactionContext(transactionContext), 
-        _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
-}
-
-/// @brief destructor, returns a StringBuffer
-StringBufferLeaser::~StringBufferLeaser() { 
-  _transactionContext->returnStringBuffer(_stringBuffer);
-}
-  
-/// @brief constructor, leases a builder
-TransactionBuilderLeaser::TransactionBuilderLeaser(transaction::Methods* trx) 
-      : _transactionContext(trx->transactionContextPtr()), 
-        _builder(_transactionContext->leaseBuilder()) {
-  TRI_ASSERT(_builder != nullptr);
-}
-
-/// @brief constructor, leases a builder
-TransactionBuilderLeaser::TransactionBuilderLeaser(TransactionContext* transactionContext) 
-      : _transactionContext(transactionContext), 
-        _builder(_transactionContext->leaseBuilder()) {
-  TRI_ASSERT(_builder != nullptr);
-}
-
-/// @brief destructor, returns a builder
-TransactionBuilderLeaser::~TransactionBuilderLeaser() { 
-  if (_builder != nullptr) {
-    _transactionContext->returnBuilder(_builder); 
-  }
-}
-

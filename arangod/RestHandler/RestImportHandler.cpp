@@ -28,6 +28,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "Transaction/Helpers.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -204,7 +205,7 @@ int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
 
   // add prefixes to _from and _to
   if (!_fromPrefix.empty() || !_toPrefix.empty()) {
-    TransactionBuilderLeaser tempBuilder(&trx);
+    transaction::BuilderLeaser tempBuilder(&trx);
 
     tempBuilder->openObject();
     if (!_fromPrefix.empty()) {

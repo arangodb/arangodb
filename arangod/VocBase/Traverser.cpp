@@ -23,6 +23,7 @@
 
 #include "Traverser.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/KeyGenerator.h"
@@ -60,7 +61,7 @@ void arangodb::traverser::ShortestPath::vertexToVelocyPack(transaction::Methods*
   size_t p = collection.find("/");
   TRI_ASSERT(p != std::string::npos);
 
-  TransactionBuilderLeaser searchBuilder(trx);
+  transaction::BuilderLeaser searchBuilder(trx);
   searchBuilder->add(VPackValue(collection.substr(p + 1)));
   collection = collection.substr(0, p);
 
