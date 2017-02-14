@@ -363,7 +363,7 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
 void Constituent::callElection() {
 
   using namespace std::chrono;
-  auto timeout = system_clock::now() +
+  auto timeout = steady_clock::now() +
     duration<double>(_agent->config().minPing());
   
   std::vector<std::string> active = _agent->config().active();
@@ -414,14 +414,14 @@ void Constituent::callElection() {
   //       a conclusive vote.
   while (true) {
 
-    if (system_clock::now() >= timeout) {       // Timeout. 
+    if (steady_clock::now() >= timeout) {       // Timeout. 
       follow(_term);        
       break;
     }
     
     auto res = ClusterComm::instance()->wait(
       "", coordinatorTransactionID, 0, "",
-      duration<double>(timeout - system_clock::now()).count());
+      duration<double>(timeout - steady_clock::now()).count());
 
     if (res.status == CL_COMM_SENT) {
       auto body = res.result->getBodyVelocyPack();
@@ -571,7 +571,7 @@ void Constituent::run() {
           if (_lastHeartbeatSeen > 0.0) {
             double now = TRI_microtime();
             randWait -= static_cast<int64_t>(M * (now-_lastHeartbeatSeen));
-            if (randWait < 0) {
+            if (randWait < a) {
               randWait = a;
             } else if (randWait > b) {
               randWait = b;
