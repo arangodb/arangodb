@@ -2051,7 +2051,10 @@ exports.buildRoutingTree = buildRoutingTree;
 exports.flattenRoutingTree = flattenRoutingTree;
 exports.nextRouting = nextRouting;
 exports.firstRouting = function firstRouting (method, url, routes) {
-  const parts = url.split('/').filter(s => s !== '');
+  let parts = url;
+  if (typeof url === 'string') {
+    url.split('/').filter(s => s !== '');
+  }
   return firstRouting(method, parts, routes);
 };
 
