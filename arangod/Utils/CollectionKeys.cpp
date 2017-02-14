@@ -24,17 +24,18 @@
 #include "CollectionKeys.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
+#include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Helpers.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "MMFiles/MMFilesDatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -125,7 +126,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   // now sort all markers without the read-lock
   std::sort(_vpack.begin(), _vpack.end(),
             [](uint8_t const* lhs, uint8_t const* rhs) -> bool {
-    return (StringRef(transaction::Methods::extractKeyFromDocument(VPackSlice(lhs))) < StringRef(transaction::Methods::extractKeyFromDocument(VPackSlice(rhs))));
+    return (StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(lhs))) < StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(rhs))));
   });
 }
 
@@ -154,13 +155,13 @@ std::tuple<std::string, std::string, uint64_t> CollectionKeys::hashChunk(
 
     // we can get away with the fast hash function here, as key values are 
     // restricted to strings
-    hash ^= transaction::Methods::extractKeyFromDocument(current).hashString();
-    hash ^= transaction::Methods::extractRevSliceFromDocument(current).hash();
+    hash ^= transaction::helpers::extractKeyFromDocument(current).hashString();
+    hash ^= transaction::helpers::extractRevSliceFromDocument(current).hash();
   }
 
   return std::make_tuple(
-    transaction::Methods::extractKeyFromDocument(first).copyString(),
-    transaction::Methods::extractKeyFromDocument(last).copyString(),
+    transaction::helpers::extractKeyFromDocument(first).copyString(),
+    transaction::helpers::extractKeyFromDocument(last).copyString(),
     hash);
 }
 

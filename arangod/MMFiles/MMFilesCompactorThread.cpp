@@ -39,6 +39,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "VocBase/CompactionLocker.h"
 #include "VocBase/LogicalCollection.h"
@@ -274,7 +275,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
         VPackSlice const slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
         TRI_ASSERT(slice.isObject());
 
-        VPackSlice keySlice = transaction::Methods::extractKeyFromDocument(slice);
+        VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
 
         // check if the document is still active
         auto primaryIndex = collection->primaryIndex();
@@ -363,7 +364,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       VPackSlice const slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
       TRI_ASSERT(slice.isObject());
 
-      VPackSlice keySlice = transaction::Methods::extractKeyFromDocument(slice);
+      VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
 
       // check if the document is still active
       auto primaryIndex = collection->primaryIndex();

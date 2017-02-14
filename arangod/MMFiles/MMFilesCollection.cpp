@@ -90,7 +90,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
   VPackSlice keySlice;
   TRI_voc_rid_t revisionId;
 
-  transaction::Methods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+  transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
   c->setRevision(revisionId, false);
 
@@ -184,7 +184,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* m
   VPackSlice keySlice;
   TRI_voc_rid_t revisionId;
 
-  transaction::Methods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+  transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
   c->setRevision(revisionId, false);
   if (state->_trackKeys) {
@@ -1211,7 +1211,7 @@ int MMFilesCollection::insert(transaction::Methods* trx,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  TRI_voc_rid_t revisionId = transaction::Methods::extractRevFromDocument(newSlice);
+  TRI_voc_rid_t revisionId = transaction::helpers::extractRevFromDocument(newSlice);
   VPackSlice doc(marker->vpack());
   operation.setRevisions(DocumentDescriptor(),
                          DocumentDescriptor(revisionId, doc.begin()));
@@ -1541,7 +1541,7 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
   uint8_t const* vpack = previous.vpack();
   VPackSlice oldDoc(vpack);
   TRI_voc_rid_t oldRevisionId =
-      transaction::Methods::extractRevFromDocument(oldDoc);
+      transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
 
   TRI_IF_FAILURE("UpdateDocumentNoMarker") {
@@ -1683,7 +1683,7 @@ int MMFilesCollection::replace(
 
   uint8_t const* vpack = previous.vpack();
   VPackSlice oldDoc(vpack);
-  TRI_voc_rid_t oldRevisionId = transaction::Methods::extractRevFromDocument(oldDoc);
+  TRI_voc_rid_t oldRevisionId = transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
 
   // Check old revision:
@@ -1832,7 +1832,7 @@ int MMFilesCollection::remove(arangodb::transaction::Methods* trx, VPackSlice co
 
   uint8_t const* vpack = previous.vpack();
   VPackSlice oldDoc(vpack);
-  TRI_voc_rid_t oldRevisionId = arangodb::transaction::Methods::extractRevFromDocument(oldDoc);
+  TRI_voc_rid_t oldRevisionId = arangodb::transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
 
   // Check old revision:
@@ -1933,7 +1933,7 @@ int MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
     return TRI_ERROR_DEBUG;
   }
 
-  VPackSlice key = arangodb::transaction::Methods::extractKeyFromDocument(oldDoc);
+  VPackSlice key = arangodb::transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(!key.isNone());
 
   MMFilesDocumentOperation operation(_logicalCollection,

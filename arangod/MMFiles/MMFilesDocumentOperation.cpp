@@ -23,10 +23,11 @@
 
 #include "MMFilesDocumentOperation.h"
 #include "Indexes/IndexIterator.h"
-#include "Transaction/Methods.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -153,9 +154,9 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
     }
    
     // let the primary index entry point to the correct document 
-    MMFilesSimpleIndexElement* element = _collection->primaryIndex()->lookupKeyRef(trx, transaction::Methods::extractKeyFromDocument(newDoc));
+    MMFilesSimpleIndexElement* element = _collection->primaryIndex()->lookupKeyRef(trx, transaction::helpers::extractKeyFromDocument(newDoc));
     if (element != nullptr && element->revisionId() != 0) {
-      VPackSlice keySlice(transaction::Methods::extractKeyFromDocument(oldDoc));
+      VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(oldDoc));
       element->updateRevisionId(oldRevisionId, static_cast<uint32_t>(keySlice.begin() - oldDoc.begin()));
     }
     _collection->updateRevision(oldRevisionId, oldDoc.begin(), 0, false);

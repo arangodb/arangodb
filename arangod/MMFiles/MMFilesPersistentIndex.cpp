@@ -35,6 +35,7 @@
 #include "MMFiles/MMFilesPersistentIndexKeyComparator.h"
 #include "MMFiles/MMFilesToken.h"
 #include "MMFiles/MMFilesTransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -260,7 +261,7 @@ int PersistentIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
   
   ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
-  VPackSlice const key = transaction::Methods::extractKeyFromDocument(doc);
+  VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
   std::string const prefix =
       buildPrefix(trx->vocbase()->id(), _collection->cid(), _iid);
 
@@ -416,7 +417,7 @@ int PersistentIndex::remove(transaction::Methods* trx, TRI_voc_rid_t revisionId,
   
   ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
-  VPackSlice const key = transaction::Methods::extractKeyFromDocument(doc);
+  VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
   
   VPackBuilder builder;
   std::vector<std::string> values;

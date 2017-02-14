@@ -208,47 +208,9 @@ class Methods {
   /// @brief whether or not a ditch has been created for the collection
   bool hasDitch(TRI_voc_cid_t cid) const;
 
-  /// @brief extract the _key attribute from a slice
-  static StringRef extractKeyPart(VPackSlice const);
-
   /// @brief extract the _id attribute from a slice, and convert it into a 
   /// string
   std::string extractIdString(VPackSlice);
-
-  static std::string extractIdString(CollectionNameResolver const*, 
-                                     VPackSlice, VPackSlice const&);
-
-  /// @brief quick access to the _key attribute in a database document
-  /// the document must have at least two attributes, and _key is supposed to
-  /// be the first one
-  static VPackSlice extractKeyFromDocument(VPackSlice);
-  
-  /// @brief quick access to the _id attribute in a database document
-  /// the document must have at least two attributes, and _id is supposed to
-  /// be the second one
-  /// note that this may return a Slice of type Custom!
-  static VPackSlice extractIdFromDocument(VPackSlice);
-
-  /// @brief quick access to the _from attribute in a database document
-  /// the document must have at least five attributes: _key, _id, _from, _to
-  /// and _rev (in this order)
-  static VPackSlice extractFromFromDocument(VPackSlice);
-
-  /// @brief quick access to the _to attribute in a database document
-  /// the document must have at least five attributes: _key, _id, _from, _to
-  /// and _rev (in this order)
-  static VPackSlice extractToFromDocument(VPackSlice);
-  
-  /// @brief extract _key and _rev from a document, in one go
-  /// this is an optimized version used when loading collections, WAL 
-  /// collection and compaction
-  static void extractKeyAndRevFromDocument(VPackSlice slice,
-                                           VPackSlice& keySlice,
-                                           TRI_voc_rid_t& revisionId);
-  
-  /// @brief extract _rev from a database document
-  static TRI_voc_rid_t extractRevFromDocument(VPackSlice slice);
-  static VPackSlice extractRevSliceFromDocument(VPackSlice slice);
 
   /// @brief read any (random) document
   OperationResult any(std::string const&);
@@ -432,11 +394,6 @@ class Methods {
   
  private:
   
-  /// @brief creates an id string from a custom _id value and the _key string
-  static std::string makeIdFromCustom(CollectionNameResolver const* resolver,
-                                      VPackSlice const& idPart, 
-                                      VPackSlice const& keyPart);
-
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.
@@ -508,8 +465,6 @@ class Methods {
   OperationResult countLocal(std::string const& collectionName);
   
  protected:
-
-  static OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool aggregate);
 
   /// @brief return the transaction collection for a document collection
   TransactionCollection* trxCollection(TRI_voc_cid_t cid) const;
