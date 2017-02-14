@@ -299,7 +299,12 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection)
     , _ditches(collection)
     , _initialCount(0), _lastRevision(0)
     , _uncollectedLogfileEntries(0)
-    {}
+    ,  _nextCompactionStartIndex(0)
+    ,  _lastCompactionStatus(nullptr)
+    ,  _lastCompactionStamp(0.0)
+    {
+      setCompactionStatus("compaction not yet started");
+    }
 
 MMFilesCollection::~MMFilesCollection() { 
   try {
@@ -866,6 +871,37 @@ bool MMFilesCollection::closeDatafiles(std::vector<MMFilesDatafile*> const& file
 }
   
 void MMFilesCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+    
+    // fills in compaction status
+    char const* lastCompactionStatus = "-";
+    char lastCompactionStampString[21];
+    lastCompactionStampString[0] = '-';
+    lastCompactionStampString[1] = '\0';
+
+    double lastCompactionStamp;
+
+    {
+      MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+      lastCompactionStatus = _lastCompactionStatus;
+      lastCompactionStamp = _lastCompactionStamp;
+    }
+
+    if (lastCompactionStatus != nullptr) {
+      if (lastCompactionStamp == 0.0) {
+        lastCompactionStamp = TRI_microtime();
+      }
+      struct tm tb;
+      time_t tt = static_cast<time_t>(lastCompactionStamp);
+      TRI_gmtime(tt, &tb);
+      strftime(&lastCompactionStampString[0], sizeof(lastCompactionStampString),
+               "%Y-%m-%dT%H:%M:%SZ", &tb);
+    }
+
+    builder->add("compactionStatus", VPackValue(VPackValueType::Object));
+    builder->add("message", VPackValue(lastCompactionStatus));
+    builder->add("time", VPackValue(&lastCompactionStampString[0]));
+    builder->close();  // compactionStatus
+
   builder->add("documentReferences", VPackValue(_ditches.numDocumentDitches()));
   
   char const* waitingForDitch = _ditches.head();

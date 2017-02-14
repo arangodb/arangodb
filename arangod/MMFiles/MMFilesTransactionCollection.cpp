@@ -243,7 +243,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
     // read-lock the compaction lock
     if (!_transaction->_hints.has(TransactionHints::Hint::NO_COMPACTION_LOCK)) {
       if (!_compactionLocked) {
-        _collection->preventCompaction();
+        logicalToMMFiles(_collection)->preventCompaction();
         _compactionLocked = true;
       }
     }
@@ -284,7 +284,7 @@ void MMFilesTransactionCollection::unuse(int nestingLevel) {
     if (!_transaction->_hints.has(TransactionHints::Hint::NO_COMPACTION_LOCK)) {
       if (AccessMode::isWriteOrExclusive(_accessType) && _compactionLocked) {
         // read-unlock the compaction lock
-        _collection->allowCompaction();
+        logicalToMMFiles(_collection)->allowCompaction();
         _compactionLocked = false;
       }
     }

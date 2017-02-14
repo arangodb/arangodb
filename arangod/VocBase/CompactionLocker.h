@@ -25,13 +25,13 @@
 #define ARANGOD_VOCBASE_COMPACTION_LOCKER_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/LogicalCollection.h"
+#include "MMFiles/MMFilesCollection.h"
 
 namespace arangodb {
 
 class CompactionPreventer {
  public:
-  explicit CompactionPreventer(LogicalCollection* collection) 
+  explicit CompactionPreventer(MMFilesCollection* collection) 
       : _collection(collection) {
     _collection->preventCompaction();
   }
@@ -39,12 +39,12 @@ class CompactionPreventer {
   ~CompactionPreventer() { _collection->allowCompaction(); }
 
  private:
-  LogicalCollection* _collection;
+  MMFilesCollection* _collection;
 };
 
 class TryCompactionPreventer {
  public:
-  explicit TryCompactionPreventer(LogicalCollection* collection) 
+  explicit TryCompactionPreventer(MMFilesCollection* collection) 
       : _collection(collection), _isLocked(false) {
     _isLocked = _collection->tryPreventCompaction();
   }
@@ -58,13 +58,13 @@ class TryCompactionPreventer {
   bool isLocked() const { return _isLocked; }
 
  private:
-  LogicalCollection* _collection;
+  MMFilesCollection* _collection;
   bool _isLocked;
 };
 
 class CompactionLocker {
  public:
-  explicit CompactionLocker(LogicalCollection* collection) 
+  explicit CompactionLocker(MMFilesCollection* collection) 
       : _collection(collection) {
     _collection->lockForCompaction();
   }
@@ -74,12 +74,12 @@ class CompactionLocker {
   }
 
  private:
-  LogicalCollection* _collection;
+  MMFilesCollection* _collection;
 };
 
 class TryCompactionLocker {
  public:
-  explicit TryCompactionLocker(LogicalCollection* collection) 
+  explicit TryCompactionLocker(MMFilesCollection* collection) 
       : _collection(collection), _isLocked(false) {
     _isLocked = _collection->tryLockForCompaction();
   }
@@ -93,7 +93,7 @@ class TryCompactionLocker {
   bool isLocked() const { return _isLocked; }
 
  private:
-  LogicalCollection* _collection;
+  MMFilesCollection* _collection;
   bool _isLocked;
 };
 

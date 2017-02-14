@@ -27,15 +27,16 @@
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesWalLogfile.h"
 #include "MMFiles/MMFilesWalMarker.h"
 #include "VocBase/CompactionLocker.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
-#include "MMFiles/MMFilesWalLogfile.h"
 
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
@@ -620,7 +621,7 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   // block compaction
   int res;
   {
-    CompactionPreventer compactionPreventer(collection);
+    CompactionPreventer compactionPreventer(logicalToMMFiles(collection));
 
     try {
       res = DumpCollection(dump, collection, collection->vocbase()->id(),
