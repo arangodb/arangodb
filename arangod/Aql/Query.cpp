@@ -1305,11 +1305,6 @@ bool Query::canUseQueryCache() const {
 QueryResult Query::transactionError(int errorCode) const {
   std::string err(TRI_errno_string(errorCode));
 
-  auto detail = _trx->getErrorData();
-  if (detail.size() > 0) {
-    err += std::string(" (") + detail + std::string(")");
-  }
-
   if (_queryString != nullptr && verboseErrors()) {
     err +=
         std::string("\nwhile executing:\n") + _queryString + std::string("\n");

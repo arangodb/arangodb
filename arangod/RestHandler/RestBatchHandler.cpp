@@ -31,8 +31,6 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 
-#include <iostream>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -71,7 +69,6 @@ RestStatus RestBatchHandler::executeHttp() {
   HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
 
   if (httpResponse == nullptr) {
-    std::cout << "please fix this for vpack" << std::endl;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
   }
 
@@ -79,7 +76,6 @@ RestStatus RestBatchHandler::executeHttp() {
       dynamic_cast<HttpRequest const*>(_request.get());
 
   if (httpRequest == nullptr) {
-    std::cout << "please fix this for vpack" << std::endl;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
@@ -214,15 +210,21 @@ RestStatus RestBatchHandler::executeHttp() {
 
     // start to work for this handler
     {
-      int result = handler->syncRunEngine();
+      // ignore any errors here, will be handled later by inspecting the response
+      try {
+        handler->syncRunEngine();
+      } catch (...) {
+      }
 
+#if 0
+      int result = TRI_ERROR_NO_ERROR; 
       if (result != TRI_ERROR_NO_ERROR) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                       "executing a handler for batch part failed");
 
         return RestStatus::FAIL;
       }
-
+#endif
       HttpResponse* partResponse =
           dynamic_cast<HttpResponse*>(handler->response());
 

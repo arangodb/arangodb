@@ -74,17 +74,14 @@ TransactionState* StandaloneTransactionContext::getParentTransaction() const {
 /// @brief register the transaction in the context
 ////////////////////////////////////////////////////////////////////////////////
 
-int StandaloneTransactionContext::registerTransaction(TransactionState* trx) {
-  return TRI_ERROR_NO_ERROR;
-}
+void StandaloneTransactionContext::registerTransaction(TransactionState*) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unregister the transaction from the context
+/// nothing special to do. cleanup will be done by the parent's destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-void StandaloneTransactionContext::unregisterTransaction() {
-  // nothing special to do. cleanup will be done by the parent's destructor
-}
+void StandaloneTransactionContext::unregisterTransaction() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the transaction is embeddable
