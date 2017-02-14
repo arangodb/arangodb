@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/encoding.h"
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterMethods.h"
 #include "Logger/Logger.h"
@@ -158,9 +159,9 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
       int64_t size = static_cast<int64_t>(MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
 
       dfi->numberAlive--;
-      dfi->sizeAlive -= MMFilesDatafileHelper::AlignedSize<int64_t>(size);
+      dfi->sizeAlive -= encoding::alignedSize<int64_t>(size);
       dfi->numberDead++;
-      dfi->sizeDead += MMFilesDatafileHelper::AlignedSize<int64_t>(size);
+      dfi->sizeDead += encoding::alignedSize<int64_t>(size);
     }
 
     state->_dfi->numberAlive++;
@@ -228,12 +229,12 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* m
     TRI_ASSERT(old.dataptr() != nullptr);
 
     uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
-    int64_t size = MMFilesDatafileHelper::AlignedSize<int64_t>(MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
+    int64_t size = encoding::alignedSize<int64_t>(MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
 
     dfi->numberAlive--;
-    dfi->sizeAlive -= MMFilesDatafileHelper::AlignedSize<int64_t>(size);
+    dfi->sizeAlive -= encoding::alignedSize<int64_t>(size);
     dfi->numberDead++;
-    dfi->sizeDead += MMFilesDatafileHelper::AlignedSize<int64_t>(size);
+    dfi->sizeDead += encoding::alignedSize<int64_t>(size);
     state->_dfi->numberDeletions++;
 
     state->_primaryIndex->removeKey(trx, oldRevisionId, VPackSlice(vpack), state->_mmdr);
@@ -1350,7 +1351,7 @@ void MMFilesCollection::removeRevision(TRI_voc_rid_t revisionId, bool updateStat
     if (old && !old.pointsToWal() && old.fid() != 0) {
       TRI_ASSERT(old.dataptr() != nullptr);
       uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
-      int64_t size = MMFilesDatafileHelper::AlignedSize<int64_t>(MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
+      int64_t size = encoding::alignedSize<int64_t>(MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
       _datafileStatistics.increaseDead(old.fid(), 1, size);
     }
   } else {

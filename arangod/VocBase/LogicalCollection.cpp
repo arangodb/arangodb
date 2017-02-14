@@ -32,6 +32,7 @@
 #include "Basics/Timers.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/encoding.h"
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -2697,10 +2698,10 @@ int LogicalCollection::newObjectForInsert(
     // _statisticsRaw and _statistics15 (which are the only system
     // collections)
     // must not be treated as shards but as local collections
-    MMFilesDatafileHelper::StoreNumber<uint64_t>(p, _planId, sizeof(uint64_t));
+    encoding::storeNumber<uint64_t>(p, _planId, sizeof(uint64_t));
   } else {
     // local server
-    MMFilesDatafileHelper::StoreNumber<uint64_t>(p, _cid, sizeof(uint64_t));
+    encoding::storeNumber<uint64_t>(p, _cid, sizeof(uint64_t));
   }
 
   // _from and _to

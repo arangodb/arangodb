@@ -23,6 +23,7 @@
 
 #include "MMFilesWalLogfile.h"
 #include "Basics/FileUtils.h"
+#include "Basics/encoding.h"
 #include "Basics/files.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 
@@ -92,6 +93,6 @@ MMFilesWalLogfile* MMFilesWalLogfile::openExisting(std::string const& filename, 
 
 /// @brief reserve space and update the current write position
 char* MMFilesWalLogfile::reserve(size_t size) {
-  return _df->advanceWritePosition(MMFilesDatafileHelper::AlignedSize<size_t>(size));
+  return _df->advanceWritePosition(encoding::alignedSize<size_t>(size));
 }
 

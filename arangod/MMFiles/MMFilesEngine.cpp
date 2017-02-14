@@ -29,6 +29,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/encoding.h"
 #include "Basics/files.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
@@ -1870,7 +1871,7 @@ bool MMFilesEngine::checkDatafileHeader(MMFilesDatafile* datafile, std::string c
 
   // skip the datafile header
   ptr +=
-      MMFilesDatafileHelper::AlignedSize<size_t>(sizeof(TRI_df_header_marker_t));
+      encoding::alignedSize<size_t>(sizeof(TRI_df_header_marker_t));
   TRI_col_header_marker_t const* cm =
       reinterpret_cast<TRI_col_header_marker_t const*>(ptr);
 
@@ -2199,7 +2200,7 @@ char* MMFilesEngine::nextFreeMarkerPosition(
     TRI_df_marker_type_t type, TRI_voc_size_t size, MMFilesCollectorCache* cache) {
   
   // align the specified size
-  size = MMFilesDatafileHelper::AlignedSize<TRI_voc_size_t>(size);
+  size = encoding::alignedSize<TRI_voc_size_t>(size);
 
   char* dst = nullptr; // will be modified by reserveJournalSpace()
   MMFilesDatafile* datafile = nullptr; // will be modified by reserveJournalSpace()
