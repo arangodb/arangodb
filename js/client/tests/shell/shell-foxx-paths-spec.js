@@ -46,11 +46,20 @@ describe('Foxx service path handling', () => {
     expect(res.json).to.eql({name: 'not/slash'});
   });
 
-  it('does not decode suffixes', () => {
+  it('decodes suffixes', () => {
     const res = request.get(`${baseUrl}/${mount}/suffix/${encodeURIComponent('hello/world')}`);
     expect(res).to.have.property('status', 200);
-    expect(res.json).not.to.eql({suffix: 'hello/world'});
-    expect(res.json).to.eql({suffix: encodeURIComponent('hello/world')});
+    expect(res.json).to.eql({suffix: 'hello/world'});
+    expect(res.json).not.to.eql({suffix: 'hello%2fworld'});
+    expect(res.json).not.to.eql({suffix: 'hello%2Fworld'});
+  });
+  
+  it('does not decode plus signs in suffixes', () => {
+    const res = request.get(`${baseUrl}/${mount}/suffix/${encodeURIComponent('hello+world')}`);
+    expect(res).to.have.property('status', 200);
+    expect(res.json).to.eql({suffix: 'hello+world'});
+    expect(res.json).not.to.eql({suffix: 'hello%2bworld'});
+    expect(res.json).not.to.eql({suffix: 'hello%2Bworld'});
   });
 
   it('does not try to resolve dots in suffixes', () => {
