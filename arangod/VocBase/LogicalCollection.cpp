@@ -44,6 +44,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 //#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesCollection.h" //remove
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesToken.h"
@@ -230,7 +231,6 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
-      _uncollectedLogfileEntries(0),
       _isInitialIteration(false),
       _revisionError(false) {
   _keyGenerator.reset(KeyGenerator::factory(other.keyOptions()));
@@ -295,7 +295,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
-      _uncollectedLogfileEntries(0),
       _isInitialIteration(false),
       _revisionError(false) {
   if (!IsAllowedName(info)) {
@@ -602,26 +601,7 @@ bool LogicalCollection::IsAllowedName(bool allowSystem,
 
 /// @brief whether or not a collection is fully collected
 bool LogicalCollection::isFullyCollected() {
-  int64_t uncollected = _uncollectedLogfileEntries.load();
-
-  return (uncollected == 0);
-}
-
-void LogicalCollection::setNextCompactionStartIndex(size_t index) {
-  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-  _nextCompactionStartIndex = index;
-}
-
-size_t LogicalCollection::getNextCompactionStartIndex() {
-  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-  return _nextCompactionStartIndex;
-}
-
-void LogicalCollection::setCompactionStatus(char const* reason) {
-  TRI_ASSERT(reason != nullptr);
-
-  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-  _lastCompactionStatus = reason;
+  return getPhysical()->isFullyCollected();
 }
 
 uint64_t LogicalCollection::numberDocuments() const {
@@ -1193,7 +1173,12 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
 
     builder->add("lastTick", VPackValue(_maxTick));
     builder->add("uncollectedLogfileEntries",
-                 VPackValue(_uncollectedLogfileEntries));
+                 VPackValue(
+                   //MOVE TO PHYSICAL
+                   static_cast<arangodb::MMFilesCollection*>(getPhysical())
+                      ->uncollectedLogfileEntries()
+                 )
+                );
 
     // fills in compaction status
     char const* lastCompactionStatus = "-";

@@ -36,6 +36,7 @@
 #include <thread>
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 Inception::Inception() : Thread("Inception"), _agent(nullptr) {}
 

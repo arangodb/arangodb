@@ -96,10 +96,37 @@ actions.defineHttp({
       return;
     }
 
-    if (node.Role !== 'Coordinator') {
+    if (node.Role !== 'Coordinator' && node.Role !== 'DBServer') {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'only coordinators can be removed at this time');
+        'unhandled role ' + node.role);
       return;
+    }
+
+    let preconditions = {};
+    preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
+    // need to make sure it is not responsible for anything
+    if (node.Role === 'DBServer') {
+      let used = [];
+      preconditions = reducePlanServers(function(data, agencyKey, servers) {
+        data[agencyKey] = {'old': servers};
+        if (servers.indexOf(serverId) !== -1) {
+          used.push(agencyKey);
+        }
+        return data;
+      }, {});
+      preconditions = reduceCurrentServers(function(data, agencyKey, servers) {
+        data[agencyKey] = {'old': servers};
+        if (servers.indexOf(serverId) !== -1) {
+          used.push(agencyKey);
+        }
+        return data;
+      }, preconditions);
+
+      if (used.length > 0) {
+        actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED,
+          'the server is still in use at the following locations: ' + JSON.stringify(used));
+        return;
+      }
     }
 
     let operations = {};
@@ -108,9 +135,6 @@ actions.defineHttp({
     operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
     operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
     operations['/arango/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
-
-    let preconditions = {};
-    preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
 
     try {
       global.ArangoAgency.write([[operations, preconditions]]);
@@ -561,7 +585,10 @@ actions.defineHttp({
         let oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary);
         actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
           'Primary does not have the given oldSecondary as ' +
-          'its secondary, current value: ' + JSON.stringify(oldValue));
+          'its secondary, current value: '
+          + JSON.stringify(
+            fetchKey(oldValue, 'arango', 'Plan', 'DBServers', body.primary)
+          ));
         return;
       }
       throw e;
@@ -569,37 +596,68 @@ actions.defineHttp({
   }
 });
 
+function reducePlanServers(reducer, data) {
+  var databases = ArangoAgency.get('Plan/Collections');
+  databases = databases.arango.Plan.Collections;
+
+  return Object.keys(databases).reduce(function(data, databaseName) {
+    var collections = databases[databaseName];
+
+    return Object.keys(collections).reduce(function(data, collectionKey) {
+      var collection = collections[collectionKey];
+
+      return Object.keys(collection.shards).reduce(function(data, shardKey) {
+        var servers = collection.shards[shardKey];
+
+        let key = '/arango/Plan/Collections/' + databaseName + '/' + collectionKey + '/shards/' + shardKey;
+        return reducer(data, key, servers);
+      }, data);
+    }, data);
+  }, data);
+}
+
+function reduceCurrentServers(reducer, data) {
+  var databases = ArangoAgency.get('Current/Collections');
+  databases = databases.arango.Current.Collections;
+
+  return Object.keys(databases).reduce(function(data, databaseName) {
+    var collections = databases[databaseName];
+
+    return Object.keys(collections).reduce(function(data, collectionKey) {
+      var collection = collections[collectionKey];
+
+      return Object.keys(collection).reduce(function(data, shardKey) {
+        var servers = collection[shardKey].servers;
+
+        let key = '/arango/Current/Collections/' + databaseName + '/' + collectionKey + '/' + shardKey + '/servers';
+        return reducer(data, key, servers);
+      }, data);
+    }, data);
+  }, data);
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief changes responsibility for all shards from oldServer to newServer.
 // / This needs to be done atomically!
 // //////////////////////////////////////////////////////////////////////////////
 
 function changeAllShardReponsibilities (oldServer, newServer) {
-  // This is only called when we have the write lock and we "only" have to
-  // make sure that either all or none of the shards are moved.
-  var collections = ArangoAgency.get('Plan/Collections');
-  collections = collections.arango.Plan.Collections;
-
-  let operations = {};
-  let preconditions = {};
-  Object.keys(collections).forEach(function (collectionKey) {
-    var collection = collections[collectionKey];
-    var old = _.cloneDeep(collection);
-
-    Object.keys(collection.shards).forEach(function (shardKey) {
-      var servers = collection.shards[shardKey];
-      collection.shards[shardKey] = servers.map(function (server) {
-        if (server === oldServer) {
-          return newServer;
-        } else {
-          return server;
-        }
-      });
+  return reducePlanServers(function(data, key, servers) {
+    var oldServers = _.cloneDeep(servers);
+    servers = servers.map(function(server) {
+      if (server === oldServer) {
+        return newServer;
+      } else {
+        return server;
+      }
     });
-    operations[collectionKey] = collection;
-    preconditions[collectionKey] = old;
+    data.operations[key] = servers;
+    data.preconditions[key] = {'old': oldServers};
+    return data;
+  }, {
+    operations: {},
+    preconditions: {},
   });
-  return {operations, preconditions};
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -678,25 +736,24 @@ actions.defineHttp({
     }
 
     let operations = {};
-    operations['Plan/DBServers/' + body.secondary] = body.primary;
-    operations['Plan/DBServers/' + body.primary] = {'op': 'delete'};
-    operations['Plan/Version'] = {'op': 'increment'};
+    operations['/arango/Plan/DBServers/' + body.secondary] = body.primary;
+    operations['/arango/Plan/DBServers/' + body.primary] = {'op': 'delete'};
+    operations['/arango/Plan/Version'] = {'op': 'increment'};
 
     let preconditions = {};
-    preconditions['Plan/DBServers/' + body.primary] = {'old': body.secondary};
+    preconditions['/arango/Plan/DBServers/' + body.primary] = {'old': body.secondary};
 
     let shardChanges = changeAllShardReponsibilities(body.primary, body.secondary);
     operations = Object.assign(operations, shardChanges.operations);
     preconditions = Object.assign(preconditions, shardChanges.preconditions);
-
+    
     try {
       global.ArangoAgency.write([[operations, preconditions]]);
     } catch (e) {
       if (e.code === 412) {
         let oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary);
         actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
-          'Primary does not have the given oldSecondary as ' +
-          'its secondary, current value: ' + oldValue);
+          'Could not change primary to secondary.');
         return;
       }
       throw e;

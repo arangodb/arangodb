@@ -1,0 +1,59 @@
+Features and Improvements
+=========================
+
+The following list shows in detail which features have been added or improved in
+ArangoDB 3.2. ArangoDB 3.2 also contains several bugfixes that are not listed
+here.
+
+SmartGraphs
+-----------
+
+
+Data format
+-----------
+
+
+Communication Layer
+-------------------
+
+
+Cluster
+-------
+
+
+Document revisions cache
+------------------------
+
+
+AQL
+---
+
+### Functions added
+
+
+### Optimizer improvements
+
+
+### Miscellaneous improvements
+
+
+Audit Log
+---------
+
+
+Client tools
+------------
+
+Added the tool _arangoexport_ to export collections to json and jsonl. It can also export graphs or collections to xgmml.
+
+Web Admin Interface
+-------------------
+
+
+Authentication
+--------------
+
+
+Foxx
+----
+
