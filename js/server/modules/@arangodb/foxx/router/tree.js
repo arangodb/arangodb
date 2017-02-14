@@ -81,18 +81,18 @@ module.exports =
 
     * findRoutes (suffix) {
       const result = [{router: this.router, path: [], suffix: suffix}];
-      yield* findRoutes(this.root, result, suffix, []);
+      yield * findRoutes(this.root, result, suffix, []);
     }
 
     * flatten () {
-      yield* flatten(this.root, [this.router]);
+      yield * flatten(this.root, [this.router]);
     }
 
     resolve (rawReq) {
       const method = rawReq.requestType;
       let error;
 
-      for (const route of this.findRoutes(rawReq.suffix)) {
+      for (const route of this.findRoutes(rawReq.rawSuffix)) {
         const endpoint = route[route.length - 1].endpoint;
 
         try {
@@ -459,7 +459,7 @@ function * findRoutes (node, result, suffix, path) {
     const suffix2 = suffix.slice(1);
     for (const childNode of [node.get(part), node.get(tokenize.PARAM)]) {
       if (childNode) {
-        yield* findRoutes(childNode, result, suffix2, path2);
+        yield * findRoutes(childNode, result, suffix2, path2);
       }
     }
   }
@@ -472,7 +472,7 @@ function * findRoutes (node, result, suffix, path) {
         {router: endpoint, path: path, suffix: suffix}
       );
       const path2 = [];
-      yield* findRoutes(childNode, result2, suffix, path2);
+      yield * findRoutes(childNode, result2, suffix, path2);
     } else {
       yield result.concat(
         {endpoint: endpoint, path: path, suffix: suffix}
@@ -491,13 +491,13 @@ function * flatten (node, result) {
       }
       for (const endpoint of child.get($_ROUTES) || []) {
         if (endpoint.router) {
-          yield* flatten(endpoint.tree.root, result.concat(endpoint, endpoint.router));
+          yield * flatten(endpoint.tree.root, result.concat(endpoint, endpoint.router));
         } else {
           yield result.concat(endpoint);
         }
       }
     } else {
-      yield* flatten(child, result);
+      yield * flatten(child, result);
     }
   }
 }
