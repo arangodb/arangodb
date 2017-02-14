@@ -356,8 +356,6 @@ class LogicalCollection {
 
   bool dropIndex(TRI_idx_iid_t iid, bool writeMarker);
 
-  int cleanupIndexes();
-
   // SECTION: Index access (local only)
 
   int read(transaction::Methods*, std::string const&,
@@ -389,13 +387,6 @@ class LogicalCollection {
                         velocypack::Slice const& oldDoc,
                         TRI_voc_rid_t newRevisionId,
                         velocypack::Slice const& newDoc);
-
-  // TODO MOVE ME
-  int beginReadTimed(bool useDeadlockDetector, double timeout = 0.0);
-  int beginWriteTimed(bool useDeadlockDetector, double timeout = 0.0);
-  int endRead(bool useDeadlockDetector);
-  int endWrite(bool useDeadlockDetector);
-  // END TODO MOVE ME
 
   bool readDocument(transaction::Methods*, ManagedDocumentResult& result, DocumentIdentifierToken const& token);
   bool readDocumentConditional(transaction::Methods*, ManagedDocumentResult& result, DocumentIdentifierToken const& token, TRI_voc_tick_t maxTick, bool excludeWal);
@@ -570,10 +561,6 @@ class LogicalCollection {
 
   mutable basics::ReadWriteLock
       _lock;  // lock protecting the status and name
-
-  // TODO MOVE ME
-  mutable basics::ReadWriteLock
-      _idxLock;  // lock protecting the indexes
 
   mutable basics::ReadWriteLock
       _infoLock;  // lock protecting the info

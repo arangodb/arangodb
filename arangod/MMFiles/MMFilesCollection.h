@@ -181,6 +181,21 @@ class MMFilesCollection final : public PhysicalCollection {
     }
   }
 
+
+  int cleanupIndexes();
+
+  ////////////////////////////////////
+  // -- SECTION Locking --
+  ///////////////////////////////////
+
+  int beginReadTimed(bool useDeadlockDetector, double timeout = 0.0);
+
+  int beginWriteTimed(bool useDeadlockDetector, double timeout = 0.0);
+
+  int endRead(bool useDeadlockDetector);
+
+  int endWrite(bool useDeadlockDetector);
+
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
@@ -320,6 +335,9 @@ class MMFilesCollection final : public PhysicalCollection {
 
    private:
     mutable arangodb::Ditches _ditches;
+
+    // lock protecting the indexes
+    mutable basics::ReadWriteLock _idxLock;
 
     arangodb::basics::ReadWriteLock _filesLock;
     std::vector<MMFilesDatafile*> _datafiles;   // all datafiles

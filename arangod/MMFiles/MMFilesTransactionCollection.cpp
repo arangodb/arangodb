@@ -328,6 +328,10 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
   LogicalCollection* collection = _collection;
   TRI_ASSERT(collection != nullptr);
+
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
+
   double timeout = _transaction->_timeout;
   if (_transaction->_hints.has(transaction::Hints::Hint::TRY_LOCK)) {
     // give up early if we cannot acquire the lock instantly
@@ -339,10 +343,10 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   int res;
   if (!isWrite(type)) {
     LOG_TRX(_transaction, nestingLevel) << "read-locking collection " << _cid;
-    res = collection->beginReadTimed(useDeadlockDetector, timeout);
+    res = physical->beginReadTimed(useDeadlockDetector, timeout);
   } else { // WRITE or EXCLUSIVE
     LOG_TRX(_transaction, nestingLevel) << "write-locking collection " << _cid;
-    res = collection->beginWriteTimed(useDeadlockDetector, timeout);
+    res = physical->beginWriteTimed(useDeadlockDetector, timeout);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -394,12 +398,16 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   LogicalCollection* collection = _collection;
   TRI_ASSERT(collection != nullptr);
+
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
+
   if (!isWrite(_lockType)) {
     LOG_TRX(_transaction, nestingLevel) << "read-unlocking collection " << _cid;
-    collection->endRead(useDeadlockDetector);
+    physical->endRead(useDeadlockDetector);
   } else { // WRITE or EXCLUSIVE
     LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;
-    collection->endWrite(useDeadlockDetector);
+    physical->endWrite(useDeadlockDetector);
   }
 
   _lockType = AccessMode::Type::NONE;

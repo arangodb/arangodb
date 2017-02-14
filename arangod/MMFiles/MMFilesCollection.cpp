@@ -32,6 +32,8 @@
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterMethods.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesCollectionReadLocker.h"
+#include "MMFiles/MMFilesCollectionWriteLocker.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
@@ -46,8 +48,6 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/CollectionReadLocker.h"
-#include "Utils/CollectionWriteLocker.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -1160,8 +1160,7 @@ int MMFilesCollection::read(transaction::Methods* trx, VPackSlice const key,
 
   bool const useDeadlockDetector =
       (lock && !trx->isSingleOperationTransaction());
-  CollectionReadLocker collectionLocker(_logicalCollection, useDeadlockDetector,
-                                        lock);
+  MMFilesCollectionReadLocker collectionLocker(this, useDeadlockDetector, lock);
 
   int res = lookupDocument(trx, key, result);
 
@@ -1170,6 +1169,289 @@ int MMFilesCollection::read(transaction::Methods* trx, VPackSlice const key,
   }
 
   // we found a document
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief garbage-collect a collection's indexes
+int MMFilesCollection::cleanupIndexes() {
+  int res = TRI_ERROR_NO_ERROR;
+
+  // cleaning indexes is expensive, so only do it if the flag is set for the
+  // collection
+  // TODO FIXME
+  if (_logicalCollection->_cleanupIndexes > 0) {
+    WRITE_LOCKER(writeLocker, _idxLock);
+    auto indexes = _logicalCollection->getIndexes();
+    for (auto& idx : indexes) {
+      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+        res = idx->cleanup();
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          break;
+        }
+      }
+    }
+  }
+
+  return res;
+}
+
+
+
+/// @brief read locks a collection, with a timeout (in µseconds)
+int MMFilesCollection::beginReadTimed(bool useDeadlockDetector,
+                                      double timeout) {
+  if (transaction::Methods::_makeNolockHeaders != nullptr) {
+    auto it = transaction::Methods::_makeNolockHeaders->find(
+        _logicalCollection->name());
+    if (it != transaction::Methods::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginReadTimed blocked: " << _name <<
+      // std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  // LOCKING-DEBUG
+  // std::cout << "BeginReadTimed: " << _name << std::endl;
+  int iterations = 0;
+  bool wasBlocked = false;
+  double end = 0.0;
+
+  while (true) {
+    TRY_READ_LOCKER(locker, _idxLock);
+
+    if (locker.isLocked()) {
+      // when we are here, we've got the read lock
+      if (useDeadlockDetector) {
+        _logicalCollection->vocbase()->_deadlockDetector.addReader(_logicalCollection, wasBlocked);
+      }
+
+      // keep lock and exit loop
+      locker.steal();
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    if (useDeadlockDetector) {
+      try {
+        if (!wasBlocked) {
+          // insert reader
+          wasBlocked = true;
+          if (_logicalCollection->vocbase()->_deadlockDetector.setReaderBlocked(
+                  _logicalCollection) == TRI_ERROR_DEADLOCK) {
+            // deadlock
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "deadlock detected while trying to acquire read-lock "
+                          "on collection '"
+                       << _logicalCollection->name() << "'";
+            return TRI_ERROR_DEADLOCK;
+          }
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "waiting for read-lock on collection '" << _logicalCollection->name()
+                     << "'";
+          // fall-through intentional
+        } else if (++iterations >= 5) {
+          // periodically check for deadlocks
+          TRI_ASSERT(wasBlocked);
+          iterations = 0;
+          if (_logicalCollection->vocbase()->_deadlockDetector.detectDeadlock(_logicalCollection, false) ==
+              TRI_ERROR_DEADLOCK) {
+            // deadlock
+            _logicalCollection->vocbase()->_deadlockDetector.unsetReaderBlocked(_logicalCollection);
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "deadlock detected while trying to acquire read-lock "
+                          "on collection '"
+                       << _logicalCollection->name() << "'";
+            return TRI_ERROR_DEADLOCK;
+          }
+        }
+      } catch (...) {
+        // clean up!
+        if (wasBlocked) {
+          _logicalCollection->vocbase()->_deadlockDetector.unsetReaderBlocked(
+              _logicalCollection);
+        }
+        // always exit
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+    }
+
+    if (end == 0.0) {
+      // set end time for lock waiting
+      if (timeout <= 0.0) {
+        timeout = 15.0 * 60.0;
+      }
+      end = TRI_microtime() + timeout;
+      TRI_ASSERT(end > 0.0);
+    }
+
+    std::this_thread::yield();
+
+    TRI_ASSERT(end > 0.0);
+
+    if (TRI_microtime() > end) {
+      if (useDeadlockDetector) {
+        _logicalCollection->vocbase()->_deadlockDetector.unsetReaderBlocked(_logicalCollection);
+      }
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "timed out waiting for read-lock on collection '" << _logicalCollection->name()
+                 << "'";
+      return TRI_ERROR_LOCK_TIMEOUT;
+    }
+  }
+}
+
+/// @brief write locks a collection, with a timeout
+int MMFilesCollection::beginWriteTimed(bool useDeadlockDetector,
+                                       double timeout) {
+  if (transaction::Methods::_makeNolockHeaders != nullptr) {
+    auto it = transaction::Methods::_makeNolockHeaders->find(_logicalCollection->name());
+    if (it != transaction::Methods::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginWriteTimed blocked: " << _name <<
+      // std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  // LOCKING-DEBUG
+  // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
+  int iterations = 0;
+  bool wasBlocked = false;
+  double end = 0.0;
+
+  while (true) {
+    TRY_WRITE_LOCKER(locker, _idxLock);
+
+    if (locker.isLocked()) {
+      // register writer
+      if (useDeadlockDetector) {
+        _logicalCollection->vocbase()->_deadlockDetector.addWriter(_logicalCollection, wasBlocked);
+      }
+      // keep lock and exit loop
+      locker.steal();
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    if (useDeadlockDetector) {
+      try {
+        if (!wasBlocked) {
+          // insert writer
+          wasBlocked = true;
+          if (_logicalCollection->vocbase()->_deadlockDetector.setWriterBlocked(_logicalCollection) ==
+              TRI_ERROR_DEADLOCK) {
+            // deadlock
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "deadlock detected while trying to acquire "
+                          "write-lock on collection '"
+                       << _logicalCollection->name() << "'";
+            return TRI_ERROR_DEADLOCK;
+          }
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+              << "waiting for write-lock on collection '"
+              << _logicalCollection->name() << "'";
+        } else if (++iterations >= 5) {
+          // periodically check for deadlocks
+          TRI_ASSERT(wasBlocked);
+          iterations = 0;
+          if (_logicalCollection->vocbase()->_deadlockDetector.detectDeadlock(
+                  _logicalCollection, true) == TRI_ERROR_DEADLOCK) {
+            // deadlock
+            _logicalCollection->vocbase()->_deadlockDetector.unsetWriterBlocked(_logicalCollection);
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+                << "deadlock detected while trying to acquire "
+                   "write-lock on collection '"
+                << _logicalCollection->name() << "'";
+            return TRI_ERROR_DEADLOCK;
+          }
+        }
+      } catch (...) {
+        // clean up!
+        if (wasBlocked) {
+          _logicalCollection->vocbase()->_deadlockDetector.unsetWriterBlocked(_logicalCollection);
+        }
+        // always exit
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+    }
+
+    std::this_thread::yield();
+
+    if (end == 0.0) {
+      // set end time for lock waiting
+      if (timeout <= 0.0) {
+        timeout = 15.0 * 60.0;
+      }
+      end = TRI_microtime() + timeout;
+      TRI_ASSERT(end > 0.0);
+    }
+
+    std::this_thread::yield();
+
+    TRI_ASSERT(end > 0.0);
+
+    if (TRI_microtime() > end) {
+      if (useDeadlockDetector) {
+        _logicalCollection->vocbase()->_deadlockDetector.unsetWriterBlocked(
+            _logicalCollection);
+      }
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "timed out waiting for write-lock on collection '" << _logicalCollection->name()
+                 << "'";
+      return TRI_ERROR_LOCK_TIMEOUT;
+    }
+  }
+}
+
+/// @brief read unlocks a collection
+int MMFilesCollection::endRead(bool useDeadlockDetector) {
+  if (transaction::Methods::_makeNolockHeaders != nullptr) {
+    auto it = transaction::Methods::_makeNolockHeaders->find(_logicalCollection->name());
+    if (it != transaction::Methods::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "EndRead blocked: " << _name << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  if (useDeadlockDetector) {
+    // unregister reader
+    try {
+      _logicalCollection->vocbase()->_deadlockDetector.unsetReader(_logicalCollection);
+    } catch (...) {
+    }
+  }
+
+  // LOCKING-DEBUG
+  // std::cout << "EndRead: " << _name << std::endl;
+  _idxLock.unlockRead();
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief write unlocks a collection
+int MMFilesCollection::endWrite(bool useDeadlockDetector) {
+  if (transaction::Methods::_makeNolockHeaders != nullptr) {
+    auto it = transaction::Methods::_makeNolockHeaders->find(_logicalCollection->name());
+    if (it != transaction::Methods::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "EndWrite blocked: " << _name <<
+      // std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  if (useDeadlockDetector) {
+    // unregister writer
+    try {
+      _logicalCollection->vocbase()->_deadlockDetector.unsetWriter(_logicalCollection);
+    } catch (...) {
+      // must go on here to unlock the lock
+    }
+  }
+
+  // LOCKING-DEBUG
+  // std::cout << "EndWrite: " << _name << std::endl;
+  _idxLock.unlockWrite();
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1264,8 +1546,8 @@ int MMFilesCollection::insert(transaction::Methods* trx,
     try {
       // TODO Do we use the CollectionLocker on LogicalCollections
       // or do we use it on the SE specific one?
-      arangodb::CollectionWriteLocker collectionLocker(
-          _logicalCollection, useDeadlockDetector, lock);
+      arangodb::MMFilesCollectionWriteLocker collectionLocker(
+          this, useDeadlockDetector, lock);
 
       try {
         // insert into indexes
@@ -1557,8 +1839,8 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
 
   bool const useDeadlockDetector =
       (lock && !trx->isSingleOperationTransaction());
-  arangodb::CollectionWriteLocker collectionLocker(_logicalCollection,
-                                                   useDeadlockDetector, lock);
+  arangodb::MMFilesCollectionWriteLocker collectionLocker(
+      this, useDeadlockDetector, lock);
 
   // get the previous revision
   int res = lookupDocument(trx, key, previous);
@@ -1689,8 +1971,8 @@ int MMFilesCollection::replace(
 
   bool const useDeadlockDetector =
       (lock && !trx->isSingleOperationTransaction());
-  arangodb::CollectionWriteLocker collectionLocker(_logicalCollection, useDeadlockDetector,
-                                                   lock);
+  arangodb::MMFilesCollectionWriteLocker collectionLocker(
+      this, useDeadlockDetector, lock);
 
   // get the previous revision
   int res = lookupDocument(trx, key, previous);
@@ -1847,8 +2129,8 @@ int MMFilesCollection::remove(arangodb::transaction::Methods* trx, VPackSlice co
 
   bool const useDeadlockDetector =
       (lock && !trx->isSingleOperationTransaction());
-  arangodb::CollectionWriteLocker collectionLocker(_logicalCollection,
-                                                   useDeadlockDetector, lock);
+  arangodb::MMFilesCollectionWriteLocker collectionLocker(
+      this, useDeadlockDetector, lock);
 
   // get the previous revision
   int res = lookupDocument(trx, key, previous);

@@ -309,8 +309,10 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
 
     bool ok;
     {
+      auto physical = static_cast<MMFilesCollection*>(context._collection->getPhysical());
+      TRI_ASSERT(physical != nullptr);
       bool const useDeadlockDetector = false;
-      int res = collection->beginReadTimed(useDeadlockDetector, 86400.0);
+      int res = physical->beginReadTimed(useDeadlockDetector, 86400.0);
 
       if (res != TRI_ERROR_NO_ERROR) {
         ok = false;
@@ -321,7 +323,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
         } catch (...) {
           ok = false;
         }
-        collection->endRead(useDeadlockDetector);
+        physical->endRead(useDeadlockDetector);
       }
     }
 
