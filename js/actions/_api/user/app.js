@@ -106,7 +106,7 @@ function get_api_user (req, res) {
     return;
   }
 
-  const user = decodeURIComponent(req.suffix[0]);
+  const user = req.suffix[0];
 
   try {
     if (needMyself(req, res, user)) {
@@ -119,7 +119,7 @@ function get_api_user (req, res) {
 
 // GET /_api/user/<username>/database | GET /_api/user/<username>/database/<dbname>
 function get_api_database (req, res, key) {
-  const user = decodeURIComponent(req.suffix[0]);
+  const user = req.suffix[0];
 
   try {
     if (needMyself(req, res, user)) {
@@ -134,7 +134,7 @@ function get_api_database (req, res, key) {
 
 // GET /_api/user/<username>/config | GET /_api/user/<username>/config/<key>
 function get_api_config (req, res, key) {
-  const user = decodeURIComponent(req.suffix[0]);
+  const user = req.suffix[0];
 
   try {
     if (needMyself(req, res, user)) {
@@ -189,7 +189,7 @@ function post_api_user (req, res) {
 
   // validate if a combination or username / password is valid
   if (req.suffix.length === 1) {
-    const user = decodeURIComponent(req.suffix[0]);
+    const user = req.suffix[0];
     const result = users.isValid(user, json.passwd);
 
     if (result) {
@@ -235,7 +235,7 @@ function post_api_user_request (req, res) {
 
 // PUT /_api/user/<username>
 function put_api_user (req, res) {
-  const user = decodeURIComponent(req.suffix[0]);
+  const user = req.suffix[0];
   const json = actions.getJsonBody(req, res, actions.HTTP_BAD);
 
   if (json === undefined) {
@@ -270,8 +270,8 @@ function put_api_user (req, res) {
 
 // PUT /_api/user/<username>/database/<dbname>
 function put_api_permission (req, res) {
-  const user = decodeURIComponent(req.suffix[0]);
-  const dbname = decodeURIComponent(req.suffix[2]);
+  const user = req.suffix[0];
+  const dbname = req.suffix[2];
   const json = actions.getJsonBody(req, res, actions.HTTP_BAD);
 
   if (json === undefined) {
@@ -297,8 +297,8 @@ function put_api_permission (req, res) {
 
 // PUT /_api/user/<username>/config/<key>
 function put_api_config (req, res) {
-  const user = decodeURIComponent(req.suffix[0]);
-  const key = decodeURIComponent(req.suffix[2]);
+  const user = req.suffix[0];
+  const key = req.suffix[2];
   const json = actions.getJsonBody(req, res, actions.HTTP_BAD);
 
   if (json === undefined) {
@@ -342,7 +342,7 @@ function put_api_user_request (req, res) {
 
 // PATCH /_api/user/<username>
 function patch_api_user (req, res) {
-  const user = decodeURIComponent(req.suffix[0]);
+  const user = req.suffix[0];
   const json = actions.getJsonBody(req, res, actions.HTTP_BAD);
 
   if (json === undefined) {
@@ -393,7 +393,7 @@ function patch_api_user_request (req, res) {
 
 // DELETE /_api/user/<username>
 function delete_api_user (req, res) {
-  const user = decodeURIComponent(req.suffix[0]);
+  const user = req.suffix[0];
 
   try {
     if (needSystemUser(req, res)) {
@@ -409,8 +409,8 @@ function delete_api_user (req, res) {
 
 // DELETE /_api/user/<username>/database/<dbname>
 function delete_api_permission (req, res) {
-  const user = decodeURIComponent(req.suffix[0]);
-  const dbname = decodeURIComponent(req.suffix[2]);
+  const user = req.suffix[0];
+  const dbname = req.suffix[2];
 
   try {
     users.revokeDatabase(user, dbname);
@@ -424,7 +424,7 @@ function delete_api_permission (req, res) {
 
 // DELETE /_api/user/<username>/config/<key>
 function delete_api_config (req, res, key) {
-  const user = decodeURIComponent(req.suffix[0]);
+  const user = req.suffix[0];
 
   try {
     if (needMyself(req, res, user)) {
