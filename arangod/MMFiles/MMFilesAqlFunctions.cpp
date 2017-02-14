@@ -30,10 +30,10 @@
 #include "MMFiles/fulltext-result.h"
 #include "MMFiles/MMFilesFulltextIndex.h"
 #include "MMFiles/MMFilesGeoIndex.h"
-
 #include "StorageEngine/DocumentIdentifierToken.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -48,7 +48,7 @@ static ExecutionCondition const NotInCoordinator = [] {
          !arangodb::ServerState::instance()->isCoordinator();
 };
 
-static AqlValue buildGeoResult(arangodb::Transaction* trx,
+static AqlValue buildGeoResult(transaction::Methods* trx,
                                LogicalCollection* collection,
                                arangodb::aql::Query* query,
                                GeoCoordinates* cors,
@@ -99,7 +99,7 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
 
   try {
     ManagedDocumentResult mmdr;
-    TransactionBuilderLeaser builder(trx);
+    transaction::BuilderLeaser builder(trx);
     builder->openArray();
     if (!attributeName.empty()) {
       // We have to copy the entire document
@@ -134,7 +134,7 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
 
 /// @brief Load geoindex for collection name
 static arangodb::MMFilesGeoIndex* getGeoIndex(
-    arangodb::Transaction* trx, TRI_voc_cid_t const& cid,
+    transaction::Methods* trx, TRI_voc_cid_t const& cid,
     std::string const& collectionName) {
   // NOTE:
   // Due to trx lock the shared_index stays valid
@@ -172,7 +172,7 @@ static arangodb::MMFilesGeoIndex* getGeoIndex(
 
 /// @brief function FULLTEXT
 AqlValue MMFilesAqlFunctions::Fulltext(
-    arangodb::aql::Query* query, arangodb::Transaction* trx,
+    arangodb::aql::Query* query, transaction::Methods* trx,
     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "FULLTEXT", 3, 4);
 
@@ -288,7 +288,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   
   TRI_ASSERT(trx->hasDitch(cid));
 
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   try {
     builder->openArray();
 
@@ -311,7 +311,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
 
 /// @brief function NEAR
 AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
-                                   arangodb::Transaction* trx,
+                                   transaction::Methods* trx,
                                    VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "NEAR", 3, 5);
 
@@ -374,7 +374,7 @@ AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
 
 /// @brief function WITHIN
 AqlValue MMFilesAqlFunctions::Within(
-    arangodb::aql::Query* query, arangodb::Transaction* trx,
+    arangodb::aql::Query* query, transaction::Methods* trx,
     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "WITHIN", 4, 5);
 

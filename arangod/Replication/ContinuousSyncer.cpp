@@ -37,7 +37,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/TransactionHints.h"
+#include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -573,7 +573,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
     // update the apply tick for all standalone operations
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                             cid, AccessMode::Type::WRITE);
-    trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION, false);
 
     int res = trx.begin();
 
@@ -784,7 +784,7 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
 
   arangodb::CollectionGuard guard(_vocbase, cid);
   bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-  return guard.collection()->update(data, doSync);
+  return guard.collection()->updateProperties(data, doSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

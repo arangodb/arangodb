@@ -46,7 +46,10 @@ struct CustomTypeHandler;
 class CollectionNameResolver;
 class DocumentDitch;
 class LogicalCollection;
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 class TransactionState;
 
 class TransactionContext {

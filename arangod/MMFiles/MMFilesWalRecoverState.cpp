@@ -38,7 +38,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Utils/TransactionHints.h"
+#include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>
@@ -282,12 +282,12 @@ int MMFilesWalRecoverState::executeSingleOperation(
   try {
     SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(vocbase), collectionId, AccessMode::Type::WRITE);
 
-    trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
-    trx.addHint(TransactionHints::Hint::NO_BEGIN_MARKER, false);
-    trx.addHint(TransactionHints::Hint::NO_ABORT_MARKER, false);
-    trx.addHint(TransactionHints::Hint::NO_THROTTLING, false);
-    trx.addHint(TransactionHints::Hint::LOCK_NEVER, false);
-    trx.addHint(TransactionHints::Hint::RECOVERY, false); // to turn off waitForSync!
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION, false);
+    trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER, false);
+    trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER, false);
+    trx.addHint(transaction::Hints::Hint::NO_THROTTLING, false);
+    trx.addHint(transaction::Hints::Hint::LOCK_NEVER, false);
+    trx.addHint(transaction::Hints::Hint::RECOVERY, false); // to turn off waitForSync!
 
     res = trx.begin();
 
@@ -350,7 +350,7 @@ bool MMFilesWalRecoverState::InitialScanMarker(TRI_df_marker_t const* marker,
                                     MMFilesDatafileHelper::VPackOffset(type));
       if (payloadSlice.isObject()) {
         TRI_voc_rid_t revisionId =
-            Transaction::extractRevFromDocument(payloadSlice);
+            transaction::Methods::extractRevFromDocument(payloadSlice);
         if (revisionId != UINT64_MAX && revisionId > state->maxRevisionId) {
           state->maxRevisionId = revisionId;
         }
@@ -717,7 +717,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         // be
         // dropped later
         bool const forceSync = state->willBeDropped(databaseId, collectionId);
-        int res = collection->update(payloadSlice, forceSync);
+        int res = collection->updateProperties(payloadSlice, forceSync);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot change collection properties for collection "
@@ -774,7 +774,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           return true;
         }
 
-        RocksDBFeature::dropIndex(databaseId, collectionId, indexId);
+        PersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
 
         std::string const indexName("index-" + std::to_string(indexId) +
                                     ".json");
@@ -852,7 +852,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           vocbase->dropCollection(collection, true, false);
         }
 
-        RocksDBFeature::dropCollection(databaseId, collectionId);
+        PersistentIndexFeature::dropCollection(databaseId, collectionId);
 
         // check if there is another collection with the same name as the one
         // that
@@ -971,7 +971,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           state->databaseFeature->dropDatabase(nameString, false, true, false);
         }
 
-        RocksDBFeature::dropDatabase(databaseId);
+        PersistentIndexFeature::dropDatabase(databaseId);
 
         vocbase = nullptr;
         /* TODO: check what TRI_ERROR_ARANGO_DATABASE_NOT_FOUND means here
@@ -1034,7 +1034,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         // ignore any potential error returned by this call
         col->dropIndex(indexId, false);
 
-        RocksDBFeature::dropIndex(databaseId, collectionId, indexId);
+        PersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
 
         // additionally remove the index file
         std::string const indexName("index-" + std::to_string(indexId) +
@@ -1076,7 +1076,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         if (collection != nullptr) {
           vocbase->dropCollection(collection, true, false);
         }
-        RocksDBFeature::dropCollection(databaseId, collectionId);
+        PersistentIndexFeature::dropCollection(databaseId, collectionId);
         break;
       }
 
@@ -1096,7 +1096,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           state->databaseFeature->dropDatabase(databaseId, false, true, false);
         }
 
-        RocksDBFeature::dropDatabase(databaseId);
+        PersistentIndexFeature::dropDatabase(databaseId);
         break;
       }
 

@@ -26,6 +26,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/encoding.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
@@ -456,7 +457,7 @@ bool TRI_IsValidMarkerDatafile(TRI_df_marker_t const* marker) {
 int MMFilesDatafile::reserveElement(TRI_voc_size_t size, TRI_df_marker_t** position,
                                    TRI_voc_size_t maximalJournalSize) {
   *position = nullptr;
-  size = MMFilesDatafileHelper::AlignedSize<TRI_voc_size_t>(size);
+  size = encoding::alignedSize<TRI_voc_size_t>(size);
 
   if (_state != TRI_DF_STATE_WRITE) {
     if (_state == TRI_DF_STATE_READ) {
@@ -1327,7 +1328,7 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
         bool nextMarkerOk = false;
 
         if (size > 0) {
-          auto next = reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::AlignedSize<size_t>(size);
+          auto next = reinterpret_cast<char const*>(marker) + encoding::alignedSize<size_t>(size);
           auto p = next;
 
           if (p < end) {
@@ -1434,7 +1435,7 @@ void MMFilesDatafile::printMarker(TRI_df_marker_t const* marker, TRI_voc_size_t 
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "type: " << TRI_NameMarkerDatafile(marker) << ", size: " << marker->getSize() << ", crc: " << marker->getCrc();
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "(expected layout: size (4 bytes), crc (4 bytes), type and tick (8 bytes), payload following)";
   char const* p = reinterpret_cast<char const*>(marker);
-  char const* e = reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::AlignedSize<size_t>(size);
+  char const* e = reinterpret_cast<char const*>(marker) + encoding::alignedSize<size_t>(size);
 
   if (e + 16 < end) {
     // add some extra bytes for following data

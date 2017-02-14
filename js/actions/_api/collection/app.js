@@ -313,7 +313,7 @@ function get_api_collection (req, res) {
   // /_api/collection/<name>
   // .............................................................................
 
-  name = decodeURIComponent(req.suffix[0]);
+  name = req.suffix[0];
 
   var collection = arangodb.db._collection(name);
 
@@ -338,7 +338,7 @@ function get_api_collection (req, res) {
   }
 
   if (req.suffix.length === 2) {
-    sub = decodeURIComponent(req.suffix[1]);
+    sub = req.suffix[1];
 
     // .............................................................................
     // /_api/collection/<identifier>/checksum
@@ -569,7 +569,7 @@ function put_api_collection (req, res) {
     return;
   }
 
-  var name = decodeURIComponent(req.suffix[0]);
+  var name = req.suffix[0];
   var collection = arangodb.db._collection(name);
 
   if (collection === null) {
@@ -577,7 +577,7 @@ function put_api_collection (req, res) {
     return;
   }
 
-  var sub = decodeURIComponent(req.suffix[1]);
+  var sub = req.suffix[1];
 
   if (sub === 'load') {
     put_api_collection_load(req, res, collection);
@@ -610,7 +610,7 @@ function delete_api_collection (req, res) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
       'expected DELETE /_api/collection/<collection-name>');
   } else {
-    var name = decodeURIComponent(req.suffix[0]);
+    var name = req.suffix[0];
     var collection = arangodb.db._collection(name);
 
     if (collection === null) {

@@ -25,6 +25,7 @@
 
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTraverser.h"
+#include "Transaction/Helpers.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -34,7 +35,7 @@ using ClusterEdgeCursor = arangodb::traverser::ClusterEdgeCursor;
 ClusterEdgeCursor::ClusterEdgeCursor(VPackSlice v, uint64_t depth,
                                      arangodb::traverser::ClusterTraverser* traverser)
     : _position(0) {
-      TransactionBuilderLeaser leased(traverser->_trx);
+      transaction::BuilderLeaser leased(traverser->_trx);
       fetchEdgesFromEngines(traverser->_dbname, traverser->_engines, v, depth,
                             traverser->_edges, _edgeList, traverser->_datalake,
                             *(leased.get()), traverser->_filteredPaths,

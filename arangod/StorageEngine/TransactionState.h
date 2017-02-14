@@ -21,24 +21,35 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_TRANSACTION_STATE_H
-#define ARANGOD_UTILS_TRANSACTION_STATE_H 1
+#ifndef ARANGOD_STORAGE_ENGINE_TRANSACTION_STATE_H
+#define ARANGOD_STORAGE_ENGINE_TRANSACTION_STATE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
-#include "Utils/Transaction.h"
-#include "Utils/TransactionHints.h"
+#include "Transaction/Methods.h"
+#include "Transaction/Hints.h"
+#include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
-                                
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+#define LOG_TRX(trx, level)  \
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->_id << "." << level << " (" << transaction::statusString(trx->_status) << "): " 
+
+#else
+
+#define LOG_TRX(...) while (0) LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+
+#endif
+
 struct TRI_vocbase_t;
 
-namespace rocksdb {
-class Transaction;
-}
-
 namespace arangodb {
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 class TransactionCollection;
 
 /// @brief transaction type
@@ -81,25 +92,25 @@ class TransactionState {
   
   /// @brief whether or not a transaction consists of a single operation
   bool isSingleOperation() const {
-    return hasHint(TransactionHints::Hint::SINGLE_OPERATION);
+    return hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
   /// @brief update the status of a transaction
-  void updateStatus(Transaction::Status status);
+  void updateStatus(transaction::Status status);
   
   /// @brief whether or not a specific hint is set for the transaction
-  bool hasHint(TransactionHints::Hint hint) const {
+  bool hasHint(transaction::Hints::Hint hint) const {
     return _hints.has(hint);
   }
 
   /// @brief begin a transaction
-  virtual int beginTransaction(TransactionHints hints, int nestingLevel) = 0;
+  virtual int beginTransaction(transaction::Hints hints, int nestingLevel) = 0;
 
   /// @brief commit a transaction
-  virtual int commitTransaction(Transaction* trx, int nestingLevel) = 0;
+  virtual int commitTransaction(transaction::Methods* trx, int nestingLevel) = 0;
 
   /// @brief abort a transaction
-  virtual int abortTransaction(Transaction* trx, int nestingLevel) = 0;
+  virtual int abortTransaction(transaction::Methods* trx, int nestingLevel) = 0;
 
   /// TODO: implement this in base class
   virtual bool hasFailedOperations() const = 0;
@@ -114,7 +125,7 @@ class TransactionState {
   }
 
   /// @brief free all operations for a transaction
-  void freeOperations(arangodb::Transaction* activeTrx);
+  void freeOperations(transaction::Methods* activeTrx);
 
   /// @brief release collection locks for a transaction
   int releaseCollections();
@@ -127,17 +138,15 @@ class TransactionState {
   TRI_vocbase_t* _vocbase;            // vocbase
   TRI_voc_tid_t _id;                  // local trx id
   AccessMode::Type _type;             // access type (read|write)
-  Transaction::Status _status;        // current status
+  transaction::Status _status;        // current status
 
  protected:
   SmallVector<TransactionCollection*>::allocator_type::arena_type _arena; // memory for collections
   SmallVector<TransactionCollection*> _collections; // list of participating collections
  public:
-  rocksdb::Transaction* _rocksTransaction;
-  TransactionHints _hints;            // hints;
+  transaction::Hints _hints;            // hints;
   int _nestingLevel;
   bool _allowImplicit;
-  bool _hasOperations;
   bool _waitForSync;   // whether or not the transaction had a synchronous op
   bool _beginWritten;  // whether or not the begin marker was already written
   double _timeout;     // timeout for lock acquisition

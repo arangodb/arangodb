@@ -39,6 +39,7 @@ struct TRI_df_marker_t;
 
 namespace arangodb {
 class LogicalCollection;
+class ManagedDocumentResult;
 class MMFilesPrimaryIndex;
 
 class MMFilesCollection final : public PhysicalCollection {
@@ -54,7 +55,7 @@ class MMFilesCollection final : public PhysicalCollection {
     TRI_voc_fid_t _fid;
     std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer*> _stats;
     DatafileStatisticsContainer* _dfi;
-    arangodb::Transaction* _trx;
+    transaction::Methods* _trx;
     ManagedDocumentResult _mmdr;
     IndexLookupContext _context;
     uint64_t _deletions;
@@ -63,7 +64,7 @@ class MMFilesCollection final : public PhysicalCollection {
     int64_t _initialCount;
     bool const _trackKeys;
 
-    OpenIteratorState(LogicalCollection* collection, arangodb::Transaction* trx) 
+    OpenIteratorState(LogicalCollection* collection, transaction::Methods* trx) 
         : _collection(collection),
           _primaryIndex(collection->primaryIndex()),
           _tid(0),
@@ -160,8 +161,8 @@ class MMFilesCollection final : public PhysicalCollection {
   
   Ditches* ditches() const override { return &_ditches; }
   
-  /// @brief iterate all markers of a collection on load
-  int iterateMarkersOnLoad(arangodb::Transaction* trx) override;
+ /// @brief iterate all markers of a collection on load
+  int iterateMarkersOnLoad(arangodb::transaction::Methods* trx) override;
   
   virtual bool isFullyCollected() const override;
   
@@ -180,6 +181,50 @@ class MMFilesCollection final : public PhysicalCollection {
     }
   }
 
+  ////////////////////////////////////
+  // -- SECTION DML Operations --
+  ///////////////////////////////////
+
+  int read(transaction::Methods*, arangodb::velocypack::Slice const key,
+           ManagedDocumentResult& result, bool) override;
+
+  int insert(arangodb::transaction::Methods* trx,
+             arangodb::velocypack::Slice const newSlice,
+             arangodb::ManagedDocumentResult& result,
+             OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+             bool lock) override;
+
+  int update(arangodb::transaction::Methods* trx,
+             arangodb::velocypack::Slice const newSlice,
+             arangodb::ManagedDocumentResult& result, OperationOptions& options,
+             TRI_voc_tick_t& resultMarkerTick, bool lock,
+             TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+             TRI_voc_rid_t const& revisionId,
+             arangodb::velocypack::Slice const key) override;
+
+  int replace(transaction::Methods* trx,
+              arangodb::velocypack::Slice const newSlice,
+              ManagedDocumentResult& result, OperationOptions& options,
+              TRI_voc_tick_t& resultMarkerTick, bool lock,
+              TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+              TRI_voc_rid_t const revisionId,
+              arangodb::velocypack::Slice const fromSlice,
+              arangodb::velocypack::Slice const toSlice) override;
+
+  int remove(arangodb::transaction::Methods* trx,
+             arangodb::velocypack::Slice const slice,
+             arangodb::ManagedDocumentResult& previous,
+             OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+             bool lock, TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev,
+             arangodb::velocypack::Slice const toRemove) override;
+
+  int removeFastPath(arangodb::transaction::Methods* trx,
+                     TRI_voc_rid_t oldRevisionId,
+                     arangodb::velocypack::Slice const oldDoc,
+                     OperationOptions& options,
+                     TRI_voc_tick_t& resultMarkerTick, bool lock,
+                     TRI_voc_rid_t const& revisionId,
+                     arangodb::velocypack::Slice const toRemove) override;
 
  private:
   static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
@@ -188,59 +233,100 @@ class MMFilesCollection final : public PhysicalCollection {
   static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
                                               MMFilesDatafile* datafile,
                                               OpenIteratorState* state);
-  static bool OpenIterator(TRI_df_marker_t const* marker, OpenIteratorState* data, MMFilesDatafile* datafile);
+  static bool OpenIterator(TRI_df_marker_t const* marker,
+                           OpenIteratorState* data, MMFilesDatafile* datafile);
 
   /// @brief create statistics for a datafile, using the stats provided
-  void createStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) {
+  void createStats(TRI_voc_fid_t fid,
+                   DatafileStatisticsContainer const& values) {
     _datafileStatistics.create(fid, values);
-  }
-  
-  /// @brief iterates over a collection
-  bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, MMFilesDatafile*)> const& cb);
-  
-  /// @brief creates a datafile
-  MMFilesDatafile* createDatafile(TRI_voc_fid_t fid,
-                                 TRI_voc_size_t journalSize, 
-                                 bool isCompactor);
+    }
 
-  /// @brief iterate over a vector of datafiles and pick those with a specific
-  /// data range
-  std::vector<DatafileDescription> datafilesInRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax);
-  
-  /// @brief closes the datafiles passed in the vector
-  bool closeDatafiles(std::vector<MMFilesDatafile*> const& files);
+    /// @brief iterates over a collection
+    bool iterateDatafiles(
+        std::function<bool(TRI_df_marker_t const*, MMFilesDatafile*)> const&
+            cb);
 
-  bool iterateDatafilesVector(std::vector<MMFilesDatafile*> const& files,
-                              std::function<bool(TRI_df_marker_t const*, MMFilesDatafile*)> const& cb);
+    /// @brief creates a datafile
+    MMFilesDatafile* createDatafile(
+        TRI_voc_fid_t fid, TRI_voc_size_t journalSize, bool isCompactor);
 
-  MMFilesDocumentPosition lookupRevision(TRI_voc_rid_t revisionId) const;
+    /// @brief iterate over a vector of datafiles and pick those with a specific
+    /// data range
+    std::vector<DatafileDescription> datafilesInRange(TRI_voc_tick_t dataMin,
+                                                      TRI_voc_tick_t dataMax);
 
-  uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const override;
-  uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const override;
-  void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock) override;
-  void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) override;
-  bool updateRevisionConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal) override;
-  void removeRevision(TRI_voc_rid_t revisionId, bool updateStats) override;
-  
- private:
-  mutable arangodb::Ditches _ditches;
+    /// @brief closes the datafiles passed in the vector
+    bool closeDatafiles(std::vector<MMFilesDatafile*> const& files);
 
-  arangodb::basics::ReadWriteLock _filesLock;
-  std::vector<MMFilesDatafile*> _datafiles;   // all datafiles
-  std::vector<MMFilesDatafile*> _journals;    // all journals
-  std::vector<MMFilesDatafile*> _compactors;  // all compactor files
-  
-  arangodb::basics::ReadWriteLock _compactionLock;
+    bool iterateDatafilesVector(
+        std::vector<MMFilesDatafile*> const& files,
+        std::function<bool(TRI_df_marker_t const*, MMFilesDatafile*)> const&
+            cb);
 
-  int64_t _initialCount;
-  
-  MMFilesDatafileStatistics _datafileStatistics;
+    MMFilesDocumentPosition lookupRevision(TRI_voc_rid_t revisionId) const;
 
-  TRI_voc_rid_t _lastRevision;
-  
-  MMFilesRevisionsCache _revisionsCache;
-  
-  std::atomic<int64_t> _uncollectedLogfileEntries;
+    uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const override;
+    uint8_t const* lookupRevisionVPackConditional(
+        TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal)
+        const override;
+    void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
+                        TRI_voc_fid_t fid, bool isInWal, bool shouldLock)
+        override;
+    void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
+                        TRI_voc_fid_t fid, bool isInWal) override;
+    bool updateRevisionConditional(TRI_voc_rid_t revisionId,
+                                   TRI_df_marker_t const* oldPosition,
+                                   TRI_df_marker_t const* newPosition,
+                                   TRI_voc_fid_t newFid, bool isInWal) override;
+    void removeRevision(TRI_voc_rid_t revisionId, bool updateStats) override;
+
+    int insertDocument(arangodb::transaction::Methods * trx,
+                       TRI_voc_rid_t revisionId,
+                       arangodb::velocypack::Slice const& doc,
+                       MMFilesDocumentOperation& operation,
+                       MMFilesWalMarker const* marker, bool& waitForSync);
+
+   private:
+    // SECTION: Index storage
+
+    int insertIndexes(transaction::Methods * trx, TRI_voc_rid_t revisionId,
+                      velocypack::Slice const& doc);
+
+    int insertPrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
+                           velocypack::Slice const&);
+
+    int deletePrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
+                           velocypack::Slice const&);
+
+    int insertSecondaryIndexes(transaction::Methods*, TRI_voc_rid_t revisionId,
+                               velocypack::Slice const&, bool isRollback);
+
+    int deleteSecondaryIndexes(transaction::Methods*, TRI_voc_rid_t revisionId,
+                               velocypack::Slice const&, bool isRollback);
+
+    int lookupDocument(transaction::Methods*, velocypack::Slice const,
+                       ManagedDocumentResult& result);
+
+   private:
+    mutable arangodb::Ditches _ditches;
+
+    arangodb::basics::ReadWriteLock _filesLock;
+    std::vector<MMFilesDatafile*> _datafiles;   // all datafiles
+    std::vector<MMFilesDatafile*> _journals;    // all journals
+    std::vector<MMFilesDatafile*> _compactors;  // all compactor files
+
+    arangodb::basics::ReadWriteLock _compactionLock;
+
+    int64_t _initialCount;
+
+    MMFilesDatafileStatistics _datafileStatistics;
+
+    TRI_voc_rid_t _lastRevision;
+
+    MMFilesRevisionsCache _revisionsCache;
+
+    std::atomic<int64_t> _uncollectedLogfileEntries;
 
 };
 

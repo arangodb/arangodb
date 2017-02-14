@@ -1168,10 +1168,10 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
         engine = inst.get()->buildEngines();
         root = engine->root();
         // Now find all shards that take part:
-        if (Transaction::_makeNolockHeaders != nullptr) {
+        if (transaction::Methods::_makeNolockHeaders != nullptr) {
           engine->_lockedShards = new std::unordered_set<std::string>(
-              *Transaction::_makeNolockHeaders);
-          engine->_previouslyLockedShards = Transaction::_makeNolockHeaders;
+              *transaction::Methods::_makeNolockHeaders);
+          engine->_previouslyLockedShards = transaction::Methods::_makeNolockHeaders;
         } else {
           engine->_lockedShards = new std::unordered_set<std::string>();
           engine->_previouslyLockedShards = nullptr;
@@ -1269,7 +1269,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
                 TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED, message);
           }
         }
-        Transaction::_makeNolockHeaders = engine->_lockedShards;
+        transaction::Methods::_makeNolockHeaders = engine->_lockedShards;
       } catch (...) {
         // We need to destroy all queries that we have built and stuffed
         // into the QueryRegistry as well as those that we have pushed to
