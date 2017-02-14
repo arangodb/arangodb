@@ -421,7 +421,7 @@ void Constituent::callElection() {
     
     auto res = ClusterComm::instance()->wait(
       "", coordinatorTransactionID, 0, "",
-      duration<double>(steady_clock::now()-timeout).count());
+      duration<double>(timeout-steady_clock::now()).count());
 
     if (res.status == CL_COMM_SENT) {
       auto body = res.result->getBodyVelocyPack();
