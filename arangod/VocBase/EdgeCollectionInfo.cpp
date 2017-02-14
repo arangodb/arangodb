@@ -22,8 +22,10 @@
 
 #include "EdgeCollectionInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 
+using namespace arangodb;
 using namespace arangodb::traverser;
 
 EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
