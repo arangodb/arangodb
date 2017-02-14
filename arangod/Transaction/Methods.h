@@ -482,12 +482,6 @@ class Methods {
   /// @brief add a collection by name
   int addCollection(std::string const&, AccessMode::Type);
 
-  /// @brief set the lock acquisition timeout
-  void setTimeout(double timeout) { _timeout = timeout; }
-
-  /// @brief set the waitForSync property
-  void setWaitForSync() { _waitForSync = true; }
-
   /// @brief set the allowImplicitCollections property
   void setAllowImplicitCollections(bool value);
 
@@ -604,12 +598,6 @@ class Methods {
 
   /// @brief transaction hints
   transaction::Hints _hints;
-
-  /// @brief timeout for lock acquisition
-  double _timeout;
-
-  /// @brief wait for sync property for transaction
-  bool _waitForSync;
 
   /// @brief allow implicit collections for transaction
   bool _allowImplicitCollections;

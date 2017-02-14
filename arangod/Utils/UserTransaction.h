@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Utils/V8TransactionContext.h"
 
@@ -43,12 +44,9 @@ class UserTransaction final : public transaction::Methods {
       : transaction::Methods(transactionContext) {
     addHint(transaction::Hints::Hint::LOCK_ENTIRELY, false);
 
-    if (lockTimeout >= 0.0) {
-      setTimeout(lockTimeout);
-    }
-
-    if (waitForSync) {
-      setWaitForSync();
+    if (_state != nullptr) {
+      _state->timeout(lockTimeout);
+      _state->waitForSync(waitForSync);
     }
     
     for (auto const& it : exclusiveCollections) {

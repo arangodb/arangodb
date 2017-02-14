@@ -563,8 +563,6 @@ transaction::Methods::Methods(std::shared_ptr<TransactionContext> transactionCon
       _nestingLevel(0),
       _errorData(),
       _hints(0),
-      _timeout(0.0),
-      _waitForSync(false),
       _allowImplicitCollections(true),
       _isReal(true),
       _state(nullptr),
@@ -2956,8 +2954,6 @@ int transaction::Methods::setupToplevel() {
   try {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     _state = engine->createTransactionState(_vocbase);
-    _state->timeout(_timeout);
-    _state->waitForSync(_waitForSync);
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
