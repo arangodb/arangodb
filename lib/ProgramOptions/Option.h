@@ -86,7 +86,7 @@ struct Option {
       } else {
         std::string description = parameter->description();
         if (!description.empty()) {
-          value.push_back(' ');
+          value.append(". ");
           value.append(description);
         }
         value += " (default: " + parameter->valueString() + ")";
