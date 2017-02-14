@@ -41,7 +41,7 @@ Creates a [Transport](README.md) that can be used in the sessions middleware.
 
   * **ttl**: `number` (optional)
 
-    Cookie lifetime in seconds.
+    Cookie lifetime in seconds. Note that this does not affect the storage TTL (i.e. how long the session itself is considered valid), just how long the cookie should be stored by the client.
 
   * **algorithm**: `string` (optional)
 
