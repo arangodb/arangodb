@@ -50,6 +50,13 @@ Export JSONL
 
 This exports the collection *test* into the output directory *export* as jsonl. Every line in the export is one document from the collection *test* as json.
 
+Export XML
+----------
+
+    unix> arangoexport --type xml --collection test
+
+This exports the collection *test* into the output directory *export* as generic XML. The root element of the generated XML file is named *collection*. Each document in the collection is exported in a *doc* XML attribute. Each document attribute is export in a generic *att* element, which has a *type* attribute indicating the attribute value, and a *value* attribute containing the attribute's value.
+
 Export XGMML
 ------------
 

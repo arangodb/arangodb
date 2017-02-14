@@ -271,13 +271,13 @@ void Logger::log(char const* function, char const* file, long int line,
   }
 
   // output prefix
-  if (! _outputPrefix.empty()) {
+  if (!_outputPrefix.empty()) {
     out << _outputPrefix << " ";
   }
 
   // append the process / thread identifier
   {
-    char processPrefix[128];
+    char processPrefix[48];
 
     TRI_pid_t processId = Thread::currentProcessId();
 
@@ -294,7 +294,7 @@ void Logger::log(char const* function, char const* file, long int line,
   }
 
   // log level
-  out << Logger::translateLogLevel(level) << " ";
+  out << Logger::translateLogLevel(level) << ' ';
 
   // check if we must display the line number
   if (_showLineNumber) {
@@ -307,7 +307,7 @@ void Logger::log(char const* function, char const* file, long int line,
         filename = shortened + 1;
       }
     }
-    out << "[" << filename << ":" << line << "] ";
+    out << '[' << filename << ':' << line << "] ";
   }
 
   // generate the complete message
@@ -315,16 +315,19 @@ void Logger::log(char const* function, char const* file, long int line,
   size_t offset = out.str().size() - message.size();
   auto msg = std::make_unique<LogMessage>(level, topicId, out.str(), offset);
 
+  bool const isDirectLogLevel = (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
+
   // now either queue or output the message
-  if (_threaded) {
+  if (_threaded && !isDirectLogLevel) {
     try {
       _loggingThread->log(msg);
+      return;
     } catch (...) {
-      LogAppender::log(msg.get());
+      // fall-through to non-threaded logging
     }
-  } else {
-    LogAppender::log(msg.get());
   }
+   
+  LogAppender::log(msg.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
