@@ -158,9 +158,6 @@ static ExecutionBlock* CreateBlock(
       return new RemoteBlock(engine, remote, remote->server(),
                              remote->ownName(), remote->queryId());
     }
-    case ExecutionNode::ILLEGAL: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
-    }
   }
 
   return nullptr;
