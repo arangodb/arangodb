@@ -113,25 +113,6 @@ class LogicalCollection {
   // TODO: MOVE TO PHYSICAL?
   bool isFullyCollected(); //should not be exposed
 
-  void setNextCompactionStartIndex(size_t index) {
-    MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-    _nextCompactionStartIndex = index;
-  }
-
-  size_t getNextCompactionStartIndex() {
-    MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-    return _nextCompactionStartIndex;
-  }
-
-  void setCompactionStatus(char const* reason) {
-    TRI_ASSERT(reason != nullptr);
-    MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-    _lastCompactionStatus = reason;
-  }
-  double lastCompactionStamp() const { return _lastCompactionStamp; }
-  void lastCompactionStamp(double value) { _lastCompactionStamp = value; }
-
-
   void setRevisionError() { _revisionError = true; }
 
   // SECTION: Meta Information
@@ -310,16 +291,16 @@ class LogicalCollection {
     return getPhysical()->applyForTickRange(dataMin, dataMax, callback);
   }
 
-  /// @brief disallow starting the compaction of the collection
-  void preventCompaction() { getPhysical()->preventCompaction(); }
-  bool tryPreventCompaction() { return getPhysical()->tryPreventCompaction(); }
-  /// @brief re-allow starting the compaction of the collection
-  void allowCompaction() { getPhysical()->allowCompaction(); }
+  // /// @brief disallow starting the compaction of the collection
+  // void preventCompaction() { getPhysical()->preventCompaction(); }
+  // bool tryPreventCompaction() { return getPhysical()->tryPreventCompaction(); }
+  // /// @brief re-allow starting the compaction of the collection
+  // void allowCompaction() { getPhysical()->allowCompaction(); }
 
-  /// @brief compaction finished
-  void lockForCompaction() { getPhysical()->lockForCompaction(); }
-  bool tryLockForCompaction() { return getPhysical()->tryLockForCompaction(); }
-  void finishCompaction() { getPhysical()->finishCompaction(); }
+  // /// @brief compaction finished
+  // void lockForCompaction() { getPhysical()->lockForCompaction(); }
+  // bool tryLockForCompaction() { return getPhysical()->tryLockForCompaction(); }
+  // void finishCompaction() { getPhysical()->finishCompaction(); }
 
   void sizeHint(transaction::Methods* trx, int64_t hint);
 
@@ -595,11 +576,6 @@ class LogicalCollection {
 
   mutable basics::ReadWriteLock
       _infoLock;  // lock protecting the info
-
-  Mutex _compactionStatusLock;
-  size_t _nextCompactionStartIndex;
-  char const* _lastCompactionStatus;
-  double _lastCompactionStamp;
 
   /// @brief: flag that is set to true when the documents are
   /// initial enumerated and the primary index is built
