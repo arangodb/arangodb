@@ -64,7 +64,9 @@ class RecoveryManager {
   void updatedFailedServers();
   // bool allServersAvailable(std::vector<ServerID> const& dbServers);
 };
+  
 /*
+template
 class CheckpointingManager {
   friend class RestPregelHandler;
 
@@ -75,9 +77,11 @@ class CheckpointingManager {
 
  public:
   template <typename V, typename E>
-  void replicateGraphData(GraphStore<V, E> const* graphStore) {}
+  void replicateGraphData(uint64_t exn, uint64_t gss, 
+ GraphStore<V, E> const* graphStore);
   
-  void restoreGraphData(GraphStore<V, E> const*)
+  void restoreGraphData(uint64_t exn, uint64_t gss, 
+    GraphStore<V, E> const* graphStore);
 
   void reloadPlanData() { _secondaries.clear(); }
 };*/
