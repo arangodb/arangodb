@@ -2050,9 +2050,11 @@ exports.buildRouting = buildRouting;
 exports.buildRoutingTree = buildRoutingTree;
 exports.flattenRoutingTree = flattenRoutingTree;
 exports.nextRouting = nextRouting;
-exports.firstRouting = function firstRouting (method, url, routes) {
-  const parts = url.split('/').filter(s => s !== '');
-  return firstRouting(method, parts, routes);
+exports.firstRouting = function (method, parts, routes) {
+  if (typeof parts === 'string') {
+    parts = parts.split('/').filter(s => s !== '');
+  }
+  return firstRouting(method, parts, routes, parts);
 };
 
 // public functions

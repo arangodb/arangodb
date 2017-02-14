@@ -82,7 +82,11 @@ list(APPEND PACKAGES_LIST package-arongodb-server-zip)
 ################################################################################
 # hook to build the client package
 ################################################################################
-set(CLIENT_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/../p)
+string(LENGTH "${CLIENT_BUILD_DIR}" CLIENT_BUILD_DIR_LEN)
+if (${CLIENT_BUILD_DIR_LEN} EQUAL 0)
+  set(CLIENT_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/../p)
+endif()
+
 configure_file(cmake/packages/client/nsis.txt ${CLIENT_BUILD_DIR}/CMakeLists.txt @ONLY)
 add_custom_target(package-arongodb-client-nsis
   COMMAND ${CMAKE_COMMAND} .
