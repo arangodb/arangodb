@@ -43,7 +43,7 @@ var API = '_api/tasks';
 
 function get_api_tasks (req, res) {
   if (req.suffix.length === 1) {
-    var matchId = decodeURIComponent(req.suffix[0]);
+    var matchId = req.suffix[0];
     var allTasks = tasks.get().filter(function (task) {
       return (task.id === matchId);
     });
@@ -74,7 +74,7 @@ function post_api_task_register (req, res, byId) {
         'expected PUT /' + API + '/<task-id>');
       return;
     } else {
-      body.id = decodeURIComponent(req.suffix[0]);
+      body.id = req.suffix[0];
     }
   }
 
@@ -97,7 +97,7 @@ function delete_api_task (req, res) {
       'expected DELETE /' + API + '/<task-id>');
   } else {
     try {
-      tasks.unregister(decodeURIComponent(req.suffix[0]));
+      tasks.unregister(req.suffix[0]);
 
       actions.resultOk(req, res, actions.HTTP_OK, {});
     } catch (err) {
