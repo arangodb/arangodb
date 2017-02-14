@@ -34,10 +34,23 @@ module.exports = function cookieTransport (cfg) {
   assert(!cfg.algorithm || cfg.secret, 'Must specify a secret when specifying an algorithm');
   const name = cfg.name || 'sid';
   const ttl = cfg.ttl || undefined;
-  const opts = cfg.secret ? {
-    secret: cfg.secret,
-    algorithm: cfg.algorithm
-  } : undefined;
+  const opts = {};
+  if (cfg.secret) {
+    opts.secret = cfg.secret;
+    opts.algorithm = cfg.algorithm;
+  }
+  if (cfg.path) {
+    opts.path = cfg.path;
+  }
+  if (cfg.domain) {
+    opts.domain = cfg.domain;
+  }
+  if (cfg.secure) {
+    opts.secure = cfg.secure;
+  }
+  if (cfg.httpOnly) {
+    opts.httpOnly = cfg.httpOnly;
+  }
   return {
     get(req) {
       return req.cookie(name, opts);

@@ -51,4 +51,20 @@ Creates a [Transport](README.md) that can be used in the sessions middleware.
 
     Secret to use for the signed cookie. Will be ignored if no algorithm is provided.
 
+  * **path**: `string` (optional)
+
+    Path for which the cookie should be issued.
+
+  * **domain**: `string` (optional)
+
+    Domain for which the cookie should be issued.
+
+  * **secure**: `boolean` (Default: `false`)
+
+    Whether the cookie should be marked as secure (i.e. HTTPS/SSL-only).
+
+  * **httpOnly**: `boolean` (Default: `false`)
+
+    Whether the cookie should be marked as HTTP-only (rather than also exposing it to client-side code).
+
 If a string is passed instead of an options object, it will be interpreted as the *name* option.

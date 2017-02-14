@@ -59,35 +59,35 @@ Sets a cookie with the given name.
 
   An object with any of the following properties:
 
+  * **ttl**: `number` (optional)
+
+    Time to live of the cookie in seconds.
+
+  * **algorithm**: `string` (Default: `"sha256"`)
+
+    Algorithm that will be used to sign the cookie.
+
   * **secret**: `string` (optional)
 
     Secret that will be used to sign the cookie.
 
     If a secret is specified, the cookie's signature will be stored in a second cookie with the same options, the same name and the suffix `.sig`. Otherwise no signature will be added.
 
-  * **algorithm**: `string` (Default: `"sha256"`)
+  * **path**: `string` (optional)
 
-    Algorithm that will be used to sign the cookie.
+    Path for which the cookie should be issued.
 
-  * **ttl**: `number` (optional)
+  * **domain**: `string` (optional)
 
-    Time to live of the cookie.
+    Domain for which the cookie should be issued.
 
-  * **path**: `number` (optional)
-
-    Path of the cookie.
-
-  * **domain**: `number` (optional)
-
-    Domain of the cookie.
-
-  * **secure**: `number` (Default: `false`)
+  * **secure**: `boolean` (Default: `false`)
 
     Whether the cookie should be marked as secure (i.e. HTTPS/SSL-only).
 
   * **httpOnly**: `boolean` (Default: `false`)
 
-    Whether the cookie should be marked as HTTP-only.
+    Whether the cookie should be marked as HTTP-only (rather than also exposing it to client-side code).
 
 If a string is passed instead of an options object it will be interpreted as the *secret* option.
 

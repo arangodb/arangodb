@@ -57,3 +57,4 @@ Authentication
 Foxx
 ----
 
+The [cookie session transport](../Foxx/Sessions/Transports/Cookie.md) now supports all options supported by the [cookie method of the response object](../Foxx/Router/Response.md#cookie).
