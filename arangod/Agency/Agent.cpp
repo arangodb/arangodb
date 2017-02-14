@@ -324,8 +324,8 @@ bool Agent::recvAppendEntriesRPC(
 /// Leader's append entries
 void Agent::sendAppendEntriesRPC() {
 
-  std::chrono::duration<int, std::ratio<1, 1000000>> const dt (
-    (_config.waitForSync() ? 40000 : 2000));
+  std::chrono::duration<int, std::ratio<1, 1000>> const dt (
+    (_config.waitForSync() ? 40 : 2));
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr only happens during controlled shutdown
@@ -414,7 +414,7 @@ void Agent::sendAppendEntriesRPC() {
         arangodb::rest::RequestType::POST, path.str(),
         std::make_shared<std::string>(builder.toJson()), headerFields,
         std::make_shared<AgentCallback>(this, followerId, highest, toLog),
-        5.0 * _config.maxPing(), true);
+        std::max(1.0e-3 * toLog * dt.count(), 0.25 * _config.minPing()), true);
 
       // _lastSent, _lastHighest: local and single threaded access
       _lastSent[followerId]        = system_clock::now();
@@ -422,7 +422,7 @@ void Agent::sendAppendEntriesRPC() {
 
       if (toLog > 0) {
         _earliestPackage[followerId] = system_clock::now() + toLog * dt;
-        LOG_TOPIC(TRACE, Logger::AGENCY)
+        LOG_TOPIC(INFO, Logger::AGENCY)
           << "Appending " << unconfirmed.size() - 1 << " entries up to index "
           << highest << " to follower " << followerId << ". Message: "
           << builder.toJson() 
@@ -430,7 +430,7 @@ void Agent::sendAppendEntriesRPC() {
           <<  std::chrono::duration<double, std::milli>(
             _earliestPackage[followerId]-system_clock::now()).count() << "ms";
       } else {
-        LOG_TOPIC(TRACE, Logger::AGENCY)
+        LOG_TOPIC(INFO, Logger::AGENCY)
           << "Just keeping follower " << followerId
           << " devout with " << builder.toJson();
       }
