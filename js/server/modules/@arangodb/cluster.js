@@ -1740,56 +1740,6 @@ var coordinatorId = function () {
 };
 
 // /////////////////////////////////////////////////////////////////////////////
-// / @brief bootstrap db servers
-// /////////////////////////////////////////////////////////////////////////////
-
-var bootstrapDbServers = function (isRelaunch) {
-  global.ArangoClusterInfo.reloadDBServers();
-
-  var dbServers = global.ArangoClusterInfo.getDBServers();
-  var ops = [];
-  var i;
-
-  var options = {
-    coordTransactionID: global.ArangoClusterComm.getId(),
-    timeout: 90
-  };
-
-  for (i = 0;  i < dbServers.length;  ++i) {
-    var server = dbServers[i];
-
-    var op = global.ArangoClusterComm.asyncRequest(
-      'POST',
-      'server:' + server,
-      '_system',
-      '/_admin/cluster/bootstrapDbServer',
-      '{"isRelaunch": ' + (isRelaunch ? 'true' : 'false') + '}',
-      {},
-      options);
-
-    ops.push(op);
-  }
-
-  var result = true;
-
-  for (i = 0;  i < ops.length;  ++i) {
-    var r = global.ArangoClusterComm.wait(ops[i]);
-
-    if (r.status === 'RECEIVED') {
-      console.debug('bootstraped DB server %s', dbServers[i]);
-    } else if (r.status === 'TIMEOUT') {
-      console.error('cannot bootstrap DB server %s: operation timed out', dbServers[i]);
-      result = false;
-    } else {
-      console.error('cannot bootstrap DB server %s: %s', dbServers[i], JSON.stringify(r));
-      result = false;
-    }
-  }
-
-  return result;
-};
-
-// /////////////////////////////////////////////////////////////////////////////
 // / @brief shard distribution
 // /////////////////////////////////////////////////////////////////////////////
 
@@ -1881,7 +1831,7 @@ function rebalanceShards () {
   var dbTab = {};
   var i, j, k, l;
   for (i = 0; i < dbServers.length; ++i) {
-    dbTab[dbServers[i]] = [];
+    dbTab[dbServers[i].serverId] = [];
   }
   var shardMap = {};
 
@@ -1927,8 +1877,8 @@ function rebalanceShards () {
   // Compute total weight for each DBServer:
   var totalWeight = [];
   for (i = 0; i < dbServers.length; ++i) {
-    totalWeight.push({'server': dbServers[i],
-      'weight': _.reduce(dbTab[dbServers[i]],
+    totalWeight.push({'server': dbServers[i].serverId,
+      'weight': _.reduce(dbTab[dbServers[i].serverId],
       (sum, x) => sum + x.weight, 0)});
   }
   totalWeight = _.sortBy(totalWeight, x => x.weight);
@@ -2073,7 +2023,6 @@ function waitForSyncRepl (dbName, collList) {
   return false;
 }
 
-exports.bootstrapDbServers = bootstrapDbServers;
 exports.coordinatorId = coordinatorId;
 exports.handlePlanChange = handlePlanChange;
 exports.isCluster = isCluster;
