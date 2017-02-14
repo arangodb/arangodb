@@ -42,6 +42,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
   ~PregelFeature();
 
   static PregelFeature* instance();
+  static size_t availableParallelism();
 
   void start() override final;
   void beginShutdown() override final;

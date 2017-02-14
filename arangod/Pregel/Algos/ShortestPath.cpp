@@ -28,6 +28,7 @@
 #include "Pregel/VertexComputation.h"
 #include "Pregel/WorkerConfig.h"
 
+using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 

@@ -59,6 +59,9 @@ class GraphStore;
 
 template <typename M>
 class InCache;
+  
+template <typename M>
+class OutCache;
 
 template <typename T>
 class RangeIterator;
@@ -109,17 +112,27 @@ class Worker : public IWorker {
   InCache<M>* _writeCache = nullptr;
   // intended for the next superstep phase
   InCache<M>* _writeCacheNextGSS = nullptr;
+  // preallocated incoming caches
+  std::vector<InCache<M>*> _inCaches;
+  // preallocated ootgoing caches
+  std::vector<OutCache<M>*> _outCaches;
+
+  /// Stats about the CURRENT gss
+  MessageStats _messageStats;
+  /// valid after _finishedProcessing was called
+  uint64_t _activeCount = 0;
+  /// current number of running threads
+  size_t _runningThreads = 0;
   /// During async mode this should keep track of the send messages
   std::atomic<uint64_t> _nextGSSSendMessageCount;
   /// if the worker has started sendng messages to the next GSS
   std::atomic<bool> _requestedNextGSS;
-
-  MessageStats _messageStats;
-  uint64_t _activeCount = 0;
-  size_t _runningThreads = 0;
+  
+  void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   void _startProcessing();
-  bool _processVertices(RangeIterator<VertexEntry>& vertexIterator);
+  bool _processVertices(size_t threadId,
+                        RangeIterator<VertexEntry>& vertexIterator);
   void _finishedProcessing();
   void _continueAsync();
   void _callConductor(std::string const& path, VPackSlice const& message);

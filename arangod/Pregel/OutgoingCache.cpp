@@ -38,12 +38,6 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 template <typename M>
-OutCache<M>::OutCache(WorkerConfig* state, InCache<M>* cache)
-    : _config(state), _format(cache->format()), _localCache(cache) {
-  _baseUrl = Utils::baseUrl(_config->database());
-}
-
-template <typename M>
 OutCache<M>::OutCache(WorkerConfig* state, InCache<M>* cache,
                       InCache<M>* nextGSS)
     : _config(state),
@@ -62,7 +56,9 @@ ArrayOutCache<M>::~ArrayOutCache() {
 
 template <typename M>
 void ArrayOutCache<M>::clear() {
-  _shardMap.clear();
+  for (auto& pair : _shardMap) {
+    pair.second.clear();
+  }
   this->_containedMessages = 0;
 }
 
@@ -140,22 +136,11 @@ void ArrayOutCache<M>::flushMessages() {
   size_t nrDone = 0;
   ClusterComm::instance()->performRequests(requests, 120, nrDone,
                                            LogTopic("Pregel message transfer"));
-  // readResults(requests);
-  for (auto const& req : requests) {
-    auto& res = req.result;
-    if (res.status == CL_COMM_RECEIVED) {
-      LOG_TOPIC(INFO, Logger::PREGEL) << res.answer->payload().toJson();
-    }
-  }
+  Utils::printResponses(requests);
   this->clear();
 }
 
 // ================= CombiningOutCache ==================
-
-template <typename M>
-CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state,
-                                        CombiningInCache<M>* cache)
-    : OutCache<M>(state, cache), _combiner(cache->combiner()) {}
 
 template <typename M>
 CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state,
@@ -170,7 +155,9 @@ CombiningOutCache<M>::~CombiningOutCache() {
 
 template <typename M>
 void CombiningOutCache<M>::clear() {
-  _shardMap.clear();
+  for (auto& pair : _shardMap) {
+    pair.second.clear();
+  }
   this->_containedMessages = 0;
 }
 
@@ -195,7 +182,7 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
       vertexMap.emplace(key, data);
 
       if (++(this->_containedMessages) >= this->_batchSize) {
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Hit buffer limit";
+        //LOG_TOPIC(INFO, Logger::PREGEL) << "Hit buffer limit";
         flushMessages();
       }
     }

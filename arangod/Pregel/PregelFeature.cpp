@@ -59,7 +59,7 @@ PregelFeature::~PregelFeature() {
 
 PregelFeature* PregelFeature::instance() { return Instance; }
 
-static size_t _approxThreadNumber() {
+size_t PregelFeature::availableParallelism() {
   const size_t procNum = TRI_numberProcessors();
   if (procNum <= 1)
     return 1;
@@ -72,7 +72,7 @@ void PregelFeature::start() {
     return;
   }
 
-  const size_t threadNum = _approxThreadNumber();
+  const size_t threadNum = PregelFeature::availableParallelism();
   LOG_TOPIC(INFO, Logger::PREGEL) << "Pregel uses " << threadNum << " threads";
   _threadPool.reset(new ThreadPool(threadNum, "Pregel"));
 

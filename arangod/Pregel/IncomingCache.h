@@ -73,7 +73,7 @@ class InCache {
   void storeMessage(prgl_shard_t shard, std::string const& vertexId,
                     M const& data);
 
-  virtual void mergeCache(InCache<M> const* otherCache) = 0;
+  virtual void mergeCache(WorkerConfig const& config, InCache<M> const* otherCache) = 0;
   /// @brief get messages for vertex id. (Don't use keys from _from or _to
   /// directly, they contain the collection name)
   virtual MessageIterator<M> getMessages(prgl_shard_t shard,
@@ -103,7 +103,7 @@ class ArrayInCache : public InCache<M> {
  public:
   ArrayInCache(WorkerConfig const* config, MessageFormat<M> const* format);
 
-  void mergeCache(InCache<M> const* otherCache) override;
+  void mergeCache(WorkerConfig const& config, InCache<M> const* otherCache) override;
   MessageIterator<M> getMessages(prgl_shard_t shard,
                                  std::string const& key) override;
   void clear() override;
@@ -131,7 +131,7 @@ class CombiningInCache : public InCache<M> {
 
   MessageCombiner<M> const* combiner() const { return _combiner; }
 
-  void mergeCache(InCache<M> const* otherCache) override;
+  void mergeCache(WorkerConfig const& config, InCache<M> const* otherCache) override;
   MessageIterator<M> getMessages(prgl_shard_t shard,
                                  std::string const& key) override;
   void clear() override;

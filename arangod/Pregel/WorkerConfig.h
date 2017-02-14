@@ -55,6 +55,8 @@ class WorkerConfig {
   inline bool asynchronousMode() const { return _asynchronousMode; }
 
   inline bool lazyLoading() const { return _lazyLoading; }
+  
+  inline uint32_t parallelism() const { return _parallelism; }
 
   inline std::string const& coordinatorId() const { return _coordinatorId; }
 
@@ -122,6 +124,8 @@ class WorkerConfig {
   bool _asynchronousMode = false;
   /// load vertices on a lazy basis
   bool _lazyLoading = false;
+  
+  uint32_t _parallelism = 1;
 
   std::string _coordinatorId;
   std::string _database;

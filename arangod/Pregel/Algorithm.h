@@ -102,13 +102,12 @@ struct Algorithm : IAlgorithm {
   }
 
   virtual uint32_t messageBatchSize(WorkerConfig const& config,
-                                    MessageStats const& stats,
-                                    uint64_t threadCount) const {
+                                    MessageStats const& stats) const {
     if (config.localSuperstep() == 0) {
       return 500;
     } else {
       double msgsPerSec = stats.sendCount / stats.superstepRuntimeSecs;
-      msgsPerSec /= threadCount;  // per thread
+      msgsPerSec /= config.parallelism();  // per thread
       msgsPerSec *= 0.06;
       return msgsPerSec > 250.0 ? (uint32_t)msgsPerSec : 250;
     }

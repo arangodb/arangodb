@@ -30,6 +30,7 @@
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
 
+using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
