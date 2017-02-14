@@ -1310,7 +1310,7 @@ static void JS_PropertiesVocbaseCol(
               "indexBuckets must be a two-power between 1 and 1024");
         }
 
-        int res = info->update(slice, false);
+        int res = info->updateProperties(slice, false);
 
         if (res != TRI_ERROR_NO_ERROR) {
           TRI_V8_THROW_EXCEPTION(res);
@@ -1415,7 +1415,7 @@ static void JS_PropertiesVocbaseCol(
 
       // try to write new parameter to file
       bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-      res = collection->update(slice, doSync);
+      res = collection->updateProperties(slice, doSync);
 
       if (res != TRI_ERROR_NO_ERROR) {
         TRI_V8_THROW_EXCEPTION(res);

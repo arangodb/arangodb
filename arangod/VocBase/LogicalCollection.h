@@ -281,7 +281,7 @@ class LogicalCollection {
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 
   // Update this collection.
-  virtual int update(velocypack::Slice const&, bool);
+  virtual int updateProperties(velocypack::Slice const&, bool);
 
   /// @brief return the figures for a collection
   virtual std::shared_ptr<velocypack::Builder> figures();

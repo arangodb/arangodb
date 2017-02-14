@@ -1639,7 +1639,7 @@ int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,
           "Database")
           ->forceSyncProperties();
 
-  return guard.collection()->update(slice, doSync);
+  return guard.collection()->updateProperties(slice, doSync);
 }
  
 ////////////////////////////////////////////////////////////////////////////////

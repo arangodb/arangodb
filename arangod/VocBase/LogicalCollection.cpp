@@ -1074,7 +1074,7 @@ void LogicalCollection::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
 
 void LogicalCollection::increaseInternalVersion() { ++_internalVersion; }
 
-int LogicalCollection::update(VPackSlice const& slice, bool doSync) {
+int LogicalCollection::updateProperties(VPackSlice const& slice, bool doSync) {
   // the following collection properties are intentionally not updated as
   // updating
   // them would be very complicated:
@@ -1467,7 +1467,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
             "Database")
             ->forceSyncProperties();
     toVelocyPack(builder, false);
-    update(builder.slice(), doSync);
+    updateProperties(builder.slice(), doSync);
   }
   created = true;
   return idx;
@@ -1599,7 +1599,7 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
             "Database")
             ->forceSyncProperties();
     toVelocyPack(builder, false);
-    update(builder.slice(), doSync);
+    updateProperties(builder.slice(), doSync);
   }
 
   if (writeMarker) {

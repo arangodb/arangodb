@@ -717,7 +717,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         // be
         // dropped later
         bool const forceSync = state->willBeDropped(databaseId, collectionId);
-        int res = collection->update(payloadSlice, forceSync);
+        int res = collection->updateProperties(payloadSlice, forceSync);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot change collection properties for collection "
