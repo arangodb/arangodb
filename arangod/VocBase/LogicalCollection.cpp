@@ -604,23 +604,6 @@ bool LogicalCollection::isFullyCollected() {
   return getPhysical()->isFullyCollected();
 }
 
-void LogicalCollection::setNextCompactionStartIndex(size_t index) {
-  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-  _nextCompactionStartIndex = index;
-}
-
-size_t LogicalCollection::getNextCompactionStartIndex() {
-  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-  return _nextCompactionStartIndex;
-}
-
-void LogicalCollection::setCompactionStatus(char const* reason) {
-  TRI_ASSERT(reason != nullptr);
-
-  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-  _lastCompactionStatus = reason;
-}
-
 uint64_t LogicalCollection::numberDocuments() const {
   // TODO Ask StorageEngine instead
   return primaryIndex()->size();
