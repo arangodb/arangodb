@@ -93,6 +93,32 @@
       }
     },
 
+    deleteNode: function (elem) {
+      if ($(elem.currentTarget).hasClass('noHover')) {
+        return;
+      }
+      var self = this;
+      var name = $(elem.currentTarget.parentNode.parentNode).attr('node').slice(0, -5);
+      if (window.confirm('Do you want to delete this node?')) {
+        $.ajax({
+          type: 'POST',
+          url: arangoHelper.databaseUrl('/_admin/cluster/removeServer'),
+          contentType: 'application/json',
+          async: true,
+          data: JSON.stringify(name),
+          success: function (data) {
+            self.render(false);
+          },
+          error: function () {
+            if (window.location.hash === '#nodes') {
+              arangoHelper.arangoError('Cluster', 'Could not fetch cluster information');
+            }
+          }
+        });
+      }
+      return false;
+    },
+
     navigateToNode: function (elem) {
       if ($(elem.currentTarget).hasClass('noHover')) {
         return;

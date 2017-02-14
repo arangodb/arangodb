@@ -19,6 +19,14 @@
     interval: 10000, // in milliseconds
     defaultTimeFrame: 20 * 60 * 1000, // 20 minutes in milliseconds
     defaultDetailFrame: 2 * 24 * 60 * 60 * 1000,
+    reRender: true,
+    reRenderDistribution: true,
+    isVisible: true,
+    distributionCharts: {
+      totalTimeDistribution: null,
+      dataTransferDistribution: null
+    },
+    residentChart: null,
     history: {},
     graphs: {},
 
@@ -578,8 +586,27 @@
         });
     },
 
+    checkState: function () {
+      var self = this;
+
+      // if view is currently not active (#dashboard = standalone, #node = cluster)
+      if (window.location.hash === '#dashboard' || window.location.hash.substr(0, 5) === '#node') {
+        self.isVisible = true;
+      } else {
+        // chart data state
+        self.residentChart = null;
+
+        // render state
+        self.isVisible = false;
+        self.reRender = true;
+        self.reRenderDistribution = false;
+      }
+    },
+
     getStatistics: function (callback, modalView) {
       var self = this;
+      self.checkState();
+
       var url = arangoHelper.databaseUrl('/_admin/aardvark/statistics/short', '_system');
       var urlParams = '?start=';
 
@@ -697,8 +724,9 @@
         this.removeEmptyDataLabels();
       }
 
-      nv.addGraph(function () {
-        var chart = nv.models.multiBarHorizontalChart()
+      if (self.reRender && self.isVisible) {
+        nv.addGraph(function () {
+          self.residentChart = nv.models.multiBarHorizontalChart()
           .x(function (d) {
             return d.label;
           })
@@ -722,44 +750,71 @@
           .showControls(false)
           .stacked(true);
 
-        chart.yAxis
+          self.residentChart.yAxis
           .tickFormat(function (d) {
             return d + '%';
           })
           .showMaxMin(false);
-        chart.xAxis.showMaxMin(false);
+          self.residentChart.xAxis.showMaxMin(false);
 
-        d3.select('#residentSizeChart svg')
+          d3.select('#residentSizeChart svg')
           .datum(self.history[self.server].residentSizeChart)
-          .call(chart);
+          .call(self.residentChart);
 
-        d3.select('#residentSizeChart svg').select('.nv-zeroLine').remove();
+          d3.select('#residentSizeChart svg').select('.nv-zeroLine').remove();
 
-        if (update) {
-          d3.select('#residentSizeChart svg').select('#total').remove();
-          d3.select('#residentSizeChart svg').select('#percentage').remove();
-        }
+          if (update) {
+            d3.select('#residentSizeChart svg').select('#total').remove();
+            d3.select('#residentSizeChart svg').select('#percentage').remove();
+          }
 
-        d3.select('.dashboard-bar-chart-title .percentage')
+          d3.select('.dashboard-bar-chart-title .percentage')
           .html(currentA + ' (' + currentP + ' %)');
 
-        d3.select('.dashboard-bar-chart-title .absolut')
+          d3.select('.dashboard-bar-chart-title .absolut')
           .html(data[0]);
 
-        nv.utils.windowResize(chart.update);
+          nv.utils.windowResize(self.residentChart.update);
 
-        return chart;
-      }, function () {
-        d3.selectAll('#residentSizeChart .nv-bar').on('click',
-          function () {
-            // no idea why this has to be empty, well anyways...
+          return self.residentChart;
+        }, function () {
+          d3.selectAll('#residentSizeChart .nv-bar').on('click',
+            function () {
+              // no idea why this has to be empty, well anyways...
+            }
+           );
+        });
+        self.reRender = false;
+      } else {
+        if (self.residentChart) {
+          // TODO FIX ME: THE MAIN FUNCTION MUCH TO OFTEN CALLED
+
+          if (self.isVisible) {
+            // update widths
+            self.residentChart.width(dimensions.width);
+            self.residentChart.height(dimensions.height);
+
+            // update labels
+            d3.select('.dashboard-bar-chart-title .percentage')
+            .html(currentA + ' (' + currentP + ' %)');
+            d3.select('.dashboard-bar-chart-title .absolut')
+            .html(data[0]);
+
+            // update data
+            d3.select('#residentSizeChart svg')
+            .datum(self.history[self.server].residentSizeChart)
+            .call(self.residentChart);
+
+            // trigger resize
+            nv.utils.windowResize(self.residentChart.update);
           }
-        );
-      });
+        }
+      }
     },
 
     prepareD3Charts: function (update) {
       var self = this;
+
       var barCharts = {
         totalTimeDistribution: [
           'queueTimeDistributionPercent', 'requestTimeDistributionPercent'],
@@ -785,31 +840,40 @@
           self.removeEmptyDataLabels();
         }
 
-        nv.addGraph(function () {
-          var tickMarks = [0, 0.25, 0.5, 0.75, 1];
-          var marginLeft = 75;
-          var marginBottom = 23;
-          var bottomSpacer = 6;
+        if (self.reRenderDistribution && self.isVisible) {
+          // append custom legend
+          $('#' + k + 'Container').append(
+            '<div class="dashboard-legend-inner">' +
+              '<span style="color: rgb(238, 190, 77);"><div style="display: inline-block; position: relative; bottom: .5ex; padding-left: 1em; height: 1px; border-bottom: 2px solid rgb(238, 190, 77);"></div> Bytes sent</span>' +
+              '<span style="color: rgb(142, 209, 220);"><div style="display: inline-block; position: relative; bottom: .5ex; padding-left: 1em; height: 1px; border-bottom: 2px solid rgb(142, 209, 220);"></div> Bytes received</span>' +
+                '</div>'
+          );
 
-          if (dimensions.width < 219) {
-            tickMarks = [0, 0.5, 1];
-            marginLeft = 72;
-            marginBottom = 21;
-            bottomSpacer = 5;
-          } else if (dimensions.width < 299) {
-            tickMarks = [0, 0.3334, 0.6667, 1];
-            marginLeft = 77;
-          } else if (dimensions.width < 379) {
-            marginLeft = 87;
-          } else if (dimensions.width < 459) {
-            marginLeft = 95;
-          } else if (dimensions.width < 539) {
-            marginLeft = 100;
-          } else if (dimensions.width < 619) {
-            marginLeft = 105;
-          }
+          nv.addGraph(function () {
+            var tickMarks = [0, 0.25, 0.5, 0.75, 1];
+            var marginLeft = 75;
+            var marginBottom = 23;
+            var bottomSpacer = 6;
 
-          var chart = nv.models.multiBarHorizontalChart()
+            if (dimensions.width < 219) {
+              tickMarks = [0, 0.5, 1];
+              marginLeft = 72;
+              marginBottom = 21;
+              bottomSpacer = 5;
+            } else if (dimensions.width < 299) {
+              tickMarks = [0, 0.3334, 0.6667, 1];
+              marginLeft = 77;
+            } else if (dimensions.width < 379) {
+              marginLeft = 87;
+            } else if (dimensions.width < 459) {
+              marginLeft = 95;
+            } else if (dimensions.width < 539) {
+              marginLeft = 100;
+            } else if (dimensions.width < 619) {
+              marginLeft = 105;
+            }
+
+            self.distributionCharts[k] = nv.models.multiBarHorizontalChart()
             .x(function (d) {
               return d.label;
             })
@@ -833,34 +897,56 @@
             .showControls(false)
             .forceY([0, 1]);
 
-          chart.yAxis
+            self.distributionCharts[k].yAxis
             .showMaxMin(false);
 
-          d3.select('.nv-y.nv-axis')
+            d3.select('.nv-y.nv-axis')
             .selectAll('text')
             .attr('transform', 'translate (0, ' + bottomSpacer + ')');
 
-          chart.yAxis
+            self.distributionCharts[k].yAxis
             .tickValues(tickMarks)
             .tickFormat(function (d) {
               return fmtNumber(((d * 100 * 100) / 100), 0) + '%';
             });
 
-          d3.select(selector)
+            d3.select(selector)
             .datum(self.history[self.server][k])
-            .call(chart);
+            .call(self.distributionCharts[k]);
 
-          nv.utils.windowResize(chart.update);
+            nv.utils.windowResize(self.distributionCharts[k].update);
 
-          return chart;
-        }, function () {
-          d3.selectAll(selector + ' .nv-bar').on('click',
-            function () {
-              // no idea why this has to be empty, well anyways...
+            return self.distributionCharts[k];
+          }, function () {
+            d3.selectAll(selector + ' .nv-bar').on('click',
+              function () {
+                // no idea why this has to be empty, well anyways...
+              }
+            );
+          });
+        } else {
+          if (self.distributionCharts[k]) {
+            // TODO FIX ME: THE MAIN FUNCTION MUCH TO OFTEN CALLED
+
+            if (self.isVisible) {
+              // update widths
+              self.distributionCharts[k].width(dimensions.width);
+              self.distributionCharts[k].height(dimensions.height);
+
+              // update data
+              d3.select(selector)
+              .datum(self.history[self.server][k])
+              .call(self.distributionCharts[k]);
+
+              // trigger resize
+              nv.utils.windowResize(self.distributionCharts[k].update);
             }
-          );
-        });
+          }
+        }
       });
+      if (self.reRenderDistribution && self.isVisible) {
+        self.reRenderDistribution = false;
+      }
     },
 
     stopUpdating: function () {

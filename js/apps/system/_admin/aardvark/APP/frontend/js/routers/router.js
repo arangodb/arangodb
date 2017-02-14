@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global window, $, Backbone, document */
+/* global window, $, Backbone, document, d3 */
 /* global $, arangoHelper, btoa, _, frontendConfig */
 
 (function () {
@@ -50,6 +50,11 @@
       if (this.lastRoute === '#queries') {
         // cleanup old canvas elements
         this.queryView.cleanupGraphs();
+      }
+
+      if (this.lastRoute === '#dasboard' || window.location.hash.substr(0, 5) === '#node') {
+        // dom graph cleanup
+        d3.selectAll('svg > *').remove();
       }
 
       this.lastRoute = window.location.hash;
