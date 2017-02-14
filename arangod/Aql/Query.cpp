@@ -711,7 +711,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
           // finally store the generated result in the query cache
           auto result = QueryCache::instance()->store(
               _vocbase, queryStringHash, _queryString, _queryLength,
-              resultBuilder, _trx->collectionNames());
+              resultBuilder, _trx->state()->collectionNames());
 
           if (result == nullptr) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

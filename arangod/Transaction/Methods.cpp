@@ -607,11 +607,6 @@ transaction::Methods::~Methods() {
   }
 }
   
-/// @brief return the names of all collections used in the transaction
-std::vector<std::string> transaction::Methods::collectionNames() const {
-  return _state->collectionNames();
-}
-  
 /// @brief return the collection name resolver
 CollectionNameResolver const* transaction::Methods::resolver() {
   if (_resolver == nullptr) {

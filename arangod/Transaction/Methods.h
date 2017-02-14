@@ -170,9 +170,6 @@ class Methods {
   /// @brief return the registered error data
   std::string const getErrorData() const { return _errorData; }
 
-  /// @brief return the names of all collections used in the transaction
-  std::vector<std::string> collectionNames() const;
-
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver();
 
