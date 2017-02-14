@@ -579,7 +579,7 @@ void Constituent::run() {
           }
         }
        
-        LOG_TOPIC(INFO, Logger::AGENCY) << "Random timeout: " << randTimeout
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Random timeout: " << randTimeout
                                          << ", wait: " << randWait;
 
         if (randWait > 0.0) {

@@ -422,7 +422,7 @@ void Agent::sendAppendEntriesRPC() {
 
       if (toLog > 0) {
         _earliestPackage[followerId] = system_clock::now() + toLog * dt;
-        LOG_TOPIC(INFO, Logger::AGENCY)
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Appending " << unconfirmed.size() - 1 << " entries up to index "
           << highest << " to follower " << followerId << ". Message: "
           << builder.toJson() 
@@ -430,7 +430,7 @@ void Agent::sendAppendEntriesRPC() {
           <<  std::chrono::duration<double, std::milli>(
             _earliestPackage[followerId]-system_clock::now()).count() << "ms";
       } else {
-        LOG_TOPIC(INFO, Logger::AGENCY)
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Just keeping follower " << followerId
           << " devout with " << builder.toJson();
       }
