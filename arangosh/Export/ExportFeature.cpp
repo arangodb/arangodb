@@ -255,8 +255,6 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
       TRI_UnlinkFile(fileName.c_str());
     }
 
-    int fd = -1;
-
     std::string const url = "_api/cursor";
 
     VPackBuilder post;
@@ -270,7 +268,7 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
     std::shared_ptr<VPackBuilder> parsedBody = httpCall(httpClient, url, rest::RequestType::POST, post.toJson());
     VPackSlice body = parsedBody->slice();
 
-    fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+    int fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                     S_IRUSR | S_IWUSR);
 
     if (fd < 0) {
