@@ -22,10 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAqlHandler.h"
-
-#include <velocypack/Dumper.h>
-#include <velocypack/velocypack-aliases.h>
-
+#include "Aql/AqlItemBlock.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
@@ -40,7 +37,12 @@
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Transaction/Methods.h"
+#include "Utils/TransactionContext.h"
 #include "VocBase/ticks.h"
+
+#include <velocypack/Dumper.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;

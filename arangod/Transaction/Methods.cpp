@@ -162,22 +162,13 @@ void transaction::Methods::IndexHandle::toVelocyPack(
 
 TRI_vocbase_t* transaction::Methods::vocbase() const { return _state->vocbase(); }
   
-/// @brief add a transaction hint
-void transaction::Methods::addHint(transaction::Hints::Hint hint, bool passthrough) {
-  _hints.set(hint);
-
-  if (passthrough) {
-    _state->setHint(hint);
-  }
-}
-  
 /// @brief whether or not the transaction consists of a single operation only
 bool transaction::Methods::isSingleOperationTransaction() const {
   return _state->isSingleOperation();
 }
   
 /// @brief get the status of the transaction
-transaction::Status transaction::Methods::getStatus() const {
+transaction::Status transaction::Methods::status() const {
   return _state->status();
 }
   
@@ -551,7 +542,7 @@ thread_local std::unordered_set<std::string>* transaction::Methods::_makeNolockH
       
 transaction::Methods::Methods(std::shared_ptr<TransactionContext> transactionContext)
     : _nestingLevel(0),
-      _hints(0),
+      _hints(),
       _state(nullptr),
       _resolver(nullptr),
       _transactionContext(transactionContext),
@@ -579,21 +570,21 @@ transaction::Methods::Methods(std::shared_ptr<TransactionContext> transactionCon
    
 /// @brief destroy the transaction
 transaction::Methods::~Methods() {
-  if (isEmbeddedTransaction()) {
+  if (_state->isEmbeddedTransaction()) {
     _state->decreaseNesting();
   } else {
-    if (getStatus() == transaction::Status::RUNNING) {
+    if (_state->status() == transaction::Status::RUNNING) {
       // auto abort a running transaction
       try {
         this->abort();
-        TRI_ASSERT(getStatus() != transaction::Status::RUNNING);
+        TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
       } catch (...) {
         // must never throw because we are in a dtor
       }
     }
 
     // free the state associated with the transaction
-    TRI_ASSERT(getStatus() != transaction::Status::RUNNING);
+    TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
     // store result
     _transactionContextPtr->storeTransactionResult(_state->id(), _state->hasFailedOperations());
     _transactionContextPtr->unregisterTransaction();
@@ -615,7 +606,7 @@ CollectionNameResolver const* transaction::Methods::resolver() {
 /// @brief return the transaction collection for a document collection
 TransactionCollection* transaction::Methods::trxCollection(TRI_voc_cid_t cid) const {
   TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   return _state->collection(cid, AccessMode::Type::READ);
 }
@@ -623,8 +614,8 @@ TransactionCollection* transaction::Methods::trxCollection(TRI_voc_cid_t cid) co
 /// @brief order a ditch for a collection
 DocumentDitch* transaction::Methods::orderDitch(TRI_voc_cid_t cid) {
   TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(getStatus() == transaction::Status::RUNNING ||
-             getStatus() == transaction::Status::CREATED);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING ||
+             _state->status() == transaction::Status::CREATED);
 
   if (_ditchCache.cid == cid) {
     return _ditchCache.ditch;
@@ -764,7 +755,7 @@ int transaction::Methods::begin() {
   
 /// @brief commit / finish the transaction
 int transaction::Methods::commit() {
-  if (_state == nullptr || getStatus() != transaction::Status::RUNNING) {
+  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
@@ -781,7 +772,7 @@ int transaction::Methods::commit() {
   
 /// @brief abort the transaction
 int transaction::Methods::abort() {
-  if (_state == nullptr || getStatus() != transaction::Status::RUNNING) {
+  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
@@ -966,7 +957,7 @@ std::string transaction::Methods::collectionName(TRI_voc_cid_t cid) {
 /// @brief Iterate over all elements of the collection.
 void transaction::Methods::invokeOnAllElements(std::string const& collectionName,
                                       std::function<bool(DocumentIdentifierToken const&)> callback) {
-  TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   if (_state->isCoordinator()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -1004,7 +995,7 @@ int transaction::Methods::documentFastPath(std::string const& collectionName,
                                   VPackSlice const value,
                                   VPackBuilder& result,
                                   bool shouldLock) {
-  TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   if (!value.isObject() && !value.isString()) {
     // must provide a document object or string
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1064,7 +1055,7 @@ int transaction::Methods::documentFastPath(std::string const& collectionName,
 int transaction::Methods::documentFastPathLocal(std::string const& collectionName,
                                        std::string const& key,
                                        ManagedDocumentResult& result) {
-  TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
@@ -1187,7 +1178,7 @@ OperationResult transaction::Methods::clusterResultRemove(
 OperationResult transaction::Methods::document(std::string const& collectionName,
                                       VPackSlice const value,
                                       OperationOptions& options) {
-  TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
@@ -1324,7 +1315,7 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
 OperationResult transaction::Methods::insert(std::string const& collectionName,
                                     VPackSlice const value,
                                     OperationOptions const& options) {
-  TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
@@ -1581,7 +1572,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
 OperationResult transaction::Methods::update(std::string const& collectionName,
                                     VPackSlice const newValue,
                                     OperationOptions const& options) {
-  TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
@@ -1632,7 +1623,7 @@ OperationResult transaction::Methods::updateCoordinator(std::string const& colle
 OperationResult transaction::Methods::replace(std::string const& collectionName,
                                      VPackSlice const newValue,
                                      OperationOptions const& options) {
-  TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
@@ -1891,7 +1882,7 @@ OperationResult transaction::Methods::modifyLocal(
 OperationResult transaction::Methods::remove(std::string const& collectionName,
                                     VPackSlice const value,
                                     OperationOptions const& options) {
-  TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray() && !value.isString()) {
     // must provide a document object or an array of documents
@@ -2132,7 +2123,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
 OperationResult transaction::Methods::all(std::string const& collectionName,
                                  uint64_t skip, uint64_t limit,
                                  OperationOptions const& options) {
-  TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   
   OperationOptions optionsCopy = options;
 
@@ -2204,7 +2195,7 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
 /// @brief remove all documents in a collection
 OperationResult transaction::Methods::truncate(std::string const& collectionName,
                                       OperationOptions const& options) {
-  TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   
   OperationOptions optionsCopy = options;
   OperationResult result;
@@ -2311,7 +2302,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
 
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::count(std::string const& collectionName, bool aggregate) {
-  TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (_state->isCoordinator()) {
     return countCoordinator(collectionName, aggregate);
@@ -2642,7 +2633,7 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(
       TransactionCollection const* trxCollection) const {
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(trxCollection != nullptr);
-  TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   TRI_ASSERT(trxCollection->collection() != nullptr);
 
   return trxCollection->collection();
@@ -2652,7 +2643,7 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(
 arangodb::LogicalCollection* transaction::Methods::documentCollection(
       TRI_voc_cid_t cid) const {
   TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   
   auto trxCollection = _state->collection(cid, AccessMode::Type::READ);
 
@@ -2673,7 +2664,7 @@ int transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot add collection without state");
   }
 
-  Status const status = getStatus();
+  Status const status = _state->status();
 
   if (status == transaction::Status::COMMITTED ||
       status == transaction::Status::ABORTED) {
@@ -2686,7 +2677,7 @@ int transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
     throwCollectionNotFound(name);
   }
 
-  if (isEmbeddedTransaction()) {
+  if (_state->isEmbeddedTransaction()) {
    return addCollectionEmbedded(cid, name, type);
   } 
 
@@ -2712,7 +2703,7 @@ int transaction::Methods::addCollection(std::string const& name, AccessMode::Typ
 /// @brief test if a collection is already locked
 bool transaction::Methods::isLocked(LogicalCollection* document,
                 AccessMode::Type type) {
-  if (_state == nullptr || getStatus() != transaction::Status::RUNNING) {
+  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     return false;
   }
 
@@ -2725,7 +2716,7 @@ bool transaction::Methods::isLocked(LogicalCollection* document,
 /// @brief read- or write-lock a collection
 int transaction::Methods::lock(TransactionCollection* trxCollection,
            AccessMode::Type type) {
-  if (_state == nullptr || getStatus() != transaction::Status::RUNNING) {
+  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
@@ -2735,7 +2726,7 @@ int transaction::Methods::lock(TransactionCollection* trxCollection,
 /// @brief read- or write-unlock a collection
 int transaction::Methods::unlock(TransactionCollection* trxCollection,
              AccessMode::Type type) {
-  if (_state == nullptr || getStatus() != transaction::Status::RUNNING) {
+  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
@@ -2872,7 +2863,7 @@ int transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid, char const* n
 
   int res;
 
-  if (getStatus() != transaction::Status::CREATED) {
+  if (_state->status() != transaction::Status::CREATED) {
     // transaction already started?
     res = TRI_ERROR_TRANSACTION_INTERNAL;
   } else {
@@ -2899,8 +2890,6 @@ void transaction::Methods::setupEmbedded(TRI_vocbase_t*) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NESTED);
   }
   
-  TRI_ASSERT(_nestingLevel == 0);
-
   _state = _transactionContextPtr->getParentTransaction();
   
   TRI_ASSERT(_state != nullptr);
@@ -2909,8 +2898,6 @@ void transaction::Methods::setupEmbedded(TRI_vocbase_t*) {
 
 /// @brief set up a top-level transaction
 void transaction::Methods::setupToplevel(TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(_nestingLevel == 0);
-
   // we are not embedded. now start our own transaction
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   _state = engine->createTransactionState(vocbase);

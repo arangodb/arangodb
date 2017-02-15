@@ -429,10 +429,10 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(collection->vocbase()), 
       collection->cid(), AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER, true);
-  trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER, true);
-  trx.addHint(transaction::Hints::Hint::NO_COMPACTION_LOCK, true);
-  trx.addHint(transaction::Hints::Hint::NO_THROTTLING, true);
+  trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER);
+  trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER);
+  trx.addHint(transaction::Hints::Hint::NO_COMPACTION_LOCK);
+  trx.addHint(transaction::Hints::Hint::NO_THROTTLING);
 
   CompactionInitialContext initial = getCompactionContext(&trx, collection, toCompact);
 
@@ -959,8 +959,8 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collect
       AccessMode::Type::READ);
   // only try to acquire the lock here
   // if lock acquisition fails, we go on and report an (arbitrary) positive number
-  trx.addHint(transaction::Hints::Hint::TRY_LOCK, false); 
-  trx.addHint(transaction::Hints::Hint::NO_THROTTLING, true);
+  trx.addHint(transaction::Hints::Hint::TRY_LOCK); 
+  trx.addHint(transaction::Hints::Hint::NO_THROTTLING);
 
   int res = trx.begin();
 

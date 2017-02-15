@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShortestPathBlock.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Utils/OperationCursor.h"
@@ -33,10 +34,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef the template instantiation of the PathFinder
-////////////////////////////////////////////////////////////////////////////////
-
 typedef arangodb::basics::DynamicDistanceFinder<
     arangodb::velocypack::Slice, arangodb::velocypack::Slice, double,
     arangodb::traverser::ShortestPath> ArangoDBPathFinder;
@@ -52,11 +50,8 @@ typedef arangodb::basics::ConstDistanceFinder<arangodb::velocypack::Slice,
 
 using namespace arangodb::aql;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Local class to expand edges.
 ///        Will be handed over to the path finder
-////////////////////////////////////////////////////////////////////////////////
-
 namespace arangodb {
 namespace aql {
 struct ConstDistanceExpanderLocal {
@@ -110,11 +105,8 @@ struct ConstDistanceExpanderLocal {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Cluster class to expand edges.
 ///        Will be handed over to the path finder
-////////////////////////////////////////////////////////////////////////////////
-
 struct ConstDistanceExpanderCluster {
  private:
 
@@ -165,10 +157,7 @@ struct ConstDistanceExpanderCluster {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Expander for weighted edges
-////////////////////////////////////////////////////////////////////////////////
-
 struct EdgeWeightExpanderLocal {
 
  private:
@@ -246,10 +235,7 @@ struct EdgeWeightExpanderLocal {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Expander for weighted edges
-////////////////////////////////////////////////////////////////////////////////
-
 struct EdgeWeightExpanderCluster {
 
  private:

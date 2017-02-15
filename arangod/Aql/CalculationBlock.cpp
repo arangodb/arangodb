@@ -22,12 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CalculationBlock.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Methods.h"
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 

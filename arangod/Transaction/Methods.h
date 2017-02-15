@@ -157,19 +157,16 @@ class Methods {
   }
   
   /// @brief add a transaction hint
-  void addHint(transaction::Hints::Hint hint, bool passthrough);
+  void addHint(transaction::Hints::Hint hint) { _hints.set(hint); }
 
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver();
 
-  /// @brief whether or not the transaction is embedded
-  inline bool isEmbeddedTransaction() const { return (_nestingLevel > 0); }
-  
   /// @brief whether or not the transaction consists of a single operation only
   bool isSingleOperationTransaction() const;
 
   /// @brief get the status of the transaction
-  Status getStatus() const;
+  Status status() const;
 
   int nestingLevel() const { return _nestingLevel; }
 

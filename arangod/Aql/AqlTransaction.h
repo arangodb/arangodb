@@ -35,11 +35,8 @@ namespace aql {
 
 class AqlTransaction final : public transaction::Methods {
  public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction and add all collections from the query
   /// context
-  //////////////////////////////////////////////////////////////////////////////
-
   AqlTransaction(
       std::shared_ptr<TransactionContext> transactionContext, 
       std::map<std::string, aql::Collection*> const* collections,
@@ -47,9 +44,9 @@ class AqlTransaction final : public transaction::Methods {
       : transaction::Methods(transactionContext),
         _collections(*collections) {
     if (!isMainTransaction) {
-      addHint(transaction::Hints::Hint::LOCK_NEVER, true);
+      addHint(transaction::Hints::Hint::LOCK_NEVER);
     } else {
-      addHint(transaction::Hints::Hint::LOCK_ENTIRELY, false);
+      addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
     }
 
     for (auto it : *collections) {
@@ -59,20 +56,14 @@ class AqlTransaction final : public transaction::Methods {
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief end the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
   ~AqlTransaction() {}
   
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief add a list of collections to the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  int addCollectionList(
-      std::map<std::string, aql::Collection*>* collections) {
+  int addCollections(
+      std::map<std::string, aql::Collection*> const& collections) {
     int ret = TRI_ERROR_NO_ERROR;
-    for (auto it : *collections) {
+    for (auto const& it : collections) {
       ret = processCollection(it.second);
       if (ret != TRI_ERROR_NO_ERROR) {
         break;
@@ -81,65 +72,36 @@ class AqlTransaction final : public transaction::Methods {
     return ret;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection to the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
   int processCollection(aql::Collection*); 
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief add a coordinator collection to the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
   int processCollectionCoordinator(aql::Collection*);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief add a regular collection to the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
   int processCollectionNormal(aql::Collection* collection);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief ditch
-  //////////////////////////////////////////////////////////////////////////////
-
-  DocumentDitch* ditch(TRI_voc_cid_t cid) {
-    return _transactionContext->ditch(cid);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief documentCollection
-  //////////////////////////////////////////////////////////////////////////////
-
   LogicalCollection* documentCollection(TRI_voc_cid_t cid);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief clone, used to make daughter transactions for parts of a
   /// distributed
   /// AQL query running on the coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
   transaction::Methods* clone() const override {
     return new AqlTransaction(StandaloneTransactionContext::Create(vocbase()),
         &_collections, false);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief lockCollections, this is needed in a corner case in AQL: we need
   /// to lock all shards in a controlled way when we set up a distributed
   /// execution engine. To this end, we prevent the standard mechanism to
   /// lock collections on the DBservers when we instantiate the query. Then,
   /// in a second round, we need to lock the shards in exactly the right
   /// order via an HTTP call. This method is used to implement that HTTP action.
-  //////////////////////////////////////////////////////////////////////////////
-
   int lockCollections() override;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief keep a copy of the collections, this is needed for the clone
   /// operation
-  //////////////////////////////////////////////////////////////////////////////
-
  private:
   std::map<std::string, aql::Collection*> _collections;
 };

@@ -3943,11 +3943,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// GEO RULE ///////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-struct MMFilesGeoIndexInfo{
+struct MMFilesGeoIndexInfo {
   operator bool() const { return distanceNode && valid; }
   void invalidate() { valid = false; }
   MMFilesGeoIndexInfo()
@@ -3984,7 +3980,6 @@ struct MMFilesGeoIndexInfo{
   std::pair<AstNode*,AstNode*> constantPair;
 };
 
-//////////////////////////////////////////////////////////////////////
 //candidate checking
 
 AstNode* isValueOrRefNode(AstNode* node){
@@ -4265,7 +4260,6 @@ MMFilesGeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType typ
   return rv;
 };
 
-//////////////////////////////////////////////////////////////////////
 //modify plan
 
 // builds a condition that can be used with the index interface and

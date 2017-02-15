@@ -74,6 +74,9 @@ class TransactionState {
     TRI_ASSERT(_nestingLevel > 0);
     return --_nestingLevel; 
   }
+  int nestingLevel() const { return _nestingLevel; }
+  bool isTopLevelTransaction() const { return _nestingLevel == 0; }
+  bool isEmbeddedTransaction() const { return !isTopLevelTransaction(); }
 
   double timeout() const { return _timeout; }
   void timeout(double value) { 

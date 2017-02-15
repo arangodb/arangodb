@@ -22,11 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryRegistry.h"
-#include "Logger/Logger.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/WriteLocker.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
+#include "Logger/Logger.h"
+#include "Transaction/Methods.h"
 
 using namespace arangodb::aql;
 

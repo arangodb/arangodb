@@ -92,7 +92,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
         AccessMode::Type::READ);
 
     // already locked by guard above
-    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK, true);
+    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
     int res = trx.begin();
 
     if (res != TRI_ERROR_NO_ERROR) {

@@ -42,7 +42,7 @@ class UserTransaction final : public transaction::Methods {
                       double lockTimeout, bool waitForSync,
                       bool allowImplicitCollections)
       : transaction::Methods(transactionContext) {
-    addHint(transaction::Hints::Hint::LOCK_ENTIRELY, false);
+    addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
     for (auto const& it : exclusiveCollections) {
       addCollection(it, AccessMode::Type::EXCLUSIVE);

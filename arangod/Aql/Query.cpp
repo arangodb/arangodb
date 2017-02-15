@@ -23,10 +23,7 @@
 
 #include "Query.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
@@ -52,6 +49,10 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Graphs.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -541,7 +542,7 @@ QueryResult Query::prepare(QueryRegistry* registry) {
         
         enterState(LOADING_COLLECTIONS);
         
-        int res = trx->addCollectionList(_collections.collections());
+        int res = trx->addCollections(*_collections.collections());
 
         if (res == TRI_ERROR_NO_ERROR) {
           res = trx->begin();

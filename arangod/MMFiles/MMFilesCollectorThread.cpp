@@ -646,14 +646,12 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   arangodb::SingleCollectionTransaction trx(
       arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
       collection->cid(), AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK,
-              true);  // already locked by guard above
-  trx.addHint(transaction::Hints::Hint::NO_COMPACTION_LOCK,
-              true);  // already locked above
-  trx.addHint(transaction::Hints::Hint::NO_THROTTLING, true);
-  trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER, true);
-  trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER, true);
-  trx.addHint(transaction::Hints::Hint::TRY_LOCK, true);
+  trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);  // already locked by guard above
+  trx.addHint(transaction::Hints::Hint::NO_COMPACTION_LOCK);  // already locked above
+  trx.addHint(transaction::Hints::Hint::NO_THROTTLING);
+  trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER);
+  trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER);
+  trx.addHint(transaction::Hints::Hint::TRY_LOCK);
 
   int res = trx.begin();
 

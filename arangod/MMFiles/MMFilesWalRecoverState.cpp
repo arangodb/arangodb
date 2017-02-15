@@ -283,12 +283,12 @@ int MMFilesWalRecoverState::executeSingleOperation(
   try {
     SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(vocbase), collectionId, AccessMode::Type::WRITE);
 
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION, false);
-    trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER, false);
-    trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER, false);
-    trx.addHint(transaction::Hints::Hint::NO_THROTTLING, false);
-    trx.addHint(transaction::Hints::Hint::LOCK_NEVER, false);
-    trx.addHint(transaction::Hints::Hint::RECOVERY, false); // to turn off waitForSync!
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+    trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER);
+    trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER);
+    trx.addHint(transaction::Hints::Hint::NO_THROTTLING);
+    trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
+    trx.addHint(transaction::Hints::Hint::RECOVERY); // to turn off waitForSync!
 
     res = trx.begin();
 
