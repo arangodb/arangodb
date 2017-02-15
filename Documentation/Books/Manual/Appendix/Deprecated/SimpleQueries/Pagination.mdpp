@@ -2,7 +2,7 @@ Pagination
 ==========
 
 {% hint 'warning' %}
-It is recommended to use AQL instead, see the [LIMIT operation](../../../../AQL/Operations/Limit.html).
+It is recommended to use AQL instead, see the [**LIMIT operation**](../../../../AQL/Operations/Limit.html).
 {% endhint %}
 
 If, for example, you display the result of a user search, then you are in
