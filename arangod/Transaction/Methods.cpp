@@ -167,7 +167,7 @@ void transaction::Methods::addHint(transaction::Hints::Hint hint, bool passthrou
   _hints.set(hint);
 
   if (passthrough) {
-    _state->_hints.set(hint);
+    _state->setHint(hint);
   }
 }
   
@@ -580,7 +580,7 @@ transaction::Methods::Methods(std::shared_ptr<TransactionContext> transactionCon
 /// @brief destroy the transaction
 transaction::Methods::~Methods() {
   if (isEmbeddedTransaction()) {
-    _state->_nestingLevel--;
+    _state->decreaseNesting();
   } else {
     if (getStatus() == transaction::Status::RUNNING) {
       // auto abort a running transaction
@@ -2904,7 +2904,7 @@ void transaction::Methods::setupEmbedded(TRI_vocbase_t*) {
   _state = _transactionContextPtr->getParentTransaction();
   
   TRI_ASSERT(_state != nullptr);
-  _nestingLevel = ++_state->_nestingLevel;
+  _nestingLevel = _state->increaseNesting();
 }
 
 /// @brief set up a top-level transaction

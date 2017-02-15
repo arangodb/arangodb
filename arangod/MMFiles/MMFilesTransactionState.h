@@ -106,6 +106,7 @@ class MMFilesTransactionState final : public TransactionState {
   
  private:
   rocksdb::Transaction* _rocksTransaction;
+  bool _beginWritten;
   bool _hasOperations;
 };
 

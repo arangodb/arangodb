@@ -43,11 +43,10 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase)
       _collections{_arena}, // assign arena to vector 
       _serverRole(ServerState::instance()->getRole()),
       _hints(),
+      _timeout(transaction::Methods::DefaultLockTimeout),
       _nestingLevel(0), 
       _allowImplicitCollections(true),
-      _waitForSync(false),
-      _beginWritten(false), 
-      _timeout(transaction::Methods::DefaultLockTimeout) {}
+      _waitForSync(false) {}
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {

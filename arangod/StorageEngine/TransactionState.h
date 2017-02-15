@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 #include "Cluster/ServerState.h"
-#include "Transaction/Methods.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
@@ -50,7 +49,6 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
-;
 class TransactionCollection;
 
 /// @brief transaction type
@@ -70,6 +68,12 @@ class TransactionState {
   TRI_vocbase_t* vocbase() const { return _vocbase; }
   TRI_voc_tid_t id() const { return _id; }
   transaction::Status status() const { return _status; }
+
+  int increaseNesting() { return ++_nestingLevel; }
+  int decreaseNesting() { 
+    TRI_ASSERT(_nestingLevel > 0);
+    return --_nestingLevel; 
+  }
 
   double timeout() const { return _timeout; }
   void timeout(double value) { 
@@ -112,9 +116,10 @@ class TransactionState {
   void updateStatus(transaction::Status status);
   
   /// @brief whether or not a specific hint is set for the transaction
-  bool hasHint(transaction::Hints::Hint hint) const {
-    return _hints.has(hint);
-  }
+  bool hasHint(transaction::Hints::Hint hint) const { return _hints.has(hint); }
+  
+  /// @brief set a hint for the transaction
+  void setHint(transaction::Hints::Hint hint) { _hints.set(hint); }
 
   /// @brief begin a transaction
   virtual int beginTransaction(transaction::Hints hints, int nestingLevel) = 0;
@@ -125,7 +130,6 @@ class TransactionState {
   /// @brief abort a transaction
   virtual int abortTransaction(transaction::Methods* trx, int nestingLevel) = 0;
 
-  /// TODO: implement this in base class
   virtual bool hasFailedOperations() const = 0;
 
  protected:
@@ -158,16 +162,11 @@ class TransactionState {
   
   ServerState::RoleEnum const _serverRole;  // role of the server
 
- public:
   transaction::Hints _hints;          // hints;
- public:
+  double _timeout;                    // timeout for lock acquisition
   int _nestingLevel;
-
- protected:
   bool _allowImplicitCollections;
   bool _waitForSync;   // whether or not the transaction had a synchronous op
-  bool _beginWritten;  // whether or not the begin marker was already written
-  double _timeout;     // timeout for lock acquisition
 };
 
 }
