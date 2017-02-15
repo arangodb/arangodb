@@ -186,7 +186,7 @@ class Methods {
   std::string name(TRI_voc_cid_t cid) const;
 
   /// @brief order a ditch for a collection
-  arangodb::DocumentDitch* orderDitch(TRI_voc_cid_t);
+  void orderDitch(TRI_voc_cid_t);
   
   /// @brief whether or not a ditch has been created for the collection
   bool hasDitch(TRI_voc_cid_t cid) const;

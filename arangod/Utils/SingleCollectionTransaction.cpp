@@ -103,29 +103,6 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
   return _documentCollection;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief return the ditch for the collection
-/// note that the ditch must already exist
-/// furthermore note that we have two calling conventions because this
-/// is called in two different ways
-//////////////////////////////////////////////////////////////////////////////
-
-DocumentDitch* SingleCollectionTransaction::ditch() const {
-  return _transactionContext->ditch(_cid);
-}
-
-DocumentDitch* SingleCollectionTransaction::ditch(TRI_voc_cid_t) const { 
-  return ditch(); 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a ditch is available for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-bool SingleCollectionTransaction::hasDitch() const {
-  return (ditch() != nullptr);
-}
-  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the underlying collection's name
 ////////////////////////////////////////////////////////////////////////////////

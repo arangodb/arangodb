@@ -612,13 +612,13 @@ TransactionCollection* transaction::Methods::trxCollection(TRI_voc_cid_t cid) co
 }
 
 /// @brief order a ditch for a collection
-DocumentDitch* transaction::Methods::orderDitch(TRI_voc_cid_t cid) {
+void transaction::Methods::orderDitch(TRI_voc_cid_t cid) {
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING ||
              _state->status() == transaction::Status::CREATED);
 
   if (_ditchCache.cid == cid) {
-    return _ditchCache.ditch;
+    return;
   }
 
   TransactionCollection* trxCollection = _state->collection(cid, AccessMode::Type::READ);
@@ -629,7 +629,7 @@ DocumentDitch* transaction::Methods::orderDitch(TRI_voc_cid_t cid) {
 
   TRI_ASSERT(trxCollection->collection() != nullptr);
 
-  DocumentDitch* ditch = _transactionContext->orderDitch(trxCollection->collection());
+  DocumentDitch* ditch = _transactionContextPtr->orderDitch(trxCollection->collection());
 
   if (ditch == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -637,13 +637,11 @@ DocumentDitch* transaction::Methods::orderDitch(TRI_voc_cid_t cid) {
 
   _ditchCache.cid = cid;
   _ditchCache.ditch = ditch;
-
-  return ditch;
 }
   
 /// @brief whether or not a ditch has been created for the collection
 bool transaction::Methods::hasDitch(TRI_voc_cid_t cid) const {
-  return (_transactionContext->ditch(cid) != nullptr);
+  return (_transactionContextPtr->ditch(cid) != nullptr);
 }
 
 /// @brief extract the _id attribute from a slice, and convert it into a 
