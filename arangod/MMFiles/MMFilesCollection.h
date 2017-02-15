@@ -294,6 +294,8 @@ class MMFilesCollection final : public PhysicalCollection {
 
  private:
 
+  int openWorker(bool ignoreErrors);
+
   int removeFastPath(arangodb::transaction::Methods* trx,
                      TRI_voc_rid_t oldRevisionId,
                      arangodb::velocypack::Slice const oldDoc,

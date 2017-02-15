@@ -106,8 +106,6 @@ class LogicalCollection {
   static bool IsAllowedName(velocypack::Slice parameters);
   static bool IsAllowedName(bool isSystem, std::string const& name);
 
-  void isInitialIteration(bool value) { _isInitialIteration = value; }
-
   // TODO: MOVE TO PHYSICAL?
   bool isFullyCollected(); //should not be exposed
 
@@ -363,8 +361,6 @@ class LogicalCollection {
   /// @brief creates the initial indexes for the collection
   void createInitialIndexes();
 
-  int openWorker(bool ignoreErrors);
-
   bool removeIndex(TRI_idx_iid_t iid);
 
   void addIndex(std::shared_ptr<Index>);
@@ -496,10 +492,6 @@ class LogicalCollection {
 
   mutable basics::ReadWriteLock
       _infoLock;  // lock protecting the info
-
-  /// @brief: flag that is set to true when the documents are
-  /// initial enumerated and the primary index is built
-  bool _isInitialIteration;
 };
 
 }  // namespace arangodb

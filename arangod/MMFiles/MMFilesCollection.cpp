@@ -1142,7 +1142,139 @@ void MMFilesCollection::finishCompaction() {
   _compactionLock.unlock();
 }
 
+/// @brief opens an existing collection
+int MMFilesCollection::openWorker(bool ignoreErrors) {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  double start = TRI_microtime();
+  auto vocbase = _logicalCollection->vocbase();
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "open-collection { collection: " << vocbase->name() << "/" << _logicalCollection->name()
+      << " }";
+
+  try {
+    // check for journals and datafiles
+    int res = engine->openCollection(vocbase, _logicalCollection, ignoreErrors);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot open '" << path() << "', check failed";
+      return res;
+    }
+
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+        << "[timer] " << Logger::FIXED(TRI_microtime() - start)
+        << " s, open-collection { collection: " << vocbase->name() << "/"
+        << _logicalCollection->name() << " }";
+
+    return TRI_ERROR_NO_ERROR;
+  } catch (basics::Exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load collection parameter file '" << path()
+             << "': " << ex.what();
+    return ex.code();
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load collection parameter file '" << path()
+             << "': " << ex.what();
+    return TRI_ERROR_INTERNAL;
+  }
+}
+
+
 void MMFilesCollection::open(bool ignoreErrors) {
+  VPackBuilder builder;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  auto vocbase = _logicalCollection->vocbase();
+  auto cid = _logicalCollection->cid();
+  engine->getCollectionInfo(vocbase, cid, builder, true, 0);
+
+  VPackSlice initialCount =
+      builder.slice().get(std::vector<std::string>({"parameters", "count"}));
+  if (initialCount.isNumber()) {
+    int64_t count = initialCount.getNumber<int64_t>();
+    if (count > 0) {
+      updateCount(count);
+    }
+  }
+  double start = TRI_microtime();
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "open-document-collection { collection: " << vocbase->name() << "/"
+      << _logicalCollection->name() << " }";
+
+  int res = openWorker(ignoreErrors);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        res,
+        std::string("cannot open document collection from path '") + path() +
+            "': " + TRI_errno_string(res));
+  }
+
+  arangodb::SingleCollectionTransaction trx(
+      arangodb::StandaloneTransactionContext::Create(vocbase), cid,
+      AccessMode::Type::WRITE);
+
+  // build the primary index
+  double startIterate = TRI_microtime();
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "iterate-markers { collection: " << vocbase->name() << "/" << _logicalCollection->name()
+      << " }";
+
+  // iterate over all markers of the collection
+  res = iterateMarkersOnLoad(&trx);
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "[timer] " << Logger::FIXED(TRI_microtime() - startIterate)
+      << " s, iterate-markers { collection: " << vocbase->name() << "/"
+      << _logicalCollection->name() << " }";
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        res,
+        std::string("cannot iterate data of document collection: ") +
+            TRI_errno_string(res));
+  }
+
+  // build the indexes meta-data, but do not fill the indexes yet
+  {
+    auto old = _logicalCollection->useSecondaryIndexes();
+
+    // turn filling of secondary indexes off. we're now only interested in
+    // getting
+    // the indexes' definition. we'll fill them below ourselves.
+    _logicalCollection->useSecondaryIndexes(false);
+
+    try {
+      _logicalCollection->detectIndexes(&trx);
+      _logicalCollection->useSecondaryIndexes(old);
+    } catch (basics::Exception const& ex) {
+      _logicalCollection->useSecondaryIndexes(old);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          ex.code(),
+          std::string("cannot initialize collection indexes: ") + ex.what());
+    } catch (std::exception const& ex) {
+      _logicalCollection->useSecondaryIndexes(old);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          std::string("cannot initialize collection indexes: ") + ex.what());
+    } catch (...) {
+      _logicalCollection->useSecondaryIndexes(old);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "cannot initialize collection indexes: unknown exception");
+    }
+  }
+
+  if (!engine->inRecovery()) {
+    // build the index structures, and fill the indexes
+    _logicalCollection->fillIndexes(&trx, *(_logicalCollection->indexList()));
+  }
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
+      << " s, open-document-collection { collection: " << vocbase->name()
+      << "/" << _logicalCollection->name() << " }";
+
   // successfully opened collection. now adjust version number
   if (_logicalCollection->version() != LogicalCollection::VERSION_31 && !_revisionError &&
       application_features::ApplicationServer::server
