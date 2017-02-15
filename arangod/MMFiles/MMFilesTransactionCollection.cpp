@@ -205,10 +205,10 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
       // use and usage-lock
       TRI_vocbase_col_status_e status;
       LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
-      _collection = _transaction->_vocbase->useCollection(_cid, status);
+      _collection = _transaction->vocbase()->useCollection(_cid, status);
     } else {
       // use without usage-lock (lock already set externally)
-      _collection = _transaction->_vocbase->lookupCollection(_cid);
+      _collection = _transaction->vocbase()->lookupCollection(_cid);
 
       if (_collection == nullptr) {
         return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -299,7 +299,7 @@ void MMFilesTransactionCollection::release() {
     // unuse collection, remove usage-lock
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
 
-    _transaction->_vocbase->releaseCollection(_collection);
+    _transaction->vocbase()->releaseCollection(_collection);
     _collection = nullptr;
   }
 }
@@ -332,7 +332,7 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
-  double timeout = _transaction->_timeout;
+  double timeout = _transaction->timeout();
   if (_transaction->_hints.has(transaction::Hints::Hint::TRY_LOCK)) {
     // give up early if we cannot acquire the lock instantly
     timeout = 0.00000001;

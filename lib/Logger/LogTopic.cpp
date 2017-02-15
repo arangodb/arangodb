@@ -62,6 +62,7 @@ LogTopic Logger::STARTUP("startup", LogLevel::INFO);
 LogTopic Logger::SUPERVISION("supervision", LogLevel::INFO);
 LogTopic Logger::SYSCALL("syscall", LogLevel::WARN);
 LogTopic Logger::THREADS("threads", LogLevel::WARN);
+LogTopic Logger::TRANSACTIONS("trx", LogLevel::WARN);
 LogTopic Logger::V8("v8", LogLevel::WARN);
 
 #ifdef USE_ENTERPRISE
@@ -121,6 +122,10 @@ LogTopic::LogTopic(std::string const& name, LogLevel level)
       _name(name),
       _level(level) {
   if (name != "fixme") {
+    // "fixme" is a remainder from ArangoDB < 3.2, when it was
+    // allowed to log messages without a topic. From 3.2 onwards,
+    // logging is always topic-based, and all previously topicless
+    // log invocations now use the log topic "fixme".
     _displayName = std::string("{") + name + "} ";
   }
 

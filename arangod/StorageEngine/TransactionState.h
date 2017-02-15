@@ -36,11 +36,11 @@
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #define LOG_TRX(trx, level)  \
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->id() << "." << level << " (" << transaction::statusString(trx->_status) << "): " 
+  LOG_TOPIC(TRACE, arangodb::Logger::TRANSACTIONS) << "#" << trx->id() << "." << level << " (" << transaction::statusString(trx->status()) << "): " 
 
 #else
 
-#define LOG_TRX(...) while (0) LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+#define LOG_TRX(...) while (0) LOG_TOPIC(TRACE, arangodb::Logger::TRANSACTIONS)
 
 #endif
 
@@ -69,14 +69,15 @@ class TransactionState {
 
   TRI_vocbase_t* vocbase() const { return _vocbase; }
   TRI_voc_tid_t id() const { return _id; }
+  transaction::Status status() const { return _status; }
 
   double timeout() const { return _timeout; }
   void timeout(double value) { 
     if (value > 0.0) {
       _timeout = value;
     } 
-  
   }
+
   bool waitForSync() const { return _waitForSync; }
   void waitForSync(bool value) { _waitForSync = value; }
 
@@ -146,17 +147,12 @@ class TransactionState {
   /// the transaction
   void clearQueryCache();
 
- public:
-  TRI_vocbase_t* _vocbase;            // vocbase
-
  protected:
+  TRI_vocbase_t* _vocbase;            // vocbase
   TRI_voc_tid_t _id;                  // local trx id
- 
- public:
   AccessMode::Type _type;             // access type (read|write)
   transaction::Status _status;        // current status
  
- protected:
   SmallVector<TransactionCollection*>::allocator_type::arena_type _arena; // memory for collections
   SmallVector<TransactionCollection*> _collections; // list of participating collections
   
@@ -164,7 +160,10 @@ class TransactionState {
 
  public:
   transaction::Hints _hints;          // hints;
+ public:
   int _nestingLevel;
+
+ protected:
   bool _allowImplicitCollections;
   bool _waitForSync;   // whether or not the transaction had a synchronous op
   bool _beginWritten;  // whether or not the begin marker was already written

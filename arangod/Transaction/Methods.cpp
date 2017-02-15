@@ -187,10 +187,7 @@ bool transaction::Methods::isSingleOperationTransaction() const {
   
 /// @brief get the status of the transaction
 transaction::Status transaction::Methods::getStatus() const {
-  if (_state != nullptr) {
-    return _state->_status;
-  }
-  return transaction::Status::UNDEFINED;
+  return _state->status();
 }
   
 /// @brief sort ORs for the same attribute so they are in ascending value
@@ -766,7 +763,7 @@ int transaction::Methods::begin() {
 
   if (_state->isCoordinator()) {
     if (_nestingLevel == 0) {
-      _state->_status = transaction::Status::RUNNING;
+      _state->updateStatus(transaction::Status::RUNNING);
     }
     return TRI_ERROR_NO_ERROR;
   }
@@ -783,7 +780,7 @@ int transaction::Methods::commit() {
 
   if (_state->isCoordinator()) {
     if (_nestingLevel == 0) {
-      _state->_status = transaction::Status::COMMITTED;
+      _state->updateStatus(transaction::Status::COMMITTED);
     }
     return TRI_ERROR_NO_ERROR;
   }
@@ -800,7 +797,7 @@ int transaction::Methods::abort() {
 
   if (_state->isCoordinator()) {
     if (_nestingLevel == 0) {
-      _state->_status = transaction::Status::ABORTED;
+      _state->updateStatus(transaction::Status::ABORTED);
     }
 
     return TRI_ERROR_NO_ERROR;
