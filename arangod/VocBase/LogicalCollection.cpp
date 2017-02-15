@@ -284,13 +284,13 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _vocbase(vocbase),
       _cleanupIndexes(0),
       _persistentIndexes(0),
-      _path(ReadStringValue(info, "path", "")),
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(this)),
       _useSecondaryIndexes(true),
       _maxTick(0),
       _keyGenerator(),
       _isInitialIteration(false),
       _revisionError(false) {
+  getPhysical()->setPath(ReadStringValue(info, "path", ""));
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
@@ -491,8 +491,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     // If we are not in the coordinator we need a path
     // to the physical data.
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    if (_path.empty()) {
-      _path = engine->createCollection(_vocbase, _cid, this);
+    if (getPhysical()->path().empty()) {
+      std::string path = engine->createCollection(_vocbase, _cid, this);
+      getPhysical()->setPath(path);
     }
   }
 
@@ -640,8 +641,6 @@ std::string LogicalCollection::dbName() const {
   TRI_ASSERT(_vocbase != nullptr);
   return _vocbase->name();
 }
-
-std::string const& LogicalCollection::path() const { return _path; }
 
 TRI_vocbase_col_status_e LogicalCollection::status() const { return _status; }
 
@@ -1022,7 +1021,7 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result,
   result.add("count", VPackValue(_physical->initialCount()));
 
   if (withPath) {
-    result.add("path", VPackValue(_path));
+    result.add("path", VPackValue(getPhysical()->path()));
   }
   result.add("allowUserKeys", VPackValue(_allowUserKeys));
 
@@ -1206,7 +1205,7 @@ void LogicalCollection::open(bool ignoreErrors) {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         res,
-        std::string("cannot open document collection from path '") + path() +
+        std::string("cannot open document collection from path '") + getPhysical()->path() +
             "': " + TRI_errno_string(res));
   }
 
@@ -1311,7 +1310,7 @@ int LogicalCollection::openWorker(bool ignoreErrors) {
     int res = engine->openCollection(_vocbase, this, ignoreErrors);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot open '" << _path << "', check failed";
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot open '" << getPhysical()->path() << "', check failed";
       return res;
     }
 
@@ -1322,11 +1321,11 @@ int LogicalCollection::openWorker(bool ignoreErrors) {
 
     return TRI_ERROR_NO_ERROR;
   } catch (basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load collection parameter file '" << _path
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load collection parameter file '" << getPhysical()->path()
              << "': " << ex.what();
     return ex.code();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load collection parameter file '" << _path
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load collection parameter file '" << getPhysical()->path()
              << "': " << ex.what();
     return TRI_ERROR_INTERNAL;
   }

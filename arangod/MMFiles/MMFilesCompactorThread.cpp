@@ -82,6 +82,7 @@ struct CompactionContext {
 
 /// @brief callback to drop a datafile
 void MMFilesCompactorThread::DropDatafileCallback(MMFilesDatafile* df, LogicalCollection* collection) {
+  auto physical = logicalToMMFiles(collection);
   TRI_ASSERT(df != nullptr);
 
   std::unique_ptr<MMFilesDatafile> datafile(df);
@@ -89,7 +90,7 @@ void MMFilesCompactorThread::DropDatafileCallback(MMFilesDatafile* df, LogicalCo
   
   std::string copy;
   std::string name("deleted-" + std::to_string(fid) + ".db");
-  std::string filename = arangodb::basics::FileUtils::buildFilename(collection->path(), name);
+  std::string filename = arangodb::basics::FileUtils::buildFilename(physical->path(), name);
 
   if (datafile->isPhysical()) {
     // copy the current filename
@@ -149,6 +150,7 @@ void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile,
   TRI_ASSERT(datafile != nullptr);
   TRI_ASSERT(compactor != nullptr);
   TRI_ASSERT(collection != nullptr);
+  auto physical = logicalToMMFiles(collection);
 
   bool ok = false;
   TRI_ASSERT(datafile->fid() == compactor->fid());
@@ -156,7 +158,7 @@ void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile,
   if (datafile->isPhysical()) {
     // construct a suitable tempname
     std::string jname("temp-" + std::to_string(datafile->fid()) + ".db");
-    std::string tempFilename = arangodb::basics::FileUtils::buildFilename(collection->path(), jname);
+    std::string tempFilename = arangodb::basics::FileUtils::buildFilename(physical->path(), jname);
     std::string realName = datafile->getName();
 
     int res = datafile->rename(tempFilename);

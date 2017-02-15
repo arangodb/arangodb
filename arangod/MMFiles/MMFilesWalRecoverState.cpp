@@ -35,6 +35,7 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesWalSlots.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -774,12 +775,13 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           return true;
         }
 
+        auto physical = logicalToMMFiles(col);
         PersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
 
         std::string const indexName("index-" + std::to_string(indexId) +
                                     ".json");
         std::string const filename(
-            arangodb::basics::FileUtils::buildFilename(col->path(), indexName));
+            arangodb::basics::FileUtils::buildFilename(physical->path(), indexName));
 
         bool const forceSync = state->willBeDropped(databaseId, collectionId);
         bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
@@ -1032,6 +1034,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         }
 
         // ignore any potential error returned by this call
+        auto physical = logicalToMMFiles(col);
         col->dropIndex(indexId, false);
 
         PersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
@@ -1040,7 +1043,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         std::string const indexName("index-" + std::to_string(indexId) +
                                     ".json");
         std::string const filename(
-            arangodb::basics::FileUtils::buildFilename(col->path(), indexName));
+            arangodb::basics::FileUtils::buildFilename(physical->path(), indexName));
 
         TRI_UnlinkFile(filename.c_str());
         break;

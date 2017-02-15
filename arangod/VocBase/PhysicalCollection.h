@@ -51,6 +51,11 @@ class PhysicalCollection {
   
   virtual Ditches* ditches() const = 0;
 
+  //path to logical collection
+  virtual std::string const& path() const = 0;
+  virtual void setPath(std::string const&) = 0; // should be set during collection creation
+                                                // creation happens atm in engine->createCollection
+
   virtual TRI_voc_rid_t revision() const = 0;
   
   // Used for transaction::Methods rollback
