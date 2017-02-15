@@ -97,6 +97,9 @@ MMFiles are known to the following files:
 - OperationOptions
   - revoryMarker
 
+- re-enable RocksDB storage engine (e.g arangod.cpp)
+- implement RocksDB storage engine
+
 Questions
 ---------
 * For GeoIndex `ignoreNull: true` and `constraint: false` are only set in Cluster mode. Is that art or can it go away?
