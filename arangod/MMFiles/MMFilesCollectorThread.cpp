@@ -637,7 +637,7 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   // first try to read-lock the compactor-lock, afterwards try to write-lock the
   // collection
   // if any locking attempt fails, release and try again next time
-  TryCompactionPreventer compactionPreventer(collection);
+  TryCompactionPreventer compactionPreventer(logicalToMMFiles(collection));
   
   if (!compactionPreventer.isLocked()) {
     return TRI_ERROR_LOCK_TIMEOUT;

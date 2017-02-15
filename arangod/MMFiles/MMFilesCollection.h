@@ -152,12 +152,38 @@ class MMFilesCollection final : public PhysicalCollection {
   /// @brief report extra memory used by indexes etc.
   size_t memory() const override;
 
-  void preventCompaction() override;
-  bool tryPreventCompaction() override;
-  void allowCompaction() override;
-  void lockForCompaction() override;
-  bool tryLockForCompaction() override;
-  void finishCompaction() override;
+  //void preventCompaction() override;
+  //bool tryPreventCompaction() override;
+  //void allowCompaction() override;
+  //void lockForCompaction() override;
+  //bool tryLockForCompaction() override;
+  //void finishCompaction() override;
+
+  void preventCompaction();
+  bool tryPreventCompaction();
+  void allowCompaction();
+  void lockForCompaction();
+  bool tryLockForCompaction();
+  void finishCompaction();
+
+  void setNextCompactionStartIndex(size_t index){
+    MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+    _nextCompactionStartIndex = index;
+  }
+
+  size_t getNextCompactionStartIndex(){
+    MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+    return _nextCompactionStartIndex;
+  }
+
+  void setCompactionStatus(char const* reason){
+    TRI_ASSERT(reason != nullptr);
+    MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+    _lastCompactionStatus = reason;
+  }
+  double lastCompactionStamp() const { return _lastCompactionStamp; }
+  void lastCompactionStamp(double value) { _lastCompactionStamp = value; }
+
   
   Ditches* ditches() const override { return &_ditches; }
   
@@ -363,7 +389,23 @@ class MMFilesCollection final : public PhysicalCollection {
 
     std::atomic<int64_t> _uncollectedLogfileEntries;
 
+    Mutex _compactionStatusLock;
+    size_t _nextCompactionStartIndex;
+    char const* _lastCompactionStatus;
+    double _lastCompactionStamp;
 };
+
+inline MMFilesCollection* physicalToMMFiles(PhysicalCollection* physical){
+  auto rv =  dynamic_cast<MMFilesCollection*>(physical);
+  assert(rv != nullptr);
+  return rv;
+}
+
+inline MMFilesCollection* logicalToMMFiles(LogicalCollection* logical){
+  auto phys = logical->getPhysical();
+  assert(phys);
+  return physicalToMMFiles(phys);
+}
 
 }
 

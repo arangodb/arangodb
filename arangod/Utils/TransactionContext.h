@@ -173,7 +173,7 @@ class TransactionContext {
   /// @brief register the transaction in the context
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual int registerTransaction(TransactionState*) = 0;
+  virtual void registerTransaction(TransactionState*) = 0;
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the transaction

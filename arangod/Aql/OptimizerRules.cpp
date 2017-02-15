@@ -1968,7 +1968,6 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::DISTRIBUTE:
       case EN::GATHER:
       case EN::REMOTE:
-      case EN::ILLEGAL:
       case EN::LIMIT:  // LIMIT is criterion to stop
         return true;   // abort.
 
@@ -2686,7 +2685,6 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
         case EN::SCATTER:
         case EN::DISTRIBUTE:
         case EN::GATHER:
-        case EN::ILLEGAL:
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::SORT:
@@ -2788,7 +2786,6 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::SCATTER:
         case EN::DISTRIBUTE:
         case EN::GATHER:
-        case EN::ILLEGAL:
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::INDEX:
@@ -3058,7 +3055,6 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
       case EN::UPSERT:
       case EN::RETURN:
       case EN::NORESULTS:
-      case EN::ILLEGAL:
       case EN::LIMIT:
       case EN::SORT:
       case EN::TRAVERSAL:
@@ -3964,7 +3960,7 @@ struct MMFilesGeoIndexInfo{
     , distanceNode(nullptr)
     , index(nullptr)
     , range(nullptr)
-    , executionNodeType(EN::ILLEGAL)
+    , executionNodeType(EN::NORESULTS)
     , within(false)
     , lessgreaterequal(false)
     , valid(true)

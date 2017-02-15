@@ -103,14 +103,12 @@ TransactionState* V8TransactionContext::getParentTransaction() const {
 /// @brief register the transaction in the context
 ////////////////////////////////////////////////////////////////////////////////
 
-int V8TransactionContext::registerTransaction(TransactionState* trx) {
+void V8TransactionContext::registerTransaction(TransactionState* trx) {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   TRI_ASSERT(_sharedTransactionContext->_currentTransaction == nullptr);
   TRI_ASSERT(_sharedTransactionContext->_mainScope == nullptr);
   _sharedTransactionContext->_currentTransaction = trx;
   _sharedTransactionContext->_mainScope = this;
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,14 @@
+Incompatible changes in ArangoDB 3.2
+====================================
+
+It is recommended to check the following list of incompatible changes **before**
+upgrading to ArangoDB 3.2, and adjust any client programs if necessary.
+
+Foxx
+----
+
+JWT token issued by the built-in [JWT session storage](../Foxx/Sessions/Storages/JWT.md) now correctly specify the `iat` and `exp` values in seconds rather than milliseconds as specified in the JSON Web Token standard.
+
+This may result in previously expired tokens using milliseconds being incorrectly accepted. For this reason it is recommended to replace the signing `secret` or set the new `maxExp` option to a reasonable value that is smaller than the oldest issued expiration timestamp.
+
+For example setting `maxExp` to `10**12` would invalidate all incorrectly issued tokens before 9 September 2001 without impairing new tokens until the year 33658 (at which point these tokens are hopefully no longer relevant).

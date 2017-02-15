@@ -54,9 +54,9 @@ class ExportFeature final : public application_features::ApplicationFeature,
   void writeCollectionBatch(int fd, VPackArrayIterator it, std::string const& fileName);
   void graphExport(httpclient::SimpleHttpClient* httpClient);
   void writeGraphBatch(int fd, VPackArrayIterator it, std::string const& fileName);
-  void xgmmlWriteOneAtt(int fd, std::string const& fileName, VPackSlice const& slice, std::string& name, int deep = 0);
+  void xgmmlWriteOneAtt(int fd, std::string const& fileName, VPackSlice const& slice, std::string const& name, int deep = 0);
 
-  void writeToFile(int fd, std::string& string, std::string const& fileName);
+  void writeToFile(int fd, std::string const& string, std::string const& fileName);
   std::shared_ptr<VPackBuilder> httpCall(httpclient::SimpleHttpClient* httpClient, std::string const& url, arangodb::rest::RequestType, std::string postBody = "");
 
  private:

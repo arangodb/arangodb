@@ -104,7 +104,7 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
     }
   }
 
-  auto key = make_pair(output, contentFilter);
+  auto key = std::make_pair(output, contentFilter);
 
 #ifdef ARANGODB_ENABLE_SYSLOG
   if (StringUtils::isPrefix(output, "syslog://")) {

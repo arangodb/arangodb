@@ -70,7 +70,7 @@ class V8TransactionContext final : public TransactionContext {
   /// @brief register the transaction in the context
   //////////////////////////////////////////////////////////////////////////////
 
-  int registerTransaction(TransactionState* trx) override;
+  void registerTransaction(TransactionState* trx) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the transaction from the context

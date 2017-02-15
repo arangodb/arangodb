@@ -43,6 +43,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/V8TransactionContext.h"
@@ -711,7 +712,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
           // finally store the generated result in the query cache
           auto result = QueryCache::instance()->store(
               _vocbase, queryStringHash, _queryString, _queryLength,
-              resultBuilder, _trx->collectionNames());
+              resultBuilder, _trx->state()->collectionNames());
 
           if (result == nullptr) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -883,7 +884,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
           // finally store the generated result in the query cache
           QueryCache::instance()->store(_vocbase, queryStringHash, _queryString,
                                         _queryLength, builder,
-                                        _trx->collectionNames());
+                                        _trx->state()->collectionNames());
         }
       } else {
         // iterate over result and return it
@@ -1303,11 +1304,6 @@ bool Query::canUseQueryCache() const {
 /// @brief neatly format transaction error to the user.
 QueryResult Query::transactionError(int errorCode) const {
   std::string err(TRI_errno_string(errorCode));
-
-  auto detail = _trx->getErrorData();
-  if (detail.size() > 0) {
-    err += std::string(" (") + detail + std::string(")");
-  }
 
   if (_queryString != nullptr && verboseErrors()) {
     err +=

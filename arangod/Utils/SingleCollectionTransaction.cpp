@@ -47,9 +47,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
         _accessType(accessType) {
 
   // add the (sole) collection
-  if (setupState() == TRI_ERROR_NO_ERROR) {
-    addCollection(cid, _accessType);
-  }
+  addCollection(cid, _accessType);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,10 +63,8 @@ SingleCollectionTransaction::SingleCollectionTransaction(
         _documentCollection(nullptr),
         _accessType(accessType) {
   // add the (sole) collection
-  if (setupState() == TRI_ERROR_NO_ERROR) {
-    _cid = resolver()->getCollectionId(name);
-    addCollection(_cid, name.c_str(), _accessType);
-  }
+  _cid = resolver()->getCollectionId(name);
+  addCollection(_cid, name.c_str(), _accessType);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

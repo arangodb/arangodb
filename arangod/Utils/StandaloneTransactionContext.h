@@ -72,7 +72,7 @@ class StandaloneTransactionContext final : public TransactionContext {
   /// @brief register the transaction, does nothing
   //////////////////////////////////////////////////////////////////////////////
 
-  int registerTransaction(TransactionState*) override;
+  void registerTransaction(TransactionState*) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the transaction

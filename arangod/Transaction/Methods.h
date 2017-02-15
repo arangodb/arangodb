@@ -167,12 +167,6 @@ class Methods {
   /// @brief remove a transaction hint
   void removeHint(transaction::Hints::Hint hint, bool passthrough);
 
-  /// @brief return the registered error data
-  std::string const getErrorData() const { return _errorData; }
-
-  /// @brief return the names of all collections used in the transaction
-  std::vector<std::string> collectionNames() const;
-
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver();
 
@@ -372,9 +366,6 @@ class Methods {
   /// @brief test if a collection is already locked
   bool isLocked(arangodb::LogicalCollection*, AccessMode::Type);
 
-  /// @brief return the setup state
-  int setupState() { return _setupState; }
-  
   arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
   
 /// @brief get the index by it's identifier. Will either throw or
@@ -485,12 +476,6 @@ class Methods {
   /// @brief add a collection by name
   int addCollection(std::string const&, AccessMode::Type);
 
-  /// @brief set the lock acquisition timeout
-  void setTimeout(double timeout) { _timeout = timeout; }
-
-  /// @brief set the waitForSync property
-  void setWaitForSync() { _waitForSync = true; }
-
   /// @brief set the allowImplicitCollections property
   void setAllowImplicitCollections(bool value);
 
@@ -559,35 +544,22 @@ class Methods {
   std::vector<std::shared_ptr<arangodb::Index>> indexesForCollectionCoordinator(
       std::string const&) const;
 
-  /// @brief register an error for the transaction
-  int registerError(int errorNum) {
-    TRI_ASSERT(errorNum != TRI_ERROR_NO_ERROR);
-
-    if (_setupState == TRI_ERROR_NO_ERROR) {
-      _setupState = errorNum;
-    }
-
-    TRI_ASSERT(_setupState != TRI_ERROR_NO_ERROR);
-
-    return errorNum;
-  }
-
   /// @brief add a collection to an embedded transaction
-  int addCollectionEmbedded(TRI_voc_cid_t, AccessMode::Type);
+  int addCollectionEmbedded(TRI_voc_cid_t, char const* name, AccessMode::Type);
 
   /// @brief add a collection to a top-level transaction
-  int addCollectionToplevel(TRI_voc_cid_t, AccessMode::Type);
+  int addCollectionToplevel(TRI_voc_cid_t, char const* name, AccessMode::Type);
 
   /// @brief initialize the transaction
   /// this will first check if the transaction is embedded in a parent
   /// transaction. if not, it will create a transaction of its own
-  int setupTransaction();
+  void setupTransaction();
 
   /// @brief set up an embedded transaction
-  int setupEmbedded();
+  void setupEmbedded();
 
   /// @brief set up a top-level transaction
-  int setupToplevel();
+  void setupToplevel();
 
   /// @brief free transaction
   void freeTransaction();
@@ -596,23 +568,11 @@ class Methods {
   /// @brief role of server in cluster
   ServerState::RoleEnum _serverRole;
 
-  /// @brief error that occurred on transaction initialization (before begin())
-  int _setupState;
-
   /// @brief how deep the transaction is down in a nested transaction structure
   int _nestingLevel;
 
-  /// @brief additional error data
-  std::string _errorData;
-
   /// @brief transaction hints
   transaction::Hints _hints;
-
-  /// @brief timeout for lock acquisition
-  double _timeout;
-
-  /// @brief wait for sync property for transaction
-  bool _waitForSync;
 
   /// @brief allow implicit collections for transaction
   bool _allowImplicitCollections;

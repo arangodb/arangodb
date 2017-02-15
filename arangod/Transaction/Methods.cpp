@@ -67,7 +67,14 @@
 using namespace arangodb;
 using namespace arangodb::transaction;
 using namespace arangodb::transaction::helpers;
-  
+
+static void throwCollectionNotFound(char const* name) {
+  if (name == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  } 
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, std::string(TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND)) + ": " + name);
+}
+
 /// @brief Get the field names of the used index
 std::vector<std::vector<std::string>> transaction::Methods::IndexHandle::fieldNames() const {
   return _index->fieldNames();
@@ -77,7 +84,7 @@ std::vector<std::vector<std::string>> transaction::Methods::IndexHandle::fieldNa
 std::shared_ptr<arangodb::Index> transaction::Methods::IndexHandle::getIndex() const {
   return _index;
 }
-
+    
 /// @brief IndexHandle toVelocyPack method passthrough
 void transaction::Methods::IndexHandle::toVelocyPack(
     arangodb::velocypack::Builder& builder,
@@ -549,7 +556,6 @@ bool transaction::Methods::findIndexHandleForAndNode(
 }
 
 
-
 /// @brief if this pointer is set to an actual set, then for each request
 /// sent to a shardId using the ClusterComm library, an X-Arango-Nolock
 /// header is generated.
@@ -559,12 +565,8 @@ thread_local std::unordered_set<std::string>* transaction::Methods::_makeNolockH
       
 transaction::Methods::Methods(std::shared_ptr<TransactionContext> transactionContext)
     : _serverRole(ServerState::ROLE_UNDEFINED),
-      _setupState(TRI_ERROR_NO_ERROR),
       _nestingLevel(0),
-      _errorData(),
       _hints(0),
-      _timeout(0.0),
-      _waitForSync(false),
       _allowImplicitCollections(true),
       _isReal(true),
       _state(nullptr),
@@ -605,11 +607,6 @@ transaction::Methods::~Methods() {
     // free the data associated with the transaction
     freeTransaction();
   }
-}
-  
-/// @brief return the names of all collections used in the transaction
-std::vector<std::string> transaction::Methods::collectionNames() const {
-  return _state->collectionNames();
 }
   
 /// @brief return the collection name resolver
@@ -758,11 +755,7 @@ void transaction::Methods::buildDocumentIdentity(LogicalCollection* collection,
 /// @brief begin the transaction
 int transaction::Methods::begin() {
   if (_state == nullptr) {
-    return TRI_ERROR_TRANSACTION_INTERNAL;
-  }
-
-  if (_setupState != TRI_ERROR_NO_ERROR) {
-    return _setupState;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid transaction state");
   }
 
   if (!_isReal) {
@@ -858,8 +851,7 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                  collectionName.c_str());
+    throwCollectionNotFound(collectionName.c_str());
   }
  
   orderDitch(cid); // will throw when it fails 
@@ -922,8 +914,7 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(TRI_voc_cid_t cid,
     collection = this->trxCollection(cid);
 
     if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                    collectionName.c_str());
+      throwCollectionNotFound(collectionName.c_str());
     }
   }
   TRI_ASSERT(collection != nullptr);
@@ -947,8 +938,7 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(std::string const& co
   auto cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                  collectionName.c_str());
+    throwCollectionNotFound(collectionName.c_str());
   }
   addCollectionAtRuntime(cid, collectionName);
   _collectionCache.cid = cid;
@@ -2685,13 +2675,29 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(
 /// @brief add a collection by id, with the name supplied
 int transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
                     AccessMode::Type type) {
-  int res = this->addCollection(cid, type);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    _errorData = std::string(name);
+  if (_state == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot add collection without state");
   }
 
-  return res;
+  Status const status = getStatus();
+
+  if (status == transaction::Status::COMMITTED ||
+      status == transaction::Status::ABORTED) {
+    // transaction already finished?
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot add collection to committed or aborted transaction");
+  }
+  
+  if (cid == 0) {
+    // invalid cid
+    throwCollectionNotFound(name);
+  }
+
+  if (isEmbeddedTransaction()) {
+   return addCollectionEmbedded(cid, name, type);
+  } 
+
+  return addCollectionToplevel(cid, name, type);
 }
 
 /// @brief add a collection by id, with the name supplied
@@ -2702,42 +2708,12 @@ int transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const& na
 
 /// @brief add a collection by id
 int transaction::Methods::addCollection(TRI_voc_cid_t cid, AccessMode::Type type) {
-  if (_state == nullptr) {
-    return registerError(TRI_ERROR_INTERNAL);
-  }
-
-  if (cid == 0) {
-    // invalid cid
-    return registerError(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
-
-  if (_setupState != TRI_ERROR_NO_ERROR) {
-    return _setupState;
-  }
-
-  Status const status = getStatus();
-
-  if (status == transaction::Status::COMMITTED ||
-      status == transaction::Status::ABORTED) {
-    // transaction already finished?
-    return registerError(TRI_ERROR_TRANSACTION_INTERNAL);
-  }
-
-  if (isEmbeddedTransaction()) {
-   return addCollectionEmbedded(cid, type);
-  } 
-
-  return addCollectionToplevel(cid, type);
+  return addCollection(cid, nullptr, type);
 }
 
 /// @brief add a collection by name
 int transaction::Methods::addCollection(std::string const& name, AccessMode::Type type) {
-  if (_setupState != TRI_ERROR_NO_ERROR) {
-    return _setupState;
-  }
-
-  return addCollection(this->resolver()->getCollectionId(name),
-                       name.c_str(), type);
+  return addCollection(resolver()->getCollectionId(name), name.c_str(), type);
 }
   
 /// @brief test if a collection is already locked
@@ -2879,7 +2855,7 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
 }
 
 /// @brief add a collection to an embedded transaction
-int transaction::Methods::addCollectionEmbedded(TRI_voc_cid_t cid, AccessMode::Type type) {
+int transaction::Methods::addCollectionEmbedded(TRI_voc_cid_t cid, char const* name, AccessMode::Type type) {
   TRI_ASSERT(_state != nullptr);
 
   int res = _state->addCollection(cid, type, _nestingLevel, false, _allowImplicitCollections);
@@ -2888,15 +2864,17 @@ int transaction::Methods::addCollectionEmbedded(TRI_voc_cid_t cid, AccessMode::T
     if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
       // special error message to indicate which collection was undeclared
       THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + resolver()->getCollectionNameCluster(cid) + " [" + AccessMode::typeString(type) + "]");
+    } else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      throwCollectionNotFound(name);
     }
-    return registerError(res);
+    THROW_ARANGO_EXCEPTION(res);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 /// @brief add a collection to a top-level transaction
-int transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid, AccessMode::Type type) {
+int transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid, char const* name, AccessMode::Type type) {
   TRI_ASSERT(_state != nullptr);
 
   int res;
@@ -2907,13 +2885,15 @@ int transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid, AccessMode::T
   } else {
     res = _state->addCollection(cid, type, _nestingLevel, false, _allowImplicitCollections);
   }
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
       // special error message to indicate which collection was undeclared
       THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + resolver()->getCollectionNameCluster(cid) + " [" + AccessMode::typeString(type) + "]");
+    } else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      throwCollectionNotFound(name);
     }
-    registerError(res);
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   return res;
@@ -2922,55 +2902,46 @@ int transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid, AccessMode::T
 /// @brief initialize the transaction
 /// this will first check if the transaction is embedded in a parent
 /// transaction. if not, it will create a transaction of its own
-int transaction::Methods::setupTransaction() {
+void transaction::Methods::setupTransaction() {
   // check in the context if we are running embedded
   _state = _transactionContext->getParentTransaction();
 
   if (_state != nullptr) {
     // yes, we are embedded
-    _setupState = setupEmbedded();
+    setupEmbedded();
     _allowImplicitCollections = _state->_allowImplicit;
   } else {
     // non-embedded
-    _setupState = setupToplevel();
+    setupToplevel();
   }
-
-  // this may well be TRI_ERROR_NO_ERROR...
-  return _setupState;
 }
   
 /// @brief set up an embedded transaction
-int transaction::Methods::setupEmbedded() {
+void transaction::Methods::setupEmbedded() {
   TRI_ASSERT(_nestingLevel == 0);
 
   _nestingLevel = ++_state->_nestingLevel;
 
   if (!_transactionContext->isEmbeddable()) {
     // we are embedded but this is disallowed...
-    return TRI_ERROR_TRANSACTION_NESTED;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NESTED);
   }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief set up a top-level transaction
-int transaction::Methods::setupToplevel() {
+void transaction::Methods::setupToplevel() {
   TRI_ASSERT(_nestingLevel == 0);
 
   // we are not embedded. now start our own transaction
-  try {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    _state = engine->createTransactionState(_vocbase);
-    _state->timeout(_timeout);
-    _state->waitForSync(_waitForSync);
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  _state = engine->createTransactionState(_vocbase);
+
+  if (_state == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to set up transaction state");
   }
 
-  TRI_ASSERT(_state != nullptr);
-
   // register the transaction in the context
-  return _transactionContext->registerTransaction(_state);
+  _transactionContext->registerTransaction(_state);
 }
 
 /// @brief free transaction
