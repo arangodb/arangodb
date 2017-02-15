@@ -2887,6 +2887,7 @@ testFuncs.dump = function (options) {
 
 testFuncs.export = function (options) {
   const cluster = options.cluster ? '-cluster' : '';
+  const tmpPath = fs.getTempPath();
 
   print(CYAN + 'export tests...' + RESET);
 
@@ -2903,15 +2904,24 @@ testFuncs.export = function (options) {
 
   print(CYAN + Date() + ': Setting up' + RESET);
 
+  const args = {
+    'configuration': fs.join(CONFIG_DIR, 'arangoexport.conf'),
+    'server.username': options.username,
+    'server.password': options.password,
+    'server.endpoint': instanceInfo.endpoint,
+    'server.database': 'UnitTestsExport',
+    'collection':'UnitTestsExport',
+    'type':'json',
+    'overwrite':true,
+    'output-directory': tmpPath
+  };
   const results = {};
 
   function shutdown() {
     print(CYAN + 'Shutting down...' + RESET);
     shutdownInstance(instanceInfo, options);
     print(CYAN + 'done.' + RESET);
-
     print();
-
     return results;
   }
 
@@ -2920,55 +2930,40 @@ testFuncs.export = function (options) {
     return shutdown();
   }
 
-  print(CYAN + Date() + ': Export data' + RESET);
+  print(CYAN + Date() + ': Export data (json)' + RESET);
+  results.exportJson = executeAndWait(ARANGOEXPORT_BIN, toArgv(args), options);
+  try {
+    const filesContent = JSON.parse(fs.read(fs.join(tmpPath, 'UnitTestsExport.json')));
+    results.parseJson = { status: true };
+  } catch(e) {
+    results.parseJson = {status: false, message: e };
+  }
 
-  results.export = (() => {
-    const args = {
-      'configuration': fs.join(CONFIG_DIR, 'arangoexport.conf'),
-      'server.username': options.username,
-      'server.password': options.password,
-      'server.endpoint': instanceInfo.endpoint,
-      'server.database': 'UnitTestsExport',
-      'collection':'UnitTestsExport',
-      'type':'json',
-      'overwrite':true,
-      'output-directory':'export'
-    };
-
-    return executeAndWait(ARANGOEXPORT_BIN, toArgv(args), options);
-  })();
-
-
-/*
-    results.dump = runArangoDumpRestore(options, instanceInfo, 'dump',
-      'UnitTestsDumpSrc');
-
-    if (checkInstanceAlive(instanceInfo, options) &&
-      (results.dump.status === true)) {
-      print(CYAN + Date() + ': Dump and Restore - restore' + RESET);
-
-      results.restore = runArangoDumpRestore(options, instanceInfo, 'restore',
-        'UnitTestsDumpDst');
-
-      if (checkInstanceAlive(instanceInfo, options) &&
-        (results.restore.status === true)) {
-        print(CYAN + Date() + ': Dump and Restore - dump after restore' + RESET);
-
-        results.test = runInArangosh(options, instanceInfo,
-          makePathUnix('js/server/tests/dump/dump' + cluster + '.js'), {
-            'server.database': 'UnitTestsDumpDst'
-          });
-
-        if (checkInstanceAlive(instanceInfo, options) &&
-          (results.test.status === true)) {
-          print(CYAN + Date() + ': Dump and Restore - teardown' + RESET);
-
-          results.tearDown = runInArangosh(options, instanceInfo,
-            makePathUnix('js/server/tests/dump/dump-teardown' + cluster + '.js'));
-        }
-      }
+  print(CYAN + Date() + ': Export data (jsonl)' + RESET);
+  args['type'] = 'jsonl';
+  results.exportJsonl = executeAndWait(ARANGOEXPORT_BIN, toArgv(args), options);
+  try {
+    const filesContent = fs.read(fs.join(tmpPath, 'UnitTestsExport.jsonl')).split('\n');
+    for(const line of filesContent) {
+      if ('' === line.trim()) continue;
+      JSON.parse(line);
     }
-  }*/
+    results.parseJsonl = { status: true };
+  } catch(e) {
+    results.parseJsonl = {status: false, message: e };
+  }
+
+  print(CYAN + Date() + ': Export data (xgmml)' + RESET);
+  args['type'] = 'xgmml';
+  args['graph-name'] = 'UnitTestsExport';
+  results.exportJsonl = executeAndWait(ARANGOEXPORT_BIN, toArgv(args), options);
+  try {
+    const filesContent = fs.read(fs.join(tmpPath, 'UnitTestsExport.xgmml')).split('\n');
+    // validate xml need npm module for that, in progress
+    // results.parseJsonl = { status: true };
+  } catch(e) {
+    results.parseJsonl = {status: false, message: e };
+  }
 
   return shutdown();
 };
