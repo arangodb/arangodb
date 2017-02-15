@@ -146,6 +146,21 @@ void Constituent::termNoLock(term_t t) {
   }
 }
 
+bool Constituent::logUpToDate(
+  arangodb::consensus::index_t prevLogIndex, term_t prevLogTerm) const {
+  log_t myLastLogEntry = _agent->state().lastLog();
+  return (prevLogTerm > myLastLogEntry.term ||
+          (prevLogTerm == myLastLogEntry.term &&
+           prevLogIndex >= myLastLogEntry.index));
+}
+
+
+bool Constituent::logMatches(
+  arangodb::consensus::index_t prevLogIndex, term_t prevLogTerm) const {
+  return _agent->state().has(prevLogIndex, prevLogTerm);
+}
+
+
 /// My role
 role_t Constituent::role() const {
   MUTEX_LOCKER(guard, _castLock);
@@ -277,6 +292,11 @@ bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
     if (term > _term) {
       termNoLock(term);
     }
+
+    if (!logMatches(prevLogTerm,prevLogIndex)) {
+      return false;
+    }
+    
     if (_leaderID != id) {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Set _leaderID to " << id << " in term " << _term;
