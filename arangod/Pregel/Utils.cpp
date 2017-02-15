@@ -48,7 +48,8 @@ std::string const Utils::startRecoveryPath = "startRecovery";
 std::string const Utils::continueRecoveryPath = "continueRecovery";
 std::string const Utils::finishedRecoveryPath = "finishedRecovery";
 std::string const Utils::finalizeRecoveryPath = "finalizeRecovery";
-std::string const Utils::aqlResultsPath = "collectAQL";
+std::string const Utils::storeCheckpointPath = "storeCheckpoint";
+std::string const Utils::aqlResultsPath = "aqlResult";
 
 std::string const Utils::executionNumberKey = "exn";
 std::string const Utils::algorithmKey = "algorithm";
@@ -102,7 +103,7 @@ std::shared_ptr<LogicalCollection> Utils::resolveCollection(
   if (it != collectionPlanIdMap.end()) {
     return ci->getCollection(database, it->second);
   }
-  LOG_TOPIC(INFO, Logger::PREGEL) << "The collection could not be translated to a planID";
+  LOG_TOPIC(ERR, Logger::PREGEL) << "The collection could not be translated to a planID";
   // THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
   //                               "The collection could not be translated to a
   //                               planID");

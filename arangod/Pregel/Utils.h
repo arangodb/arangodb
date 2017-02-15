@@ -53,7 +53,7 @@ class Utils {
   static std::string const continueRecoveryPath;
   static std::string const finishedRecoveryPath;
   static std::string const finalizeRecoveryPath;
-  //static std::string const storeCheckpointDataPath;
+  static std::string const storeCheckpointPath;
   static std::string const aqlResultsPath;
 
   static std::string const executionNumberKey;
@@ -68,18 +68,47 @@ class Utils {
   static std::string const lazyLoadingKey;
   static std::string const parallelismKey;
 
+  /// Current global superstep
   static std::string const globalSuperstepKey;
+  
+  /// Communicate number of loaded vertices to conductor
   static std::string const vertexCountKey;
+  
+  /// Communicate number of loaded edges to conductor
   static std::string const edgeCountKey;
+  
+  /// Shard id, part of message header
   static std::string const shardIdKey;
+  
+  /// holds messages
   static std::string const messagesKey;
+  
+  /// sender cluster id
   static std::string const senderKey;
+  
+  /// Recovery method name
   static std::string const recoveryMethodKey;
+  
+  /// Tells workers to store the result into the collections
+  /// otherwise dicard results
   static std::string const storeResultsKey;
+  
+  /// Holds aggregated values
   static std::string const aggregatorValuesKey;
+  
+  /// Communicates the # of active vertices to the conductor
   static std::string const activeCountKey;
+  
+  /// Used to track number of messages received during the last
+  /// superstep, by the worker (bookkeeping)
   static std::string const receivedCountKey;
+  
+  /// Used to track number of messages send during the last
+  /// superstep (bookkeeping)
   static std::string const sendCountKey;
+  
+  /// Used to communicate to enter the next phase
+  /// only send by the conductor
   static std::string const enterNextGSSKey;
 
   static std::string const compensate;
