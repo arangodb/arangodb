@@ -1926,7 +1926,7 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
                           TRI_RidToString(revisionId), options.mergeObjects,
                           options.keepNull, *builder.get());
 
-    if (ServerState::isDBServer(trx->serverRole())) {
+    if (trx->state()->isDBServer()) {
       // Need to check that no sharding keys have changed:
       if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
                                      trx->resolver()->getCollectionNameCluster(
@@ -2050,7 +2050,7 @@ int MMFilesCollection::replace(
                       isEdgeCollection, TRI_RidToString(revisionId),
                       *builder.get());
 
-  if (ServerState::isDBServer(trx->serverRole())) {
+  if (trx->state()->isDBServer()) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
                                    trx->resolver()->getCollectionNameCluster(

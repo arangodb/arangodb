@@ -68,28 +68,13 @@ using namespace arangodb;
 using namespace arangodb::transaction;
 using namespace arangodb::transaction::helpers;
 
+namespace {
+
 static void throwCollectionNotFound(char const* name) {
   if (name == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   } 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, std::string(TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND)) + ": " + name);
-}
-
-/// @brief Get the field names of the used index
-std::vector<std::vector<std::string>> transaction::Methods::IndexHandle::fieldNames() const {
-  return _index->fieldNames();
-}
-
-/// @brief IndexHandle getter method
-std::shared_ptr<arangodb::Index> transaction::Methods::IndexHandle::getIndex() const {
-  return _index;
-}
-    
-/// @brief IndexHandle toVelocyPack method passthrough
-void transaction::Methods::IndexHandle::toVelocyPack(
-    arangodb::velocypack::Builder& builder,
-    bool withFigures) const {
-  _index->toVelocyPack(builder, withFigures);
 }
 
 /// @brief tests if the given index supports the sort condition
@@ -116,7 +101,7 @@ static bool indexSupportsSort(Index const* idx, arangodb::aql::Variable const* r
 
 /// @brief Return an Operation Result that parses the error information returned
 ///        by the DBServer.
-static OperationResult DBServerResponseBad(std::shared_ptr<VPackBuilder> resultBody) {
+static OperationResult dbServerResponseBad(std::shared_ptr<VPackBuilder> resultBody) {
   VPackSlice res = resultBody->slice();
   return OperationResult(
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(
@@ -146,7 +131,7 @@ static void createBabiesError(VPackBuilder& builder,
   }
 }
 
-static OperationResult EmptyResult(bool waitForSync) {
+static OperationResult emptyResult(bool waitForSync) {
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
   resultBuilder.close();
@@ -154,6 +139,28 @@ static OperationResult EmptyResult(bool waitForSync) {
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
                          waitForSync, errorCounter); 
 }
+   
+}
+
+
+/// @brief Get the field names of the used index
+std::vector<std::vector<std::string>> transaction::Methods::IndexHandle::fieldNames() const {
+  return _index->fieldNames();
+}
+
+/// @brief IndexHandle getter method
+std::shared_ptr<arangodb::Index> transaction::Methods::IndexHandle::getIndex() const {
+  return _index;
+}
+    
+/// @brief IndexHandle toVelocyPack method passthrough
+void transaction::Methods::IndexHandle::toVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    bool withFigures) const {
+  _index->toVelocyPack(builder, withFigures);
+}
+
+TRI_vocbase_t* transaction::Methods::vocbase() const { return _state->vocbase(); }
   
 /// @brief add a transaction hint
 void transaction::Methods::addHint(transaction::Hints::Hint hint, bool passthrough) {
@@ -186,15 +193,6 @@ transaction::Status transaction::Methods::getStatus() const {
   return transaction::Status::UNDEFINED;
 }
   
-/// @brief set the allowImplicitCollections property
-void transaction::Methods::setAllowImplicitCollections(bool value) {
-  _allowImplicitCollections = value;
-    
-  if (_state != nullptr) {
-    _state->_allowImplicit = value;
-  }
-}
-
 /// @brief sort ORs for the same attribute so they are in ascending value
 /// order. this will only work if the condition is for a single attribute
 /// the usedIndexes vector may also be re-sorted
@@ -564,33 +562,35 @@ thread_local std::unordered_set<std::string>* transaction::Methods::_makeNolockH
   
       
 transaction::Methods::Methods(std::shared_ptr<TransactionContext> transactionContext)
-    : _serverRole(ServerState::ROLE_UNDEFINED),
-      _nestingLevel(0),
+    : _nestingLevel(0),
       _hints(0),
-      _allowImplicitCollections(true),
-      _isReal(true),
       _state(nullptr),
-      _vocbase(transactionContext->vocbase()),
       _resolver(nullptr),
       _transactionContext(transactionContext),
       _transactionContextPtr(transactionContext.get()) {
-  TRI_ASSERT(_vocbase != nullptr);
-  TRI_ASSERT(_transactionContext != nullptr);
+  TRI_ASSERT(_transactionContextPtr != nullptr);
 
-  _serverRole = ServerState::instance()->getRole();
-  if (ServerState::isCoordinator(_serverRole)) {
-    _isReal = false;
+  TRI_vocbase_t* vocbase = _transactionContextPtr->vocbase();
+  
+  // brief initialize the transaction
+  // this will first check if the transaction is embedded in a parent
+  // transaction. if not, it will create a transaction of its own
+  // check in the context if we are running embedded
+  TransactionState* parent = _transactionContextPtr->getParentTransaction();
+
+  if (parent != nullptr) {
+    // yes, we are embedded
+    setupEmbedded(vocbase);
+  } else {
+    // non-embedded
+    setupToplevel(vocbase);
   }
 
-  setupTransaction();
+  TRI_ASSERT(_state != nullptr);
 }
    
 /// @brief destroy the transaction
 transaction::Methods::~Methods() {
-  if (_state == nullptr) {
-    return;
-  }
-
   if (isEmbeddedTransaction()) {
     _state->_nestingLevel--;
   } else {
@@ -604,8 +604,16 @@ transaction::Methods::~Methods() {
       }
     }
 
-    // free the data associated with the transaction
-    freeTransaction();
+    // free the state associated with the transaction
+    TRI_ASSERT(getStatus() != transaction::Status::RUNNING);
+    auto id = _state->_id;
+    bool hasFailedOperations = _state->hasFailedOperations();
+    delete _state;
+    _state = nullptr;
+        
+    // store result
+    _transactionContextPtr->storeTransactionResult(id, hasFailedOperations);
+    _transactionContextPtr->unregisterTransaction();
   }
 }
   
@@ -710,7 +718,7 @@ void transaction::Methods::buildDocumentIdentity(LogicalCollection* collection,
   std::string temp;
   temp.reserve(64);
 
-  if (ServerState::isRunningInCluster(_serverRole)) {
+  if (_state->isRunningInCluster()) {
     std::string resolved = resolver()->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE
     if (resolved.compare(0, 7, "_local_") == 0) {
@@ -758,7 +766,7 @@ int transaction::Methods::begin() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid transaction state");
   }
 
-  if (!_isReal) {
+  if (_state->isCoordinator()) {
     if (_nestingLevel == 0) {
       _state->_status = transaction::Status::RUNNING;
     }
@@ -775,7 +783,7 @@ int transaction::Methods::commit() {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
-  if (!_isReal) {
+  if (_state->isCoordinator()) {
     if (_nestingLevel == 0) {
       _state->_status = transaction::Status::COMMITTED;
     }
@@ -792,7 +800,7 @@ int transaction::Methods::abort() {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
-  if (!_isReal) {
+  if (_state->isCoordinator()) {
     if (_nestingLevel == 0) {
       _state->_status = transaction::Status::ABORTED;
     }
@@ -833,7 +841,7 @@ OperationResult transaction::Methods::any(std::string const& collectionName) {
 /// as long as the collection is not modified.
 OperationResult transaction::Methods::any(std::string const& collectionName,
                                  uint64_t skip, uint64_t limit) {
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     return anyCoordinator(collectionName, skip, limit);
   }
   return anyLocal(collectionName, skip, limit);
@@ -901,7 +909,7 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(TRI_voc_cid_t cid,
   auto collection = this->trxCollection(cid);
 
   if (collection == nullptr) {
-    int res = _state->addCollection(cid, type, _nestingLevel, true, _allowImplicitCollections);
+    int res = _state->addCollection(cid, type, _nestingLevel, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
@@ -958,7 +966,7 @@ bool transaction::Methods::isDocumentCollection(std::string const& collectionNam
 
 /// @brief return the type of a collection
 TRI_col_type_e transaction::Methods::getCollectionType(std::string const& collectionName) {
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     return resolver()->getCollectionTypeCluster(collectionName);
   }
   return resolver()->getCollectionType(collectionName);
@@ -973,7 +981,7 @@ std::string transaction::Methods::collectionName(TRI_voc_cid_t cid) {
 void transaction::Methods::invokeOnAllElements(std::string const& collectionName,
                                       std::function<bool(DocumentIdentifierToken const&)> callback) {
   TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
   
@@ -1016,7 +1024,7 @@ int transaction::Methods::documentFastPath(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     OperationOptions options; // use default configuration
     options.ignoreRevs = true;
 
@@ -1125,7 +1133,7 @@ OperationResult transaction::Methods::clusterResultInsert(
     case rest::ResponseCode::PRECONDITION_FAILED:
       return OperationResult(TRI_ERROR_ARANGO_CONFLICT);
     case rest::ResponseCode::BAD:
-      return DBServerResponseBad(resultBody);
+      return dbServerResponseBad(resultBody);
     case rest::ResponseCode::NOT_FOUND:
       return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     case rest::ResponseCode::CONFLICT:
@@ -1133,7 +1141,6 @@ OperationResult transaction::Methods::clusterResultInsert(
     default:
       return OperationResult(TRI_ERROR_INTERNAL);
     }
-
 }
 
 /// @brief Create Cluster Communication result for modify
@@ -1158,7 +1165,7 @@ OperationResult transaction::Methods::clusterResultModify(
           responseCode == rest::ResponseCode::CREATED,
           errorCounter);
     case rest::ResponseCode::BAD:
-      return DBServerResponseBad(resultBody);
+      return dbServerResponseBad(resultBody);
     case rest::ResponseCode::NOT_FOUND:
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
@@ -1182,7 +1189,7 @@ OperationResult transaction::Methods::clusterResultRemove(
               : TRI_ERROR_NO_ERROR,
           responseCode != rest::ResponseCode::ACCEPTED, errorCounter);
     case rest::ResponseCode::BAD:
-      return DBServerResponseBad(resultBody);
+      return dbServerResponseBad(resultBody);
     case rest::ResponseCode::NOT_FOUND:
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
@@ -1201,7 +1208,7 @@ OperationResult transaction::Methods::document(std::string const& collectionName
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     return documentCoordinator(collectionName, value, options);
   }
 
@@ -1226,7 +1233,7 @@ OperationResult transaction::Methods::documentCoordinator(std::string const& col
   }
   
   int res = arangodb::getDocumentOnCoordinator(
-      _vocbase->name(), collectionName, value, options, headers, responseCode, errorCounter, resultBody);
+      databaseName(), collectionName, value, options, headers, responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultDocument(responseCode, resultBody, errorCounter);
@@ -1338,13 +1345,13 @@ OperationResult transaction::Methods::insert(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (value.isArray() && value.length() == 0) {
-    return EmptyResult(options.waitForSync);
+    return emptyResult(options.waitForSync);
   }
 
   // Validate Edges
   OperationOptions optionsCopy = options;
 
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     return insertCoordinator(collectionName, value, optionsCopy);
   }
 
@@ -1365,7 +1372,7 @@ OperationResult transaction::Methods::insertCoordinator(std::string const& colle
   auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::createDocumentOnCoordinator(
-      _vocbase->name(), collectionName, options, value, responseCode,
+      databaseName(), collectionName, options, value, responseCode,
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1476,7 +1483,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
   // Now see whether or not we have to do synchronous replication:
   std::shared_ptr<std::vector<ServerID> const> followers;
   bool doingSynchronousReplication = false;
-  if (ServerState::isDBServer(_serverRole)) {
+  if (_state->isDBServer()) {
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
@@ -1491,7 +1498,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     // Now replicate the good operations on all followers:
     std::string path
         = "/_db/" +
-          arangodb::basics::StringUtils::urlEncode(_vocbase->name()) +
+          arangodb::basics::StringUtils::urlEncode(databaseName()) +
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(collection->name())
           + "?isRestore=true";
@@ -1595,12 +1602,12 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
-    return EmptyResult(options.waitForSync);
+    return emptyResult(options.waitForSync);
   }
 
   OperationOptions optionsCopy = options;
 
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     return updateCoordinator(collectionName, newValue, optionsCopy);
   }
 
@@ -1622,7 +1629,7 @@ OperationResult transaction::Methods::updateCoordinator(std::string const& colle
   auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::modifyDocumentOnCoordinator(
-      _vocbase->name(), collectionName, newValue, options,
+      databaseName(), collectionName, newValue, options,
       true /* isPatch */, headers, responseCode, errorCounter,
       resultBody);
 
@@ -1646,12 +1653,12 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
-    return EmptyResult(options.waitForSync);
+    return emptyResult(options.waitForSync);
   }
 
   OperationOptions optionsCopy = options;
 
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     return replaceCoordinator(collectionName, newValue, optionsCopy);
   }
 
@@ -1672,7 +1679,7 @@ OperationResult transaction::Methods::replaceCoordinator(std::string const& coll
   auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::modifyDocumentOnCoordinator(
-      _vocbase->name(), collectionName, newValue, options,
+      databaseName(), collectionName, newValue, options,
       false /* isPatch */, headers, responseCode, errorCounter,
       resultBody);
 
@@ -1785,7 +1792,7 @@ OperationResult transaction::Methods::modifyLocal(
   // Now see whether or not we have to do synchronous replication:
   std::shared_ptr<std::vector<ServerID> const> followers;
   bool doingSynchronousReplication = false;
-  if (ServerState::isDBServer(_serverRole)) {
+  if (_state->isDBServer()) {
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
@@ -1803,7 +1810,7 @@ OperationResult transaction::Methods::modifyLocal(
       // nullptr only happens on controlled shutdown
       std::string path
           = "/_db/" +
-            arangodb::basics::StringUtils::urlEncode(_vocbase->name()) +
+            arangodb::basics::StringUtils::urlEncode(databaseName()) +
             "/_api/document/" +
             arangodb::basics::StringUtils::urlEncode(collection->name())
             + "?isRestore=true";
@@ -1905,12 +1912,12 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (value.isArray() && value.length() == 0) {
-    return EmptyResult(options.waitForSync);
+    return emptyResult(options.waitForSync);
   }
 
   OperationOptions optionsCopy = options;
 
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     return removeCoordinator(collectionName, value, optionsCopy);
   }
 
@@ -1930,7 +1937,7 @@ OperationResult transaction::Methods::removeCoordinator(std::string const& colle
   auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::deleteDocumentOnCoordinator(
-      _vocbase->name(), collectionName, value, options, responseCode,
+      databaseName(), collectionName, value, options, responseCode,
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -2029,7 +2036,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
   // Now see whether or not we have to do synchronous replication:
   std::shared_ptr<std::vector<ServerID> const> followers;
   bool doingSynchronousReplication = false;
-  if (ServerState::isDBServer(_serverRole)) {
+  if (_state->isDBServer()) {
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
@@ -2048,7 +2055,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
 
       std::string path
           = "/_db/" +
-            arangodb::basics::StringUtils::urlEncode(_vocbase->name()) +
+            arangodb::basics::StringUtils::urlEncode(databaseName()) +
             "/_api/document/" +
             arangodb::basics::StringUtils::urlEncode(collection->name())
             + "?isRestore=true";
@@ -2143,7 +2150,7 @@ OperationResult transaction::Methods::all(std::string const& collectionName,
   
   OperationOptions optionsCopy = options;
 
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     return allCoordinator(collectionName, skip, limit, optionsCopy);
   }
 
@@ -2216,7 +2223,7 @@ OperationResult transaction::Methods::truncate(std::string const& collectionName
   OperationOptions optionsCopy = options;
   OperationResult result;
 
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     result = truncateCoordinator(collectionName, optionsCopy);
   } else {
     result = truncateLocal(collectionName, optionsCopy);
@@ -2231,7 +2238,7 @@ OperationResult transaction::Methods::truncate(std::string const& collectionName
 OperationResult transaction::Methods::truncateCoordinator(std::string const& collectionName,
                                                  OperationOptions& options) {
   return OperationResult(
-      arangodb::truncateCollectionOnCoordinator(_vocbase->name(),
+      arangodb::truncateCollectionOnCoordinator(databaseName(),
                                                 collectionName));
 }
 #endif
@@ -2260,7 +2267,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
   }
   
   // Now see whether or not we have to do synchronous replication:
-  if (ServerState::isDBServer(_serverRole)) {
+  if (_state->isDBServer()) {
     std::shared_ptr<std::vector<ServerID> const> followers;
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
@@ -2273,8 +2280,8 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
         // nullptr only happens on controlled shutdown
         std::string path
             = "/_db/" +
-              arangodb::basics::StringUtils::urlEncode(_vocbase->name()) +
-              "/_api/collection/" + collectionName + "/truncate";
+              arangodb::basics::StringUtils::urlEncode(databaseName()) +
+              "/_api/collection/" + arangodb::basics::StringUtils::urlEncode(collectionName) + "/truncate";
 
         auto body = std::make_shared<std::string>();
 
@@ -2320,7 +2327,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
 OperationResult transaction::Methods::count(std::string const& collectionName, bool aggregate) {
   TRI_ASSERT(getStatus() == transaction::Status::RUNNING);
 
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     return countCoordinator(collectionName, aggregate);
   }
 
@@ -2332,7 +2339,7 @@ OperationResult transaction::Methods::count(std::string const& collectionName, b
 OperationResult transaction::Methods::countCoordinator(std::string const& collectionName, 
                                               bool aggregate) {
   std::vector<std::pair<std::string, uint64_t>> count;
-  int res = arangodb::countOnCoordinator(_vocbase->name(), collectionName, count);
+  int res = arangodb::countOnCoordinator(databaseName(), collectionName, count);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
@@ -2552,7 +2559,7 @@ OperationCursor* transaction::Methods::indexScanForCondition(
     arangodb::aql::AstNode const* condition, arangodb::aql::Variable const* var,
     ManagedDocumentResult* mmdr,
     uint64_t limit, uint64_t batchSize, bool reverse) {
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }
@@ -2588,7 +2595,7 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
     uint64_t skip, uint64_t limit, uint64_t batchSize, bool reverse) {
   // For now we assume indexId is the iid part of the index.
 
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }
@@ -2753,7 +2760,7 @@ int transaction::Methods::unlock(TransactionCollection* trxCollection,
 std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
     std::string const& collectionName) {
 
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     return indexesForCollectionCoordinator(collectionName);
   }
   // For a DBserver we use the local case.
@@ -2780,7 +2787,7 @@ transaction::Methods* transaction::Methods::clone() const {
 std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
     std::string const& name, std::string const& id) const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collectionInfo = clusterInfo->getCollection(_vocbase->name(), name);
+  auto collectionInfo = clusterInfo->getCollection(databaseName(), name);
 
   auto idxs = collectionInfo->getIndexes();
   TRI_idx_iid_t iid = basics::StringUtils::uint64(id);
@@ -2796,7 +2803,7 @@ std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
 std::vector<std::shared_ptr<Index>>
 transaction::Methods::indexesForCollectionCoordinator(std::string const& name) const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collectionInfo = clusterInfo->getCollection(_vocbase->name(), name);
+  auto collectionInfo = clusterInfo->getCollection(databaseName(), name);
   return collectionInfo->getIndexes();
 }
 
@@ -2805,7 +2812,7 @@ transaction::Methods::indexesForCollectionCoordinator(std::string const& name) c
 transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
     std::string const& collectionName, std::string const& indexHandle) {
 
-  if (ServerState::isCoordinator(_serverRole)) {
+  if (_state->isCoordinator()) {
     if (indexHandle.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "The index id cannot be empty.");
@@ -2858,7 +2865,7 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
 int transaction::Methods::addCollectionEmbedded(TRI_voc_cid_t cid, char const* name, AccessMode::Type type) {
   TRI_ASSERT(_state != nullptr);
 
-  int res = _state->addCollection(cid, type, _nestingLevel, false, _allowImplicitCollections);
+  int res = _state->addCollection(cid, type, _nestingLevel, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
@@ -2883,7 +2890,7 @@ int transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid, char const* n
     // transaction already started?
     res = TRI_ERROR_TRANSACTION_INTERNAL;
   } else {
-    res = _state->addCollection(cid, type, _nestingLevel, false, _allowImplicitCollections);
+    res = _state->addCollection(cid, type, _nestingLevel, false);
   }
   
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2898,71 +2905,34 @@ int transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid, char const* n
 
   return res;
 }
-  
-/// @brief initialize the transaction
-/// this will first check if the transaction is embedded in a parent
-/// transaction. if not, it will create a transaction of its own
-void transaction::Methods::setupTransaction() {
-  // check in the context if we are running embedded
-  _state = _transactionContext->getParentTransaction();
 
-  if (_state != nullptr) {
-    // yes, we are embedded
-    setupEmbedded();
-    _allowImplicitCollections = _state->_allowImplicit;
-  } else {
-    // non-embedded
-    setupToplevel();
-  }
-}
-  
 /// @brief set up an embedded transaction
-void transaction::Methods::setupEmbedded() {
-  TRI_ASSERT(_nestingLevel == 0);
-
-  _nestingLevel = ++_state->_nestingLevel;
-
-  if (!_transactionContext->isEmbeddable()) {
+void transaction::Methods::setupEmbedded(TRI_vocbase_t*) {
+  if (!_transactionContextPtr->isEmbeddable()) {
     // we are embedded but this is disallowed...
     THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NESTED);
   }
+  
+  TRI_ASSERT(_nestingLevel == 0);
+
+  _state = _transactionContextPtr->getParentTransaction();
+  
+  TRI_ASSERT(_state != nullptr);
+  _nestingLevel = ++_state->_nestingLevel;
 }
 
 /// @brief set up a top-level transaction
-void transaction::Methods::setupToplevel() {
+void transaction::Methods::setupToplevel(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(_nestingLevel == 0);
 
   // we are not embedded. now start our own transaction
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  _state = engine->createTransactionState(_vocbase);
+  _state = engine->createTransactionState(vocbase);
 
-  if (_state == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to set up transaction state");
-  }
+  TRI_ASSERT(_state != nullptr);
 
   // register the transaction in the context
-  _transactionContext->registerTransaction(_state);
-}
-
-/// @brief free transaction
-void transaction::Methods::freeTransaction() {
-  TRI_ASSERT(!isEmbeddedTransaction());
-
-  if (_state != nullptr) {
-    TRI_ASSERT(getStatus() != transaction::Status::RUNNING);
-    auto id = _state->_id;
-    bool hasFailedOperations = _state->hasFailedOperations();
-    delete _state;
-    _state = nullptr;
-      
-    // store result
-    _transactionContext->storeTransactionResult(id, hasFailedOperations);
-    _transactionContext->unregisterTransaction();
-  }
-}
-  
-bool transaction::Methods::isCluster() {
-  return arangodb::ServerState::instance()->isRunningInCluster(_serverRole);
+  _transactionContextPtr->registerTransaction(_state);
 }
 
 int transaction::Methods::resolveId(char const* handle, size_t length,

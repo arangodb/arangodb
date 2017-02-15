@@ -23,18 +23,19 @@
 
 #include "ModificationBlocks.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterMethods.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
@@ -63,7 +64,7 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
   }
 
   // check if we're a DB server in a cluster
-  _isDBServer = arangodb::ServerState::instance()->isDBServer();
+  _isDBServer = transaction()->state()->isDBServer();
 
   if (_isDBServer) {
     _usesDefaultSharding = _collection->usesDefaultSharding();

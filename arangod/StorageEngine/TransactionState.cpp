@@ -41,9 +41,10 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase)
       _status(transaction::Status::CREATED),
       _arena(),
       _collections{_arena}, // assign arena to vector 
+      _serverRole(ServerState::instance()->getRole()),
       _hints(),
       _nestingLevel(0), 
-      _allowImplicit(true),
+      _allowImplicitCollections(true),
       _waitForSync(false),
       _beginWritten(false), 
       _timeout(transaction::Methods::DefaultLockTimeout) {}
@@ -92,17 +93,14 @@ TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid, AccessMod
 /// @brief add a collection to a transaction
 int TransactionState::addCollection(TRI_voc_cid_t cid,
                                     AccessMode::Type accessType,
-                                    int nestingLevel, bool force,
-                                    bool allowImplicitCollections) {
+                                    int nestingLevel, bool force) {
   LOG_TRX(this, nestingLevel) << "adding collection " << cid;
-
-  allowImplicitCollections &= _allowImplicit;
 
   // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cid: " << cid 
   //            << ", accessType: " << accessType 
   //            << ", nestingLevel: " << nestingLevel 
   //            << ", force: " << force 
-  //            << ", allowImplicitCollections: " << allowImplicitCollections;
+  //            << ", allowImplicitCollections: " << _allowImplicitCollections;
   
   // upgrade transaction type if required
   if (nestingLevel == 0) {
@@ -133,7 +131,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
 
-  if (!AccessMode::isWriteOrExclusive(accessType) && !allowImplicitCollections) {
+  if (!AccessMode::isWriteOrExclusive(accessType) && !_allowImplicitCollections) {
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
   

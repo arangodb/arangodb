@@ -120,7 +120,7 @@ class AqlTransaction final : public transaction::Methods {
   //////////////////////////////////////////////////////////////////////////////
 
   transaction::Methods* clone() const override {
-    return new AqlTransaction(StandaloneTransactionContext::Create(_vocbase),
+    return new AqlTransaction(StandaloneTransactionContext::Create(vocbase()),
         &_collections, false);
   }
 

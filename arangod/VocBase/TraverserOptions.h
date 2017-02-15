@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/FixedVarExpressionContext.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 
 namespace arangodb {
@@ -123,7 +124,7 @@ struct TraverserOptions {
         _tmpVar(nullptr),
         _ctx(new aql::FixedVarExpressionContext()),
         _traverser(nullptr),
-        _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
+        _isCoordinator(trx->state()->isCoordinator()),
         minDepth(1),
         maxDepth(1),
         useBreadthFirst(false),

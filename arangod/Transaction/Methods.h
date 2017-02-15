@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
-#include "Cluster/ServerState.h"
 #include "Utils/OperationResult.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Status.h"
@@ -140,16 +139,12 @@ class Methods {
   };
 
   /// @brief return database of transaction
-  inline TRI_vocbase_t* vocbase() const { return _vocbase; }
+  TRI_vocbase_t* vocbase() const;
+  inline std::string const& databaseName() const { return vocbase()->name(); }
 
   /// @brief return internals of transaction
   inline TransactionState* state() const { return _state; }
   
-  /// @brief return role of server in cluster
-  inline ServerState::RoleEnum serverRole() const { return _serverRole; }
-  
-  bool isCluster();
-
   int resolveId(char const* handle, size_t length, TRI_voc_cid_t& cid, char const*& key, size_t& outLength); 
   
   /// @brief return a pointer to the transaction context
@@ -476,9 +471,6 @@ class Methods {
   /// @brief add a collection by name
   int addCollection(std::string const&, AccessMode::Type);
 
-  /// @brief set the allowImplicitCollections property
-  void setAllowImplicitCollections(bool value);
-
   /// @brief read- or write-lock a collection
   int lock(TransactionCollection*, AccessMode::Type);
 
@@ -550,43 +542,23 @@ class Methods {
   /// @brief add a collection to a top-level transaction
   int addCollectionToplevel(TRI_voc_cid_t, char const* name, AccessMode::Type);
 
-  /// @brief initialize the transaction
-  /// this will first check if the transaction is embedded in a parent
-  /// transaction. if not, it will create a transaction of its own
-  void setupTransaction();
-
   /// @brief set up an embedded transaction
-  void setupEmbedded();
+  void setupEmbedded(TRI_vocbase_t*);
 
   /// @brief set up a top-level transaction
-  void setupToplevel();
-
-  /// @brief free transaction
-  void freeTransaction();
+  void setupToplevel(TRI_vocbase_t*);
 
  private:
-  /// @brief role of server in cluster
-  ServerState::RoleEnum _serverRole;
-
   /// @brief how deep the transaction is down in a nested transaction structure
   int _nestingLevel;
 
   /// @brief transaction hints
   transaction::Hints _hints;
 
-  /// @brief allow implicit collections for transaction
-  bool _allowImplicitCollections;
-
-  /// @brief whether or not this is a "real" transaction
-  bool _isReal;
-
  protected:
   /// @brief the state 
   TransactionState* _state;
 
-  /// @brief the vocbase
-  TRI_vocbase_t* const _vocbase;
-  
   /// @brief collection name resolver (cached)
   CollectionNameResolver const* _resolver;
 

@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
+#include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Status.h"
@@ -62,14 +63,24 @@ class TransactionState {
   explicit TransactionState(TRI_vocbase_t* vocbase);
   virtual ~TransactionState();
 
+  bool isRunningInCluster() const { return ServerState::isRunningInCluster(_serverRole); }
+  bool isDBServer() const { return ServerState::isDBServer(_serverRole); }
+  bool isCoordinator() const { return ServerState::isCoordinator(_serverRole); }
+
+  TRI_vocbase_t* vocbase() const { return _vocbase; }
+
   double timeout() const { return _timeout; }
   void timeout(double value) { 
     if (value > 0.0) {
       _timeout = value;
     } 
+  
   }
   bool waitForSync() const { return _waitForSync; }
   void waitForSync(bool value) { _waitForSync = value; }
+
+  bool allowImplicitCollections() const { return _allowImplicitCollections; }
+  void allowImplicitCollections(bool value) { _allowImplicitCollections = value; }
 
   std::vector<std::string> collectionNames() const;
 
@@ -77,7 +88,7 @@ class TransactionState {
   TransactionCollection* collection(TRI_voc_cid_t cid, AccessMode::Type accessType);
 
   /// @brief add a collection to a transaction
-  int addCollection(TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel, bool force, bool allowImplicitCollections);
+  int addCollection(TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel, bool force);
 
   /// @brief make sure all declared collections are used & locked
   int ensureCollections(int nestingLevel = 0);
@@ -139,14 +150,17 @@ class TransactionState {
   TRI_voc_tid_t _id;                  // local trx id
   AccessMode::Type _type;             // access type (read|write)
   transaction::Status _status;        // current status
-
+ 
  protected:
   SmallVector<TransactionCollection*>::allocator_type::arena_type _arena; // memory for collections
   SmallVector<TransactionCollection*> _collections; // list of participating collections
+  
+  ServerState::RoleEnum const _serverRole;  // role of the server
+
  public:
-  transaction::Hints _hints;            // hints;
+  transaction::Hints _hints;          // hints;
   int _nestingLevel;
-  bool _allowImplicit;
+  bool _allowImplicitCollections;
   bool _waitForSync;   // whether or not the transaction had a synchronous op
   bool _beginWritten;  // whether or not the begin marker was already written
   double _timeout;     // timeout for lock acquisition
