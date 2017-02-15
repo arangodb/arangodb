@@ -1026,46 +1026,6 @@ AgencyCommResult AgencyComm::unregisterCallback(std::string const& key,
   return result;
 }
 
-bool AgencyComm::lockRead(std::string const& key, double ttl, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("READ"));
-  } catch (...) {
-    return false;
-  }
-  return lock(key, ttl, timeout, builder.slice());
-}
-
-bool AgencyComm::lockWrite(std::string const& key, double ttl, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("WRITE"));
-  } catch (...) {
-    return false;
-  }
-  return lock(key, ttl, timeout, builder.slice());
-}
-
-bool AgencyComm::unlockRead(std::string const& key, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("READ"));
-  } catch (...) {
-    return false;
-  }
-  return unlock(key, builder.slice(), timeout);
-}
-
-bool AgencyComm::unlockWrite(std::string const& key, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("WRITE"));
-  } catch (...) {
-    return false;
-  }
-  return unlock(key, builder.slice(), timeout);
-}
-
 AgencyCommResult AgencyComm::sendTransactionWithFailover(
     AgencyTransaction const& transaction, double timeout) {
   std::string url = AgencyComm::AGENCY_URL_PREFIX;
