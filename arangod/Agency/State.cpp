@@ -678,8 +678,8 @@ bool State::loadRemaining() {
     back = _log.back().index;
   }
   
-  _agent->rebuildDBs();
   _agent->lastCommitted(back);
+  _agent->rebuildDBs();
 
   return true;
 }
