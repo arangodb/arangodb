@@ -166,17 +166,8 @@ TRI_vocbase_t* transaction::Methods::vocbase() const { return _state->vocbase();
 void transaction::Methods::addHint(transaction::Hints::Hint hint, bool passthrough) {
   _hints.set(hint);
 
-  if (passthrough && _state != nullptr) {
+  if (passthrough) {
     _state->_hints.set(hint);
-  }
-}
-  
-/// @brief remove a transaction hint
-void transaction::Methods::removeHint(transaction::Hints::Hint hint, bool passthrough) {
-  _hints.unset(hint);
-
-  if (passthrough && _state != nullptr) {
-    _state->_hints.unset(hint);
   }
 }
   

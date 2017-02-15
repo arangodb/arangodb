@@ -159,9 +159,6 @@ class Methods {
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint, bool passthrough);
 
-  /// @brief remove a transaction hint
-  void removeHint(transaction::Hints::Hint hint, bool passthrough);
-
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver();
 
