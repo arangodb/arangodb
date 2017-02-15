@@ -80,7 +80,9 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
                                                         MMFilesDatafile* datafile,
                                                         MMFilesCollection::OpenIteratorState* state) {
   LogicalCollection* collection = state->_collection;
-  MMFilesCollection* c = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(collection != nullptr);
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
   transaction::Methods* trx = state->_trx;
   TRI_ASSERT(trx != nullptr);
 
@@ -92,7 +94,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
 
   transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
-  c->setRevision(revisionId, false);
+  physical->setRevision(revisionId, false);
 
   if (state->_trackKeys) {
     VPackValueLength length;
@@ -115,13 +117,13 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
 
   // it is a new entry
   if (found == nullptr || found->revisionId() == 0) {
-    c->insertRevision(revisionId, vpack, fid, false, false); 
+    physical->insertRevision(revisionId, vpack, fid, false, false); 
 
     // insert into primary index
     int res = state->_primaryIndex->insertKey(trx, revisionId, VPackSlice(vpack), state->_mmdr);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      c->removeRevision(revisionId, false);
+      physical->removeRevision(revisionId, false);
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "inserting document into primary index failed with error: " << TRI_errno_string(res);
 
       return res;
@@ -138,13 +140,13 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
     // update the revision id in primary index
     found->updateRevisionId(revisionId, static_cast<uint32_t>(keySlice.begin() - vpack));
 
-    MMFilesDocumentPosition const old = c->lookupRevision(oldRevisionId);
+    MMFilesDocumentPosition const old = physical->lookupRevision(oldRevisionId);
 
     // remove old revision
-    c->removeRevision(oldRevisionId, false);
+    physical->removeRevision(oldRevisionId, false);
 
     // insert new revision
-    c->insertRevision(revisionId, vpack, fid, false, false);
+    physical->insertRevision(revisionId, vpack, fid, false, false);
 
     // update the datafile info
     DatafileStatisticsContainer* dfi;
@@ -176,7 +178,9 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* m
                                                         MMFilesDatafile* datafile,
                                                         MMFilesCollection::OpenIteratorState* state) {
   LogicalCollection* collection = state->_collection;
-  MMFilesCollection* c = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(collection != nullptr);
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
   transaction::Methods* trx = state->_trx;
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
@@ -186,7 +190,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* m
 
   transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
-  c->setRevision(revisionId, false);
+  physical->setRevision(revisionId, false);
   if (state->_trackKeys) {
     VPackValueLength length;
     char const* p = keySlice.getString(length);
@@ -215,7 +219,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* m
   else {
     TRI_voc_rid_t oldRevisionId = found.revisionId();
 
-    MMFilesDocumentPosition const old = c->lookupRevision(oldRevisionId);
+    MMFilesDocumentPosition const old = physical->lookupRevision(oldRevisionId);
     
     // update the datafile info
     DatafileStatisticsContainer* dfi;
@@ -239,7 +243,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* m
 
     state->_primaryIndex->removeKey(trx, oldRevisionId, VPackSlice(vpack), state->_mmdr);
 
-    c->removeRevision(oldRevisionId, true);
+    physical->removeRevision(oldRevisionId, true);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -327,8 +331,9 @@ TRI_voc_rid_t MMFilesCollection::revision() const {
   return _lastRevision; 
 }
 
+/// @brief update statistics for a collection
 void MMFilesCollection::setRevision(TRI_voc_rid_t revision, bool force) {
-  if (force || revision > _lastRevision) {
+  if (revision > 0 && (force || revision > _lastRevision)) {
     _lastRevision = revision;
   }
 }

@@ -104,7 +104,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
   TRI_voc_rid_t revision() const override;
 
-  void setRevision(TRI_voc_rid_t revision, bool force) override;
+  void setRevision(TRI_voc_rid_t revision, bool force);
 
   int64_t initialCount() const override;
   void updateCount(int64_t) override;
@@ -267,6 +267,18 @@ class MMFilesCollection final : public PhysicalCollection {
                         TRI_voc_rid_t newRevisionId,
                         velocypack::Slice const& newDoc);
 
+  void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
+                      TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
+
+  void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
+                      TRI_voc_fid_t fid, bool isInWal);
+
+  bool updateRevisionConditional(TRI_voc_rid_t revisionId,
+                                 TRI_df_marker_t const* oldPosition,
+                                 TRI_df_marker_t const* newPosition,
+                                 TRI_voc_fid_t newFid, bool isInWal);
+
+  void removeRevision(TRI_voc_rid_t revisionId, bool updateStats);
 
  private:
 
@@ -321,16 +333,6 @@ class MMFilesCollection final : public PhysicalCollection {
     uint8_t const* lookupRevisionVPackConditional(
         TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal)
         const override;
-    void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
-                        TRI_voc_fid_t fid, bool isInWal, bool shouldLock)
-        override;
-    void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
-                        TRI_voc_fid_t fid, bool isInWal) override;
-    bool updateRevisionConditional(TRI_voc_rid_t revisionId,
-                                   TRI_df_marker_t const* oldPosition,
-                                   TRI_df_marker_t const* newPosition,
-                                   TRI_voc_fid_t newFid, bool isInWal) override;
-    void removeRevision(TRI_voc_rid_t revisionId, bool updateStats) override;
 
     int insertDocument(arangodb::transaction::Methods * trx,
                        TRI_voc_rid_t revisionId,

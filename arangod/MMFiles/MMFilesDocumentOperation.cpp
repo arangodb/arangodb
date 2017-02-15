@@ -134,7 +134,7 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
 
     // remove now obsolete new revision
     try {
-      _collection->removeRevision(newRevisionId, true);
+      physical->removeRevision(newRevisionId, true);
     } catch (...) {
       // operation probably was never inserted
     }
@@ -145,7 +145,7 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
     
     try {
       // re-insert the old revision
-      _collection->insertRevision(_oldRevision._revisionId, _oldRevision._vpack, 0, true);
+      physical->insertRevision(_oldRevision._revisionId, _oldRevision._vpack, 0, true, true);
     } catch (...) {
     }
 
@@ -163,13 +163,13 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
       VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(oldDoc));
       element->updateRevisionId(oldRevisionId, static_cast<uint32_t>(keySlice.begin() - oldDoc.begin()));
     }
-    _collection->updateRevision(oldRevisionId, oldDoc.begin(), 0, false);
+    physical->updateRevision(oldRevisionId, oldDoc.begin(), 0, false);
     
     // remove now obsolete new revision
     if (oldRevisionId != newRevisionId) { 
       // we need to check for the same revision id here
       try {
-        _collection->removeRevision(newRevisionId, true);
+        physical->removeRevision(newRevisionId, true);
       } catch (...) {
       }
     }
@@ -178,7 +178,7 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
     TRI_ASSERT(_newRevision.empty());
     
     try {
-      _collection->insertRevision(_oldRevision._revisionId, _oldRevision._vpack, 0, true);
+      physical->insertRevision(_oldRevision._revisionId, _oldRevision._vpack, 0, true, true);
     } catch (...) {
     }
     
