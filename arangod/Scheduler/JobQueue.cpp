@@ -73,7 +73,12 @@ class JobQueueThread final : public Thread {
           _ioService->post([jobQueue, job]() {
             std::unique_ptr<Job> guard(job);
 
-            job->_callback(std::move(job->_handler));
+            try {
+              job->_callback(std::move(job->_handler));
+            } catch(std::exception& e) {
+              LOG(WARN) << "Exception caught in a dangereous place! "
+                << e.what();
+            }
             jobQueue->releaseActive();
             jobQueue->wakeup();
           });
