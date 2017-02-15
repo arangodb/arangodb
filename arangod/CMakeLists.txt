@@ -372,6 +372,7 @@ SET(ARANGOD_SOURCES
   Pregel/Algos/ConnectedComponents.cpp
   Pregel/Algos/SCC.cpp
   Pregel/Algos/AsyncSCC.cpp
+#  Pregel/Algos/DMID.cpp
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp
   Pregel/IncomingCache.cpp
