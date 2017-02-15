@@ -308,16 +308,17 @@ bool MMFilesCollection::OpenIterator(TRI_df_marker_t const* marker, MMFilesColle
 }
 
 MMFilesCollection::MMFilesCollection(LogicalCollection* collection)
-    : PhysicalCollection(collection)
-    , _ditches(collection)
-    , _initialCount(0), _lastRevision(0)
-    , _uncollectedLogfileEntries(0)
-    ,  _nextCompactionStartIndex(0)
-    ,  _lastCompactionStatus(nullptr)
-    ,  _lastCompactionStamp(0.0)
-    {
-      setCompactionStatus("compaction not yet started");
-    }
+    : PhysicalCollection(collection),
+      _ditches(collection),
+      _initialCount(0),
+      _revisionError(false),
+      _lastRevision(0),
+      _uncollectedLogfileEntries(0),
+      _nextCompactionStartIndex(0),
+      _lastCompactionStatus(nullptr),
+      _lastCompactionStamp(0.0) {
+  setCompactionStatus("compaction not yet started");
+}
 
 MMFilesCollection::~MMFilesCollection() { 
   try {
@@ -1141,6 +1142,24 @@ void MMFilesCollection::finishCompaction() {
   _compactionLock.unlock();
 }
 
+void MMFilesCollection::open(bool ignoreErrors) {
+  // successfully opened collection. now adjust version number
+  if (_logicalCollection->version() != LogicalCollection::VERSION_31 && !_revisionError &&
+      application_features::ApplicationServer::server
+          ->getFeature<DatabaseFeature>("Database")
+          ->check30Revisions()) {
+    _logicalCollection->setVersion(LogicalCollection::VERSION_31);
+    bool const doSync =
+        application_features::ApplicationServer::getFeature<DatabaseFeature>(
+            "Database")
+            ->forceSyncProperties();
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    engine->changeCollection(_logicalCollection->vocbase(),
+                             _logicalCollection->cid(), _logicalCollection,
+                             doSync);
+  }
+}
+
 /// @brief iterate all markers of the collection
 int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
   // initialize state for iteration
@@ -1166,7 +1185,7 @@ int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
       _lastRevision >= static_cast<TRI_voc_rid_t>(2016ULL - 1970ULL) * 1000ULL * 60ULL * 60ULL * 24ULL * 365ULL &&
       application_features::ApplicationServer::server->getFeature<DatabaseFeature>("Database")->check30Revisions()) {
     // a collection from 3.0 or earlier with a _rev value that is higher than we can handle safely
-    _logicalCollection->setRevisionError();
+    setRevisionError();
 
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "collection '" << _logicalCollection->name() << "' contains _rev values that are higher than expected for an ArangoDB 3.1 database. If this collection was created or used with a pre-release or development version of ArangoDB 3.1, please restart the server with option '--database.check-30-revisions false' to suppress this warning. If this collection was created with an ArangoDB 3.0, please dump the 3.0 database with arangodump and restore it in 3.1 with arangorestore.";
     if (application_features::ApplicationServer::server->getFeature<DatabaseFeature>("Database")->fail30Revisions()) {

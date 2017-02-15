@@ -227,8 +227,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _useSecondaryIndexes(true),
       _maxTick(0),
       _keyGenerator(),
-      _isInitialIteration(false),
-      _revisionError(false) {
+      _isInitialIteration(false) {
   _keyGenerator.reset(KeyGenerator::factory(other.keyOptions()));
 
   if (ServerState::instance()->isDBServer() ||
@@ -286,8 +285,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _useSecondaryIndexes(true),
       _maxTick(0),
       _keyGenerator(),
-      _isInitialIteration(false),
-      _revisionError(false) {
+      _isInitialIteration(false) {
   getPhysical()->setPath(ReadStringValue(info, "path", ""));
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -721,6 +719,10 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 
 void LogicalCollection::setDeleted(bool newValue) { _isDeleted = newValue; }
 
+Ditches* LogicalCollection::ditches() const {
+  return getPhysical()->ditches();
+}
+
 // SECTION: Key Options
 VPackSlice LogicalCollection::keyOptions() const {
   if (_keyOptions == nullptr) {
@@ -942,6 +944,23 @@ int LogicalCollection::close() {
 
   return getPhysical()->close();
 }
+
+int LogicalCollection::rotateActiveJournal() {
+  return getPhysical()->rotateActiveJournal();
+}
+
+void LogicalCollection::updateStats(TRI_voc_fid_t fid,
+                                    DatafileStatisticsContainer const& values) {
+  return getPhysical()->updateStats(fid, values);
+}
+
+bool LogicalCollection::applyForTickRange(
+    TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+    std::function<bool(TRI_voc_tick_t foundTick,
+                       TRI_df_marker_t const* marker)> const& callback) {
+  return getPhysical()->applyForTickRange(dataMin, dataMax, callback);
+}
+
 
 void LogicalCollection::unload() {
 }
@@ -1267,20 +1286,7 @@ void LogicalCollection::open(bool ignoreErrors) {
       << " s, open-document-collection { collection: " << _vocbase->name()
       << "/" << _name << " }";
 
-  // successfully opened collection. now adjust version number
-  if (_version != VERSION_31 && !_revisionError &&
-      application_features::ApplicationServer::server
-          ->getFeature<DatabaseFeature>("Database")
-          ->check30Revisions()) {
-    _version = VERSION_31;
-    bool const doSync =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database")
-            ->forceSyncProperties();
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    engine->changeCollection(_vocbase, _cid, this, doSync);
-  }
-
+  getPhysical()->open(ignoreErrors);
   TRI_UpdateTickServer(_cid);
 }
 
@@ -1401,7 +1407,6 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
   }
 
   bool const writeMarker = !engine->inRecovery();
-  //    !MMFilesLogfileManager::instance()->isInRecovery();
   res = saveIndex(idx.get(), writeMarker);
 
   if (res != TRI_ERROR_NO_ERROR) {

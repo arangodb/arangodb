@@ -37,6 +37,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "MMFiles/MMFilesEngine.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -53,8 +54,8 @@
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/modes.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HexDump.h>

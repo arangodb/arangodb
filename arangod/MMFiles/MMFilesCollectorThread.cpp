@@ -635,10 +635,13 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
 
   TRI_ASSERT(collection != nullptr);
 
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
+
   // first try to read-lock the compactor-lock, afterwards try to write-lock the
   // collection
   // if any locking attempt fails, release and try again next time
-  TryCompactionPreventer compactionPreventer(logicalToMMFiles(collection));
+  TryCompactionPreventer compactionPreventer(physical);
   
   if (!compactionPreventer.isLocked()) {
     return TRI_ERROR_LOCK_TIMEOUT;

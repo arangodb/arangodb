@@ -99,6 +99,10 @@ class PhysicalCollection {
   // /// @brief signal that compaction is finished
   // virtual void finishCompaction() = 0;
 
+
+  /// @brief opens an existing collection
+  virtual void open(bool ignoreErrors) = 0;
+
   /// @brief iterate all markers of a collection on load
   virtual int iterateMarkersOnLoad(transaction::Methods* trx) = 0;
   

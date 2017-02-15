@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "StorageEngine/StorageEngine.h"
-#include "VocBase/PhysicalCollection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -112,7 +111,6 @@ class LogicalCollection {
   // TODO: MOVE TO PHYSICAL?
   bool isFullyCollected(); //should not be exposed
 
-  void setRevisionError() { _revisionError = true; }
 
   // SECTION: Meta Information
   uint32_t version() const { return _version; }
@@ -191,7 +189,7 @@ class LogicalCollection {
 
   void setDeleted(bool);
 
-  Ditches* ditches() const { return getPhysical()->ditches(); }
+  Ditches* ditches() const;
 
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
@@ -272,31 +270,16 @@ class LogicalCollection {
   /// datafile management
 
   /// @brief rotate the active journal - will do nothing if there is no journal
-  int rotateActiveJournal() { return getPhysical()->rotateActiveJournal(); }
+  int rotateActiveJournal();
 
   /// @brief increase dead stats for a datafile, if it exists
   void updateStats(TRI_voc_fid_t fid,
-                   DatafileStatisticsContainer const& values) {
-    return getPhysical()->updateStats(fid, values);
-  }
+                   DatafileStatisticsContainer const& values);
 
   bool applyForTickRange(
       TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
       std::function<bool(TRI_voc_tick_t foundTick,
-                         TRI_df_marker_t const* marker)> const& callback) {
-    return getPhysical()->applyForTickRange(dataMin, dataMax, callback);
-  }
-
-  // /// @brief disallow starting the compaction of the collection
-  // void preventCompaction() { getPhysical()->preventCompaction(); }
-  // bool tryPreventCompaction() { return getPhysical()->tryPreventCompaction(); }
-  // /// @brief re-allow starting the compaction of the collection
-  // void allowCompaction() { getPhysical()->allowCompaction(); }
-
-  // /// @brief compaction finished
-  // void lockForCompaction() { getPhysical()->lockForCompaction(); }
-  // bool tryLockForCompaction() { return getPhysical()->tryLockForCompaction(); }
-  // void finishCompaction() { getPhysical()->finishCompaction(); }
+                         TRI_df_marker_t const* marker)> const& callback);
 
   void sizeHint(transaction::Methods* trx, int64_t hint);
 
@@ -517,8 +500,6 @@ class LogicalCollection {
   /// @brief: flag that is set to true when the documents are
   /// initial enumerated and the primary index is built
   bool _isInitialIteration;
-
-  bool _revisionError;
 };
 
 }  // namespace arangodb

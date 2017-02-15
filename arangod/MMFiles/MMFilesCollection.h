@@ -102,17 +102,19 @@ class MMFilesCollection final : public PhysicalCollection {
   explicit MMFilesCollection(LogicalCollection*);
   ~MMFilesCollection();
   
-  virtual std::string const& path() const override {
+  std::string const& path() const override {
     return _path;
   };
   
-  virtual void setPath(std::string const& path) override {
+  void setPath(std::string const& path) override {
     _path = path;
   };
 
   TRI_voc_rid_t revision() const override;
 
   void setRevision(TRI_voc_rid_t revision, bool force);
+
+  void setRevisionError() { _revisionError = true; }
 
   int64_t initialCount() const override;
   void updateCount(int64_t) override;
@@ -195,10 +197,12 @@ class MMFilesCollection final : public PhysicalCollection {
   
   Ditches* ditches() const override { return &_ditches; }
   
+  void open(bool ignoreErrors) override;
+
  /// @brief iterate all markers of a collection on load
   int iterateMarkersOnLoad(arangodb::transaction::Methods* trx) override;
   
-  virtual bool isFullyCollected() const override;
+  bool isFullyCollected() const override;
   
   int64_t uncollectedLogfileEntries() const {
     return _uncollectedLogfileEntries.load();
@@ -391,6 +395,8 @@ class MMFilesCollection final : public PhysicalCollection {
 
     int64_t _initialCount;
 
+    bool _revisionError;
+
     MMFilesDatafileStatistics _datafileStatistics;
 
     TRI_voc_rid_t _lastRevision;
@@ -405,18 +411,6 @@ class MMFilesCollection final : public PhysicalCollection {
     double _lastCompactionStamp;
     std::string _path;
 };
-
-inline MMFilesCollection* physicalToMMFiles(PhysicalCollection* physical){
-  auto rv =  dynamic_cast<MMFilesCollection*>(physical);
-  assert(rv != nullptr);
-  return rv;
-}
-
-inline MMFilesCollection* logicalToMMFiles(LogicalCollection* logical){
-  auto phys = logical->getPhysical();
-  assert(phys);
-  return physicalToMMFiles(phys);
-}
 
 }
 

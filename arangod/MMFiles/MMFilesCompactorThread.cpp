@@ -83,7 +83,8 @@ struct CompactionContext {
 
 /// @brief callback to drop a datafile
 void MMFilesCompactorThread::DropDatafileCallback(MMFilesDatafile* df, LogicalCollection* collection) {
-  auto physical = logicalToMMFiles(collection);
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
   TRI_ASSERT(df != nullptr);
 
   std::unique_ptr<MMFilesDatafile> datafile(df);
@@ -151,7 +152,8 @@ void MMFilesCompactorThread::RenameDatafileCallback(MMFilesDatafile* datafile,
   TRI_ASSERT(datafile != nullptr);
   TRI_ASSERT(compactor != nullptr);
   TRI_ASSERT(collection != nullptr);
-  auto physical = logicalToMMFiles(collection);
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
 
   bool ok = false;
   TRI_ASSERT(datafile->fid() == compactor->fid());
@@ -616,6 +618,8 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   // otherwise we'll risk a multi-thread deadlock between synchronizer,
   // compactor and data-modification threads (e.g. POST /_api/document)
   MMFilesCollection* physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
+
   TRY_READ_LOCKER(readLocker, physical->_filesLock);
 
   if (!readLocker.isLocked()) {
@@ -629,7 +633,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     // we already have created a compactor file in progress.
     // if this happens, then a previous compaction attempt for this collection
     // failed or is not finished yet
-    logicalToMMFiles(collection)->setCompactionStatus(ReasonCompactionBlocked);
+    physical->setCompactionStatus(ReasonCompactionBlocked);
     wasBlocked = true;
     return false;
   }
@@ -639,7 +643,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 
   if (datafiles.empty()) {
     // collection has no datafiles
-    logicalToMMFiles(collection)->setCompactionStatus(ReasonNoDatafiles);
+    physical->setCompactionStatus(ReasonNoDatafiles);
     return false;
   }
   
@@ -650,7 +654,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   size_t const n = datafiles.size();
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection '" << collection->name() << "' for compaction opportunities";
 
-  size_t start = logicalToMMFiles(collection)->getNextCompactionStartIndex();
+  size_t start = physical->getNextCompactionStartIndex();
 
   // get number of documents from collection
   uint64_t const numDocuments = getNumberOfDocuments(collection);
@@ -809,10 +813,10 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 
   if (toCompact.empty()) {
     // nothing to compact. now reset start index
-    logicalToMMFiles(collection)->setNextCompactionStartIndex(0);
+    physical->setNextCompactionStartIndex(0);
     
     // cleanup local variables
-    logicalToMMFiles(collection)->setCompactionStatus(ReasonNothingToCompact);
+    physical->setCompactionStatus(ReasonNothingToCompact);
     LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection yielded: " << ReasonNothingToCompact;
     return false;
   }
@@ -820,8 +824,8 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   // handle datafiles with dead objects
   TRI_ASSERT(toCompact.size() >= 1);
   TRI_ASSERT(reason != nullptr);
-  logicalToMMFiles(collection)->setCompactionStatus(reason);
-  logicalToMMFiles(collection)->setNextCompactionStartIndex(start);
+  physical->setCompactionStatus(reason);
+  physical->setNextCompactionStartIndex(start);
   compactDatafiles(collection, toCompact);
 
   return true;
@@ -873,8 +877,11 @@ void MMFilesCompactorThread::run() {
             if (collection->status() == TRI_VOC_COL_STATUS_LOADED && doCompact) {
               // check whether someone else holds a read-lock on the compaction
               // lock
+              
+              auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+              TRI_ASSERT(physical != nullptr);
 
-              TryCompactionLocker compactionLocker(logicalToMMFiles(collection));
+              TryCompactionLocker compactionLocker(physical);
 
               if (!compactionLocker.isLocked()) {
                 // someone else is holding the compactor lock, we'll not compact
@@ -883,7 +890,7 @@ void MMFilesCompactorThread::run() {
 
               try {
                 double const now = TRI_microtime();
-                if (logicalToMMFiles(collection)->lastCompactionStamp() + compactionCollectionInterval() <= now) {
+                if (physical->lastCompactionStamp() + compactionCollectionInterval() <= now) {
                   auto ce = collection->ditches()->createCompactionDitch(__FILE__,
                                                                         __LINE__);
 
@@ -897,7 +904,7 @@ void MMFilesCompactorThread::run() {
 
                       if (!worked && !wasBlocked) {
                         // set compaction stamp
-                        logicalToMMFiles(collection)->lastCompactionStamp(now);
+                        physical->lastCompactionStamp(now);
                       }
                       // if we worked or were blocked, then we don't set the compaction stamp to
                       // force another round of compaction

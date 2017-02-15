@@ -239,13 +239,15 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
   }
 
   TRI_ASSERT(_collection != nullptr);
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
 
   if (nestingLevel == 0 &&
       AccessMode::isWriteOrExclusive(_accessType)) {
     // read-lock the compaction lock
     if (!_transaction->hasHint(transaction::Hints::Hint::NO_COMPACTION_LOCK)) {
       if (!_compactionLocked) {
-        logicalToMMFiles(_collection)->preventCompaction();
+        physical->preventCompaction();
         _compactionLocked = true;
       }
     }
@@ -285,8 +287,10 @@ void MMFilesTransactionCollection::unuse(int nestingLevel) {
   if (nestingLevel == 0 && _collection != nullptr) {
     if (!_transaction->hasHint(transaction::Hints::Hint::NO_COMPACTION_LOCK)) {
       if (AccessMode::isWriteOrExclusive(_accessType) && _compactionLocked) {
+        auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+        TRI_ASSERT(physical != nullptr);
         // read-unlock the compaction lock
-        logicalToMMFiles(_collection)->allowCompaction();
+        physical->allowCompaction();
         _compactionLocked = false;
       }
     }
