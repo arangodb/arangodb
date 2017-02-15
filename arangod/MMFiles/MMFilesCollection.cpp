@@ -2209,6 +2209,63 @@ int MMFilesCollection::remove(arangodb::transaction::Methods* trx, VPackSlice co
   return res;
 }
 
+/// @brief rolls back a document operation
+int MMFilesCollection::rollbackOperation(transaction::Methods* trx,
+                                         TRI_voc_document_operation_e type,
+                                         TRI_voc_rid_t oldRevisionId,
+                                         VPackSlice const& oldDoc,
+                                         TRI_voc_rid_t newRevisionId,
+                                         VPackSlice const& newDoc) {
+  if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
+    TRI_ASSERT(oldRevisionId == 0);
+    TRI_ASSERT(oldDoc.isNone());
+    TRI_ASSERT(newRevisionId != 0);
+    TRI_ASSERT(!newDoc.isNone());
+
+    // ignore any errors we're getting from this
+    deletePrimaryIndex(trx, newRevisionId, newDoc);
+    deleteSecondaryIndexes(trx, newRevisionId, newDoc, true);
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+      type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+    TRI_ASSERT(oldRevisionId != 0);
+    TRI_ASSERT(!oldDoc.isNone());
+    TRI_ASSERT(newRevisionId != 0);
+    TRI_ASSERT(!newDoc.isNone());
+    
+    // remove the current values from the indexes
+    deleteSecondaryIndexes(trx, newRevisionId, newDoc, true);
+    // re-insert old state
+    return insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
+  }
+
+  if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+    // re-insert old revision
+    TRI_ASSERT(oldRevisionId != 0);
+    TRI_ASSERT(!oldDoc.isNone());
+    TRI_ASSERT(newRevisionId == 0);
+    TRI_ASSERT(newDoc.isNone());
+    
+    int res = insertPrimaryIndex(trx, oldRevisionId, oldDoc);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      res = insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
+    } else {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error rolling back remove operation";
+    }
+    return res;
+  }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "logic error. invalid operation type on rollback";
+#endif
+  return TRI_ERROR_INTERNAL;
+}
+
+
+
 /// @brief removes a document or edge, fast path function for database documents
 int MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
                                       TRI_voc_rid_t oldRevisionId,
