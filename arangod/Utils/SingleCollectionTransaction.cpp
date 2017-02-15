@@ -33,10 +33,7 @@
 
 using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the transaction, using a collection id
-////////////////////////////////////////////////////////////////////////////////
-
 SingleCollectionTransaction::SingleCollectionTransaction(
   std::shared_ptr<TransactionContext> transactionContext, TRI_voc_cid_t cid, 
   AccessMode::Type accessType)
@@ -50,10 +47,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
   addCollection(cid, _accessType);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the transaction, using a collection name
-////////////////////////////////////////////////////////////////////////////////
-
 SingleCollectionTransaction::SingleCollectionTransaction(
   std::shared_ptr<TransactionContext> transactionContext,
   std::string const& name, AccessMode::Type accessType)
@@ -67,10 +61,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
   addCollection(_cid, name.c_str(), _accessType);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the underlying transaction collection
-////////////////////////////////////////////////////////////////////////////////
-
 TransactionCollection* SingleCollectionTransaction::trxCollection() {
   TRI_ASSERT(_cid > 0);
 
@@ -86,12 +77,9 @@ TransactionCollection* SingleCollectionTransaction::trxCollection() {
   return _trxCollection;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the underlying document collection
 /// note that we have two identical versions because this is called
 /// in two different situations
-////////////////////////////////////////////////////////////////////////////////
-
 LogicalCollection* SingleCollectionTransaction::documentCollection() {
   if (_documentCollection != nullptr) {
     return _documentCollection;
@@ -102,37 +90,25 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
 
   return _documentCollection;
 }
-
-////////////////////////////////////////////////////////////////////////////////
+  
 /// @brief get the underlying collection's name
-////////////////////////////////////////////////////////////////////////////////
-
 std::string SingleCollectionTransaction::name() { 
   trxCollection(); // will ensure we have the _trxCollection object set
   TRI_ASSERT(_trxCollection != nullptr);
   return _trxCollection->collectionName();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief explicitly lock the underlying collection for read access
-////////////////////////////////////////////////////////////////////////////////
-
 int SingleCollectionTransaction::lockRead() {
   return lock(trxCollection(), AccessMode::Type::READ);
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief explicitly unlock the underlying collection after read access
-//////////////////////////////////////////////////////////////////////////////
-
 int SingleCollectionTransaction::unlockRead() {
   return unlock(trxCollection(), AccessMode::Type::READ);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief explicitly lock the underlying collection for write access
-////////////////////////////////////////////////////////////////////////////////
-
 int SingleCollectionTransaction::lockWrite() {
   return lock(trxCollection(), AccessMode::Type::WRITE);
 }
