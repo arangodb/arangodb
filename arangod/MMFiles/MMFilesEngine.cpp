@@ -718,6 +718,7 @@ void MMFilesEngine::prepareDropCollection(TRI_vocbase_t*, arangodb::LogicalColle
 
 // perform a physical deletion of the collection
 void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
+  auto physical = logicalToMMFiles(collection);
   std::string const name(collection->name());
   unregisterCollectionPath(vocbase->id(), collection->cid());
   
@@ -725,11 +726,11 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalColl
   PersistentIndexFeature::dropCollection(vocbase->id(), collection->cid());
 
   // rename collection directory
-  if (collection->path().empty()) {
+  if (physical->path().empty()) {
     return;
   }
 
-  std::string const collectionPath = collection->path();
+  std::string const collectionPath = physical->path();
 
 #ifdef _WIN32
   size_t pos = collectionPath.find_last_of('\\');
@@ -762,7 +763,7 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalColl
 
   if (invalid) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot rename dropped collection '" << name
-              << "': unknown path '" << collection->path() << "'";
+              << "': unknown path '" << physical->path() << "'";
   } else {
     // prefix the collection name with "deleted-"
 
@@ -777,17 +778,17 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalColl
 
     // perform the rename
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "renaming collection directory from '"
-                << collection->path() << "' to '" << newFilename << "'";
+                << physical->path() << "' to '" << newFilename << "'";
 
     std::string systemError;
-    int res = TRI_RenameFile(collection->path().c_str(), newFilename.c_str(), nullptr, &systemError);
+    int res = TRI_RenameFile(physical->path().c_str(), newFilename.c_str(), nullptr, &systemError);
       
     if (res != TRI_ERROR_NO_ERROR) {
       if (!systemError.empty()) {
         systemError = ", error details: " + systemError;
       }
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot rename directory of dropped collection '" << name
-                << "' from '" << collection->path() << "' to '"
+                << "' from '" << physical->path() << "' to '"
                 << newFilename << "': " << TRI_errno_string(res) << systemError;
     } else {
       LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "wiping dropped collection '" << name
@@ -1293,13 +1294,14 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
       arangodb::LogicalCollection* collection = StorageEngine::registerCollection(vocbase.get(), it);
 
-      registerCollectionPath(vocbase->id(), collection->cid(), collection->path());
+      auto physical = logicalToMMFiles(collection);
+      registerCollectionPath(vocbase->id(), collection->cid(), physical->path());
 
       if (!wasCleanShutdown) {
         // iterating markers may be time-consuming. we'll only do it if
         // we have to
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "no shutdown info found. scanning all collection markers in collection '" << collection->name() << "', database '" << vocbase->name() << "'";
-        findMaxTickInJournals(collection->path());
+        findMaxTickInJournals(physical->path());
       }
 
       LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "added document collection '" << collection->name() << "'";
@@ -1887,8 +1889,9 @@ bool MMFilesEngine::checkDatafileHeader(MMFilesDatafile* datafile, std::string c
 
 /// @brief checks a collection
 int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) {
+  auto physical = logicalToMMFiles(collection);
   LOG_TOPIC(TRACE, Logger::DATAFILES) << "check collection directory '"
-                                      << collection->path() << "'";
+                                      << physical->path() << "'";
 
   std::vector<MMFilesDatafile*> all;
   std::vector<MMFilesDatafile*> compactors;
@@ -1901,7 +1904,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
   TRI_ASSERT(collection->cid() != 0);
 
   // check files within the directory
-  std::vector<std::string> files = TRI_FilesDirectory(collection->path().c_str());
+  std::vector<std::string> files = TRI_FilesDirectory(physical->path().c_str());
 
   for (auto const& file : files) {
     std::vector<std::string> parts = StringUtils::split(file, '.');
@@ -1926,7 +1929,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
     }
 
     std::string filename =
-        FileUtils::buildFilename(collection->path(), file);
+        FileUtils::buildFilename(physical->path(), file);
     std::string filetype = next[0];
     next.erase(next.begin());
     std::string qualifier = StringUtils::join(next, '-');
@@ -1960,7 +1963,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
       if (filetype == "compaction") {
         std::string relName = "datafile-" + qualifier + "." + extension;
         std::string newName =
-            FileUtils::buildFilename(collection->path(), relName);
+            FileUtils::buildFilename(physical->path(), relName);
 
         if (FileUtils::exists(newName)) {
           // we have a compaction-xxxx and a datafile-xxxx file. we'll keep
@@ -2061,7 +2064,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
   if (!stop) {
     for (auto& datafile : sealed) {
       std::string dname("datafile-" + std::to_string(datafile->fid()) + ".db");
-      std::string filename = arangodb::basics::FileUtils::buildFilename(collection->path(), dname);
+      std::string filename = arangodb::basics::FileUtils::buildFilename(physical->path(), dname);
 
       int res = datafile->rename(filename);
 
@@ -2097,7 +2100,6 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
   std::sort(journals.begin(), journals.end(), DatafileComparator());
   std::sort(compactors.begin(), compactors.end(), DatafileComparator());
 
-  MMFilesCollection* physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   // add the datafiles and journals
   physical->_datafiles = datafiles;
   physical->_journals = journals;

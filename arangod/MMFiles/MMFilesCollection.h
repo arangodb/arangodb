@@ -101,6 +101,14 @@ class MMFilesCollection final : public PhysicalCollection {
  public:
   explicit MMFilesCollection(LogicalCollection*);
   ~MMFilesCollection();
+  
+  virtual std::string const& path() const override {
+    return _path;
+  };
+  
+  virtual void setPath(std::string const& path) override {
+    _path = path;
+  };
 
   TRI_voc_rid_t revision() const override;
 
@@ -395,6 +403,7 @@ class MMFilesCollection final : public PhysicalCollection {
     size_t _nextCompactionStartIndex;
     char const* _lastCompactionStatus;
     double _lastCompactionStamp;
+    std::string _path;
 };
 
 inline MMFilesCollection* physicalToMMFiles(PhysicalCollection* physical){

@@ -31,6 +31,7 @@
 #include "Basics/memory-map.h"
 #include "Basics/tri-strings.h"
 #include "RestServer/DatabaseFeature.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
@@ -48,9 +49,11 @@
 
 using namespace arangodb;
 
+namespace {
+
 /// @brief convert a number slice into its numeric equivalent
 template <typename T>
-static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
+static inline T numericValue(VPackSlice const& slice, char const* attribute) {
   if (!slice.isObject()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "invalid value type when looking for attribute '" << attribute
              << "': expecting object";
@@ -68,6 +71,8 @@ static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
   LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "invalid value for attribute '" << attribute << "'";
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "invalid attribute value");
+}
+
 }
 
 /// @brief creates the recover state
@@ -745,7 +750,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           return state->canContinue();
         }
 
-        TRI_idx_iid_t indexId = NumericValue<TRI_idx_iid_t>(payloadSlice, "id");
+        TRI_idx_iid_t indexId = numericValue<TRI_idx_iid_t>(payloadSlice, "id");
 
         if (state->isDropped(databaseId, collectionId)) {
           return true;
@@ -775,12 +780,13 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           return true;
         }
 
+        auto physical = logicalToMMFiles(col);
         PersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
 
         std::string const indexName("index-" + std::to_string(indexId) +
                                     ".json");
         std::string const filename(
-            arangodb::basics::FileUtils::buildFilename(col->path(), indexName));
+            arangodb::basics::FileUtils::buildFilename(physical->path(), indexName));
 
         bool const forceSync = state->willBeDropped(databaseId, collectionId);
         bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
@@ -1006,7 +1012,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           return state->canContinue();
         }
 
-        TRI_idx_iid_t indexId = NumericValue<TRI_idx_iid_t>(payloadSlice, "id");
+        TRI_idx_iid_t indexId = numericValue<TRI_idx_iid_t>(payloadSlice, "id");
 
         LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found drop index marker. databaseId: " << databaseId
                    << ", collectionId: " << collectionId
@@ -1033,6 +1039,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         }
 
         // ignore any potential error returned by this call
+        auto physical = logicalToMMFiles(col);
         col->dropIndex(indexId, false);
 
         PersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
@@ -1041,7 +1048,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         std::string const indexName("index-" + std::to_string(indexId) +
                                     ".json");
         std::string const filename(
-            arangodb::basics::FileUtils::buildFilename(col->path(), indexName));
+            arangodb::basics::FileUtils::buildFilename(physical->path(), indexName));
 
         TRI_UnlinkFile(filename.c_str());
         break;

@@ -394,7 +394,7 @@ int MMFilesCollection::sealDatafile(MMFilesDatafile* datafile, bool isCompactor)
   if (!isCompactor && datafile->isPhysical()) {
     // rename the file
     std::string dname("datafile-" + std::to_string(datafile->fid()) + ".db");
-    std::string filename = arangodb::basics::FileUtils::buildFilename(_logicalCollection->path(), dname);
+    std::string filename = arangodb::basics::FileUtils::buildFilename(path(), dname);
 
     res = datafile->rename(filename);
 
@@ -692,7 +692,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
     }
 
     jname.append(std::to_string(fid) + ".db");
-    std::string filename = arangodb::basics::FileUtils::buildFilename(_logicalCollection->path(), jname);
+    std::string filename = arangodb::basics::FileUtils::buildFilename(path(), jname);
 
     TRI_IF_FAILURE("CreateJournalDocumentCollection") {
       // simulate disk full
@@ -777,7 +777,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
   if (!isCompactor && datafile->isPhysical()) {
     // and use the correct name
     std::string jname("journal-" + std::to_string(datafile->fid()) + ".db");
-    std::string filename = arangodb::basics::FileUtils::buildFilename(_logicalCollection->path(), jname);
+    std::string filename = arangodb::basics::FileUtils::buildFilename(path(), jname);
 
     int res = datafile->rename(filename);
 

@@ -135,7 +135,6 @@ class LogicalCollection {
 
   std::string name() const;
   std::string dbName() const;
-  std::string const& path() const;
   std::string const& distributeShardsLike() const;
   void distributeShardsLike(std::string const&);
 
@@ -498,7 +497,6 @@ class LogicalCollection {
   // TODO MOVE ME
   size_t _cleanupIndexes;
   size_t _persistentIndexes;
-  std::string _path;
  protected:
 
   std::unique_ptr<PhysicalCollection> _physical;
