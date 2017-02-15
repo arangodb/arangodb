@@ -165,8 +165,6 @@ class Methods {
   /// @brief get the status of the transaction
   Status status() const;
 
-  int nestingLevel() const { return _nestingLevel; }
-
   /// @brief begin the transaction
   int begin();
 
@@ -206,7 +204,7 @@ class Methods {
                                        AccessMode::Type type = AccessMode::Type::READ);
   
   /// @brief add a collection to the transaction for read, at runtime
-  TRI_voc_cid_t addCollectionAtRuntime(std::string const& collectionName);
+  virtual TRI_voc_cid_t addCollectionAtRuntime(std::string const& collectionName);
 
   /// @brief return the type of a collection
   bool isEdgeCollection(std::string const& collectionName);
@@ -542,9 +540,6 @@ class Methods {
   void setupToplevel(TRI_vocbase_t*);
 
  private:
-  /// @brief how deep the transaction is down in a nested transaction structure
-  int _nestingLevel;
-
   /// @brief transaction hints
   transaction::Hints _hints;
 

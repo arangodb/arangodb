@@ -33,7 +33,7 @@ namespace arangodb {
 class DocumentDitch;
 class TransactionContext;
 
-class SingleCollectionTransaction : public transaction::Methods {
+class SingleCollectionTransaction final : public transaction::Methods {
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -77,6 +77,10 @@ class SingleCollectionTransaction : public transaction::Methods {
   //////////////////////////////////////////////////////////////////////////////
   
   inline TRI_voc_cid_t cid() const { return _cid; }
+  
+  /// @brief add a collection to the transaction for read, at runtime
+  /// note that this can only be ourselves
+  TRI_voc_cid_t addCollectionAtRuntime(std::string const&) override final { return _cid; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the underlying collection's name

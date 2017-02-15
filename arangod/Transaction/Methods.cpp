@@ -541,8 +541,7 @@ thread_local std::unordered_set<std::string>* transaction::Methods::_makeNolockH
   
       
 transaction::Methods::Methods(std::shared_ptr<TransactionContext> transactionContext)
-    : _nestingLevel(0),
-      _hints(),
+    : _hints(),
       _state(nullptr),
       _transactionContext(transactionContext),
       _transactionContextPtr(transactionContext.get()) {
@@ -737,13 +736,13 @@ int transaction::Methods::begin() {
   }
 
   if (_state->isCoordinator()) {
-    if (_nestingLevel == 0) {
+    if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::RUNNING);
     }
     return TRI_ERROR_NO_ERROR;
   }
 
-  return _state->beginTransaction(_hints, _nestingLevel);
+  return _state->beginTransaction(_hints, _state->nestingLevel());
 }
   
 /// @brief commit / finish the transaction
@@ -754,13 +753,13 @@ int transaction::Methods::commit() {
   }
 
   if (_state->isCoordinator()) {
-    if (_nestingLevel == 0) {
+    if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::COMMITTED);
     }
     return TRI_ERROR_NO_ERROR;
   }
 
-  return _state->commitTransaction(this, _nestingLevel);
+  return _state->commitTransaction(this, _state->nestingLevel());
 }
   
 /// @brief abort the transaction
@@ -771,14 +770,14 @@ int transaction::Methods::abort() {
   }
 
   if (_state->isCoordinator()) {
-    if (_nestingLevel == 0) {
+    if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::ABORTED);
     }
 
     return TRI_ERROR_NO_ERROR;
   }
 
-  return _state->abortTransaction(this, _nestingLevel);
+  return _state->abortTransaction(this, _state->nestingLevel());
 }
   
 /// @brief finish a transaction (commit or abort), based on the previous state
@@ -876,10 +875,10 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
 TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(TRI_voc_cid_t cid, 
                                        std::string const& collectionName,
                                        AccessMode::Type type) {
-  auto collection = this->trxCollection(cid);
+  auto collection = trxCollection(cid);
 
   if (collection == nullptr) {
-    int res = _state->addCollection(cid, type, _nestingLevel, true);
+    int res = _state->addCollection(cid, type, _state->nestingLevel(), true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
@@ -888,8 +887,8 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(TRI_voc_cid_t cid,
       }
       THROW_ARANGO_EXCEPTION(res);
     }
-    _state->ensureCollections(_nestingLevel);
-    collection = this->trxCollection(cid);
+    _state->ensureCollections(_state->nestingLevel());
+    collection = trxCollection(cid);
 
     if (collection == nullptr) {
       throwCollectionNotFound(collectionName.c_str());
@@ -905,14 +904,6 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(std::string const& co
     return _collectionCache.cid;
   }
 
-  auto t = dynamic_cast<SingleCollectionTransaction*>(this);
-  if (t != nullptr) {
-    TRI_voc_cid_t cid = t->cid();
-    _collectionCache.cid = cid;
-    _collectionCache.name = collectionName;
-    return cid;
-  } 
-  
   auto cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
@@ -2703,7 +2694,7 @@ bool transaction::Methods::isLocked(LogicalCollection* document,
   TransactionCollection* trxCollection = _state->collection(document->cid(), type);
 
   TRI_ASSERT(trxCollection != nullptr);
-  return trxCollection->isLocked(type, _nestingLevel);
+  return trxCollection->isLocked(type, _state->nestingLevel());
 }
 
 /// @brief read- or write-lock a collection
@@ -2713,7 +2704,7 @@ int transaction::Methods::lock(TransactionCollection* trxCollection,
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
-  return trxCollection->lock(type, _nestingLevel);
+  return trxCollection->lock(type, _state->nestingLevel());
 }
 
 /// @brief read- or write-unlock a collection
@@ -2723,7 +2714,7 @@ int transaction::Methods::unlock(TransactionCollection* trxCollection,
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
-  return trxCollection->unlock(type, _nestingLevel);
+  return trxCollection->unlock(type, _state->nestingLevel());
 }
   
 /// @brief get list of indexes for a collection
@@ -2835,7 +2826,7 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
 int transaction::Methods::addCollectionEmbedded(TRI_voc_cid_t cid, char const* name, AccessMode::Type type) {
   TRI_ASSERT(_state != nullptr);
 
-  int res = _state->addCollection(cid, type, _nestingLevel, false);
+  int res = _state->addCollection(cid, type, _state->nestingLevel(), false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
@@ -2860,7 +2851,7 @@ int transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid, char const* n
     // transaction already started?
     res = TRI_ERROR_TRANSACTION_INTERNAL;
   } else {
-    res = _state->addCollection(cid, type, _nestingLevel, false);
+    res = _state->addCollection(cid, type, _state->nestingLevel(), false);
   }
   
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2886,7 +2877,7 @@ void transaction::Methods::setupEmbedded(TRI_vocbase_t*) {
   _state = _transactionContextPtr->getParentTransaction();
   
   TRI_ASSERT(_state != nullptr);
-  _nestingLevel = _state->increaseNesting();
+  _state->increaseNesting();
 }
 
 /// @brief set up a top-level transaction
