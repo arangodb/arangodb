@@ -42,7 +42,7 @@
 
   const col = db._create("UnitTestsExport");
   for (let i = 0; i < 100; ++i) {
-    col.save({ _key: "export" + i, value1: i, value2: "this is export", value3: "export" + i });
+    col.save({ _key: "export" + i, value1: i, value2: "this is export", value3: "export" + i, value4: "%<>\"'" });
   }
 }
 
