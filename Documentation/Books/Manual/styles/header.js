@@ -92,7 +92,7 @@ function appendHeader() {
   //render header
   rerenderNavbar();
   function addGoogleSrc() {
-    var cx = '010085642145132923492:djexw6vlsgo';
+    var cx = '010085642145132923492:eylabygadru';
     var gcse = document.createElement('script');
     gcse.type = 'text/javascript';
     gcse.async = true;
