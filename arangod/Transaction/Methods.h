@@ -159,9 +159,6 @@ class Methods {
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint) { _hints.set(hint); }
 
-  /// @brief return the collection name resolver
-  CollectionNameResolver const* resolver();
-
   /// @brief whether or not the transaction consists of a single operation only
   bool isSingleOperationTransaction() const;
 
@@ -372,6 +369,9 @@ class Methods {
   /// @brief Clone this transaction. Only works for selected sub-classes
   virtual transaction::Methods* clone() const;
   
+  /// @brief return the collection name resolver
+  CollectionNameResolver const* resolver() const;
+
  private:
   
   /// @brief build a VPack object with _id, _key and _rev and possibly
@@ -445,7 +445,6 @@ class Methods {
   OperationResult countLocal(std::string const& collectionName);
   
  protected:
-
   /// @brief return the transaction collection for a document collection
   TransactionCollection* trxCollection(TRI_voc_cid_t cid) const;
 
@@ -552,9 +551,6 @@ class Methods {
  protected:
   /// @brief the state 
   TransactionState* _state;
-
-  /// @brief collection name resolver (cached)
-  CollectionNameResolver const* _resolver;
 
   /// @brief the transaction context
   std::shared_ptr<TransactionContext> _transactionContext;

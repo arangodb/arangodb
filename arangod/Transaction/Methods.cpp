@@ -544,7 +544,6 @@ transaction::Methods::Methods(std::shared_ptr<TransactionContext> transactionCon
     : _nestingLevel(0),
       _hints(),
       _state(nullptr),
-      _resolver(nullptr),
       _transactionContext(transactionContext),
       _transactionContextPtr(transactionContext.get()) {
   TRI_ASSERT(_transactionContextPtr != nullptr);
@@ -595,12 +594,8 @@ transaction::Methods::~Methods() {
 }
   
 /// @brief return the collection name resolver
-CollectionNameResolver const* transaction::Methods::resolver() {
-  if (_resolver == nullptr) {
-    _resolver = _transactionContextPtr->getResolver();
-    TRI_ASSERT(_resolver != nullptr);
-  }
-  return _resolver;
+CollectionNameResolver const* transaction::Methods::resolver() const {
+  return _transactionContextPtr->getResolver();
 }
   
 /// @brief return the transaction collection for a document collection
