@@ -343,7 +343,9 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
 /// @brief compact the specified datafiles
 void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     std::vector<compaction_info_t> const& toCompact) {
-
+  TRI_ASSERT(collection != nullptr);
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
   size_t const n = toCompact.size();
   TRI_ASSERT(n > 0);
   
@@ -355,8 +357,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   /// file.
   /// IMPORTANT: if the logic inside this function is adjusted, the total size
   /// calculated by function CalculateSize might need adjustment, too!!
-  auto compactifier = [&context, &collection, this](TRI_df_marker_t const* marker, MMFilesDatafile* datafile) -> bool {
-    LogicalCollection* collection = context->_collection;
+  auto compactifier = [&context, &collection, &physical, this](TRI_df_marker_t const* marker, MMFilesDatafile* datafile) -> bool {
     TRI_voc_fid_t const targetFid = context->_compactor->fid();
 
     TRI_df_marker_type_t const type = marker->getType();
@@ -373,7 +374,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       TRI_df_marker_t const* markerPtr = nullptr;
       MMFilesSimpleIndexElement element = primaryIndex->lookupKey(context->_trx, keySlice);
       if (element) {
-        MMFilesDocumentPosition const old = static_cast<MMFilesCollection*>(collection->getPhysical())->lookupRevision(element.revisionId());
+        MMFilesDocumentPosition const old = physical->lookupRevision(element.revisionId());
         markerPtr = reinterpret_cast<TRI_df_marker_t const*>(static_cast<uint8_t const*>(old.dataptr()) - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
       }
         
@@ -400,7 +401,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
       // let marker point to the new position
       uint8_t const* dataptr = reinterpret_cast<uint8_t const*>(result) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
-      collection->updateRevision(element.revisionId(), dataptr, targetFid, false);
+      physical->updateRevision(element.revisionId(), dataptr, targetFid, false);
 
       context->_dfi.numberAlive++;
       context->_dfi.sizeAlive += MMFilesDatafileHelper::AlignedMarkerSize<int64_t>(marker);
@@ -448,7 +449,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   // we are re-using the _fid of the first original datafile!
   MMFilesDatafile* compactor = nullptr;
   try {
-    compactor = static_cast<MMFilesCollection*>(collection->getPhysical())->createCompactor(initial._fid, static_cast<TRI_voc_size_t>(initial._targetSize));
+    compactor = physical->createCompactor(initial._fid, static_cast<TRI_voc_size_t>(initial._targetSize));
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not create compactor file: " << ex.what();
     return;
@@ -498,7 +499,6 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   }  // next file
 
-  MMFilesCollection* physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   physical->_datafileStatistics.replace(compactor->fid(), context->_dfi);
 
   trx.commit();

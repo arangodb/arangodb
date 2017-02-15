@@ -561,6 +561,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     arangodb::SingleCollectionTransaction& trx,
     LogicalCollection* collection, MMFilesCollectorCache* cache,
     MMFilesCollectorOperation const& operation) {
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   auto const* walMarker = reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
   TRI_ASSERT(walMarker != nullptr);
   TRI_ASSERT(reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition));
@@ -587,7 +588,7 @@ void MMFilesCollectorThread::processCollectionMarker(
         element.revisionId() == revisionId) { 
       // make it point to datafile now
       TRI_df_marker_t const* newPosition = reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition);
-      wasAdjusted = collection->updateRevisionConditional(element.revisionId(), walMarker, newPosition, fid, false); 
+      wasAdjusted = physical->updateRevisionConditional(element.revisionId(), walMarker, newPosition, fid, false); 
     }
       
     if (wasAdjusted) {

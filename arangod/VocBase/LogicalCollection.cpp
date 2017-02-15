@@ -722,16 +722,6 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 
 void LogicalCollection::setDeleted(bool newValue) { _isDeleted = newValue; }
 
-/// @brief update statistics for a collection
-void LogicalCollection::setRevision(TRI_voc_rid_t revision, bool force) {
-  if (revision > 0) {
-    // TODO Is this still true?
-    /// note: Old version the write-lock for the collection must be held to call
-    /// this
-    _physical->setRevision(revision, force);
-  }
-}
-
 // SECTION: Key Options
 VPackSlice LogicalCollection::keyOptions() const {
   if (_keyOptions == nullptr) {
@@ -2248,37 +2238,6 @@ bool LogicalCollection::readDocumentConditional(transaction::Methods* trx,
   // TODO This only works for MMFiles Engine. Has to be moved => StorageEngine
   auto tkn = static_cast<MMFilesToken const*>(&token);
   return readRevisionConditional(trx, result, tkn->revisionId(), maxTick, excludeWal);
-}
-
-void LogicalCollection::insertRevision(TRI_voc_rid_t revisionId,
-                                       uint8_t const* dataptr,
-                                       TRI_voc_fid_t fid, bool isInWal) {
-  // note: there is no need to insert into the cache here as the data points
-  // to
-  // temporary storage
-  getPhysical()->insertRevision(revisionId, dataptr, fid, isInWal, true);
-}
-
-void LogicalCollection::updateRevision(TRI_voc_rid_t revisionId,
-                                       uint8_t const* dataptr,
-                                       TRI_voc_fid_t fid, bool isInWal) {
-  // note: there is no need to modify the cache entry here as insertRevision
-  // has
-  // not inserted the document into the cache
-  getPhysical()->updateRevision(revisionId, dataptr, fid, isInWal);
-}
-
-bool LogicalCollection::updateRevisionConditional(
-    TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition,
-    TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal) {
-  return getPhysical()->updateRevisionConditional(revisionId, oldPosition,
-                                                  newPosition, newFid, isInWal);
-}
-
-void LogicalCollection::removeRevision(TRI_voc_rid_t revisionId,
-                                       bool updateStats) {
-  // and remove from storage engine
-  getPhysical()->removeRevision(revisionId, updateStats);
 }
 
 /// @brief a method to skip certain documents in AQL write operations,

@@ -137,12 +137,14 @@ void MMFilesTransactionCollection::freeOperations(transaction::Methods* activeTr
     }
   }
 
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
+
   if (mustRollback) {
-    _collection->setRevision(_originalRevision, true);
+    physical->setRevision(_originalRevision, true);
   } else if (!_collection->isVolatile() && !isSingleOperationTransaction) {
     // only count logfileEntries if the collection is durable
-    arangodb::PhysicalCollection* collPtr = _collection->getPhysical();
-    static_cast<arangodb::MMFilesCollection*>(collPtr)->increaseUncollectedLogfileEntries(_operations->size());
+    physical->increaseUncollectedLogfileEntries(_operations->size());
   }
 
   delete _operations;
