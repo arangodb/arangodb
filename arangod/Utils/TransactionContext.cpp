@@ -223,7 +223,7 @@ CollectionNameResolver const* TransactionContext::createResolver() {
 
 /// @brief unregister the transaction
 /// this will save the transaction's id and status locally
-void TransactionContext::storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations) {
+void TransactionContext::storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations) noexcept {
   TRI_ASSERT(_transaction.id == 0);
 
   _transaction.id = id;

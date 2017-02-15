@@ -606,14 +606,12 @@ transaction::Methods::~Methods() {
 
     // free the state associated with the transaction
     TRI_ASSERT(getStatus() != transaction::Status::RUNNING);
-    auto id = _state->_id;
-    bool hasFailedOperations = _state->hasFailedOperations();
+    // store result
+    _transactionContextPtr->storeTransactionResult(_state->id(), _state->hasFailedOperations());
+    _transactionContextPtr->unregisterTransaction();
+    
     delete _state;
     _state = nullptr;
-        
-    // store result
-    _transactionContextPtr->storeTransactionResult(id, hasFailedOperations);
-    _transactionContextPtr->unregisterTransaction();
   }
 }
   

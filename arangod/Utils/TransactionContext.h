@@ -104,7 +104,7 @@ class TransactionContext {
   
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
-  void storeTransactionResult(TRI_voc_tid_t, bool);
+  void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations) noexcept;
   
   /// @brief get a custom type handler
   virtual std::shared_ptr<VPackCustomTypeHandler> orderCustomTypeHandler() = 0;

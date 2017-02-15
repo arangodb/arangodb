@@ -36,7 +36,7 @@
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #define LOG_TRX(trx, level)  \
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->_id << "." << level << " (" << transaction::statusString(trx->_status) << "): " 
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trx #" << trx->id() << "." << level << " (" << transaction::statusString(trx->_status) << "): " 
 
 #else
 
@@ -68,6 +68,7 @@ class TransactionState {
   bool isCoordinator() const { return ServerState::isCoordinator(_serverRole); }
 
   TRI_vocbase_t* vocbase() const { return _vocbase; }
+  TRI_voc_tid_t id() const { return _id; }
 
   double timeout() const { return _timeout; }
   void timeout(double value) { 
@@ -147,7 +148,11 @@ class TransactionState {
 
  public:
   TRI_vocbase_t* _vocbase;            // vocbase
+
+ protected:
   TRI_voc_tid_t _id;                  // local trx id
+ 
+ public:
   AccessMode::Type _type;             // access type (read|write)
   transaction::Status _status;        // current status
  
