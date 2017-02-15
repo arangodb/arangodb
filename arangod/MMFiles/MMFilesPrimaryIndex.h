@@ -193,7 +193,8 @@ class MMFilesPrimaryIndex final : public Index {
   int resize(transaction::Methods*, size_t);
 
   void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)>);
-  void invokeOnAllElementsForRemoval(std::function<bool(MMFilesSimpleIndexElement&)>);
+  void invokeOnAllElementsForRemoval(
+      std::function<bool(MMFilesSimpleIndexElement const&)>);
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,

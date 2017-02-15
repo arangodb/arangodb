@@ -37,6 +37,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "MMFiles/MMFilesEngine.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -53,8 +54,8 @@
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/modes.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HexDump.h>
@@ -331,7 +332,7 @@ static void ExistsVocbaseVPack(
   TRI_ASSERT(search.isObject());
 
   SingleCollectionTransaction trx(transactionContext, collectionName, AccessMode::Type::READ);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION, false);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   res = trx.begin();
 
@@ -431,7 +432,7 @@ static void DocumentVocbaseCol(
   SingleCollectionTransaction trx(transactionContext, collectionName, 
                                   AccessMode::Type::READ);
   if (!args[0]->IsArray()) {
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION, false);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
   
   TIMER_STOP(JS_DOCUMENT_CREATE_TRX);
@@ -517,7 +518,7 @@ static void DocumentVocbase(
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::READ);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION, false);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   int res = trx.begin();
 
@@ -609,7 +610,7 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   SingleCollectionTransaction trx(transactionContext, collectionName, AccessMode::Type::WRITE);
   if (!args[0]->IsArray()) {
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION, false);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
   int res = trx.begin();
@@ -752,7 +753,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION, false);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   int res = trx.begin();
 
@@ -1390,7 +1391,7 @@ static void JS_PropertiesVocbaseCol(
       isModification ? AccessMode::Type::WRITE : AccessMode::Type::READ);
 
   if (!isModification) {
-    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK, false);
+    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
   }
   
   int res = trx.begin();
@@ -1801,7 +1802,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::WRITE);
   if (!args[0]->IsArray()) {
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION, false);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
   int res = trx.begin();
@@ -1928,7 +1929,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION, false);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2173,7 +2174,7 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto transactionContext(V8TransactionContext::Create(vocbase, true));
   SingleCollectionTransaction trx(transactionContext,
                                   collectionName, AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION, false);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   res = trx.begin();
 
@@ -2336,7 +2337,7 @@ static void JS_InsertVocbaseCol(
   SingleCollectionTransaction trx(transactionContext, collection->cid(),
                                   AccessMode::Type::WRITE);
   if (!payloadIsArray) {
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION, false);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
   TIMER_STOP(JS_INSERT_CREATE_TRX);
 

@@ -451,7 +451,6 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
     case EN::SINGLETON:
     case EN::NORESULTS:
-    case EN::ILLEGAL:
       // in all these cases we better abort
       return true;
 

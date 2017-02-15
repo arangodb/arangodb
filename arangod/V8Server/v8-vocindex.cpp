@@ -551,7 +551,7 @@ static void JS_GetIndexesVocbaseCol(
       V8TransactionContext::Create(collection->vocbase(), true),
       collection->cid(), AccessMode::Type::READ);
     
-  trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK, false);
+  trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
   int res = trx.begin();
 

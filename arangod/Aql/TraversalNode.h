@@ -28,6 +28,7 @@
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/Graphs.h"
+#include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/TraverserOptions.h"

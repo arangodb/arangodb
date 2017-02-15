@@ -46,6 +46,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Logger/Logger.h"
+#include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -157,9 +158,6 @@ static ExecutionBlock* CreateBlock(
       auto remote = static_cast<RemoteNode const*>(en);
       return new RemoteBlock(engine, remote, remote->server(),
                              remote->ownName(), remote->queryId());
-    }
-    case ExecutionNode::ILLEGAL: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
     }
   }
 
@@ -1134,6 +1132,29 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     engines[currentEngineId].nodes.emplace_back(en);
   }
 };
+  
+/// @brief shutdown, will be called exactly once for the whole query
+int ExecutionEngine::shutdown(int errorCode) {
+  if (_root != nullptr && !_wasShutdown) {
+    // Take care of locking prevention measures in the cluster:
+    if (_lockedShards != nullptr) {
+      if (transaction::Methods::_makeNolockHeaders == _lockedShards) {
+        transaction::Methods::_makeNolockHeaders = _previouslyLockedShards;
+      }
+      delete _lockedShards;
+      _lockedShards = nullptr;
+      _previouslyLockedShards = nullptr;
+    }
+
+    // prevent a duplicate shutdown
+    int res = _root->shutdown(errorCode);
+    _wasShutdown = true;
+
+    return res;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 /// @brief create an execution engine from a plan
 ExecutionEngine* ExecutionEngine::instantiateFromPlan(

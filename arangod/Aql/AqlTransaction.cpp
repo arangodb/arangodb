@@ -33,12 +33,6 @@ using namespace arangodb::aql;
 
 /// @brief add a collection to the transaction
 int AqlTransaction::processCollection(aql::Collection* collection) {
-  int state = setupState();
-
-  if (state != TRI_ERROR_NO_ERROR) {
-    return state;
-  }
-
   if (ServerState::instance()->isCoordinator()) {
     return processCollectionCoordinator(collection);
   }

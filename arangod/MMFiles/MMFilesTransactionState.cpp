@@ -53,6 +53,7 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
 MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase)
     : TransactionState(vocbase),
       _rocksTransaction(nullptr),
+      _beginWritten(false),
       _hasOperations(false) {}
 
 /// @brief free a transaction container
@@ -286,6 +287,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
   TRI_ASSERT(fid > 0);
   TRI_ASSERT(position != nullptr);
 
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   if (operation.type() == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
       operation.type() == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
       operation.type() == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
@@ -293,7 +295,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
     uint8_t const* vpack = reinterpret_cast<uint8_t const*>(position) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
     TRI_ASSERT(fid > 0);
     operation.setVPack(vpack);
-    collection->updateRevision(revisionId, vpack, fid, true); // always in WAL
+    physical->updateRevision(revisionId, vpack, fid, true); // always in WAL
   }
 
   TRI_IF_FAILURE("TransactionOperationAfterAdjust") { return TRI_ERROR_DEBUG; }
@@ -312,8 +314,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
     arangodb::aql::QueryCache::instance()->invalidate(
         _vocbase, collection->name());
 
-    auto cptr = collection->getPhysical();
-    static_cast<arangodb::MMFilesCollection*>(cptr)->increaseUncollectedLogfileEntries(1);
+    physical->increaseUncollectedLogfileEntries(1);
   } else {
     // operation is buffered and might be rolled back
     TransactionCollection* trxCollection = this->collection(collection->cid(), AccessMode::Type::WRITE);
@@ -337,7 +338,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
     _hasOperations = true;
   }
 
-  collection->setRevision(revisionId, false);
+  physical->setRevision(revisionId, false);
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 

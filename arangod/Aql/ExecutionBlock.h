@@ -60,7 +60,6 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
-;
 
 namespace aql {
 class AqlItemBlock;

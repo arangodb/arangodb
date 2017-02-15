@@ -102,17 +102,19 @@ class MMFilesCollection final : public PhysicalCollection {
   explicit MMFilesCollection(LogicalCollection*);
   ~MMFilesCollection();
   
-  virtual std::string const& path() const override {
+  std::string const& path() const override {
     return _path;
   };
   
-  virtual void setPath(std::string const& path) override {
+  void setPath(std::string const& path) override {
     _path = path;
   };
 
   TRI_voc_rid_t revision() const override;
 
-  void setRevision(TRI_voc_rid_t revision, bool force) override;
+  void setRevision(TRI_voc_rid_t revision, bool force);
+
+  void setRevisionError() { _revisionError = true; }
 
   int64_t initialCount() const override;
   void updateCount(int64_t) override;
@@ -195,10 +197,12 @@ class MMFilesCollection final : public PhysicalCollection {
   
   Ditches* ditches() const override { return &_ditches; }
   
+  void open(bool ignoreErrors) override;
+
  /// @brief iterate all markers of a collection on load
   int iterateMarkersOnLoad(arangodb::transaction::Methods* trx) override;
   
-  virtual bool isFullyCollected() const override;
+  bool isFullyCollected() const override;
   
   int64_t uncollectedLogfileEntries() const {
     return _uncollectedLogfileEntries.load();
@@ -215,9 +219,26 @@ class MMFilesCollection final : public PhysicalCollection {
     }
   }
 
+
+  int cleanupIndexes();
+
+  ////////////////////////////////////
+  // -- SECTION Locking --
+  ///////////////////////////////////
+
+  int beginReadTimed(bool useDeadlockDetector, double timeout = 0.0);
+
+  int beginWriteTimed(bool useDeadlockDetector, double timeout = 0.0);
+
+  int endRead(bool useDeadlockDetector);
+
+  int endWrite(bool useDeadlockDetector);
+
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
+
+  void truncate(transaction::Methods* trx, OperationOptions& options) override;
 
   int read(transaction::Methods*, arangodb::velocypack::Slice const key,
            ManagedDocumentResult& result, bool) override;
@@ -252,15 +273,37 @@ class MMFilesCollection final : public PhysicalCollection {
              bool lock, TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev,
              arangodb::velocypack::Slice const toRemove) override;
 
+  int rollbackOperation(transaction::Methods*, TRI_voc_document_operation_e,
+                        TRI_voc_rid_t oldRevisionId,
+                        velocypack::Slice const& oldDoc,
+                        TRI_voc_rid_t newRevisionId,
+                        velocypack::Slice const& newDoc);
+
+  void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
+                      TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
+
+  void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
+                      TRI_voc_fid_t fid, bool isInWal);
+
+  bool updateRevisionConditional(TRI_voc_rid_t revisionId,
+                                 TRI_df_marker_t const* oldPosition,
+                                 TRI_df_marker_t const* newPosition,
+                                 TRI_voc_fid_t newFid, bool isInWal);
+
+  void removeRevision(TRI_voc_rid_t revisionId, bool updateStats);
+
+ private:
+
+  int openWorker(bool ignoreErrors);
+
   int removeFastPath(arangodb::transaction::Methods* trx,
                      TRI_voc_rid_t oldRevisionId,
                      arangodb::velocypack::Slice const oldDoc,
                      OperationOptions& options,
-                     TRI_voc_tick_t& resultMarkerTick, bool lock,
                      TRI_voc_rid_t const& revisionId,
-                     arangodb::velocypack::Slice const toRemove) override;
+                     arangodb::velocypack::Slice const toRemove);
 
- private:
+
   static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
                                               MMFilesDatafile* datafile,
                                               OpenIteratorState* state);
@@ -304,16 +347,6 @@ class MMFilesCollection final : public PhysicalCollection {
     uint8_t const* lookupRevisionVPackConditional(
         TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal)
         const override;
-    void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
-                        TRI_voc_fid_t fid, bool isInWal, bool shouldLock)
-        override;
-    void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
-                        TRI_voc_fid_t fid, bool isInWal) override;
-    bool updateRevisionConditional(TRI_voc_rid_t revisionId,
-                                   TRI_df_marker_t const* oldPosition,
-                                   TRI_df_marker_t const* newPosition,
-                                   TRI_voc_fid_t newFid, bool isInWal) override;
-    void removeRevision(TRI_voc_rid_t revisionId, bool updateStats) override;
 
     int insertDocument(arangodb::transaction::Methods * trx,
                        TRI_voc_rid_t revisionId,
@@ -342,8 +375,18 @@ class MMFilesCollection final : public PhysicalCollection {
     int lookupDocument(transaction::Methods*, velocypack::Slice const,
                        ManagedDocumentResult& result);
 
+    int updateDocument(transaction::Methods*, TRI_voc_rid_t oldRevisionId,
+                       velocypack::Slice const& oldDoc,
+                       TRI_voc_rid_t newRevisionId,
+                       velocypack::Slice const& newDoc,
+                       MMFilesDocumentOperation&, MMFilesWalMarker const*,
+                       bool& waitForSync);
+
    private:
     mutable arangodb::Ditches _ditches;
+
+    // lock protecting the indexes
+    mutable basics::ReadWriteLock _idxLock;
 
     arangodb::basics::ReadWriteLock _filesLock;
     std::vector<MMFilesDatafile*> _datafiles;   // all datafiles
@@ -353,6 +396,8 @@ class MMFilesCollection final : public PhysicalCollection {
     arangodb::basics::ReadWriteLock _compactionLock;
 
     int64_t _initialCount;
+
+    bool _revisionError;
 
     MMFilesDatafileStatistics _datafileStatistics;
 
@@ -368,18 +413,6 @@ class MMFilesCollection final : public PhysicalCollection {
     double _lastCompactionStamp;
     std::string _path;
 };
-
-inline MMFilesCollection* physicalToMMFiles(PhysicalCollection* physical){
-  auto rv =  dynamic_cast<MMFilesCollection*>(physical);
-  assert(rv != nullptr);
-  return rv;
-}
-
-inline MMFilesCollection* logicalToMMFiles(LogicalCollection* logical){
-  auto phys = logical->getPhysical();
-  assert(phys);
-  return physicalToMMFiles(phys);
-}
 
 }
 

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalBlock.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"

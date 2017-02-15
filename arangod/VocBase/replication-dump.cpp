@@ -621,7 +621,9 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   // block compaction
   int res;
   {
-    CompactionPreventer compactionPreventer(logicalToMMFiles(collection));
+    auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+    TRI_ASSERT(physical != nullptr);
+    CompactionPreventer compactionPreventer(physical);
 
     try {
       res = DumpCollection(dump, collection, collection->vocbase()->id(),

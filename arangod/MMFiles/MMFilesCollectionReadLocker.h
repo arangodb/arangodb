@@ -21,23 +21,27 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_COLLECTION_READ_LOCKER_H
-#define ARANGOD_UTILS_COLLECTION_READ_LOCKER_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_COLLECTION_READ_LOCKER_H
+#define ARANGOD_MMFILES_MMFILES_COLLECTION_READ_LOCKER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-#include "VocBase/LogicalCollection.h"
+#include "MMFiles/MMFilesCollection.h"
 
 namespace arangodb {
 
-class CollectionReadLocker {
+class MMFilesCollectionReadLocker {
  public:
-  CollectionReadLocker(CollectionReadLocker const&) = delete;
-  CollectionReadLocker& operator=(CollectionReadLocker const&) = delete;
+  MMFilesCollectionReadLocker(MMFilesCollectionReadLocker const&) = delete;
+  MMFilesCollectionReadLocker& operator=(MMFilesCollectionReadLocker const&) =
+      delete;
 
   /// @brief create the locker
-  CollectionReadLocker(LogicalCollection* collection, bool useDeadlockDetector, bool doLock)
-      : _collection(collection), _useDeadlockDetector(useDeadlockDetector), _doLock(false) {
+  MMFilesCollectionReadLocker(MMFilesCollection* collection,
+                              bool useDeadlockDetector, bool doLock)
+      : _collection(collection),
+        _useDeadlockDetector(useDeadlockDetector),
+        _doLock(false) {
     if (doLock) {
       int res = _collection->beginReadTimed(_useDeadlockDetector);
 
@@ -50,7 +54,7 @@ class CollectionReadLocker {
   }
 
   /// @brief destroy the locker
-  ~CollectionReadLocker() { unlock(); }
+  ~MMFilesCollectionReadLocker() { unlock(); }
 
   /// @brief release the lock
   inline void unlock() {
@@ -62,8 +66,8 @@ class CollectionReadLocker {
 
  private:
   /// @brief collection pointer
-  LogicalCollection* _collection;
-  
+  MMFilesCollection* _collection;
+
   /// @brief whether or not to use the deadlock detector
   bool const _useDeadlockDetector;
 

@@ -33,7 +33,7 @@ namespace arangodb {
 class DocumentDitch;
 class TransactionContext;
 
-class SingleCollectionTransaction : public transaction::Methods {
+class SingleCollectionTransaction final : public transaction::Methods {
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -77,24 +77,11 @@ class SingleCollectionTransaction : public transaction::Methods {
   //////////////////////////////////////////////////////////////////////////////
   
   inline TRI_voc_cid_t cid() const { return _cid; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the ditch for the collection
-  /// note that the ditch must already exist
-  /// furthermore note that we have two calling conventions because this
-  /// is called in two different ways
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::DocumentDitch* ditch() const;
-
-  arangodb::DocumentDitch* ditch(TRI_voc_cid_t) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not a ditch is available for a collection
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool hasDitch() const;
   
+  /// @brief add a collection to the transaction for read, at runtime
+  /// note that this can only be ourselves
+  TRI_voc_cid_t addCollectionAtRuntime(std::string const&) override final { return _cid; }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the underlying collection's name
   //////////////////////////////////////////////////////////////////////////////
