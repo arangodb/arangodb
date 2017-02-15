@@ -272,14 +272,14 @@ bool Agent::recvAppendEntriesRPC(
 
   // Update commit index
   if (queries->slice().type() != VPackValueType::Array) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Received malformed entries for appending. Discarding!";
     return false;
   }
 
   if (!_constituent.checkLeader(term, leaderId, prevIndex, prevTerm)) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Not accepting appendEntries from "
-      << leaderId;
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Not accepting appendEntries from " << leaderId;
     return false;
   }
 
@@ -1377,8 +1377,13 @@ void Agent::ready(bool b) {
 
 
 bool Agent::ready() const {
-  return (size() == 1) ? true : _ready;
-}
 
+  if (size() == 1) {
+    return true;
+  }
+
+  return _ready;
+
+}
 
 }}  // namespace

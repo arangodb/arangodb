@@ -293,7 +293,7 @@ bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
       termNoLock(term);
     }
 
-    if (!logMatches(prevLogTerm,prevLogIndex)) {
+    if (!logMatches(prevLogIndex,prevLogTerm)) {
       return false;
     }
     

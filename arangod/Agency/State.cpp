@@ -310,6 +310,7 @@ log_t State::at(arangodb::consensus::index_t index) const {
 
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
 
+  
   if (_cur > index) {
     std::string excMessage = 
       std::string(
@@ -339,27 +340,12 @@ bool State::has(arangodb::consensus::index_t index, term_t term) const {
 
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
 
-  if (_cur > index) {
-    std::string excMessage = 
-      std::string(
-        "Access before the start of the log deque: (first, requested): (") +
-      std::to_string(_cur) + ", " + std::to_string(index);
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << excMessage;
-    throw std::out_of_range(excMessage);
-  }
+  try {
+    return _log.at(index).term == term;
+  } catch (...) {}
+
+  return false;
   
-  auto pos = index - _cur;
-  if (pos > _log.size()) {
-    std::string excMessage = 
-      std::string(
-        "Access beyond the end of the log deque: (last, requested): (") +
-      std::to_string(_cur+_log.size()) + ", " + std::to_string(index);
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << excMessage;
-    throw std::out_of_range(excMessage);
-  }
-
-  return _log[pos].term == term;
-
 }
 
 /// Get vector of past transaction from 'start' to 'end'
