@@ -23,6 +23,7 @@
 
 #include "MMFilesDocumentOperation.h"
 #include "Indexes/IndexIterator.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
@@ -116,6 +117,9 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
     newDoc = VPackSlice(_newRevision._vpack);
   }
 
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
+
   if (_type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     TRI_ASSERT(_oldRevision.empty());
     TRI_ASSERT(!_newRevision.empty());
@@ -123,7 +127,7 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
     if (status != StatusType::CREATED) { 
       // remove revision from indexes
       try {
-        _collection->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
+        physical->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
       } catch (...) {
       }
     }
@@ -148,7 +152,7 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
     if (status != StatusType::CREATED) { 
       try {
         // restore the old index state
-        _collection->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
+        physical->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
       } catch (...) {
       }
     }
@@ -181,7 +185,7 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
     if (status != StatusType::CREATED) { 
       try {
         // remove from indexes again
-        _collection->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
+        physical->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
       } catch (...) {
       }
     }

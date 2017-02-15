@@ -363,12 +363,6 @@ class LogicalCollection {
              OperationOptions&, TRI_voc_tick_t&, bool,
              TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
 
-  int rollbackOperation(transaction::Methods*, TRI_voc_document_operation_e,
-                        TRI_voc_rid_t oldRevisionId,
-                        velocypack::Slice const& oldDoc,
-                        TRI_voc_rid_t newRevisionId,
-                        velocypack::Slice const& newDoc);
-
   bool readDocument(transaction::Methods*, ManagedDocumentResult& result, DocumentIdentifierToken const& token);
   bool readDocumentConditional(transaction::Methods*, ManagedDocumentResult& result, DocumentIdentifierToken const& token, TRI_voc_tick_t maxTick, bool excludeWal);
 
@@ -413,22 +407,6 @@ class LogicalCollection {
 
   // @brief create index with the given definition.
   bool openIndex(velocypack::Slice const&, transaction::Methods*);
-
-  // TODO REMOVE HERE is now in SE Collection
-  int insertPrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
-                         velocypack::Slice const&);
-
-  int deletePrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
-                         velocypack::Slice const&);
-
-  int insertSecondaryIndexes(transaction::Methods*, TRI_voc_rid_t revisionId,
-                             velocypack::Slice const&,
-                             bool isRollback);
-
-  int deleteSecondaryIndexes(transaction::Methods*, TRI_voc_rid_t revisionId,
-                             velocypack::Slice const&,
-                             bool isRollback);
-  // END OF REMOVE
 
   // SECTION: Document pre commit preperation (only local)
 

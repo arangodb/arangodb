@@ -261,6 +261,13 @@ class MMFilesCollection final : public PhysicalCollection {
              bool lock, TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev,
              arangodb::velocypack::Slice const toRemove) override;
 
+  int rollbackOperation(transaction::Methods*, TRI_voc_document_operation_e,
+                        TRI_voc_rid_t oldRevisionId,
+                        velocypack::Slice const& oldDoc,
+                        TRI_voc_rid_t newRevisionId,
+                        velocypack::Slice const& newDoc);
+
+
  private:
 
   int removeFastPath(arangodb::transaction::Methods* trx,
