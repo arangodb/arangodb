@@ -28,7 +28,7 @@
       "siteId": 12
     },
     "sitemap-general": {
-      "prefix": "https://docs.arangodb.com/devel/HTTP/"
+      "prefix": "https://docs.arangodb.com/3.1/HTTP/"
     }
   }
 }
