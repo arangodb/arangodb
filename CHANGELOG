@@ -32,7 +32,8 @@ v3.1.11 (2017-02-14)
 * supervision jobs failed leader and failed follower revisited for
   function in precarious stability situations
 
-* fixed big in random number generator for 64bit int
+* fixed bug in random number generator for 64bit int
+
 
 v3.1.10 (2017-02-02)
 --------------------

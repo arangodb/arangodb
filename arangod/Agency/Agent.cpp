@@ -1377,13 +1377,7 @@ void Agent::ready(bool b) {
 
 
 bool Agent::ready() const {
-
-  if (size() == 1) {
-    return true;
-  }
-
-  return _ready;
-
+  return (size() == 1) ? true : _ready;
 }
 
 
