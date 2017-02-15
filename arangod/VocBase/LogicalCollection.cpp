@@ -2130,7 +2130,7 @@ int LogicalCollection::newObjectForInsert(
   uint8_t* p = builder.add(StaticStrings::IdString,
                            VPackValuePair(9ULL, VPackValueType::Custom));
   *p++ = 0xf3;  // custom type for _id
-  if (ServerState::isDBServer(trx->serverRole()) && !_isSystem) {
+  if (trx->state()->isDBServer() && !_isSystem) {
     // db server in cluster, note: the local collections _statistics,
     // _statisticsRaw and _statistics15 (which are the only system
     // collections)

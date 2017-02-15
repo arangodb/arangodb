@@ -24,6 +24,7 @@
 #include "AgencyFeature.h"
 
 #include "Agency/Agent.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"

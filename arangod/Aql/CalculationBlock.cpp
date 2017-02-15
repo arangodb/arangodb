@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
+#include "StorageEngine/TransactionState.h"
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
@@ -161,8 +162,7 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
       throw;
     }
   } else {
-    bool const isRunningInCluster =
-        arangodb::ServerState::instance()->isRunningInCluster();
+    bool const isRunningInCluster = transaction()->state()->isRunningInCluster();
 
     // must have a V8 context here to protect Expression::execute()
     arangodb::basics::ScopeGuard guard{

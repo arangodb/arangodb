@@ -148,6 +148,7 @@ class Logger {
   static LogTopic SUPERVISION;
   static LogTopic SYSCALL;
   static LogTopic THREADS;
+  static LogTopic TRANSACTIONS;
   static LogTopic V8;
 
  public:

@@ -44,11 +44,6 @@ class UserTransaction final : public transaction::Methods {
       : transaction::Methods(transactionContext) {
     addHint(transaction::Hints::Hint::LOCK_ENTIRELY, false);
 
-    if (_state != nullptr) {
-      _state->timeout(lockTimeout);
-      _state->waitForSync(waitForSync);
-    }
-    
     for (auto const& it : exclusiveCollections) {
       addCollection(it, AccessMode::Type::EXCLUSIVE);
     }
@@ -60,8 +55,10 @@ class UserTransaction final : public transaction::Methods {
     for (auto const& it : readCollections) {
       addCollection(it, AccessMode::Type::READ);
     }
-    
-    setAllowImplicitCollections(allowImplicitCollections);
+
+    _state->timeout(lockTimeout);
+    _state->waitForSync(waitForSync);
+    _state->allowImplicitCollections(allowImplicitCollections);
   }
 
 };
