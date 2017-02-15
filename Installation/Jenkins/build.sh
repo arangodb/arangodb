@@ -243,6 +243,13 @@ while [ $# -gt 0 ];  do
              CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DV8_TARGET_ARCHS=Release"
              ;;
 
+        --symsrv)
+            shift
+            SYMSRV=1
+            SYMSRVDIR=$1
+            shift
+            ;;
+        
         --gold)
             GOLD=1
             shift
@@ -596,6 +603,13 @@ if test -n "${TARGET_DIR}";  then
     if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
         ${PACKAGE_MAKE} copy_packages || exit 1
         ${PACKAGE_MAKE} clean_packages || exit 1
+        if test "${SYMSRV}" -eq 1; then
+            echo "Storing symbols:"
+            export LIST="`pwd`/pdbfiles_list.txt"
+            find `pwd`/bin/ -name *pdb |grep -v Release |grep -v Debug |grep -v 3rdParty |grep -v vc120.pdb  |cygpath -f - --windows > ${LIST}
+            
+            symstore.exe add /f @`cygpath --windows ${LIST}`  /s "`cygpath --windows ${SYMSRVDIR}`" /t ArangoDB /compress
+        fi
     else
         # we re-use a generic cpack tarball:
         ${PACKAGE_MAKE} TGZ_package
