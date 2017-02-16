@@ -391,10 +391,6 @@ bool SocketTask::processAll() {
   }
 
   if (_closeRequested) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "close requested, closing receive stream ";
-
-    closeReceiveStream();
     return false;
   }
 
