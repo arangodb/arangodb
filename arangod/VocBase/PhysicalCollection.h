@@ -97,6 +97,10 @@ class PhysicalCollection {
   virtual int saveIndex(transaction::Methods* trx,
                         std::shared_ptr<arangodb::Index> idx) = 0;
 
+  /// @brief Restores an index from VelocyPack.
+  virtual int restoreIndex(transaction::Methods*, velocypack::Slice const&,
+                           std::shared_ptr<Index>&) = 0;
+
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////

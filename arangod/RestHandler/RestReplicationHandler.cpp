@@ -1762,12 +1762,14 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
       THROW_ARANGO_EXCEPTION(res);
     }
 
+    auto physical = collection->getPhysical();
+    TRI_ASSERT(physical != nullptr);
     for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
       std::shared_ptr<arangodb::Index> idx;
 
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
 
-      res = collection->restoreIndex(&trx, idxDef, idx);
+      res = physical->restoreIndex(&trx, idxDef, idx);
 
       if (res == TRI_ERROR_NOT_IMPLEMENTED) {
         continue;
@@ -1779,7 +1781,6 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
         break;
       } else {
         TRI_ASSERT(idx != nullptr);
-        auto physical = collection->getPhysical();
 
         res = physical->saveIndex(&trx, idx);
 

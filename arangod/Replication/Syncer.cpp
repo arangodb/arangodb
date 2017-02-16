@@ -561,12 +561,12 @@ int Syncer::createIndex(VPackSlice const& slice) {
       return res;
     }
 
+    auto physical = collection->getPhysical();
+    TRI_ASSERT(physical != nullptr);
     std::shared_ptr<arangodb::Index> idx;
-    res = collection->restoreIndex(&trx, indexSlice, idx);
+    res = physical->restoreIndex(&trx, indexSlice, idx);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      auto physical = collection->getPhysical();
-      TRI_ASSERT(physical != nullptr);
       res = physical->saveIndex(&trx, idx);
     }
 

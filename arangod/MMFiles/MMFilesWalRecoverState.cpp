@@ -803,7 +803,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
               arangodb::StandaloneTransactionContext::Create(vocbase),
               collectionId, AccessMode::Type::WRITE);
           std::shared_ptr<arangodb::Index> unused;
-          int res = col->restoreIndex(&trx, payloadSlice, unused);
+          int res = physical->restoreIndex(&trx, payloadSlice, unused);
 
           if (res != TRI_ERROR_NO_ERROR) {
             LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create index " << indexId << ", collection "

@@ -1285,47 +1285,6 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
   return idx;
 }
 
-int LogicalCollection::restoreIndex(transaction::Methods* trx, VPackSlice const& info,
-                                    std::shared_ptr<arangodb::Index>& idx) {
-  // The coordinator can never get into this state!
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  idx.reset();  // Clear it to make sure.
-  if (!info.isObject()) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  // We create a new Index object to make sure that the index
-  // is not handed out except for a successful case.
-  std::shared_ptr<Index> newIdx;
-  try {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    IndexFactory const* idxFactory = engine->indexFactory(); 
-    TRI_ASSERT(idxFactory != nullptr);
-    newIdx = idxFactory->prepareIndexFromSlice(info, false, this, false);
-  } catch (arangodb::basics::Exception const& e) {
-    // Something with index creation went wrong.
-    // Just report.
-    return e.code();
-  }
-  TRI_ASSERT(newIdx != nullptr);
-
-  TRI_UpdateTickServer(newIdx->id());
-
-  TRI_ASSERT(newIdx.get()->type() !=
-             Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
-  indexListLocal.emplace_back(newIdx);
-  int res = fillIndexes(trx, indexListLocal, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  addIndex(newIdx);
-  idx = newIdx;
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief removes an index by id
 bool LogicalCollection::removeIndex(TRI_idx_iid_t iid) {
   size_t const n = _indexes.size();

@@ -1864,6 +1864,8 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
       
             LogicalCollection* document = trx.documentCollection();
             TRI_ASSERT(document != nullptr);
+            auto physical = document->getPhysical();
+            TRI_ASSERT(physical != nullptr);
 
             for (auto const& idxDef : VPackArrayIterator(indexes)) {
               std::shared_ptr<arangodb::Index> idx;
@@ -1878,7 +1880,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
                 }
               }
 
-              res = document->restoreIndex(&trx, idxDef, idx);
+              res = physical->restoreIndex(&trx, idxDef, idx);
 
               if (res != TRI_ERROR_NO_ERROR) {
                 errorMsg = "could not create index: " +
@@ -1886,8 +1888,6 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
                 break;
               } else {
                 TRI_ASSERT(idx != nullptr);
-                auto physical = document->getPhysical();
-                TRI_ASSERT(physical != nullptr);
 
                 res = physical->saveIndex(&trx, idx);
 

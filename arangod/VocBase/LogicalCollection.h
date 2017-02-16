@@ -298,10 +298,6 @@ class LogicalCollection {
   /// @brief Detect all indexes form file
   int detectIndexes(transaction::Methods* trx);
 
-  /// @brief Restores an index from VelocyPack.
-  int restoreIndex(transaction::Methods*, velocypack::Slice const&,
-                   std::shared_ptr<Index>&);
-
   /// @brief Exposes a pointer to index list
   std::vector<std::shared_ptr<Index>> const* indexList() const;
 
@@ -360,7 +356,10 @@ class LogicalCollection {
 
   bool removeIndex(TRI_idx_iid_t iid);
 
+ public:
+  // TODO Fix Visibility
   void addIndex(std::shared_ptr<Index>);
+ private:
   void addIndexCoordinator(std::shared_ptr<Index>, bool);
 
   // SECTION: Indexes (local only)

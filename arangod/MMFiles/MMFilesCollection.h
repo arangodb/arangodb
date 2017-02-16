@@ -225,6 +225,10 @@ class MMFilesCollection final : public PhysicalCollection {
 
   int saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx) override;
 
+  /// @brief Restores an index from VelocyPack.
+  int restoreIndex(transaction::Methods*, velocypack::Slice const&,
+                   std::shared_ptr<Index>&) override;
+
   int cleanupIndexes();
 
   ////////////////////////////////////
