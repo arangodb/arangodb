@@ -2394,26 +2394,28 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(
 
   while (true) {
     {
-      READ_LOCKER(readLocker, _currentProt.lock);
-      // _shardIds is a map-type <ShardId,
-      // std::shared_ptr<std::vector<ServerId>>>
-      auto it = _shardIds.find(shardID);
+      {
+        READ_LOCKER(readLocker, _currentProt.lock);
+        // _shardIds is a map-type <ShardId,
+        // std::shared_ptr<std::vector<ServerId>>>
+        auto it = _shardIds.find(shardID);
 
-      if (it != _shardIds.end()) {
-        auto serverList = (*it).second;
-        if (serverList != nullptr && serverList->size() > 0 &&
-            (*serverList)[0].size() > 0 && (*serverList)[0][0] == '_') {
-          // This is a temporary situation in which the leader has already
-          // resigned, let's wait half a second and try again.
-          --tries;
-          LOG_TOPIC(INFO, Logger::CLUSTER)
-              << "getResponsibleServer: found resigned leader,"
-              << "waiting for half a second...";
-          usleep(500000);
-        } else {
-          return (*it).second;
+        if (it != _shardIds.end()) {
+          auto serverList = (*it).second;
+          if (serverList != nullptr && serverList->size() > 0 &&
+              (*serverList)[0].size() > 0 && (*serverList)[0][0] == '_') {
+            // This is a temporary situation in which the leader has already
+            // resigned, let's wait half a second and try again.
+            --tries;
+            LOG_TOPIC(INFO, Logger::CLUSTER)
+                << "getResponsibleServer: found resigned leader,"
+                << "waiting for half a second...";
+          } else {
+            return (*it).second;
+          }
         }
       }
+      usleep(500000);
     }
 
     if (++tries >= 2) {

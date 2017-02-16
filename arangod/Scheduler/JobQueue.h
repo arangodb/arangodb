@@ -89,9 +89,9 @@ class JobQueue {
   void wakeup();
   void waitForWork();
 
-  size_t active() const { return _active.load(); }
-  bool tryActive();
-  void releaseActive();
+  size_t queued() const { return _queued.load(); }
+  bool tryQueued();
+  void releaseQueued();
 
  private:
   boost::lockfree::queue<Job*> _queueAql;
@@ -100,7 +100,7 @@ class JobQueue {
   boost::lockfree::queue<Job*> _queueUser;
   boost::lockfree::queue<Job*>* _queues[SYSTEM_QUEUE_SIZE];
   std::atomic<int64_t> _queuesSize[SYSTEM_QUEUE_SIZE];
-  std::atomic<size_t> _active;
+  std::atomic<size_t> _queued;   // number of jobs queued but not yet running
 
   basics::ConditionVariable _queueCondition;
 
