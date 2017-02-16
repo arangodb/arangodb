@@ -533,8 +533,7 @@ bool transaction::Methods::findIndexHandleForAndNode(
 }
 
 transaction::Methods::Methods(std::shared_ptr<TransactionContext> transactionContext)
-    : _hints(),
-      _state(nullptr),
+    : _state(nullptr),
       _transactionContext(transactionContext),
       _transactionContextPtr(transactionContext.get()) {
   TRI_ASSERT(_transactionContextPtr != nullptr);
@@ -734,7 +733,7 @@ int transaction::Methods::begin() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return _state->beginTransaction(_hints);
+  return _state->beginTransaction(_localHints);
 }
   
 /// @brief commit / finish the transaction

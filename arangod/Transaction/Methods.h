@@ -157,7 +157,7 @@ class Methods {
   }
   
   /// @brief add a transaction hint
-  void addHint(transaction::Hints::Hint hint) { _hints.set(hint); }
+  void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
 
   /// @brief whether or not the transaction consists of a single operation only
   bool isSingleOperationTransaction() const;
@@ -539,10 +539,6 @@ class Methods {
   /// @brief set up a top-level transaction
   void setupToplevel(TRI_vocbase_t*);
 
- private:
-  /// @brief transaction hints
-  transaction::Hints _hints;
-
  protected:
   /// @brief the state 
   TransactionState* _state;
@@ -552,6 +548,10 @@ class Methods {
   
   /// @brief pointer to transaction context (faster than shared ptr)
   TransactionContext* const _transactionContextPtr;
+ 
+ private:
+  /// @brief transaction hints
+  transaction::Hints _localHints;
 
   /// @brief cache for last handed out DocumentDitch
   struct {
