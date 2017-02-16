@@ -56,22 +56,21 @@ class JobQueueThread final : public Thread {
         LOG_TOPIC(TRACE, Logger::THREADS) << "size of queue #" << i << ": "
                                           << _jobQueue->queueSize(i);
 
-        while (_jobQueue->tryQueued()) {
+        while (_jobQueue->tryActive()) {
           Job* job = nullptr;
 
           if (!_jobQueue->pop(i, job)) {
-            _jobQueue->releaseQueued();
+            _jobQueue->releaseActive();
             break;
           }
 
           LOG_TOPIC(TRACE, Logger::THREADS)
-              << "starting next queued job, number currently queued "
-              << _jobQueue->queued();
+              << "starting next queued job, number currently active "
+              << _jobQueue->active();
 
           idleTries = 0;
 
           _ioService->post([jobQueue, job]() {
-            jobQueue->releaseQueued();
             JobGuard guard(SchedulerFeature::SCHEDULER);
             guard.work();
 
@@ -83,6 +82,7 @@ class JobQueueThread final : public Thread {
               LOG(WARN) << "Exception caught in a dangereous place! "
                 << e.what();
             }
+            jobQueue->releaseActive();
             jobQueue->wakeup();
           });
         }
@@ -124,7 +124,7 @@ JobQueue::JobQueue(size_t queueSize, boost::asio::io_service* ioService)
       _queueStandard(queueSize),
       _queueUser(queueSize),
       _queues{&_queueRequeue, &_queueAql, &_queueStandard, &_queueUser},
-      _queued(0),
+      _active(0),
       _ioService(ioService),
       _queueThread(new JobQueueThread(this, _ioService)) {
   for (size_t i = 0; i < SYSTEM_QUEUE_SIZE; ++i) {
@@ -144,13 +144,19 @@ void JobQueue::beginShutdown() {
   _queueThread->beginShutdown();
 }
 
-bool JobQueue::tryQueued() {
-  size_t nrIdle = SchedulerFeature::SCHEDULER->nrIdle();
-  return _queued < nrIdle;
+bool JobQueue::tryActive() {
+  static size_t const MAX_ACTIVE = 10;
+  
+  if (_active > MAX_ACTIVE) {
+    return false;
+  }
+
+  ++_active;
+  return true;
 }
 
-void JobQueue::releaseQueued() {
-  --_queued;
+void JobQueue::releaseActive() {
+  --_active;
 }
 
 void JobQueue::wakeup() {

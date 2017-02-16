@@ -87,19 +87,11 @@ class Scheduler {
   JobQueue* jobQueue() const { return _jobQueue.get(); }
 
   bool isIdle() {
-    if (_nrWorking < _nrRunning) {
+    if (_nrWorking < _nrRunning && _nrWorking < _nrMaximal) {
       return true;
     }
 
     return false;
-  }
-
-  size_t nrIdle() {
-    if (_nrRunning >= _nrWorking) {
-      return _nrRunning - _nrWorking;
-    } else {
-      return 0;
-    }
   }
 
   void setMinimal(int64_t minimal) { _nrMinimal = minimal; }
