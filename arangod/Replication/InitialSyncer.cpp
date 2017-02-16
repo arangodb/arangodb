@@ -41,6 +41,7 @@
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -1885,8 +1886,10 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
                 break;
               } else {
                 TRI_ASSERT(idx != nullptr);
+                auto physical = document->getPhysical();
+                TRI_ASSERT(physical != nullptr);
 
-                res = document->saveIndex(idx.get(), true);
+                res = physical->saveIndex(&trx, idx);
 
                 if (res != TRI_ERROR_NO_ERROR) {
                   errorMsg = "could not save index: " +

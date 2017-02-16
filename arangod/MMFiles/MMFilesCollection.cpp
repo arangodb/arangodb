@@ -1365,6 +1365,59 @@ int MMFilesCollection::read(transaction::Methods* trx, VPackSlice const key,
   return TRI_ERROR_NO_ERROR;
 }
 
+/// @brief Persist an index information to file
+int MMFilesCollection::saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  // we cannot persist PrimaryIndex
+  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+  std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
+  indexListLocal.emplace_back(idx);
+  // TODO
+  int res = _logicalCollection->fillIndexes(trx, indexListLocal, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  std::shared_ptr<VPackBuilder> builder;
+  try {
+    builder = idx->toVelocyPack(false);
+  } catch (arangodb::basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition";
+    return TRI_ERROR_INTERNAL;
+  }
+  if (builder == nullptr) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition";
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  auto vocbase = _logicalCollection->vocbase();
+  auto collectionId = _logicalCollection->cid();
+  VPackSlice data = builder->slice();
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->createIndex(vocbase, collectionId, idx->id(), data);
+  
+  if (!engine->inRecovery()) {
+    // We need to write an index marker
+    try {
+      MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX,
+                                     vocbase->id(), collectionId, data);
+
+      MMFilesWalSlotInfoCopy slotInfo =
+          MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
+      res = slotInfo.errorCode;
+    } catch (arangodb::basics::Exception const& ex) {
+      res = ex.code();
+    } catch (...) {
+      res = TRI_ERROR_INTERNAL;
+    }
+  }
+  return res;
+}
+
+
 /// @brief garbage-collect a collection's indexes
 int MMFilesCollection::cleanupIndexes() {
   int res = TRI_ERROR_NO_ERROR;

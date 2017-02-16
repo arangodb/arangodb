@@ -51,6 +51,7 @@
 #include "Utils/TransactionContext.h"
 #include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
 #include "VocBase/ticks.h"
@@ -1778,8 +1779,9 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
         break;
       } else {
         TRI_ASSERT(idx != nullptr);
+        auto physical = collection->getPhysical();
 
-        res = collection->saveIndex(idx.get(), true);
+        res = physical->saveIndex(&trx, idx);
 
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg =

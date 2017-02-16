@@ -38,6 +38,7 @@ class Methods;
 }
 
 class Ditches;
+class Index;
 class LogicalCollection;
 class ManagedDocumentResult;
 struct OperationOptions;
@@ -78,28 +79,6 @@ class PhysicalCollection {
   /// @brief report extra memory used by indexes etc.
   virtual size_t memory() const = 0;
     
-  // /// @brief disallow compaction of the collection 
-  // /// after this call it is guaranteed that no compaction will be started until allowCompaction() is called
-  // virtual void preventCompaction() = 0;
-
-  // /// @brief try disallowing compaction of the collection 
-  // /// returns true if compaction is disallowed, and false if not
-  // virtual bool tryPreventCompaction() = 0;
-
-  // /// @brief re-allow compaction of the collection 
-  // virtual void allowCompaction() = 0;
-  // 
-  // /// @brief exclusively lock the collection for compaction
-  // virtual void lockForCompaction() = 0;
-  // 
-  // /// @brief try to exclusively lock the collection for compaction
-  // /// after this call it is guaranteed that no compaction will be started until allowCompaction() is called
-  // virtual bool tryLockForCompaction() = 0;
-
-  // /// @brief signal that compaction is finished
-  // virtual void finishCompaction() = 0;
-
-
   /// @brief opens an existing collection
   virtual void open(bool ignoreErrors) = 0;
 
@@ -110,6 +89,17 @@ class PhysicalCollection {
   virtual uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const = 0;
 
   virtual bool isFullyCollected() const = 0;
+
+  ////////////////////////////////////
+  // -- SECTION Indexes --
+  ///////////////////////////////////
+
+  virtual int saveIndex(transaction::Methods* trx,
+                        std::shared_ptr<arangodb::Index> idx) = 0;
+
+  ////////////////////////////////////
+  // -- SECTION DML Operations --
+  ///////////////////////////////////
 
   virtual void truncate(transaction::Methods* trx, OperationOptions& options) = 0;
 

@@ -35,6 +35,7 @@
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -564,7 +565,9 @@ int Syncer::createIndex(VPackSlice const& slice) {
     res = collection->restoreIndex(&trx, indexSlice, idx);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = collection->saveIndex(idx.get(), true);
+      auto physical = collection->getPhysical();
+      TRI_ASSERT(physical != nullptr);
+      res = physical->saveIndex(&trx, idx);
     }
 
     res = trx.finish(res);

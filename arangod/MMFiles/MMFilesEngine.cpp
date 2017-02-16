@@ -841,29 +841,6 @@ void MMFilesEngine::createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collection
   }
 }
 
-void MMFilesEngine::createIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
-                          arangodb::velocypack::Slice const& data, bool writeMarker, int& status){
-
-  status = TRI_ERROR_NO_ERROR;
-  if (!writeMarker) {
-    return;
-  }
-
-  try {
-    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX,
-                                   vocbase->id(), collectionId, data);
-
-    MMFilesWalSlotInfoCopy slotInfo =
-        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
-    status=slotInfo.errorCode;
-  } catch (arangodb::basics::Exception const& ex) {
-    status = ex.code();
-  } catch (...) {
-    status = TRI_ERROR_INTERNAL;
-  }
-
-};
-
 // asks the storage engine to drop the specified index and persist the deletion 
 // info. Note that physical deletion of the index must not be carried out by this call, 
 // as there may still be users of the index. It is recommended that this operation

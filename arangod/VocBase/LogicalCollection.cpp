@@ -458,7 +458,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
       auto idx = idxFactory->prepareIndexFromSlice(v, false, this, true);
 
-      // TODO Mode IndexTypeCheck out
+      // TODO Move IndexTypeCheck out
       if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
           idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
         continue;
@@ -1262,22 +1262,12 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
     created = true;
     return idx;
   }
-
-  TRI_ASSERT(idx.get()->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
-  indexListLocal.emplace_back(idx);
-  int res = fillIndexes(trx, indexListLocal, false);
+  int res = getPhysical()->saveIndex(trx, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  bool const writeMarker = !engine->inRecovery();
-  res = saveIndex(idx.get(), writeMarker);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
   // Until here no harm is done if sth fails. The shared ptr will clean up. if
   // left before
 
@@ -1334,31 +1324,6 @@ int LogicalCollection::restoreIndex(transaction::Methods* trx, VPackSlice const&
   addIndex(newIdx);
   idx = newIdx;
   return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief saves an index
-int LogicalCollection::saveIndex(arangodb::Index* idx, bool writeMarker) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  std::shared_ptr<VPackBuilder> builder;
-  try {
-    builder = idx->toVelocyPack(false);
-  } catch (arangodb::basics::Exception const& ex) {
-    return ex.code();
-  } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition";
-    return TRI_ERROR_INTERNAL;
-  }
-  if (builder == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition";
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->createIndex(_vocbase, cid(), idx->id(), builder->slice());
-  
-  int res = TRI_ERROR_NO_ERROR;
-  engine->createIndexWalMarker(_vocbase, cid(), builder->slice(), writeMarker,res);
-  return res;
 }
 
 /// @brief removes an index by id
@@ -1433,7 +1398,7 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
     markerBuilder.close();
     engine->dropIndexWalMarker(_vocbase, cid(), markerBuilder.slice(),writeMarker,res);
 
-    if(! res){
+    if(res == TRI_ERROR_NO_ERROR){
       events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
     } else {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save index drop marker in log: "

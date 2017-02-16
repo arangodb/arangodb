@@ -310,9 +310,6 @@ class LogicalCollection {
                   std::vector<std::shared_ptr<Index>> const&,
                   bool skipPersistent = true);
 
-  /// @brief Saves Index to file
-  int saveIndex(Index* idx, bool writeMarker);
-
   bool dropIndex(TRI_idx_iid_t iid, bool writeMarker);
 
   // SECTION: Index access (local only)

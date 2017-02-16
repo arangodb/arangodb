@@ -219,6 +219,11 @@ class MMFilesCollection final : public PhysicalCollection {
     }
   }
 
+  ////////////////////////////////////
+  // -- SECTION Indexes --
+  ///////////////////////////////////
+
+  int saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx) override;
 
   int cleanupIndexes();
 

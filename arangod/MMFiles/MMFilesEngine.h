@@ -180,9 +180,6 @@ public:
   void createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                    TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) override;
   
-  virtual void createIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
-                                    arangodb::velocypack::Slice const& data, bool useMarker, int&) override;
-
   // asks the storage engine to drop the specified index and persist the deletion 
   // info. Note that physical deletion of the index must not be carried out by this call, 
   // as there may still be users of the index. It is recommended that this operation
