@@ -1382,8 +1382,7 @@ bool Agent::ready() const {
     return true;
   }
 
-  return _ready;
-
+  return _ready.load();
 }
 
 

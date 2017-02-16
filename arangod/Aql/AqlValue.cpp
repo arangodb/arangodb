@@ -24,6 +24,7 @@
 #include "AqlValue.h"
 #include "Aql/AqlItemBlock.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/TransactionContext.h"
 #include "V8/v8-conv.h"
@@ -295,7 +296,7 @@ AqlValue AqlValue::getKeyAttribute(transaction::Methods* trx,
     case VPACK_MANAGED: {
       VPackSlice s(slice());
       if (s.isObject()) {
-        VPackSlice found = transaction::Methods::extractKeyFromDocument(s);
+        VPackSlice found = transaction::helpers::extractKeyFromDocument(s);
         if (!found.isNone()) {
           if (doCopy) {
             mustDestroy = true;
@@ -332,11 +333,11 @@ AqlValue AqlValue::getIdAttribute(transaction::Methods* trx,
     case VPACK_MANAGED: {
       VPackSlice s(slice());
       if (s.isObject()) {
-        VPackSlice found = transaction::Methods::extractIdFromDocument(s);
+        VPackSlice found = transaction::helpers::extractIdFromDocument(s);
         if (found.isCustom()) {
           // _id as a custom type needs special treatment
           mustDestroy = true;
-          return AqlValue(trx->extractIdString(trx->resolver(), found, s));
+          return AqlValue(transaction::helpers::extractIdString(trx->resolver(), found, s));
         }
         if (!found.isNone()) {
           if (doCopy) {
@@ -374,7 +375,7 @@ AqlValue AqlValue::getFromAttribute(transaction::Methods* trx,
     case VPACK_MANAGED: {
       VPackSlice s(slice());
       if (s.isObject()) {
-        VPackSlice found = transaction::Methods::extractFromFromDocument(s);
+        VPackSlice found = transaction::helpers::extractFromFromDocument(s);
         if (!found.isNone()) {
           if (doCopy) {
             mustDestroy = true;
@@ -411,7 +412,7 @@ AqlValue AqlValue::getToAttribute(transaction::Methods* trx,
     case VPACK_MANAGED: {
       VPackSlice s(slice());
       if (s.isObject()) {
-        VPackSlice found = transaction::Methods::extractToFromDocument(s);
+        VPackSlice found = transaction::helpers::extractToFromDocument(s);
         if (!found.isNone()) {
           if (doCopy) {
             mustDestroy = true;
@@ -517,7 +518,7 @@ AqlValue AqlValue::get(transaction::Methods* trx,
             if (i + 1 == n) {
               // x.y._id
               mustDestroy = true;
-              return AqlValue(trx->extractIdString(trx->resolver(), s, prev));
+              return AqlValue(transaction::helpers::extractIdString(trx->resolver(), s, prev));
             }
             // x._id.y
             return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());

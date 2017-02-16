@@ -14,9 +14,11 @@ RETURN expression
 
 The *expression* returned by *RETURN* is produced for each iteration in the block the
 *RETURN* statement is placed in. That means the result of a *RETURN* statement
-is always an array (this includes the empty array).  To return all elements from
-the currently iterated array without modification, the following simple form can
-be used:
+is **always an array**. This includes an empty array if no documents matched the
+query and a single return value returned as array with one element.
+
+To return all elements from the currently iterated array without modification,
+the following simple form can be used:
 
 ```
 FOR variableName IN expression
@@ -27,8 +29,32 @@ As *RETURN* allows specifying an expression, arbitrary computations can be
 performed to calculate the result elements. Any of the variables valid in the
 scope the *RETURN* is placed in can be used for the computations.
 
-Note: *RETURN* will close the current scope and eliminate all local variables in
-it.
+To iterate over all documents of a collection called *users* and return the
+full documents, you can write:
+
+```js
+FOR u IN users
+  RETURN u
+```
+
+In each iteration of the for-loop, a document of the *users* collection is
+assigned to a variable *u* and returned unmodified in this example. To return
+only one attribute of each document, you could use a different return expression:
+
+```js
+FOR u IN users
+  RETURN u.name
+```
+
+Or to return multiple attributes, an object can be constructed like this:
+
+```js
+FOR u IN users
+  RETURN { name: u.name, age: u.age }
+```
+
+Note: *RETURN* will close the current scope and eliminate all local variables in it.
+This is important to remember when working with [subqueries](../Examples/CombiningQueries.md).
 
 [Dynamic attribute names](../Fundamentals/DataTypes.md#objects--documents) are
 supported as well:
@@ -170,5 +196,4 @@ returned twice:
 Note: the order of results is undefined for *RETURN DISTINCT*.
 
 Note: *RETURN DISTINCT* is not allowed on the top-level of a query if there is no *FOR* 
-loop in front of it.
-
+loop preceding it.

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShortestPathBlock.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Utils/OperationCursor.h"
@@ -33,10 +34,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef the template instantiation of the PathFinder
-////////////////////////////////////////////////////////////////////////////////
-
 typedef arangodb::basics::DynamicDistanceFinder<
     arangodb::velocypack::Slice, arangodb::velocypack::Slice, double,
     arangodb::traverser::ShortestPath> ArangoDBPathFinder;
@@ -52,11 +50,8 @@ typedef arangodb::basics::ConstDistanceFinder<arangodb::velocypack::Slice,
 
 using namespace arangodb::aql;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Local class to expand edges.
 ///        Will be handed over to the path finder
-////////////////////////////////////////////////////////////////////////////////
-
 namespace arangodb {
 namespace aql {
 struct ConstDistanceExpanderLocal {
@@ -91,9 +86,9 @@ struct ConstDistanceExpanderLocal {
         if (collection->readDocument(_block->transaction(), *mmdr, element)) {
           VPackSlice edge(mmdr->vpack());
           VPackSlice from =
-              transaction::Methods::extractFromFromDocument(edge);
+              transaction::helpers::extractFromFromDocument(edge);
           if (from == v) {
-            VPackSlice to = transaction::Methods::extractToFromDocument(edge);
+            VPackSlice to = transaction::helpers::extractToFromDocument(edge);
             if (to != v) {
               resEdges.emplace_back(edge);
               neighbors.emplace_back(to);
@@ -110,11 +105,8 @@ struct ConstDistanceExpanderLocal {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Cluster class to expand edges.
 ///        Will be handed over to the path finder
-////////////////////////////////////////////////////////////////////////////////
-
 struct ConstDistanceExpanderCluster {
  private:
 
@@ -146,9 +138,9 @@ struct ConstDistanceExpanderCluster {
 
       VPackSlice edges = result.slice().get("edges");
       for (auto const& edge : VPackArrayIterator(edges)) {
-        VPackSlice from = transaction::Methods::extractFromFromDocument(edge);
+        VPackSlice from = transaction::helpers::extractFromFromDocument(edge);
         if (from == v) {
-          VPackSlice to = transaction::Methods::extractToFromDocument(edge);
+          VPackSlice to = transaction::helpers::extractToFromDocument(edge);
           if (to != v) {
             resEdges.emplace_back(edge);
             neighbors.emplace_back(to);
@@ -165,10 +157,7 @@ struct ConstDistanceExpanderCluster {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Expander for weighted edges
-////////////////////////////////////////////////////////////////////////////////
-
 struct EdgeWeightExpanderLocal {
 
  private:
@@ -229,8 +218,8 @@ struct EdgeWeightExpanderLocal {
         if (collection->readDocument(_block->transaction(), *mmdr, element)) {
           VPackSlice edge(mmdr->vpack());
           VPackSlice from =
-              transaction::Methods::extractFromFromDocument(edge);
-          VPackSlice to = transaction::Methods::extractToFromDocument(edge);
+              transaction::helpers::extractFromFromDocument(edge);
+          VPackSlice to = transaction::helpers::extractToFromDocument(edge);
           double currentWeight = edgeCollection->weightEdge(edge);
           if (from == source) {
             inserter(candidates, result, from, to, currentWeight, edge);
@@ -246,10 +235,7 @@ struct EdgeWeightExpanderLocal {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Expander for weighted edges
-////////////////////////////////////////////////////////////////////////////////
-
 struct EdgeWeightExpanderCluster {
 
  private:
@@ -307,8 +293,8 @@ struct EdgeWeightExpanderCluster {
 
       VPackSlice edges = edgesBuilder.slice().get("edges");
       for (auto const& edge : VPackArrayIterator(edges)) {
-        VPackSlice from = transaction::Methods::extractFromFromDocument(edge);
-        VPackSlice to = transaction::Methods::extractToFromDocument(edge);
+        VPackSlice from = transaction::helpers::extractFromFromDocument(edge);
+        VPackSlice to = transaction::helpers::extractToFromDocument(edge);
         double currentWeight = edgeCollection->weightEdge(edge);
         if (from == source) {
           inserter(from, to, currentWeight, edge);

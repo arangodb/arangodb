@@ -23,15 +23,10 @@
 
 #include "ClusterBlocks.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/BlockCollector.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionStats.h"
 #include "Basics/Exceptions.h"
@@ -42,10 +37,17 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ServerState.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;

@@ -41,6 +41,7 @@
 #include "RestServer/TransactionManagerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Helpers.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -146,7 +147,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       VPackSlice slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
-      state->documentOperations[collectionId][transaction::Methods::extractKeyFromDocument(slice).copyString()] = marker;
+      state->documentOperations[collectionId][transaction::helpers::extractKeyFromDocument(slice).copyString()] = marker;
       state->operationsCount[collectionId]++;
       break;
     }
@@ -560,6 +561,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     arangodb::SingleCollectionTransaction& trx,
     LogicalCollection* collection, MMFilesCollectorCache* cache,
     MMFilesCollectorOperation const& operation) {
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   auto const* walMarker = reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
   TRI_ASSERT(walMarker != nullptr);
   TRI_ASSERT(reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition));
@@ -577,7 +579,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     
     VPackSlice keySlice;
     TRI_voc_rid_t revisionId = 0;
-    transaction::Methods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+    transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
     bool wasAdjusted = false;
     MMFilesSimpleIndexElement element = collection->primaryIndex()->lookupKey(&trx, keySlice);
@@ -586,7 +588,7 @@ void MMFilesCollectorThread::processCollectionMarker(
         element.revisionId() == revisionId) { 
       // make it point to datafile now
       TRI_df_marker_t const* newPosition = reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition);
-      wasAdjusted = collection->updateRevisionConditional(element.revisionId(), walMarker, newPosition, fid, false); 
+      wasAdjusted = physical->updateRevisionConditional(element.revisionId(), walMarker, newPosition, fid, false); 
     }
       
     if (wasAdjusted) {
@@ -609,7 +611,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     
     VPackSlice keySlice;
     TRI_voc_rid_t revisionId = 0;
-    transaction::Methods::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+    transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
     MMFilesSimpleIndexElement found = collection->primaryIndex()->lookupKey(&trx, keySlice);
 
@@ -633,10 +635,13 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
 
   TRI_ASSERT(collection != nullptr);
 
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
+
   // first try to read-lock the compactor-lock, afterwards try to write-lock the
   // collection
   // if any locking attempt fails, release and try again next time
-  TryCompactionPreventer compactionPreventer(logicalToMMFiles(collection));
+  TryCompactionPreventer compactionPreventer(physical);
   
   if (!compactionPreventer.isLocked()) {
     return TRI_ERROR_LOCK_TIMEOUT;
@@ -645,14 +650,12 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   arangodb::SingleCollectionTransaction trx(
       arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
       collection->cid(), AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK,
-              true);  // already locked by guard above
-  trx.addHint(transaction::Hints::Hint::NO_COMPACTION_LOCK,
-              true);  // already locked above
-  trx.addHint(transaction::Hints::Hint::NO_THROTTLING, true);
-  trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER, true);
-  trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER, true);
-  trx.addHint(transaction::Hints::Hint::TRY_LOCK, true);
+  trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);  // already locked by guard above
+  trx.addHint(transaction::Hints::Hint::NO_COMPACTION_LOCK);  // already locked above
+  trx.addHint(transaction::Hints::Hint::NO_THROTTLING);
+  trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER);
+  trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER);
+  trx.addHint(transaction::Hints::Hint::TRY_LOCK);
 
   int res = trx.begin();
 

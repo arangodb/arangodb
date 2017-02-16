@@ -39,10 +39,6 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "RestServer/DatabaseFeature.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesCollection.h" //remove
 #include "MMFiles/MMFilesPrimaryIndex.h"
@@ -51,12 +47,14 @@
 #include "MMFiles/MMFilesTransactionState.h"
 #include "MMFiles/MMFilesWalMarker.h" //crud marker -- TODO remove
 #include "MMFiles/MMFilesWalSlots.h"  //TODO -- remove
+#include "RestServer/DatabaseFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/CollectionReadLocker.h"
-#include "Utils/CollectionWriteLocker.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -228,9 +226,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(this)),
       _useSecondaryIndexes(true),
       _maxTick(0),
-      _keyGenerator(),
-      _isInitialIteration(false),
-      _revisionError(false) {
+      _keyGenerator() {
   _keyGenerator.reset(KeyGenerator::factory(other.keyOptions()));
 
   if (ServerState::instance()->isDBServer() ||
@@ -284,13 +280,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _vocbase(vocbase),
       _cleanupIndexes(0),
       _persistentIndexes(0),
-      _path(ReadStringValue(info, "path", "")),
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(this)),
       _useSecondaryIndexes(true),
       _maxTick(0),
-      _keyGenerator(),
-      _isInitialIteration(false),
-      _revisionError(false) {
+      _keyGenerator() {
+  getPhysical()->setPath(ReadStringValue(info, "path", ""));
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
@@ -491,8 +485,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     // If we are not in the coordinator we need a path
     // to the physical data.
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    if (_path.empty()) {
-      _path = engine->createCollection(_vocbase, _cid, this);
+    if (getPhysical()->path().empty()) {
+      std::string path = engine->createCollection(_vocbase, _cid, this);
+      getPhysical()->setPath(path);
     }
   }
 
@@ -641,8 +636,6 @@ std::string LogicalCollection::dbName() const {
   return _vocbase->name();
 }
 
-std::string const& LogicalCollection::path() const { return _path; }
-
 TRI_vocbase_col_status_e LogicalCollection::status() const { return _status; }
 
 TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
@@ -724,14 +717,8 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 
 void LogicalCollection::setDeleted(bool newValue) { _isDeleted = newValue; }
 
-/// @brief update statistics for a collection
-void LogicalCollection::setRevision(TRI_voc_rid_t revision, bool force) {
-  if (revision > 0) {
-    // TODO Is this still true?
-    /// note: Old version the write-lock for the collection must be held to call
-    /// this
-    _physical->setRevision(revision, force);
-  }
+Ditches* LogicalCollection::ditches() const {
+  return getPhysical()->ditches();
 }
 
 // SECTION: Key Options
@@ -956,6 +943,23 @@ int LogicalCollection::close() {
   return getPhysical()->close();
 }
 
+int LogicalCollection::rotateActiveJournal() {
+  return getPhysical()->rotateActiveJournal();
+}
+
+void LogicalCollection::updateStats(TRI_voc_fid_t fid,
+                                    DatafileStatisticsContainer const& values) {
+  return getPhysical()->updateStats(fid, values);
+}
+
+bool LogicalCollection::applyForTickRange(
+    TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+    std::function<bool(TRI_voc_tick_t foundTick,
+                       TRI_df_marker_t const* marker)> const& callback) {
+  return getPhysical()->applyForTickRange(dataMin, dataMax, callback);
+}
+
+
 void LogicalCollection::unload() {
 }
 
@@ -1022,7 +1026,7 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result,
   result.add("count", VPackValue(_physical->initialCount()));
 
   if (withPath) {
-    result.add("path", VPackValue(_path));
+    result.add("path", VPackValue(getPhysical()->path()));
   }
   result.add("allowUserKeys", VPackValue(_allowUserKeys));
 
@@ -1183,153 +1187,8 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
 
 /// @brief opens an existing collection
 void LogicalCollection::open(bool ignoreErrors) {
-  VPackBuilder builder;
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->getCollectionInfo(_vocbase, cid(), builder, true, 0);
-
-  VPackSlice initialCount =
-      builder.slice().get(std::vector<std::string>({"parameters", "count"}));
-  if (initialCount.isNumber()) {
-    int64_t count = initialCount.getNumber<int64_t>();
-    if (count > 0) {
-      _physical->updateCount(count);
-    }
-  }
-  double start = TRI_microtime();
-
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "open-document-collection { collection: " << _vocbase->name() << "/"
-      << _name << " }";
-
-  int res = openWorker(ignoreErrors);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        res,
-        std::string("cannot open document collection from path '") + path() +
-            "': " + TRI_errno_string(res));
-  }
-
-  arangodb::SingleCollectionTransaction trx(
-      arangodb::StandaloneTransactionContext::Create(_vocbase), cid(),
-      AccessMode::Type::WRITE);
-
-  // build the primary index
-  double startIterate = TRI_microtime();
-
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "iterate-markers { collection: " << _vocbase->name() << "/" << _name
-      << " }";
-
-  _isInitialIteration = true;
-
-  // iterate over all markers of the collection
-  res = getPhysical()->iterateMarkersOnLoad(&trx);
-
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "[timer] " << Logger::FIXED(TRI_microtime() - startIterate)
-      << " s, iterate-markers { collection: " << _vocbase->name() << "/"
-      << _name << " }";
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        res,
-        std::string("cannot iterate data of document collection: ") +
-            TRI_errno_string(res));
-  }
-
-  _isInitialIteration = false;
-
-  // build the indexes meta-data, but do not fill the indexes yet
-  {
-    auto old = useSecondaryIndexes();
-
-    // turn filling of secondary indexes off. we're now only interested in
-    // getting
-    // the indexes' definition. we'll fill them below ourselves.
-    useSecondaryIndexes(false);
-
-    try {
-      detectIndexes(&trx);
-      useSecondaryIndexes(old);
-    } catch (basics::Exception const& ex) {
-      useSecondaryIndexes(old);
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          ex.code(),
-          std::string("cannot initialize collection indexes: ") + ex.what());
-    } catch (std::exception const& ex) {
-      useSecondaryIndexes(old);
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL,
-          std::string("cannot initialize collection indexes: ") + ex.what());
-    } catch (...) {
-      useSecondaryIndexes(old);
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL,
-          "cannot initialize collection indexes: unknown exception");
-    }
-  }
-
-  if (!engine->inRecovery()) {
-    // build the index structures, and fill the indexes
-    fillIndexes(&trx, *(indexList()));
-  }
-
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-      << " s, open-document-collection { collection: " << _vocbase->name()
-      << "/" << _name << " }";
-
-  // successfully opened collection. now adjust version number
-  if (_version != VERSION_31 && !_revisionError &&
-      application_features::ApplicationServer::server
-          ->getFeature<DatabaseFeature>("Database")
-          ->check30Revisions()) {
-    _version = VERSION_31;
-    bool const doSync =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database")
-            ->forceSyncProperties();
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    engine->changeCollection(_vocbase, _cid, this, doSync);
-  }
-
+  getPhysical()->open(ignoreErrors);
   TRI_UpdateTickServer(_cid);
-}
-
-/// @brief opens an existing collection
-int LogicalCollection::openWorker(bool ignoreErrors) {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  double start = TRI_microtime();
-
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "open-collection { collection: " << _vocbase->name() << "/" << name()
-      << " }";
-
-  try {
-    // check for journals and datafiles
-    int res = engine->openCollection(_vocbase, this, ignoreErrors);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot open '" << _path << "', check failed";
-      return res;
-    }
-
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-        << " s, open-collection { collection: " << _vocbase->name() << "/"
-        << name() << " }";
-
-    return TRI_ERROR_NO_ERROR;
-  } catch (basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load collection parameter file '" << _path
-             << "': " << ex.what();
-    return ex.code();
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load collection parameter file '" << _path
-             << "': " << ex.what();
-    return TRI_ERROR_INTERNAL;
-  }
 }
 
 /// SECTION Indexes
@@ -1414,7 +1273,6 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
   }
 
   bool const writeMarker = !engine->inRecovery();
-  //    !MMFilesLogfileManager::instance()->isInRecovery();
   res = saveIndex(idx.get(), writeMarker);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1849,29 +1707,6 @@ void LogicalCollection::addIndexCoordinator(
   }
 }
 
-/// @brief garbage-collect a collection's indexes
-int LogicalCollection::cleanupIndexes() {
-  int res = TRI_ERROR_NO_ERROR;
-
-  // cleaning indexes is expensive, so only do it if the flag is set for the
-  // collection
-  if (_cleanupIndexes > 0) {
-    WRITE_LOCKER(writeLocker, _idxLock);
-
-    for (auto& idx : _indexes) {
-      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-        res = idx->cleanup();
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          break;
-        }
-      }
-    }
-  }
-
-  return res;
-}
-
 /// @brief reads an element from the document collection
 int LogicalCollection::read(transaction::Methods* trx, std::string const& key,
                             ManagedDocumentResult& result, bool lock) {
@@ -1890,8 +1725,8 @@ int LogicalCollection::read(transaction::Methods* trx, StringRef const& key,
 /// the read-cache
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogicalCollection::truncate(transaction::Methods* trx) {
-  return TRI_ERROR_NO_ERROR;
+void LogicalCollection::truncate(transaction::Methods* trx, OperationOptions& options) {
+  getPhysical()->truncate(trx, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2088,79 +1923,6 @@ int LogicalCollection::remove(transaction::Methods* trx,
                                lock, revisionId, prevRev, builder->slice());
 }
 
-/// @brief removes a document or edge, fast path function for database documents
-int LogicalCollection::remove(transaction::Methods* trx,
-                              TRI_voc_rid_t oldRevisionId,
-                              VPackSlice const oldDoc,
-                              OperationOptions& options,
-                              TRI_voc_tick_t& resultMarkerTick, bool lock) {
-  resultMarkerTick = 0;
-
-  TRI_voc_rid_t revisionId = TRI_HybridLogicalClock();
-
-  // create remove marker
-  transaction::BuilderLeaser builder(trx);
-  newObjectForRemove(trx, oldDoc, TRI_RidToString(revisionId), *builder.get());
-  return getPhysical()->removeFastPath(trx, oldRevisionId, oldDoc, options,
-                                       resultMarkerTick, lock, revisionId,
-                                       builder->slice());
-}
-
-/// @brief rolls back a document operation
-int LogicalCollection::rollbackOperation(transaction::Methods* trx,
-                                         TRI_voc_document_operation_e type,
-                                         TRI_voc_rid_t oldRevisionId,
-                                         VPackSlice const& oldDoc,
-                                         TRI_voc_rid_t newRevisionId,
-                                         VPackSlice const& newDoc) {
-  if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-    TRI_ASSERT(oldRevisionId == 0);
-    TRI_ASSERT(oldDoc.isNone());
-    TRI_ASSERT(newRevisionId != 0);
-    TRI_ASSERT(!newDoc.isNone());
-
-    // ignore any errors we're getting from this
-    deletePrimaryIndex(trx, newRevisionId, newDoc);
-    deleteSecondaryIndexes(trx, newRevisionId, newDoc, true);
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
-      type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-    TRI_ASSERT(oldRevisionId != 0);
-    TRI_ASSERT(!oldDoc.isNone());
-    TRI_ASSERT(newRevisionId != 0);
-    TRI_ASSERT(!newDoc.isNone());
-    
-    // remove the current values from the indexes
-    deleteSecondaryIndexes(trx, newRevisionId, newDoc, true);
-    // re-insert old state
-    return insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
-  }
-
-  if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-    // re-insert old revision
-    TRI_ASSERT(oldRevisionId != 0);
-    TRI_ASSERT(!oldDoc.isNone());
-    TRI_ASSERT(newRevisionId == 0);
-    TRI_ASSERT(newDoc.isNone());
-    
-    int res = insertPrimaryIndex(trx, oldRevisionId, oldDoc);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      res = insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
-    } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error rolling back remove operation";
-    }
-    return res;
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "logic error. invalid operation type on rollback";
-#endif
-  return TRI_ERROR_INTERNAL;
-}
-
 void LogicalCollection::sizeHint(transaction::Methods* trx, int64_t hint) {
   if (hint <= 0) {
     return;
@@ -2198,423 +1960,6 @@ void LogicalCollection::fillIndex(
     // set error code
     queue->setStatus(TRI_ERROR_INTERNAL);
   }
-}
-
-/// @brief read unlocks a collection
-int LogicalCollection::endRead(bool useDeadlockDetector) {
-  if (transaction::Methods::_makeNolockHeaders != nullptr) {
-    auto it = transaction::Methods::_makeNolockHeaders->find(name());
-    if (it != transaction::Methods::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "EndRead blocked: " << _name << std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  if (useDeadlockDetector) {
-    // unregister reader
-    try {
-      _vocbase->_deadlockDetector.unsetReader(this);
-    } catch (...) {
-    }
-  }
-
-  // LOCKING-DEBUG
-  // std::cout << "EndRead: " << _name << std::endl;
-  _idxLock.unlockRead();
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief write unlocks a collection
-int LogicalCollection::endWrite(bool useDeadlockDetector) {
-  if (transaction::Methods::_makeNolockHeaders != nullptr) {
-    auto it = transaction::Methods::_makeNolockHeaders->find(name());
-    if (it != transaction::Methods::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "EndWrite blocked: " << _name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  if (useDeadlockDetector) {
-    // unregister writer
-    try {
-      _vocbase->_deadlockDetector.unsetWriter(this);
-    } catch (...) {
-      // must go on here to unlock the lock
-    }
-  }
-
-  // LOCKING-DEBUG
-  // std::cout << "EndWrite: " << _name << std::endl;
-  _idxLock.unlockWrite();
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief read locks a collection, with a timeout (in µseconds)
-int LogicalCollection::beginReadTimed(bool useDeadlockDetector,
-                                      double timeout) {
-  if (transaction::Methods::_makeNolockHeaders != nullptr) {
-    auto it = transaction::Methods::_makeNolockHeaders->find(name());
-    if (it != transaction::Methods::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginReadTimed blocked: " << _name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  // LOCKING-DEBUG
-  // std::cout << "BeginReadTimed: " << _name << std::endl;
-  int iterations = 0;
-  bool wasBlocked = false;
-  double end = 0.0;
-
-  while (true) {
-    TRY_READ_LOCKER(locker, _idxLock);
-
-    if (locker.isLocked()) {
-      // when we are here, we've got the read lock
-      if (useDeadlockDetector) {
-        _vocbase->_deadlockDetector.addReader(this, wasBlocked);
-      }
-
-      // keep lock and exit loop
-      locker.steal();
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    if (useDeadlockDetector) {
-      try {
-        if (!wasBlocked) {
-          // insert reader
-          wasBlocked = true;
-          if (_vocbase->_deadlockDetector.setReaderBlocked(this) ==
-              TRI_ERROR_DEADLOCK) {
-            // deadlock
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "deadlock detected while trying to acquire read-lock "
-                          "on collection '"
-                       << name() << "'";
-            return TRI_ERROR_DEADLOCK;
-          }
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "waiting for read-lock on collection '" << name()
-                     << "'";
-          // fall-through intentional
-        } else if (++iterations >= 5) {
-          // periodically check for deadlocks
-          TRI_ASSERT(wasBlocked);
-          iterations = 0;
-          if (_vocbase->_deadlockDetector.detectDeadlock(this, false) ==
-              TRI_ERROR_DEADLOCK) {
-            // deadlock
-            _vocbase->_deadlockDetector.unsetReaderBlocked(this);
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "deadlock detected while trying to acquire read-lock "
-                          "on collection '"
-                       << name() << "'";
-            return TRI_ERROR_DEADLOCK;
-          }
-        }
-      } catch (...) {
-        // clean up!
-        if (wasBlocked) {
-          _vocbase->_deadlockDetector.unsetReaderBlocked(this);
-        }
-        // always exit
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
-    }
-
-    if (end == 0.0) {
-      // set end time for lock waiting
-      if (timeout <= 0.0) {
-        timeout = 15.0 * 60.0;
-      }
-      end = TRI_microtime() + timeout;
-      TRI_ASSERT(end > 0.0);
-    }
-
-    std::this_thread::yield();
-
-    TRI_ASSERT(end > 0.0);
-
-    if (TRI_microtime() > end) {
-      if (useDeadlockDetector) {
-        _vocbase->_deadlockDetector.unsetReaderBlocked(this);
-      }
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "timed out waiting for read-lock on collection '" << name()
-                 << "'";
-      return TRI_ERROR_LOCK_TIMEOUT;
-    }
-  }
-}
-
-/// @brief write locks a collection, with a timeout
-int LogicalCollection::beginWriteTimed(bool useDeadlockDetector,
-                                       double timeout) {
-  if (transaction::Methods::_makeNolockHeaders != nullptr) {
-    auto it = transaction::Methods::_makeNolockHeaders->find(name());
-    if (it != transaction::Methods::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginWriteTimed blocked: " << _name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  // LOCKING-DEBUG
-  // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
-  int iterations = 0;
-  bool wasBlocked = false;
-  double end = 0.0;
-
-  while (true) {
-    TRY_WRITE_LOCKER(locker, _idxLock);
-
-    if (locker.isLocked()) {
-      // register writer
-      if (useDeadlockDetector) {
-        _vocbase->_deadlockDetector.addWriter(this, wasBlocked);
-      }
-      // keep lock and exit loop
-      locker.steal();
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    if (useDeadlockDetector) {
-      try {
-        if (!wasBlocked) {
-          // insert writer
-          wasBlocked = true;
-          if (_vocbase->_deadlockDetector.setWriterBlocked(this) ==
-              TRI_ERROR_DEADLOCK) {
-            // deadlock
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "deadlock detected while trying to acquire "
-                          "write-lock on collection '"
-                       << name() << "'";
-            return TRI_ERROR_DEADLOCK;
-          }
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "waiting for write-lock on collection '" << name()
-                     << "'";
-        } else if (++iterations >= 5) {
-          // periodically check for deadlocks
-          TRI_ASSERT(wasBlocked);
-          iterations = 0;
-          if (_vocbase->_deadlockDetector.detectDeadlock(this, true) ==
-              TRI_ERROR_DEADLOCK) {
-            // deadlock
-            _vocbase->_deadlockDetector.unsetWriterBlocked(this);
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "deadlock detected while trying to acquire "
-                          "write-lock on collection '"
-                       << name() << "'";
-            return TRI_ERROR_DEADLOCK;
-          }
-        }
-      } catch (...) {
-        // clean up!
-        if (wasBlocked) {
-          _vocbase->_deadlockDetector.unsetWriterBlocked(this);
-        }
-        // always exit
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
-    }
-
-    std::this_thread::yield();
-
-    if (end == 0.0) {
-      // set end time for lock waiting
-      if (timeout <= 0.0) {
-        timeout = 15.0 * 60.0;
-      }
-      end = TRI_microtime() + timeout;
-      TRI_ASSERT(end > 0.0);
-    }
-
-    std::this_thread::yield();
-
-    TRI_ASSERT(end > 0.0);
-
-    if (TRI_microtime() > end) {
-      if (useDeadlockDetector) {
-        _vocbase->_deadlockDetector.unsetWriterBlocked(this);
-      }
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "timed out waiting for write-lock on collection '" << name()
-                 << "'";
-      return TRI_ERROR_LOCK_TIMEOUT;
-    }
-  }
-}
-
-/// @brief checks the revision of a document
-int LogicalCollection::checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
-                                     TRI_voc_rid_t found) {
-  if (expected != 0 && found != expected) {
-    return TRI_ERROR_ARANGO_CONFLICT;
-  }
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief updates an existing document, low level worker
-/// the caller must make sure the write lock on the collection is held
-int LogicalCollection::updateDocument(
-    transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
-    VPackSlice const& oldDoc, TRI_voc_rid_t newRevisionId,
-    VPackSlice const& newDoc, MMFilesDocumentOperation& operation,
-    MMFilesWalMarker const* marker, bool& waitForSync) {
-  // remove old document from secondary indexes
-  // (it will stay in the primary index as the key won't change)
-  int res = deleteSecondaryIndexes(trx, oldRevisionId, oldDoc, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // re-enter the document in case of failure, ignore errors during rollback
-    insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
-    return res;
-  }
-
-  // insert new document into secondary indexes
-  res = insertSecondaryIndexes(trx, newRevisionId, newDoc, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // rollback
-    deleteSecondaryIndexes(trx, newRevisionId, newDoc, true);
-    insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
-    return res;
-  }
-
-  // update the index element (primary index only - other index have been
-  // adjusted)
-  VPackSlice keySlice(transaction::Methods::extractKeyFromDocument(newDoc));
-  MMFilesSimpleIndexElement* element = primaryIndex()->lookupKeyRef(trx, keySlice);
-  if (element != nullptr && element->revisionId() != 0) {
-    element->updateRevisionId(
-        newRevisionId,
-        static_cast<uint32_t>(keySlice.begin() - newDoc.begin()));
-  }
-
-  operation.indexed();
-   
-  if (oldRevisionId != newRevisionId) { 
-    try {
-      removeRevision(oldRevisionId, true);
-    } catch (...) {
-    }
-  }
-  
-  TRI_IF_FAILURE("UpdateDocumentNoOperation") { return TRI_ERROR_DEBUG; }
-
-  TRI_IF_FAILURE("UpdateDocumentNoOperationExcept") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  return static_cast<MMFilesTransactionState*>(trx->state())->addOperation(newRevisionId, operation, marker, waitForSync);
-}
-
-/// @brief creates a new entry in the primary index
-int LogicalCollection::insertPrimaryIndex(transaction::Methods* trx,
-                                          TRI_voc_rid_t revisionId,
-                                          VPackSlice const& doc) {
-  TRI_IF_FAILURE("InsertPrimaryIndex") { return TRI_ERROR_DEBUG; }
-
-  // insert into primary index
-  return primaryIndex()->insertKey(trx, revisionId, doc);
-}
-
-/// @brief deletes an entry from the primary index
-int LogicalCollection::deletePrimaryIndex(transaction::Methods* trx,
-                                          TRI_voc_rid_t revisionId,
-                                          VPackSlice const& doc) {
-  TRI_IF_FAILURE("DeletePrimaryIndex") { return TRI_ERROR_DEBUG; }
-
-  return primaryIndex()->removeKey(trx, revisionId, doc);
-}
-
-/// @brief creates a new entry in the secondary indexes
-int LogicalCollection::insertSecondaryIndexes(transaction::Methods* trx,
-                                              TRI_voc_rid_t revisionId,
-                                              VPackSlice const& doc,
-                                              bool isRollback) {
-  // Coordintor doesn't know index internals
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  TRI_IF_FAILURE("InsertSecondaryIndexes") { return TRI_ERROR_DEBUG; }
-
-  bool const useSecondary = useSecondaryIndexes();
-  if (!useSecondary && _persistentIndexes == 0) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  int result = TRI_ERROR_NO_ERROR;
-
-  size_t const n = _indexes.size();
-
-  for (size_t i = 1; i < n; ++i) {
-    auto idx = _indexes[i];
-    TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-
-    if (!useSecondary && !idx->isPersistent()) {
-      continue;
-    }
-
-    int res = idx->insert(trx, revisionId, doc, isRollback);
-
-    // in case of no-memory, return immediately
-    if (res == TRI_ERROR_OUT_OF_MEMORY) {
-      return res;
-    }
-    if (res != TRI_ERROR_NO_ERROR) {
-      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
-          result == TRI_ERROR_NO_ERROR) {
-        // "prefer" unique constraint violated
-        result = res;
-      }
-    }
-  }
-
-  return result;
-}
-
-/// @brief deletes an entry from the secondary indexes
-int LogicalCollection::deleteSecondaryIndexes(transaction::Methods* trx,
-                                              TRI_voc_rid_t revisionId,
-                                              VPackSlice const& doc,
-                                              bool isRollback) {
-  // Coordintor doesn't know index internals
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
-  bool const useSecondary = useSecondaryIndexes();
-  if (!useSecondary && _persistentIndexes == 0) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  TRI_IF_FAILURE("DeleteSecondaryIndexes") { return TRI_ERROR_DEBUG; }
-
-  int result = TRI_ERROR_NO_ERROR;
-
-  size_t const n = _indexes.size();
-
-  for (size_t i = 1; i < n; ++i) {
-    auto idx = _indexes[i];
-    TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-
-    if (!useSecondary && !idx->isPersistent()) {
-      continue;
-    }
-
-    int res = idx->remove(trx, revisionId, doc, isRollback);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      // an error occurred
-      result = res;
-    }
-  }
-
-  return result;
 }
 
 /// @brief new object for insert, computes the hash of the key
@@ -2655,7 +2000,7 @@ int LogicalCollection::newObjectForInsert(
   uint8_t* p = builder.add(StaticStrings::IdString,
                            VPackValuePair(9ULL, VPackValueType::Custom));
   *p++ = 0xf3;  // custom type for _id
-  if (ServerState::isDBServer(trx->serverRole()) && !_isSystem) {
+  if (trx->state()->isDBServer() && !_isSystem) {
     // db server in cluster, note: the local collections _statistics,
     // _statisticsRaw and _statistics15 (which are the only system
     // collections)
@@ -2763,37 +2108,6 @@ bool LogicalCollection::readDocumentConditional(transaction::Methods* trx,
   // TODO This only works for MMFiles Engine. Has to be moved => StorageEngine
   auto tkn = static_cast<MMFilesToken const*>(&token);
   return readRevisionConditional(trx, result, tkn->revisionId(), maxTick, excludeWal);
-}
-
-void LogicalCollection::insertRevision(TRI_voc_rid_t revisionId,
-                                       uint8_t const* dataptr,
-                                       TRI_voc_fid_t fid, bool isInWal) {
-  // note: there is no need to insert into the cache here as the data points
-  // to
-  // temporary storage
-  getPhysical()->insertRevision(revisionId, dataptr, fid, isInWal, true);
-}
-
-void LogicalCollection::updateRevision(TRI_voc_rid_t revisionId,
-                                       uint8_t const* dataptr,
-                                       TRI_voc_fid_t fid, bool isInWal) {
-  // note: there is no need to modify the cache entry here as insertRevision
-  // has
-  // not inserted the document into the cache
-  getPhysical()->updateRevision(revisionId, dataptr, fid, isInWal);
-}
-
-bool LogicalCollection::updateRevisionConditional(
-    TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition,
-    TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal) {
-  return getPhysical()->updateRevisionConditional(revisionId, oldPosition,
-                                                  newPosition, newFid, isInWal);
-}
-
-void LogicalCollection::removeRevision(TRI_voc_rid_t revisionId,
-                                       bool updateStats) {
-  // and remove from storage engine
-  getPhysical()->removeRevision(revisionId, updateStats);
 }
 
 /// @brief a method to skip certain documents in AQL write operations,

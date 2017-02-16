@@ -28,6 +28,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
 #include "Indexes/Index.h"
+#include "Transaction/Helpers.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"
@@ -37,6 +38,7 @@
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
@@ -393,10 +395,10 @@ static void JS_ChecksumCollection(
     collection->readDocument(&trx, mmdr, token);
     VPackSlice const slice(mmdr.vpack());
 
-    uint64_t localHash = transaction::Methods::extractKeyFromDocument(slice).hashString(); 
+    uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString(); 
 
     if (withRevisions) {
-      localHash += transaction::Methods::extractRevSliceFromDocument(slice).hash();
+      localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
     }
 
     if (withData) {

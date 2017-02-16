@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
-#include "Cluster/ServerState.h"
 #include "Utils/OperationResult.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Status.h"
@@ -140,16 +139,12 @@ class Methods {
   };
 
   /// @brief return database of transaction
-  inline TRI_vocbase_t* vocbase() const { return _vocbase; }
+  TRI_vocbase_t* vocbase() const;
+  inline std::string const& databaseName() const { return vocbase()->name(); }
 
   /// @brief return internals of transaction
   inline TransactionState* state() const { return _state; }
   
-  /// @brief return role of server in cluster
-  inline ServerState::RoleEnum serverRole() const { return _serverRole; }
-  
-  bool isCluster();
-
   int resolveId(char const* handle, size_t length, TRI_voc_cid_t& cid, char const*& key, size_t& outLength); 
   
   /// @brief return a pointer to the transaction context
@@ -162,30 +157,13 @@ class Methods {
   }
   
   /// @brief add a transaction hint
-  void addHint(transaction::Hints::Hint hint, bool passthrough);
+  void addHint(transaction::Hints::Hint hint) { _hints.set(hint); }
 
-  /// @brief remove a transaction hint
-  void removeHint(transaction::Hints::Hint hint, bool passthrough);
-
-  /// @brief return the registered error data
-  std::string const getErrorData() const { return _errorData; }
-
-  /// @brief return the names of all collections used in the transaction
-  std::vector<std::string> collectionNames() const;
-
-  /// @brief return the collection name resolver
-  CollectionNameResolver const* resolver();
-
-  /// @brief whether or not the transaction is embedded
-  inline bool isEmbeddedTransaction() const { return (_nestingLevel > 0); }
-  
   /// @brief whether or not the transaction consists of a single operation only
   bool isSingleOperationTransaction() const;
 
   /// @brief get the status of the transaction
-  Status getStatus() const;
-
-  int nestingLevel() const { return _nestingLevel; }
+  Status status() const;
 
   /// @brief begin the transaction
   int begin();
@@ -203,52 +181,14 @@ class Methods {
   std::string name(TRI_voc_cid_t cid) const;
 
   /// @brief order a ditch for a collection
-  arangodb::DocumentDitch* orderDitch(TRI_voc_cid_t);
+  void orderDitch(TRI_voc_cid_t);
   
   /// @brief whether or not a ditch has been created for the collection
   bool hasDitch(TRI_voc_cid_t cid) const;
 
-  /// @brief extract the _key attribute from a slice
-  static StringRef extractKeyPart(VPackSlice const);
-
   /// @brief extract the _id attribute from a slice, and convert it into a 
   /// string
   std::string extractIdString(VPackSlice);
-
-  static std::string extractIdString(CollectionNameResolver const*, 
-                                     VPackSlice, VPackSlice const&);
-
-  /// @brief quick access to the _key attribute in a database document
-  /// the document must have at least two attributes, and _key is supposed to
-  /// be the first one
-  static VPackSlice extractKeyFromDocument(VPackSlice);
-  
-  /// @brief quick access to the _id attribute in a database document
-  /// the document must have at least two attributes, and _id is supposed to
-  /// be the second one
-  /// note that this may return a Slice of type Custom!
-  static VPackSlice extractIdFromDocument(VPackSlice);
-
-  /// @brief quick access to the _from attribute in a database document
-  /// the document must have at least five attributes: _key, _id, _from, _to
-  /// and _rev (in this order)
-  static VPackSlice extractFromFromDocument(VPackSlice);
-
-  /// @brief quick access to the _to attribute in a database document
-  /// the document must have at least five attributes: _key, _id, _from, _to
-  /// and _rev (in this order)
-  static VPackSlice extractToFromDocument(VPackSlice);
-  
-  /// @brief extract _key and _rev from a document, in one go
-  /// this is an optimized version used when loading collections, WAL 
-  /// collection and compaction
-  static void extractKeyAndRevFromDocument(VPackSlice slice,
-                                           VPackSlice& keySlice,
-                                           TRI_voc_rid_t& revisionId);
-  
-  /// @brief extract _rev from a database document
-  static TRI_voc_rid_t extractRevFromDocument(VPackSlice slice);
-  static VPackSlice extractRevSliceFromDocument(VPackSlice slice);
 
   /// @brief read any (random) document
   OperationResult any(std::string const&);
@@ -264,7 +204,7 @@ class Methods {
                                        AccessMode::Type type = AccessMode::Type::READ);
   
   /// @brief add a collection to the transaction for read, at runtime
-  TRI_voc_cid_t addCollectionAtRuntime(std::string const& collectionName);
+  virtual TRI_voc_cid_t addCollectionAtRuntime(std::string const& collectionName);
 
   /// @brief return the type of a collection
   bool isEdgeCollection(std::string const& collectionName);
@@ -410,9 +350,6 @@ class Methods {
   /// @brief test if a collection is already locked
   bool isLocked(arangodb::LogicalCollection*, AccessMode::Type);
 
-  /// @brief return the setup state
-  int setupState() { return _setupState; }
-  
   arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
   
 /// @brief get the index by it's identifier. Will either throw or
@@ -430,13 +367,11 @@ class Methods {
   /// @brief Clone this transaction. Only works for selected sub-classes
   virtual transaction::Methods* clone() const;
   
+  /// @brief return the collection name resolver
+  CollectionNameResolver const* resolver() const;
+
  private:
   
-  /// @brief creates an id string from a custom _id value and the _key string
-  static std::string makeIdFromCustom(CollectionNameResolver const* resolver,
-                                      VPackSlice const& idPart, 
-                                      VPackSlice const& keyPart);
-
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.
@@ -508,9 +443,6 @@ class Methods {
   OperationResult countLocal(std::string const& collectionName);
   
  protected:
-
-  static OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool aggregate);
-
   /// @brief return the transaction collection for a document collection
   TransactionCollection* trxCollection(TRI_voc_cid_t cid) const;
 
@@ -529,15 +461,6 @@ class Methods {
   
   /// @brief add a collection by name
   int addCollection(std::string const&, AccessMode::Type);
-
-  /// @brief set the lock acquisition timeout
-  void setTimeout(double timeout) { _timeout = timeout; }
-
-  /// @brief set the waitForSync property
-  void setWaitForSync() { _waitForSync = true; }
-
-  /// @brief set the allowImplicitCollections property
-  void setAllowImplicitCollections(bool value);
 
   /// @brief read- or write-lock a collection
   int lock(TransactionCollection*, AccessMode::Type);
@@ -604,76 +527,25 @@ class Methods {
   std::vector<std::shared_ptr<arangodb::Index>> indexesForCollectionCoordinator(
       std::string const&) const;
 
-  /// @brief register an error for the transaction
-  int registerError(int errorNum) {
-    TRI_ASSERT(errorNum != TRI_ERROR_NO_ERROR);
-
-    if (_setupState == TRI_ERROR_NO_ERROR) {
-      _setupState = errorNum;
-    }
-
-    TRI_ASSERT(_setupState != TRI_ERROR_NO_ERROR);
-
-    return errorNum;
-  }
-
   /// @brief add a collection to an embedded transaction
-  int addCollectionEmbedded(TRI_voc_cid_t, AccessMode::Type);
+  int addCollectionEmbedded(TRI_voc_cid_t, char const* name, AccessMode::Type);
 
   /// @brief add a collection to a top-level transaction
-  int addCollectionToplevel(TRI_voc_cid_t, AccessMode::Type);
-
-  /// @brief initialize the transaction
-  /// this will first check if the transaction is embedded in a parent
-  /// transaction. if not, it will create a transaction of its own
-  int setupTransaction();
+  int addCollectionToplevel(TRI_voc_cid_t, char const* name, AccessMode::Type);
 
   /// @brief set up an embedded transaction
-  int setupEmbedded();
+  void setupEmbedded(TRI_vocbase_t*);
 
   /// @brief set up a top-level transaction
-  int setupToplevel();
-
-  /// @brief free transaction
-  void freeTransaction();
+  void setupToplevel(TRI_vocbase_t*);
 
  private:
-  /// @brief role of server in cluster
-  ServerState::RoleEnum _serverRole;
-
-  /// @brief error that occurred on transaction initialization (before begin())
-  int _setupState;
-
-  /// @brief how deep the transaction is down in a nested transaction structure
-  int _nestingLevel;
-
-  /// @brief additional error data
-  std::string _errorData;
-
   /// @brief transaction hints
   transaction::Hints _hints;
-
-  /// @brief timeout for lock acquisition
-  double _timeout;
-
-  /// @brief wait for sync property for transaction
-  bool _waitForSync;
-
-  /// @brief allow implicit collections for transaction
-  bool _allowImplicitCollections;
-
-  /// @brief whether or not this is a "real" transaction
-  bool _isReal;
 
  protected:
   /// @brief the state 
   TransactionState* _state;
-
-  /// @brief the vocbase
-  TRI_vocbase_t* const _vocbase;
-  
-  /// @brief collection name resolver (cached)
-  CollectionNameResolver const* _resolver;
 
   /// @brief the transaction context
   std::shared_ptr<TransactionContext> _transactionContext;

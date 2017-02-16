@@ -33,13 +33,12 @@ class LogicalCollection;
 namespace transaction {
 class Methods;
 }
-;
+
 class TransactionState;
 
 /// @brief collection used in a transaction
 class TransactionCollection {
  public:
-
   TransactionCollection(TransactionCollection const&) = delete;
   TransactionCollection& operator=(TransactionCollection const&) = delete;
 

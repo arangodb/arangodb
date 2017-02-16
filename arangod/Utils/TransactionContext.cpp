@@ -27,8 +27,9 @@
 #include "RestServer/TransactionManagerFeature.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesLogfileManager.h"
-#include "Utils/CollectionNameResolver.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -55,17 +56,14 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
   
   std::string toString(VPackSlice const& value, VPackOptions const* options,
                        VPackSlice const& base) override final {
-    return transaction::Methods::extractIdString(resolver, value, base);
+    return transaction::helpers::extractIdString(resolver, value, base);
   }
 
   TRI_vocbase_t* vocbase;
   CollectionNameResolver const* resolver;
 };
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief create the context
-//////////////////////////////////////////////////////////////////////////////
-
 TransactionContext::TransactionContext(TRI_vocbase_t* vocbase) 
     : _vocbase(vocbase), 
       _resolver(nullptr), 
@@ -80,10 +78,7 @@ TransactionContext::TransactionContext(TRI_vocbase_t* vocbase)
   _dumpOptions.escapeUnicode = true;        
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the context
-//////////////////////////////////////////////////////////////////////////////
-
 TransactionContext::~TransactionContext() {
   // unregister the transaction from the logfile manager
   if (_transaction.id > 0) {
@@ -108,21 +103,15 @@ TransactionContext::~TransactionContext() {
   _resolver = nullptr;
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief factory to create a custom type handler, not managed
-//////////////////////////////////////////////////////////////////////////////
-
 VPackCustomTypeHandler* TransactionContext::createCustomTypeHandler(TRI_vocbase_t* vocbase, 
                                                                     CollectionNameResolver const* resolver) {
   return new CustomTypeHandler(vocbase, resolver);
 }
   
-//////////////////////////////////////////////////////////////////////////////
 /// @brief order a document ditch for the collection
 /// this will create one if none exists. if no ditch can be created, the
 /// function will return a nullptr!
-//////////////////////////////////////////////////////////////////////////////
-
 DocumentDitch* TransactionContext::orderDitch(LogicalCollection* collection) {
 
   TRI_voc_cid_t cid = collection->cid();
@@ -153,11 +142,8 @@ DocumentDitch* TransactionContext::orderDitch(LogicalCollection* collection) {
   return ditch;
 }
   
-//////////////////////////////////////////////////////////////////////////////
 /// @brief return the ditch for a collection
 /// this will return a nullptr if no ditch exists
-//////////////////////////////////////////////////////////////////////////////
-  
 DocumentDitch* TransactionContext::ditch(TRI_voc_cid_t cid) const {
   auto it = _ditches.find(cid);
 
@@ -167,10 +153,7 @@ DocumentDitch* TransactionContext::ditch(TRI_voc_cid_t cid) const {
   return (*it).second;
 }
   
-//////////////////////////////////////////////////////////////////////////////
 /// @brief temporarily lease a StringBuffer object
-//////////////////////////////////////////////////////////////////////////////
-
 basics::StringBuffer* TransactionContext::leaseStringBuffer(size_t initialSize) {
   if (_stringBuffer == nullptr) {
     _stringBuffer.reset(new basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, initialSize, false));
@@ -181,18 +164,12 @@ basics::StringBuffer* TransactionContext::leaseStringBuffer(size_t initialSize) 
   return _stringBuffer.release();
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief return a temporary StringBuffer object
-//////////////////////////////////////////////////////////////////////////////
-
 void TransactionContext::returnStringBuffer(basics::StringBuffer* stringBuffer) {
   _stringBuffer.reset(stringBuffer);
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief temporarily lease a Builder object
-//////////////////////////////////////////////////////////////////////////////
-
 VPackBuilder* TransactionContext::leaseBuilder() {
   if (_builders.empty()) {
     // create a new builder and return it
@@ -207,10 +184,7 @@ VPackBuilder* TransactionContext::leaseBuilder() {
   return b;
 }
   
-//////////////////////////////////////////////////////////////////////////////
 /// @brief return a temporary Builder object
-//////////////////////////////////////////////////////////////////////////////
-
 void TransactionContext::returnBuilder(VPackBuilder* builder) {
   try {
     // put builder back into our vector of builders
@@ -221,10 +195,7 @@ void TransactionContext::returnBuilder(VPackBuilder* builder) {
   }
 }
   
-//////////////////////////////////////////////////////////////////////////////
 /// @brief get velocypack options with a custom type handler
-//////////////////////////////////////////////////////////////////////////////
-  
 VPackOptions* TransactionContext::getVPackOptions() {
   if (_customTypeHandler == nullptr) {
     // this modifies options!
@@ -233,10 +204,7 @@ VPackOptions* TransactionContext::getVPackOptions() {
   return &_options;
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief get velocypack options with a custom type handler for dumping
-//////////////////////////////////////////////////////////////////////////////
-  
 VPackOptions* TransactionContext::getVPackOptionsForDump() {
   if (_customTypeHandler == nullptr) {
     // this modifies options!
@@ -245,10 +213,7 @@ VPackOptions* TransactionContext::getVPackOptionsForDump() {
   return &_dumpOptions;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a resolver
-////////////////////////////////////////////////////////////////////////////////
-    
 CollectionNameResolver const* TransactionContext::createResolver() {
   TRI_ASSERT(_resolver == nullptr);
   _resolver = new CollectionNameResolver(_vocbase);
@@ -256,12 +221,9 @@ CollectionNameResolver const* TransactionContext::createResolver() {
   return _resolver;
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief unregister the transaction
 /// this will save the transaction's id and status locally
-//////////////////////////////////////////////////////////////////////////////
-
-void TransactionContext::storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations) {
+void TransactionContext::storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations) noexcept {
   TRI_ASSERT(_transaction.id == 0);
 
   _transaction.id = id;

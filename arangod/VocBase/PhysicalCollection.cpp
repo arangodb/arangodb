@@ -40,7 +40,7 @@ using namespace arangodb;
 void PhysicalCollection::mergeObjectsForUpdate(
     transaction::Methods* trx, VPackSlice const& oldValue,
     VPackSlice const& newValue, bool isEdgeCollection, std::string const& rev,
-    bool mergeObjects, bool keepNull, VPackBuilder& b) {
+    bool mergeObjects, bool keepNull, VPackBuilder& b) const {
   b.openObject();
 
   VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
@@ -171,7 +171,7 @@ void PhysicalCollection::newObjectForReplace(
     transaction::Methods* trx, VPackSlice const& oldValue,
     VPackSlice const& newValue, VPackSlice const& fromSlice,
     VPackSlice const& toSlice, bool isEdgeCollection, std::string const& rev,
-    VPackBuilder& builder) {
+    VPackBuilder& builder) const {
   builder.openObject();
 
   // add system attributes first, in this order:
@@ -202,4 +202,14 @@ void PhysicalCollection::newObjectForReplace(
   TRI_SanitizeObjectWithEdges(newValue, builder);
 
   builder.close();
+}
+
+/// @brief checks the revision of a document
+int PhysicalCollection::checkRevision(transaction::Methods* trx,
+                                      TRI_voc_rid_t expected,
+                                      TRI_voc_rid_t found) const {
+  if (expected != 0 && found != expected) {
+    return TRI_ERROR_ARANGO_CONFLICT;
+  }
+  return TRI_ERROR_NO_ERROR;
 }

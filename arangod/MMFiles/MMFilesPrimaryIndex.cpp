@@ -355,7 +355,7 @@ int MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
   ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, 1); 
   
-  VPackSlice keySlice(transaction::Methods::extractKeyFromDocument(doc));
+  VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(doc));
   MMFilesSimpleIndexElement found = _primaryIndex->removeByKey(&context, keySlice.begin());
 
   if (!found) {
@@ -369,7 +369,7 @@ int MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
                             TRI_voc_rid_t revisionId, VPackSlice const& doc, ManagedDocumentResult& mmdr) {
   IndexLookupContext context(trx, _collection, &mmdr, 1); 
   
-  VPackSlice keySlice(transaction::Methods::extractKeyFromDocument(doc));
+  VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(doc));
   MMFilesSimpleIndexElement found = _primaryIndex->removeByKey(&context, keySlice.begin());
 
   if (!found) {
@@ -395,7 +395,7 @@ void MMFilesPrimaryIndex::invokeOnAllElements(
 }
 
 void MMFilesPrimaryIndex::invokeOnAllElementsForRemoval(
-    std::function<bool(MMFilesSimpleIndexElement&)> work) {
+    std::function<bool(MMFilesSimpleIndexElement const&)> work) {
   _primaryIndex->invokeOnAllElementsForRemoval(work);
 }
 
@@ -539,13 +539,13 @@ void MMFilesPrimaryIndex::handleValNode(transaction::Methods* trx,
     TRI_ASSERT(cid != 0);
     TRI_ASSERT(key != nullptr);
 
-    if (!trx->isCluster() && cid != _collection->cid()) {
+    if (!trx->state()->isRunningInCluster() && cid != _collection->cid()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using local collection id
       return;
     }
 
-    if (trx->isCluster() && cid != _collection->planId()) {
+    if (trx->state()->isRunningInCluster() && cid != _collection->planId()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using cluster collection id
       return;
@@ -560,7 +560,7 @@ void MMFilesPrimaryIndex::handleValNode(transaction::Methods* trx,
 
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::buildKeyElement(TRI_voc_rid_t revisionId, VPackSlice const& doc) const {
   TRI_ASSERT(doc.isObject());
-  VPackSlice value(transaction::Methods::extractKeyFromDocument(doc));
+  VPackSlice value(transaction::helpers::extractKeyFromDocument(doc));
   TRI_ASSERT(value.isString());
   return MMFilesSimpleIndexElement(revisionId, value, static_cast<uint32_t>(value.begin() - doc.begin()));
 }
