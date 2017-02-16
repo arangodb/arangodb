@@ -1,6 +1,9 @@
 devel
 -----
 
+* Internal javascript rest actions will now hide their stack traces to the client
+  unless maintainer mode is activated. Instead they will always log to the logfile
+
 * Removed undocumented internal HTTP API:
   * PUT _api/edges
   
