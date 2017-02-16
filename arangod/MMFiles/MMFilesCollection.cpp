@@ -31,6 +31,7 @@
 #include "Basics/encoding.h"
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/CollectionLockState.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollectionReadLocker.h"
 #include "MMFiles/MMFilesCollectionWriteLocker.h"
@@ -1393,10 +1394,10 @@ int MMFilesCollection::cleanupIndexes() {
 /// @brief read locks a collection, with a timeout (in µseconds)
 int MMFilesCollection::beginReadTimed(bool useDeadlockDetector,
                                       double timeout) {
-  if (transaction::Methods::_makeNolockHeaders != nullptr) {
-    auto it = transaction::Methods::_makeNolockHeaders->find(
+  if (CollectionLockState::_noLockHeaders != nullptr) {
+    auto it = CollectionLockState::_noLockHeaders->find(
         _logicalCollection->name());
-    if (it != transaction::Methods::_makeNolockHeaders->end()) {
+    if (it != CollectionLockState::_noLockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "BeginReadTimed blocked: " << _name <<
@@ -1493,9 +1494,9 @@ int MMFilesCollection::beginReadTimed(bool useDeadlockDetector,
 /// @brief write locks a collection, with a timeout
 int MMFilesCollection::beginWriteTimed(bool useDeadlockDetector,
                                        double timeout) {
-  if (transaction::Methods::_makeNolockHeaders != nullptr) {
-    auto it = transaction::Methods::_makeNolockHeaders->find(_logicalCollection->name());
-    if (it != transaction::Methods::_makeNolockHeaders->end()) {
+  if (CollectionLockState::_noLockHeaders != nullptr) {
+    auto it = CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
+    if (it != CollectionLockState::_noLockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "BeginWriteTimed blocked: " << _name <<
@@ -1593,9 +1594,9 @@ int MMFilesCollection::beginWriteTimed(bool useDeadlockDetector,
 
 /// @brief read unlocks a collection
 int MMFilesCollection::endRead(bool useDeadlockDetector) {
-  if (transaction::Methods::_makeNolockHeaders != nullptr) {
-    auto it = transaction::Methods::_makeNolockHeaders->find(_logicalCollection->name());
-    if (it != transaction::Methods::_makeNolockHeaders->end()) {
+  if (CollectionLockState::_noLockHeaders != nullptr) {
+    auto it = CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
+    if (it != CollectionLockState::_noLockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "EndRead blocked: " << _name << std::endl;
@@ -1620,9 +1621,9 @@ int MMFilesCollection::endRead(bool useDeadlockDetector) {
 
 /// @brief write unlocks a collection
 int MMFilesCollection::endWrite(bool useDeadlockDetector) {
-  if (transaction::Methods::_makeNolockHeaders != nullptr) {
-    auto it = transaction::Methods::_makeNolockHeaders->find(_logicalCollection->name());
-    if (it != transaction::Methods::_makeNolockHeaders->end()) {
+  if (CollectionLockState::_noLockHeaders != nullptr) {
+    auto it = CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
+    if (it != CollectionLockState::_noLockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "EndWrite blocked: " << _name <<

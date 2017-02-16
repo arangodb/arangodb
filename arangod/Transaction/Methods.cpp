@@ -532,14 +532,6 @@ bool transaction::Methods::findIndexHandleForAndNode(
   return true;
 }
 
-
-/// @brief if this pointer is set to an actual set, then for each request
-/// sent to a shardId using the ClusterComm library, an X-Arango-Nolock
-/// header is generated.
-thread_local std::unordered_set<std::string>* transaction::Methods::_makeNolockHeaders =
-    nullptr;
-  
-      
 transaction::Methods::Methods(std::shared_ptr<TransactionContext> transactionContext)
     : _hints(),
       _state(nullptr),

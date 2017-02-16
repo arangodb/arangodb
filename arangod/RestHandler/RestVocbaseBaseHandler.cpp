@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Meta/conversion.h"
+#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -633,7 +634,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
   if (found) {
     _nolockHeaderSet =
         new std::unordered_set<std::string>{std::string(shardId)};
-    transaction::Methods::_makeNolockHeaders = _nolockHeaderSet;
+    CollectionLockState::_noLockHeaders = _nolockHeaderSet;
   }
 }
 
@@ -643,7 +644,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
 
 void RestVocbaseBaseHandler::finalizeExecute() {
   if (_nolockHeaderSet != nullptr) {
-    transaction::Methods::_makeNolockHeaders = nullptr;
+    CollectionLockState::_noLockHeaders = nullptr;
     delete _nolockHeaderSet;
     _nolockHeaderSet = nullptr;
   }

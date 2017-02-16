@@ -23,6 +23,7 @@
 
 #include "MMFilesTransactionCollection.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/CollectionLockState.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -319,10 +320,10 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (transaction::Methods::_makeNolockHeaders != nullptr) {
+  if (CollectionLockState::_noLockHeaders != nullptr) {
     std::string collName(_collection->name());
-    auto it = transaction::Methods::_makeNolockHeaders->find(collName);
-    if (it != transaction::Methods::_makeNolockHeaders->end()) {
+    auto it = CollectionLockState::_noLockHeaders->find(collName);
+    if (it != CollectionLockState::_noLockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "LockCollection blocked: " << collName << std::endl;
@@ -371,10 +372,10 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (transaction::Methods::_makeNolockHeaders != nullptr) {
+  if (CollectionLockState::_noLockHeaders != nullptr) {
     std::string collName(_collection->name());
-    auto it = transaction::Methods::_makeNolockHeaders->find(collName);
-    if (it != transaction::Methods::_makeNolockHeaders->end()) {
+    auto it = CollectionLockState::_noLockHeaders->find(collName);
+    if (it != CollectionLockState::_noLockHeaders->end()) {
       // do not lock by command
       // LOCKING-DEBUG
       // std::cout << "UnlockCollection blocked: " << collName << std::endl;
