@@ -162,13 +162,6 @@ class MMFilesCollection final : public PhysicalCollection {
   /// @brief report extra memory used by indexes etc.
   size_t memory() const override;
 
-  //void preventCompaction() override;
-  //bool tryPreventCompaction() override;
-  //void allowCompaction() override;
-  //void lockForCompaction() override;
-  //bool tryLockForCompaction() override;
-  //void finishCompaction() override;
-
   void preventCompaction();
   bool tryPreventCompaction();
   void allowCompaction();
