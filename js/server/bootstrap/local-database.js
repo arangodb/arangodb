@@ -44,13 +44,6 @@
   delete global.UPGRADE_STARTED;
   delete global.UPGRADE_ARGS;
 
-  // set-up foxx routes for this database
-  if (result) {
-    internal.loadStartup('server/bootstrap/foxxes.js').foxx();
-  } else {
-    console.error("cannot initialize database '%s', upgrade script failed", db._name());
-  }
-
   // expire database cache
   try {
     global.KEY_SET('queue-control', 'databases-expire', 0);

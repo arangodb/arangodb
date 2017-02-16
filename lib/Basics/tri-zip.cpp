@@ -371,6 +371,51 @@ int TRI_ZipFile(char const* filename, char const* dir,
   return res;
 }
 
+uint32_t TRI_Adler32(char const* filename) {
+  int fd;
+
+  fd = TRI_OPEN(filename, O_RDONLY);
+  if (fd < 0) {
+    return 0;
+  }
+  TRI_DEFER(TRI_CLOSE(fd));
+
+  struct TRI_STAT statbuf;
+  TRI_FSTAT(fd, &statbuf);
+
+  TRI_write_t nRead;
+  TRI_read_t chunkRemain = statbuf.st_size;
+  char* buf =
+      static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 131072, false));
+
+  if (buf == nullptr) {
+    return 0;
+  }
+
+  uLong adler = adler32(0L, Z_NULL, 0);
+  while (chunkRemain > 0) {
+    TRI_read_t readChunk;
+    if (chunkRemain > 131072) {
+      readChunk = 131072;
+    } else {
+      readChunk = chunkRemain;
+    }
+
+    nRead = TRI_READ(fd, buf, readChunk);
+    adler = adler32(adler, reinterpret_cast<const unsigned char *>(buf), nRead);
+
+    if (nRead < 1) {
+      return TRI_ERROR_INTERNAL;
+    }
+
+    chunkRemain -= nRead;
+  }
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, buf);
+
+  return (uint32_t) adler;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////

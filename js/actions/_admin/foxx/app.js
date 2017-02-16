@@ -101,8 +101,8 @@ actions.defineHttp({
     callback: function (body) {
       var mount = body.mount;
       var options = body.options || {};
-
-      return foxxManager.uninstall(mount, options).simpleJSON();
+      foxxManager.uninstall(mount, options);
+      return {mount};
     }
   })
 });

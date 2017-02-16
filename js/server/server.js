@@ -54,11 +54,6 @@
    restServer = options["server.rest-server"];
   }
 
-  // load all foxxes
-  if (internal.threadNumber === 0 && restServer) {
-    internal.loadStartup('server/bootstrap/foxxes.js').foxxes();
-  }
-
   // autoload all modules
   internal.loadStartup('server/bootstrap/autoload.js').startup();
 
@@ -67,8 +62,16 @@
     internal.loadStartup('server/bootstrap/routing.js').startup();
   }
 
-  // start the queue manager once
-  if (internal.threadNumber === 0) {
+  // This script is also used by agents. Coords use a different script.
+  // Make sure we only run these commands in single-server mode.
+  if (internal.threadNumber === 0 && global.ArangoServerState.role() === 'SINGLE') {
+    if (restServer) {
+      // startup the foxx manager once
+      require('@arangodb/foxx/manager')._startup(true);
+      require('@arangodb/foxx/manager')._selfHeal(true);
+    }
+
+    // start the queue manager once
     require('@arangodb/foxx/queues/manager').run();
   }
 

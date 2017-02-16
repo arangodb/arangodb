@@ -1,6 +1,6 @@
 'use strict';
 const joi = require('joi');
-const fmu = require('@arangodb/foxx/manager-utils');
+const configTypes = require('@arangodb/foxx/manifest').configTypes;
 
 exports.mount = joi.string().regex(/(?:\/[-_0-9a-z]+)+/i).required()
 .description(`Mount path relative to the database root`);
@@ -27,7 +27,7 @@ exports.fullInfo = exports.shortInfo.keys({
 exports.configs = joi.object().pattern(/.+/, joi.object({
   value: joi.any().optional().description(`Current value of the configuration option`),
   default: joi.any().optional().description(`Default value of the configuration option`),
-  type: joi.only(Object.keys(fmu.parameterTypes)).default('string').description(`Type of the configuration option`),
+  type: joi.only(Object.keys(configTypes)).default('string').description(`Type of the configuration option`),
   description: joi.string().optional().description(`Human-readable description of the configuration option`),
   required: joi.boolean().default(true).description(`Whether the configuration option is required`)
 }).required().description(`Configuration option`)).required();

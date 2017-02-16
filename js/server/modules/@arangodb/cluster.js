@@ -1634,7 +1634,7 @@ var shardList = function (dbName, collectionName) {
 // / @brief wait for a distributed response
 // /////////////////////////////////////////////////////////////////////////////
 
-var waitForDistributedResponse = function (data, numberOfRequests) {
+var waitForDistributedResponse = function (data, numberOfRequests, ignoreHttpErrors) {
   var received = [];
   try {
     while (received.length < numberOfRequests) {
@@ -1655,8 +1655,9 @@ var waitForDistributedResponse = function (data, numberOfRequests) {
 
         if (result.headers && result.headers.hasOwnProperty('x-arango-response-code')) {
           var code = parseInt(result.headers['x-arango-response-code'].substr(0, 3), 10);
+          result.statusCode = code;
 
-          if (code >= 400) {
+          if (code >= 400 && !ignoreHttpErrors) {
             var body;
 
             try {

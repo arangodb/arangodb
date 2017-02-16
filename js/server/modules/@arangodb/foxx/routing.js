@@ -29,6 +29,8 @@ const fs = require('fs');
 const ansiHtml = require('ansi-html');
 const dd = require('@arangodb/util').dedent;
 const arangodb = require('@arangodb');
+const ArangoError = arangodb.ArangoError;
+const errors = arangodb.errors;
 const actions = require('@arangodb/actions');
 const routeLegacyService = require('@arangodb/foxx/legacy/routing').routeService;
 const codeFrame = require('@arangodb/util').codeFrame;
@@ -213,19 +215,27 @@ function createBrokenServiceRoute (service, err) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.routeService = function (service, throwOnErrors) {
-  if (service.needsConfiguration()) {
-    return {
-      exports: service.main.exports,
-      routes: createServiceNeedsConfigurationRoute(service),
-      docs: null
-    };
-  }
-
-  if (!service.isDevelopment && service.main.loaded) {
+  if (service.main.loaded && !service.isDevelopment) {
     return {
       exports: service.main.exports,
       routes: service.routes,
       docs: service.legacy ? null : service.docs
+    };
+  }
+
+  if (service.needsConfiguration()) {
+    return {
+      get exports () {
+        if (!throwOnErrors) {
+          return service.main.exports;
+        }
+        throw new ArangoError({
+          errorNum: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.code,
+          errorMessage: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.message
+        });
+      },
+      routes: createServiceNeedsConfigurationRoute(service),
+      docs: null
     };
   }
 

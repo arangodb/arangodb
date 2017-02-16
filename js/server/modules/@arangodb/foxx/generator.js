@@ -23,11 +23,15 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
+const dd = require('dedent');
 const fs = require('fs');
 const inflect = require('i')();
 const assert = require('assert');
 const internal = require('internal');
 const pluck = require('@arangodb/util').pluck;
+const arangodb = require('@arangodb');
+const ArangoError = arangodb.ArangoError;
+const errors = arangodb.errors;
 
 const template = (filename) => _.template(
   fs.read(fs.join(
@@ -56,6 +60,37 @@ const TEMPLATES = [
 }, {readme: template('README.md')});
 
 exports.generate = function (opts) {
+  var invalidOptions = [];
+  // Set default values:
+  opts.documentCollections = opts.documentCollections || [];
+  opts.edgeCollections = opts.edgeCollections || [];
+  if (typeof opts.name !== 'string') {
+    invalidOptions.push('name has to be a string.');
+  }
+  if (typeof opts.author !== 'string') {
+    invalidOptions.push('author has to be a string.');
+  }
+  if (typeof opts.description !== 'string') {
+    invalidOptions.push('description has to be a string.');
+  }
+  if (typeof opts.license !== 'string') {
+    invalidOptions.push('license has to be a string.');
+  }
+  if (!Array.isArray(opts.documentCollections)) {
+    invalidOptions.push('documentCollections has to be an array.');
+  }
+  if (!Array.isArray(opts.edgeCollections)) {
+    invalidOptions.push('edgeCollections has to be an array.');
+  }
+  if (invalidOptions.length > 0) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_INVALID_FOXX_OPTIONS.code,
+      errorMessage: dd`
+        ${errors.ERROR_INVALID_FOXX_OPTIONS.message}
+        Options: ${JSON.stringify(invalidOptions, undefined, 2)}
+      `
+    });
+  }
   const dcNames = generateNames(opts.documentCollections);
   const ecNames = generateNames(opts.edgeCollections);
   const files = [];

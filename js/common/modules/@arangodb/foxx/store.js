@@ -333,7 +333,7 @@ var update = function () {
     updateFishbowlFromZip(filename);
 
     filename = undefined;
-  } catch (err) {
+  } catch (e) {
     if (filename !== undefined && fs.exists(filename)) {
       fs.remove(filename);
     }
@@ -342,7 +342,10 @@ var update = function () {
       fs.removeDirectoryRecursive(path);
     } catch (ignore) {}
 
-    throw err;
+    throw Object.assign(
+      new Error('Failed to update Foxx store'),
+      {cause: e}
+    );
   }
 };
 
@@ -375,8 +378,6 @@ var available = function (matchEngine) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var infoJson = function (name) {
-  utils.validateServiceName(name);
-
   var fishbowl = getFishbowlStorage();
 
   if (fishbowl.count() === 0) {

@@ -35,6 +35,8 @@ const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
 const fmUtils = require('@arangodb/foxx/manager-utils');
 const createRouter = require('@arangodb/foxx/router');
+const joinPath = require('path').join;
+const posix = require('path').posix;
 
 const DEFAULT_THUMBNAIL = module.context.fileName('default-thumbnail.png');
 
@@ -54,13 +56,11 @@ router.use((req, res, next) => {
 })
 .header('authorization', joi.string().optional(), 'ArangoDB credentials.');
 
-
 const foxxRouter = createRouter();
 router.use(foxxRouter)
 .queryParam('mount', joi.string().required(), dd`
   The mount point of the service. Has to be url-encoded.
 `);
-
 
 const installer = createRouter();
 foxxRouter.use(installer)
@@ -76,130 +76,161 @@ foxxRouter.use(installer)
   Triggers teardown and setup.
 `);
 
-
-installer.use(function (req, res, next) {
-  const mount = decodeURIComponent(req.queryParams.mount);
-  const upgrade = req.queryParams.upgrade;
-  const replace = req.queryParams.replace;
-  next();
-  let appInfo, options;
-  if (typeof req.body === 'object') {
-    appInfo = 'EMPTY';
-    options = req.body;
-  } else {
-    appInfo = req.body;
-    options = {};
-  }
-  options.legacy = req.queryParams.legacy;
-  let service;
-  try {
-    if (upgrade) {
-      service = FoxxManager.upgrade(appInfo, mount, options);
-    } else if (replace) {
-      service = FoxxManager.replace(appInfo, mount, options);
+if (FoxxManager.isFoxxmaster()) {
+  installer.use(function (req, res, next) {
+    const mount = decodeURIComponent(req.queryParams.mount);
+    const upgrade = req.queryParams.upgrade;
+    const replace = req.queryParams.replace;
+    next();
+    let appInfo, options;
+    if (
+      typeof req.body === 'object' &&
+      !(req.body instanceof Buffer)
+    ) {
+      appInfo = 'EMPTY';
+      options = req.body;
     } else {
-      service = FoxxManager.install(appInfo, mount, options);
+      appInfo = req.body;
+      options = {};
     }
-  } catch (e) {
-    if (e.isArangoError && [
-      errors.ERROR_MODULE_FAILURE.code,
-      errors.ERROR_MALFORMED_MANIFEST_FILE.code,
-      errors.ERROR_INVALID_SERVICE_MANIFEST.code
-    ].indexOf(e.errorNum) !== -1) {
-      res.throw('bad request', e);
+    options.legacy = req.queryParams.legacy;
+    let service;
+    try {
+      if (upgrade) {
+        service = FoxxManager.upgrade(appInfo, mount, options);
+      } else if (replace) {
+        service = FoxxManager.replace(appInfo, mount, options);
+      } else {
+        service = FoxxManager.install(appInfo, mount, options);
+      }
+    } catch (e) {
+      if (e.isArangoError && [
+        errors.ERROR_MODULE_FAILURE.code,
+        errors.ERROR_MALFORMED_MANIFEST_FILE.code,
+        errors.ERROR_INVALID_SERVICE_MANIFEST.code
+      ].indexOf(e.errorNum) !== -1) {
+        res.throw('bad request', e);
+      }
+      if (
+        e.isArangoError &&
+        e.errorNum === errors.ERROR_SERVICE_NOT_FOUND.code
+      ) {
+        res.throw('not found', e);
+      }
+      if (
+        e.isArangoError &&
+        e.errorNum === errors.ERROR_SERVICE_MOUNTPOINT_CONFLICT.code
+      ) {
+        res.throw('conflict', e);
+      }
+      throw e;
     }
-    if (
-      e.isArangoError &&
-      e.errorNum === errors.ERROR_SERVICE_NOT_FOUND.code
-    ) {
-      res.throw('not found', e);
-    }
-    if (
-      e.isArangoError &&
-      e.errorNum === errors.ERROR_SERVICE_MOUNTPOINT_CONFLICT.code
-    ) {
-      res.throw('conflict', e);
-    }
-    throw e;
-  }
-  const configuration = FoxxManager.configuration(mount);
-  res.json(Object.assign(
-    {error: false, configuration},
-    service.simpleJSON()
-  ));
-});
-
-
-installer.put('/store', function (req) {
-  req.body = `${req.body.name}:${req.body.version}`;
-})
-.body(joi.object({
-  name: joi.string().required(),
-  version: joi.string().required()
-}).required(), 'A Foxx service from the store.')
-.summary('Install a Foxx from the store')
-.description(dd`
-  Downloads a Foxx from the store and installs it at the given mount.
-`);
-
-
-installer.put('/git', function (req) {
-  req.body = `git:${req.body.url}:${req.body.version}`;
-})
-.body(joi.object({
-  url: joi.string().required(),
-  version: joi.string().default('master')
-}).required(), 'A GitHub reference.')
-.summary('Install a Foxx from Github')
-.description(dd`
-  Install a Foxx with user/repository and version.
-`);
-
-
-installer.put('/generate', () => {})
-.body(joi.object().required(), 'A Foxx generator configuration.')
-.summary('Generate a new foxx')
-.description(dd`
-  Generate a new empty foxx on the given mount point.
-`);
-
-
-installer.put('/zip', function (req) {
-  req.body = req.body.zipFile;
-})
-.body(joi.object({
-  zipFile: joi.string().required()
-}).required(), 'A zip file path.')
-.summary('Install a Foxx from temporary zip file')
-.description(dd`
-  Install a Foxx from the given zip path.
-  This path has to be created via _api/upload.
-`);
-
-
-foxxRouter.delete('/', function (req, res) {
-  const mount = decodeURIComponent(req.queryParams.mount);
-  const runTeardown = req.queryParams.teardown;
-  const service = FoxxManager.uninstall(mount, {
-    teardown: runTeardown,
-    force: true
+    const configuration = service.getConfiguration();
+    res.json(Object.assign(
+      {error: false, configuration},
+      service.simpleJSON()
+    ));
   });
-  res.json(Object.assign(
-    {error: false},
-    service.simpleJSON()
-  ));
-})
-.queryParam('teardown', joi.boolean().default(true))
-.summary('Uninstall a Foxx')
-.description(dd`
-  Uninstall the Foxx at the given mount-point.
-`);
 
+  installer.put('/store', function (req) {
+    req.body = `${req.body.name}:${req.body.version}`;
+  })
+  .body(joi.object({
+    name: joi.string().required(),
+    version: joi.string().required()
+  }).required(), 'A Foxx service from the store.')
+  .summary('Install a Foxx from the store')
+  .description(dd`
+    Downloads a Foxx from the store and installs it at the given mount.
+  `);
+
+  installer.put('/git', function (req) {
+    req.body = `git:${req.body.url}:${req.body.version}`;
+  })
+  .body(joi.object({
+    url: joi.string().required(),
+    version: joi.string().default('master')
+  }).required(), 'A GitHub reference.')
+  .summary('Install a Foxx from Github')
+  .description(dd`
+    Install a Foxx with user/repository and version.
+  `);
+
+  installer.put('/generate', () => {})
+  .body(joi.object().required(), 'A Foxx generator configuration.')
+  .summary('Generate a new foxx')
+  .description(dd`
+    Generate a new empty foxx on the given mount point.
+  `);
+
+  installer.put('/zip', function (req) {
+    req.body = req.body.zipFile;
+    console.log(req._url.pathname);
+  })
+  .body(joi.object({
+    zipFile: joi.string().required()
+  }).required(), 'A zip file path.')
+  .summary('Install a Foxx from temporary zip file')
+  .description(dd`
+    Install a Foxx from the given zip path.
+    This path has to be created via _api/upload.
+  `);
+
+  installer.put('/bundle', function (req) {
+    req.body = req.rawBody;
+  })
+  .summary('Install a Foxx from zip file')
+  .description(dd`
+    Install a Foxx from a given zip bundle.
+  `);
+
+  foxxRouter.delete('/', function (req, res) {
+    const mount = decodeURIComponent(req.queryParams.mount);
+    const runTeardown = req.queryParams.teardown;
+    const service = FoxxManager.uninstall(mount, {
+      teardown: runTeardown,
+      force: true
+    });
+    res.json(Object.assign(
+      {error: false},
+      service.simpleJSON()
+    ));
+  })
+  .queryParam('teardown', joi.boolean().default(true))
+  .summary('Uninstall a Foxx')
+  .description(dd`
+    Uninstall the Foxx at the given mount-point.
+  `);
+} else {
+  installer.put('/store', FoxxManager.proxyToFoxxmaster);
+  installer.put('/git', FoxxManager.proxyToFoxxmaster);
+  installer.put('/generate', FoxxManager.proxyToFoxxmaster);
+  installer.put('/zip', (req, res) => {
+    const zipData = fs.readFileSync(joinPath(fs.getTempPath(), req.body.zipFile));
+    FoxxManager.proxyToFoxxmaster({
+      method: req.method,
+      rawBody: zipData,
+      headers: Object.assign({}, req.headers, {
+        'content-length': zipData.length
+      }),
+      _url: {
+        pathname: posix.resolve(req._url.pathname, '../bundle'),
+        search: req._url.search
+      }
+    }, res);
+  })
+  .body(joi.object({
+    zipFile: joi.string().required()
+  }).required(), 'A zip file path.');
+  installer.put('/bundle', FoxxManager.proxyToFoxxmaster);
+  foxxRouter.delete('/', FoxxManager.proxyToFoxxmaster);
+}
 
 router.get('/', function (req, res) {
   const foxxes = FoxxManager.listJson();
   foxxes.forEach((foxx) => {
-    const readme = FoxxManager.readme(foxx.mount);
+    const service = FoxxManager.lookupService(foxx.mount);
+    const readme = service.readme;
     if (readme) {
       foxx.readme = marked(readme, {
         highlight: (code) => highlightAuto(code).value
@@ -213,7 +244,6 @@ router.get('/', function (req, res) {
   Get a List of all running foxxes.
 `);
 
-
 foxxRouter.get('/thumbnail', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
   const service = FoxxManager.lookupService(mount);
@@ -224,34 +254,20 @@ foxxRouter.get('/thumbnail', function (req, res) {
   Request the thumbnail of the given Foxx in order to display it on the screen.
 `);
 
-
 foxxRouter.get('/config', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
-  res.json(FoxxManager.configuration(mount));
+  const service = FoxxManager.lookupService(mount);
+  res.json(service.getConfiguration());
 })
 .summary('Get the configuration for a service')
 .description(dd`
   Used to request the configuration options for services.
 `);
 
-
-foxxRouter.patch('/config', function (req, res) {
-  const mount = decodeURIComponent(req.queryParams.mount);
-  const configuration = req.body;
-  const service = FoxxManager.lookupService(mount);
-  FoxxManager.setConfiguration(mount, {configuration, replace: !service.isDevelopment});
-  res.json(FoxxManager.configuration(mount));
-})
-.body(joi.object().optional(), 'Configuration to apply.')
-.summary('Set the configuration for a service')
-.description(dd`
-  Used to overwrite the configuration options for services.
-`);
-
-
 foxxRouter.get('/deps', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
-  const deps = FoxxManager.dependencies(mount);
+  const service = FoxxManager.lookupService(mount);
+  const deps = service.getDependencies();
   for (const key of Object.keys(deps)) {
     const dep = deps[key];
     deps[key] = {
@@ -269,20 +285,36 @@ foxxRouter.get('/deps', function (req, res) {
   Used to request the dependencies options for services.
 `);
 
+if (FoxxManager.isFoxxmaster()) {
+  foxxRouter.patch('/config', function (req, res) {
+    const mount = decodeURIComponent(req.queryParams.mount);
+    const configuration = req.body;
+    const service = FoxxManager.lookupService(mount);
+    FoxxManager.setConfiguration(mount, {configuration, replace: !service.isDevelopment});
+    res.json(service.getConfiguration());
+  })
+  .body(joi.object().optional(), 'Configuration to apply.')
+  .summary('Set the configuration for a service')
+  .description(dd`
+    Used to overwrite the configuration options for services.
+  `);
 
-foxxRouter.patch('/deps', function (req, res) {
-  const mount = decodeURIComponent(req.queryParams.mount);
-  const dependencies = req.body;
-  const service = FoxxManager.lookupService(mount);
-  FoxxManager.setDependencies(mount, {dependencies, replace: !service.isDevelopment});
-  res.json(FoxxManager.dependencies(mount));
-})
-.body(joi.object().optional(), 'Dependency options to apply.')
-.summary('Set the dependencies for a service')
-.description(dd`
-  Used to overwrite the dependencies options for services.
-`);
-
+  foxxRouter.patch('/deps', function (req, res) {
+    const mount = decodeURIComponent(req.queryParams.mount);
+    const dependencies = req.body;
+    const service = FoxxManager.lookupService(mount);
+    FoxxManager.setDependencies(mount, {dependencies, replace: !service.isDevelopment});
+    res.json(service.getDependencies());
+  })
+  .body(joi.object().optional(), 'Dependency options to apply.')
+  .summary('Set the dependencies for a service')
+  .description(dd`
+    Used to overwrite the dependencies options for services.
+  `);
+} else {
+  foxxRouter.patch('/config', FoxxManager.proxyToFoxxmaster);
+  foxxRouter.patch('/deps', FoxxManager.proxyToFoxxmaster);
+}
 
 foxxRouter.post('/tests', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
@@ -293,7 +325,6 @@ foxxRouter.post('/tests', function (req, res) {
 .description(dd`
   Used to run the tests of a service.
 `);
-
 
 foxxRouter.post('/scripts/:name', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
@@ -311,7 +342,6 @@ foxxRouter.post('/scripts/:name', function (req, res) {
   Used to trigger any script of a service.
 `);
 
-
 foxxRouter.patch('/devel', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
   const activate = Boolean(req.body);
@@ -322,7 +352,6 @@ foxxRouter.patch('/devel', function (req, res) {
 .description(dd`
   Used to toggle between production and development mode.
 `);
-
 
 router.get('/fishbowl', function (req, res) {
   try {
@@ -337,7 +366,6 @@ router.get('/fishbowl', function (req, res) {
   This function contacts the fishbowl and reports which services are available for install.
 `);
 
-
 router.post('/download/nonce', function (req, res) {
   const nonce = crypto.createNonce();
   res.status('created');
@@ -348,7 +376,6 @@ router.post('/download/nonce', function (req, res) {
 .description(dd`
   Creates a cryptographic nonce that can be used to download the service without authentication.
 `);
-
 
 anonymousRouter.get('/download/zip', function (req, res) {
   const nonce = decodeURIComponent(req.queryParams.nonce);

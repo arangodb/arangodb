@@ -60,6 +60,14 @@ module.exports =
 
     set headers (headers) {
       this._raw.headers = headers;
+      if (!headers) {
+        return;
+      }
+      for (const name of Object.keys(headers)) {
+        if (name.toLowerCase() === 'content-type') {
+          this._raw.contentType = headers[name];
+        }
+      }
     }
 
     get statusCode () {
