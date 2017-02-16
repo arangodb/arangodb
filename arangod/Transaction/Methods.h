@@ -565,10 +565,6 @@ class Methods {
     std::string name;
   }
   _collectionCache;
-  
- public:
-  /// @brief makeNolockHeaders
-  static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
 };
 
 }
