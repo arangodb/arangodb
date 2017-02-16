@@ -61,6 +61,8 @@
 #include "VocBase/transaction.h"
 #include "Wal/LogfileManager.h"
 
+#include <thread>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -476,9 +478,37 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   state = DROP_EXIT;
   std::string const colName(collection->name());
     
-  WRITE_LOCKER(writeLocker, _collectionsLock);
+  // do not acquire these locks instantly
+  CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock, false);
+  CONDITIONAL_WRITE_LOCKER(locker, collection->_lock, false);
 
-  WRITE_LOCKER_EVENTUAL(locker, collection->_lock, 1000);
+  while (true) {
+    TRI_ASSERT(!writeLocker.isLocked());
+    TRI_ASSERT(!locker.isLocked());
+
+    // block until we have acquired this lock
+    writeLocker.lock();
+    // we now have the one lock
+
+    TRI_ASSERT(writeLocker.isLocked());
+
+    if (locker.tryLock()) {
+      // we now have both locks and can continue outside of this loop
+      break;
+    }
+
+    // unlock the write locker so we don't block other operations
+    writeLocker.unlock();
+    
+    TRI_ASSERT(!writeLocker.isLocked());
+    TRI_ASSERT(!locker.isLocked());
+
+    // sleep for a while
+    std::this_thread::yield();
+  }
+
+  TRI_ASSERT(writeLocker.isLocked());
+  TRI_ASSERT(locker.isLocked());
 
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
