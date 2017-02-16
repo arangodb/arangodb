@@ -742,7 +742,7 @@ int transaction::Methods::begin() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return _state->beginTransaction(_hints, _state->nestingLevel());
+  return _state->beginTransaction(_hints);
 }
   
 /// @brief commit / finish the transaction
@@ -759,7 +759,7 @@ int transaction::Methods::commit() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return _state->commitTransaction(this, _state->nestingLevel());
+  return _state->commitTransaction(this);
 }
   
 /// @brief abort the transaction
@@ -777,7 +777,7 @@ int transaction::Methods::abort() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return _state->abortTransaction(this, _state->nestingLevel());
+  return _state->abortTransaction(this);
 }
   
 /// @brief finish a transaction (commit or abort), based on the previous state

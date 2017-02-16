@@ -125,13 +125,13 @@ class TransactionState {
   void setHint(transaction::Hints::Hint hint) { _hints.set(hint); }
 
   /// @brief begin a transaction
-  virtual int beginTransaction(transaction::Hints hints, int nestingLevel) = 0;
+  virtual int beginTransaction(transaction::Hints hints) = 0;
 
   /// @brief commit a transaction
-  virtual int commitTransaction(transaction::Methods* trx, int nestingLevel) = 0;
+  virtual int commitTransaction(transaction::Methods* trx) = 0;
 
   /// @brief abort a transaction
-  virtual int abortTransaction(transaction::Methods* trx, int nestingLevel) = 0;
+  virtual int abortTransaction(transaction::Methods* trx) = 0;
 
   virtual bool hasFailedOperations() const = 0;
 

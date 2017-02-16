@@ -549,6 +549,9 @@ class Methods {
 
   /// @brief the transaction context
   std::shared_ptr<TransactionContext> _transactionContext;
+  
+  /// @brief pointer to transaction context (faster than shared ptr)
+  TransactionContext* const _transactionContextPtr;
 
   /// @brief cache for last handed out DocumentDitch
   struct {
@@ -563,9 +566,6 @@ class Methods {
   }
   _collectionCache;
   
-  /// @brief pointer to transaction context (faster than shared ptr)
-  TransactionContext* const _transactionContextPtr;
-
  public:
   /// @brief makeNolockHeaders
   static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
