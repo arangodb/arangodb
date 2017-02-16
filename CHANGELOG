@@ -1,6 +1,9 @@
 v3.1.11 (2017-02-14)
 --------------------
 
+* fixed a race between connection closing and sending out last chunks of data to clients
+  when the "Connection: close" HTTP header was set in requests
+
 * ui: optimized smart graph creation usability
 
 * ui: fixed #2308
