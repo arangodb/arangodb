@@ -72,20 +72,21 @@ function SynchronousReplicationSuite () {
     cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
     var count = 0;
-    while (++count <= 180) {
+    var replicas;
+    while (++count <= 10) {
       ccinfo = shards.map(
         s => global.ArangoClusterInfo.getCollectionInfoCurrent(database, cn, s)
       );
-      let replicas = ccinfo.map(s => s.servers.length);
-      if (_.every(replicas, x => x === 2)) {
+      replicas = ccinfo.map(s => s.servers.length);
+      if (replicas.every(x => x > 1)) {
         console.info("Replication up and running!");
         return true;
-      }
+      }  
       console.info("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       wait(0.5);
       global.ArangoClusterInfo.flush();
     }
-    console.error(global.ArangoAgency.read([["/"]]));
+    console.error("Replication did not finish");
     return false;
   }
 
