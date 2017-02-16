@@ -37,7 +37,7 @@ AggregatorHandler::~AggregatorHandler() {
   _values.clear();
 }
 
-IAggregator* AggregatorHandler::_get(AggregatorID const& name) {
+IAggregator* AggregatorHandler::getAggregator(AggregatorID const& name) {
   {
     READ_LOCKER(guard, _lock);
     auto it = _values.find(name);
@@ -59,46 +59,57 @@ IAggregator* AggregatorHandler::_get(AggregatorID const& name) {
 
 void AggregatorHandler::aggregate(AggregatorID const& name,
                                   const void* valuePtr) {
-  IAggregator* agg = _get(name);
+  IAggregator* agg = getAggregator(name);
   if (agg) {
     agg->aggregate(valuePtr);
-  }
-}
-
-const void* AggregatorHandler::getAggregatedValue(AggregatorID const& name) {
-  IAggregator* agg = _get(name);
-  return agg != nullptr ? agg->getValue() : nullptr;
-}
-
-void AggregatorHandler::resetValues(bool force) {
-  for (auto& it : _values) {
-    it.second->reset(force);
   }
 }
 
 void AggregatorHandler::aggregateValues(AggregatorHandler const& workerValues) {
   for (auto const& pair : workerValues._values) {
     AggregatorID const& name = pair.first;
-    IAggregator* agg = _get(name);
+    IAggregator* agg = getAggregator(name);
     if (agg) {
-      agg->aggregate(pair.second->getValue());
+      agg->aggregate(pair.second->getAggregatedValue());
     }
   }
 }
 
-bool AggregatorHandler::parseValues(VPackSlice data) {
-  VPackSlice values = data.get(Utils::aggregatorValuesKey);
-  if (values.isObject() == false) {
-    return false;
-  }
-  for (auto const& keyValue : VPackObjectIterator(values)) {
-    AggregatorID name = keyValue.key.copyString();
-    IAggregator* agg = _get(name);
-    if (agg) {
-      agg->parse(keyValue.value);
+void AggregatorHandler::aggregateValues(VPackSlice  const& workerValues) {
+  VPackSlice values = workerValues.get(Utils::aggregatorValuesKey);
+  if (values.isObject()) {
+    for (auto const& keyValue : VPackObjectIterator(values)) {
+      AggregatorID name = keyValue.key.copyString();
+      IAggregator* agg = getAggregator(name);
+      if (agg) {
+        agg->parseAggregate(keyValue.value);
+      }
     }
   }
-  return true;
+}
+
+void AggregatorHandler::setAggregatedValues(VPackSlice const& workerValues) {
+  VPackSlice values = workerValues.get(Utils::aggregatorValuesKey);
+  if (values.isObject()) {
+    for (auto const& keyValue : VPackObjectIterator(values)) {
+      AggregatorID name = keyValue.key.copyString();
+      IAggregator* agg = getAggregator(name);
+      if (agg) {
+        agg->setAggregatedValue(keyValue.value);
+      }
+    }
+  }
+}
+
+const void* AggregatorHandler::getAggregatedValue(AggregatorID const& name) {
+  IAggregator* agg = getAggregator(name);
+  return agg != nullptr ? agg->getAggregatedValue() : nullptr;
+}
+
+void AggregatorHandler::resetValues() {
+  for (auto& it : _values) {
+    it.second->reset();
+  }
 }
 
 bool AggregatorHandler::serializeValues(VPackBuilder& b,
@@ -107,9 +118,10 @@ bool AggregatorHandler::serializeValues(VPackBuilder& b,
   bool hasValues = false;
   b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
   for (auto const& pair : _values) {
+    AggregatorID const& name = pair.first;
     IAggregator* agg = pair.second;
     if (!onlyConverging || agg->isConverging()) {
-      b.add(pair.first, agg->vpackValue());
+      agg->serialize(name, b);
       hasValues = true;
     }
   }

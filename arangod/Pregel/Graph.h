@@ -157,4 +157,23 @@ class VertexEntry {
 };*/
 }
 }
+/*
+namespace std {
+  template <>
+  struct hash<arangodb::pregel::PregelID> {
+    std::size_t operator()(const PregelID& k) const {
+      using std::size_t;
+      using std::hash;
+      using std::string;
+      
+      // Compute individual hash values for first,
+      // second and third and combine them using XOR
+      // and bit shifting:
+      std::size_t h1 = std::hash<string>()(k.key);
+      std::size_t h2 = std::hash<prgl_shard_t>()(k.shard);
+      return h1 ^ (h2 << 1);
+    }
+  };
+}*/
+
 #endif

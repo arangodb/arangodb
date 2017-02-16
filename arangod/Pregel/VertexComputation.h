@@ -37,7 +37,7 @@ namespace pregel {
 
 template <typename V, typename E, typename M>
 class Worker;
-class Aggregator;
+class IAggregator;
 
 template <typename V, typename E, typename M>
 class VertexContext {
@@ -47,8 +47,8 @@ class VertexContext {
   uint64_t _lss = 0;
   WorkerContext* _context;
   GraphStore<V, E>* _graphStore;
-  AggregatorHandler* _conductorAggregators;
-  AggregatorHandler* _workerAggregators;
+  AggregatorHandler* _readAggregators;
+  AggregatorHandler* _writeAggregators;
   VertexEntry* _vertexEntry;
 
  public:
@@ -57,12 +57,16 @@ class VertexContext {
   template <typename T>
   inline void aggregate(std::string const& name, T const& value) {
     T const* ptr = &value;
-    _workerAggregators->aggregate(name, ptr);
+    _writeAggregators->aggregate(name, ptr);
   }
 
   template <typename T>
   inline const T* getAggregatedValue(std::string const& name) {
-    return (const T*)_conductorAggregators->getAggregatedValue(name);
+    return (const T*)_readAggregators->getAggregatedValue(name);
+  }
+  
+  IAggregator* getAggregator(std::string const& name) {
+    return _writeAggregators->getAggregator(name);
   }
 
   inline WorkerContext const* context() { return _context; }

@@ -201,8 +201,8 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
 
   // initialize worker context
   if (_workerContext && gss == 0 && _config.localSuperstep() == 0) {
-    _workerContext->_conductorAggregators = _conductorAggregators.get();
-    _workerContext->_workerAggregators = _workerAggregators.get();
+    _workerContext->_readAggregators = _conductorAggregators.get();
+    _workerContext->_writeAggregators = _workerAggregators.get();
     _workerContext->_vertexCount = data.get(Utils::vertexCountKey).getUInt();
     _workerContext->_edgeCount = data.get(Utils::edgeCountKey).getUInt();
     _workerContext->preApplication();
@@ -295,9 +295,8 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Wrong GSS");
   }
 
-  _workerAggregators->resetValues(true);
-  _conductorAggregators->resetValues(true);
-  _conductorAggregators->parseValues(data);
+  _workerAggregators->resetValues();
+  _conductorAggregators->setAggregatedValues(data);
   // execute context
   if (_workerContext) {
     _workerContext->_vertexCount = data.get(Utils::vertexCountKey).getUInt();
@@ -359,7 +358,7 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
   ctx->_lss = _config.localSuperstep();
   ctx->_context = _workerContext.get();
   ctx->_graphStore = _graphStore.get();
-  ctx->_conductorAggregators = _conductorAggregators.get();
+  ctx->_readAggregators = _conductorAggregators.get();
 }
 
 // internally called in a WORKER THREAD!!
@@ -381,7 +380,7 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
   std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
       _algorithm->createComputation(&_config));
   _initializeVertexContext(vertexComputation.get());
-  vertexComputation->_workerAggregators = &workerAggregator;
+  vertexComputation->_writeAggregators = &workerAggregator;
   vertexComputation->_cache = outCache;
   if (!_config.asynchronousMode()) {
     // Should cause enterNextGlobalSuperstep to do nothing
@@ -531,13 +530,15 @@ void Worker<V, E, M>::_finishedProcessing() {
   }
 
   if (_config.asynchronousMode()) {
-    bool proceed = true;
+    bool proceed = false;
     // if the conductor is unreachable or has send data (try to) proceed
     std::unique_ptr<ClusterCommResult> result = _callConductorWithResponse(
         Utils::finishedWorkerStepPath, package.slice());
     if (result->status == CL_COMM_RECEIVED) {
       VPackSlice data = result->answer->payload();
-      if ((proceed = _conductorAggregators->parseValues(data))) {
+      if (data.isObject()) {
+        proceed = true;
+        _conductorAggregators->aggregateValues(data);// only aggregate values
         VPackSlice nextGSS = data.get(Utils::enterNextGSSKey);
         if (nextGSS.isBool()) {
           _requestedNextGSS = nextGSS.getBool();
@@ -643,8 +644,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
 
   _workerAggregators->resetValues();
-  _conductorAggregators->resetValues();
-  _conductorAggregators->parseValues(data);
+  _conductorAggregators->setAggregatedValues(data);
 
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this] {
@@ -657,7 +657,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     std::unique_ptr<VertexCompensation<V, E, M>> vCompensate(
         _algorithm->createCompensation(&_config));
     _initializeVertexContext(vCompensate.get());
-    vCompensate->_workerAggregators = _workerAggregators.get();
+    vCompensate->_writeAggregators = _workerAggregators.get();
 
     size_t i = 0;
     for (VertexEntry* vertexEntry : vertexIterator) {

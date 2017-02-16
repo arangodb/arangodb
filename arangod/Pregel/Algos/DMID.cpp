@@ -29,6 +29,7 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
+#include "Pregel/Algos/DMID/VertexSumAggregator.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -115,7 +116,7 @@ struct DMIDComputation
       superstep4(vertex, messages);
     }
     
-    if (getSuperstep() == rwFinished +1) {
+    if (globalSuperstep() == rwFinished +1) {
       /**
        * Superstep 0 and RW_ITERATIONBOUND + 5 are identical. Therefore
        * call superstep0
@@ -123,38 +124,36 @@ struct DMIDComputation
       superstep0(vertex, messages);
     }
     
-    if (getSuperstep() == rwFinished+2) {
+    if (globalSuperstep() == rwFinished+2) {
       superstep6(vertex, messages);
     }
     
-    if (getSuperstep() == rwFinished + 3) {
+    if (globalSuperstep() == rwFinished + 3) {
       superstep7(vertex, messages);
       
     }
     
-    LongWritable iterationCounter = getAggregatedValue(ITERATION_AGG);
-    double it = iterationCounter.get();
+    int64_t iterationCounter = getAggregatedValue<int64_t>(ITERATION_AGG);
     
     if (getSuperstep() >= rwFinished +4
-        && (it % 3 == 1 )) {
-      superstep8(vertex, messages);
+        && (iterationCounter % 3 == 1 )) {
+      superstep8(messages);
     }
     if (getSuperstep() >= rwFinished +5
-        && (it % 3 == 2 )) {
-      superstep9(vertex, messages);
+        && (iterationCounter % 3 == 2 )) {
+      superstep9(messages);
     }
     if (getSuperstep() >= rwFinished +6
-        && (it % 3 == 0 )) {
-      superstep10(vertex, messages);
+        && (iterationCounter % 3 == 0 )) {
+      superstep10(messages);
     }
   }
       
-      
+     /**
       * SUPERSTEP 0: send a message along all outgoing edges. Message contains
       * own VertexID and the edge weight.
       */
-      private void superstep0(
-                              Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex,
+      void superstep0(Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex,
                               Iterable<LongDoubleMessage> messages) {
         
         long vertexID = vertex.getId().get();
@@ -171,7 +170,7 @@ struct DMIDComputation
        * the form (ID,weightedInDegree) along all incoming edges (send every node
        * a reply)
        */
-      private void superstep1(
+      void superstep1(
                               Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex,
                               Iterable<LongDoubleMessage> messages) {
         
@@ -208,7 +207,7 @@ struct DMIDComputation
        * Save the column as a part of the vertexValue. Aggregate DA with value 1/N
        * to initialize the Random Walk.
        */
-      private void superstep2(
+      void superstep2(
                               Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex,
                               Iterable<LongDoubleMessage> messages) {
         
@@ -264,7 +263,7 @@ struct DMIDComputation
        * SUPERSTEP 3 - RW_ITERATIONBOUND+3: Calculate entry DA^(t+1)_ownID using
        * DA^t and disCol. Save entry in the DA aggregator.
        */
-      private void superstepRW(
+      void superstepRW(
                                Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex,
                                Iterable<LongDoubleMessage> messages) {
         
@@ -614,10 +613,6 @@ struct DMIDValueMasterContext : public MasterContext {
   DMIDValueMasterContext() {}  // TODO use _threashold
   void preGlobalSuperstep() override {
     
-  };
-  
-  @Override
-  public void compute() {
     /**
      * setAggregatorValue sets the value for the aggregator after master
      * compute, before starting vertex compute of the same superstep. Does
@@ -625,31 +620,26 @@ struct DMIDValueMasterContext : public MasterContext {
      */
     
     
-    LongWritable iterCount = getAggregatedValue(DMIDComputation.ITERATION_AGG);
-    
-    boolean hasCascadingStarted = false;
-    LongWritable newIterCount = new LongWritable((iterCount.get() + 1));
-    
-    
-    if (iterCount.get() != 0) {
+    int64_t* iterCount = getAggregatedValue<int64_t>(ITERATION_AGG);
+    int64_t newIterCount = *iterCount + 1;
+    bool hasCascadingStarted = false;
+    if (*iterCount != 0) {
       /** Cascading behavior started increment the iteration count */
-      setAggregatedValue(DMIDComputation.ITERATION_AGG, newIterCount);
+      aggregateValue<int64_t>(ITERATION_AGG, newIterCount);
       hasCascadingStarted = true;
     }
     
-    if (getSuperstep() ==  DMIDComputation.RW_ITERATIONBOUND+ 8) {
-      setAggregatedValue(DMIDComputation.NEW_MEMBER_AGG,
-                         new BooleanWritable(false));
-      setAggregatedValue(DMIDComputation.NOT_ALL_ASSIGNED_AGG,
-                         new BooleanWritable(true));
-      setAggregatedValue(DMIDComputation.ITERATION_AGG, new LongWritable(1));
+    if (getSuperstep() ==  RW_ITERATIONBOUND+ 8) {
+      aggregateValue<bool>(NEW_MEMBER_AGG, false);
+      aggregateValue<bool>(NOT_ALL_ASSIGNED_AGG, true);
+      aggregateValue<int64_t>(ITERATION_AGG, 1);
       hasCascadingStarted = true;
       initializeGL();
     }
-    if (hasCascadingStarted && (newIterCount.get() % 3 == 1)) {
+    if (hasCascadingStarted && (newIterCount % 3 == 1)) {
       /** first step of one iteration */
-      LongWritable restartCountWritable = getAggregatedValue(RESTART_COUNTER_AGG);
-      Long restartCount=restartCountWritable.get();
+      int64_t* restartCountWritable = getAggregatedValue<int64_t>(RESTART_COUNTER_AGG);
+      Long restartCount = restartCountWritable.get();
       BooleanWritable newMember = getAggregatedValue(DMIDComputation.NEW_MEMBER_AGG);
       BooleanWritable notAllAssigned = getAggregatedValue(DMIDComputation.NOT_ALL_ASSIGNED_AGG);
       
@@ -672,17 +662,15 @@ struct DMIDValueMasterContext : public MasterContext {
       
     }
     
-    if (hasCascadingStarted && (iterCount.get() % 3 == 2)) {
+    if (hasCascadingStarted && (*iterCount % 3 == 2)) {
       /** Second step of one iteration */
       /**
        * Set newMember aggregator and notAllAssigned aggregator back to
        * initial value
        */
       
-      setAggregatedValue(DMIDComputation.NEW_MEMBER_AGG,
-                         new BooleanWritable(false));
-      setAggregatedValue(DMIDComputation.NOT_ALL_ASSIGNED_AGG,
-                         new BooleanWritable(false));
+      setAggregatedValue<bool>(NEW_MEMBER_AGG, false);
+      setAggregatedValue<bool>(NOT_ALL_ASSIGNED_AGG, false);
     }
     
     if (LOG_AGGS) {
@@ -719,10 +707,10 @@ struct DMIDValueMasterContext : public MasterContext {
    * Initilizes the global leader aggregator with 1 for every vertex with a
    * higher number of followers than the average.
    */
-  private void initializeGL() {
+  void initializeGL() {
     DoubleSparseVector initGL = new DoubleSparseVector(
                                                        (int) getTotalNumVertices());
-    DoubleSparseVector vecFD = getAggregatedValue(DMIDComputation.FD_AGG);
+    VertexSumAggregator::VertexMap const* vecFD = getAggregatedValue<VertexSumAggregator::VertexMap>(FD_AGG);
     
     double averageFD = 0.0;
     int numLocalLeader = 0;
@@ -740,7 +728,7 @@ struct DMIDValueMasterContext : public MasterContext {
     if (LOG_AGGS) {
       System.out.print("Global Leader:");
     }
-    for (int i = 0; i < getTotalNumVertices(); ++i) {
+    for (int i = 0; i < vertexCount(); ++i) {
       if (vecFD.get(i) > averageFD) {
         initGL.set(i, 1.0);
         if (LOG_AGGS) {
@@ -768,43 +756,24 @@ MasterContext* SCC::masterContext(VPackSlice userParams) const {
 
 IAggregator* SCC::aggregator(std::string const& name) const {
   if (name == DA_AGG) {  // permanent value
-    return new ValueAggregator<uint32_t>(SCCPhase::TRANSPOSE, true);
-  } else if (name == kFoundNewMax) {
-    return new BoolOrAggregator(false);  // non perm
-  } else if (name == kConverged) {
-    return new BoolOrAggregator(false);  // non perm
+    return new VertexSumAggregator(false);// non perm
+  } else if (name == LS_AGG) {
+    return new VertexSumAggregator(true);// perm
+  } else if (name == FD_AGG) {
+    return new VertexSumAggregator(true);// perm
+  } else if (name == GL_AGG) {
+    return new VertexSumAggregator(true);// perm
+  } else if (name == NEW_MEMBER_AGG) {
+    return new BooleanOrAggregator(false); // non perm
+  } else if (name == NOT_ALL_ASSIGNED_AGG) {
+    return new BooleanOrAggregator(false); // non perm
+  } else if (name == ITERATION_AGG) {
+    return new MaxAggregator<int64_t>(0, true); // perm
+  } else if (name == PROFITABILITY_AGG) {
+    return new MaxAggregator<double>(0.5, true); // perm
+  } else if (name == RESTART_COUNTER_AGG) {
+    return new MaxAggregator<int64_t>(1, true); // perm
   }
-  
-  registerAggregator(DMIDComputation.DA_AGG,
-                     DoubleDenseVectorSumAggregator.class);
-		registerPersistentAggregator(DMIDComputation.LS_AGG,
-                                 DoubleDenseVectorSumAggregator.class);
-		registerPersistentAggregator(DMIDComputation.FD_AGG,
-                                 DoubleSparseVectorSumAggregator.class);
-		registerPersistentAggregator(DMIDComputation.GL_AGG,
-                                 DoubleSparseVectorSumAggregator.class);
-  
-		registerAggregator(DMIDComputation.NEW_MEMBER_AGG,
-                       BooleanOrAggregator.class);
-		registerAggregator(DMIDComputation.NOT_ALL_ASSIGNED_AGG,
-                       BooleanOrAggregator.class);
-  
-		registerPersistentAggregator(DMIDComputation.ITERATION_AGG,
-                                 LongMaxAggregator.class);
-  
-		registerPersistentAggregator(DMIDComputation.PROFITABILITY_AGG,
-                                 DoubleMaxAggregator.class);
-		registerPersistentAggregator(RESTART_COUNTER_AGG,
-                                 LongMaxAggregator.class);
-		//registerAggregator(DMIDComputation.RW_INFINITYNORM_AGG,
-    //	DoubleMaxAggregator.class);
-    //registerAggregator(DMIDComputation.RW_FINISHED_AGG,
-				//LongMaxAggregator.class);
-  
-		setAggregatedValue(DMIDComputation.PROFITABILITY_AGG,
-                       new DoubleWritable(0.5));
-		setAggregatedValue(RESTART_COUNTER_AGG, new LongWritable(1));
-  setAggregatedValue(DMIDComputation.ITERATION_AGG, new LongWritable(0));
   
   return nullptr;
 }

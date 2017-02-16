@@ -51,9 +51,12 @@ struct LineRank : public SimpleAlgorithm<float, float, float> {
   MessageCombiner<float>* messageCombiner() const override {
     return new SumCombiner<float>();
   }
+  
+  WorkerContext* workerContext(VPackSlice params) const override;
 
   VertexComputation<float, float, float>* createComputation(
       WorkerConfig const*) const override;
+  
   IAggregator* aggregator(std::string const& name) const override;
 };
 }

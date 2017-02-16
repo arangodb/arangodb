@@ -43,14 +43,18 @@ class IAggregator {
   IAggregator() {}
   virtual ~IAggregator() {}
 
-  /// @brief Value from superstep S-1 supplied by the conductor
+  /// @brief Used when updating aggregator value locally
   virtual void aggregate(void const* valuePtr) = 0;
+  /// @brief Used when updating aggregator value from remote
+  virtual void parseAggregate(VPackSlice const& slice) = 0;
+  
+  virtual void const* getAggregatedValue() const = 0;
+  /// @brief Value from superstep S-1 supplied by the conductor
+  virtual void setAggregatedValue(VPackSlice const& slice) = 0;
+  
+  virtual void serialize(std::string const& key, VPackBuilder &builder) const = 0;
 
-  virtual void const* getValue() const = 0;
-  virtual VPackValue vpackValue() const = 0;
-  virtual void parse(VPackSlice slice) = 0;
-
-  virtual void reset(bool force) = 0;
+  virtual void reset() = 0;
   virtual bool isConverging() const = 0;
 };
 
@@ -58,26 +62,34 @@ template <typename T>
 struct NumberAggregator : public IAggregator {
   static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
 
-  NumberAggregator(T init, bool perm = false, bool conv = false)
-      : _value(init), _initial(init), _permanent(perm), _converging(conv) {}
-
-  void const* getValue() const override { return &_value; };
-  VPackValue vpackValue() const override { return VPackValue(_value); };
-  void parse(VPackSlice slice) override {
+  NumberAggregator(T neutral, bool perm = false, bool conv = false)
+      : _value(neutral), _neutral(neutral), _permanent(perm), _converging(conv) {}
+  
+  void parseAggregate(VPackSlice const& slice) override {
     T f = slice.getNumber<T>();
     aggregate((void const*)(&f));
+  };
+  
+  void const* getAggregatedValue() const override { return &_value; };
+  
+  void setAggregatedValue(VPackSlice const& slice) override {
+    _value = slice.getNumber<T>();
   }
+  
+  void serialize(std::string const& key, VPackBuilder &builder) const override {
+    builder.add(key, VPackValue(_value));
+  };
 
-  void reset(bool force) override {
-    if (!_permanent || force) {
-      _value = _initial;
+  void reset() override {
+    if (!_permanent) {
+      _value = _neutral;
     }
   }
 
   bool isConverging() const override { return _converging; }
 
  protected:
-  T _value, _initial;
+  T _value, _neutral;
   bool _permanent, _converging;
 };
 
@@ -109,36 +121,46 @@ struct SumAggregator : public NumberAggregator<T> {
   void aggregate(void const* valuePtr) override {
     this->_value += *((T*)valuePtr);
   };
-  void parse(VPackSlice slice) override {
+  void parseAggregate(VPackSlice const& slice) override {
     this->_value += slice.getNumber<T>();
   }
 };
 
+/// Aggregator that stores a value that is overwritten once another value is aggregated.
+/// This aggregator is useful for one-to-many communication from master.compute() or from a special vertex.
+/// In case multiple vertices write to this aggregator, its behavior is non-deterministic.
 template <typename T>
-struct ValueAggregator : public NumberAggregator<T> {
-  ValueAggregator(T val, bool perm = false)
+struct OverwriteAggregator : public NumberAggregator<T> {
+  OverwriteAggregator(T val, bool perm = false)
       : NumberAggregator<T>(val, perm, true) {}
 
   void aggregate(void const* valuePtr) override {
     this->_value = *((T*)valuePtr);
   };
-  void parse(VPackSlice slice) override { this->_value = slice.getNumber<T>(); }
+  void parseAggregate(VPackSlice const& slice) override { this->_value = slice.getNumber<T>(); }
 };
 
 /// always initializes to true.
 struct BoolOrAggregator : public IAggregator {
   BoolOrAggregator(bool perm = false) : _permanent(perm) {}
-
-  void const* getValue() const override { return &_value; };
-  VPackValue vpackValue() const override { return VPackValue(_value); };
-
+  
   void aggregate(void const* valuePtr) override {
     _value = _value || *((bool*)valuePtr);
   };
-  void parse(VPackSlice slice) override { _value = _value || slice.getBool(); }
+  
+  void parseAggregate(VPackSlice const& slice) override { _value = _value || slice.getBool(); }
+  
+  void const* getAggregatedValue() const override { return &_value; };
+  void setAggregatedValue(VPackSlice const& slice) override {
+    _value = slice.getBool();
+  }
+  
+  void serialize(std::string const& key, VPackBuilder &builder) const override {
+    builder.add(key, VPackValue(_value));
+  };
 
-  void reset(bool force) override {
-    if (!_permanent || force) {
+  void reset() override {
+    if (!_permanent) {
       _value = false;
     }
   }

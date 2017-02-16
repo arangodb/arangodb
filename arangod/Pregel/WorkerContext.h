@@ -37,19 +37,19 @@ class WorkerContext {
   friend class Worker;
 
   uint64_t _vertexCount, _edgeCount;
-  AggregatorHandler* _conductorAggregators;
-  AggregatorHandler* _workerAggregators;
+  AggregatorHandler* _readAggregators;
+  AggregatorHandler* _writeAggregators;
 
  protected:
   template <typename T>
   inline void aggregate(std::string const& name, T const& value) {
     T const* ptr = &value;
-    _workerAggregators->aggregate(name, ptr);
+    _writeAggregators->aggregate(name, ptr);
   }
 
   template <typename T>
   inline const T* getAggregatedValue(std::string const& name) {
-    return (T*)_conductorAggregators->getAggregatedValue(name);
+    return (T*)_readAggregators->getAggregatedValue(name);
   }
 
   virtual void preApplication(){};
@@ -58,7 +58,7 @@ class WorkerContext {
   virtual void postApplication(){};
 
  public:
-  WorkerContext(VPackSlice params) {}
+  WorkerContext() {}
   virtual ~WorkerContext() {}
 
   inline uint64_t vertexCount() const { return _vertexCount; }

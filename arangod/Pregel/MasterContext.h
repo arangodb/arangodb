@@ -77,6 +77,7 @@ class MasterContext {
 
   /// Called when a worker send updated aggregator values.
   /// Only called in async mode, never called after a global superstep
+  /// Can be used to decide to enter the next phase
   virtual void postLocalSuperstep(){};
 
   /// should indicate if compensation is supposed to start by returning true

@@ -27,6 +27,7 @@
 #include "Pregel/MasterContext.h"
 #include "Pregel/Utils.h"
 #include "Pregel/VertexComputation.h"
+#include "Pregel/WorkerContext.h"
 
 #include "Cluster/ClusterInfo.h"
 #include "Utils/OperationCursor.h"
@@ -49,16 +50,29 @@ LineRank::LineRank(arangodb::velocypack::Slice params)
   //_threshold = t.isNumber() ? t.getNumber<float>() : 0.000002f;
 }
 
+struct LRWorkerContext : WorkerContext {
+  float startAtNodeProb = 0;
+  
+  void preApplication() override {
+    startAtNodeProb = 1.0f / edgeCount();
+  };
+};
+
+WorkerContext* LineRank::workerContext(VPackSlice params) const {
+  return new LRWorkerContext();
+}
+
 // github.com/JananiC/NetworkCentralities/blob/master/src/main/java/linerank/LineRank.java
 struct LRComputation : public VertexComputation<float, float, float> {
   LRComputation() {}
   void compute(MessageIterator<float> const& messages) override {
-    float startAtNodeProb = 1.0f / context()->edgeCount();
+    LRWorkerContext *ctx = (LRWorkerContext *)context();
+    
     float* vertexValue = mutableVertexData();
     RangeIterator<Edge<float>> edges = getEdges();
 
     if (*vertexValue < 0.0f) {
-      *vertexValue = startAtNodeProb;
+      *vertexValue = ctx->startAtNodeProb;
       aggregate(kMoreIterations, true);
     } else {
       float newScore = 0.0f;
@@ -76,7 +90,7 @@ struct LRComputation : public VertexComputation<float, float, float> {
         } else {
           newScore /= edges.size();
           newScore =
-              startAtNodeProb * RESTART_PROB + newScore * (1.0 - RESTART_PROB);
+              ctx->startAtNodeProb * RESTART_PROB + newScore * (1.0 - RESTART_PROB);
         }
 
         float diff = fabsf(newScore - *vertexValue);
@@ -91,6 +105,8 @@ struct LRComputation : public VertexComputation<float, float, float> {
   }
 };
 
+
+
 VertexComputation<float, float, float>* LineRank::createComputation(
     WorkerConfig const* config) const {
   return new LRComputation();
@@ -98,7 +114,7 @@ VertexComputation<float, float, float>* LineRank::createComputation(
 
 IAggregator* LineRank::aggregator(std::string const& name) const {
   if (name == kMoreIterations) {
-    return new ValueAggregator<bool>(false, false);  // non perm
+    return new OverwriteAggregator<bool>(false, false);  // non perm
   }
   return nullptr;
 }

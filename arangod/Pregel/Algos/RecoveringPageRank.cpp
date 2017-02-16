@@ -87,9 +87,9 @@ IAggregator* RecoveringPageRank::aggregator(std::string const& name) const {
   } else if (name == kRank) {
     return new SumAggregator<float>(0);
   } else if (name == kStep) {
-    return new ValueAggregator<uint32_t>(0);
+    return new OverwriteAggregator<uint32_t>(0);
   } else if (name == kScale) {
-    return new ValueAggregator<float>(-1);
+    return new OverwriteAggregator<float>(-1);
   }
   return nullptr;
 }

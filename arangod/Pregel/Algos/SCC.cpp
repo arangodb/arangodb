@@ -237,7 +237,7 @@ MasterContext* SCC::masterContext(VPackSlice userParams) const {
 
 IAggregator* SCC::aggregator(std::string const& name) const {
   if (name == kPhase) {  // permanent value
-    return new ValueAggregator<uint32_t>(SCCPhase::TRANSPOSE, true);
+    return new OverwriteAggregator<uint32_t>(SCCPhase::TRANSPOSE, true);
   } else if (name == kFoundNewMax) {
     return new BoolOrAggregator(false);  // non perm
   } else if (name == kConverged) {

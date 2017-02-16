@@ -142,7 +142,7 @@ bool Conductor::_startGlobalStep() {
   _totalEdgesCount = 0;
   for (auto const& req : requests) {
     VPackSlice payload = req.result.answer->payload();
-    _aggregators->parseValues(payload);
+    _aggregators->aggregateValues(payload);
     _statistics.accumulateActiveCounts(payload);
     _totalVerticesCount += payload.get(Utils::vertexCountKey).getUInt();
     _totalEdgesCount += payload.get(Utils::edgeCountKey).getUInt();
@@ -267,17 +267,16 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   } else if (_statistics.clientCount() < _dbServers.size() ||  // no messages
              !_statistics.allMessagesProcessed()) {  // haven't received msgs
     VPackBuilder response;
-    if (_aggregators->parseValues(data)) {
-      if (_masterContext) {
-        _masterContext->postLocalSuperstep();
-      }
-      response.openObject();
-      _aggregators->serializeValues(response);
-      if (_masterContext && _masterContext->_enterNextGSS) {
-        response.add(Utils::enterNextGSSKey, VPackValue(true));
-      }
-      response.close();
+    _aggregators->aggregateValues(data);
+    if (_masterContext) {
+      _masterContext->postLocalSuperstep();
     }
+    response.openObject();
+    _aggregators->serializeValues(response);
+    if (_masterContext && _masterContext->_enterNextGSS) {
+      response.add(Utils::enterNextGSSKey, VPackValue(true));
+    }
+    response.close();
     return response;
   }
 
@@ -312,7 +311,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
   }
 
   // the recovery mechanism might be gathering state information
-  _aggregators->parseValues(data);
+  _aggregators->aggregateValues(data);
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }

@@ -86,7 +86,7 @@ template <typename V, typename E, typename M>
 struct Algorithm : IAlgorithm {
  public:
   virtual WorkerContext* workerContext(VPackSlice userParams) const {
-    return new WorkerContext(userParams);
+    return new WorkerContext();
   }
   virtual GraphFormat<V, E>* inputFormat() const = 0;
   virtual MessageFormat<M>* messageFormat() const = 0;
