@@ -293,6 +293,13 @@ class ConditionalWriteLocker {
     }
     _isLocked = true;
   }
+    
+  bool tryLock() {
+    if (!_isLocked && _readWriteLock->tryWriteLock()) {
+      _isLocked = true;
+    }
+    return _isLocked;
+  }
 
   /// @brief acquire the write lock, blocking
   void lock() { 
