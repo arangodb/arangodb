@@ -146,17 +146,10 @@ void JobQueue::beginShutdown() {
 
 bool JobQueue::tryQueued() {
   size_t nrIdle = SchedulerFeature::SCHEDULER->nrIdle();
-  // note that incrementing the overall operation is not atomic, but this is not
-  // required here (_queued can be higher for a while)
-  if (_queued < nrIdle) {
-    ++_queued;
-    return true;
-  }
-  return false;
+  return _queued < nrIdle;
 }
 
 void JobQueue::releaseQueued() {
-  TRI_ASSERT(_queued > 0);
   --_queued;
 }
 
