@@ -534,7 +534,7 @@ void Worker<V, E, M>::_finishedProcessing() {
     // if the conductor is unreachable or has send data (try to) proceed
     std::unique_ptr<ClusterCommResult> result = _callConductorWithResponse(
         Utils::finishedWorkerStepPath, package.slice());
-    if (result->status == CL_COMM_RECEIVED) {
+    if (result->status == CL_COMM_SENT || result->status == CL_COMM_RECEIVED) {
       VPackSlice data = result->answer->payload();
       if (data.isObject()) {
         proceed = true;

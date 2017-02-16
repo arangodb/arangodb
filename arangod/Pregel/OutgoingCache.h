@@ -65,8 +65,8 @@ class OutCache {
   size_t _containedMessages = 0;
   size_t _sendCount = 0;
   size_t _sendCountNextGSS = 0;
-  bool shouldFlushCache();
-
+  virtual void _removeContainedMessages() = 0;
+  
  public:
   OutCache(WorkerConfig* state, InCache<M>* cache, InCache<M>* nextGSSCache);
   virtual ~OutCache(){};
@@ -82,7 +82,11 @@ class OutCache {
     }
   }
 
-  virtual void clear() = 0;
+  void clear() {
+    _sendCount = 0;
+    _sendCountNextGSS = 0;
+    _removeContainedMessages();
+  };
   virtual void appendMessage(prgl_shard_t shard, std::string const& key,
                              M const& data) = 0;
   virtual void flushMessages() = 0;
@@ -94,14 +98,15 @@ class ArrayOutCache : public OutCache<M> {
   std::unordered_map<prgl_shard_t,
                      std::unordered_map<std::string, std::vector<M>>>
       _shardMap;
-
+  
+  void _removeContainedMessages() override;
+  
  public:
   ArrayOutCache(WorkerConfig* state, InCache<M>* cache,
                 InCache<M>* nextGSSCache)
       : OutCache<M>(state, cache, nextGSSCache) {}
   ~ArrayOutCache();
 
-  void clear() override;
   void appendMessage(prgl_shard_t shard, std::string const& key,
                      M const& data) override;
   void flushMessages() override;
@@ -114,13 +119,13 @@ class CombiningOutCache : public OutCache<M> {
   /// @brief two stage map: shard -> vertice -> message
   std::unordered_map<prgl_shard_t, std::unordered_map<std::string, M>>
       _shardMap;
+  void _removeContainedMessages() override;
 
  public:
   CombiningOutCache(WorkerConfig* state, CombiningInCache<M>* cache,
                     InCache<M>* nextPhase);
   ~CombiningOutCache();
 
-  void clear() override;
   void appendMessage(prgl_shard_t shard, std::string const& key,
                      M const& data) override;
   void flushMessages() override;

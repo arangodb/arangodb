@@ -486,12 +486,13 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
   //for (auto const& shard : state.localEdgeShardIDs()) {
   //  writeColls.push_back(shard);
   //}
-  std::atomic<size_t> tCount(state.localVertexShardIDs().size());
+  std::atomic<size_t> tCount(0);
   size_t total = _index.size();
-  size_t delta = std::max(10UL, _index.size()/tCount);
+  size_t delta = std::max(10UL, _index.size() / state.localVertexShardIDs().size());
   size_t start = 0, end = delta;
 
   do {
+    tCount++;
     ThreadPool* pool = PregelFeature::instance()->threadPool();
     pool->enqueue([this, start, end, &state, &tCount] {
       try {

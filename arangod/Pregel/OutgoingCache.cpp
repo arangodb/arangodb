@@ -50,12 +50,10 @@ OutCache<M>::OutCache(WorkerConfig* state, InCache<M>* cache,
 // ================= ArrayOutCache ==================
 
 template <typename M>
-ArrayOutCache<M>::~ArrayOutCache() {
-  clear();
-}
+ArrayOutCache<M>::~ArrayOutCache() {}
 
 template <typename M>
-void ArrayOutCache<M>::clear() {
+void ArrayOutCache<M>::_removeContainedMessages() {
   for (auto& pair : _shardMap) {
     pair.second.clear();
   }
@@ -137,7 +135,7 @@ void ArrayOutCache<M>::flushMessages() {
   ClusterComm::instance()->performRequests(requests, 120, nrDone,
                                            LogTopic("Pregel message transfer"));
   Utils::printResponses(requests);
-  this->clear();
+  this->_removeContainedMessages();
 }
 
 // ================= CombiningOutCache ==================
@@ -149,12 +147,10 @@ CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state,
     : OutCache<M>(state, cache, nextPhase), _combiner(cache->combiner()) {}
 
 template <typename M>
-CombiningOutCache<M>::~CombiningOutCache() {
-  clear();
-}
+CombiningOutCache<M>::~CombiningOutCache() {}
 
 template <typename M>
-void CombiningOutCache<M>::clear() {
+void CombiningOutCache<M>::_removeContainedMessages() {
   for (auto& pair : _shardMap) {
     pair.second.clear();
   }
@@ -241,7 +237,7 @@ void CombiningOutCache<M>::flushMessages() {
   ClusterComm::instance()->performRequests(requests, 180, nrDone,
                                            LogTopic("Pregel"));
   Utils::printResponses(requests);
-  this->clear();
+  _removeContainedMessages();
 }
 
 // template types to create

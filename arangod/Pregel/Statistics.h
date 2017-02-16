@@ -101,6 +101,7 @@ struct StatsManager {
     stats.serializeValues(b);
   }
 
+  /// Test if all messages were processed
   bool allMessagesProcessed() {
     uint64_t send = 0, received = 0;
     for (auto const& pair : _serverStats) {
@@ -110,17 +111,14 @@ struct StatsManager {
     return send == received;
   }
 
-  /// tests for convergence
+  /// tests if active count is greater 0
   bool executionFinished() {
-    uint64_t send = 0, received = 0;
-    for (auto const& pair : _serverStats) {
-      send += pair.second.sendCount;
-      received += pair.second.receivedCount;
-      if (_activeStats[pair.first] > 0) {
+    for (auto const& pair : _activeStats) {
+      if (pair.second > 0) {
         return false;
       }
     }
-    return send == received;
+    return true;
   }
 
   void resetActiveCount() {

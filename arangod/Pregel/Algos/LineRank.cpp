@@ -42,7 +42,7 @@ using namespace arangodb::pregel::algos;
 
 static std::string const kMoreIterations = "more";
 static const double RESTART_PROB = 0.15;
-static const double EPS = 0.000000001;
+static const double EPS = 0.000001;
 
 LineRank::LineRank(arangodb::velocypack::Slice params)
     : SimpleAlgorithm("LineRank", params) {
@@ -73,7 +73,7 @@ struct LRComputation : public VertexComputation<float, float, float> {
 
     if (*vertexValue < 0.0f) {
       *vertexValue = ctx->startAtNodeProb;
-      aggregate(kMoreIterations, true);
+      aggregate<bool>(kMoreIterations, true);
     } else {
       float newScore = 0.0f;
       for (const float* msg : messages) {
@@ -114,7 +114,7 @@ VertexComputation<float, float, float>* LineRank::createComputation(
 
 IAggregator* LineRank::aggregator(std::string const& name) const {
   if (name == kMoreIterations) {
-    return new OverwriteAggregator<bool>(false, false);  // non perm
+    return new BoolOrAggregator(false);  // non perm
   }
   return nullptr;
 }
