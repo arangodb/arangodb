@@ -26,6 +26,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/Timers.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
@@ -1983,7 +1984,8 @@ void MMFilesCollection::truncate(transaction::Methods* trx, OperationOptions& op
     if (vpack != nullptr) {
       builder->clear();
       VPackSlice oldDoc(vpack);
-      _logicalCollection->newObjectForRemove(trx, oldDoc, TRI_RidToString(oldRevisionId), *builder.get());
+      newObjectForRemove(trx, oldDoc, TRI_RidToString(oldRevisionId),
+                         *builder.get());
       TRI_voc_rid_t revisionId = TRI_HybridLogicalClock();
 
       int res = removeFastPath(trx, oldRevisionId, VPackSlice(vpack), options,
@@ -2000,10 +2002,61 @@ void MMFilesCollection::truncate(transaction::Methods* trx, OperationOptions& op
 }
 
 int MMFilesCollection::insert(transaction::Methods* trx,
-                              VPackSlice const newSlice,
+                              VPackSlice const slice,
                               ManagedDocumentResult& result,
                               OperationOptions& options,
                               TRI_voc_tick_t& resultMarkerTick, bool lock) {
+  VPackSlice fromSlice;
+  VPackSlice toSlice;
+
+  bool const isEdgeCollection =
+      (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
+
+  if (isEdgeCollection) {
+    // _from:
+    fromSlice = slice.get(StaticStrings::FromString);
+    if (!fromSlice.isString()) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    VPackValueLength len;
+    char const* docId = fromSlice.getString(len);
+    size_t split;
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
+                                            &split)) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    // _to:
+    toSlice = slice.get(StaticStrings::ToString);
+    if (!toSlice.isString()) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    docId = toSlice.getString(len);
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
+                                            &split)) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+  }
+
+
+  transaction::BuilderLeaser builder(trx);
+  VPackSlice newSlice;
+  int res = TRI_ERROR_NO_ERROR;
+  if (options.recoveryMarker == nullptr) {
+    TIMER_START(TRANSACTION_NEW_OBJECT_FOR_INSERT);
+    res = newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
+                             *builder.get(), options.isRestore);
+    TIMER_STOP(TRANSACTION_NEW_OBJECT_FOR_INSERT);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    newSlice = builder->slice();
+  } else {
+    TRI_ASSERT(slice.isObject());
+    // we can get away with the fast hash function here, as key values are
+    // restricted to strings
+    newSlice = slice;
+  }
+
   // create marker
   MMFilesCrudMarker insertMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
@@ -2052,7 +2105,7 @@ int MMFilesCollection::insert(transaction::Methods* trx,
     return TRI_ERROR_INTERNAL;
   }
 
-  int res = TRI_ERROR_NO_ERROR;
+  res = TRI_ERROR_NO_ERROR;
   {
     // use lock?
     bool const useDeadlockDetector =
@@ -2598,9 +2651,11 @@ int MMFilesCollection::remove(arangodb::transaction::Methods* trx, VPackSlice co
                               OperationOptions& options,
                               TRI_voc_tick_t& resultMarkerTick, bool lock,
                               TRI_voc_rid_t const& revisionId,
-                              TRI_voc_rid_t& prevRev,
-                              VPackSlice const toRemove) {
+                              TRI_voc_rid_t& prevRev) {
   prevRev = 0;
+
+  transaction::BuilderLeaser builder(trx);
+  newObjectForRemove(trx, slice, TRI_RidToString(revisionId), *builder.get());
 
   TRI_IF_FAILURE("RemoveDocumentNoMarker") {
     // test what happens when no marker can be created
@@ -2616,7 +2671,7 @@ int MMFilesCollection::remove(arangodb::transaction::Methods* trx, VPackSlice co
   MMFilesCrudMarker removeMarker(
       TRI_DF_MARKER_VPACK_REMOVE,
       static_cast<MMFilesTransactionState*>(trx->state())->idForMarker(),
-      toRemove);
+      builder->slice());
 
   MMFilesWalMarker const* marker;
   if (options.recoveryMarker == nullptr) {

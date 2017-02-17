@@ -1474,59 +1474,8 @@ int LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
                               OperationOptions& options,
                               TRI_voc_tick_t& resultMarkerTick, bool lock) {
   resultMarkerTick = 0;
-  VPackSlice fromSlice;
-  VPackSlice toSlice;
-
-  bool const isEdgeCollection = (_type == TRI_COL_TYPE_EDGE);
-
-  if (isEdgeCollection) {
-    // _from:
-    fromSlice = slice.get(StaticStrings::FromString);
-    if (!fromSlice.isString()) {
-      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
-    }
-    VPackValueLength len;
-    char const* docId = fromSlice.getString(len);
-    size_t split;
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
-                                            &split)) {
-      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
-    }
-    // _to:
-    toSlice = slice.get(StaticStrings::ToString);
-    if (!toSlice.isString()) {
-      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
-    }
-    docId = toSlice.getString(len);
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
-                                            &split)) {
-      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
-    }
-  }
-
-  transaction::BuilderLeaser builder(trx);
-  VPackSlice newSlice;
-  int res = TRI_ERROR_NO_ERROR;
-  if (options.recoveryMarker == nullptr) {
-    TIMER_START(TRANSACTION_NEW_OBJECT_FOR_INSERT);
-    res = newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
-                             *builder.get(), options.isRestore);
-    TIMER_STOP(TRANSACTION_NEW_OBJECT_FOR_INSERT);
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-    newSlice = builder->slice();
-  } else {
-    TRI_ASSERT(slice.isObject());
-    // we can get away with the fast hash function here, as key values are
-    // restricted to strings
-    newSlice = slice;
-  }
-
-  res = getPhysical()->insert(trx, newSlice, result, options, resultMarkerTick,
-                              lock);
-
-  return res;
+  return getPhysical()->insert(trx, slice, result, options, resultMarkerTick,
+                               lock);
 }
 
 /// @brief updates a document or edge in a collection
@@ -1652,11 +1601,8 @@ int LogicalCollection::remove(transaction::Methods* trx,
     revisionId = TRI_HybridLogicalClock();
   }
 
-  transaction::BuilderLeaser builder(trx);
-  newObjectForRemove(trx, slice, TRI_RidToString(revisionId), *builder.get());
-
   return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick,
-                               lock, revisionId, prevRev, builder->slice());
+                               lock, revisionId, prevRev);
 }
 
 void LogicalCollection::sizeHint(transaction::Methods* trx, int64_t hint) {
@@ -1669,111 +1615,6 @@ void LogicalCollection::sizeHint(transaction::Methods* trx, int64_t hint) {
   if (res != TRI_ERROR_NO_ERROR) {
     return;
   }
-}
-
-/// @brief new object for insert, computes the hash of the key
-int LogicalCollection::newObjectForInsert(
-    transaction::Methods* trx, VPackSlice const& value, VPackSlice const& fromSlice,
-    VPackSlice const& toSlice, bool isEdgeCollection, VPackBuilder& builder,
-    bool isRestore) {
-  TRI_voc_tick_t newRev = 0;
-  builder.openObject();
-
-  // add system attributes first, in this order:
-  // _key, _id, _from, _to, _rev
-
-  // _key
-  VPackSlice s = value.get(StaticStrings::KeyString);
-  if (s.isNone()) {
-    TRI_ASSERT(!isRestore);  // need key in case of restore
-    newRev = TRI_HybridLogicalClock();
-    std::string keyString = _keyGenerator->generate(TRI_NewTickServer());
-    if (keyString.empty()) {
-      return TRI_ERROR_ARANGO_OUT_OF_KEYS;
-    }
-    uint8_t* where =
-        builder.add(StaticStrings::KeyString, VPackValue(keyString));
-    s = VPackSlice(where);  // point to newly built value, the string
-  } else if (!s.isString()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-  } else {
-    std::string keyString = s.copyString();
-    int res = _keyGenerator->validate(keyString, isRestore);
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-    builder.add(StaticStrings::KeyString, s);
-  }
-
-  // _id
-  uint8_t* p = builder.add(StaticStrings::IdString,
-                           VPackValuePair(9ULL, VPackValueType::Custom));
-  *p++ = 0xf3;  // custom type for _id
-  if (trx->state()->isDBServer() && !_isSystem) {
-    // db server in cluster, note: the local collections _statistics,
-    // _statisticsRaw and _statistics15 (which are the only system
-    // collections)
-    // must not be treated as shards but as local collections
-    encoding::storeNumber<uint64_t>(p, _planId, sizeof(uint64_t));
-  } else {
-    // local server
-    encoding::storeNumber<uint64_t>(p, _cid, sizeof(uint64_t));
-  }
-
-  // _from and _to
-  if (isEdgeCollection) {
-    TRI_ASSERT(!fromSlice.isNone());
-    TRI_ASSERT(!toSlice.isNone());
-    builder.add(StaticStrings::FromString, fromSlice);
-    builder.add(StaticStrings::ToString, toSlice);
-  }
-
-  // _rev
-  std::string newRevSt;
-  if (isRestore) {
-    VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(value);
-    if (!oldRev.isString()) {
-      return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
-    }
-    bool isOld;
-    VPackValueLength l;
-    char const* p = oldRev.getString(l);
-    TRI_voc_rid_t oldRevision = TRI_StringToRid(p, l, isOld, false);
-    if (isOld || oldRevision == UINT64_MAX) {
-      oldRevision = TRI_HybridLogicalClock();
-    }
-    newRevSt = TRI_RidToString(oldRevision);
-  } else {
-    if (newRev == 0) {
-      newRev = TRI_HybridLogicalClock();
-    }
-    newRevSt = TRI_RidToString(newRev);
-  }
-  builder.add(StaticStrings::RevString, VPackValue(newRevSt));
-
-  // add other attributes after the system attributes
-  TRI_SanitizeObjectWithEdges(value, builder);
-
-  builder.close();
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief new object for remove, must have _key set
-void LogicalCollection::newObjectForRemove(transaction::Methods* trx,
-                                           VPackSlice const& oldValue,
-                                           std::string const& rev,
-                                           VPackBuilder& builder) {
-  // create an object consisting of _key and _rev (in this order)
-  builder.openObject();
-  if (oldValue.isString()) {
-    builder.add(StaticStrings::KeyString, oldValue);
-  } else {
-    VPackSlice s = oldValue.get(StaticStrings::KeyString);
-    TRI_ASSERT(s.isString());
-    builder.add(StaticStrings::KeyString, s);
-  }
-  builder.add(StaticStrings::RevString, VPackValue(rev));
-  builder.close();
 }
 
 bool LogicalCollection::readRevision(transaction::Methods* trx,

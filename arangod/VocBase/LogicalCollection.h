@@ -356,24 +356,7 @@ class LogicalCollection {
   // @brief create index with the given definition.
   bool openIndex(velocypack::Slice const&, transaction::Methods*);
 
-  // SECTION: Document pre commit preperation (only local)
-
-  /// @brief new object for insert, value must have _key set correctly.
-  int newObjectForInsert(transaction::Methods* trx,
-                         velocypack::Slice const& value,
-                         velocypack::Slice const& fromSlice,
-                         velocypack::Slice const& toSlice,
-                         bool isEdgeCollection,
-                         velocypack::Builder& builder,
-                         bool isRestore);
-
- public: // TODO FIXME
- /// @brief new object for remove, must have _key set
-  void newObjectForRemove(transaction::Methods* trx,
-                          velocypack::Slice const& oldValue,
-                          std::string const& rev,
-                          velocypack::Builder& builder);
- private:
+private:
   void increaseInternalVersion();
 
  protected:

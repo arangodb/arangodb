@@ -138,10 +138,26 @@ class PhysicalCollection {
                      arangodb::ManagedDocumentResult& previous,
                      OperationOptions& options,
                      TRI_voc_tick_t& resultMarkerTick, bool lock,
-                     TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev,
-                     arangodb::velocypack::Slice const toRemove) = 0;
+                     TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev) = 0;
 
  protected:
+
+  // SECTION: Document pre commit preperation
+
+  /// @brief new object for insert, value must have _key set correctly.
+  int newObjectForInsert(transaction::Methods* trx,
+                         velocypack::Slice const& value,
+                         velocypack::Slice const& fromSlice,
+                         velocypack::Slice const& toSlice,
+                         bool isEdgeCollection,
+                         velocypack::Builder& builder,
+                         bool isRestore) const;
+
+
+   /// @brief new object for remove, must have _key set
+  void newObjectForRemove(transaction::Methods* trx,
+                          velocypack::Slice const& oldValue,
+                          std::string const& rev, velocypack::Builder& builder) const;
 
   /// @brief merge two objects for update
   void mergeObjectsForUpdate(transaction::Methods* trx,

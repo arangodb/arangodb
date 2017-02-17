@@ -280,8 +280,8 @@ class MMFilesCollection final : public PhysicalCollection {
              arangodb::velocypack::Slice const slice,
              arangodb::ManagedDocumentResult& previous,
              OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-             bool lock, TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev,
-             arangodb::velocypack::Slice const toRemove) override;
+             bool lock, TRI_voc_rid_t const& revisionId,
+             TRI_voc_rid_t& prevRev) override;
 
   int rollbackOperation(transaction::Methods*, TRI_voc_document_operation_e,
                         TRI_voc_rid_t oldRevisionId,
