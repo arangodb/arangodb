@@ -1,4 +1,4 @@
-v3.1.11 (2017-02-14)
+v3.1.11 (2017-02-17)
 --------------------
 
 * fixed a race between connection closing and sending out last chunks of data to clients
