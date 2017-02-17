@@ -1,6 +1,10 @@
 devel
 -----
 
+* ui: fixed issue #2065
+
+* ui: fixed a dashboard related memory issue
+
 * Internal javascript rest actions will now hide their stack traces to the client
   unless maintainer mode is activated. Instead they will always log to the logfile
 

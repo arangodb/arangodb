@@ -1590,7 +1590,6 @@
 
     readQueryData: function (selected, forExecute) {
       // var selectedText = this.aqlEditor.session.getTextRange(this.aqlEditor.getSelectionRange())
-      var sizeBox = $('#querySize');
       var data = {
         id: 'currentFrontendQuery'
       };
@@ -1608,12 +1607,6 @@
         }
         data = false;
       } else {
-        if (sizeBox.val() === 'all') {
-          data.batchSize = 1000000;
-        } else {
-          data.batchSize = parseInt(sizeBox.val(), 10);
-        }
-
         var bindVars = {};
         if (Object.keys(this.bindParamTableObj).length > 0) {
           _.each(this.bindParamTableObj, function (val, key) {
@@ -1737,7 +1730,7 @@
       outputEditor.getSession().setScrollTop(0);
     },
 
-    renderQueryResult: function (data, counter, cached) {
+    renderQueryResult: function (data, counter, cached, queryID) {
       var self = this;
 
       if (window.location.hash === '#queries') {
@@ -1849,9 +1842,26 @@
         self.deselect(outputEditor);
 
         // when finished send a delete req to api (free db space)
-        if (data.id) {
+        // deletion only necessary if result was not fully fetched
+        var url;
+        if (queryID && data.hasMore) {
+          url = arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(queryID));
+        } else {
+          if (data.id && data.hasMore) {
+            url = arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(data.id));
+          }
+        }
+
+        /*
+        if (!data.complete) {
+          // TODO notify user?
+          // console.log('result was cutted down - more result avail - change limit');
+        }
+        */
+
+        if (url) {
           $.ajax({
-            url: arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(data.id)),
+            url: url,
             type: 'DELETE'
           });
         }
@@ -1926,21 +1936,67 @@
 
     queryCallbackFunction: function (queryID, counter) {
       var self = this;
+      self.tmpQueryResult = null;
 
       this.bindQueryResultButtons(queryID, counter);
       this.execPending = false;
 
+      var userLimit;
+      try {
+        userLimit = parseInt($('#querySize').val());
+      } catch (e) {
+        arangoHelper.arangoError('Parse Error', 'Could not parse defined user limit.');
+      }
+
+      var pushQueryResults = function (data) {
+        if (self.tmpQueryResult === null) {
+          self.tmpQueryResult = {
+            result: [],
+            complete: true
+          };
+        }
+
+        _.each(data, function (val, key) {
+          if (key !== 'result') {
+            self.tmpQueryResult[key] = val;
+          } else {
+            _.each(data.result, function (d) {
+              if (self.tmpQueryResult.result.length < userLimit) {
+                self.tmpQueryResult.result.push(d);
+              } else {
+                self.tmpQueryResult.complete = false;
+              }
+            });
+          }
+        });
+      };
+
       // check if async query is finished
-      var checkQueryStatus = function () {
+      var checkQueryStatus = function (cursorID) {
+        var url = arangoHelper.databaseUrl('/_api/job/' + encodeURIComponent(queryID));
+        if (cursorID) {
+          url = arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(cursorID));
+        }
+
         $.ajax({
           type: 'PUT',
-          url: arangoHelper.databaseUrl('/_api/job/' + encodeURIComponent(queryID)),
+          url: url,
           contentType: 'application/json',
           processData: false,
           success: function (data, textStatus, xhr) {
-            // query finished, now fetch results
-            if (xhr.status === 201) {
-              self.renderQueryResult(data, counter);
+            // query finished, now fetch results using cursor
+
+            if (xhr.status === 201 || xhr.status === 200) {
+              if (data.hasMore) {
+                pushQueryResults(data);
+
+                // continue to fetch result
+                checkQueryStatus(data.id);
+              } else {
+                pushQueryResults(data);
+                self.renderQueryResult(self.tmpQueryResult, counter, queryID);
+                self.tmpQueryResult = null;
+              }
               // SCROLL TO RESULT BOX
               $('.centralRow').animate({ scrollTop: $('#queryContent').height() }, 'fast');
             } else if (xhr.status === 204) {
