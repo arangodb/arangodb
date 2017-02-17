@@ -253,6 +253,15 @@ class MMFilesCollection final : public PhysicalCollection {
   int read(transaction::Methods*, arangodb::velocypack::Slice const key,
            ManagedDocumentResult& result, bool) override;
 
+  bool readDocument(transaction::Methods* trx,
+                    DocumentIdentifierToken const& token,
+                    ManagedDocumentResult& result) override;
+
+  bool readDocumentConditional(transaction::Methods* trx,
+                               DocumentIdentifierToken const& token,
+                               TRI_voc_tick_t maxTick,
+                               ManagedDocumentResult& result) override;
+
   int insert(arangodb::transaction::Methods* trx,
              arangodb::velocypack::Slice const newSlice,
              arangodb::ManagedDocumentResult& result,
@@ -303,6 +312,8 @@ class MMFilesCollection final : public PhysicalCollection {
   void removeRevision(TRI_voc_rid_t revisionId, bool updateStats);
 
  private:
+
+  bool openIndex(VPackSlice const& description, transaction::Methods* trx);
 
   /// @brief initializes an index with all existing documents
   void fillIndex(basics::LocalTaskQueue*, transaction::Methods*,
@@ -378,6 +389,9 @@ class MMFilesCollection final : public PhysicalCollection {
 
    private:
     // SECTION: Index storage
+
+    /// @brief Detect all indexes form file
+    int detectIndexes(transaction::Methods* trx);
 
     int insertIndexes(transaction::Methods * trx, TRI_voc_rid_t revisionId,
                       velocypack::Slice const& doc);

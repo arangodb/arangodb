@@ -259,7 +259,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
   auto cb = [&resultBuilder, &mmdr, &trx, &collection](DocumentIdentifierToken const& tkn) {
-   if (collection->readDocument(&trx, mmdr, tkn)) {
+   if (collection->readDocument(&trx, tkn, mmdr)) {
       resultBuilder.add(VPackSlice(mmdr.vpack()));
     }
   };
@@ -392,7 +392,7 @@ static void JS_ChecksumCollection(
         
   ManagedDocumentResult mmdr;
   trx.invokeOnAllElements(col->name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](DocumentIdentifierToken const& token) {
-    collection->readDocument(&trx, mmdr, token);
+    collection->readDocument(&trx, token, mmdr);
     VPackSlice const slice(mmdr.vpack());
 
     uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString(); 

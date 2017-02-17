@@ -1079,7 +1079,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     uint64_t iterations = 0;
     ManagedDocumentResult mmdr;
     trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations, &idx](DocumentIdentifierToken const& token) {
-      if (idx->collection()->readDocument(&trx, mmdr, token)) {
+      if (idx->collection()->readDocument(&trx, token, mmdr)) {
         markers.emplace_back(mmdr.vpack());
         
         if (++iterations % 10000 == 0) {

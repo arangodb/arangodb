@@ -438,7 +438,7 @@ bool IndexBlock::readIndex(size_t atMost) {
 
     if (hasMultipleIndexes) {
       for (auto const& element : _result) {
-        if (collection->readDocument(_trx, *_mmdr, element)) {
+        if (collection->readDocument(_trx, element, *_mmdr)) {
           uint8_t const* vpack = _mmdr->vpack(); //back();
           // uniqueness checks
           if (!isLastIndex) {
@@ -456,7 +456,7 @@ bool IndexBlock::readIndex(size_t atMost) {
       }
     } else {
       for (auto const& element : _result) {
-        if (collection->readDocument(_trx, *_mmdr, element)) {
+        if (collection->readDocument(_trx, element, *_mmdr)) {
           uint8_t const* vpack = _mmdr->vpack(); //back();
           _documents.emplace_back(vpack);
         }

@@ -1359,43 +1359,6 @@ void LogicalCollection::createInitialIndexes() {
   }
 }
 
-/// @brief iterator for index open
-bool LogicalCollection::openIndex(VPackSlice const& description,
-                                  transaction::Methods* trx) {
-  // VelocyPack must be an index description
-  if (!description.isObject()) {
-    return false;
-  }
-
-  bool unused = false;
-  auto idx = createIndex(trx, description, unused);
-
-  if (idx == nullptr) {
-    // error was already printed if we get here
-    return false;
-  }
-
-  return true;
-}
-
-/// @brief enumerate all indexes of the collection, but don't fill them yet
-int LogicalCollection::detectIndexes(transaction::Methods* trx) {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  VPackBuilder builder;
-  engine->getCollectionInfo(_vocbase, _cid, builder, true, UINT64_MAX);
-
-  // iterate over all index files
-  for (auto const& it : VPackArrayIterator(builder.slice().get("indexes"))) {
-    bool ok = openIndex(it, trx);
-
-    if (!ok) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load index for collection '" << name() << "'";
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 std::vector<std::shared_ptr<arangodb::Index>> const*
 LogicalCollection::indexList() const {
   return &_indexes;
@@ -1617,47 +1580,14 @@ void LogicalCollection::sizeHint(transaction::Methods* trx, int64_t hint) {
   }
 }
 
-bool LogicalCollection::readRevision(transaction::Methods* trx,
-                                     ManagedDocumentResult& result,
-                                     TRI_voc_rid_t revisionId) {
-  uint8_t const* vpack = getPhysical()->lookupRevisionVPack(revisionId);
-  if (vpack != nullptr) {
-    result.addExisting(vpack, revisionId);
-    return true;
-  } 
-  return false;
+bool LogicalCollection::readDocument(transaction::Methods* trx, DocumentIdentifierToken const& token, ManagedDocumentResult& result) {
+  return getPhysical()->readDocument(trx, token, result);
 }
 
-bool LogicalCollection::readRevisionConditional(transaction::Methods* trx,
-                                                ManagedDocumentResult& result,
-                                                TRI_voc_rid_t revisionId,
-                                                TRI_voc_tick_t maxTick,
-                                                bool excludeWal) {
-  TRI_ASSERT(revisionId != 0);
-  uint8_t const* vpack  = getPhysical()->lookupRevisionVPackConditional(revisionId, maxTick, excludeWal);
-  if (vpack != nullptr) {
-    result.addExisting(vpack, revisionId);
-    return true;
-  } 
-  return false;
-}
-
-// TODO ONLY TEMP wrapper
-bool LogicalCollection::readDocument(transaction::Methods* trx, ManagedDocumentResult& result, DocumentIdentifierToken const& token) {
-  // TODO This only works for MMFiles Engine. Has to be moved => StorageEngine
-  auto tkn = static_cast<MMFilesToken const*>(&token);
-  return readRevision(trx, result, tkn->revisionId());
-}
-
-// TODO ONLY TEMP wrapper
-bool LogicalCollection::readDocumentConditional(transaction::Methods* trx,
-                                                ManagedDocumentResult& result,
-                                                DocumentIdentifierToken const& token,
-                                                TRI_voc_tick_t maxTick,
-                                                bool excludeWal) {
-  // TODO This only works for MMFiles Engine. Has to be moved => StorageEngine
-  auto tkn = static_cast<MMFilesToken const*>(&token);
-  return readRevisionConditional(trx, result, tkn->revisionId(), maxTick, excludeWal);
+bool LogicalCollection::readDocumentConditional(
+    transaction::Methods* trx, DocumentIdentifierToken const& token,
+    TRI_voc_tick_t maxTick, ManagedDocumentResult& result) {
+  return getPhysical()->readDocumentConditional(trx, token, maxTick, result);
 }
 
 /// @brief a method to skip certain documents in AQL write operations,

@@ -38,6 +38,7 @@ class Methods;
 }
 
 class Ditches;
+struct DocumentIdentifierToken;
 class Index;
 class LogicalCollection;
 class ManagedDocumentResult;
@@ -109,6 +110,15 @@ class PhysicalCollection {
 
   virtual int read(transaction::Methods*, arangodb::velocypack::Slice const key,
                    ManagedDocumentResult& result, bool) = 0;
+
+  virtual bool readDocument(transaction::Methods* trx,
+                            DocumentIdentifierToken const& token,
+                            ManagedDocumentResult& result) = 0;
+
+  virtual bool readDocumentConditional(transaction::Methods* trx,
+                                       DocumentIdentifierToken const& token,
+                                       TRI_voc_tick_t maxTick,
+                                       ManagedDocumentResult& result) = 0;
 
   virtual int insert(arangodb::transaction::Methods* trx,
                      arangodb::velocypack::Slice const newSlice,

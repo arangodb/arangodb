@@ -841,7 +841,7 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
 
   LogicalCollection* collection = cursor->collection();
   auto cb = [&] (DocumentIdentifierToken const& token) {
-    if (collection->readDocument(this, mmdr, token)) {
+    if (collection->readDocument(this, token, mmdr)) {
       uint8_t const* vpack = mmdr.vpack();
       resultBuilder.add(VPackSlice(vpack));
     }
@@ -2145,7 +2145,7 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
 
   LogicalCollection* collection = cursor->collection();
   auto cb = [&] (DocumentIdentifierToken const& token) {
-    if (collection->readDocument(this, mmdr, token)) {
+    if (collection->readDocument(this, token, mmdr)) {
       uint8_t const* vpack = mmdr.vpack();
       resultBuilder.add(VPackSlice(vpack));
     }

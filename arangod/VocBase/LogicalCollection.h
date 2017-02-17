@@ -289,13 +289,10 @@ class LogicalCollection {
 
   // SECTION: Indexes (local only)
 
-  /// @brief Detect all indexes form file
-  int detectIndexes(transaction::Methods* trx);
-
   /// @brief Exposes a pointer to index list
   std::vector<std::shared_ptr<Index>> const* indexList() const;
 
- bool dropIndex(TRI_idx_iid_t iid, bool writeMarker);
+  bool dropIndex(TRI_idx_iid_t iid, bool writeMarker);
 
   // SECTION: Index access (local only)
 
@@ -323,19 +320,14 @@ class LogicalCollection {
              OperationOptions&, TRI_voc_tick_t&, bool,
              TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
 
-  bool readDocument(transaction::Methods*, ManagedDocumentResult& result,
-                    DocumentIdentifierToken const& token);
-  bool readDocumentConditional(transaction::Methods*,
-                               ManagedDocumentResult& result,
-                               DocumentIdentifierToken const& token,
-                               TRI_voc_tick_t maxTick, bool excludeWal);
+  bool readDocument(transaction::Methods* trx,
+                    DocumentIdentifierToken const& token,
+                    ManagedDocumentResult& result);
 
-  bool readRevision(transaction::Methods*, ManagedDocumentResult& result,
-                    TRI_voc_rid_t revisionId);
-  bool readRevisionConditional(transaction::Methods*,
-                               ManagedDocumentResult& result,
-                               TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick,
-                               bool excludeWal);
+  bool readDocumentConditional(transaction::Methods* trx,
+                               DocumentIdentifierToken const& token,
+                               TRI_voc_tick_t maxTick,
+                               ManagedDocumentResult& result);
 
  private:
   // SECTION: Index creation

@@ -43,6 +43,7 @@
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
+#include "MMFiles/MMFilesToken.h"
 #include "MMFiles/MMFilesTransactionState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -1174,6 +1175,25 @@ void MMFilesCollection::finishCompaction() {
   _compactionLock.unlock();
 }
 
+/// @brief iterator for index open
+bool MMFilesCollection::openIndex(VPackSlice const& description,
+                                  transaction::Methods* trx) {
+  // VelocyPack must be an index description
+  if (!description.isObject()) {
+    return false;
+  }
+
+  bool unused = false;
+  auto idx = _logicalCollection->createIndex(trx, description, unused);
+
+  if (idx == nullptr) {
+    // error was already printed if we get here
+    return false;
+  }
+
+  return true;
+}
+
 /// @brief initializes an index with a set of existing documents
 void MMFilesCollection::fillIndex(
     arangodb::basics::LocalTaskQueue* queue, transaction::Methods* trx,
@@ -1470,7 +1490,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
     useSecondaryIndexes(false);
 
     try {
-      _logicalCollection->detectIndexes(&trx);
+      detectIndexes(&trx);
       useSecondaryIndexes(old);
     } catch (basics::Exception const& ex) {
       useSecondaryIndexes(old);
@@ -1564,6 +1584,7 @@ int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
   return TRI_ERROR_NO_ERROR;
 }
 
+
 int MMFilesCollection::read(transaction::Methods* trx, VPackSlice const key,
                             ManagedDocumentResult& result, bool lock) {
   TRI_IF_FAILURE("ReadDocumentNoLock") {
@@ -1587,6 +1608,34 @@ int MMFilesCollection::read(transaction::Methods* trx, VPackSlice const key,
 
   // we found a document
   return TRI_ERROR_NO_ERROR;
+}
+
+bool MMFilesCollection::readDocument(transaction::Methods* trx,
+                                     DocumentIdentifierToken const& token,
+                                     ManagedDocumentResult& result) {
+  auto tkn = static_cast<MMFilesToken const*>(&token);
+  TRI_voc_rid_t revisionId = tkn->revisionId();
+  uint8_t const* vpack = lookupRevisionVPack(revisionId);
+  if (vpack != nullptr) {
+    result.addExisting(vpack, revisionId);
+    return true;
+  } 
+  return false;
+
+}
+
+bool MMFilesCollection::readDocumentConditional(
+    transaction::Methods* trx, DocumentIdentifierToken const& token,
+    TRI_voc_tick_t maxTick, ManagedDocumentResult& result) {
+  auto tkn = static_cast<MMFilesToken const*>(&token);
+  TRI_voc_rid_t revisionId = tkn->revisionId();
+  TRI_ASSERT(revisionId != 0);
+  uint8_t const* vpack  = lookupRevisionVPackConditional(revisionId, maxTick, true);
+  if (vpack != nullptr) {
+    result.addExisting(vpack, revisionId);
+    return true;
+  } 
+  return false;
 }
 
 /// @brief Persist an index information to file
@@ -2342,6 +2391,27 @@ int MMFilesCollection::deleteSecondaryIndexes(arangodb::transaction::Methods* tr
   return result;
 }
 
+/// @brief enumerate all indexes of the collection, but don't fill them yet
+int MMFilesCollection::detectIndexes(transaction::Methods* trx) {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  VPackBuilder builder;
+  engine->getCollectionInfo(_logicalCollection->vocbase(),
+                            _logicalCollection->cid(), builder, true,
+                            UINT64_MAX);
+
+  // iterate over all index files
+  for (auto const& it : VPackArrayIterator(builder.slice().get("indexes"))) {
+    bool ok = openIndex(it, trx);
+
+    if (!ok) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load index for collection '" << _logicalCollection->name() << "'";
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+
 /// @brief insert a document into all indexes known to
 ///        this collection.
 ///        This function guarantees all or nothing,
@@ -2509,8 +2579,10 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
   if (res != TRI_ERROR_NO_ERROR) {
     operation.revert(trx);
   } else {
-    _logicalCollection->readRevision(trx, result, revisionId);
-
+    uint8_t const* vpack = lookupRevisionVPack(revisionId);
+    if (vpack != nullptr) {
+      result.addExisting(vpack, revisionId);
+    }
     if (options.waitForSync) {
       // store the tick that was used for writing the new document
       resultMarkerTick = operation.tick();
@@ -2635,7 +2707,10 @@ int MMFilesCollection::replace(
       // update with same revision id => can happen if isRestore = true
       result.clear();
     }
-    _logicalCollection->readRevision(trx, result, revisionId);
+    uint8_t const* vpack = lookupRevisionVPack(revisionId);
+    if (vpack != nullptr) {
+      result.addExisting(vpack, revisionId);
+    }
 
     if (options.waitForSync) {
       // store the tick that was used for writing the new document
@@ -2937,7 +3012,11 @@ int MMFilesCollection::lookupDocument(transaction::Methods* trx,
   MMFilesSimpleIndexElement element =
       _logicalCollection->primaryIndex()->lookupKey(trx, key, result);
   if (element) {
-    _logicalCollection->readRevision(trx, result, element.revisionId());
+    TRI_voc_rid_t revisionId = element.revisionId();
+    uint8_t const* vpack = lookupRevisionVPack(revisionId);
+    if (vpack != nullptr) {
+      result.addExisting(vpack, revisionId);
+    }
     return TRI_ERROR_NO_ERROR;
   }
 

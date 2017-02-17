@@ -112,7 +112,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       if (limit == 0) {
         return false;
       }
-      if (_collection->readDocumentConditional(&trx, mmdr, token, 0, true)) {
+      if (_collection->readDocumentConditional(&trx, token, 0, mmdr)) {
         _vpack.emplace_back(mmdr.vpack());
         --limit;
       }

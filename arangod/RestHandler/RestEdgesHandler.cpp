@@ -251,7 +251,7 @@ bool RestEdgesHandler::readEdges() {
   std::unordered_set<DocumentIdentifierToken> foundTokens;
   auto cb = [&] (DocumentIdentifierToken const& token) {
     if (foundTokens.find(token) == foundTokens.end()) {
-      if (collection->readDocument(&trx, mmdr, token)) {
+      if (collection->readDocument(&trx, token, mmdr)) {
         resultBuilder.add(VPackSlice(mmdr.vpack()));
       }
       scannedIndex++;
@@ -396,7 +396,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   std::unordered_set<DocumentIdentifierToken> foundTokens;
   auto cb = [&] (DocumentIdentifierToken const& token) {
     if (foundTokens.find(token) == foundTokens.end()) {
-      if (collection->readDocument(&trx, mmdr, token)) {
+      if (collection->readDocument(&trx, token, mmdr)) {
         resultBuilder.add(VPackSlice(mmdr.vpack()));
       }
       scannedIndex++;
