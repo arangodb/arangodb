@@ -39,7 +39,7 @@ namespace pregel {
 /// @author Aljoscha Krettek, Robert Metzger, Robert Waury
 /// https://github.com/hideo55/cpp-HyperLogLog/blob/master/include/hyperloglog.hpp
 struct HLLCounter {
-  friend struct FMCounterFormat;
+  friend struct HLLCounterFormat;
   constexpr static int32_t NUM_BUCKETS = 64;
   constexpr static double ALPHA = 0.709;
   
