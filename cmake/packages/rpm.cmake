@@ -2,7 +2,6 @@
 
 set(CPACK_GENERATOR "RPM")
 if (CMAKE_DEBUG_FILENAMES_SHA_SUM)
-  message("IFFF!")
   set(CPACK_DEBUG_DIRECTORY_PATTERN "/usr/lib*/debug/.build-id/*")
 else()
   set(CPACK_DEBUG_DIRECTORY_PATTERN "/usr/lib*/debug/*")
