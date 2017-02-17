@@ -951,3 +951,8 @@ std::vector<std::vector<log_t>> State::inquire(query_t const& query) const {
   
 }
 
+// Index of last log entry
+arangodb::consensus::index_t State::lastIndex() const {
+  MUTEX_LOCKER(mutexLocker, _logLock); 
+  return (!_log.empty()) ? _log.back().index : 0; 
+}

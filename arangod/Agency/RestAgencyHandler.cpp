@@ -625,12 +625,14 @@ RestStatus RestAgencyHandler::handleConfig() {
   }
 
   // Respond with configuration
+  auto last = _agent->lastCommitted();
   Builder body;
   {
     VPackObjectBuilder b(&body);
     body.add("term", Value(_agent->term()));
     body.add("leaderId", Value(_agent->leaderID()));
-    body.add("lastCommitted", Value(_agent->lastCommitted()));
+    body.add("lastCommitted", Value(last.first));
+    body.add("leaderCommitted", Value(last.second));
     body.add("lastAcked", _agent->lastAckedAgo()->slice());
     body.add("configuration", _agent->config().toBuilder()->slice());
   }

@@ -414,7 +414,8 @@ void Agent::sendAppendEntriesRPC() {
         "1", 1, _config.poolAt(followerId),
         arangodb::rest::RequestType::POST, path.str(),
         std::make_shared<std::string>(builder.toJson()), headerFields,
-        std::make_shared<AgentCallback>(this, followerId, highest, toLog),
+        std::make_shared<AgentCallback>(
+          this, followerId, (toLog) ? highest : 0, toLog),
         std::max(1.0e-3 * toLog * dt.count(), 0.25 * _config.minPing()), true);
 
       // _lastSent, _lastHighest: local and single threaded access
@@ -1196,9 +1197,11 @@ void Agent::compact() {
 
 
 /// Last commit index
-arangodb::consensus::index_t Agent::lastCommitted() const {
+std::pair<arangodb::consensus::index_t, arangodb::consensus::index_t>
+  Agent::lastCommitted() const {
   MUTEX_LOCKER(ioLocker, _ioLock);
-  return _lastCommitIndex;
+  return std::pair<arangodb::consensus::index_t, arangodb::consensus::index_t>(
+    _lastCommitIndex,_leaderCommitIndex);
 }
 
 /// Last commit index

@@ -77,7 +77,7 @@ class Agent : public arangodb::Thread {
   bool fitness() const;
 
   /// @brief Leader ID
-  index_t lastCommitted() const;
+  std::pair<index_t, index_t> lastCommitted() const;
 
   /// @brief Leader ID
   std::string leaderID() const;

@@ -41,6 +41,8 @@ void AgentCallback::shutdown() { _agent = 0; }
 bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
   if (res->status == CL_COMM_SENT) {
     if (_agent) {
+      LOG_TOPIC(INFO, Logger::CLUSTER)
+        << res->result->getBodyVelocyPack()->toJson();
       _agent->reportIn(_slaveID, _last, _toLog);
     }
     LOG_TOPIC(DEBUG, Logger::AGENCY) 
