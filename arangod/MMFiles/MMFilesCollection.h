@@ -162,13 +162,6 @@ class MMFilesCollection final : public PhysicalCollection {
   /// @brief report extra memory used by indexes etc.
   size_t memory() const override;
 
-  //void preventCompaction() override;
-  //bool tryPreventCompaction() override;
-  //void allowCompaction() override;
-  //void lockForCompaction() override;
-  //bool tryLockForCompaction() override;
-  //void finishCompaction() override;
-
   void preventCompaction();
   bool tryPreventCompaction();
   void allowCompaction();
@@ -222,6 +215,8 @@ class MMFilesCollection final : public PhysicalCollection {
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
+
+  int fillAllIndexes(transaction::Methods*);
 
   int saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx) override;
 
@@ -303,6 +298,18 @@ class MMFilesCollection final : public PhysicalCollection {
 
  private:
 
+  /// @brief initializes an index with all existing documents
+  void fillIndex(basics::LocalTaskQueue*, transaction::Methods*,
+                 Index*,
+                 std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
+                 bool);
+
+
+  /// @brief Fill indexes used in recovery
+  int fillIndexes(transaction::Methods*,
+                  std::vector<std::shared_ptr<Index>> const&,
+                  bool skipPersistent = true);
+ 
   int openWorker(bool ignoreErrors);
 
   int removeFastPath(arangodb::transaction::Methods* trx,

@@ -44,6 +44,8 @@
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesTransactionState.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -59,6 +61,33 @@
 using namespace arangodb;
 
 namespace {
+
+/// @brief helper class for filling indexes
+class IndexFillerTask : public basics::LocalTask {
+ public:
+  IndexFillerTask(
+      basics::LocalTaskQueue* queue, transaction::Methods* trx,
+      Index* idx,
+      std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents)
+      : LocalTask(queue), _trx(trx), _idx(idx), _documents(documents) {}
+
+  void run() {
+    TRI_ASSERT(_idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+
+    try {
+      _idx->batchInsert(_trx, _documents, _queue);
+    } catch (std::exception const&) {
+      _queue->setStatus(TRI_ERROR_INTERNAL);
+    }
+
+    _queue->join();
+  }
+
+ private:
+  transaction::Methods* _trx;
+  Index* _idx;
+  std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& _documents;
+};
 
 /// @brief find a statistics container for a given file id
 static DatafileStatisticsContainer* FindDatafileStats(
@@ -1143,6 +1172,199 @@ void MMFilesCollection::finishCompaction() {
   _compactionLock.unlock();
 }
 
+/// @brief initializes an index with a set of existing documents
+void MMFilesCollection::fillIndex(
+    arangodb::basics::LocalTaskQueue* queue, transaction::Methods* trx,
+    arangodb::Index* idx,
+    std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
+    bool skipPersistent) {
+  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  if (!_logicalCollection->useSecondaryIndexes()) {
+    return;
+  }
+
+  if (idx->isPersistent() && skipPersistent) {
+    return;
+  }
+
+  try {
+    // move task into thread pool
+    std::shared_ptr<::IndexFillerTask> worker;
+    worker.reset(new ::IndexFillerTask(queue, trx, idx, documents));
+    queue->enqueue(worker);
+  } catch (...) {
+    // set error code
+    queue->setStatus(TRI_ERROR_INTERNAL);
+  }
+}
+
+int MMFilesCollection::fillAllIndexes(transaction::Methods* trx) {
+  return fillIndexes(trx, *(_logicalCollection->indexList()));
+}
+
+/// @brief Fill the given list of Indexes
+int MMFilesCollection::fillIndexes(
+    transaction::Methods* trx,
+    std::vector<std::shared_ptr<arangodb::Index>> const& indexes,
+    bool skipPersistent) {
+  // distribute the work to index threads plus this thread
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  size_t const n = indexes.size();
+
+  if (n == 0 || (n == 1 &&
+                 indexes[0].get()->type() ==
+                     Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  bool rolledBack = false;
+  auto rollbackAll = [&]() -> void {
+    for (size_t i = 0; i < n; i++) {
+      auto idx = indexes[i].get();
+      if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        continue;
+      }
+      if (idx->isPersistent()) {
+        continue;
+      }
+      idx->unload();  // TODO: check is this safe? truncate not necessarily
+                      // feasible
+    }
+  };
+
+  double start = TRI_microtime();
+
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  auto ioService = SchedulerFeature::SCHEDULER->ioService();
+  TRI_ASSERT(ioService != nullptr);
+  arangodb::basics::LocalTaskQueue queue(ioService);
+
+  // only log performance infos for indexes with more than this number of
+  // entries
+  static size_t const NotificationSizeThreshold = 131072;
+  auto primaryIndex = _logicalCollection->primaryIndex();
+
+  if (primaryIndex->size() > NotificationSizeThreshold) {
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+        << "fill-indexes-document-collection { collection: "
+        << _logicalCollection->vocbase() << "/" << _logicalCollection->name()
+        << " }, indexes: " << (n - 1);
+  }
+
+  TRI_ASSERT(n > 0);
+
+  try {
+    TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+    // give the index a size hint
+    auto nrUsed = primaryIndex->size();
+    for (size_t i = 0; i < n; i++) {
+      auto idx = indexes[i];
+      if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        continue;
+      }
+      idx.get()->sizeHint(trx, nrUsed);
+    }
+
+    // process documents a million at a time
+    size_t blockSize = 1024 * 1024 * 1;
+
+    if (nrUsed < blockSize) {
+      blockSize = nrUsed;
+    }
+    if (blockSize == 0) {
+      blockSize = 1;
+    }
+
+    ManagedDocumentResult mmdr;
+
+    std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> documents;
+    documents.reserve(blockSize);
+
+    auto insertInAllIndexes = [&]() -> void {
+      for (size_t i = 0; i < n; ++i) {
+        auto idx = indexes[i];
+        if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+          continue;
+        }
+        fillIndex(&queue, trx, idx.get(), documents, skipPersistent);
+      }
+
+      queue.dispatchAndWait();
+
+      if (queue.status() != TRI_ERROR_NO_ERROR) {
+        rollbackAll();
+        rolledBack = true;
+      }
+    };
+
+    if (nrUsed > 0) {
+      arangodb::basics::BucketPosition position;
+      uint64_t total = 0;
+
+      while (true) {
+        MMFilesSimpleIndexElement element =
+            primaryIndex->lookupSequential(trx, position, total);
+
+        if (!element) {
+          break;
+        }
+
+        TRI_voc_rid_t revisionId = element.revisionId();
+
+        uint8_t const* vpack = lookupRevisionVPack(revisionId);
+        if (vpack != nullptr) {
+          documents.emplace_back(std::make_pair(revisionId, VPackSlice(vpack)));
+
+          if (documents.size() == blockSize) {
+            // now actually fill the secondary indexes
+            insertInAllIndexes();
+            if (queue.status() != TRI_ERROR_NO_ERROR) {
+              break;
+            }
+            documents.clear();
+          }
+        }
+      }
+    }
+
+    // process the remainder of the documents
+    if (queue.status() == TRI_ERROR_NO_ERROR && !documents.empty()) {
+      insertInAllIndexes();
+    }
+
+    // TODO: fix perf logging?
+  } catch (arangodb::basics::Exception const& ex) {
+    queue.setStatus(ex.code());
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception while filling indexes: " << ex.what();
+  } catch (std::bad_alloc const&) {
+    queue.setStatus(TRI_ERROR_OUT_OF_MEMORY);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception while filling indexes: " << ex.what();
+    queue.setStatus(TRI_ERROR_INTERNAL);
+  } catch (...) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught unknown exception while filling indexes";
+    queue.setStatus(TRI_ERROR_INTERNAL);
+  }
+
+  if (queue.status() != TRI_ERROR_NO_ERROR && !rolledBack) {
+    try {
+      rollbackAll();
+    } catch (...) {
+    }
+  }
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
+      << " s, fill-indexes-document-collection { collection: "
+      << _logicalCollection->dbName() << "/" << _logicalCollection->name() << " }, indexes: " << (n - 1);
+
+  return queue.status();
+}
+
+
+
 /// @brief opens an existing collection
 int MMFilesCollection::openWorker(bool ignoreErrors) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -1268,7 +1490,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
 
   if (!engine->inRecovery()) {
     // build the index structures, and fill the indexes
-    _logicalCollection->fillIndexes(&trx, *(_logicalCollection->indexList()));
+    fillIndexes(&trx, *(_logicalCollection->indexList()));
   }
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
@@ -1372,8 +1594,8 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx, std::shared_ptr<aran
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
   indexListLocal.emplace_back(idx);
-  // TODO
-  int res = _logicalCollection->fillIndexes(trx, indexListLocal, false);
+
+  int res = fillIndexes(trx, indexListLocal, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1450,8 +1672,7 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
   std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
   indexListLocal.emplace_back(newIdx);
 
-  // TODO Move fillIndexes
-  int res = _logicalCollection->fillIndexes(trx, indexListLocal, false);
+  int res = fillIndexes(trx, indexListLocal, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;

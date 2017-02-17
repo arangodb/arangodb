@@ -1257,12 +1257,13 @@ int MMFilesWalRecoverState::fillIndexes() {
 
     // activate secondary indexes
     collection->useSecondaryIndexes(true);
+    auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
 
     arangodb::SingleCollectionTransaction trx(
         arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
         collection->cid(), AccessMode::Type::WRITE);
 
-    int res = collection->fillIndexes(&trx, *(collection->indexList()));
+    int res = physical->fillAllIndexes(&trx);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;

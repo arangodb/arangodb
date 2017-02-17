@@ -301,12 +301,7 @@ class LogicalCollection {
   /// @brief Exposes a pointer to index list
   std::vector<std::shared_ptr<Index>> const* indexList() const;
 
-  /// @brief Fill indexes used in recovery
-  int fillIndexes(transaction::Methods*,
-                  std::vector<std::shared_ptr<Index>> const&,
-                  bool skipPersistent = true);
-
-  bool dropIndex(TRI_idx_iid_t iid, bool writeMarker);
+ bool dropIndex(TRI_idx_iid_t iid, bool writeMarker);
 
   // SECTION: Index access (local only)
 
@@ -363,13 +358,6 @@ class LogicalCollection {
   void addIndexCoordinator(std::shared_ptr<Index>, bool);
 
   // SECTION: Indexes (local only)
-
-  // TODO Make Private and IndexFiller as friend
-  /// @brief initializes an index with all existing documents
-  void fillIndex(basics::LocalTaskQueue*, transaction::Methods*,
-                 Index*,
-                 std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
-                 bool);
 
   // @brief create index with the given definition.
   bool openIndex(velocypack::Slice const&, transaction::Methods*);
