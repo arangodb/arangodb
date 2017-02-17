@@ -39,6 +39,7 @@ else ()
   project(arangodb3 CXX C ASM)
 endif ()
 
+# required for clang completion in editors
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # where to find CMAKE modules
@@ -946,7 +947,11 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangosh      v8_build)
 endif ()
 
-# copy compile commands to source dir
+# This copies the compile commands to the source dir.
+# There they can be used to repeat parts of compile
+# steps generating an AST. This AST can in turn be used
+# for meaningful auto-completion in editors without
+# heuristics, dice rolling and other guessing.
 if( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
   message(STATUS "copy compile_commands.json")
 
