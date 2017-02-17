@@ -218,6 +218,10 @@ class MMFilesCollection final : public PhysicalCollection {
   // -- SECTION Indexes --
   ///////////////////////////////////
 
+  inline bool useSecondaryIndexes() const { return _useSecondaryIndexes; }
+
+  void useSecondaryIndexes(bool value) { _useSecondaryIndexes = value; }
+
   int fillAllIndexes(transaction::Methods*);
 
   int saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx) override;
@@ -430,6 +434,10 @@ class MMFilesCollection final : public PhysicalCollection {
     char const* _lastCompactionStatus;
     double _lastCompactionStamp;
     std::string _path;
+
+    // whether or not secondary indexes should be filled
+    bool _useSecondaryIndexes;
+
 };
 
 }

@@ -123,10 +123,6 @@ class LogicalCollection {
 
   TRI_col_type_e type() const;
 
-  inline bool useSecondaryIndexes() const { return _useSecondaryIndexes; }
-
-  void useSecondaryIndexes(bool value) { _useSecondaryIndexes = value; }
-
   std::string name() const;
   std::string dbName() const;
   std::string const& distributeShardsLike() const;
@@ -461,9 +457,6 @@ class LogicalCollection {
  protected:
 
   std::unique_ptr<PhysicalCollection> _physical;
-
-  // whether or not secondary indexes should be filled
-  bool _useSecondaryIndexes;
 
   TRI_voc_tick_t _maxTick;
 

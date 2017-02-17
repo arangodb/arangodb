@@ -359,7 +359,9 @@ int PersistentIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
       if (uniqueConstraintViolated) {
         // duplicate key
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-        if (!_collection->useSecondaryIndexes()) {
+        auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+        TRI_ASSERT(physical != nullptr);
+        if (!physical->useSecondaryIndexes()) {
           // suppress the error during recovery
           res = TRI_ERROR_NO_ERROR;
         }

@@ -197,7 +197,6 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _cleanupIndexes(0),
       _persistentIndexes(0),
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(this)),
-      _useSecondaryIndexes(true),
       _maxTick(0),
       _keyGenerator() {
   _keyGenerator.reset(KeyGenerator::factory(other.keyOptions()));
@@ -254,7 +253,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _cleanupIndexes(0),
       _persistentIndexes(0),
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(this)),
-      _useSecondaryIndexes(true),
       _maxTick(0),
       _keyGenerator() {
   getPhysical()->setPath(ReadStringValue(info, "path", ""));

@@ -218,8 +218,10 @@ arangodb::LogicalCollection* MMFilesWalRecoverState::useCollection(
     return nullptr;
   }
 
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
   // disable secondary indexes for the moment
-  collection->useSecondaryIndexes(false);
+  physical->useSecondaryIndexes(false);
 
   openedCollections.emplace(collectionId, collection);
   res = TRI_ERROR_NO_ERROR;
@@ -1255,9 +1257,10 @@ int MMFilesWalRecoverState::fillIndexes() {
        ++it) {
     arangodb::LogicalCollection* collection = (*it).second;
 
-    // activate secondary indexes
-    collection->useSecondaryIndexes(true);
     auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+    TRI_ASSERT(physical != nullptr);
+    // activate secondary indexes
+    physical->useSecondaryIndexes(true);
 
     arangodb::SingleCollectionTransaction trx(
         arangodb::StandaloneTransactionContext::Create(collection->vocbase()),

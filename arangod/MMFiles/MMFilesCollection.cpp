@@ -346,7 +346,8 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection)
       _uncollectedLogfileEntries(0),
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
-      _lastCompactionStamp(0.0) {
+      _lastCompactionStamp(0.0),
+      _useSecondaryIndexes(true) {
   setCompactionStatus("compaction not yet started");
 }
 
@@ -1180,7 +1181,7 @@ void MMFilesCollection::fillIndex(
     bool skipPersistent) {
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (!_logicalCollection->useSecondaryIndexes()) {
+  if (!useSecondaryIndexes()) {
     return;
   }
 
@@ -1460,28 +1461,28 @@ void MMFilesCollection::open(bool ignoreErrors) {
 
   // build the indexes meta-data, but do not fill the indexes yet
   {
-    auto old = _logicalCollection->useSecondaryIndexes();
+    auto old = useSecondaryIndexes();
 
     // turn filling of secondary indexes off. we're now only interested in
     // getting
     // the indexes' definition. we'll fill them below ourselves.
-    _logicalCollection->useSecondaryIndexes(false);
+    useSecondaryIndexes(false);
 
     try {
       _logicalCollection->detectIndexes(&trx);
-      _logicalCollection->useSecondaryIndexes(old);
+      useSecondaryIndexes(old);
     } catch (basics::Exception const& ex) {
-      _logicalCollection->useSecondaryIndexes(old);
+      useSecondaryIndexes(old);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           ex.code(),
           std::string("cannot initialize collection indexes: ") + ex.what());
     } catch (std::exception const& ex) {
-      _logicalCollection->useSecondaryIndexes(old);
+      useSecondaryIndexes(old);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
           std::string("cannot initialize collection indexes: ") + ex.what());
     } catch (...) {
-      _logicalCollection->useSecondaryIndexes(old);
+      useSecondaryIndexes(old);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
           "cannot initialize collection indexes: unknown exception");
@@ -2211,7 +2212,7 @@ int MMFilesCollection::insertSecondaryIndexes(arangodb::transaction::Methods* tr
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_IF_FAILURE("InsertSecondaryIndexes") { return TRI_ERROR_DEBUG; }
 
-  bool const useSecondary = _logicalCollection->useSecondaryIndexes();
+  bool const useSecondary = useSecondaryIndexes();
   if (!useSecondary && _logicalCollection->_persistentIndexes == 0) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -2256,7 +2257,7 @@ int MMFilesCollection::deleteSecondaryIndexes(arangodb::transaction::Methods* tr
   // Coordintor doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  bool const useSecondary = _logicalCollection->useSecondaryIndexes();
+  bool const useSecondary = useSecondaryIndexes();
   if (!useSecondary && _logicalCollection->_persistentIndexes == 0) {
     return TRI_ERROR_NO_ERROR;
   }
