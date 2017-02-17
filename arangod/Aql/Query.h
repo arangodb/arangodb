@@ -237,11 +237,7 @@ class Query {
 
   /// @brief register a warning
   void registerWarning(int, char const* = nullptr);
-
-  /// @brief prepare an AQL query, this is a preparation for execute, but
-  /// execute calls it internally. The purpose of this separate method is
-  /// to be able to only prepare a query from VelocyPack and then store it in the
-  /// QueryRegistry.
+  
   void prepare(QueryRegistry*);
 
   /// @brief execute an AQL query
@@ -332,6 +328,12 @@ class Query {
   /// @brief initializes the query
   void init();
   
+  /// @brief prepare an AQL query, this is a preparation for execute, but
+  /// execute calls it internally. The purpose of this separate method is
+  /// to be able to only prepare a query from VelocyPack and then store it in the
+  /// QueryRegistry.
+  std::unique_ptr<ExecutionPlan> prepare();
+
   void setExecutionTime();
 
   /// @brief log a query

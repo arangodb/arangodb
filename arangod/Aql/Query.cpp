@@ -458,17 +458,26 @@ void Query::registerWarning(int code, char const* details) {
     _warnings.emplace_back(code, details);
   }
 }
+    
+void Query::prepare(QueryRegistry* registry) {
+  TRI_ASSERT(registry != nullptr);
+
+  std::unique_ptr<ExecutionPlan> plan(std::move(prepare()));
+  TRI_ASSERT(plan != nullptr);
+
+  enterState(EXECUTION);
+  _engine = ExecutionEngine::instantiateFromPlan(registry, this, plan.get(), _queryString != nullptr);
+  _plan = std::move(plan);
+}
 
 /// @brief prepare an AQL query, this is a preparation for execute, but
 /// execute calls it internally. The purpose of this separate method is
 /// to be able to only prepare a query from VelocyPack and then store it in the
 /// QueryRegistry.
-void Query::prepare(QueryRegistry* registry) {
+std::unique_ptr<ExecutionPlan> Query::prepare() {
   LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                     << "Query::prepare"
                                     << " this: " << (uintptr_t) this;
-  TRI_ASSERT(registry != nullptr);
-
   init();
   enterState(PARSING);
 
@@ -489,7 +498,6 @@ void Query::prepare(QueryRegistry* registry) {
       _part == PART_MAIN);
   _trx = trx;
 
-  bool planRegisters;
   // As soon as we start du instantiate the plan we have to clean it
   // up before killing the unique_ptr
   if (_queryString != nullptr) {
@@ -523,7 +531,6 @@ void Query::prepare(QueryRegistry* registry) {
                     inspectSimplePlans());
     // Now plan and all derived plans belong to the optimizer
     plan.reset(opt.stealBest());  // Now we own the best one again
-    planRegisters = true;
   } else {  // no queryString, we are instantiating from _queryBuilder
     enterState(PARSING);
 
@@ -556,11 +563,9 @@ void Query::prepare(QueryRegistry* registry) {
       // oops
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not create plan from vpack");
     }
-
-    planRegisters = false;
   }
 
-  TRI_ASSERT(plan.get() != nullptr);
+  TRI_ASSERT(plan != nullptr);
 
   // varsUsedLater and varsValid are unordered_sets and so their orders
   // are not the same in the serialized and deserialized plans
@@ -568,14 +573,7 @@ void Query::prepare(QueryRegistry* registry) {
   // return the V8 context
   exitContext();
 
-  enterState(EXECUTION);
-  ExecutionEngine* engine(ExecutionEngine::instantiateFromPlan(
-      registry, this, plan.get(), planRegisters));
-
-  // If all went well so far, then we keep _plan and _trx and
-  // return:
-  _plan = std::move(plan);
-  _engine = engine;
+  return plan;
 }
 
 /// @brief execute an AQL query
@@ -1186,8 +1184,6 @@ void Query::init() {
   }
 
   TRI_ASSERT(_id == 0);
-  TRI_ASSERT(_ast == nullptr);
-
   _id = Query::NextId();
 
   TRI_ASSERT(_profile == nullptr);
