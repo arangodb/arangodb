@@ -219,6 +219,31 @@ RestStatus RestAgencyHandler::handleStores() {
   return RestStatus::DONE;
 }
 
+RestStatus RestAgencyHandler::handleStore() {
+
+  if (_request->requestType() == rest::RequestType::POST) {
+
+    arangodb::velocypack::Options options;
+    auto query = _request->toVelocyPackBuilderPtr(&options);
+    arangodb::consensus::index_t index = 0;
+
+    try {
+      index = query->slice().getUInt();
+    } catch (...) {
+      index = _agent->lastCommitted().second;
+    }
+    
+    query_t builder = _agent->buildDB(index);
+    generateResult(rest::ResponseCode::OK, builder->slice());
+    
+  } else {
+    generateError(rest::ResponseCode::BAD, 400);
+  }
+  
+  return RestStatus::DONE;
+  
+}
+
 RestStatus RestAgencyHandler::handleWrite() {
 
   if (_request->requestType() != rest::RequestType::POST) {
@@ -694,6 +719,8 @@ RestStatus RestAgencyHandler::execute() {
         return handleState();
       } else if (suffixes[0] == "stores") {
         return handleStores();
+      } else if (suffixes[0] == "store") {
+        return handleStore();
       } else {
         return reportUnknownMethod();
       }

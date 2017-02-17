@@ -1390,4 +1390,38 @@ bool Agent::ready() const {
 
 }
 
+query_t Agent::buildDB(arangodb::consensus::index_t index) {
+
+  auto builder = std::make_shared<VPackBuilder>();
+  arangodb::consensus::index_t start = 0, end = 0;
+
+  Store store(this);
+  {
+
+    MUTEX_LOCKER(ioLocker, _ioLock);
+    store = _readDB;
+
+    MUTEX_LOCKER(liLocker, _liLock);
+    end = _leaderCommitIndex;
+    start = _lastAppliedIndex;
+    
+  }
+  
+  if (index > end) {
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Cannot snapshot beyond leaderCommitIndex: " << end;
+    index = end;
+  } else if (index < start) {
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Cannot snapshot before last compaction index: " << start;
+    index = start+1;
+  }
+  
+  store.apply(_state.slices(start+1, index), index, _constituent.term());
+  store.toBuilder(*builder);
+  
+  return builder;
+  
+}
+
 }}  // namespace

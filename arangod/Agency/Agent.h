@@ -222,6 +222,9 @@ class Agent : public arangodb::Thread {
   /// @brief Update a peers endpoint in my configuration
   void updatePeerEndpoint(std::string const& id, std::string const& ep);
 
+  /// @brief Assemble an agency to commitId
+  query_t buildDB(index_t);
+
   /// @brief State reads persisted state and prepares the agent
   friend class State;
   friend class Compactor;
