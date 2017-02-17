@@ -168,9 +168,6 @@ class LogicalCollection {
 
   uint64_t numberDocuments() const;
 
-  // TODO this should be part of physical collection!
-  size_t journalSize() const;
-
   // SECTION: Properties
   TRI_voc_rid_t revision() const;
   bool isLocal() const;
@@ -443,7 +440,6 @@ class LogicalCollection {
   bool const _isSystem;
   bool const _isVolatile;
   bool _waitForSync;
-  TRI_voc_size_t _journalSize;
 
   // SECTION: Key Options
   // TODO Really VPack?

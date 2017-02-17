@@ -76,7 +76,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
 
   // create storage-engine specific collection
-  virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*) = 0;
+  virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*, VPackSlice const&) = 0;
 
 
   // status functionality

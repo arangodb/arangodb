@@ -233,9 +233,9 @@ TransactionCollection* MMFilesEngine::createTransactionCollection(TransactionSta
 }
 
 // create storage-engine specific collection
-PhysicalCollection* MMFilesEngine::createPhysicalCollection(LogicalCollection* collection) {
+PhysicalCollection* MMFilesEngine::createPhysicalCollection(LogicalCollection* collection, VPackSlice const& info) {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
-  return new MMFilesCollection(collection);
+  return new MMFilesCollection(collection, info);
 }
 
 void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {    
@@ -618,10 +618,10 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
   std::string const path = databasePath(vocbase);
 
   // sanity check
-  if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameters->journalSize()) {
+  if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameters->getPhysical()->journalSize()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create datafile '" << parameters->name() << "' in '"
              << path << "', maximal size '"
-             << parameters->journalSize() << "' is too small";
+             << parameters->getPhysical()->journalSize() << "' is too small";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATAFILE_FULL);
   }
 

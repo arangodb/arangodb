@@ -101,32 +101,6 @@ class IndexFillerTask : public basics::LocalTask {
 
 namespace {
 
-template <typename T>
-static T ReadNumericValue(VPackSlice info, std::string const& name, T def) {
-  if (!info.isObject()) {
-    return def;
-  }
-  return Helper::getNumericValue<T>(info, name.c_str(), def);
-}
-
-template <typename T, typename BaseType>
-static T ReadNumericValue(VPackSlice info, std::string const& name, T def) {
-  if (!info.isObject()) {
-    return def;
-  }
-  // nice extra conversion required for Visual Studio pickyness
-  return static_cast<T>(Helper::getNumericValue<BaseType>(
-      info, name.c_str(), static_cast<BaseType>(def)));
-}
-
-static bool ReadBooleanValue(VPackSlice info, std::string const& name,
-                             bool def) {
-  if (!info.isObject()) {
-    return def;
-  }
-  return Helper::getBooleanValue(info, name.c_str(), def);
-}
-
 static TRI_voc_cid_t ReadCid(VPackSlice info) {
   if (!info.isObject()) {
     // ERROR CASE
@@ -211,7 +185,6 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _isSystem(other.isSystem()),
       _isVolatile(other.isVolatile()),
       _waitForSync(other.waitForSync()),
-      _journalSize(static_cast<TRI_voc_size_t>(other.journalSize())),
       _keyOptions(other._keyOptions),
       _version(other._version),
       _indexBuckets(other.indexBuckets()),
@@ -223,7 +196,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _vocbase(other.vocbase()),
       _cleanupIndexes(0),
       _persistentIndexes(0),
-      _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(this)),
+      _physical(other.getPhysical()->clone(this,other.getPhysical())),
       _useSecondaryIndexes(true),
       _maxTick(0),
       _keyGenerator() {
@@ -250,37 +223,34 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     : _internalVersion(0),
       _cid(ReadCid(info)),
       _planId(ReadPlanId(info, _cid)),
-      _type(ReadNumericValue<TRI_col_type_e, int>(info, "type",
+      _type(Helper::readNumericValue<TRI_col_type_e, int>(info, "type",
                                                   TRI_COL_TYPE_UNKNOWN)),
       _name(ReadStringValue(info, "name", "")),
       _distributeShardsLike(ReadStringValue(info, "distributeShardsLike", "")),
-      _isSmart(ReadBooleanValue(info, "isSmart", false)),
-      _status(ReadNumericValue<TRI_vocbase_col_status_e, int>(
+      _isSmart(Helper::readBooleanValue(info, "isSmart", false)),
+      _status(Helper::readNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isLocal(!ServerState::instance()->isCoordinator()),
-      _isDeleted(ReadBooleanValue(info, "deleted", false)),
-      _doCompact(ReadBooleanValue(info, "doCompact", true)),
+      _isDeleted(Helper::readBooleanValue(info, "deleted", false)),
+      _doCompact(Helper::readBooleanValue(info, "doCompact", true)),
       _isSystem(IsSystemName(_name) &&
-                ReadBooleanValue(info, "isSystem", false)),
-      _isVolatile(ReadBooleanValue(info, "isVolatile", false)),
-      _waitForSync(ReadBooleanValue(info, "waitForSync", false)),
-      _journalSize(ReadNumericValue<TRI_voc_size_t>(
-          info, "maximalSize",  // Backwards compatibility. Agency uses
-                                // journalSize. paramters.json uses maximalSize
-          ReadNumericValue<TRI_voc_size_t>(info, "journalSize",
-                                           TRI_JOURNAL_DEFAULT_SIZE))),
+                Helper::readBooleanValue(info, "isSystem", false)),
+      _isVolatile(Helper::readBooleanValue(info, "isVolatile", false)),
+      _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
       _keyOptions(CopySliceValue(info, "keyOptions")),
-      _version(ReadNumericValue<uint32_t>(info, "version", currentVersion())),
-      _indexBuckets(ReadNumericValue<uint32_t>(
+      _version(Helper::readNumericValue<uint32_t>(info, "version", currentVersion())),
+      _indexBuckets(Helper::readNumericValue<uint32_t>(
           info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
       _replicationFactor(1),
-      _numberOfShards(ReadNumericValue<size_t>(info, "numberOfShards", 1)),
-      _allowUserKeys(ReadBooleanValue(info, "allowUserKeys", true)),
+      _numberOfShards(Helper::readNumericValue<size_t>(info, "numberOfShards", 1)),
+      _allowUserKeys(Helper::readBooleanValue(info, "allowUserKeys", true)),
       _shardIds(new ShardMap()),
       _vocbase(vocbase),
       _cleanupIndexes(0),
       _persistentIndexes(0),
-      _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(this)),
+      _physical(
+          EngineSelectorFeature::ENGINE->createPhysicalCollection(this,info)
+        ),
       _useSecondaryIndexes(true),
       _maxTick(0),
       _keyGenerator() {
@@ -305,7 +275,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
         "volatile collections do not support the waitForSync option");
   }
 
-  if (_journalSize < TRI_JOURNAL_MINIMAL_SIZE) {
+  if (getPhysical()->journalSize() < TRI_JOURNAL_MINIMAL_SIZE) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "<properties>.journalSize too small");
   }
@@ -491,7 +461,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     }
   }
 
-  int64_t count = ReadNumericValue<int64_t>(info, "count", -1);
+  int64_t count = Helper::readNumericValue<int64_t>(info, "count", -1);
   if (count != -1) {
     _physical->updateCount(count);
   }
@@ -509,7 +479,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 LogicalCollection::~LogicalCollection() {}
 
 bool LogicalCollection::IsAllowedName(VPackSlice parameters) {
-  bool allowSystem = ReadBooleanValue(parameters, "isSystem", false);
+  bool allowSystem = Helper::readBooleanValue(parameters, "isSystem", false);
   std::string name = ReadStringValue(parameters, "name", "");
   if (name.empty()) {
     return false;
@@ -597,7 +567,6 @@ uint64_t LogicalCollection::numberDocuments() const {
   return primaryIndex()->size();
 }
 
-size_t LogicalCollection::journalSize() const { return _journalSize; }
 
 uint32_t LogicalCollection::internalVersion() const { return _internalVersion; }
 
@@ -781,7 +750,11 @@ void LogicalCollection::getPropertiesVPack(VPackBuilder& result, bool translateC
   result.add("isSystem", VPackValue(_isSystem));
   result.add("isVolatile", VPackValue(_isVolatile));
   result.add("waitForSync", VPackValue(_waitForSync));
-  result.add("journalSize", VPackValue(_journalSize));
+  // maybe add journalsize in Pysical - problem we need ot create one object
+  // we shold not merge one silice created by they physical with the one
+  // created in this place or maybe just split info in logical and pysical part
+  // that would probably result in bigger changes TODO FIXME
+  result.add("journalSize", VPackValue(getPhysical()->journalSize()));
   result.add("indexBuckets", VPackValue(_indexBuckets));
   result.add("replicationFactor", VPackValue(_replicationFactor));
   if (!_distributeShardsLike.empty()) {
@@ -1113,13 +1086,7 @@ int LogicalCollection::updateProperties(VPackSlice const& slice, bool doSync) {
 
   _doCompact = Helper::getBooleanValue(slice, "doCompact", _doCompact);
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
-  if (slice.hasKey("journalSize")) {
-    _journalSize = Helper::getNumericValue<TRI_voc_size_t>(slice, "journalSize",
-                                                           _journalSize);
-  } else {
-    _journalSize = Helper::getNumericValue<TRI_voc_size_t>(slice, "maximalSize",
-                                                           _journalSize);
-  }
+  getPhysical()->updateProperties(slice,doSync);
   _indexBuckets =
       Helper::getNumericValue<uint32_t>(slice, "indexBuckets", _indexBuckets);
 

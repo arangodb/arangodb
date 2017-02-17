@@ -42,6 +42,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/SmartVertexCollection.h"
@@ -1422,7 +1423,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
       }
     }
     copy.add("doCompact", VPackValue(info->doCompact()));
-    copy.add("journalSize", VPackValue(info->journalSize()));
+    copy.add("journalSize", VPackValue(info->getPhysical()->journalSize()));
     copy.add("waitForSync", VPackValue(info->waitForSync()));
     copy.add("indexBuckets", VPackValue(info->indexBuckets()));
   } catch (...) {

@@ -660,7 +660,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   uint64_t const numDocuments = getNumberOfDocuments(collection);
 
   // get maximum size of result file
-  uint64_t maxSize = maxSizeFactor() * (uint64_t)collection->journalSize();
+  uint64_t maxSize = maxSizeFactor() * (uint64_t)collection->getPhysical()->journalSize();
   if (maxSize < 8 * 1024 * 1024) {
     maxSize = 8 * 1024 * 1024;
   }

@@ -57,6 +57,7 @@
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
+using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 
@@ -75,6 +76,21 @@ static DatafileStatisticsContainer* FindDatafileStats(
 }
 
 } // namespace
+
+int MMFilesCollection::updateProperties(VPackSlice const& slice, bool doSync){
+  if (slice.hasKey("journalSize")) {
+    _journalSize = Helper::getNumericValue<TRI_voc_size_t>(slice, "journalSize",
+                                                           _journalSize);
+  } else {
+    _journalSize = Helper::getNumericValue<TRI_voc_size_t>(slice, "maximalSize",
+                                                           _journalSize);
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+PhysicalCollection* MMFilesCollection::clone(LogicalCollection* logical,PhysicalCollection* physical){
+  return new MMFilesCollection(logical, physical);
+}
 
 /// @brief process a document (or edge) marker when opening a collection
 int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
@@ -308,8 +324,8 @@ bool MMFilesCollection::OpenIterator(TRI_df_marker_t const* marker, MMFilesColle
   return (res == TRI_ERROR_NO_ERROR);
 }
 
-MMFilesCollection::MMFilesCollection(LogicalCollection* collection)
-    : PhysicalCollection(collection),
+MMFilesCollection::MMFilesCollection(LogicalCollection* collection, VPackSlice const& info)
+    : PhysicalCollection(collection, info),
       _ditches(collection),
       _initialCount(0),
       _revisionError(false),
@@ -317,8 +333,38 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection)
       _uncollectedLogfileEntries(0),
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
-      _lastCompactionStamp(0.0) {
+      _lastCompactionStamp(0.0),
+      _journalSize(Helper::readNumericValue<TRI_voc_size_t>(
+          info, "maximalSize",  // Backwards compatibility. Agency uses
+                                // journalSize. paramters.json uses maximalSize
+          Helper::readNumericValue<TRI_voc_size_t>(info, "journalSize",
+                                           TRI_JOURNAL_DEFAULT_SIZE))){
   setCompactionStatus("compaction not yet started");
+}
+
+MMFilesCollection::MMFilesCollection(LogicalCollection* logical, PhysicalCollection* physical):
+  PhysicalCollection(logical, VPackSlice::emptyObjectSlice()),
+  _ditches(logical)
+{
+  MMFilesCollection& mmfiles = *static_cast<MMFilesCollection*>(physical);
+  _initialCount = mmfiles._initialCount;
+  _revisionError = mmfiles._revisionError;
+  _lastRevision = mmfiles._lastRevision;
+  _nextCompactionStartIndex = mmfiles._nextCompactionStartIndex;
+  _lastCompactionStatus = mmfiles._lastCompactionStatus;
+  _lastCompactionStamp = mmfiles._lastCompactionStamp;
+  _journalSize = mmfiles._journalSize;
+  _path = mmfiles._path;
+  setCompactionStatus("compaction not yet started");
+
+  //  not copied
+  //  _datafiles;   // all datafiles
+  //  _journals;    // all journals
+  //  _compactors;  // all compactor files
+  //  _uncollectedLogfileEntries = mmfiles.uncollectedLogfileEntries; //TODO FIXME
+  //  _datafileStatistics;
+  //  _revisionsCache;
+
 }
 
 MMFilesCollection::~MMFilesCollection() { 
@@ -510,7 +556,7 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
   WRITE_LOCKER(writeLocker, _filesLock);
 
   // start with configured journal size
-  TRI_voc_size_t targetSize = static_cast<TRI_voc_size_t>(_logicalCollection->journalSize());
+  TRI_voc_size_t targetSize = static_cast<TRI_voc_size_t>(_journalSize);
 
   // make sure that the document fits
   while (targetSize - 256 < size) {
