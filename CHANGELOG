@@ -1,6 +1,13 @@
 devel
 -----
 
+* ui: fixed issue #2065
+
+* ui: fixed a dashboard related memory issue
+
+* Internal javascript rest actions will now hide their stack traces to the client
+  unless maintainer mode is activated. Instead they will always log to the logfile
+
 * Removed undocumented internal HTTP API:
   * PUT _api/edges
   
@@ -51,8 +58,11 @@ v3.2.alpha1 (2017-02-05)
 * more detailed stacktraces in Foxx apps
 
 
-v3.1.11 (2017-02-13)
+v3.1.11 (2017-02-14)
 --------------------
+
+* fixed a race between connection closing and sending out last chunks of data to clients
+  when the "Connection: close" HTTP header was set in requests
 
 * ui: optimized smart graph creation usability
 

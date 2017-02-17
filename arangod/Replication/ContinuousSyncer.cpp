@@ -116,7 +116,7 @@ retry:
 
   // reset failed connects
   {
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
     _applier->_state._failedConnects = 0;
   }
 
@@ -129,7 +129,7 @@ retry:
       connectRetries++;
 
       {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
         _applier->_state._failedConnects = connectRetries;
         _applier->_state._totalRequests++;
         _applier->_state._totalFailedConnects++;
@@ -163,7 +163,7 @@ retry:
       LOG_TOPIC(WARN, Logger::REPLICATION) << "requireFromPresent feature is not supported on master server < ArangoDB 2.7";
     }
 
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
     res = getLocalState(errorMsg);
 
     _applier->_state._failedConnects = 0;
@@ -199,7 +199,7 @@ retry:
       TRI_RemoveStateReplicationApplier(_vocbase);
 
       {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
         LOG_TOPIC(DEBUG, Logger::REPLICATION) << "stopped replication applier for database '" << _vocbase->name() << "' with lastProcessedContinuousTick: " << _applier->_state._lastProcessedContinuousTick << ", lastAppliedContinuousTick: " << _applier->_state._lastAppliedContinuousTick << ", safeResumeTick: " << _applier->_state._safeResumeTick;
 
@@ -808,7 +808,7 @@ int ContinuousSyncer::applyLogMarker(VPackSlice const& slice,
     TRI_voc_tick_t newTick = static_cast<TRI_voc_tick_t>(
         StringUtils::uint64(tick.c_str(), tick.size()));
 
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
     if (newTick >= firstRegularTick &&
         newTick > _applier->_state._lastProcessedContinuousTick) {
@@ -960,7 +960,7 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
     }
 
     // update tick value
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
     if (_applier->_state._lastProcessedContinuousTick >
         _applier->_state._lastAppliedContinuousTick) {
@@ -996,7 +996,7 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
   TRI_voc_tick_t safeResumeTick = 0;
 
   {
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
     if (_useTick) {
       // use user-defined tick
@@ -1079,7 +1079,7 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
       connectRetries++;
 
       {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
         _applier->_state._failedConnects = connectRetries;
         _applier->_state._totalRequests++;
@@ -1094,7 +1094,7 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
       connectRetries = 0;
 
       {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
         _applier->_state._failedConnects = connectRetries;
         _applier->_state._totalRequests++;
@@ -1397,7 +1397,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
       if (found) {
         tick = StringUtils::uint64(header);
 
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
         _applier->_state._lastAvailableContinuousTick = tick;
       }
     }
@@ -1426,7 +1426,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
     TRI_voc_tick_t lastAppliedTick;
 
     {
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
       lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
     }
 
@@ -1438,7 +1438,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
     if (processedMarkers > 0) {
       worked = true;
 
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
       _applier->_state._totalEvents += processedMarkers;
 
       if (_applier->_state._lastAppliedContinuousTick != lastAppliedTick) {
@@ -1451,7 +1451,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
       // write state at least once so the start tick gets saved
       _hasWrittenState = true;
 
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
       _applier->_state._lastAppliedContinuousTick = firstRegularTick;
       _applier->_state._lastProcessedContinuousTick = firstRegularTick;

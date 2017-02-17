@@ -512,14 +512,7 @@ else ()
     -Dlinux_use_gold_flags=0
     -Dv8_no_strict_aliasing=1
     -Dwerror=
-  )
-
-  if (CROSS_COMPILING)
-    list(APPEND V8_GYP_ARGS -Dv8_use_snapshot=false )
-#  dependenis 'v8_libbase' and 'v8_libplatform' need be added in v8.gyp  (under 'v8_use_snapshot!="true"')
-  else ()
-    list(APPEND V8_GYP_ARGS -Dv8_use_snapshot=true )
-  endif()
+    -Dv8_use_snapshot=true )
 
   if (APPLE AND CMAKE_COMPILER_IS_CLANG)
     set(V8_CXXFLAGS "${V8_CXXFLAGS} -stdlib=libc++")
