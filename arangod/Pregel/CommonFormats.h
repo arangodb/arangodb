@@ -37,17 +37,19 @@ namespace pregel {
 
 /// A counter for counting unique vertex IDs using a HyperLogLog sketch.
 /// @author Aljoscha Krettek, Robert Metzger, Robert Waury
+/// https://github.com/hideo55/cpp-HyperLogLog/blob/master/include/hyperloglog.hpp
 struct HLLCounter {
-  friend struct HLLCounterFormat;
-  
+  friend struct FMCounterFormat;
   constexpr static int32_t NUM_BUCKETS = 64;
   constexpr static double ALPHA = 0.709;
-  int32_t getCount();
+  
+  uint32_t getCount();
   void addNode(PregelID const& pregelId);
   void merge(HLLCounter const& counter);
   
 private:
   uint8_t _buckets[NUM_BUCKETS] = {0};
+  
 };
   
   

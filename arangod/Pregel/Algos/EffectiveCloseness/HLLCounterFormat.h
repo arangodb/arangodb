@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_EC_HLLCOUNTER_H
-#define ARANGODB_PREGEL_ALGOS_EC_HLLCOUNTER_H 1
+#ifndef ARANGODB_PREGEL_ALGOS_EC_HLLCounter_H
+#define ARANGODB_PREGEL_ALGOS_EC_HLLCounter_H 1
 
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"

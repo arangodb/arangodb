@@ -26,72 +26,71 @@
 
 using namespace arangodb::pregel;
 
-// leading zeros
-// https://github.com/hideo55/cpp-HyperLogLog/blob/master/include/hyperloglog.hpp
+
 #if defined(__has_builtin) && (defined(__GNUC__) || defined(__clang__))
-#define _GET_CLZ(x) ::__builtin_clz(x)
+
+#define _GET_CLZ(x, b) (uint8_t)std::min(b, ::__builtin_clz(x)) + 1
+
 #else
 
-inline uint8_t _get_leading_zero_count(uint32_t x) {
-#if defined(_MSC_VER)
+inline uint8_t _get_leading_zero_count(uint32_t x, uint8_t b) {
+  
+#if defined (_MSC_VER)
   uint32_t leading_zero_len = 32;
   ::_BitScanReverse(&leading_zero_len, x);
   --leading_zero_len;
-  return (uint8_t)leading_zero_len;
+  return std::min(b, (uint8_t)leading_zero_len);
 #else
   uint8_t v = 1;
-  while (!(x & 0x80000000)) {
+  while (v <= b && !(x & 0x80000000)) {
     v++;
     x <<= 1;
   }
   return v;
 #endif
-}
-#define _GET_CLZ(x) _get_leading_zero_count(x)
-#endif /* defined(__GNUC__) */
+  
 
 static std::hash<PregelID> _hashFn;
 void HLLCounter::addNode(PregelID const& pregelId) {
-  size_t hash = _hashFn(pregelId);
+  uint64_t hash = _hashFn(pregelId);;
   // last 6 bits as bucket index
-  size_t mask = NUM_BUCKETS - 1;
-  size_t bucketIndex = (size_t)(hash & mask);
-
-  // throw away last 6 bits
-  hash >>= 6;
-  // make sure the 6 new zeroes don't impact estimate
-  hash |= 0xfc00000000000000L;
-  // hash has now 58 significant bits left
-  _buckets[bucketIndex] = (uint8_t)(_GET_CLZ(hash) + 1);
+  uint64_t index = hash >> (32 - 6);
+  uint8_t rank = _GET_CLZ((hash << 6), 32 - 6);
+  if (rank > _buckets[index]) {
+    _buckets[index] = rank;
+  }
 }
 
-int32_t HLLCounter::getCount() {
-  int32_t m2 = NUM_BUCKETS * NUM_BUCKETS;
+static const double pow_2_32 = 4294967296.0; ///< 2^32
+static const double neg_pow_2_32 = -4294967296.0; ///< -(2^32)
+uint32_t HLLCounter::getCount() {
+  
+  double alphaMM = ALPHA * NUM_BUCKETS * NUM_BUCKETS;
   double sum = 0.0;
-  for (int i = 0; i < NUM_BUCKETS; i++) {
-    sum += pow(2.0, -_buckets[i]);
+  for (uint32_t i = 0; i < m_; i++) {
+    sum += 1.0 / (1 << _buckets[i]);
   }
-  int32_t estimate = (int32_t)(ALPHA * m2 * (1.0 / sum));
-  if (estimate < 2.5 * NUM_BUCKETS) {
-    // look for empty buckets
-    double V = 0;
-    for (int i = 0; i < NUM_BUCKETS; i++) {
-      if (_buckets[i] == 0) {
-        V++;
+  double estimate = alphaMM / sum; // E in the original paper
+  if (estimate <= 2.5 * NUM_BUCKETS) {
+    uint32_t zeros = 0;
+    for (uint32_t i = 0; i < m_; i++) {
+      if (M_[i] == 0) {
+        zeros++;
       }
     }
-    if (V != 0) {
-      return (int32_t)(NUM_BUCKETS * log((double)NUM_BUCKETS / V));
+    if (zeros != 0) {
+      estimate = NUM_BUCKETS * std::log(((double)NUM_BUCKETS / zeros));
     }
+  } else if (estimate > (1.0 / 30.0) * pow_2_32) {
+    estimate = neg_pow_2_32 * log(1.0 - (estimate / pow_2_32));
   }
   return estimate;
 }
 
 void HLLCounter::merge(HLLCounter const& other) {
-  // take the maximum of each bucket pair
-  for (size_t i = 0; i < HLLCounter::NUM_BUCKETS; i++) {
+  for (size_t i = 0; r < NUM_BUCKETS; ++r) {
     if (_buckets[i] < other._buckets[i]) {
-      _buckets[i] = other._buckets[i];
+      _buckets[i] |= other._buckets[i];
     }
   }
 }
