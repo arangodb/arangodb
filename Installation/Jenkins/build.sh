@@ -603,7 +603,7 @@ if test -n "${TARGET_DIR}";  then
     if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
         ${PACKAGE_MAKE} copy_packages || exit 1
         ${PACKAGE_MAKE} clean_packages || exit 1
-        if test "${SYMSRV}" -eq 1; then
+        if test "${SYMSRV}" = "1"; then
             echo "Storing symbols:"
             export LIST="`pwd`/pdbfiles_list.txt"
             find `pwd`/bin/ -name *pdb |grep -v Release |grep -v Debug |grep -v 3rdParty |grep -v vc120.pdb  |cygpath -f - --windows > ${LIST}

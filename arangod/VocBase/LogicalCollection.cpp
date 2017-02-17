@@ -833,7 +833,7 @@ int LogicalCollection::rename(std::string const& newName) {
   // Otherwise caching is destroyed.
   TRI_ASSERT(!ServerState::instance()->isCoordinator());  // NOT YET IMPLEMENTED
 
-  WRITE_LOCKER_EVENTUAL(locker, _lock, 1000);
+  WRITE_LOCKER_EVENTUAL(locker, _lock);
 
   // Check for illeagal states.
   switch (_status) {
