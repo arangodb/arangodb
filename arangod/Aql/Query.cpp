@@ -159,7 +159,6 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _ast(nullptr),
       _profile(nullptr),
       _state(INVALID_STATE),
-      _parser(nullptr),
       _trx(nullptr),
       _engine(nullptr),
       _maxWarningCount(10),
@@ -232,7 +231,6 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _ast(nullptr),
       _profile(nullptr),
       _state(INVALID_STATE),
-      _parser(nullptr),
       _trx(nullptr),
       _engine(nullptr),
       _maxWarningCount(10),
@@ -577,10 +575,9 @@ QueryResult Query::prepare(QueryRegistry* registry) {
       ExecutionEngine* engine(ExecutionEngine::instantiateFromPlan(
           registry, this, plan.get(), planRegisters));
 
-      // If all went well so far, then we keep _plan, _parser and _trx and
+      // If all went well so far, then we keep _plan and _trx and
       // return:
       _plan = std::move(plan);
-      _parser = parser.release();
       _engine = engine;
       return QueryResult();
     } catch (arangodb::basics::Exception const& ex) {
@@ -1409,11 +1406,6 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
     // If the transaction was not committed, it is automatically aborted
     delete _trx;
     _trx = nullptr;
-  }
-
-  if (_parser != nullptr) {
-    delete _parser;
-    _parser = nullptr;
   }
 
   _plan.reset();

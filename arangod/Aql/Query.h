@@ -59,7 +59,6 @@ class Ast;
 class ExecutionEngine;
 class ExecutionPlan;
 class Executor;
-class Parser;
 class Query;
 class QueryRegistry;
 
@@ -439,9 +438,6 @@ class Query {
 
   /// @brief the ExecutionPlan object, if the query is prepared
   std::unique_ptr<ExecutionPlan> _plan;
-
-  /// @brief the Parser object, if the query is prepared
-  Parser* _parser;
 
   /// @brief the transaction object, in a distributed query every part of
   /// the query has its own transaction object. The transaction object is
