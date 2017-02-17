@@ -63,7 +63,8 @@ size_t PregelFeature::availableParallelism() {
   const size_t procNum = TRI_numberProcessors();
   if (procNum <= 1)
     return 1;
-  else return procNum;// use full performance on cluster
+  else
+    return procNum;  // use full performance on cluster
 }
 
 void PregelFeature::start() {

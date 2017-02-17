@@ -158,7 +158,8 @@ int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
         result.slice()[0].get(std::vector<std::string>(
             {AgencyCommManager::path(), "Supervision", "Health"}));
 
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Server Status: " << serversRegistered.toJson();
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Server Status: "
+                                    << serversRegistered.toJson();
 
     if (serversRegistered.isObject()) {
       for (auto const& res : VPackObjectIterator(serversRegistered)) {

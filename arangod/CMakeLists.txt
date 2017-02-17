@@ -373,6 +373,8 @@ SET(ARANGOD_SOURCES
   Pregel/Algos/SCC.cpp
   Pregel/Algos/AsyncSCC.cpp
 #  Pregel/Algos/DMID.cpp
+  Pregel/Algos/EffectiveCloseness/EffectiveCloseness.cpp
+  Pregel/Algos/EffectiveCloseness/HLLCounter.cpp
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp
   Pregel/IncomingCache.cpp

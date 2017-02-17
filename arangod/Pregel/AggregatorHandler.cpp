@@ -75,7 +75,7 @@ void AggregatorHandler::aggregateValues(AggregatorHandler const& workerValues) {
   }
 }
 
-void AggregatorHandler::aggregateValues(VPackSlice  const& workerValues) {
+void AggregatorHandler::aggregateValues(VPackSlice const& workerValues) {
   VPackSlice values = workerValues.get(Utils::aggregatorValuesKey);
   if (values.isObject()) {
     for (auto const& keyValue : VPackObjectIterator(values)) {

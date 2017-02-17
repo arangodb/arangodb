@@ -81,7 +81,8 @@ void ArrayOutCache<M>::appendMessage(prgl_shard_t shard, std::string const& key,
 
 template <typename M>
 void ArrayOutCache<M>::flushMessages() {
-  // LOG_TOPIC(INFO, Logger::PREGEL) << "Beginning to send messages to other machines";
+  // LOG_TOPIC(INFO, Logger::PREGEL) << "Beginning to send messages to other
+  // machines";
   uint64_t gss = this->_config->globalSuperstep();
   if (this->_sendToNextGSS) {
     gss += 1;
@@ -128,7 +129,8 @@ void ArrayOutCache<M>::flushMessages() {
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
 
-    // LOG_TOPIC(INFO, Logger::PREGEL) << "Worker: Sending data to other Shard: " << shardId;
+    // LOG_TOPIC(INFO, Logger::PREGEL) << "Worker: Sending data to other Shard:
+    // " << shardId;
     //<< ". Message: " << package.toJson();
   }
   size_t nrDone = 0;
@@ -178,7 +180,7 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
       vertexMap.emplace(key, data);
 
       if (++(this->_containedMessages) >= this->_batchSize) {
-        //LOG_TOPIC(INFO, Logger::PREGEL) << "Hit buffer limit";
+        // LOG_TOPIC(INFO, Logger::PREGEL) << "Hit buffer limit";
         flushMessages();
       }
     }
@@ -187,7 +189,8 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
 
 template <typename M>
 void CombiningOutCache<M>::flushMessages() {
-  // LOG_TOPIC(INFO, Logger::PREGEL) << "Beginning to send messages to other machines";
+  // LOG_TOPIC(INFO, Logger::PREGEL) << "Beginning to send messages to other
+  // machines";
   uint64_t gss = this->_config->globalSuperstep();
   if (this->_sendToNextGSS && this->_config->asynchronousMode()) {
     gss += 1;
@@ -230,7 +233,8 @@ void CombiningOutCache<M>::flushMessages() {
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
 
-    // LOG_TOPIC(INFO, Logger::PREGEL) << "Worker: Sending data to other Shard: " << shardId;
+    // LOG_TOPIC(INFO, Logger::PREGEL) << "Worker: Sending data to other Shard:
+    // " << shardId;
     //          << ". Message: " << package.toJson();
   }
   size_t nrDone = 0;
@@ -256,3 +260,6 @@ template class arangodb::pregel::CombiningOutCache<double>;
 template class arangodb::pregel::OutCache<SenderMessage<uint64_t>>;
 template class arangodb::pregel::ArrayOutCache<SenderMessage<uint64_t>>;
 template class arangodb::pregel::CombiningOutCache<SenderMessage<uint64_t>>;
+template class arangodb::pregel::OutCache<HLLCounter>;
+template class arangodb::pregel::ArrayOutCache<HLLCounter>;
+template class arangodb::pregel::CombiningOutCache<HLLCounter>;

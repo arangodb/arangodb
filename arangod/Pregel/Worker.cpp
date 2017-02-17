@@ -50,10 +50,10 @@ using namespace arangodb::pregel;
 #ifdef TRI_SHOW_LOCK_TIME
 
 #define MY_READ_LOCKER(obj, lock) \
-ReadLocker<ReadWriteLock> obj(&lock, __FILE__, __LINE__)
+  ReadLocker<ReadWriteLock> obj(&lock, __FILE__, __LINE__)
 
 #define MY_WRITE_LOCKER(obj, lock) \
-WriteLocker<ReadWriteLock> obj(&lock, __FILE__, __LINE__)
+  WriteLocker<ReadWriteLock> obj(&lock, __FILE__, __LINE__)
 
 #else
 
@@ -62,8 +62,6 @@ WriteLocker<ReadWriteLock> obj(&lock, __FILE__, __LINE__)
 #define MY_WRITE_LOCKER(obj, lock) WriteLocker<ReadWriteLock> obj(&lock)
 
 #endif
-
-
 
 template <typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
@@ -140,7 +138,6 @@ Worker<V, E, M>::~Worker() {
   _writeCache = nullptr;
 }
 
-
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_initializeMessageCaches() {
   const size_t p = _config.parallelism();
@@ -151,14 +148,14 @@ void Worker<V, E, M>::_initializeMessageCaches() {
                                           _messageCombiner.get());
     if (_config.asynchronousMode()) {
       _writeCacheNextGSS = new CombiningInCache<M>(
-                                                   &_config, _messageFormat.get(), _messageCombiner.get());
+          &_config, _messageFormat.get(), _messageCombiner.get());
     }
     for (size_t i = 0; i < p; i++) {
-      auto incoming = std::make_unique<CombiningInCache<M>>(nullptr, _messageFormat.get(),
-                                                            _messageCombiner.get());
+      auto incoming = std::make_unique<CombiningInCache<M>>(
+          nullptr, _messageFormat.get(), _messageCombiner.get());
       _inCaches.push_back(incoming.get());
-      _outCaches.push_back(
-      new CombiningOutCache<M>(&_config, incoming.release(), _writeCacheNextGSS));
+      _outCaches.push_back(new CombiningOutCache<M>(
+          &_config, incoming.release(), _writeCacheNextGSS));
     }
   } else {
     _readCache = new ArrayInCache<M>(&_config, _messageFormat.get());
@@ -169,7 +166,7 @@ void Worker<V, E, M>::_initializeMessageCaches() {
     for (size_t i = 0; i < p; i++) {
       _inCaches.push_back(new ArrayInCache<M>(nullptr, _messageFormat.get()));
       _outCaches.push_back(
-                           new ArrayOutCache<M>(&_config, _inCaches.back(), _writeCacheNextGSS));
+          new ArrayOutCache<M>(&_config, _inCaches.back(), _writeCacheNextGSS));
     }
   }
 }
@@ -181,7 +178,8 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::IDLE) {
     LOG_TOPIC(ERR, Logger::PREGEL) << "Expected GSS " << _expectedGSS;
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Cannot prepare a gss when the worker is not idle";
+    LOG_TOPIC(ERR, Logger::PREGEL)
+        << "Cannot prepare a gss when the worker is not idle";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
   _state = WorkerState::PREPARING;  // stop any running step
@@ -212,7 +210,7 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
   _config._globalSuperstep = gss;
   // write cache becomes the readable cache
   if (_config.asynchronousMode()) {
-    MY_WRITE_LOCKER(wguard, _cacheRWLock);// by design shouldn't be necessary
+    MY_WRITE_LOCKER(wguard, _cacheRWLock);  // by design shouldn't be necessary
     TRI_ASSERT(_readCache->containedMessageCount() == 0);
     TRI_ASSERT(_writeCache->containedMessageCount() == 0);
     std::swap(_readCache, _writeCacheNextGSS);
@@ -273,7 +271,8 @@ void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Superstep out of sync");
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Expected: " << _config._globalSuperstep << "Got: " << gss;
+    LOG_TOPIC(ERR, Logger::PREGEL) << "Expected: " << _config._globalSuperstep
+                                   << "Got: " << gss;
   }
 }
 
@@ -343,7 +342,8 @@ void Worker<V, E, M>::_startProcessing() {
         _finishedProcessing();  // last thread turns the lights out
       }
     });
-    start = end; end = end + delta;
+    start = end;
+    end = end + delta;
     if (total < end + delta) {  // swallow the rest
       end = total;
     }
@@ -363,13 +363,13 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 
 // internally called in a WORKER THREAD!!
 template <typename V, typename E, typename M>
-bool Worker<V, E, M>::_processVertices(size_t threadId,
-    RangeIterator<VertexEntry>& vertexIterator) {
+bool Worker<V, E, M>::_processVertices(
+    size_t threadId, RangeIterator<VertexEntry>& vertexIterator) {
   double start = TRI_microtime();
 
   // thread local caches
-  InCache<M> *inCache = _inCaches[threadId];
-  OutCache<M> *outCache = _outCaches[threadId];
+  InCache<M>* inCache = _inCaches[threadId];
+  OutCache<M>* outCache = _outCaches[threadId];
   outCache->setBatchSize(_messageBatchSize);
   if (_config.asynchronousMode()) {
     outCache->sendToNextGSS(_requestedNextGSS);
@@ -419,15 +419,15 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
   _writeCache->mergeCache(_config, inCache);
   // TODO ask how to implement message sending without waiting for a response
   t = TRI_microtime() - t;
-  
+
   MessageStats stats;
   stats.sendCount = outCache->sendCount();
   stats.superstepRuntimeSecs = TRI_microtime() - start;
   if (t > 0.005) {
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Total " << stats.superstepRuntimeSecs << " s merge took "
-    << t << " s";
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Total " << stats.superstepRuntimeSecs
+                                    << " s merge took " << t << " s";
   }
-  
+
   inCache->clear();
   outCache->clear();
 
@@ -488,7 +488,8 @@ void Worker<V, E, M>::_finishedProcessing() {
         if (_config.asynchronousMode()) {
           // just process these vertices in the next superstep
           MY_READ_LOCKER(guard, _cacheRWLock);
-          _writeCache->mergeCache(_config, _readCache);  // compute in next superstep
+          _writeCache->mergeCache(_config,
+                                  _readCache);  // compute in next superstep
           _messageStats.sendCount += _readCache->containedMessageCount();
         } else {
           // TODO call _startProcessing ???
@@ -499,7 +500,7 @@ void Worker<V, E, M>::_finishedProcessing() {
         }
       }
     }
-    _readCache->clear(); // no need to keep old messages around
+    _readCache->clear();  // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;
     _config._localSuperstep++;
     // only set the state here, because _processVertices checks for it
@@ -538,7 +539,7 @@ void Worker<V, E, M>::_finishedProcessing() {
       VPackSlice data = result->answer->payload();
       if (data.isObject()) {
         proceed = true;
-        _conductorAggregators->aggregateValues(data);// only aggregate values
+        _conductorAggregators->aggregateValues(data);  // only aggregate values
         VPackSlice nextGSS = data.get(Utils::enterNextGSSKey);
         if (nextGSS.isBool()) {
           _requestedNextGSS = nextGSS.getBool();
@@ -591,13 +592,12 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body) {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::aqlResult(VPackBuilder *b) const {
+void Worker<V, E, M>::aqlResult(VPackBuilder* b) const {
   MUTEX_LOCKER(guard, _commandMutex);
-  
+
   b->openArray();
   auto it = _graphStore->vertexIterator();
   for (VertexEntry const* vertexEntry : it) {
-    
     V* data = _graphStore->mutableVertexData(vertexEntry);
     b->openObject();
     b->add(StaticStrings::KeyString, VPackValue(vertexEntry->key()));
@@ -628,7 +628,7 @@ void Worker<V, E, M>::startRecovery(VPackSlice const& data) {
       _writeCacheNextGSS->clear();
     }
   }
-  
+
   VPackBuilder copy(data);
   // hack to determine newly added vertices
   _preRecoveryTotal = _graphStore->localVertexCount();
@@ -733,3 +733,4 @@ template class arangodb::pregel::Worker<double, float, double>;
 // custom algorihm types
 template class arangodb::pregel::Worker<SCCValue, int32_t,
                                         SenderMessage<uint64_t>>;
+template class arangodb::pregel::Worker<ECValue, int32_t, HLLCounter>;

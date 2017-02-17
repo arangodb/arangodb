@@ -65,8 +65,7 @@ Conductor::Conductor(
 
 Conductor::~Conductor() { this->cancel(); }
 
-void Conductor::start(std::string const& algoName,
-                      VPackSlice const& config) {
+void Conductor::start(std::string const& algoName, VPackSlice const& config) {
   if (!config.isObject()) {
     _userParams.openObject();
     _userParams.close();
@@ -85,7 +84,8 @@ void Conductor::start(std::string const& algoName,
   _masterContext.reset(_algorithm->masterContext(config));
   _aggregators.reset(new AggregatorHandler(_algorithm.get()));
 
-  _maxSuperstep = VelocyPackHelper::getNumericValue(config, "maxGSS", _maxSuperstep);
+  _maxSuperstep =
+      VelocyPackHelper::getNumericValue(config, "maxGSS", _maxSuperstep);
   // configure the async mode as optional
   VPackSlice async = _userParams.slice().get("async");
   _asyncMode = _algorithm->supportsAsyncMode();
@@ -130,7 +130,8 @@ bool Conductor::_startGlobalStep() {
   int res = _sendToAllDBServers(Utils::prepareGSSPath, b.slice(), requests);
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Seems there is at least one worker out of order";
+    LOG_TOPIC(INFO, Logger::PREGEL)
+        << "Seems there is at least one worker out of order";
     Utils::printResponses(requests);
     // the recovery mechanisms should take care of this
     return false;
@@ -168,7 +169,7 @@ bool Conductor::_startGlobalStep() {
     // tells workers to store / discard results
     if (_storeResults) {
       _finalizeWorkers();
-    } else {// just stop the timer
+    } else {  // just stop the timer
       _endTimeSecs = TRI_microtime();
       LOG_TOPIC(INFO, Logger::PREGEL) << "Done execution took"
                                       << totalRuntimeSecs() << " s";
@@ -196,10 +197,12 @@ bool Conductor::_startGlobalStep() {
   res = _sendToAllDBServers(Utils::startGSSPath, b.slice());  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Conductor could not start GSS " << _globalSuperstep;
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Conductor could not start GSS "
+                                    << _globalSuperstep;
     // the recovery mechanisms should take care od this
   } else {
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Conductor started new gss " << _globalSuperstep;
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Conductor started new gss "
+                                    << _globalSuperstep;
   }
   return res == TRI_ERROR_NO_ERROR;
 }
@@ -209,7 +212,8 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
   if (_state != ExecutionState::RUNNING) {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "We are not in a state where we expect a response";
+    LOG_TOPIC(WARN, Logger::PREGEL)
+        << "We are not in a state where we expect a response";
     return;
   }
 
@@ -219,8 +223,8 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
     return;
   }
 
-  LOG_TOPIC(INFO, Logger::PREGEL) << _totalVerticesCount << " vertices, " << _totalEdgesCount
-            << " edges";
+  LOG_TOPIC(INFO, Logger::PREGEL) << _totalVerticesCount << " vertices, "
+                                  << _totalEdgesCount << " edges";
   if (_masterContext) {
     _masterContext->_globalSuperstep = 0;
     _masterContext->_vertexCount = _totalVerticesCount;
@@ -250,7 +254,8 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   if (gss != _globalSuperstep ||
       !(_state == ExecutionState::RUNNING ||
         _state == ExecutionState::CANCELED)) {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "Conductor did received a callback from the wrong superstep";
+    LOG_TOPIC(WARN, Logger::PREGEL)
+        << "Conductor did received a callback from the wrong superstep";
     return VPackBuilder();
   }
 
@@ -280,8 +285,9 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     return response;
   }
 
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Finished gss " << _globalSuperstep << " in "
-            << (TRI_microtime() - _computationStartTimeSecs) << "s";
+  LOG_TOPIC(INFO, Logger::PREGEL)
+      << "Finished gss " << _globalSuperstep << " in "
+      << (TRI_microtime() - _computationStartTimeSecs) << "s";
   _globalSuperstep++;
 
   // don't block the response for workers waiting on this callback
@@ -293,10 +299,12 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     if (_state == ExecutionState::RUNNING) {
       _startGlobalStep();  // trigger next superstep
     } else if (_state == ExecutionState::CANCELED) {
-      LOG_TOPIC(WARN, Logger::PREGEL) << "Execution was canceled, results will be discarded.";
+      LOG_TOPIC(WARN, Logger::PREGEL)
+          << "Execution was canceled, results will be discarded.";
       _finalizeWorkers();  // tells workers to store / discard results
     } else {  // this prop shouldn't occur unless we are recovering or in error
-      LOG_TOPIC(WARN, Logger::PREGEL) << "No further action taken after receiving all responses";
+      LOG_TOPIC(WARN, Logger::PREGEL)
+          << "No further action taken after receiving all responses";
     }
   });
   return VPackBuilder();
@@ -306,7 +314,8 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
   if (_state != ExecutionState::RECOVERING) {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "We are not in a state where we expect a recovery response";
+    LOG_TOPIC(WARN, Logger::PREGEL)
+        << "We are not in a state where we expect a recovery response";
     return;
   }
 
@@ -591,12 +600,14 @@ int Conductor::_finalizeWorkers() {
   _aggregators->serializeValues(b);
   b.close();
 
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Done. We did " << _globalSuperstep << " rounds";
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs
-            << "s";
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Computation Time: " << compEnd - _computationStartTimeSecs
-            << "s";
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Storage Time: " << TRI_microtime() - compEnd << "s";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Done. We did " << _globalSuperstep
+                                  << " rounds";
+  LOG_TOPIC(INFO, Logger::PREGEL)
+      << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
+  LOG_TOPIC(INFO, Logger::PREGEL)
+      << "Computation Time: " << compEnd - _computationStartTimeSecs << "s";
+  LOG_TOPIC(INFO, Logger::PREGEL)
+      << "Storage Time: " << TRI_microtime() - compEnd << "s";
   LOG_TOPIC(INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
   LOG_TOPIC(INFO, Logger::PREGEL) << "Stats: " << b.toString();
   return res;
@@ -606,7 +617,7 @@ VPackBuilder Conductor::collectAQLResults() {
   if (_state != ExecutionState::DONE) {
     return VPackBuilder();
   }
-  
+
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -616,7 +627,7 @@ VPackBuilder Conductor::collectAQLResults() {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   VPackBuilder messages;
   for (auto const& req : requests) {
     VPackSlice payload = req.result.answer->payload();
@@ -654,7 +665,8 @@ int Conductor::_sendToAllDBServers(std::string const& suffix,
   size_t nrDone = 0;
   size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
                                       LogTopic("Pregel Conductor"));
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Send " << suffix << " to " << nrDone << " servers";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Send " << suffix << " to " << nrDone
+                                  << " servers";
   Utils::printResponses(requests);
 
   return nrGood == requests.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
@@ -664,7 +676,8 @@ void Conductor::_ensureUniqueResponse(VPackSlice body) {
   // check if this the only time we received this
   ServerID sender = body.get(Utils::senderKey).copyString();
   if (_respondedServers.find(sender) != _respondedServers.end()) {
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Received response already from " << sender;
+    LOG_TOPIC(ERR, Logger::PREGEL) << "Received response already from "
+                                   << sender;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);
   }
   _respondedServers.insert(sender);

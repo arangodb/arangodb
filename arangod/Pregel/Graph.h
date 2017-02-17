@@ -23,6 +23,10 @@
 #ifndef ARANGODB_PREGEL_GRAPH_STRUCTURE_H
 #define ARANGODB_PREGEL_GRAPH_STRUCTURE_H 1
 
+#include <cstdint>
+#include <string>
+#include <functional>
+
 namespace arangodb {
 namespace pregel {
 
@@ -157,11 +161,11 @@ class VertexEntry {
 };*/
 }
 }
-/*
+
 namespace std {
   template <>
   struct hash<arangodb::pregel::PregelID> {
-    std::size_t operator()(const PregelID& k) const {
+    std::size_t operator()(const arangodb::pregel::PregelID& k) const {
       using std::size_t;
       using std::hash;
       using std::string;
@@ -170,10 +174,10 @@ namespace std {
       // second and third and combine them using XOR
       // and bit shifting:
       std::size_t h1 = std::hash<string>()(k.key);
-      std::size_t h2 = std::hash<prgl_shard_t>()(k.shard);
+      std::size_t h2 = std::hash<int32_t>()(k.shard);
       return h1 ^ (h2 << 1);
     }
   };
-}*/
+}
 
 #endif

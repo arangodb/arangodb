@@ -89,8 +89,9 @@ void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
     auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED &&
         res.answer_code != rest::ResponseCode::OK) {
-      LOG_TOPIC(ERR, Logger::PREGEL) << "Error sending request to " << req.destination
-               << ". Payload: " << res.answer->payload().toJson();
+      LOG_TOPIC(ERR, Logger::PREGEL)
+          << "Error sending request to " << req.destination
+          << ". Payload: " << res.answer->payload().toJson();
     }
   }
 }
@@ -103,7 +104,8 @@ std::shared_ptr<LogicalCollection> Utils::resolveCollection(
   if (it != collectionPlanIdMap.end()) {
     return ci->getCollection(database, it->second);
   }
-  LOG_TOPIC(ERR, Logger::PREGEL) << "The collection could not be translated to a planID";
+  LOG_TOPIC(ERR, Logger::PREGEL)
+      << "The collection could not be translated to a planID";
   // THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
   //                               "The collection could not be translated to a
   //                               planID");

@@ -42,7 +42,7 @@ using namespace arangodb::pregel::algos;
 
 static std::string const kMoreIterations = "more";
 static const double RESTART_PROB = 0.15;
-static const double EPS = 0.000001;
+static const double EPS = 0.0000001;
 
 LineRank::LineRank(arangodb::velocypack::Slice params)
     : SimpleAlgorithm("LineRank", params) {

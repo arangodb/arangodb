@@ -23,6 +23,7 @@
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algos/AsyncSCC.h"
 #include "Pregel/Algos/ConnectedComponents.h"
+#include "Pregel/Algos/EffectiveCloseness/EffectiveCloseness.h"
 #include "Pregel/Algos/LineRank.h"
 #include "Pregel/Algos/PageRank.h"
 #include "Pregel/Algos/RecoveringPageRank.h"
@@ -46,6 +47,8 @@ IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm,
     return new algos::ShortestPathAlgorithm(userParams);
   } else if (algorithm == "linerank") {
     return new algos::LineRank(userParams);
+  } else if (algorithm == "effectivecloseness") {
+    return new algos::EffectiveCloseness(userParams);
   } else if (algorithm == "connectedcomponents") {
     return new algos::ConnectedComponents(userParams);
   } else if (algorithm == "scc") {
@@ -89,6 +92,9 @@ IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
                         body);
   } else if (algorithm == "linerank") {
     return createWorker(vocbase, new algos::LineRank(userParams), body);
+  } else if (algorithm == "effectivecloseness") {
+    return createWorker(vocbase, new algos::EffectiveCloseness(userParams),
+                        body);
   } else if (algorithm == "connectedcomponents") {
     return createWorker(vocbase, new algos::ConnectedComponents(userParams),
                         body);

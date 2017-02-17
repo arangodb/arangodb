@@ -34,6 +34,29 @@
 namespace arangodb {
 namespace pregel {
 
+
+/// A counter for counting unique vertex IDs using a HyperLogLog sketch.
+/// @author Aljoscha Krettek, Robert Metzger, Robert Waury
+struct HLLCounter {
+  friend struct HLLCounterFormat;
+  
+  constexpr static int32_t NUM_BUCKETS = 64;
+  constexpr static double ALPHA = 0.709;
+  int32_t getCount();
+  void addNode(PregelID const& pregelId);
+  void merge(HLLCounter const& counter);
+  
+private:
+  uint8_t _buckets[NUM_BUCKETS] = {0};
+};
+  
+  
+/// Effective closeness value
+struct ECValue {
+  HLLCounter counter;
+  std::vector<int32_t> shortestPaths;
+};
+
 struct SCCValue {
   std::vector<PregelID> parents;
   uint64_t vertexID;

@@ -22,8 +22,8 @@
 
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/Utils.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/Utils.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -38,7 +38,7 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
   VPackSlice collectionPlanIdMap = params.get(Utils::collectionPlanIdMapKey);
   VPackSlice globalShards = params.get(Utils::globalShardListKey);
   VPackSlice async = params.get(Utils::asyncModeKey);
-      
+
   if (!coordID.isString() || !edgeShardMap.isObject() ||
       !vertexShardMap.isObject() || !execNum.isInteger() ||
       !collectionPlanIdMap.isObject() || !globalShards.isArray()) {
@@ -49,7 +49,7 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
   _coordinatorId = coordID.copyString();
   _asynchronousMode = async.getBool();
   _lazyLoading = params.get(Utils::lazyLoadingKey).getBool();
-      
+
   VPackSlice userParams = params.get(Utils::userParametersKey);
   VPackSlice parallel = userParams.get(Utils::parallelismKey);
   _parallelism = PregelFeature::availableParallelism();
