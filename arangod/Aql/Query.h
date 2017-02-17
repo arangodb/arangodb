@@ -242,7 +242,7 @@ class Query {
   /// execute calls it internally. The purpose of this separate method is
   /// to be able to only prepare a query from VelocyPack and then store it in the
   /// QueryRegistry.
-  QueryResult prepare(QueryRegistry*);
+  void prepare(QueryRegistry*);
 
   /// @brief execute an AQL query
   QueryResult execute(QueryRegistry*);
@@ -370,8 +370,8 @@ class Query {
   /// @brief read the "optimizer.rules" section from the options
   std::vector<std::string> getRulesFromOptions() const;
 
-  /// @brief neatly format transaction errors to the user.
-  QueryResult transactionError(int errorCode) const;
+  /// @brief neatly format exception messages for the users
+  std::string buildErrorMessage(int errorCode) const;
 
   /// @brief enter a new state
   void enterState(ExecutionState);

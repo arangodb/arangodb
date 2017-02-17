@@ -463,152 +463,119 @@ void Query::registerWarning(int code, char const* details) {
 /// execute calls it internally. The purpose of this separate method is
 /// to be able to only prepare a query from VelocyPack and then store it in the
 /// QueryRegistry.
-QueryResult Query::prepare(QueryRegistry* registry) {
+void Query::prepare(QueryRegistry* registry) {
   LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                     << "Query::prepare"
                                     << " this: " << (uintptr_t) this;
   TRI_ASSERT(registry != nullptr);
 
-  try {
-    init();
-    enterState(PARSING);
+  init();
+  enterState(PARSING);
 
-    auto parser = std::make_unique<Parser>(this);
-    std::unique_ptr<ExecutionPlan> plan;
+  auto parser = std::make_unique<Parser>(this);
+  std::unique_ptr<ExecutionPlan> plan;
 
-    if (_queryString != nullptr) {
-      parser->parse(false);
-      // put in bind parameters
-      parser->ast()->injectBindParameters(_bindParameters);
-    }
-
-    _isModificationQuery = parser->isModificationQuery();
-
-    // create the transaction object, but do not start it yet
-    AqlTransaction* trx = new AqlTransaction(
-        createTransactionContext(), _collections.collections(),
-        _part == PART_MAIN);
-    _trx = trx;
-
-    try {
-      bool planRegisters;
-      // As soon as we start du instantiate the plan we have to clean it
-      // up before killing the unique_ptr
-      if (_queryString != nullptr) {
-        // we have an AST
-        // optimize the ast
-        enterState(AST_OPTIMIZATION);
-
-        parser->ast()->validateAndOptimize();
-        
-        enterState(LOADING_COLLECTIONS);
-      
-        int res = trx->begin();
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          return transactionError(res);
-        }
-
-        enterState(PLAN_INSTANTIATION);
-        plan.reset(ExecutionPlan::instantiateFromAst(parser->ast()));
-
-        if (plan.get() == nullptr) {
-          // oops
-          return QueryResult(TRI_ERROR_INTERNAL,
-                             "failed to create query execution engine");
-        }
-
-        // Run the query optimizer:
-        enterState(PLAN_OPTIMIZATION);
-        arangodb::aql::Optimizer opt(maxNumberOfPlans());
-        // get enabled/disabled rules
-        opt.createPlans(plan.release(), getRulesFromOptions(),
-                        inspectSimplePlans());
-        // Now plan and all derived plans belong to the optimizer
-        plan.reset(opt.stealBest());  // Now we own the best one again
-        planRegisters = true;
-      } else {  // no queryString, we are instantiating from _queryBuilder
-        enterState(PARSING);
-
-        VPackSlice const querySlice = _queryBuilder->slice();
-        ExecutionPlan::getCollectionsFromVelocyPack(parser->ast(), querySlice);
-
-        parser->ast()->variables()->fromVelocyPack(querySlice);
-        // creating the plan may have produced some collections
-        // we need to add them to the transaction now (otherwise the query will
-        // fail)
-        
-        enterState(LOADING_COLLECTIONS);
-        
-        int res = trx->addCollections(*_collections.collections());
-
-        if (res == TRI_ERROR_NO_ERROR) {
-          res = trx->begin();
-        }
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          return transactionError(res);
-        }
-        
-        enterState(PLAN_INSTANTIATION);
-
-        // we have an execution plan in VelocyPack format
-        plan.reset(ExecutionPlan::instantiateFromVelocyPack(
-            parser->ast(), _queryBuilder->slice()));
-        if (plan.get() == nullptr) {
-          // oops
-          return QueryResult(TRI_ERROR_INTERNAL);
-        }
-
-        planRegisters = false;
-      }
-
-      TRI_ASSERT(plan.get() != nullptr);
-
-      // varsUsedLater and varsValid are unordered_sets and so their orders
-      // are not the same in the serialized and deserialized plans
-
-      // return the V8 context
-      exitContext();
-
-      enterState(EXECUTION);
-      ExecutionEngine* engine(ExecutionEngine::instantiateFromPlan(
-          registry, this, plan.get(), planRegisters));
-
-      // If all went well so far, then we keep _plan and _trx and
-      // return:
-      _plan = std::move(plan);
-      _engine = engine;
-      return QueryResult();
-    } catch (arangodb::basics::Exception const& ex) {
-      cleanupPlanAndEngine(ex.code());
-      return QueryResult(ex.code(), ex.message() + getStateString());
-    } catch (std::bad_alloc const&) {
-      cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
-      return QueryResult(
-          TRI_ERROR_OUT_OF_MEMORY,
-          TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + getStateString());
-    } catch (std::exception const& ex) {
-      cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-      return QueryResult(TRI_ERROR_INTERNAL, ex.what() + getStateString());
-    } catch (...) {
-      cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-      return QueryResult(TRI_ERROR_INTERNAL,
-                         TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
-    }
-  } catch (arangodb::basics::Exception const& ex) {
-    return QueryResult(ex.code(), ex.message() + getStateString());
-  } catch (std::bad_alloc const&) {
-    return QueryResult(
-        TRI_ERROR_OUT_OF_MEMORY,
-        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + getStateString());
-  } catch (std::exception const& ex) {
-    return QueryResult(TRI_ERROR_INTERNAL, ex.what() + getStateString());
-  } catch (...) {
-    return QueryResult(TRI_ERROR_INTERNAL,
-                       TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
+  if (_queryString != nullptr) {
+    parser->parse(false);
+    // put in bind parameters
+    parser->ast()->injectBindParameters(_bindParameters);
   }
 
+  _isModificationQuery = parser->isModificationQuery();
+
+  // create the transaction object, but do not start it yet
+  AqlTransaction* trx = new AqlTransaction(
+      createTransactionContext(), _collections.collections(),
+      _part == PART_MAIN);
+  _trx = trx;
+
+  bool planRegisters;
+  // As soon as we start du instantiate the plan we have to clean it
+  // up before killing the unique_ptr
+  if (_queryString != nullptr) {
+    // we have an AST
+    // optimize the ast
+    enterState(AST_OPTIMIZATION);
+
+    parser->ast()->validateAndOptimize();
+    
+    enterState(LOADING_COLLECTIONS);
+  
+    int res = trx->begin();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, buildErrorMessage(res));
+    }
+
+    enterState(PLAN_INSTANTIATION);
+    plan.reset(ExecutionPlan::instantiateFromAst(parser->ast()));
+
+    if (plan.get() == nullptr) {
+      // oops
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to create query execution engine");
+    }
+
+    // Run the query optimizer:
+    enterState(PLAN_OPTIMIZATION);
+    arangodb::aql::Optimizer opt(maxNumberOfPlans());
+    // get enabled/disabled rules
+    opt.createPlans(plan.release(), getRulesFromOptions(),
+                    inspectSimplePlans());
+    // Now plan and all derived plans belong to the optimizer
+    plan.reset(opt.stealBest());  // Now we own the best one again
+    planRegisters = true;
+  } else {  // no queryString, we are instantiating from _queryBuilder
+    enterState(PARSING);
+
+    VPackSlice const querySlice = _queryBuilder->slice();
+    ExecutionPlan::getCollectionsFromVelocyPack(parser->ast(), querySlice);
+
+    parser->ast()->variables()->fromVelocyPack(querySlice);
+    // creating the plan may have produced some collections
+    // we need to add them to the transaction now (otherwise the query will
+    // fail)
+    
+    enterState(LOADING_COLLECTIONS);
+    
+    int res = trx->addCollections(*_collections.collections());
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      res = trx->begin();
+    }
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, buildErrorMessage(res));
+    }
+    
+    enterState(PLAN_INSTANTIATION);
+
+    // we have an execution plan in VelocyPack format
+    plan.reset(ExecutionPlan::instantiateFromVelocyPack(
+        parser->ast(), _queryBuilder->slice()));
+    if (plan.get() == nullptr) {
+      // oops
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not create plan from vpack");
+    }
+
+    planRegisters = false;
+  }
+
+  TRI_ASSERT(plan.get() != nullptr);
+
+  // varsUsedLater and varsValid are unordered_sets and so their orders
+  // are not the same in the serialized and deserialized plans
+
+  // return the V8 context
+  exitContext();
+
+  enterState(EXECUTION);
+  ExecutionEngine* engine(ExecutionEngine::instantiateFromPlan(
+      registry, this, plan.get(), planRegisters));
+
+  // If all went well so far, then we keep _plan and _trx and
+  // return:
+  _plan = std::move(plan);
+  _engine = engine;
 }
 
 /// @brief execute an AQL query
@@ -635,7 +602,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
       if (cacheEntry != nullptr) {
         // got a result from the query cache
-        QueryResult res(TRI_ERROR_NO_ERROR);
+        QueryResult res;
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result
         res.context = std::make_shared<StandaloneTransactionContext>(_vocbase);
@@ -648,11 +615,8 @@ QueryResult Query::execute(QueryRegistry* registry) {
       }
     }
 
-    QueryResult result = prepare(registry);
-
-    if (result.code != TRI_ERROR_NO_ERROR) {
-      return result;
-    }
+    // will throw if it fails
+    prepare(registry);
 
     if (_queryString == nullptr) {
       // we don't have query string... now pass query id to WorkMonitor
@@ -741,7 +705,8 @@ QueryResult Query::execute(QueryRegistry* registry) {
     }
 
     _trx->commit();
-    
+   
+    QueryResult result; 
     result.context = _trx->transactionContext();
 
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
@@ -749,7 +714,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, stats.get());
 
     enterState(FINALIZATION);
-
+ 
     result.warnings = warningsToVelocyPack();
     result.result = resultBuilder;
     result.stats = stats;
@@ -811,26 +776,23 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
       if (cacheEntry != nullptr) {
         // got a result from the query cache
-        QueryResultV8 res(TRI_ERROR_NO_ERROR);
+        QueryResultV8 result;
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result
-        res.context = std::make_shared<StandaloneTransactionContext>(_vocbase);
+        result.context = std::make_shared<StandaloneTransactionContext>(_vocbase);
 
         v8::Handle<v8::Value> values =
             TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(),
-                          res.context->getVPackOptions());
+                          result.context->getVPackOptions());
         TRI_ASSERT(values->IsArray());
-        res.result = v8::Handle<v8::Array>::Cast(values);
-        res.cached = true;
-        return res;
+        result.result = v8::Handle<v8::Array>::Cast(values);
+        result.cached = true;
+        return result;
       }
     }
 
-    QueryResultV8 result = prepare(registry);
-
-    if (result.code != TRI_ERROR_NO_ERROR) {
-      return result;
-    }
+    // will throw if it fails
+    prepare(registry);
 
     work.reset(new AqlWorkStack(_vocbase, _id, _queryString, _queryLength));
 
@@ -841,6 +803,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       useQueryCache = false;
     }
 
+    QueryResultV8 result;
     result.result = v8::Array::New(isolate);
 
     TRI_ASSERT(_engine != nullptr);
@@ -1014,7 +977,7 @@ QueryResult Query::explain() {
     int res = _trx->begin();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      return transactionError(res);
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, buildErrorMessage(res));
     }
 
     enterState(PLAN_INSTANTIATION);
@@ -1299,16 +1262,17 @@ bool Query::canUseQueryCache() const {
   return false;
 }
 
-/// @brief neatly format transaction error to the user.
-QueryResult Query::transactionError(int errorCode) const {
+/// @brief neatly format exception messages for the users
+std::string Query::buildErrorMessage(int errorCode) const {
   std::string err(TRI_errno_string(errorCode));
 
   if (_queryString != nullptr && verboseErrors()) {
-    err +=
-        std::string("\nwhile executing:\n") + _queryString + std::string("\n");
+    err += "\nwhile executing:\n";
+    err.append(_queryString, _queryLength);
+    err += "\n";
   }
 
-  return QueryResult(errorCode, err);
+  return err;
 }
 
 /// @brief read the "optimizer.inspectSimplePlans" section from the options

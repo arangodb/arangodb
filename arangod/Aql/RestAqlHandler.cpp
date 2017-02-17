@@ -95,14 +95,18 @@ void RestAqlHandler::createQueryFromVelocyPack() {
       VelocyPackHelper::getStringValue(querySlice, "part", "");
 
   auto planBuilder = std::make_shared<VPackBuilder>(VPackBuilder::clone(plan));
-  auto query = new Query(false, _vocbase, planBuilder, options,
-                         (part == "main" ? PART_MAIN : PART_DEPENDENT));
-  QueryResult res = query->prepare(_queryRegistry);
-  if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query: " << res.details;
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_QUERY_BAD_JSON_PLAN, res.details);
-    delete query;
+  auto query = std::make_unique<Query>(false, _vocbase, planBuilder, options,
+                                      (part == "main" ? PART_MAIN : PART_DEPENDENT));
+  
+  try {
+    query->prepare(_queryRegistry);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query: " << ex.what();
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN, ex.what());
+    return;
+  } catch (...) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query";
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN);
     return;
   }
 
@@ -116,14 +120,15 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   }
 
   _qId = TRI_NewTickServer();
+  auto transactionContext = query->trx()->transactionContext().get();
 
   try {
-    _queryRegistry->insert(_qId, query, ttl);
+    _queryRegistry->insert(_qId, query.get(), ttl);
+    query.release();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not keep query in registry";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "could not keep query in registry");
-    delete query;
     return;
   }
 
@@ -139,8 +144,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
     return;
   }
 
-  sendResponse(rest::ResponseCode::ACCEPTED, answerBody.slice(),
-               query->trx()->transactionContext().get());
+  sendResponse(rest::ResponseCode::ACCEPTED, answerBody.slice(), transactionContext);
 }
 
 // POST method for /_api/aql/parse (internal)
@@ -306,15 +310,19 @@ void RestAqlHandler::createQueryFromString() {
   auto options = std::make_shared<VPackBuilder>(
       VPackBuilder::clone(querySlice.get("options")));
 
-  auto query = new Query(false, _vocbase, queryString.c_str(),
+  auto query = std::make_unique<Query>(false, _vocbase, queryString.c_str(),
                          queryString.size(), bindVars, options,
                          (part == "main" ? PART_MAIN : PART_DEPENDENT));
-  QueryResult res = query->prepare(_queryRegistry);
-  if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query: " << res.details;
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_QUERY_BAD_JSON_PLAN, res.details);
-    delete query;
+  
+  try {
+    query->prepare(_queryRegistry);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query: " << ex.what();
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN, ex.what());
+    return;
+  } catch (...) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query";
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN);
     return;
   }
 
@@ -327,15 +335,16 @@ void RestAqlHandler::createQueryFromString() {
     ttl = arangodb::basics::StringUtils::doubleDecimal(ttlstring);
   }
 
+  auto transactionContext = query->trx()->transactionContext().get();
   _qId = TRI_NewTickServer();
 
   try {
-    _queryRegistry->insert(_qId, query, ttl);
+    _queryRegistry->insert(_qId, query.get(), ttl);
+    query.release();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not keep query in registry";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "could not keep query in registry");
-    delete query;
     return;
   }
 
@@ -351,8 +360,7 @@ void RestAqlHandler::createQueryFromString() {
     return;
   }
 
-  sendResponse(rest::ResponseCode::ACCEPTED, answerBody.slice(),
-               query->trx()->transactionContext().get());
+  sendResponse(rest::ResponseCode::ACCEPTED, answerBody.slice(), transactionContext);
 }
 
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
