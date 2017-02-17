@@ -1,3 +1,4 @@
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -837,7 +838,7 @@ void Agent::run() {
       sendAppendEntriesRPC();
 
       // Don't panic
-      _appendCV.wait(1000);
+      _appendCV.wait(100);
 
       // Detect faulty agent and replace
       // if possible and only if not already activating
