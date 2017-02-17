@@ -40,7 +40,9 @@ struct TRI_df_marker_t;
 namespace arangodb {
 class LogicalCollection;
 class ManagedDocumentResult;
+struct MMFilesDocumentOperation;
 class MMFilesPrimaryIndex;
+class MMFilesWalMarker;
 
 class MMFilesCollection final : public PhysicalCollection {
  friend class MMFilesCompactorThread;

@@ -55,8 +55,6 @@ class FollowerInfo;
 class Index;
 class KeyGenerator;
 class ManagedDocumentResult;
-struct MMFilesDocumentOperation;
-class MMFilesWalMarker;
 struct OperationOptions;
 class PhysicalCollection;
 class MMFilesPrimaryIndex;
