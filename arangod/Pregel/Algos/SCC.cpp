@@ -76,7 +76,7 @@ struct SCCComputation
         for (SenderMessage<uint64_t> const* msg : messages) {
           vertexState->parents.push_back(msg->pregelId);
         }
-        // reset the color for vertices which are not active
+        // reset the color to the vertex ID
         vertexState->color = vertexState->vertexID;
         // If this node doesn't have any parents or outgoing edges,
         // it can't be part of an SCC
@@ -85,12 +85,14 @@ struct SCCComputation
           vertexState->color = INT_MAX;
           voteHalt();
         } else {
-          SenderMessage<uint64_t> message(pregelId(), vertexState->color);
+          SenderMessage<uint64_t> message(pregelId(), vertexState->vertexID);
           sendMessageToAllEdges(message);
         }
         break;
       }
 
+      /// Traverse the graph through outgoing edges and keep the maximum vertex
+      /// value. If a new maximum value is found, propagate it until convergence.
       case SCCPhase::FORWARD_TRAVERSAL: {
         uint64_t old = vertexState->color;
         for (SenderMessage<uint64_t> const* msg : messages) {
@@ -106,8 +108,9 @@ struct SCCComputation
         break;
       }
 
+      /// Traverse the transposed graph and keep the maximum vertex value.
       case SCCPhase::BACKWARD_TRAVERSAL_START: {
-        // if I am the 'root' of a SCC start traversak
+        // if I am the 'root' of a SCC start backwards traversal
         if (vertexState->vertexID == vertexState->color) {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
           // sendMessageToAllParents
@@ -118,6 +121,7 @@ struct SCCComputation
         break;
       }
 
+      /// Traverse the transposed graph and keep the maximum vertex value.
       case SCCPhase::BACKWARD_TRAVERSAL_REST: {
         for (SenderMessage<uint64_t> const* msg : messages) {
           if (vertexState->color == msg->value) {
@@ -126,6 +130,7 @@ struct SCCComputation
             }
             aggregate(kConverged, true);
             voteHalt();
+            break;
           }
         }
         break;
@@ -173,7 +178,11 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int32_t> {
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            const SCCValue* ptr, size_t size) const override {
     SCCValue* senders = (SCCValue*)ptr;
-    b.add(_resultField, VPackValue(senders->color));
+    if (senders->color != INT_MAX) {
+      b.add(_resultField, VPackValue(senders->color));
+    } else {
+      b.add(_resultField, VPackValue(-1));
+    }
     return true;
   }
 
