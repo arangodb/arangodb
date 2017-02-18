@@ -114,7 +114,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
     ManagedDocumentResult mmdr;
     trx.invokeOnAllElements(
         _collection->name(), [this, &trx, &maxTick, &mmdr](DocumentIdentifierToken const& token) {
-          if (_collection->readDocumentConditional(&trx, mmdr, token, maxTick, true)) {
+          if (_collection->readDocumentConditional(&trx, token, maxTick, mmdr)) {
             _vpack.emplace_back(mmdr.vpack());
           }
           return true;

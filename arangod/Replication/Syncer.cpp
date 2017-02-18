@@ -35,6 +35,7 @@
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -560,11 +561,13 @@ int Syncer::createIndex(VPackSlice const& slice) {
       return res;
     }
 
+    auto physical = collection->getPhysical();
+    TRI_ASSERT(physical != nullptr);
     std::shared_ptr<arangodb::Index> idx;
-    res = collection->restoreIndex(&trx, indexSlice, idx);
+    res = physical->restoreIndex(&trx, indexSlice, idx);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = collection->saveIndex(idx.get(), true);
+      res = physical->saveIndex(&trx, idx);
     }
 
     res = trx.finish(res);

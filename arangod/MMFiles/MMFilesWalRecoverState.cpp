@@ -218,8 +218,10 @@ arangodb::LogicalCollection* MMFilesWalRecoverState::useCollection(
     return nullptr;
   }
 
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
   // disable secondary indexes for the moment
-  collection->useSecondaryIndexes(false);
+  physical->useSecondaryIndexes(false);
 
   openedCollections.emplace(collectionId, collection);
   res = TRI_ERROR_NO_ERROR;
@@ -803,7 +805,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
               arangodb::StandaloneTransactionContext::Create(vocbase),
               collectionId, AccessMode::Type::WRITE);
           std::shared_ptr<arangodb::Index> unused;
-          int res = col->restoreIndex(&trx, payloadSlice, unused);
+          int res = physical->restoreIndex(&trx, payloadSlice, unused);
 
           if (res != TRI_ERROR_NO_ERROR) {
             LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create index " << indexId << ", collection "
@@ -1255,14 +1257,16 @@ int MMFilesWalRecoverState::fillIndexes() {
        ++it) {
     arangodb::LogicalCollection* collection = (*it).second;
 
+    auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+    TRI_ASSERT(physical != nullptr);
     // activate secondary indexes
-    collection->useSecondaryIndexes(true);
+    physical->useSecondaryIndexes(true);
 
     arangodb::SingleCollectionTransaction trx(
         arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
         collection->cid(), AccessMode::Type::WRITE);
 
-    int res = collection->fillIndexes(&trx, *(collection->indexList()));
+    int res = physical->fillAllIndexes(&trx);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;

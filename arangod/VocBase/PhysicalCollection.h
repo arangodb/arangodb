@@ -38,6 +38,8 @@ class Methods;
 }
 
 class Ditches;
+struct DocumentIdentifierToken;
+class Index;
 class LogicalCollection;
 class ManagedDocumentResult;
 struct OperationOptions;
@@ -94,10 +96,34 @@ class PhysicalCollection {
 
   virtual bool isFullyCollected() const = 0;
 
+  ////////////////////////////////////
+  // -- SECTION Indexes --
+  ///////////////////////////////////
+
+  virtual int saveIndex(transaction::Methods* trx,
+                        std::shared_ptr<arangodb::Index> idx) = 0;
+
+  /// @brief Restores an index from VelocyPack.
+  virtual int restoreIndex(transaction::Methods*, velocypack::Slice const&,
+                           std::shared_ptr<Index>&) = 0;
+
+  ////////////////////////////////////
+  // -- SECTION DML Operations --
+  ///////////////////////////////////
+
   virtual void truncate(transaction::Methods* trx, OperationOptions& options) = 0;
 
   virtual int read(transaction::Methods*, arangodb::velocypack::Slice const key,
                    ManagedDocumentResult& result, bool) = 0;
+
+  virtual bool readDocument(transaction::Methods* trx,
+                            DocumentIdentifierToken const& token,
+                            ManagedDocumentResult& result) = 0;
+
+  virtual bool readDocumentConditional(transaction::Methods* trx,
+                                       DocumentIdentifierToken const& token,
+                                       TRI_voc_tick_t maxTick,
+                                       ManagedDocumentResult& result) = 0;
 
   virtual int insert(arangodb::transaction::Methods* trx,
                      arangodb::velocypack::Slice const newSlice,
@@ -127,10 +153,26 @@ class PhysicalCollection {
                      arangodb::ManagedDocumentResult& previous,
                      OperationOptions& options,
                      TRI_voc_tick_t& resultMarkerTick, bool lock,
-                     TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev,
-                     arangodb::velocypack::Slice const toRemove) = 0;
+                     TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev) = 0;
 
  protected:
+
+  // SECTION: Document pre commit preperation
+
+  /// @brief new object for insert, value must have _key set correctly.
+  int newObjectForInsert(transaction::Methods* trx,
+                         velocypack::Slice const& value,
+                         velocypack::Slice const& fromSlice,
+                         velocypack::Slice const& toSlice,
+                         bool isEdgeCollection,
+                         velocypack::Builder& builder,
+                         bool isRestore) const;
+
+
+   /// @brief new object for remove, must have _key set
+  void newObjectForRemove(transaction::Methods* trx,
+                          velocypack::Slice const& oldValue,
+                          std::string const& rev, velocypack::Builder& builder) const;
 
   /// @brief merge two objects for update
   void mergeObjectsForUpdate(transaction::Methods* trx,

@@ -106,7 +106,7 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
       for (auto& it : distances) {
         VPackObjectBuilder docGuard(builder.get());
         builder->add(attributeName, VPackValue(it._distance));
-        if (collection->readDocument(trx, mmdr, it._token)) {
+        if (collection->readDocument(trx, it._token, mmdr)) {
           VPackSlice doc(mmdr.vpack());
           for (auto const& entry : VPackObjectIterator(doc)) {
             std::string key = entry.key.copyString();
@@ -119,7 +119,7 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
 
     } else {
       for (auto& it : distances) {
-        if (collection->readDocument(trx, mmdr, it._token)) {
+        if (collection->readDocument(trx, it._token, mmdr)) {
           builder->addExternal(mmdr.vpack());
         }
       }
@@ -295,7 +295,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
     ManagedDocumentResult mmdr;
     size_t const numResults = queryResult->_numDocuments;
     for (size_t i = 0; i < numResults; ++i) {
-      if (collection->readDocument(trx, mmdr, queryResult->_documents[i])) {
+      if (collection->readDocument(trx, queryResult->_documents[i], mmdr)) {
         builder->addExternal(mmdr.vpack());
       }
     }

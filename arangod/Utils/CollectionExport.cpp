@@ -23,7 +23,6 @@
 
 #include "CollectionExport.h"
 #include "Basics/WriteLocker.h"
-#include "MMFiles/MMFilesPrimaryIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
@@ -99,7 +98,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       THROW_ARANGO_EXCEPTION(res);
     }
     
-    size_t maxDocuments = _collection->primaryIndex()->size();
+    size_t maxDocuments = _collection->numberDocuments();
     if (limit > 0 && limit < maxDocuments) {
       maxDocuments = limit;
     } else {
@@ -113,7 +112,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       if (limit == 0) {
         return false;
       }
-      if (_collection->readDocumentConditional(&trx, mmdr, token, 0, true)) {
+      if (_collection->readDocumentConditional(&trx, token, 0, mmdr)) {
         _vpack.emplace_back(mmdr.vpack());
         --limit;
       }

@@ -72,33 +72,6 @@
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
 
-/// @brief helper class for filling indexes
-class IndexFillerTask : public basics::LocalTask {
- public:
-  IndexFillerTask(
-      basics::LocalTaskQueue* queue, transaction::Methods* trx,
-      Index* idx,
-      std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents)
-      : LocalTask(queue), _trx(trx), _idx(idx), _documents(documents) {}
-
-  void run() {
-    TRI_ASSERT(_idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-
-    try {
-      _idx->batchInsert(_trx, _documents, _queue);
-    } catch (std::exception const&) {
-      _queue->setStatus(TRI_ERROR_INTERNAL);
-    }
-
-    _queue->join();
-  }
-
- private:
-  transaction::Methods* _trx;
-  Index* _idx;
-  std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& _documents;
-};
-
 namespace {
 
 static TRI_voc_cid_t ReadCid(VPackSlice info) {
@@ -197,7 +170,6 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _cleanupIndexes(0),
       _persistentIndexes(0),
       _physical(other.getPhysical()->clone(this,other.getPhysical())),
-      _useSecondaryIndexes(true),
       _maxTick(0),
       _keyGenerator() {
   _keyGenerator.reset(KeyGenerator::factory(other.keyOptions()));
@@ -248,10 +220,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _vocbase(vocbase),
       _cleanupIndexes(0),
       _persistentIndexes(0),
-      _physical(
-          EngineSelectorFeature::ENGINE->createPhysicalCollection(this,info)
-        ),
-      _useSecondaryIndexes(true),
+      _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(this,info)),
       _maxTick(0),
       _keyGenerator() {
   getPhysical()->setPath(ReadStringValue(info, "path", ""));
@@ -428,7 +397,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
       auto idx = idxFactory->prepareIndexFromSlice(v, false, this, true);
 
-      // TODO Mode IndexTypeCheck out
+      // TODO Move IndexTypeCheck out
       if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
           idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
         continue;
@@ -833,7 +802,7 @@ int LogicalCollection::rename(std::string const& newName) {
   // Otherwise caching is destroyed.
   TRI_ASSERT(!ServerState::instance()->isCoordinator());  // NOT YET IMPLEMENTED
 
-  WRITE_LOCKER_EVENTUAL(locker, _lock, 1000);
+  WRITE_LOCKER_EVENTUAL(locker, _lock);
 
   // Check for illeagal states.
   switch (_status) {
@@ -1229,22 +1198,12 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
     created = true;
     return idx;
   }
-
-  TRI_ASSERT(idx.get()->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
-  indexListLocal.emplace_back(idx);
-  int res = fillIndexes(trx, indexListLocal, false);
+  int res = getPhysical()->saveIndex(trx, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  bool const writeMarker = !engine->inRecovery();
-  res = saveIndex(idx.get(), writeMarker);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
   // Until here no harm is done if sth fails. The shared ptr will clean up. if
   // left before
 
@@ -1260,72 +1219,6 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
   }
   created = true;
   return idx;
-}
-
-int LogicalCollection::restoreIndex(transaction::Methods* trx, VPackSlice const& info,
-                                    std::shared_ptr<arangodb::Index>& idx) {
-  // The coordinator can never get into this state!
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  idx.reset();  // Clear it to make sure.
-  if (!info.isObject()) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  // We create a new Index object to make sure that the index
-  // is not handed out except for a successful case.
-  std::shared_ptr<Index> newIdx;
-  try {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    IndexFactory const* idxFactory = engine->indexFactory(); 
-    TRI_ASSERT(idxFactory != nullptr);
-    newIdx = idxFactory->prepareIndexFromSlice(info, false, this, false);
-  } catch (arangodb::basics::Exception const& e) {
-    // Something with index creation went wrong.
-    // Just report.
-    return e.code();
-  }
-  TRI_ASSERT(newIdx != nullptr);
-
-  TRI_UpdateTickServer(newIdx->id());
-
-  TRI_ASSERT(newIdx.get()->type() !=
-             Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
-  indexListLocal.emplace_back(newIdx);
-  int res = fillIndexes(trx, indexListLocal, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  addIndex(newIdx);
-  idx = newIdx;
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief saves an index
-int LogicalCollection::saveIndex(arangodb::Index* idx, bool writeMarker) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  std::shared_ptr<VPackBuilder> builder;
-  try {
-    builder = idx->toVelocyPack(false);
-  } catch (arangodb::basics::Exception const& ex) {
-    return ex.code();
-  } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition";
-    return TRI_ERROR_INTERNAL;
-  }
-  if (builder == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition";
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->createIndex(_vocbase, cid(), idx->id(), builder->slice());
-  
-  int res = TRI_ERROR_NO_ERROR;
-  engine->createIndexWalMarker(_vocbase, cid(), builder->slice(), writeMarker,res);
-  return res;
 }
 
 /// @brief removes an index by id
@@ -1400,7 +1293,7 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
     markerBuilder.close();
     engine->dropIndexWalMarker(_vocbase, cid(), markerBuilder.slice(),writeMarker,res);
 
-    if(! res){
+    if(res == TRI_ERROR_NO_ERROR){
       events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
     } else {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save index drop marker in log: "
@@ -1431,205 +1324,9 @@ void LogicalCollection::createInitialIndexes() {
   }
 }
 
-/// @brief iterator for index open
-bool LogicalCollection::openIndex(VPackSlice const& description,
-                                  transaction::Methods* trx) {
-  // VelocyPack must be an index description
-  if (!description.isObject()) {
-    return false;
-  }
-
-  bool unused = false;
-  auto idx = createIndex(trx, description, unused);
-
-  if (idx == nullptr) {
-    // error was already printed if we get here
-    return false;
-  }
-
-  return true;
-}
-
-/// @brief enumerate all indexes of the collection, but don't fill them yet
-int LogicalCollection::detectIndexes(transaction::Methods* trx) {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  VPackBuilder builder;
-  engine->getCollectionInfo(_vocbase, _cid, builder, true, UINT64_MAX);
-
-  // iterate over all index files
-  for (auto const& it : VPackArrayIterator(builder.slice().get("indexes"))) {
-    bool ok = openIndex(it, trx);
-
-    if (!ok) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load index for collection '" << name() << "'";
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 std::vector<std::shared_ptr<arangodb::Index>> const*
 LogicalCollection::indexList() const {
   return &_indexes;
-}
-
-int LogicalCollection::fillIndexes(
-    transaction::Methods* trx,
-    std::vector<std::shared_ptr<arangodb::Index>> const& indexes,
-    bool skipPersistent) {
-  // distribute the work to index threads plus this thread
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  size_t const n = indexes.size();
-
-  if (n == 0 || (n == 1 &&
-                 indexes[0].get()->type() ==
-                     Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  bool rolledBack = false;
-  auto rollbackAll = [&]() -> void {
-    for (size_t i = 0; i < n; i++) {
-      auto idx = indexes[i].get();
-      if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-        continue;
-      }
-      if (idx->isPersistent()) {
-        continue;
-      }
-      idx->unload();  // TODO: check is this safe? truncate not necessarily
-                      // feasible
-    }
-  };
-
-  double start = TRI_microtime();
-
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  auto ioService = SchedulerFeature::SCHEDULER->ioService();
-  TRI_ASSERT(ioService != nullptr);
-  arangodb::basics::LocalTaskQueue queue(ioService);
-
-  // only log performance infos for indexes with more than this number of
-  // entries
-  static size_t const NotificationSizeThreshold = 131072;
-  auto primaryIndex = this->primaryIndex();
-
-  if (primaryIndex->size() > NotificationSizeThreshold) {
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "fill-indexes-document-collection { collection: " << _vocbase->name()
-        << "/" << name() << " }, indexes: " << (n - 1);
-  }
-
-  TRI_ASSERT(n > 0);
-
-  try {
-    TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
-    // give the index a size hint
-    auto nrUsed = primaryIndex->size();
-    for (size_t i = 0; i < n; i++) {
-      auto idx = indexes[i];
-      if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-        continue;
-      }
-      idx.get()->sizeHint(trx, nrUsed);
-    }
-
-    // process documents a million at a time
-    size_t blockSize = 1024 * 1024 * 1;
-
-    if (nrUsed < blockSize) {
-      blockSize = nrUsed;
-    }
-    if (blockSize == 0) {
-      blockSize = 1;
-    }
-
-    ManagedDocumentResult mmdr;
-
-    std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> documents;
-    documents.reserve(blockSize);
-
-    auto insertInAllIndexes = [&]() -> void {
-      for (size_t i = 0; i < n; ++i) {
-        auto idx = indexes[i];
-        if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-          continue;
-        }
-        fillIndex(&queue, trx, idx.get(), documents, skipPersistent);
-      }
-
-      queue.dispatchAndWait();
-
-      if (queue.status() != TRI_ERROR_NO_ERROR) {
-        rollbackAll();
-        rolledBack = true;
-      }
-    };
-
-    if (nrUsed > 0) {
-      arangodb::basics::BucketPosition position;
-      uint64_t total = 0;
-
-      while (true) {
-        MMFilesSimpleIndexElement element =
-            primaryIndex->lookupSequential(trx, position, total);
-
-        if (!element) {
-          break;
-        }
-
-        TRI_voc_rid_t revisionId = element.revisionId();
-
-        if (readRevision(trx, mmdr, revisionId)) {
-          uint8_t const* vpack = mmdr.vpack();
-          TRI_ASSERT(vpack != nullptr);
-          documents.emplace_back(std::make_pair(revisionId, VPackSlice(vpack)));
-
-          if (documents.size() == blockSize) {
-            // now actually fill the secondary indexes
-            insertInAllIndexes();
-            if (queue.status() != TRI_ERROR_NO_ERROR) {
-              break;
-            }
-            documents.clear();
-          }
-        }
-      }
-    }
-
-    // process the remainder of the documents
-    if (queue.status() == TRI_ERROR_NO_ERROR && !documents.empty()) {
-      insertInAllIndexes();
-    }
-
-    // TODO: fix perf logging?
-  } catch (arangodb::basics::Exception const& ex) {
-    queue.setStatus(ex.code());
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception while filling indexes: " << ex.what();
-  } catch (std::bad_alloc const&) {
-    queue.setStatus(TRI_ERROR_OUT_OF_MEMORY);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception while filling indexes: " << ex.what();
-    queue.setStatus(TRI_ERROR_INTERNAL);
-  } catch (...) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught unknown exception while filling indexes";
-    queue.setStatus(TRI_ERROR_INTERNAL);
-  }
-
-  if (queue.status() != TRI_ERROR_NO_ERROR && !rolledBack) {
-    try {
-      rollbackAll();
-    } catch (...) {
-    }
-  }
-
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-      << " s, fill-indexes-document-collection { collection: "
-      << _vocbase->name() << "/" << name() << " }, indexes: " << (n - 1);
-
-  return queue.status();
 }
 
 void LogicalCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
@@ -1705,59 +1402,8 @@ int LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
                               OperationOptions& options,
                               TRI_voc_tick_t& resultMarkerTick, bool lock) {
   resultMarkerTick = 0;
-  VPackSlice fromSlice;
-  VPackSlice toSlice;
-
-  bool const isEdgeCollection = (_type == TRI_COL_TYPE_EDGE);
-
-  if (isEdgeCollection) {
-    // _from:
-    fromSlice = slice.get(StaticStrings::FromString);
-    if (!fromSlice.isString()) {
-      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
-    }
-    VPackValueLength len;
-    char const* docId = fromSlice.getString(len);
-    size_t split;
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
-                                            &split)) {
-      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
-    }
-    // _to:
-    toSlice = slice.get(StaticStrings::ToString);
-    if (!toSlice.isString()) {
-      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
-    }
-    docId = toSlice.getString(len);
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
-                                            &split)) {
-      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
-    }
-  }
-
-  transaction::BuilderLeaser builder(trx);
-  VPackSlice newSlice;
-  int res = TRI_ERROR_NO_ERROR;
-  if (options.recoveryMarker == nullptr) {
-    TIMER_START(TRANSACTION_NEW_OBJECT_FOR_INSERT);
-    res = newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
-                             *builder.get(), options.isRestore);
-    TIMER_STOP(TRANSACTION_NEW_OBJECT_FOR_INSERT);
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-    newSlice = builder->slice();
-  } else {
-    TRI_ASSERT(slice.isObject());
-    // we can get away with the fast hash function here, as key values are
-    // restricted to strings
-    newSlice = slice;
-  }
-
-  res = getPhysical()->insert(trx, newSlice, result, options, resultMarkerTick,
-                              lock);
-
-  return res;
+  return getPhysical()->insert(trx, slice, result, options, resultMarkerTick,
+                               lock);
 }
 
 /// @brief updates a document or edge in a collection
@@ -1883,11 +1529,8 @@ int LogicalCollection::remove(transaction::Methods* trx,
     revisionId = TRI_HybridLogicalClock();
   }
 
-  transaction::BuilderLeaser builder(trx);
-  newObjectForRemove(trx, slice, TRI_RidToString(revisionId), *builder.get());
-
   return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick,
-                               lock, revisionId, prevRev, builder->slice());
+                               lock, revisionId, prevRev);
 }
 
 void LogicalCollection::sizeHint(transaction::Methods* trx, int64_t hint) {
@@ -1902,179 +1545,14 @@ void LogicalCollection::sizeHint(transaction::Methods* trx, int64_t hint) {
   }
 }
 
-/// @brief initializes an index with a set of existing documents
-void LogicalCollection::fillIndex(
-    arangodb::basics::LocalTaskQueue* queue, transaction::Methods* trx,
-    arangodb::Index* idx,
-    std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
-    bool skipPersistent) {
-  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (!useSecondaryIndexes()) {
-    return;  // TRI_ERROR_NO_ERROR;
-  }
-
-  if (idx->isPersistent() && skipPersistent) {
-    return;  // TRI_ERROR_NO_ERROR;
-  }
-
-  try {
-    // move task into thread pool
-    std::shared_ptr<IndexFillerTask> worker;
-    worker.reset(new IndexFillerTask(queue, trx, idx, documents));
-    queue->enqueue(worker);
-  } catch (...) {
-    // set error code
-    queue->setStatus(TRI_ERROR_INTERNAL);
-  }
+bool LogicalCollection::readDocument(transaction::Methods* trx, DocumentIdentifierToken const& token, ManagedDocumentResult& result) {
+  return getPhysical()->readDocument(trx, token, result);
 }
 
-/// @brief new object for insert, computes the hash of the key
-int LogicalCollection::newObjectForInsert(
-    transaction::Methods* trx, VPackSlice const& value, VPackSlice const& fromSlice,
-    VPackSlice const& toSlice, bool isEdgeCollection, VPackBuilder& builder,
-    bool isRestore) {
-  TRI_voc_tick_t newRev = 0;
-  builder.openObject();
-
-  // add system attributes first, in this order:
-  // _key, _id, _from, _to, _rev
-
-  // _key
-  VPackSlice s = value.get(StaticStrings::KeyString);
-  if (s.isNone()) {
-    TRI_ASSERT(!isRestore);  // need key in case of restore
-    newRev = TRI_HybridLogicalClock();
-    std::string keyString = _keyGenerator->generate(TRI_NewTickServer());
-    if (keyString.empty()) {
-      return TRI_ERROR_ARANGO_OUT_OF_KEYS;
-    }
-    uint8_t* where =
-        builder.add(StaticStrings::KeyString, VPackValue(keyString));
-    s = VPackSlice(where);  // point to newly built value, the string
-  } else if (!s.isString()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-  } else {
-    std::string keyString = s.copyString();
-    int res = _keyGenerator->validate(keyString, isRestore);
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-    builder.add(StaticStrings::KeyString, s);
-  }
-
-  // _id
-  uint8_t* p = builder.add(StaticStrings::IdString,
-                           VPackValuePair(9ULL, VPackValueType::Custom));
-  *p++ = 0xf3;  // custom type for _id
-  if (trx->state()->isDBServer() && !_isSystem) {
-    // db server in cluster, note: the local collections _statistics,
-    // _statisticsRaw and _statistics15 (which are the only system
-    // collections)
-    // must not be treated as shards but as local collections
-    encoding::storeNumber<uint64_t>(p, _planId, sizeof(uint64_t));
-  } else {
-    // local server
-    encoding::storeNumber<uint64_t>(p, _cid, sizeof(uint64_t));
-  }
-
-  // _from and _to
-  if (isEdgeCollection) {
-    TRI_ASSERT(!fromSlice.isNone());
-    TRI_ASSERT(!toSlice.isNone());
-    builder.add(StaticStrings::FromString, fromSlice);
-    builder.add(StaticStrings::ToString, toSlice);
-  }
-
-  // _rev
-  std::string newRevSt;
-  if (isRestore) {
-    VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(value);
-    if (!oldRev.isString()) {
-      return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
-    }
-    bool isOld;
-    VPackValueLength l;
-    char const* p = oldRev.getString(l);
-    TRI_voc_rid_t oldRevision = TRI_StringToRid(p, l, isOld, false);
-    if (isOld || oldRevision == UINT64_MAX) {
-      oldRevision = TRI_HybridLogicalClock();
-    }
-    newRevSt = TRI_RidToString(oldRevision);
-  } else {
-    if (newRev == 0) {
-      newRev = TRI_HybridLogicalClock();
-    }
-    newRevSt = TRI_RidToString(newRev);
-  }
-  builder.add(StaticStrings::RevString, VPackValue(newRevSt));
-
-  // add other attributes after the system attributes
-  TRI_SanitizeObjectWithEdges(value, builder);
-
-  builder.close();
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief new object for remove, must have _key set
-void LogicalCollection::newObjectForRemove(transaction::Methods* trx,
-                                           VPackSlice const& oldValue,
-                                           std::string const& rev,
-                                           VPackBuilder& builder) {
-  // create an object consisting of _key and _rev (in this order)
-  builder.openObject();
-  if (oldValue.isString()) {
-    builder.add(StaticStrings::KeyString, oldValue);
-  } else {
-    VPackSlice s = oldValue.get(StaticStrings::KeyString);
-    TRI_ASSERT(s.isString());
-    builder.add(StaticStrings::KeyString, s);
-  }
-  builder.add(StaticStrings::RevString, VPackValue(rev));
-  builder.close();
-}
-
-bool LogicalCollection::readRevision(transaction::Methods* trx,
-                                     ManagedDocumentResult& result,
-                                     TRI_voc_rid_t revisionId) {
-  uint8_t const* vpack = getPhysical()->lookupRevisionVPack(revisionId);
-  if (vpack != nullptr) {
-    result.addExisting(vpack, revisionId);
-    return true;
-  } 
-  return false;
-}
-
-bool LogicalCollection::readRevisionConditional(transaction::Methods* trx,
-                                                ManagedDocumentResult& result,
-                                                TRI_voc_rid_t revisionId,
-                                                TRI_voc_tick_t maxTick,
-                                                bool excludeWal) {
-  TRI_ASSERT(revisionId != 0);
-  uint8_t const* vpack  = getPhysical()->lookupRevisionVPackConditional(revisionId, maxTick, excludeWal);
-  if (vpack != nullptr) {
-    result.addExisting(vpack, revisionId);
-    return true;
-  } 
-  return false;
-}
-
-// TODO ONLY TEMP wrapper
-bool LogicalCollection::readDocument(transaction::Methods* trx, ManagedDocumentResult& result, DocumentIdentifierToken const& token) {
-  // TODO This only works for MMFiles Engine. Has to be moved => StorageEngine
-  auto tkn = static_cast<MMFilesToken const*>(&token);
-  return readRevision(trx, result, tkn->revisionId());
-}
-
-// TODO ONLY TEMP wrapper
-bool LogicalCollection::readDocumentConditional(transaction::Methods* trx,
-                                                ManagedDocumentResult& result,
-                                                DocumentIdentifierToken const& token,
-                                                TRI_voc_tick_t maxTick,
-                                                bool excludeWal) {
-  // TODO This only works for MMFiles Engine. Has to be moved => StorageEngine
-  auto tkn = static_cast<MMFilesToken const*>(&token);
-  return readRevisionConditional(trx, result, tkn->revisionId(), maxTick, excludeWal);
+bool LogicalCollection::readDocumentConditional(
+    transaction::Methods* trx, DocumentIdentifierToken const& token,
+    TRI_voc_tick_t maxTick, ManagedDocumentResult& result) {
+  return getPhysical()->readDocumentConditional(trx, token, maxTick, result);
 }
 
 /// @brief a method to skip certain documents in AQL write operations,

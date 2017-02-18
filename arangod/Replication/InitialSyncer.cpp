@@ -41,6 +41,7 @@
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -1078,7 +1079,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     uint64_t iterations = 0;
     ManagedDocumentResult mmdr;
     trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations, &idx](DocumentIdentifierToken const& token) {
-      if (idx->collection()->readDocument(&trx, mmdr, token)) {
+      if (idx->collection()->readDocument(&trx, token, mmdr)) {
         markers.emplace_back(mmdr.vpack());
         
         if (++iterations % 10000 == 0) {
@@ -1863,6 +1864,8 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
       
             LogicalCollection* document = trx.documentCollection();
             TRI_ASSERT(document != nullptr);
+            auto physical = document->getPhysical();
+            TRI_ASSERT(physical != nullptr);
 
             for (auto const& idxDef : VPackArrayIterator(indexes)) {
               std::shared_ptr<arangodb::Index> idx;
@@ -1877,7 +1880,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
                 }
               }
 
-              res = document->restoreIndex(&trx, idxDef, idx);
+              res = physical->restoreIndex(&trx, idxDef, idx);
 
               if (res != TRI_ERROR_NO_ERROR) {
                 errorMsg = "could not create index: " +
@@ -1886,7 +1889,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
               } else {
                 TRI_ASSERT(idx != nullptr);
 
-                res = document->saveIndex(idx.get(), true);
+                res = physical->saveIndex(&trx, idx);
 
                 if (res != TRI_ERROR_NO_ERROR) {
                   errorMsg = "could not save index: " +

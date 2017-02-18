@@ -40,7 +40,9 @@ struct TRI_df_marker_t;
 namespace arangodb {
 class LogicalCollection;
 class ManagedDocumentResult;
+struct MMFilesDocumentOperation;
 class MMFilesPrimaryIndex;
+class MMFilesWalMarker;
 
 class MMFilesCollection final : public PhysicalCollection {
  friend class MMFilesCompactorThread;
@@ -218,6 +220,21 @@ class MMFilesCollection final : public PhysicalCollection {
     }
   }
 
+  ////////////////////////////////////
+  // -- SECTION Indexes --
+  ///////////////////////////////////
+
+  inline bool useSecondaryIndexes() const { return _useSecondaryIndexes; }
+
+  void useSecondaryIndexes(bool value) { _useSecondaryIndexes = value; }
+
+  int fillAllIndexes(transaction::Methods*);
+
+  int saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx) override;
+
+  /// @brief Restores an index from VelocyPack.
+  int restoreIndex(transaction::Methods*, velocypack::Slice const&,
+                   std::shared_ptr<Index>&) override;
 
   int cleanupIndexes();
 
@@ -241,6 +258,15 @@ class MMFilesCollection final : public PhysicalCollection {
 
   int read(transaction::Methods*, arangodb::velocypack::Slice const key,
            ManagedDocumentResult& result, bool) override;
+
+  bool readDocument(transaction::Methods* trx,
+                    DocumentIdentifierToken const& token,
+                    ManagedDocumentResult& result) override;
+
+  bool readDocumentConditional(transaction::Methods* trx,
+                               DocumentIdentifierToken const& token,
+                               TRI_voc_tick_t maxTick,
+                               ManagedDocumentResult& result) override;
 
   int insert(arangodb::transaction::Methods* trx,
              arangodb::velocypack::Slice const newSlice,
@@ -269,8 +295,8 @@ class MMFilesCollection final : public PhysicalCollection {
              arangodb::velocypack::Slice const slice,
              arangodb::ManagedDocumentResult& previous,
              OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-             bool lock, TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev,
-             arangodb::velocypack::Slice const toRemove) override;
+             bool lock, TRI_voc_rid_t const& revisionId,
+             TRI_voc_rid_t& prevRev) override;
 
   int rollbackOperation(transaction::Methods*, TRI_voc_document_operation_e,
                         TRI_voc_rid_t oldRevisionId,
@@ -293,6 +319,20 @@ class MMFilesCollection final : public PhysicalCollection {
 
  private:
 
+  bool openIndex(VPackSlice const& description, transaction::Methods* trx);
+
+  /// @brief initializes an index with all existing documents
+  void fillIndex(basics::LocalTaskQueue*, transaction::Methods*,
+                 Index*,
+                 std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
+                 bool);
+
+
+  /// @brief Fill indexes used in recovery
+  int fillIndexes(transaction::Methods*,
+                  std::vector<std::shared_ptr<Index>> const&,
+                  bool skipPersistent = true);
+ 
   int openWorker(bool ignoreErrors);
 
   int removeFastPath(arangodb::transaction::Methods* trx,
@@ -356,6 +396,9 @@ class MMFilesCollection final : public PhysicalCollection {
    private:
     // SECTION: Index storage
 
+    /// @brief Detect all indexes form file
+    int detectIndexes(transaction::Methods* trx);
+
     int insertIndexes(transaction::Methods * trx, TRI_voc_rid_t revisionId,
                       velocypack::Slice const& doc);
 
@@ -412,6 +455,10 @@ class MMFilesCollection final : public PhysicalCollection {
     double _lastCompactionStamp;
     std::string _path;
     TRI_voc_size_t _journalSize;
+
+    // whether or not secondary indexes should be filled
+    bool _useSecondaryIndexes;
+
 };
 
 }

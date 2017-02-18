@@ -841,29 +841,6 @@ void MMFilesEngine::createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collection
   }
 }
 
-void MMFilesEngine::createIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
-                          arangodb::velocypack::Slice const& data, bool writeMarker, int& status){
-
-  status = TRI_ERROR_NO_ERROR;
-  if (!writeMarker) {
-    return;
-  }
-
-  try {
-    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX,
-                                   vocbase->id(), collectionId, data);
-
-    MMFilesWalSlotInfoCopy slotInfo =
-        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
-    status=slotInfo.errorCode;
-  } catch (arangodb::basics::Exception const& ex) {
-    status = ex.code();
-  } catch (...) {
-    status = TRI_ERROR_INTERNAL;
-  }
-
-};
-
 // asks the storage engine to drop the specified index and persist the deletion 
 // info. Note that physical deletion of the index must not be carried out by this call, 
 // as there may still be users of the index. It is recommended that this operation
@@ -1614,7 +1591,7 @@ int MMFilesEngine::insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
   CompactionBlocker blocker(TRI_NewTickServer(), TRI_microtime() + ttl);
 
   {
-    WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
+    WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock); 
 
     auto it = _compactionBlockers.find(vocbase);
 
@@ -1637,7 +1614,7 @@ int MMFilesEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_
     return TRI_ERROR_BAD_PARAMETER;
   }
 
-  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
+  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock); 
 
   auto it = _compactionBlockers.find(vocbase);
 
@@ -1658,7 +1635,7 @@ int MMFilesEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_
 /// @brief remove an existing compaction blocker
 int MMFilesEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase,
                                            TRI_voc_tick_t id) {
-  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
+  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock); 
   
   auto it = _compactionBlockers.find(vocbase);
 
@@ -1686,7 +1663,7 @@ int MMFilesEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase,
 
 void MMFilesEngine::preventCompaction(TRI_vocbase_t* vocbase,
                                       std::function<void(TRI_vocbase_t*)> const& callback) {
-  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 5000);
+  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock);
   callback(vocbase);
 }
 
