@@ -43,7 +43,7 @@ MessageCombiner<HLLCounter>* EffectiveCloseness::messageCombiner() const {
   return new HLLCounterCombiner();
 }
 
-struct ECComputation : public VertexComputation<ECValue, int32_t, HLLCounter> {
+struct ECComputation : public VertexComputation<ECValue, int8_t, HLLCounter> {
   ECComputation() {}
 
   void compute(MessageIterator<HLLCounter> const& messages) override {
@@ -84,12 +84,12 @@ struct ECComputation : public VertexComputation<ECValue, int32_t, HLLCounter> {
   }
 };
 
-VertexComputation<ECValue, int32_t, HLLCounter>*
+VertexComputation<ECValue, int8_t, HLLCounter>*
 EffectiveCloseness::createComputation(WorkerConfig const*) const {
   return new ECComputation();
 }
 
-struct ECGraphFormat : public GraphFormat<ECValue, int32_t> {
+struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
   const std::string _resultField;
 
   ECGraphFormat(std::string const& result) : _resultField(result) {}
@@ -102,7 +102,7 @@ struct ECGraphFormat : public GraphFormat<ECValue, int32_t> {
     return sizeof(ECValue);
   }
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, int32_t* targetPtr,
+  size_t copyEdgeData(arangodb::velocypack::Slice document, int8_t* targetPtr,
                       size_t maxSize) override {
     return 0;
   }
@@ -127,12 +127,12 @@ struct ECGraphFormat : public GraphFormat<ECValue, int32_t> {
     return true;
   }
 
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const int32_t* ptr,
+  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const int8_t* ptr,
                          size_t size) const override {
     return false;
   }
 };
 
-GraphFormat<ECValue, int32_t>* EffectiveCloseness::inputFormat() const {
+GraphFormat<ECValue, int8_t>* EffectiveCloseness::inputFormat() const {
   return new ECGraphFormat(_resultField);
 }

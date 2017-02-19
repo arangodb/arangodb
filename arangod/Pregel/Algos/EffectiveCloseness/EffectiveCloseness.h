@@ -31,17 +31,17 @@ namespace pregel {
 namespace algos {
 
 /// Effective Closeness
-struct EffectiveCloseness : public SimpleAlgorithm<ECValue, int32_t, HLLCounter> {
+struct EffectiveCloseness : public SimpleAlgorithm<ECValue, int8_t, HLLCounter> {
   
   EffectiveCloseness(VPackSlice params)
-      : SimpleAlgorithm<ECValue, int32_t, HLLCounter>("EffectiveCloseness", params) {}
+      : SimpleAlgorithm<ECValue, int8_t, HLLCounter>("EffectiveCloseness", params) {}
 
-  GraphFormat<ECValue, int32_t>* inputFormat() const override;
+  GraphFormat<ECValue, int8_t>* inputFormat() const override;
   MessageFormat<HLLCounter>* messageFormat() const override;
   MessageCombiner<HLLCounter>* messageCombiner() const override;
 
 
-  VertexComputation<ECValue, int32_t, HLLCounter>*
+  VertexComputation<ECValue, int8_t, HLLCounter>*
       createComputation(WorkerConfig const*) const override;
 
   uint64_t maxGlobalSuperstep() const override { return 1000; }

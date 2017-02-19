@@ -45,18 +45,18 @@ namespace algos {
 ///    All nodes visited belongs to the SCC identified by the root color.
 
 struct SCC
-    : public SimpleAlgorithm<SCCValue, int32_t, SenderMessage<uint64_t>> {
+    : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
  public:
   SCC(VPackSlice userParams)
-      : SimpleAlgorithm<SCCValue, int32_t, SenderMessage<uint64_t>>(
+      : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>(
             "SCC", userParams) {}
 
-  GraphFormat<SCCValue, int32_t>* inputFormat() const override;
+  GraphFormat<SCCValue, int8_t>* inputFormat() const override;
   MessageFormat<SenderMessage<uint64_t>>* messageFormat() const override {
     return new SenderMessageFormat<uint64_t>();
   }
 
-  VertexComputation<SCCValue, int32_t, SenderMessage<uint64_t>>*
+  VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>*
   createComputation(WorkerConfig const*) const override;
 
   MasterContext* masterContext(VPackSlice userParams) const override;

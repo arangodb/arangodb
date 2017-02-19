@@ -84,22 +84,22 @@ static uint64_t const long RW_ITERATIONBOUND = 10;
 
 
 struct DMIDComputation
-    : public VertexComputation<DMIDValue, int32_t, int64_t> {
+    : public VertexComputation<DMIDValue, float, DMIDMessage> {
   DMIDComputation() {}
 
   void compute(
-      MessageIterator<int64_t> const& messages) override {
-    sup
+      MessageIterator<DMIDMessage> const& messages) override {
+    
     if (globalSuperstep() == 0) {
-      superstep0(vertex, messages);
+      superstep0(messages);
     }
     
     if (globalSuperstep() == 1) {
-      superstep1(vertex, messages);
+      superstep1(messages);
     }
     
     if (globalSuperstep() == 2) {
-      superstep2(vertex, messages);
+      superstep2(messages);
     }
     
     if ((globalSuperstep() >= 3 && globalSuperstep() <= RW_ITERATIONBOUND + 3)) {
@@ -108,11 +108,11 @@ struct DMIDComputation
        * phase ends when the infinity norm of the difference between the
        * updated vector and the previous one is smaller than this factor.
        */
-      superstepRW(vertex, messages);
+      superstepRW(messages);
     }
     
     long rwFinished = RW_ITERATIONBOUND + 4;
-    if (getSuperstep() == rwFinished) {
+    if (globalSuperstep() == rwFinished) {
       superstep4(vertex, messages);
     }
     
@@ -121,29 +121,29 @@ struct DMIDComputation
        * Superstep 0 and RW_ITERATIONBOUND + 5 are identical. Therefore
        * call superstep0
        */
-      superstep0(vertex, messages);
+      superstep0(messages);
     }
     
     if (globalSuperstep() == rwFinished+2) {
-      superstep6(vertex, messages);
+      superstep6(messages);
     }
     
     if (globalSuperstep() == rwFinished + 3) {
-      superstep7(vertex, messages);
+      superstep7(messages);
       
     }
     
     int64_t iterationCounter = getAggregatedValue<int64_t>(ITERATION_AGG);
     
-    if (getSuperstep() >= rwFinished +4
+    if (globalSuperstep() >= rwFinished +4
         && (iterationCounter % 3 == 1 )) {
       superstep8(messages);
     }
-    if (getSuperstep() >= rwFinished +5
+    if (globalSuperstep() >= rwFinished +5
         && (iterationCounter % 3 == 2 )) {
       superstep9(messages);
     }
-    if (getSuperstep() >= rwFinished +6
+    if (globalSuperstep() >= rwFinished +6
         && (iterationCounter % 3 == 0 )) {
       superstep10(messages);
     }
@@ -153,15 +153,12 @@ struct DMIDComputation
       * SUPERSTEP 0: send a message along all outgoing edges. Message contains
       * own VertexID and the edge weight.
       */
-      void superstep0(Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex,
-                              Iterable<LongDoubleMessage> messages) {
-        
-        long vertexID = vertex.getId().get();
-        
-        for (Edge<LongWritable, DoubleWritable> edge : vertex.getEdges()) {
-          LongDoubleMessage msg = new LongDoubleMessage(vertexID, edge
-                                                        .getValue().get());
-          sendMessage(edge.getTargetVertexId(), msg);
+      void superstep0(MessageIterator<DMIDMessage> const& messages messages) {
+        DMIDMessage message(pregelId(), 0);
+        RangeIterator<Edge<int64_t>> edges = getEdges();
+        for (Edge<int64_t>* edge : edges) {
+          message.value = *edge->data(); // edge weight
+          sendMessage(edge, message);
         }
       }
       
@@ -170,34 +167,29 @@ struct DMIDComputation
        * the form (ID,weightedInDegree) along all incoming edges (send every node
        * a reply)
        */
-      void superstep1(
-                              Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex,
-                              Iterable<LongDoubleMessage> messages) {
+      void superstep1(MessageIterator<DMIDMessage> const& messages) {
         
-        double weightedInDegree = 0.0;
-        
+        float weightedInDegree = 0.0;
         /** vertices that need a reply containing this vertexs weighted indegree */
-        HashSet<Long> predecessors = new HashSet<Long>();
+        std::set<PregelId> predecessors);
         
-        for (LongDoubleMessage msg : messages) {
+        for (DMIDMessage const* message : messages) {
           /**
            * sum of all incoming edge weights (weightedInDegree).
            * msg.getValue() contains the edgeWeight of an incoming edge. msg
            * was send by msg.getSourceVertexId()
            *
            */
-          predecessors.add(msg.sourceVertexId);
-          weightedInDegree += msg.getValue();
+          predecessors.push(message->senderId);
+          weightedInDegree += message->value;
         }
         /** update new weightedInDegree */
-        DMIDVertexValue vertexValue = vertex.getValue();
-        vertexValue.setWeightedInDegree(weightedInDegree);
-        vertex.setValue(vertexValue);
+        mutableVertexValue()->weightedInDegree = weightedInDegree;
         
-        LongDoubleMessage msg = new LongDoubleMessage(vertex.getId().get(),
-                                                      weightedInDegree);
-        for (Long msgTargetID : predecessors) {
-          sendMessage(new LongWritable(msgTargetID), msg);
+        // send to all predecessors
+        DMIDMessage message(pregelId(), weightedInDegree);
+        for (PregelId const& pid : predecessors) {
+          sendMessage(pid, message);
         }
       }
       
@@ -207,68 +199,60 @@ struct DMIDComputation
        * Save the column as a part of the vertexValue. Aggregate DA with value 1/N
        * to initialize the Random Walk.
        */
-      void superstep2(
-                              Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex,
-                              Iterable<LongDoubleMessage> messages) {
+      void superstep2(MessageIterator<DMIDMessage> const& messages) {
         
-        /** Weight= weightedInDegree */
-        double senderWeight = 0.0;
-        double ownWeight = vertex.getValue().getWeightedInDegree();
-        long senderID;
-        
-        /** disValue = disassortativity value of senderID and ownID */
-        double disValue = 0;
-        DoubleSparseVector disVector = new DoubleSparseVector(
-                                                              (int) getTotalNumVertices());
         
         /** Sum of all disVector entries */
-        double disSum = 0;
+        DMIDValue* vertexState = this->mutableVertexData();
+        float ownWeight = vertexState->weightedInDegree;
         
         /** Set up new disCol */
-        for (LongDoubleMessage msg : messages) {
+        float disSum = 0;
+        for (DMIDMessage const* message : messages) {
           
-          senderID = msg.getSourceVertexId();
-          senderWeight = msg.getValue();
-          
-          disValue = Math.abs(ownWeight - senderWeight);
+          /** Weight= weightedInDegree */
+          float senderWeight = msg.getValue();
+          float disValue = fabs(ownWeight - senderWeight);
           disSum += disValue;
-          
-          disVector.set((int) senderID, disValue);
+          /** disValue = disassortativity value of senderID and ownID */
+          vertexState->disCol[msg->pregelId] = disValue;
         }
         /**
          * Normalize the new disCol (Note: a new Vector is automatically
          * initialized 0.0f entries)
          */
-        
-        for (int i = 0; disSum != 0 && i < (int) getTotalNumVertices(); ++i) {
-          disVector.set(i, (disVector.get(i) / disSum));
-          
+        for (auto &pair : vertexState->disCol) {
+          pair.second = pair.second / disSum;
+          /** save the new disCol in the vertexValue */
         }
         
-        /** save the new disCol in the vertexValue */
-        vertex.getValue().setDisCol(disVector, getTotalNumVertices());
+        //vertex.getValue().setDisCol(disVector, getTotalNumVertices());
         /**
          * Initialize DA for the RW steps with 1/N for your own entry
          * (aggregatedValue will be(1/N,..,1/N) in the next superstep)
          * */
-        DoubleDenseVector init = new DoubleDenseVector(
-                                                       (int) getTotalNumVertices());
-        init.set((int) vertex.getId().get(), (double) 1.0
-                 / getTotalNumVertices());
+
+        VertexSumAggregator *agg = (VertexSumAggregator*)getAggregator(DA_AGG);
+        agg->aggregate(this->shard(), this->key(), 1.0 / context->vertexCount());
+        //DoubleDenseVector init = new DoubleDenseVector(
+        //                                               (int) getTotalNumVertices());
+        //init.set((int) vertex.getId().get(), (double) 1.0
+        //         / getTotalNumVertices());
         
-        aggregate(DA_AGG, init);
+        //aggregate(DA_AGG, init);
       }
       
       /**
        * SUPERSTEP 3 - RW_ITERATIONBOUND+3: Calculate entry DA^(t+1)_ownID using
        * DA^t and disCol. Save entry in the DA aggregator.
        */
-      void superstepRW(
-                               Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex,
-                               Iterable<LongDoubleMessage> messages) {
+      void superstepRW(MessageIterator<DMIDMessage> const& messages) {
         
-        DoubleDenseVector curDA = getAggregatedValue(DA_AGG);
-        DoubleSparseVector disCol = vertex.getValue().getDisCol();
+        DMIDValue* vertexState = mutableVertexData();
+        VertexSumAggregator *curDA = (VertexSumAggregator*)getAggregator(DA_AGG);
+
+        //DoubleDenseVector curDA = getAggregatedValue(DA_AGG);
+        //DoubleSparseVector disCol = vertex.getValue().getDisCol();
         
         /**
          * Calculate DA^(t+1)_ownID by multiplying DA^t (=curDA) and column
@@ -276,34 +260,32 @@ struct DMIDComputation
          */
         /** (corresponds to vector matrix multiplication R^1xN * R^NxN) */
         double newEntryDA = 0.0;
-        for (int i = 0; i < getTotalNumVertices(); ++i) {
-          newEntryDA += (curDA.get(i) * disCol.get(i));
-        }
-        
-        DoubleDenseVector newDA = new DoubleDenseVector(
-                                                        (int) getTotalNumVertices());
-        newDA.set((int) vertex.getId().get(), newEntryDA);
-        aggregate(DA_AGG, newDA);
-        
+        curDA->forEach([&](PregelID const& _id, double entry) {
+          newEntryDA += entry * vertexState->disCol[_id];
+        });
+        curDA->aggregateValue(this->shard(), this->key(), newEntryDA);
       }
       
       /**
        * SUPERSTEP RW_ITERATIONBOUND+4: Calculate entry LS_ownID using DA^t* and
        * weightedInDegree. Save entry in the LS aggregator.
        */
-      private void superstep4(
-                              Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex,
-                              Iterable<LongDoubleMessage> messages) {
+      private void superstep4(MessageIterator<DMIDMessage> const& messages) {
+        DMIDValue* vertexState = mutableVertexData();
+        VertexSumAggregator *finalDA = (VertexSumAggregator*)getAggregator(DA_AGG);
         
-        DoubleDenseVector finalDA = getAggregatedValue(DA_AGG);
-        double weightedInDegree = vertex.getValue().getWeightedInDegree();
-        int vertexID = (int) vertex.getId().get();
+        //DoubleDenseVector finalDA = getAggregatedValue(DA_AGG);
+        double weightedInDegree = vertexState->weightedInDegree;// vertex.getValue().getWeightedInDegree();
+        double lsAggValue = finalDA->getAggregatedValue(shard(), key()) * weightedInDegree;
         
-        DoubleDenseVector tmpLS = new DoubleDenseVector(
-                                                        (int) getTotalNumVertices());
-        tmpLS.set(vertexID, (weightedInDegree * finalDA.get(vertexID)));
-        
-        aggregate(LS_AGG, tmpLS);
+        VertexSumAggregator *vecLS = (VertexSumAggregator*)getAggregator(LS_AGG);
+        vecLS->aggregate(this->shard(), this->key(), lsAggValue);
+
+        //finalDA->aggregateValue(shard(), key(), );
+        //int vertexID = (int) vertex.getId().get();
+        //DoubleDenseVector tmpLS = new DoubleDenseVector((int) getTotalNumVertices());
+        //tmpLS.set(vertexID, (weightedInDegree * finalDA.get(vertexID)));
+        //aggregate(LS_AGG, tmpLS);
       }
       
       /**
@@ -314,53 +296,44 @@ struct DMIDComputation
        * value on the sender. The influence v-i has on v-j is (LS-i * w-ji) where
        * w-ji is the weight of the edge from v-j to v-i.
        * */
-      private void superstep6(
-                              Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex,
-                              Iterable<LongDoubleMessage> messages) {
+      private void superstep6(MessageIterator<DMIDMessage> const& messages) {
         
-        /** Weight= weightedInDegree */
-        double senderWeight = 0.0;
-        long senderID;
-        
-        boolean hasEdgeToSender = false;
-        
-        for (LongDoubleMessage msg : messages) {
+        //DoubleDenseVector vecLS = getAggregatedValue(LS_AGG);
+        VertexSumAggregator *vecLS = (VertexSumAggregator*)getAggregator(LS_AGG);
+        for (DMIDMessage const* message : messages) {
           
-          senderID = msg.getSourceVertexId();
-          senderWeight = msg.getValue();
+          PregelID senderID = message->senderId();
+          /** Weight= weightedInDegree */
+
+          float senderWeight = message->value();
           
-          DoubleDenseVector vecLS = getAggregatedValue(LS_AGG);
+          float myInfluence = senderWeight * vecLS->getAggregatedValue(this->shard(), this->key());
           
           /**
            * hasEdgeToSender determines if sender has influence on this vertex
            */
-          hasEdgeToSender = false;
-          for (Edge<LongWritable, DoubleWritable> edge : vertex.getEdges()) {
-            if (edge.getTargetVertexId().get() == senderID) {
+          bool hasEdgeToSender = false;
+          for (Edge<float> *edge : getEdges()) {
+            if (edge->targetShard() == senderID.shard && edge->key() == senderID.key) {
               
               hasEdgeToSender = true;
               /**
                * Has this vertex more influence on the sender than the
                * sender on this vertex?
                */
-              if (senderWeight * vecLS.get((int) vertex.getId().get()) > edge
-                  .getValue().get() * vecLS.get((int) senderID)) {
+              float senderInfluence = *(edge->data()) * vecLS->getAggregatedValue(senderID.shard, senderID.key);
+              if (myInfluence > senderInfluence) {
                 /** send new message */
-                LongDoubleMessage newMsg = new LongDoubleMessage(vertex
-                                                                 .getId().get(), senderWeight
-                                                                 * vecLS.get((int) vertex.getId().get()));
-                
-                sendMessage(new LongWritable(senderID), newMsg);
+                DMIDMessage message(pregelId(), myInfluence);
+                sendMessage(edge, message);
               }
             }
           }
+          // WTF isn't that the same thing as above??!!
           if (!hasEdgeToSender) {
             /** send new message */
-            LongDoubleMessage newMsg = new LongDoubleMessage(vertex.getId()
-                                                             .get(), senderWeight
-                                                             * vecLS.get((int) vertex.getId().get()));
-            
-            sendMessage(new LongWritable(senderID), newMsg);
+            DMIDMessage message(pregelId(), myInfluence);
+            sendMessage(senderID, message);
           }
           
         }
@@ -372,44 +345,36 @@ struct DMIDComputation
        * There may be more then one local leader. Add 1/k to the FollowerDegree
        * (aggregator) of the k local leaders found.
        **/
-      private void superstep7(
-                              Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex,
-                              Iterable<LongDoubleMessage> messages) {
+      private void superstep7(MessageIterator<DMIDMessage> const& messages) {
         
         /** maximum influence on this vertex */
-        double maxInfValue = 0;
+        float maxInfValue = 0;
         
         /** Set of possible local leader for this vertex. Contains VertexID's */
-        HashSet<Long> leaderSet = new HashSet<Long>();
+        std::set<PregelID> leaderSet;
         
         /** Find possible local leader */
-        for (LongDoubleMessage msg : messages) {
+        for (DMIDMessage const* message : messages) {
           
-          if (msg.getValue() >= maxInfValue) {
-            if (msg.getValue() > maxInfValue) {
+          if (message->value >= maxInfValue) {
+            if (message->value > maxInfValue) {
               /** new distinct leader found. Clear set */
               leaderSet.clear();
-              
             }
             /**
              * has at least the same influence as the other possible leader.
              * Add to set
              */
-            leaderSet.add(msg.getSourceVertexId());
+            leaderSet.insert(message->senderId);
             
           }
         }
         
-        int leaderSetSize = leaderSet.size();
-        DoubleSparseVector newFD = new DoubleSparseVector(
-                                                          (int) getTotalNumVertices());
-        
-        for (Long leaderID : leaderSet) {
-          newFD.set(leaderID.intValue(), (double) 1.0 / leaderSetSize);
-          
+        double leaderInit =  1.0 / leaderSet.size();
+        VertexSumAggregator *vecFD = (VertexSumAggregator*) getAggregator(FD_AGG);
+        for (PregelID const& _id : leaderSet) {
+          vecFD->aggregate(_id.shard, _id.key, leaderInit);
         }
-        
-        aggregate(FD_AGG, newFD);
       }
       
       /**
@@ -417,27 +382,28 @@ struct DMIDComputation
        * behavior phase.
        **/
       
-      void superstep8(
-                      Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex,
-                      Iterable<LongDoubleMessage> messages) {
+      void superstep8(MessageIterator<DMIDMessage> const& messages) {
         
-        Long vertexID = vertex.getId().get();
-        DoubleWritable profitability = getAggregatedValue(DMIDComputation.PROFITABILITY_AGG);
+        DMIDValue* vertexState = mutableVertexData();
+        float const* profitability = getAggregatedValue<float>(PROFITABILITY_AGG);
+        
+        auto const& it = vertexState->membershipDegree.find(this->pregelId());
+        
         /** Is this vertex a global leader? Global Leader do not change behavior */
-        if (!vertex.getValue().getMembershipDegree().containsKey(vertexID)||profitability.get()<0) {
-          BooleanWritable notAllAssigned = getAggregatedValue(NOT_ALL_ASSIGNED_AGG);
-          BooleanWritable newMember = getAggregatedValue(NEW_MEMBER_AGG);
-          if (notAllAssigned.get()) {
+        if (it == vertexState->membershipDegree.end() || *profitability < 0) {
+          bool const* notAllAssigned = getAggregatedValue<bool>(NOT_ALL_ASSIGNED_AGG);
+          bool const* newMember = getAggregatedValue<bool>(NEW_MEMBER_AGG);
+          if (*notAllAssigned) {
             /** There are vertices that are not part of any community */
             
-            if (!newMember.get()) {
+            if (*newMember == false) {
               /**
                * There are no changes in the behavior cascade but not all
                * vertices are assigned
                */
               /** RESTART */
               /** set MemDeg back to initial value */
-              initilaizeMemDeg(vertex);
+              initilaizeMemDeg();
             }
             /** ANOTHER ROUND */
             /**
@@ -446,34 +412,31 @@ struct DMIDComputation
              * specific communities.
              **/
             
+            it = vertexState->membershipDegree.find(this->pregelId());
             /** In case of first init test again if vertex is leader */
-            if (!vertex.getValue().getMembershipDegree()
-                .containsKey(vertexID)) {
+            if (it == vertexState->membershipDegree.end()) {
               
-              for (Long leaderID : vertex.getValue()
-                   .getMembershipDegree().keySet()) {
+              for (auto const& pair : vertexState->membershipDegree) {
                 /**
                  * message of the form (ownID, community ID of interest)
                  */
-                if(vertex.getValue()
-                   .getMembershipDegree().get(leaderID)==0){
-                  LongDoubleMessage msg = new LongDoubleMessage(vertexID,
-                                                                leaderID);
-                  sendMessageToAllEdges(vertex, msg);
+                if(pair.second == 0) {
+                  DMIDMessage message(pregelId(), pair.first);
+                  sendMessageToAllEdges(message);
                 }
                 
               }
             } else {
-              vertex.voteToHalt();
+              voteToHalt();
             }
           } else {
             
             /** All vertices are assigned to at least one community */
             /** TERMINATION */
-            vertex.voteToHalt();
+            voteToHalt();
           }
         } else {
-          vertex.voteToHalt();
+          voteToHalt();
         }
       }
       
@@ -481,27 +444,28 @@ struct DMIDComputation
        * SUPERSTEP RW_IT+9: Second iteration point of the cascading behavior
        * phase.
        **/
-      private void superstep9(
-                              Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex,
-                              Iterable<LongDoubleMessage> messages) {
-        
+      private void superstep9(MessageIterator<DMIDMessage> const& messages) {
+        DMIDValue* vertexState = mutableVertexData();
+
         /**
          * iterate over the requests to send this vertex behavior to these
          * specific communities
          */
-        for (LongDoubleMessage msg : messages) {
-          
-          long leaderID = ((long) msg.getValue());
+        for (DMIDMessage const* message : messages) {
+          PregelID const leaderID = message->leaderId;
           /**
            * send a message back with the same double entry if this vertex is
            * part of this specific community
            */
           
-          if (vertex.getValue().getMembershipDegree().get(leaderID) != 0.0) {
-            LongDoubleMessage answerMsg = new LongDoubleMessage(vertex
-                                                                .getId().get(), leaderID);
-            sendMessage(new LongWritable(msg.getSourceVertexId()),
-                        answerMsg);
+          if (vertexState->membershipDegree[leaderID] != 0.0) {
+            DMIDMessage message(pregelId(), leaderID);
+            sendMessage(message->senderId, leaderID);
+
+            //LongDoubleMessage answerMsg = new LongDoubleMessage(vertex
+            //                                                   .getId().get(), leaderID);
+            //sendMessage(new LongWritable(msg.getSourceVertexId()),
+            //            answerMsg);
           }
         }
       }
@@ -510,48 +474,37 @@ struct DMIDComputation
        * SUPERSTEP RW_IT+10: Third iteration point of the cascading behavior
        * phase.
        **/
-      abstract void superstep10(
-                                Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex,
-                                Iterable<LongDoubleMessage> messages); 
+      abstract void superstep10(MessageIterator<DMIDMessage> const& messages);
       
       /**
        * Initialize the MembershipDegree vector.
        **/
-      private void initilaizeMemDeg(
-                                    Vertex<LongWritable, DMIDVertexValue, DoubleWritable> vertex) {
+      private void initilaizeMemDeg() {
+        DMIDValue* vertexState = mutableVertexData();
         
-        DoubleSparseVector vecGL = getAggregatedValue(GL_AGG);
-        HashMap<Long, Double> newMemDeg = new HashMap<Long, Double>();
+        VertexSumAggregator *vecGL = (VertexSumAggregator*)getAggregator(GL_AGG);
+        //DoubleSparseVector vecGL = getAggregatedValue(GL_AGG);
+        std::map<PregelID, float> newMemDeg;
         
-        for (long i = 0; i < getTotalNumVertices(); ++i) {
-          /** only global leader have entries 1.0 the rest will return 0*/
-          if(vecGL.get((int) i)!=0){
-            /** is entry i a global leader?*/
-            if(i == vertex.getId().get()){
+        vecGL->forEach([&](PregelID const& _id, double entry) {
+          if (entry != 0.0) {
+            /** is entry _id a global leader?*/
+            if (_id == this->pregelId()) {
               /**
                * This vertex is a global leader. Set Membership degree to
                * 100%
                */
-              newMemDeg.put(new Long(i), new Double(1.0));
-              
+              vertexState->membershipDegree.emplace(_id, 1.0f);
+            } else {
+              vertexState->membershipDegree.emplace(_id, 0.0f);
             }
-            else{
-              newMemDeg.put(new Long(i), new Double(0.0));
-              
-            }
-            
           }
-        }
-        /** is entry i a global leader? */
-        if (vecGL.get((int) vertex.getId().get())!=0 ) {
-          /**
-           * This vertex is a global leader. Set Membership degree to
-           * 100%
-           */
-          newMemDeg.put(new Long(vertex.getId().get()), new Double(1.0));
-        }
+        });
         
-        vertex.getValue().setMembershipDegree(newMemDeg);
+        //double memDegree = vecGL->getAggregatedValue(shard(), key());
+        //if (memDegree != 0.0) {
+        //  vertexState->membershipDegree[this->pregelId] = 1.0;
+        //}
       }
     }
 };
@@ -648,16 +601,10 @@ struct DMIDValueMasterContext : public MasterContext {
          * RESTART Cascading Behavior with lower profitability threshold
          */
         
-        
-        double newThreshold = 1 - (PROFTIABILITY_DELTA * (restartCount + 1));
-        
-        setAggregatedValue(RESTART_COUNTER_AGG, new LongWritable(
-                                                                 restartCount + 1));
-        setAggregatedValue(DMIDComputation.PROFITABILITY_AGG,
-                           new DoubleWritable(newThreshold));
-        setAggregatedValue(DMIDComputation.ITERATION_AGG,
-                           new LongWritable(1));
-        
+        float newThreshold = 1 - (PROFTIABILITY_DELTA * (restartCount + 1));
+        setAggregatedValue<int64_t>(RESTART_COUNTER_AGG, restartCount + 1);
+        setAggregatedValue<float>(PROFITABILITY_AGG, newThreshold);
+        setAggregatedValue<int64_t>(ITERATION_AGG, 1);
       }
       
     }
@@ -710,11 +657,12 @@ struct DMIDValueMasterContext : public MasterContext {
   void initializeGL() {
     DoubleSparseVector initGL = new DoubleSparseVector(
                                                        (int) getTotalNumVertices());
-    VertexSumAggregator::VertexMap const* vecFD = getAggregatedValue<VertexSumAggregator::VertexMap>(FD_AGG);
-    
+    VertexSumAggregator *vecFD = (VertexSumAggregator*)getAggregator(FD_AGG);
+
     double averageFD = 0.0;
     int numLocalLeader = 0;
     /** get averageFollower degree */
+    f
     for (int i = 0; i < getTotalNumVertices(); ++i) {
       averageFD += vecFD.get(i);
       if (vecFD.get(i) != 0) {
@@ -770,7 +718,7 @@ IAggregator* SCC::aggregator(std::string const& name) const {
   } else if (name == ITERATION_AGG) {
     return new MaxAggregator<int64_t>(0, true); // perm
   } else if (name == PROFITABILITY_AGG) {
-    return new MaxAggregator<double>(0.5, true); // perm
+    return new MaxAggregator<float>(0.5, true); // perm
   } else if (name == RESTART_COUNTER_AGG) {
     return new MaxAggregator<int64_t>(1, true); // perm
   }

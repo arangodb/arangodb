@@ -526,5 +526,6 @@ template class arangodb::pregel::GraphStore<double, float>;
 template class arangodb::pregel::GraphStore<double, double>;
 
 // specific algo combos
-template class arangodb::pregel::GraphStore<SCCValue, int32_t>;
-template class arangodb::pregel::GraphStore<ECValue, int32_t>;
+template class arangodb::pregel::GraphStore<SCCValue, int8_t>;
+template class arangodb::pregel::GraphStore<ECValue, int8_t>;
+template class arangodb::pregel::GraphStore<DMIDValue, float>;

@@ -47,7 +47,7 @@ enum SCCPhase {
 };
 
 struct ASCCComputation
-    : public VertexComputation<SCCValue, int32_t, SenderMessage<uint64_t>> {
+    : public VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>> {
   ASCCComputation() {}
 
   void compute(
@@ -86,7 +86,7 @@ struct ASCCComputation
         vertexState->color = vertexState->vertexID;
         // If this node doesn't have any parents or outgoing edges,
         // it can't be part of an SCC
-        RangeIterator<Edge<int32_t>> edges = getEdges();
+        RangeIterator<Edge<int8_t>> edges = getEdges();
         if (vertexState->parents.size() == 0 || edges.size() == 0) {
           vertexState->color = INT_MAX;
           voteHalt();
@@ -145,12 +145,12 @@ struct ASCCComputation
   }
 };
 
-VertexComputation<SCCValue, int32_t, SenderMessage<uint64_t>>*
+VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>*
 AsyncSCC::createComputation(WorkerConfig const* config) const {
   return new ASCCComputation();
 }
 
-struct SCCGraphFormat : public GraphFormat<SCCValue, int32_t> {
+struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   const std::string _resultField;
   uint64_t vertexIdRange = 0;
 
@@ -176,7 +176,7 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int32_t> {
     return sizeof(SCCValue);
   }
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, int32_t* targetPtr,
+  size_t copyEdgeData(arangodb::velocypack::Slice document, int8_t* targetPtr,
                       size_t maxSize) override {
     return 0;
   }
@@ -188,13 +188,13 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int32_t> {
     return true;
   }
 
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const int32_t* ptr,
+  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const int8_t* ptr,
                          size_t size) const override {
     return false;
   }
 };
 
-GraphFormat<SCCValue, int32_t>* AsyncSCC::inputFormat() const {
+GraphFormat<SCCValue, int8_t>* AsyncSCC::inputFormat() const {
   return new SCCGraphFormat(_resultField);
 }
 

@@ -33,11 +33,32 @@
 
 namespace arangodb {
 namespace pregel {
+  
+struct DMIDValue {
+  constexpr static float INVALID_DEGREE = -1;
+  float weightedInDegree = INVALID_DEGREE;
+  std::map<PregelID, float> membershipDegree;
+  std::map<PregelID, float> disCol;
+};
+  
+struct DMIDMessage {
+  DMIDMessage() {}
+  DMIDMessage(PregelID const& pid, float const& val)
+  : senderId(pid), weight(val) {}
+  
+  DMIDMessage(PregelID const& sender, PregelID const& leader)
+  : senderId(sender), leaderId(leader) {}
+  
+  PregelID senderId;
+  PregelID leaderId;
+  float weight;
+};
 
 
 /// A counter for counting unique vertex IDs using a HyperLogLog sketch.
 /// @author Aljoscha Krettek, Robert Metzger, Robert Waury
 /// https://github.com/hideo55/cpp-HyperLogLog/blob/master/include/hyperloglog.hpp
+/// https://github.com/rmetzger/spargel-closeness/blob/master/src/main/java/de/robertmetzger/HLLCounterWritable.java
 struct HLLCounter {
   friend struct HLLCounterFormat;
   constexpr static int32_t NUM_BUCKETS = 64;
@@ -51,7 +72,6 @@ private:
   uint8_t _buckets[NUM_BUCKETS] = {0};
   
 };
-  
   
 /// Effective closeness value
 struct ECValue {

@@ -42,7 +42,7 @@ struct VertexSumAggregator : public IAggregator {
   
   // if you use this from a vertex I will end you
   void aggregate(void const* valuePtr) {
-    VertexMap const* map = (VertexMap)valuePtr;
+    VertexMap const* map = (VertexMap const*)valuePtr;
     for (auto pair1 const& : map) {
       for (auto pair2 const& : it.second) {
         _entries[pair1.first][pair2.first] += pair2.second;
@@ -50,7 +50,7 @@ struct VertexSumAggregator : public IAggregator {
     }
   };
   
-  void parseAggregate(VPackSlice slice) override {
+  void parseAggregate(VPackSlice const& slice) override {
     for (auto const& pair: VPackObjectIterator(slice)) {
       prgl_shard_t shard = it.key.getUInt();
       std::string key;
@@ -109,23 +109,33 @@ struct VertexSumAggregator : public IAggregator {
     return _empty;
   }
   
-  void setValue(prgl_shard_t shard, std::string const& key, double val) {
-    _entries[shard][key] = val;
-  }
+  //void setValue(prgl_shard_t shard, std::string const& key, double val) {
+  //  _entries[shard][key] = val;
+  //}
 
   void aggregate(prgl_shard_t shard, std::string const& key, double val) {
     _entries[shard][key] += val;
   }
   
-  void setEmptyValue(double empty) {
-    _empty = empty;
+  void aggregateDefaultValue(double empty) {
+    _default += empty;
+  }
+  
+  void forEach(std::function<void(PregelID const& _id, float value)> func) {
+    for (auto const& pair : _entries) {
+      prgl_shard_t shard = pair.first;
+      std::unordered_map<std::string, double> const& vertexMap = pair.second;
+      for (auto& vertexMessage : vertexMap) {
+        func(PregelID(shard, vertexMessage.first), vertexMessage.second);
+      }
+    }
   }
   
   bool isConverging() const override { return false; }
-
+  
  protected:
   VertexMap _entries;
-  double _empty = 0;
+  double _default = 0;
   bool _permanent;
 };
 }
