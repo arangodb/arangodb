@@ -631,20 +631,22 @@ QueryResult Query::execute(QueryRegistry* registry) {
       useQueryCache = false;
     }
 
-    AqlItemBlock* value = nullptr;
     VPackOptions options = VPackOptions::Defaults;
     options.buildUnindexedArrays = true;
     options.buildUnindexedObjects = true;
 
-    TRI_ASSERT(_engine != nullptr);
     auto resultBuilder = std::make_shared<VPackBuilder>(&options);
     resultBuilder->buffer()->reserve(
         16 * 1024);  // reserve some space in Builder to avoid frequent reallocs
+    
+    TRI_ASSERT(_engine != nullptr);
+      
+    // this is the RegisterId our results can be found in
+    auto const resultRegister = _engine->resultRegister();
+    AqlItemBlock* value = nullptr;
 
     try {
       resultBuilder->openArray();
-      // this is the RegisterId our results can be found in
-      auto const resultRegister = _engine->resultRegister();
 
       if (useQueryCache) {
         // iterate over result, return it and store it in query cache
@@ -701,8 +703,17 @@ QueryResult Query::execute(QueryRegistry* registry) {
       delete value;
       throw;
     }
+    
+    LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
+                                      << "Query::execute: before _trx->commit"
+                                      << " this: " << (uintptr_t) this;
 
     _trx->commit();
+    
+    LOG_TOPIC(DEBUG, Logger::QUERIES)
+        << TRI_microtime() - _startTime << " "
+        << "Query::execute: before cleanupPlanAndEngine"
+        << " this: " << (uintptr_t) this;
    
     QueryResult result; 
     result.context = _trx->transactionContext();
@@ -757,6 +768,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
   LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                     << "Query::executeV8"
                                     << " this: " << (uintptr_t) this;
+  TRI_ASSERT(registry != nullptr);
+
   std::unique_ptr<AqlWorkStack> work;
 
   try {
@@ -791,8 +804,14 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
     // will throw if it fails
     prepare(registry);
-
-    work.reset(new AqlWorkStack(_vocbase, _id, _queryString, _queryLength));
+    
+    if (_queryString == nullptr) {
+      // we don't have query string... now pass query id to WorkMonitor
+      work.reset(new AqlWorkStack(_vocbase, _id));
+    } else {
+      // we do have a query string... pass query to WorkMonitor
+      work.reset(new AqlWorkStack(_vocbase, _id, _queryString, _queryLength));
+    }
 
     log();
 
@@ -888,6 +907,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         << " this: " << (uintptr_t) this;
 
     result.context = _trx->transactionContext();
+
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     auto stats = std::make_shared<VPackBuilder>();
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, stats.get());
@@ -904,6 +924,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     // patch executionTime stats value in place
     // we do this because "executionTime" should include the whole span of the execution and we have to set it at the very end
     basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), TRI_microtime() - _startTime);
+    
+    LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
+                                      << "Query::executeV8:returning"
+                                      << " this: " << (uintptr_t) this;
 
     return result;
   } catch (arangodb::basics::Exception const& ex) {
