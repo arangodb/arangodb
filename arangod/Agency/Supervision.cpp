@@ -586,21 +586,21 @@ void Supervision::workJobs() {
                 jobId = job("jobId").getString(),
                 creator = job("creator").getString();
     if (jobType == "failedServer") {
-      FailedServer(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      FailedServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "addFollower") {
-      AddFollower(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      AddFollower(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "cleanOutServer") {
-      CleanOutServer(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      CleanOutServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "removeServer") {
-      RemoveServer(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      RemoveServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "moveShard") {
-      MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
-      FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedFollower") {
-      FailedFollower(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      FailedFollower(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "unassumedLeadership") {
-      UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
   }
 
@@ -611,21 +611,21 @@ void Supervision::workJobs() {
                 jobId = job("jobId").getString(),
                 creator = job("creator").getString();
     if (jobType == "failedServer") {
-      FailedServer(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      FailedServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "addFollower") {
-      AddFollower(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      AddFollower(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "cleanOutServer") {
-      CleanOutServer(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      CleanOutServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "removeServer") {
-      RemoveServer(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      RemoveServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "moveShard") {
-      MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
-      FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedFollower") {
-      FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "unassumedLeadership") {
-      UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
+      UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
   }
 }
@@ -819,6 +819,7 @@ void Supervision::shrinkCluster() {
     if (uselessFailedServers.size() > 0) {
       // Schedule last server for cleanout
 
+      // cppcheck-suppress *
       RemoveServer(_snapshot, _agent, std::to_string(_jobId++), "supervision",
                    _agencyPrefix, uselessFailedServers.back());
       return;

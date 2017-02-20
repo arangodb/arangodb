@@ -37,23 +37,7 @@ AddFollower::AddFollower(Node const& snapshot, Agent* agent,
       _database(database),
       _collection(collection),
       _shard(shard),
-      _newFollower(newFollower) {}
-
-AddFollower::AddFollower(Node const& snapshot, Agent* agent,
-                         std::string const& jobId, std::string const& creator,
-                         std::string const& prefix, std::string const& database,
-                         std::string const& collection,
-                         std::string const& shard,
-                         std::vector<std::string> const& newFollower)
-    : Job(snapshot, agent, jobId, creator, prefix),
-      _database(database),
-      _collection(collection),
-      _shard(shard),
-      _newFollower(newFollower) {}
-
-AddFollower::~AddFollower() {}
-
-void AddFollower::run() {
+      _newFollower(newFollower) {
   try {
     JOB_STATUS js = status();
 
@@ -69,6 +53,35 @@ void AddFollower::run() {
     finish("Shards/" + _shard, false, e.what());
   }
 }
+
+AddFollower::AddFollower(Node const& snapshot, Agent* agent,
+                         std::string const& jobId, std::string const& creator,
+                         std::string const& prefix, std::string const& database,
+                         std::string const& collection,
+                         std::string const& shard,
+                         std::vector<std::string> const& newFollower)
+    : Job(snapshot, agent, jobId, creator, prefix),
+      _database(database),
+      _collection(collection),
+      _shard(shard),
+      _newFollower(newFollower) {
+  try {
+    JOB_STATUS js = status();
+
+    if (js == TODO) {
+      start();
+    } else if (js == NOTFOUND) {
+      if (create()) {
+        start();
+      }
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << __FILE__ << __LINE__;
+    finish("Shards/" + _shard, false, e.what());
+  }
+}
+
+AddFollower::~AddFollower() {}
 
 bool AddFollower::create() {
   LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: AddFollower " << _newFollower
@@ -297,8 +310,3 @@ JOB_STATUS AddFollower::status() {
 
   return status;
 }
-
-void AddFollower::abort() {
-  // TO BE IMPLEMENTED
-}
-

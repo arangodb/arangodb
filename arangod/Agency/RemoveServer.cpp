@@ -31,11 +31,7 @@ using namespace arangodb::consensus;
 RemoveServer::RemoveServer(Node const& snapshot, Agent* agent,
                            std::string const& jobId, std::string const& creator,
                            std::string const& prefix, std::string const& server)
-    : Job(snapshot, agent, jobId, creator, prefix), _server(server) {}
-
-RemoveServer::~RemoveServer() {}
-
-void RemoveServer::run() {
+    : Job(snapshot, agent, jobId, creator, prefix), _server(server) {
   try {
     JOB_STATUS js = status();
     if (js == TODO) {
@@ -50,6 +46,8 @@ void RemoveServer::run() {
     finish("DBServers/" + _server, false, e.what());
   }
 }
+
+RemoveServer::~RemoveServer() {}
 
 JOB_STATUS RemoveServer::status() {
   auto status = exists();
@@ -455,8 +453,3 @@ bool RemoveServer::checkFeasibility() {
 
   return true;
 }
-
-void RemoveServer::abort() {
-  // TO BE IMPLEMENTED
-}
-

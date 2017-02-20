@@ -43,11 +43,7 @@ FailedLeader::FailedLeader(Node const& snapshot, Agent* agent,
       _collection(collection),
       _shard(shard),
       _from(from),
-      _to(to) {}
-
-FailedLeader::~FailedLeader() {}
-
-void FailedLeader::run() {
+      _to(to) {
   try {
     JOB_STATUS js = status();
 
@@ -63,6 +59,8 @@ void FailedLeader::run() {
     finish("Shards/" + _shard, false, e.what());
   }
 }
+
+FailedLeader::~FailedLeader() {}
 
 bool FailedLeader::create() {
   LOG_TOPIC(INFO, Logger::AGENCY)
@@ -306,8 +304,3 @@ JOB_STATUS FailedLeader::status() {
 
   return status;
 }
-
-void FailedLeader::abort() {
-  // TO BE IMPLEMENTED
-}
-

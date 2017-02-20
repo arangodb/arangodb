@@ -40,11 +40,8 @@ MoveShard::MoveShard(Node const& snapshot, Agent* agent,
       _collection(collection),
       _shard(shard),
       _from(from),
-      _to(to) {}
+      _to(to) {
 
-MoveShard::~MoveShard() {}
-
-void MoveShard::run() {
   try {
     JOB_STATUS js = status();
 
@@ -60,6 +57,8 @@ void MoveShard::run() {
     finish("Shards/" + _shard, false, e.what());
   }
 }
+
+MoveShard::~MoveShard() {}
 
 bool MoveShard::create() {
 
@@ -528,8 +527,3 @@ JOB_STATUS MoveShard::status() {
     
   return status;
 }
-
-void MoveShard::abort() {
-  // TO BE IMPLEMENTED
-}
-

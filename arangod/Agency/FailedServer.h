@@ -37,11 +37,9 @@ struct FailedServer : public Job {
 
   virtual ~FailedServer();
 
-  virtual bool start() override final;
-  virtual bool create() override final;
-  virtual JOB_STATUS status() override final;
-  virtual void run() override final;
-  virtual void abort() override final;
+  virtual bool start() override;
+  virtual bool create() override;
+  virtual JOB_STATUS status() override;
 
   std::string _server;
 };

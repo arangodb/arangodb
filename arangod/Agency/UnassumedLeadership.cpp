@@ -37,11 +37,7 @@ UnassumedLeadership::UnassumedLeadership(
       _database(database),
       _collection(collection),
       _shard(shard),
-      _from(server) {}
-
-UnassumedLeadership::~UnassumedLeadership() {}
-
-void UnassumedLeadership::run() {
+      _from(server) {
   try {
     JOB_STATUS js = status();
 
@@ -57,6 +53,8 @@ void UnassumedLeadership::run() {
     finish("Shards/" + _shard, false, e.what());
   }
 }
+
+UnassumedLeadership::~UnassumedLeadership() {}
 
 bool UnassumedLeadership::create() {
   LOG_TOPIC(INFO, Logger::AGENCY)
@@ -293,8 +291,3 @@ JOB_STATUS UnassumedLeadership::status() {
 
   return status;
 }
-
-void UnassumedLeadership::abort() {
-  // TO BE IMPLEMENTED
-}
-

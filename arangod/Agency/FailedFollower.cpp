@@ -42,11 +42,7 @@ FailedFollower::FailedFollower(Node const& snapshot, Agent* agent,
       _collection(collection),
       _shard(shard),
       _from(from),
-      _to(to) {}
-
-FailedFollower::~FailedFollower() {}
-
-void FailedFollower::run() {
+      _to(to) {
   try {
     JOB_STATUS js = status();
 
@@ -62,6 +58,8 @@ void FailedFollower::run() {
     finish("Shards/" + _shard, false, e.what());
   }
 }
+
+FailedFollower::~FailedFollower() {}
 
 bool FailedFollower::create() {
   LOG_TOPIC(INFO, Logger::AGENCY)
@@ -276,8 +274,3 @@ JOB_STATUS FailedFollower::status() {
 
   return status;
 }
-
-void FailedFollower::abort() {
-  // TO BE IMPLEMENTED
-}
-
