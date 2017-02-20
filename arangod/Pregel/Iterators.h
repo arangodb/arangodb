@@ -41,15 +41,15 @@ class MessageIterator {
   explicit MessageIterator(M const* data) : _data(data), _size(data ? 1 : 0) {}
   explicit MessageIterator(M const* data, size_t s) : _data(data), _size(s) {}
 
-  iterator begin() { return MessageIterator(_data); }
-  const_iterator begin() const { return MessageIterator(_data); }
+  iterator begin() { return MessageIterator(_data, _size); }
+  const_iterator begin() const { return MessageIterator(_data, _size); }
   iterator end() {
-    auto it = MessageIterator(_data);
+    auto it = MessageIterator(_data, _size);
     it._current = it._size;
     return it;
   }
   const_iterator end() const {
-    auto it = MessageIterator(_data);
+    auto it = MessageIterator(_data, _size);
     it._current = it._size;
     return it;
   }
@@ -68,7 +68,7 @@ class MessageIterator {
 
   // postfix ++
   MessageIterator operator++(int) {
-    MessageIterator result(_data);
+    MessageIterator result(_data, _size);
     ++(*this);
     return result;
   }

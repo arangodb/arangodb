@@ -42,6 +42,10 @@ struct PregelID {
   inline bool operator==(const PregelID& rhs) {
     return shard == rhs.shard && key == rhs.key;
   }
+  
+  bool inline isValid() const {
+    return shard != invalid_prgl_shard && !key.empty();
+  }
 };
 
 template <typename V, typename E>

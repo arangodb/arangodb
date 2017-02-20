@@ -29,6 +29,7 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
+#include <cmath>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -37,55 +38,66 @@ using namespace arangodb::pregel::algos;
 static std::string const kAuthNorm = "auth";
 static std::string const kHubNorm = "hub";
 
-struct HITSComputation
-    : public VertexComputation<HITSValue, int8_t, SenderMessage<float>> {
-  HITSComputation() {}
-
-  void compute(
-      MessageIterator<SenderMessage<float>> const& messages) override {
-    
-    float auth = 0.0f;
-    float hub = 0.0f;
-    if (globalSuperstep() == 0) {
-      auth = 1.0f / context()->vertexCount();
-      hub = 1.0f / context()->vertexCount();
-    } else {
-      for (SenderMessage<float> const* message : messages) {
-        // we don't put a valid shard id into the messages FROM our outgoing messages
-        if (message->senderId.shard == invalid_prgl_shard) {
-          hub += message->value;// auth from our outgoing Neighbors
-        } else {
-          auth += message->value;// hub from incoming Neighbors
-        }
-      }
-      
-      float const* authNorm = getAggregatedValue<float>(kAuthNorm);
-      auth /= *authNorm;
-      mutableVertexData()->authorityScore = auth;
-      
-      float const* hubNorm = getAggregatedValue<float>(kHubNorm);
-      hub /= *hubNorm;
-      mutableVertexData()->hubScore = hub;
-    }
-    
-    // no sender required, the senders have an outgoing edge to us
-    SenderMessage<float> authData(PregelID(invalid_prgl_shard, ""), auth);
-    for (SenderMessage<float> const* message : messages) {
-      if (message->senderId.shard != invalid_prgl_shard) {// send to incoming Neighbors
-       sendMessage(message->senderId, authData);
-      }
-    }
-    
-    SenderMessage<float> hubData(this->pregelId(), hub);
-    sendMessageToAllEdges(hubData);
-    
-    aggregate<float>(kAuthNorm, messages.size() > 0 ? auth * messages.size() : auth);
-    auto const& edges = getEdges();
-    aggregate<float>(kHubNorm, edges.size() > 0 ? hub * edges.size() : hub);
+struct HITSWorkerContext : public WorkerContext {
+  HITSWorkerContext() {}
+  
+  double authNormRoot;
+  double hubNormRoot;
+  
+  void preGlobalSuperstep(uint64_t gss) override {
+    double const* authNorm = getAggregatedValue<double>(kAuthNorm);
+    double const* hubNorm = getAggregatedValue<double>(kHubNorm);
+    authNormRoot = std::sqrt(*authNorm);
+    hubNormRoot = std::sqrt(*hubNorm);
   }
 };
 
-VertexComputation<HITSValue, int8_t, SenderMessage<float>>*
+struct HITSComputation
+    : public VertexComputation<HITSValue, int8_t, SenderMessage<double>> {
+  HITSComputation() {}
+
+  void compute(
+      MessageIterator<SenderMessage<double>> const& messages) override {
+    
+    double auth = 0.0f;
+    double hub = 0.0f;
+    // we don't know our incoming neighbours in step 0, therfore we need step 0
+    // as 'initialization' before actually starting to converge
+    if (globalSuperstep() <= 1) {
+      auth = 1.0f;
+      hub = 1.0f;
+    } else {
+      HITSWorkerContext const* ctx = (HITSWorkerContext*) context();
+      for (SenderMessage<double> const* message : messages) {
+        // we don't put a valid shard id into the messages FROM our outgoing messages
+        if (message->senderId.isValid()) {
+          auth += message->value;// hub from incoming Neighbors
+        } else {
+          hub += message->value;// auth from our outgoing Neighbors
+        }
+      }
+      
+      auth /= ctx->authNormRoot;
+      hub /= ctx->hubNormRoot;
+      mutableVertexData()->authorityScore = auth;
+      mutableVertexData()->hubScore = hub;
+    }
+    aggregate<double>(kAuthNorm, hub * hub);
+    aggregate<double>(kHubNorm, auth * auth);
+    
+    // no sender required, the senders have an outgoing edge to us
+    SenderMessage<double> authData(PregelID(invalid_prgl_shard, ""), auth);
+    for (SenderMessage<double> const* message : messages) {
+      if (message->senderId.isValid()) {// send to incoming Neighbors
+       sendMessage(message->senderId, authData);
+      }
+    }
+    SenderMessage<double> hubData(this->pregelId(), hub);
+    sendMessageToAllEdges(hubData);
+  }
+};
+
+VertexComputation<HITSValue, int8_t, SenderMessage<double>>*
 HITS::createComputation(WorkerConfig const* config) const {
   return new HITSComputation();
 }
@@ -124,27 +136,26 @@ struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
 GraphFormat<HITSValue, int8_t>* HITS::inputFormat() const {
   return new HITSGraphFormat(_resultField);
 }
-/*
-struct HITSWorkerContext : public MasterContext {
-  HITSWorkertContext() {}
-  
-  float authNormRoot;
-  float hubNormRoor
-  
-};
 
 WorkerContext* HITS::workerContext(VPackSlice userParams) const {
-  
-}*/
+  return new HITSWorkerContext();
+}
 
 struct HITSMasterContext : public MasterContext {
-  HITSMasterContext() {}  // TODO use _threashold
+  HITSMasterContext() {}
   
-  bool postGlobalStep() {
-    float const* authNorm = getAggregatedValue<float>(kAuthNorm);
-    float const* hubNorm = getAggregatedValue<float>(kHubNorm);
+  double authNorm;
+  double hubNorm;
+  
+  bool postGlobalSuperstep() override {
+    double const* an = getAggregatedValue<double>(kAuthNorm);
+    double const* hn = getAggregatedValue<double>(kHubNorm);
+    double diff = std::max(std::abs(authNorm - *an), std::abs(hubNorm - *hn));
+    bool converged = globalSuperstep() > 2 && (diff < 0.00001);
+    authNorm = *an;
+    hubNorm = *hn;
     // will fail on small sparse graphs
-    return *authNorm != 0 && *hubNorm != 0 && globalSuperstep() < 25;
+    return authNorm != 0 && hubNorm != 0 && !converged;
   }
 };
 
@@ -154,7 +165,7 @@ MasterContext* HITS::masterContext(VPackSlice userParams) const {
 
 IAggregator* HITS::aggregator(std::string const& name) const {
   if (name == kHubNorm || name == kAuthNorm) {
-    return new SumAggregator<float>(false);// non perm
+    return new SumAggregator<double>(false);// non perm
   }
   return nullptr;
 }

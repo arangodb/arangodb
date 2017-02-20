@@ -45,21 +45,21 @@ namespace algos {
 ///    All nodes visited belongs to the SCC identified by the root color.
 
 struct HITS
-    : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<float>> {
+    : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
  public:
   HITS(VPackSlice userParams)
-      : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<float>>(
+      : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>(
             "HITS", userParams) {}
 
   GraphFormat<HITSValue, int8_t>* inputFormat() const override;
-  MessageFormat<SenderMessage<float>>* messageFormat() const override {
-    return new SenderMessageFormat<float>();
+  MessageFormat<SenderMessage<double>>* messageFormat() const override {
+    return new SenderMessageFormat<double>();
   }
 
-  VertexComputation<HITSValue, int8_t, SenderMessage<float>>*
+  VertexComputation<HITSValue, int8_t, SenderMessage<double>>*
   createComputation(WorkerConfig const*) const override;
 
-  //WorkerContext* workerContext(VPackSlice userParams) const override;
+  WorkerContext* workerContext(VPackSlice userParams) const override;
   MasterContext* masterContext(VPackSlice userParams) const override;
 
   IAggregator* aggregator(std::string const& name) const override;
