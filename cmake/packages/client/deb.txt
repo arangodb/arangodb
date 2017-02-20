@@ -35,6 +35,7 @@ set(PACKAGING_HANDLE_CONFIG_FILES false)
 ################################################################################
 set(BIN_ARANGOBENCH @BIN_ARANGOBENCH@)
 set(BIN_ARANGODUMP @BIN_ARANGODUMP@)
+set(BIN_ARANGOEXPORT @BIN_ARANGOEXPORT@)
 set(BIN_ARANGOIMP @BIN_ARANGOIMP@)
 set(BIN_ARANGORESTORE @BIN_ARANGORESTORE@)
 set(BIN_ARANGOSH @BIN_ARANGOSH@)
@@ -50,6 +51,8 @@ set(ARANGODB_PACKAGE_CONTACT @ARANGODB_PACKAGE_CONTACT@)
 set(ARANGODB_PACKAGE_REVISION @ARANGODB_PACKAGE_REVISION@)
 set(ARANGODB_PACKAGE_VENDOR @ARANGODB_PACKAGE_VENDOR@)
 set(CMAKE_TARGET_ARCHITECTURES @CMAKE_TARGET_ARCHITECTURES@)
+set(ARANGODB_PACKAGE_ARCHITECTURE @ARANGODB_PACKAGE_ARCHITECTURE@)
+set(CPACK_PACKAGE_FILE_NAME @ARANGODB_CLIENT_PACKAGE_FILE_NAME@)
 
 set(ORIGINAL_SOURCE_DIR @PROJECT_SOURCE_DIR@)
 set(PROJECT_SOURCE_DIR @PROJECT_SOURCE_DIR@)
@@ -87,22 +90,7 @@ endif ()
 file(READ "${PROJECT_SOURCE_DIR}/Installation/debian/client_packagedesc.txt"
   CPACK_DEBIAN_PACKAGE_DESCRIPTION)
 
-################################################################################
-# specify which target archcitecture the package is going to be:
-################################################################################
-
-if(CMAKE_TARGET_ARCHITECTURES MATCHES ".*x86_64.*")
-  set(ARANGODB_PACKAGE_ARCHITECTURE "amd64")
-elseif(CMAKE_TARGET_ARCHITECTURES MATCHES "aarch64")
-  set(ARANGODB_PACKAGE_ARCHITECTURE "arm64")
-elseif(CMAKE_TARGET_ARCHITECTURES MATCHES "armv7")
-  set(ARANGODB_PACKAGE_ARCHITECTURE "armhf")
-else()
-  set(ARANGODB_PACKAGE_ARCHITECTURE "i386")
-endif()
-
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE ${ARANGODB_PACKAGE_ARCHITECTURE})
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
 
 ################################################################################
 # Install the external files into the package directory:
@@ -110,6 +98,8 @@ set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${AR
 
 
 set(INSTALL_MACROS_NO_TARGET_INSTALL TRUE)
+include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
+include(${ORIGINAL_SOURCE_DIR}/cmake/debugInformation.cmake)
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallMacros.cmake)
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallArangoDBJSClient.cmake)
 include(${ORIGINAL_SOURCE_DIR}/arangosh/install.cmake)

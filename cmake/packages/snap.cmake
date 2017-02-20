@@ -37,13 +37,13 @@ if(SNAPCRAFT_FOUND)
   add_custom_target(snap
     COMMENT "create snap-package"
     COMMAND ${SNAP_EXE} snap
-    COMMAND cp *.snap ${PROJECT_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy *.snap ${PROJECT_BINARY_DIR}
     DEPENDS TGZ_package
     WORKING_DIRECTORY ${SNAPCRAFT_SOURCE_DIR}
   )
 
   add_custom_target(copy_snap_packages
-    COMMAND cp *.snap ${PACKAGE_TARGET_DIR})
+    COMMAND ${CMAKE_COMMAND} -E copy *.snap ${PACKAGE_TARGET_DIR})
 
   list(APPEND COPY_PACKAGES_LIST copy_snap_packages)
 

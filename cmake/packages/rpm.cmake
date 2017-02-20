@@ -52,7 +52,7 @@ include(arangod/dbg.cmake)
 add_custom_target(package-arongodb-server
   COMMAND ${CMAKE_COMMAND} .
   COMMAND ${CMAKE_CPACK_COMMAND} -G RPM
-  COMMAND cp "${CPACK_TEMPORARY_DIRECTORY}/*.rpm" "${PROJECT_BINARY_DIR}"
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_TEMPORARY_DIRECTORY}/*.rpm ${PROJECT_BINARY_DIR}
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
 list(APPEND PACKAGES_LIST package-arongodb-server)
 
@@ -64,19 +64,19 @@ list(APPEND PACKAGES_LIST package-arongodb-server)
 #add_custom_target(package-arongodb-client
 #  COMMAND ${CMAKE_COMMAND} .
 #  COMMAND ${CMAKE_CPACK_COMMAND} -G RPM
-#  COMMAND cp *.rpm ${PROJECT_BINARY_DIR} 
+#  COMMAND ${CMAKE_COMMAND} -E copy *.rpm ${PROJECT_BINARY_DIR}
 #  WORKING_DIRECTORY ${CLIENT_BUILD_DIR})
 #
 #
 #list(APPEND PACKAGES_LIST package-arongodb-client)
 add_custom_target(copy_rpm_packages
-  COMMAND cp *.rpm ${PACKAGE_TARGET_DIR})
+  COMMAND ${CMAKE_COMMAND} -E copy *.rpm ${PACKAGE_TARGET_DIR})
 
 list(APPEND COPY_PACKAGES_LIST copy_rpm_packages)
 
 add_custom_target(remove_packages
-  COMMAND rm -f *.rpm
-  COMMAND rm -rf _CPack_Packages
+  COMMAND ${CMAKE_COMMAND} -E REMOVE_RECURSIVE _CPack_Packages
+  COMMAND ${CMAKE_COMMAND} -E REMOVE *.rpm
   )
 
 list(APPEND CLEAN_PACKAGES_LIST remove_packages)

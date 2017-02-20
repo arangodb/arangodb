@@ -20,6 +20,7 @@ set(CMAKE_BUILD_TYPE @CMAKE_BUILD_TYPE@)
 
 set(BIN_ARANGOBENCH @BIN_ARANGOBENCH@)
 set(BIN_ARANGODUMP @BIN_ARANGODUMP@)
+set(BIN_ARANGOEXPORT @BIN_ARANGOEXPORT@)
 set(BIN_ARANGOIMP @BIN_ARANGOIMP@)
 set(BIN_ARANGORESTORE @BIN_ARANGORESTORE@)
 set(BIN_ARANGOSH @BIN_ARANGOSH@)
@@ -39,6 +40,7 @@ set(ARANGODB_PACKAGE_REVISION "@ARANGODB_PACKAGE_REVISION@")
 
 set(CMAKE_INSTALL_FULL_BINDIR "@CMAKE_INSTALL_FULL_BINDIR@")
 set(CMAKE_TARGET_ARCHITECTURES "@CMAKE_TARGET_ARCHITECTURES@")
+set(CPACK_PACKAGE_FILE_NAME @ARANGODB_CLIENT_PACKAGE_FILE_NAME@)
 
 set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "@CMAKE_INSTALL_SYSCONFDIR_ARANGO@")
 set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "@CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO@")
@@ -77,7 +79,6 @@ else ()
   set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 endif ()
 
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
 
 ################################################################################
 # ------------------------------------------------------------------------------
@@ -168,6 +169,8 @@ set(CPACK_ARANGODB_NSIS_DEFINES "
 ################################################################################
 # Install the external files into the package directory:
 ################################################################################
+include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
+include(${ORIGINAL_SOURCE_DIR}/cmake/debugInformation.cmake)
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallArangoDBJSClient.cmake)
 include(${ORIGINAL_SOURCE_DIR}/arangosh/install.cmake)
 
