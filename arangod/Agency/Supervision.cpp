@@ -28,14 +28,11 @@
 #include "Agency/AddFollower.h"
 #include "Agency/Agent.h"
 #include "Agency/CleanOutServer.h"
-#include "Agency/FailedFollower.h"
-#include "Agency/FailedLeader.h"
 #include "Agency/FailedServer.h"
 #include "Agency/Job.h"
-#include "Agency/MoveShard.h"
+#include "Agency/JobContext.h"
 #include "Agency/RemoveServer.h"
 #include "Agency/Store.h"
-#include "Agency/UnassumedLeadership.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
@@ -209,8 +206,8 @@ std::vector<check_t> Supervision::checkDBServers() {
         if (lastStatus == Supervision::HEALTH_STATUS_BAD) {
           reportPersistent = true;
           report->add("Status", VPackValue(Supervision::HEALTH_STATUS_FAILED));
-          FailedServer fsj(_snapshot, _agent, std::to_string(_jobId++),
-                           "supervision", _agencyPrefix, serverID);
+          FailedServer (_snapshot, _agent, std::to_string(_jobId++),
+                        "supervision", _agencyPrefix, serverID).run();
         }
       } else {
         report->add("Status", VPackValue(Supervision::HEALTH_STATUS_BAD));
@@ -581,54 +578,20 @@ void Supervision::workJobs() {
 
   for (auto const& todoEnt : todos) {
     auto const& job = *todoEnt.second;
-
-    std::string jobType = job("type").getString(),
-                jobId = job("jobId").getString(),
-                creator = job("creator").getString();
-    if (jobType == "failedServer") {
-      FailedServer(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    } else if (jobType == "addFollower") {
-      AddFollower(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    } else if (jobType == "cleanOutServer") {
-      CleanOutServer(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    } else if (jobType == "removeServer") {
-      RemoveServer(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    } else if (jobType == "moveShard") {
-      MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    } else if (jobType == "failedLeader") {
-      FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    } else if (jobType == "failedFollower") {
-      FailedFollower(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    } else if (jobType == "unassumedLeadership") {
-      UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    }
+    JobContext(
+      job("type").getString(), _snapshot, _agent, job("jobId").getString(),
+      job("creator").getString(), _agencyPrefix).run();
   }
 
   for (auto const& pendEnt : pends) {
     auto const& job = *pendEnt.second;
-
-    std::string jobType = job("type").getString(),
-                jobId = job("jobId").getString(),
-                creator = job("creator").getString();
-    if (jobType == "failedServer") {
-      FailedServer(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    } else if (jobType == "addFollower") {
-      AddFollower(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    } else if (jobType == "cleanOutServer") {
-      CleanOutServer(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    } else if (jobType == "removeServer") {
-      RemoveServer(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    } else if (jobType == "moveShard") {
-      MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    } else if (jobType == "failedLeader") {
-      FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    } else if (jobType == "failedFollower") {
-      FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    } else if (jobType == "unassumedLeadership") {
-      UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix).run();
-    }
+    JobContext(
+      job("type").getString(), _snapshot, _agent, job("jobId").getString(),
+      job("creator").getString(), _agencyPrefix).run();
   }
+  
 }
+
 
 void Supervision::enforceReplication() {
 
@@ -703,7 +666,8 @@ void Supervision::enforceReplication() {
 
             AddFollower(
               _snapshot, _agent, std::to_string(_jobId++), "supervision",
-              _agencyPrefix, db_.first, col_.first, shard_.first, newFollowers);
+              _agencyPrefix, db_.first, col_.first, shard_.first,
+              newFollowers).run();
 
           }
         }
@@ -820,7 +784,7 @@ void Supervision::shrinkCluster() {
       // Schedule last server for cleanout
 
       RemoveServer(_snapshot, _agent, std::to_string(_jobId++), "supervision",
-                   _agencyPrefix, uselessFailedServers.back());
+                   _agencyPrefix, uselessFailedServers.back()).run();
       return;
     }
     // mop: do not account any failedservers in this calculation..the ones
@@ -837,7 +801,7 @@ void Supervision::shrinkCluster() {
 
         // Schedule last server for cleanout
         CleanOutServer(_snapshot, _agent, std::to_string(_jobId++),
-                       "supervision", _agencyPrefix, availServers.back());
+                       "supervision", _agencyPrefix, availServers.back()).run();
       }
     }
   }

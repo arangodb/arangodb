@@ -168,7 +168,8 @@ bool FailedServer::start() {
                     FailedLeader(
                       _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                       _jobId, _agencyPrefix, database.first, collptr.first,
-                      shard.first, _server, shard.second->slice()[1].copyString());
+                      shard.first, _server,
+                      shard.second->slice()[1].copyString()).run();
                     continue;
                   } else {
                     found = true;
@@ -184,7 +185,7 @@ bool FailedServer::start() {
                 FailedFollower(
                   _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                   _jobId, _agencyPrefix, database.first, collptr.first,
-                  shard.first, _server, *randIt);
+                  shard.first, _server, *randIt).run();
               }
             }
           }

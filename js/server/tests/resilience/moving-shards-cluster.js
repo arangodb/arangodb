@@ -314,7 +314,7 @@ function MovingShardsSuite () {
                                      replicationFactor: replFactor,
                                      avoidServers: systemCollServers});
         var servers = findCollectionServers("_system", name);
-        console.info("Test collections uses servers:", servers);
+        console.info("Test collection uses servers:", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
           c.push(coll);
           break;

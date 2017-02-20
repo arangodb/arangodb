@@ -2131,6 +2131,7 @@ std::unique_ptr<LogicalCollection>
 ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> dbServers;
+  std::vector<std::string> avoid = col->avoidServers();
 
   ClusterInfo* ci = ClusterInfo::instance();
   if (!distributeShardsLike.empty()) {
@@ -2157,6 +2158,19 @@ ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
       }
       col->distributeShardsLike(otherCidString);
     }
+  } else if(!avoid.empty()) {
+    
+    size_t replicationFactor = col->replicationFactor();
+    dbServers = ci->getCurrentDBServers();
+    if (dbServers.size() - avoid.size() >= replicationFactor) {
+      dbServers.erase(
+        std::remove_if(
+          dbServers.begin(), dbServers.end(), [&](const std::string&x) {
+            return std::find(avoid.begin(), avoid.end(), x) != avoid.end();
+          }), dbServers.end());
+    }
+    std::random_shuffle(dbServers.begin(), dbServers.end());
+    
   }
   
   // If the list dbServers is still empty, it will be filled in
