@@ -204,6 +204,9 @@ class MMFilesCollection final : public PhysicalCollection {
   int iterateMarkersOnLoad(arangodb::transaction::Methods* trx) override;
   
   bool isFullyCollected() const override;
+
+  bool doCompact() const override { return _doCompact; }
+
   
   int64_t uncollectedLogfileEntries() const {
     return _uncollectedLogfileEntries.load();
@@ -461,6 +464,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
     // whether or not secondary indexes should be filled
     bool _useSecondaryIndexes;
+    bool _doCompact;
 
 };
 

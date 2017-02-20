@@ -871,7 +871,7 @@ void MMFilesCompactorThread::run() {
               return;
             }
 
-            bool doCompact = collection->doCompact();
+            bool doCompact = collection->getPhysical()->doCompact();
 
             // for document collection, compactify datafiles
             if (collection->status() == TRI_VOC_COL_STATUS_LOADED && doCompact) {

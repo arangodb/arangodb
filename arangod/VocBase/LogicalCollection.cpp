@@ -153,7 +153,6 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _status(other.status()),
       _isLocal(false),
       _isDeleted(other._isDeleted),
-      _doCompact(other.doCompact()),
       _isSystem(other.isSystem()),
       _isVolatile(other.isVolatile()),
       _waitForSync(other.waitForSync()),
@@ -203,7 +202,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isLocal(!ServerState::instance()->isCoordinator()),
       _isDeleted(Helper::readBooleanValue(info, "deleted", false)),
-      _doCompact(Helper::readBooleanValue(info, "doCompact", true)),
       _isSystem(IsSystemName(_name) &&
                 Helper::readBooleanValue(info, "isSystem", false)),
       _isVolatile(Helper::readBooleanValue(info, "isVolatile", false)),
@@ -633,8 +631,6 @@ bool LogicalCollection::isLocal() const { return _isLocal; }
 
 bool LogicalCollection::deleted() const { return _isDeleted; }
 
-bool LogicalCollection::doCompact() const { return _doCompact; }
-
 bool LogicalCollection::isSystem() const { return _isSystem; }
 
 bool LogicalCollection::isVolatile() const { return _isVolatile; }
@@ -709,7 +705,7 @@ void LogicalCollection::getPropertiesVPack(VPackBuilder& result, bool translateC
   result.add("type", VPackValue(static_cast<int>(_type)));
   result.add("status", VPackValue(_status));
   result.add("deleted", VPackValue(_isDeleted));
-  result.add("doCompact", VPackValue(_doCompact));
+  result.add("doCompact", VPackValue(getPhysical()->doCompact()));
   result.add("isSystem", VPackValue(_isSystem));
   result.add("isVolatile", VPackValue(_isVolatile));
   result.add("waitForSync", VPackValue(_waitForSync));
@@ -1047,7 +1043,6 @@ int LogicalCollection::updateProperties(VPackSlice const& slice, bool doSync) {
   }
   // end of validation
 
-  _doCompact = Helper::getBooleanValue(slice, "doCompact", _doCompact);
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
   getPhysical()->updateProperties(slice,doSync);
   _indexBuckets =

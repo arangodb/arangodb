@@ -118,6 +118,7 @@ int MMFilesCollection::updateProperties(VPackSlice const& slice, bool doSync){
     _journalSize = Helper::getNumericValue<TRI_voc_size_t>(slice, "maximalSize",
                                                            _journalSize);
   }
+  _doCompact = Helper::getBooleanValue(slice, "doCompact", _doCompact);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -372,7 +373,9 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection, VPackSlice c
                                 // journalSize. paramters.json uses maximalSize
           Helper::readNumericValue<TRI_voc_size_t>(info, "journalSize",
                                            TRI_JOURNAL_DEFAULT_SIZE))),
-      _useSecondaryIndexes(true) {
+      _useSecondaryIndexes(true),
+      _doCompact(Helper::readBooleanValue(info, "doCompact", true))
+{
   setCompactionStatus("compaction not yet started");
 }
 
@@ -389,6 +392,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical, PhysicalCollect
   _lastCompactionStamp = mmfiles._lastCompactionStamp;
   _journalSize = mmfiles._journalSize;
   _path = mmfiles._path;
+  _doCompact = mmfiles._doCompact;
   setCompactionStatus("compaction not yet started");
 
   //  not copied

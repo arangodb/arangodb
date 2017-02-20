@@ -162,7 +162,6 @@ class LogicalCollection {
   TRI_voc_rid_t revision() const;
   bool isLocal() const;
   bool deleted() const;
-  bool doCompact() const;
   bool isSystem() const;
   bool isVolatile() const;
   bool waitForSync() const;
@@ -385,7 +384,6 @@ private:
   // SECTION: Properties
   bool _isLocal;
   bool _isDeleted;
-  bool _doCompact;
   bool const _isSystem;
   bool const _isVolatile;
   bool _waitForSync;

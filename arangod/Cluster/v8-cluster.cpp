@@ -599,7 +599,7 @@ static void JS_GetCollectionInfoClusterInfo(
   result->Set(TRI_V8_ASCII_STRING("deleted"),
               v8::Boolean::New(isolate, ci->deleted()));
   result->Set(TRI_V8_ASCII_STRING("doCompact"),
-              v8::Boolean::New(isolate, ci->doCompact()));
+              v8::Boolean::New(isolate, ci->getPhysical()->doCompact()));
   result->Set(TRI_V8_ASCII_STRING("isSystem"),
               v8::Boolean::New(isolate, ci->isSystem()));
   result->Set(TRI_V8_ASCII_STRING("isVolatile"),

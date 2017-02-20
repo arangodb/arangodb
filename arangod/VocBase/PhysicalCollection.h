@@ -95,6 +95,7 @@ class PhysicalCollection {
   virtual uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const = 0;
 
   virtual bool isFullyCollected() const = 0;
+  virtual bool doCompact() const = 0;
 
   ////////////////////////////////////
   // -- SECTION Indexes --
