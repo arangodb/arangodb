@@ -335,10 +335,10 @@ class LogicalCollection {
   /// @brief creates the initial indexes for the collection
   void createInitialIndexes();
 
-  bool removeIndex(TRI_idx_iid_t iid);
-
  public:
   // TODO Fix Visibility
+  bool removeIndex(TRI_idx_iid_t iid);
+
   void addIndex(std::shared_ptr<Index>);
  private:
   void addIndexCoordinator(std::shared_ptr<Index>, bool);
