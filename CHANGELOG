@@ -1,5 +1,12 @@
-devel
------
+v3.2.alpha2 (2017-02-20)
+------------------------
+
+* added figure `httpRequests` to AQL query statistics
+
+* removed revisions cache intermediate layer implementation
+
+* obsoleted startup options `--database.revision-cache-chunk-size` and
+  `--database.revision-cache-target-size`
 
 * ui: fixed issue #2065
 
@@ -15,7 +22,7 @@ devel
 
 * moved V8 code into a git submodule
   this requires running the command
-  
+
       git submodule update --init --recursive
 
   once after a source code update or fresh checkout
@@ -40,11 +47,11 @@ v3.2.alpha1 (2017-02-05)
 ------------------------
 
 * added figure `httpRequests` to AQL query statistics
-  
+
 * removed revisions cache intermediate layer implementation
- 
+
 * obsoleted startup options `--database.revision-cache-chunk-size` and
-  `--database.revision-cache-target-size` 
+  `--database.revision-cache-target-size`
 
 * fix potential port number over-/underruns
 
