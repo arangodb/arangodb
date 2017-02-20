@@ -82,8 +82,9 @@ list(APPEND PACKAGES_LIST package-arongodb-server-zip)
 ################################################################################
 # hook to build the client package
 ################################################################################
+set(CPACK_CLIENT_PACKAGE_NAME "${CPACK_PACKAGE_NAME}-client")
 
-set(ARANGODB_CLIENT_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
+set(ARANGODB_CLIENT_PACKAGE_FILE_NAME "${CPACK_CLIENT_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
 
 string(LENGTH "${CLIENT_BUILD_DIR}" CLIENT_BUILD_DIR_LEN)
 if (${CLIENT_BUILD_DIR_LEN} EQUAL 0)
