@@ -272,8 +272,8 @@ std::string Constituent::endpoint(std::string id) const {
 }
 
 /// @brief Check leader
-bool Constituent::checkLeader(
-  term_t term, std::string id, index_t prevLogIndex, term_t prevLogTerm) {
+bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
+                              term_t prevLogTerm) {
 
   TRI_ASSERT(_vocbase != nullptr);
 
@@ -294,7 +294,7 @@ bool Constituent::checkLeader(
     }
 
     if (!logMatches(prevLogIndex,prevLogTerm)) {
-      return false;
+      //return false;
     }
     
     if (_leaderID != id) {

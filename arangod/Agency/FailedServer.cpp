@@ -35,7 +35,11 @@ FailedServer::FailedServer(Node const& snapshot, Agent* agent,
                            std::string const& jobId, std::string const& creator,
                            std::string const& agencyPrefix,
                            std::string const& server)
-    : Job(snapshot, agent, jobId, creator, agencyPrefix), _server(server) {
+    : Job(snapshot, agent, jobId, creator, agencyPrefix), _server(server) {}
+
+FailedServer::~FailedServer() {}
+
+void FailedServer::run() {
   try {
     JOB_STATUS js = status();
     if (js == TODO) {
@@ -50,8 +54,6 @@ FailedServer::FailedServer(Node const& snapshot, Agent* agent,
     finish("DBServers/" + _server, false, e.what());
   }
 }
-
-FailedServer::~FailedServer() {}
 
 bool FailedServer::start() {
   LOG_TOPIC(INFO, Logger::AGENCY)
@@ -327,3 +329,8 @@ JOB_STATUS FailedServer::status() {
 
   return status;
 }
+
+void FailedServer::abort() {
+  // TO BE IMPLEMENTED
+}
+

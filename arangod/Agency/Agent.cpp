@@ -48,12 +48,10 @@ Agent::Agent(config_t const& config)
     _config(config),
     _lastCommitIndex(0),
     _lastAppliedIndex(0),
-    _lastCompactionIndex(0),
     _leaderCommitIndex(0),
     _spearhead(this),
     _readDB(this),
     _transient(this),
-    _compacted(this),
     _nextCompationAfter(_config.compactionStepSize()),
     _inception(std::make_unique<Inception>(this)),
     _activator(nullptr),
@@ -1183,13 +1181,7 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
   _readDB.apply(
     _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1),
     _leaderCommitIndex, _constituent.term());
-
-  _compacted.apply(
-    _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1),
-    _leaderCommitIndex, _constituent.term());
-
   _lastAppliedIndex = _leaderCommitIndex;
-  _lastCompactionIndex = _leaderCommitIndex;
   
   return _lastAppliedIndex;
 
@@ -1407,11 +1399,11 @@ query_t Agent::buildDB(arangodb::consensus::index_t index) {
   {
 
     MUTEX_LOCKER(ioLocker, _ioLock);
-    store = _compacted;
+    store = _readDB;
 
     MUTEX_LOCKER(liLocker, _liLock);
     end = _leaderCommitIndex;
-    start = _lastCompactionIndex+1;
+    start = _lastAppliedIndex;
     
   }
   

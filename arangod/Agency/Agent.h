@@ -274,9 +274,6 @@ class Agent : public arangodb::Thread {
   index_t _lastAppliedIndex;
 
   /// @brief Last compaction index
-  index_t _lastCompactionIndex;
-
-  /// @brief Last compaction index
   index_t _leaderCommitIndex;
 
   /// @brief Spearhead (write) kv-store
@@ -287,9 +284,6 @@ class Agent : public arangodb::Thread {
 
   /// @brief Committed (read) kv-store
   Store _transient;
-
-  /// @brief Last compacted store
-  Store _compacted;
 
   /// @brief Condition variable for appendEntries
   arangodb::basics::ConditionVariable _appendCV;

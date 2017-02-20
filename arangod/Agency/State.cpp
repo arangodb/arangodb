@@ -367,7 +367,7 @@ bool State::has(arangodb::consensus::index_t index, term_t term) const {
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
 
   try {
-    return _log.at(index-_cur).term == term;
+    return _log.at(index).term == term;
   } catch (...) {}
 
   return false;
