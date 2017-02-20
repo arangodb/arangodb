@@ -80,7 +80,7 @@ struct ASCCComputation
         enterNextGlobalSuperstep();
 
         for (SenderMessage<uint64_t> const* msg : messages) {
-          vertexState->parents.push_back(msg->pregelId);
+          vertexState->parents.push_back(msg->senderId);
         }
         // reset the color for vertices which are not active
         vertexState->color = vertexState->vertexID;

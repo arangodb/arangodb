@@ -33,6 +33,14 @@
 
 namespace arangodb {
 namespace pregel {
+
+/// Value for Hyperlink-Induced Topic Search (HITS; also known as hubs and authorities)
+/// algorithm based on https://en.wikipedia.org/wiki/HITS_algorithm#Pseudocode
+/// also refer to 
+struct HITSValue {
+  float authorityScore;
+  float hubScore;
+};
   
 struct DMIDValue {
   constexpr static float INVALID_DEGREE = -1;
@@ -89,9 +97,9 @@ template <typename T>
 struct SenderMessage {
   SenderMessage() {}
   SenderMessage(PregelID const& pid, T const& val)
-      : pregelId(pid), value(val) {}
+      : senderId(pid), value(val) {}
 
-  PregelID pregelId;
+  PregelID senderId;
   T value;
 };
 
@@ -101,15 +109,15 @@ struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
   SenderMessageFormat() {}
   void unwrapValue(VPackSlice s, SenderMessage<T>& senderVal) const override {
     VPackArrayIterator array(s);
-    senderVal.pregelId.shard = (*array).getUInt();
-    senderVal.pregelId.key = (*(++array)).copyString();
+    senderVal.senderId.shard = (*array).getUInt();
+    senderVal.senderId.key = (*(++array)).copyString();
     senderVal.value = (*(++array)).getNumber<T>();
   }
   void addValue(VPackBuilder& arrayBuilder,
                 SenderMessage<T> const& senderVal) const override {
     arrayBuilder.openArray();
-    arrayBuilder.add(VPackValue(senderVal.pregelId.shard));
-    arrayBuilder.add(VPackValue(senderVal.pregelId.key));
+    arrayBuilder.add(VPackValue(senderVal.senderId.shard));
+    arrayBuilder.add(VPackValue(senderVal.senderId.key));
     arrayBuilder.add(VPackValue(senderVal.value));
     arrayBuilder.close();
   }

@@ -733,5 +733,6 @@ template class arangodb::pregel::Worker<double, float, double>;
 // custom algorihm types
 template class arangodb::pregel::Worker<SCCValue, int8_t,
                                         SenderMessage<uint64_t>>;
+template class arangodb::pregel::Worker<HITSValue, int8_t, SenderMessage<float>>;
 template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
 template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;

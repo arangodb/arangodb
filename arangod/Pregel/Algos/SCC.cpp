@@ -74,7 +74,7 @@ struct SCCComputation
       // part of an SCC.
       case SCCPhase::TRIMMING: {
         for (SenderMessage<uint64_t> const* msg : messages) {
-          vertexState->parents.push_back(msg->pregelId);
+          vertexState->parents.push_back(msg->senderId);
         }
         // reset the color to the vertex ID
         vertexState->color = vertexState->vertexID;

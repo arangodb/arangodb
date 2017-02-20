@@ -31,6 +31,7 @@ namespace arangodb {
 namespace pregel {
 
 typedef uint16_t prgl_shard_t;
+const prgl_shard_t invalid_prgl_shard = -1;
 struct PregelID {
   prgl_shard_t shard;
   std::string key;

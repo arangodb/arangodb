@@ -372,6 +372,7 @@ SET(ARANGOD_SOURCES
   Pregel/Algos/ConnectedComponents.cpp
   Pregel/Algos/SCC.cpp
   Pregel/Algos/AsyncSCC.cpp
+  Pregel/Algos/HITS.cpp
 #  Pregel/Algos/DMID/DMID.cpp
   Pregel/Algos/EffectiveCloseness/EffectiveCloseness.cpp
   Pregel/Algos/EffectiveCloseness/HLLCounter.cpp
