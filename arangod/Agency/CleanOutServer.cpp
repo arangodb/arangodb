@@ -34,7 +34,11 @@ CleanOutServer::CleanOutServer(Node const& snapshot, Agent* agent,
                                std::string const& creator,
                                std::string const& prefix,
                                std::string const& server)
-    : Job(snapshot, agent, jobId, creator, prefix), _server(server) {
+    : Job(snapshot, agent, jobId, creator, prefix), _server(server) {}
+
+CleanOutServer::~CleanOutServer() {}
+
+void CleanOutServer::run() {
   try {
     JOB_STATUS js = status();
     if (js == TODO) {
@@ -49,8 +53,6 @@ CleanOutServer::CleanOutServer(Node const& snapshot, Agent* agent,
     finish("DBServers/" + _server, false, e.what());
   }
 }
-
-CleanOutServer::~CleanOutServer() {}
 
 JOB_STATUS CleanOutServer::status() {
   auto status = exists();
@@ -433,3 +435,8 @@ bool CleanOutServer::checkFeasibility() {
 
   return true;
 }
+
+void CleanOutServer::abort() {
+  // TO BE IMPLEMENTED
+}
+

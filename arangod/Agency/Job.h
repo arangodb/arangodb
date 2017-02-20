@@ -112,6 +112,10 @@ struct Job {
 
   virtual ~Job();
 
+  virtual void run() = 0;
+
+  virtual void abort() = 0;
+
   virtual JOB_STATUS exists() const;
 
   virtual bool finish(std::string const& type, bool success = true,
