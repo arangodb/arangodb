@@ -101,7 +101,7 @@ void AqlFeature::stop() {
     if (n == 0 && m == 0 && o == 0) {
       break;
     }
-    LOG_TOPIC(INFO, Logger::QUERIES) << "AQLFeature shutdown, waiting for "
+    LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQLFeature shutdown, waiting for "
       << o << " registered traverser engines to terminate and for "
       << n << " registered queries to terminate and for "
       << m << " feature leases to be released";

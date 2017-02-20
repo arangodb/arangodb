@@ -31,9 +31,10 @@
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Hints.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/TransactionHints.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -195,7 +196,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
     }
   }
 
-  TransactionBuilderLeaser builder(&trx);
+  transaction::BuilderLeaser builder(&trx);
   builder->openObject();
   try {
     idx->toVelocyPack(*(builder.get()), false);
@@ -550,7 +551,7 @@ static void JS_GetIndexesVocbaseCol(
       V8TransactionContext::Create(collection->vocbase(), true),
       collection->cid(), AccessMode::Type::READ);
     
-  trx.addHint(TransactionHints::Hint::NO_USAGE_LOCK, false);
+  trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
   int res = trx.begin();
 
@@ -564,7 +565,7 @@ static void JS_GetIndexesVocbaseCol(
   std::string const collectionName(collection->name());
 
   // get list of indexes
-  TransactionBuilderLeaser builder(&trx);
+  transaction::BuilderLeaser builder(&trx);
   auto indexes = collection->getIndexes();
 
   trx.finish(res);

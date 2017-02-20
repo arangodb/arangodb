@@ -60,6 +60,8 @@
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 
+#include <thread>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -191,7 +193,7 @@ bool TRI_vocbase_t::unregisterCollection(arangodb::LogicalCollection* collection
 bool TRI_vocbase_t::UnloadCollectionCallback(LogicalCollection* collection) {
   TRI_ASSERT(collection != nullptr);
 
-  WRITE_LOCKER_EVENTUAL(locker, collection->_lock, 1000);
+  WRITE_LOCKER_EVENTUAL(locker, collection->_lock);
 
   if (collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
     return false;
@@ -233,7 +235,7 @@ bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection* collecti
   std::string const name(collection->name());
 
   {
-    WRITE_LOCKER_EVENTUAL(statusLock, collection->_lock, 1000); 
+    WRITE_LOCKER_EVENTUAL(statusLock, collection->_lock); 
 
     if (collection->status() != TRI_VOC_COL_STATUS_DELETED) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "someone resurrected the collection '" << name << "'";
@@ -286,7 +288,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   }
 
   arangodb::LogicalCollection* collection =
-      registerCollection(ConditionalWriteLocker<ReadWriteLock>::DoNotLock(), parameters);
+      registerCollection(basics::ConditionalLocking::DoNotLock, parameters);
 
   // Register collection cannot return a nullptr.
   // If it would return a nullptr it should have thrown instead
@@ -349,7 +351,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // write lock
   // .............................................................................
 
-  WRITE_LOCKER_EVENTUAL(locker, collection->_lock, 1000);
+  WRITE_LOCKER_EVENTUAL(locker, collection->_lock);
 
   // someone else loaded the collection, release the WRITE lock and try again
   if (collection->status() == TRI_VOC_COL_STATUS_LOADED) {
@@ -449,7 +451,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     }
 
     // lock again to adjust the status
-    locker.lockEventual(1000);
+    locker.lockEventual();
 
     // no one else must have changed the status
     TRI_ASSERT(collection->status() == TRI_VOC_COL_STATUS_LOADING);
@@ -475,9 +477,37 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   state = DROP_EXIT;
   std::string const colName(collection->name());
     
-  WRITE_LOCKER(writeLocker, _collectionsLock);
+  // do not acquire these locks instantly
+  CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock, basics::ConditionalLocking::DoNotLock);
+  CONDITIONAL_WRITE_LOCKER(locker, collection->_lock, basics::ConditionalLocking::DoNotLock);
 
-  WRITE_LOCKER_EVENTUAL(locker, collection->_lock, 1000);
+  while (true) {
+    TRI_ASSERT(!writeLocker.isLocked());
+    TRI_ASSERT(!locker.isLocked());
+
+    // block until we have acquired this lock
+    writeLocker.lock();
+    // we now have the one lock
+
+    TRI_ASSERT(writeLocker.isLocked());
+
+    if (locker.tryLock()) {
+      // we now have both locks and can continue outside of this loop
+      break;
+    }
+
+    // unlock the write locker so we don't block other operations
+    writeLocker.unlock();
+    
+    TRI_ASSERT(!writeLocker.isLocked());
+    TRI_ASSERT(!locker.isLocked());
+
+    // sleep for a while
+    std::this_thread::yield();
+  }
+
+  TRI_ASSERT(writeLocker.isLocked());
+  TRI_ASSERT(locker.isLocked());
 
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
@@ -548,7 +578,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     VPackBuilder builder;
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     engine->getCollectionInfo(this, collection->cid(), builder, false, 0);
-    int res = collection->update(builder.slice().get("parameters"), doSync);
+    int res = collection->updateProperties(builder.slice().get("parameters"), doSync);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -654,7 +684,7 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(TRI_voc_tick_t maxTick,
   std::vector<arangodb::LogicalCollection*> collections;
 
   // cycle on write-lock
-  WRITE_LOCKER_EVENTUAL(writeLock, _inventoryLock, 1000);
+  WRITE_LOCKER_EVENTUAL(writeLock, _inventoryLock);
 
   // copy collection pointers into vector so we can work with the copy without
   // the global lock
@@ -814,7 +844,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
 int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, bool force) {
   TRI_voc_cid_t cid = collection->cid();
   {
-    WRITE_LOCKER_EVENTUAL(locker, collection->_lock, 1000);
+    WRITE_LOCKER_EVENTUAL(locker, collection->_lock);
 
     // cannot unload a corrupted collection
     if (collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {

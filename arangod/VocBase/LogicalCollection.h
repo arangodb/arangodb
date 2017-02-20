@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "StorageEngine/StorageEngine.h"
-#include "VocBase/PhysicalCollection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -62,7 +61,9 @@ struct OperationOptions;
 class PhysicalCollection;
 class MMFilesPrimaryIndex;
 class StringRef;
-class Transaction;
+namespace transaction {
+class Methods;
+}
 
 class LogicalCollection {
   friend struct ::TRI_vocbase_t;
@@ -105,32 +106,9 @@ class LogicalCollection {
   static bool IsAllowedName(velocypack::Slice parameters);
   static bool IsAllowedName(bool isSystem, std::string const& name);
 
-  void isInitialIteration(bool value) { _isInitialIteration = value; }
-
   // TODO: MOVE TO PHYSICAL?
-  bool isFullyCollected();
-  int64_t uncollectedLogfileEntries() const {
-    return _uncollectedLogfileEntries.load();
-  }
+  bool isFullyCollected(); //should not be exposed
 
-  void increaseUncollectedLogfileEntries(int64_t value) {
-    _uncollectedLogfileEntries += value;
-  }
-
-  void decreaseUncollectedLogfileEntries(int64_t value) {
-    _uncollectedLogfileEntries -= value;
-    if (_uncollectedLogfileEntries < 0) {
-      _uncollectedLogfileEntries = 0;
-    }
-  }
-
-  void setNextCompactionStartIndex(size_t);
-  size_t getNextCompactionStartIndex();
-  void setCompactionStatus(char const*);
-  double lastCompactionStamp() const { return _lastCompactionStamp; }
-  void lastCompactionStamp(double value) { _lastCompactionStamp = value; }
-
-  void setRevisionError() { _revisionError = true; }
 
   // SECTION: Meta Information
   uint32_t version() const { return _version; }
@@ -153,7 +131,6 @@ class LogicalCollection {
 
   std::string name() const;
   std::string dbName() const;
-  std::string const& path() const;
   std::string const& distributeShardsLike() const;
   void distributeShardsLike(std::string const&);
 
@@ -210,9 +187,7 @@ class LogicalCollection {
 
   void setDeleted(bool);
 
-  Ditches* ditches() const { return getPhysical()->ditches(); }
-
-  void setRevision(TRI_voc_rid_t, bool);
+  Ditches* ditches() const;
 
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
@@ -279,7 +254,7 @@ class LogicalCollection {
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 
   // Update this collection.
-  virtual int update(velocypack::Slice const&, bool);
+  virtual int updateProperties(velocypack::Slice const&, bool);
 
   /// @brief return the figures for a collection
   virtual std::shared_ptr<velocypack::Builder> figures();
@@ -293,39 +268,24 @@ class LogicalCollection {
   /// datafile management
 
   /// @brief rotate the active journal - will do nothing if there is no journal
-  int rotateActiveJournal() { return getPhysical()->rotateActiveJournal(); }
+  int rotateActiveJournal();
 
   /// @brief increase dead stats for a datafile, if it exists
   void updateStats(TRI_voc_fid_t fid,
-                   DatafileStatisticsContainer const& values) {
-    return getPhysical()->updateStats(fid, values);
-  }
+                   DatafileStatisticsContainer const& values);
 
   bool applyForTickRange(
       TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
       std::function<bool(TRI_voc_tick_t foundTick,
-                         TRI_df_marker_t const* marker)> const& callback) {
-    return getPhysical()->applyForTickRange(dataMin, dataMax, callback);
-  }
+                         TRI_df_marker_t const* marker)> const& callback);
 
-  /// @brief disallow starting the compaction of the collection
-  void preventCompaction() { getPhysical()->preventCompaction(); }
-  bool tryPreventCompaction() { return getPhysical()->tryPreventCompaction(); }
-  /// @brief re-allow starting the compaction of the collection
-  void allowCompaction() { getPhysical()->allowCompaction(); }
-
-  /// @brief compaction finished
-  void lockForCompaction() { getPhysical()->lockForCompaction(); }
-  bool tryLockForCompaction() { return getPhysical()->tryLockForCompaction(); }
-  void finishCompaction() { getPhysical()->finishCompaction(); }
-
-  void sizeHint(Transaction* trx, int64_t hint);
+  void sizeHint(transaction::Methods* trx, int64_t hint);
 
   // SECTION: Indexes
 
   /// @brief Create a new Index based on VelocyPack description
   virtual std::shared_ptr<Index> createIndex(
-      Transaction*, velocypack::Slice const&, bool&);
+      transaction::Methods*, velocypack::Slice const&, bool&);
 
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const;
@@ -336,17 +296,17 @@ class LogicalCollection {
   // SECTION: Indexes (local only)
 
   /// @brief Detect all indexes form file
-  int detectIndexes(Transaction* trx);
+  int detectIndexes(transaction::Methods* trx);
 
   /// @brief Restores an index from VelocyPack.
-  int restoreIndex(Transaction*, velocypack::Slice const&,
+  int restoreIndex(transaction::Methods*, velocypack::Slice const&,
                    std::shared_ptr<Index>&);
 
   /// @brief Exposes a pointer to index list
   std::vector<std::shared_ptr<Index>> const* indexList() const;
 
   /// @brief Fill indexes used in recovery
-  int fillIndexes(Transaction*,
+  int fillIndexes(transaction::Methods*,
                   std::vector<std::shared_ptr<Index>> const&,
                   bool skipPersistent = true);
 
@@ -355,75 +315,51 @@ class LogicalCollection {
 
   bool dropIndex(TRI_idx_iid_t iid, bool writeMarker);
 
-  int cleanupIndexes();
-
   // SECTION: Index access (local only)
 
-  int read(Transaction*, std::string const&,
+  int read(transaction::Methods*, std::string const&,
            ManagedDocumentResult& result, bool);
-  int read(Transaction*, StringRef const&,
+  int read(transaction::Methods*, StringRef const&,
            ManagedDocumentResult& result, bool);
 
-  /// @brief processes a truncate operation (note: currently this only clears
-  /// the read-cache
-  int truncate(Transaction* trx);
-  int insert(Transaction*, velocypack::Slice const,
+  /// @brief processes a truncate operation
+  /// NOTE: This function throws on error
+  void truncate(transaction::Methods* trx, OperationOptions&);
+
+  int insert(transaction::Methods*, velocypack::Slice const,
              ManagedDocumentResult& result, OperationOptions&,
              TRI_voc_tick_t&, bool);
-  int update(Transaction*, velocypack::Slice const,
+  int update(transaction::Methods*, velocypack::Slice const,
              ManagedDocumentResult& result, OperationOptions&,
              TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
              ManagedDocumentResult& previous);
-  int replace(Transaction*, velocypack::Slice const,
+  int replace(transaction::Methods*, velocypack::Slice const,
               ManagedDocumentResult& result, OperationOptions&,
               TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
               ManagedDocumentResult& previous);
-  int remove(Transaction*, velocypack::Slice const,
+  int remove(transaction::Methods*, velocypack::Slice const,
              OperationOptions&, TRI_voc_tick_t&, bool,
              TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
-  /// @brief removes a document or edge, fast path function for database
-  /// documents
-  int remove(Transaction*, TRI_voc_rid_t oldRevisionId,
-             velocypack::Slice const, OperationOptions&,
-             TRI_voc_tick_t&, bool);
 
-  int rollbackOperation(Transaction*, TRI_voc_document_operation_e,
-                        TRI_voc_rid_t oldRevisionId,
-                        velocypack::Slice const& oldDoc,
-                        TRI_voc_rid_t newRevisionId,
-                        velocypack::Slice const& newDoc);
+  bool readDocument(transaction::Methods*, ManagedDocumentResult& result,
+                    DocumentIdentifierToken const& token);
+  bool readDocumentConditional(transaction::Methods*,
+                               ManagedDocumentResult& result,
+                               DocumentIdentifierToken const& token,
+                               TRI_voc_tick_t maxTick, bool excludeWal);
 
-  int beginReadTimed(bool useDeadlockDetector, double timeout = 0.0);
-  int beginWriteTimed(bool useDeadlockDetector, double timeout = 0.0);
-  int endRead(bool useDeadlockDetector);
-  int endWrite(bool useDeadlockDetector);
-  bool readDocument(Transaction*, ManagedDocumentResult& result, DocumentIdentifierToken const& token);
-  bool readDocumentConditional(Transaction*, ManagedDocumentResult& result, DocumentIdentifierToken const& token, TRI_voc_tick_t maxTick, bool excludeWal);
-
-  bool readRevision(Transaction*, ManagedDocumentResult& result,
+  bool readRevision(transaction::Methods*, ManagedDocumentResult& result,
                     TRI_voc_rid_t revisionId);
-  bool readRevisionConditional(Transaction*,
+  bool readRevisionConditional(transaction::Methods*,
                                ManagedDocumentResult& result,
                                TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick,
                                bool excludeWal);
-
-  void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
-                      TRI_voc_fid_t fid, bool isInWal);
-  void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
-                      TRI_voc_fid_t fid, bool isInWal);
-  bool updateRevisionConditional(TRI_voc_rid_t revisionId,
-                                 TRI_df_marker_t const* oldPosition,
-                                 TRI_df_marker_t const* newPosition,
-                                 TRI_voc_fid_t newFid, bool isInWal);
-  void removeRevision(TRI_voc_rid_t revisionId, bool updateStats);
 
  private:
   // SECTION: Index creation
 
   /// @brief creates the initial indexes for the collection
   void createInitialIndexes();
-
-  int openWorker(bool ignoreErrors);
 
   bool removeIndex(TRI_idx_iid_t iid);
 
@@ -434,50 +370,18 @@ class LogicalCollection {
 
   // TODO Make Private and IndexFiller as friend
   /// @brief initializes an index with all existing documents
-  void fillIndex(basics::LocalTaskQueue*, Transaction*,
+  void fillIndex(basics::LocalTaskQueue*, transaction::Methods*,
                  Index*,
                  std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
                  bool);
 
   // @brief create index with the given definition.
-  bool openIndex(velocypack::Slice const&, Transaction*);
-
-  // SECTION: Index access (local only)
-  int lookupDocument(Transaction*, VPackSlice const,
-                     ManagedDocumentResult& result);
-
-  int checkRevision(Transaction*, TRI_voc_rid_t expected,
-                    TRI_voc_rid_t found);
-
-  int updateDocument(Transaction*, TRI_voc_rid_t oldRevisionId,
-                     velocypack::Slice const& oldDoc,
-                     TRI_voc_rid_t newRevisionId,
-                     velocypack::Slice const& newDoc,
-                     MMFilesDocumentOperation&, MMFilesWalMarker const*,
-                     bool& waitForSync);
-  int insertDocument(Transaction*, TRI_voc_rid_t revisionId,
-                     velocypack::Slice const&,
-                     MMFilesDocumentOperation&, MMFilesWalMarker const*,
-                     bool& waitForSync);
-
-  int insertPrimaryIndex(Transaction*, TRI_voc_rid_t revisionId,
-                         velocypack::Slice const&);
-
-  int deletePrimaryIndex(Transaction*, TRI_voc_rid_t revisionId,
-                         velocypack::Slice const&);
-
-  int insertSecondaryIndexes(Transaction*, TRI_voc_rid_t revisionId,
-                             velocypack::Slice const&,
-                             bool isRollback);
-
-  int deleteSecondaryIndexes(Transaction*, TRI_voc_rid_t revisionId,
-                             velocypack::Slice const&,
-                             bool isRollback);
+  bool openIndex(velocypack::Slice const&, transaction::Methods*);
 
   // SECTION: Document pre commit preperation (only local)
 
   /// @brief new object for insert, value must have _key set correctly.
-  int newObjectForInsert(Transaction* trx,
+  int newObjectForInsert(transaction::Methods* trx,
                          velocypack::Slice const& value,
                          velocypack::Slice const& fromSlice,
                          velocypack::Slice const& toSlice,
@@ -485,29 +389,13 @@ class LogicalCollection {
                          velocypack::Builder& builder,
                          bool isRestore);
 
-  /// @brief new object for replace
-  void newObjectForReplace(Transaction* trx,
-                           velocypack::Slice const& oldValue,
-                           velocypack::Slice const& newValue,
-                           velocypack::Slice const& fromSlice,
-                           velocypack::Slice const& toSlice,
-                           bool isEdgeCollection, std::string const& rev,
-                           velocypack::Builder& builder);
-
-  /// @brief merge two objects for update
-  void mergeObjectsForUpdate(Transaction* trx,
-                             velocypack::Slice const& oldValue,
-                             velocypack::Slice const& newValue,
-                             bool isEdgeCollection, std::string const& rev,
-                             bool mergeObjects, bool keepNull,
-                             velocypack::Builder& b);
-
-  /// @brief new object for remove, must have _key set
-  void newObjectForRemove(Transaction* trx,
+ public: // TODO FIXME
+ /// @brief new object for remove, must have _key set
+  void newObjectForRemove(transaction::Methods* trx,
                           velocypack::Slice const& oldValue,
                           std::string const& rev,
                           velocypack::Builder& builder);
-
+ private:
   void increaseInternalVersion();
 
  protected:
@@ -583,10 +471,12 @@ class LogicalCollection {
 
   TRI_vocbase_t* _vocbase;
 
-  // SECTION: Local Only
+  // SECTION: Local Only has to be moved to PhysicalCollection
+ public:
+  // TODO MOVE ME
   size_t _cleanupIndexes;
   size_t _persistentIndexes;
-  std::string _path;
+ protected:
 
   std::unique_ptr<PhysicalCollection> _physical;
 
@@ -601,23 +491,7 @@ class LogicalCollection {
       _lock;  // lock protecting the status and name
 
   mutable basics::ReadWriteLock
-      _idxLock;  // lock protecting the indexes
-
-  mutable basics::ReadWriteLock
       _infoLock;  // lock protecting the info
-
-  Mutex _compactionStatusLock;
-  size_t _nextCompactionStartIndex;
-  char const* _lastCompactionStatus;
-  double _lastCompactionStamp;
-
-  std::atomic<int64_t> _uncollectedLogfileEntries;
-
-  /// @brief: flag that is set to true when the documents are
-  /// initial enumerated and the primary index is built
-  bool _isInitialIteration;
-
-  bool _revisionError;
 };
 
 }  // namespace arangodb

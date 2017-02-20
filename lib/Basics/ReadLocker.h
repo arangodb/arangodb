@@ -326,9 +326,6 @@ class ConditionalReadLocker {
     return false;
   }
   
-  static constexpr bool DoLock() { return true; }
-  static constexpr bool DoNotLock() { return false; }
-
  private:
   /// @brief the read-write lock
   LockType* _readWriteLock;

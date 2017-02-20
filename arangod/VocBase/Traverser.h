@@ -30,13 +30,17 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
+#include "Transaction/Helpers.h"
 #include "VocBase/PathEnumerator.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
 
 class ManagedDocumentResult;
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 
 namespace velocypack {
 class Builder;
@@ -76,13 +80,13 @@ class ShortestPath {
   /// @brief Builds only the last edge pointing to the vertex at position as
   /// VelocyPack
 
-  void edgeToVelocyPack(Transaction*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
+  void edgeToVelocyPack(transaction::Methods*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the vertex at position as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void vertexToVelocyPack(Transaction*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
+  void vertexToVelocyPack(transaction::Methods*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the amount of read documents
@@ -127,21 +131,21 @@ class TraversalPath {
   ///        }
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void pathToVelocyPack(Transaction*,
+  virtual void pathToVelocyPack(transaction::Methods*,
                                 arangodb::velocypack::Builder&) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last edge on the path as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void lastEdgeToVelocyPack(Transaction*,
+  virtual void lastEdgeToVelocyPack(transaction::Methods*,
                                     arangodb::velocypack::Builder&) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last vertex as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual aql::AqlValue lastVertexToAqlValue(Transaction*) = 0;
+  virtual aql::AqlValue lastVertexToAqlValue(transaction::Methods*) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the amount of read documents
@@ -184,7 +188,7 @@ class Traverser {
                            std::vector<arangodb::velocypack::Slice>&);
 
     virtual bool getSingleVertex(arangodb::velocypack::Slice,
-                                 arangodb::velocypack::Slice, size_t,
+                                 arangodb::velocypack::Slice, uint64_t,
                                  arangodb::velocypack::Slice&);
 
     virtual void reset(arangodb::velocypack::Slice);
@@ -208,7 +212,7 @@ class Traverser {
                    std::vector<arangodb::velocypack::Slice>&) override;
 
     bool getSingleVertex(arangodb::velocypack::Slice,
-                         arangodb::velocypack::Slice, size_t,
+                         arangodb::velocypack::Slice, uint64_t,
                          arangodb::velocypack::Slice&) override;
 
     void reset(arangodb::velocypack::Slice) override;
@@ -223,7 +227,7 @@ class Traverser {
   /// @brief Constructor. This is an abstract only class.
   //////////////////////////////////////////////////////////////////////////////
 
-  Traverser(TraverserOptions* opts, Transaction* trx, ManagedDocumentResult*);
+  Traverser(TraverserOptions* opts, transaction::Methods* trx, ManagedDocumentResult*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destructor
@@ -268,7 +272,7 @@ class Traverser {
   ///        Returns true if the vertex passes filtering conditions
 
   virtual bool getSingleVertex(arangodb::velocypack::Slice,
-                               arangodb::velocypack::Slice, size_t,
+                               arangodb::velocypack::Slice, uint64_t,
                                arangodb::velocypack::Slice&) = 0;
  public:
  
@@ -329,16 +333,16 @@ class Traverser {
   bool hasMore() { return !_done; }
 
   bool edgeMatchesConditions(arangodb::velocypack::Slice,
-                             arangodb::velocypack::Slice, size_t, size_t);
+                             arangodb::velocypack::Slice, uint64_t, size_t);
 
-  bool vertexMatchesConditions(arangodb::velocypack::Slice, size_t);
+  bool vertexMatchesConditions(arangodb::velocypack::Slice, uint64_t);
 
   void allowOptimizedNeighbors();
 
  protected:
 
   /// @brief Outer top level transaction
-  Transaction* _trx;
+  transaction::Methods* _trx;
 
   ManagedDocumentResult* _mmdr;
 
@@ -349,7 +353,7 @@ class Traverser {
   std::unique_ptr<VertexGetter> _vertexGetter;
 
   /// @brief Builder for the start value slice. Leased from transaction
-  TransactionBuilderLeaser _startIdBuilder;
+  transaction::BuilderLeaser _startIdBuilder;
 
   /// @brief counter for all read documents
   size_t _readDocuments;

@@ -28,15 +28,8 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
-#include "Utils/Transaction.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
+#include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
-
-#include <rocksdb/db.h>
-#include <rocksdb/options.h>
-#include <rocksdb/utilities/optimistic_transaction_db.h>
-#include <rocksdb/utilities/transaction.h>
 
 using namespace arangodb;
 
@@ -45,23 +38,19 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase)
     : _vocbase(vocbase), 
       _id(0), 
       _type(AccessMode::Type::READ),
-      _status(Transaction::Status::CREATED),
+      _status(transaction::Status::CREATED),
       _arena(),
       _collections{_arena}, // assign arena to vector 
-      _rocksTransaction(nullptr),
+      _serverRole(ServerState::instance()->getRole()),
       _hints(),
+      _timeout(transaction::Methods::DefaultLockTimeout),
       _nestingLevel(0), 
-      _allowImplicit(true),
-      _hasOperations(false), 
-      _waitForSync(false),
-      _beginWritten(false), 
-      _timeout(Transaction::DefaultLockTimeout) {}
+      _allowImplicitCollections(true),
+      _waitForSync(false) {}
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
-  TRI_ASSERT(_status != Transaction::Status::RUNNING);
-
-  delete _rocksTransaction;
+  TRI_ASSERT(_status != transaction::Status::RUNNING);
 
   releaseCollections();
 
@@ -86,8 +75,8 @@ std::vector<std::string> TransactionState::collectionNames() const {
 
 /// @brief return the collection from a transaction
 TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid, AccessMode::Type accessType) {
-  TRI_ASSERT(_status == Transaction::Status::CREATED ||
-             _status == Transaction::Status::RUNNING);
+  TRI_ASSERT(_status == transaction::Status::CREATED ||
+             _status == transaction::Status::RUNNING);
 
   size_t unused;
   TransactionCollection* trxCollection = findCollection(cid, unused);
@@ -103,22 +92,19 @@ TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid, AccessMod
 /// @brief add a collection to a transaction
 int TransactionState::addCollection(TRI_voc_cid_t cid,
                                     AccessMode::Type accessType,
-                                    int nestingLevel, bool force,
-                                    bool allowImplicitCollections) {
+                                    int nestingLevel, bool force) {
   LOG_TRX(this, nestingLevel) << "adding collection " << cid;
-
-  allowImplicitCollections &= _allowImplicit;
 
   // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cid: " << cid 
   //            << ", accessType: " << accessType 
   //            << ", nestingLevel: " << nestingLevel 
   //            << ", force: " << force 
-  //            << ", allowImplicitCollections: " << allowImplicitCollections;
+  //            << ", allowImplicitCollections: " << _allowImplicitCollections;
   
   // upgrade transaction type if required
   if (nestingLevel == 0) {
     if (!force) {
-      TRI_ASSERT(_status == Transaction::Status::CREATED);
+      TRI_ASSERT(_status == transaction::Status::CREATED);
     }
 
     if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_type)) {
@@ -144,7 +130,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
 
-  if (!AccessMode::isWriteOrExclusive(accessType) && !allowImplicitCollections) {
+  if (!AccessMode::isWriteOrExclusive(accessType) && !_allowImplicitCollections) {
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
   
@@ -241,8 +227,8 @@ TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid, size_
 
 /// @brief release collection locks for a transaction
 int TransactionState::releaseCollections() {
-  if (hasHint(TransactionHints::Hint::LOCK_NEVER) ||
-      hasHint(TransactionHints::Hint::NO_USAGE_LOCK)) {
+  if (hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
+      hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -281,16 +267,16 @@ void TransactionState::clearQueryCache() {
 }
 
 /// @brief update the status of a transaction
-void TransactionState::updateStatus(Transaction::Status status) {
-  TRI_ASSERT(_status == Transaction::Status::CREATED ||
-             _status == Transaction::Status::RUNNING);
+void TransactionState::updateStatus(transaction::Status status) {
+  TRI_ASSERT(_status == transaction::Status::CREATED ||
+             _status == transaction::Status::RUNNING);
 
-  if (_status == Transaction::Status::CREATED) {
-    TRI_ASSERT(status == Transaction::Status::RUNNING ||
-               status == Transaction::Status::ABORTED);
-  } else if (_status == Transaction::Status::RUNNING) {
-    TRI_ASSERT(status == Transaction::Status::COMMITTED ||
-               status == Transaction::Status::ABORTED);
+  if (_status == transaction::Status::CREATED) {
+    TRI_ASSERT(status == transaction::Status::RUNNING ||
+               status == transaction::Status::ABORTED);
+  } else if (_status == transaction::Status::RUNNING) {
+    TRI_ASSERT(status == transaction::Status::COMMITTED ||
+               status == transaction::Status::ABORTED);
   }
 
   _status = status;

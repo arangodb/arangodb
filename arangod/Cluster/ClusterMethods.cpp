@@ -44,6 +44,9 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <algorithm>
+#include <vector>
+
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -962,7 +965,7 @@ int deleteDocumentOnCoordinator(
         VPackSlice const node, VPackValueLength const index) -> int {
       // Sort out the _key attribute and identify the shard responsible for it.
 
-      StringRef _key(Transaction::extractKeyPart(node));
+      StringRef _key(transaction::helpers::extractKeyPart(node));
       ShardID shardID;
       if (_key.empty()) {
         // We have invalid input at this point.
@@ -2180,18 +2183,21 @@ std::unique_ptr<LogicalCollection>
 ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> dbServers;
-
+  std::vector<std::string> avoid = col->avoidServers();
+    
   ClusterInfo* ci = ClusterInfo::instance();
   if (!distributeShardsLike.empty()) {
+
     CollectionNameResolver resolver(col->vocbase());
     TRI_voc_cid_t otherCid =
-        resolver.getCollectionIdCluster(distributeShardsLike);
+      resolver.getCollectionIdCluster(distributeShardsLike);
+
     if (otherCid != 0) {
       std::string otherCidString 
-          = arangodb::basics::StringUtils::itoa(otherCid);
+        = arangodb::basics::StringUtils::itoa(otherCid);
       try {
         std::shared_ptr<LogicalCollection> collInfo =
-            ci->getCollection(col->dbName(), otherCidString);
+          ci->getCollection(col->dbName(), otherCidString);
         auto shards = collInfo->shardIds();
         auto shardList = ci->getShardList(otherCidString);
         for (auto const& s : *shardList) {
@@ -2206,6 +2212,20 @@ ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
       }
       col->distributeShardsLike(otherCidString);
     }
+    
+  } else if(!avoid.empty()) {
+    
+    size_t replicationFactor = col->replicationFactor();
+    dbServers = ci->getCurrentDBServers();
+    if (dbServers.size() - avoid.size() >= replicationFactor) {
+      dbServers.erase(
+        std::remove_if(
+          dbServers.begin(), dbServers.end(), [&](const std::string&x) {
+            return std::find(avoid.begin(), avoid.end(), x) != avoid.end();
+          }), dbServers.end());
+    }
+    std::random_shuffle(dbServers.begin(), dbServers.end());
+    
   }
   
   // If the list dbServers is still empty, it will be filled in

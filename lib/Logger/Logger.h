@@ -143,10 +143,12 @@ class Logger {
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
   static LogTopic REQUESTS;
+  static LogTopic SSL;
   static LogTopic STARTUP;
   static LogTopic SUPERVISION;
   static LogTopic SYSCALL;
   static LogTopic THREADS;
+  static LogTopic TRANSACTIONS;
   static LogTopic V8;
 
  public:

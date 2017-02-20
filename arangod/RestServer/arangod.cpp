@@ -75,11 +75,17 @@
 #include "Ssl/SslServerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "MMFiles/MMFilesEngine.h"
-#include "MMFiles/MMFilesLogfileManager.h"
+
+// TODO - the following MMFiles includes should probably be removed
+#include "MMFiles/MMFilesLogfileManager.h"  
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesWalRecoveryFeature.h"
-#include "StorageEngine/RocksDBEngine.h"
+
+// #include "StorageEngine/RocksDBEngine.h" // enable when adding Rocksdb Engine
+                                            // this include will be disabled until
+                                            // we begin to implement the RocksDB
+                                            // engine
+#include "MMFiles/MMFilesEngine.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -150,7 +156,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new QueryRegistryFeature(&server));
     server.addFeature(new TraverserEngineRegistryFeature(&server));
     server.addFeature(new RandomFeature(&server));
-    server.addFeature(new RocksDBFeature(&server));
+    server.addFeature(new PersistentIndexFeature(&server));
     server.addFeature(new SchedulerFeature(&server));
     server.addFeature(new ScriptFeature(&server, &ret));
     server.addFeature(new ServerFeature(&server, &ret));
@@ -185,7 +191,7 @@ static int runServer(int argc, char** argv) {
     // storage engines
     server.addFeature(new MMFilesEngine(&server));
     server.addFeature(new MMFilesWalRecoveryFeature(&server));
-    //server.addFeature(new RocksDBEngine(&server));
+    //server.addFeature(new RocksDBEngine(&server)); //enable RocksDB storage here
 
     try {
       server.run(argc, argv);

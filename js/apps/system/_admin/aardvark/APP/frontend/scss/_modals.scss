@@ -336,6 +336,13 @@
     margin-right: 20px;
     margin-top: 20px;
   }
+
+  .infoMessage {
+    background-color: $c-warning;
+    border-radius: 3px;
+    font-size: 9pt;
+    padding: 5px;
+  }
 }
 
 .modal-text {

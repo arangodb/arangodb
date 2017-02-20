@@ -21,23 +21,26 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_COLLECTION_WRITE_LOCKER_H
-#define ARANGOD_UTILS_COLLECTION_WRITE_LOCKER_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_COLLECTION_WRITE_LOCKER_H
+#define ARANGOD_MMFILES_MMFILES_COLLECTION_WRITE_LOCKER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-#include "VocBase/LogicalCollection.h"
+#include "MMFiles/MMFilesCollection.h"
 
 namespace arangodb {
 
-class CollectionWriteLocker {
+class MMFilesCollectionWriteLocker {
  public:
-  CollectionWriteLocker(CollectionWriteLocker const&) = delete;
-  CollectionWriteLocker& operator=(CollectionWriteLocker const&) = delete;
+  MMFilesCollectionWriteLocker(MMFilesCollectionWriteLocker const&) = delete;
+  MMFilesCollectionWriteLocker& operator=(MMFilesCollectionWriteLocker const&) = delete;
 
   /// @brief create the locker
-  CollectionWriteLocker(arangodb::LogicalCollection* collection, bool useDeadlockDetector, bool doLock)
-      : _collection(collection), _useDeadlockDetector(useDeadlockDetector), _doLock(false) {
+  MMFilesCollectionWriteLocker(arangodb::MMFilesCollection* collection,
+                               bool useDeadlockDetector, bool doLock)
+      : _collection(collection),
+        _useDeadlockDetector(useDeadlockDetector),
+        _doLock(false) {
     if (doLock) {
       int res = _collection->beginWriteTimed(_useDeadlockDetector);
 
@@ -50,7 +53,7 @@ class CollectionWriteLocker {
   }
 
   /// @brief destroy the locker
-  ~CollectionWriteLocker() { unlock(); }
+  ~MMFilesCollectionWriteLocker() { unlock(); }
 
   /// @brief release the lock
   inline void unlock() {
@@ -62,7 +65,7 @@ class CollectionWriteLocker {
 
  private:
   /// @brief collection pointer
-  arangodb::LogicalCollection* _collection;
+  arangodb::MMFilesCollection* _collection;
 
   /// @brief whether or not to use the deadlock detector
   bool const _useDeadlockDetector;

@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IndexBlock.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
@@ -698,7 +699,7 @@ arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
       node->outVariable(), 
       _mmdr.get(),
       UINT64_MAX, 
-      Transaction::defaultBatchSize(),
+      transaction::Methods::defaultBatchSize(),
       node->_reverse
     ));
   } else {

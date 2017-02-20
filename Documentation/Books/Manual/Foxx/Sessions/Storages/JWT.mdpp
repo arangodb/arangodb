@@ -57,4 +57,8 @@ Creates a [Storage](README.md) that can be used in the sessions middleware.
 
     If set to `false` the signature will not be verified but still generated (unless using the "none" algorithm).
 
+  * **maxExp**: `number` (Default: `Infinity`)
+
+    Largest value that will be accepted in an incoming JWT `exp` (expiration) field.
+
 If a string is passed instead of an options object it will be interpreted as the *secret* option.

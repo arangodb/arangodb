@@ -27,8 +27,8 @@
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 #include "StorageEngine/TransactionState.h"
-#include "Utils/Transaction.h"
-#include "Utils/TransactionHints.h"
+#include "Transaction/Methods.h"
+#include "Transaction/Hints.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
                                 
@@ -42,7 +42,10 @@ namespace arangodb {
 class LogicalCollection;
 struct MMFilesDocumentOperation;
 class MMFilesWalMarker;
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 class TransactionCollection;
 
 /// @brief transaction type
@@ -52,20 +55,31 @@ class MMFilesTransactionState final : public TransactionState {
   ~MMFilesTransactionState();
 
   /// @brief begin a transaction
-  int beginTransaction(TransactionHints hints, int nestingLevel) override;
+  int beginTransaction(transaction::Hints hints, int nestingLevel) override;
 
   /// @brief commit a transaction
-  int commitTransaction(Transaction* trx, int nestingLevel) override;
+  int commitTransaction(transaction::Methods* trx, int nestingLevel) override;
 
   /// @brief abort a transaction
-  int abortTransaction(Transaction* trx, int nestingLevel) override;
+  int abortTransaction(transaction::Methods* trx, int nestingLevel) override;
 
   bool hasFailedOperations() const override {
-    return (_hasOperations && _status == Transaction::Status::ABORTED);
+    return (_hasOperations && _status == transaction::Status::ABORTED);
   }
   
   /// @brief add a WAL operation for a transaction collection
   int addOperation(TRI_voc_rid_t, MMFilesDocumentOperation&, MMFilesWalMarker const* marker, bool&);
+  
+  /// @brief get the transaction id for usage in a marker
+  TRI_voc_tid_t idForMarker() {
+    if (isSingleOperation()) {
+      return 0;
+    }
+    return _id;
+  }
+  
+  /// @brief get (or create) a rocksdb WriteTransaction
+  rocksdb::Transaction* rocksTransaction();
 
  private:
   /// @brief whether or not a marker needs to be written
@@ -88,7 +102,12 @@ class MMFilesTransactionState final : public TransactionState {
   int writeCommitMarker();
 
   /// @brief free all operations for a transaction
-  void freeOperations(arangodb::Transaction* activeTrx);
+  void freeOperations(transaction::Methods* activeTrx);
+  
+ private:
+  rocksdb::Transaction* _rocksTransaction;
+  bool _beginWritten;
+  bool _hasOperations;
 };
 
 }

@@ -28,8 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
-
-struct TRI_vocbase_t;
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 
@@ -37,11 +36,14 @@ class DatabaseGuard {
  public:
   DatabaseGuard(DatabaseGuard const&) = delete;
   DatabaseGuard& operator=(DatabaseGuard const&) = delete;
+  
+  explicit DatabaseGuard(TRI_vocbase_t* vocbase) 
+      : _vocbase(vocbase) {
+    TRI_ASSERT(vocbase != nullptr);
+    _vocbase->use();
+  }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create the guard, using a database id
-  //////////////////////////////////////////////////////////////////////////////
-
   explicit DatabaseGuard(TRI_voc_tick_t id)
       : _vocbase(nullptr) {
     
@@ -53,10 +55,7 @@ class DatabaseGuard {
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create the guard, using a database name
-  //////////////////////////////////////////////////////////////////////////////
-
   explicit DatabaseGuard(std::string const& name)
       : _vocbase(nullptr) {
       
@@ -68,28 +67,19 @@ class DatabaseGuard {
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the guard
-  //////////////////////////////////////////////////////////////////////////////
-
   ~DatabaseGuard() {
     TRI_ASSERT(_vocbase != nullptr);
     _vocbase->release();
   }
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the database pointer
-  //////////////////////////////////////////////////////////////////////////////
-
   inline TRI_vocbase_t* database() const { return _vocbase; }
 
  private:
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief pointer to database
-  //////////////////////////////////////////////////////////////////////////////
-
   TRI_vocbase_t* _vocbase;
 };
 }

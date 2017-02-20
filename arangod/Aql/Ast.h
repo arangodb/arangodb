@@ -30,7 +30,7 @@
 #include "Aql/Scopes.h"
 #include "Aql/Variable.h"
 #include "Aql/VariableGenerator.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 
 #include <functional>
@@ -40,7 +40,10 @@ namespace velocypack {
 class Slice;
 }
 
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 
 namespace aql {
 

@@ -29,6 +29,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CursorRepository.h"
@@ -100,7 +101,9 @@ void MMFilesCleanupThread::run() {
           
           // clean indexes?
           if (iterations % cleanupIndexIterations() == 0 && status != TRI_VOC_COL_STATUS_DELETED) {
-            collection->cleanupIndexes();
+            auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+            TRI_ASSERT(physical != nullptr);
+            physical->cleanupIndexes();
           }
 
           cleanupCollection(collection);

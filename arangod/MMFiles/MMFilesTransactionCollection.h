@@ -31,7 +31,10 @@
                                 
 namespace arangodb {
 struct MMFilesDocumentOperation;
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 class TransactionState;
 
 /// @brief collection used in a transaction
@@ -59,7 +62,7 @@ class MMFilesTransactionCollection final : public TransactionCollection {
   /// @brief whether or not any write operations for the collection happened
   bool hasOperations() const override;
 
-  void freeOperations(Transaction* activeTrx, bool mustRollback) override;
+  void freeOperations(transaction::Methods* activeTrx, bool mustRollback) override;
 
   bool canAccess(AccessMode::Type accessType) const override;
   int updateUsage(AccessMode::Type accessType, int nestingLevel) override;

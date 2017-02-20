@@ -34,9 +34,7 @@
 #include "GeneralServer/GeneralServer.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesEdgeIndex.h"
 #include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesPrimaryIndex.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
@@ -51,7 +49,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/TransactionContext.h"
-#include "Utils/TransactionHints.h"
+#include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
@@ -1505,8 +1503,7 @@ int RestReplicationHandler::processRestoreCollection(
         SingleCollectionTransaction trx(
             StandaloneTransactionContext::Create(_vocbase), col->cid(),
             AccessMode::Type::WRITE);
-        trx.addHint(TransactionHints::Hint::RECOVERY,
-                    false);  // to turn off waitForSync!
+        trx.addHint(transaction::Hints::Hint::RECOVERY); // to turn off waitForSync!
 
         res = trx.begin();
         if (res != TRI_ERROR_NO_ERROR) {
@@ -1891,7 +1888,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::applyCollectionDumpMarker(
-    arangodb::Transaction& trx, CollectionNameResolver const& resolver,
+    transaction::Methods& trx, CollectionNameResolver const& resolver,
     std::string const& collectionName, TRI_replication_operation_e type,
     VPackSlice const& old, VPackSlice const& slice, std::string& errorMsg) {
   if (type == REPLICATION_MARKER_DOCUMENT) {
@@ -2043,7 +2040,7 @@ static int restoreDataParser(char const* ptr, char const* pos,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::processRestoreDataBatch(
-    arangodb::Transaction& trx,
+    transaction::Methods& trx,
     std::string const& collectionName, bool useRevision, bool force,
     std::string& errorMsg) {
   std::string const invalidMsg =
@@ -2261,8 +2258,7 @@ int RestReplicationHandler::processRestoreData(
   SingleCollectionTransaction trx(
       StandaloneTransactionContext::Create(_vocbase), colName,
       AccessMode::Type::WRITE);
-  trx.addHint(TransactionHints::Hint::RECOVERY,
-              false);  // to turn off waitForSync!
+  trx.addHint(transaction::Hints::Hint::RECOVERY); // to turn off waitForSync!
 
   int res = trx.begin();
 
@@ -3450,7 +3446,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
   auto trxContext = StandaloneTransactionContext::Create(_vocbase);
   SingleCollectionTransaction trx(trxContext, col->cid(), AccessMode::Type::READ);
-  trx.addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
+  trx.addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::SERVER_ERROR,

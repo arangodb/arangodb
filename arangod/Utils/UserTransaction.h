@@ -26,34 +26,24 @@
 
 #include "Basics/Common.h"
 
-#include "Utils/Transaction.h"
+#include "StorageEngine/TransactionState.h"
+#include "Transaction/Methods.h"
 #include "Utils/V8TransactionContext.h"
 
 namespace arangodb {
 
-class ExplicitTransaction final : public Transaction {
+class UserTransaction final : public transaction::Methods {
  public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  ExplicitTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
+  UserTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
                       std::vector<std::string> const& readCollections,
                       std::vector<std::string> const& writeCollections,
                       std::vector<std::string> const& exclusiveCollections,
                       double lockTimeout, bool waitForSync,
                       bool allowImplicitCollections)
-      : Transaction(transactionContext) {
-    addHint(TransactionHints::Hint::LOCK_ENTIRELY, false);
+      : transaction::Methods(transactionContext) {
+    addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
-    if (lockTimeout >= 0.0) {
-      setTimeout(lockTimeout);
-    }
-
-    if (waitForSync) {
-      setWaitForSync();
-    }
-    
     for (auto const& it : exclusiveCollections) {
       addCollection(it, AccessMode::Type::EXCLUSIVE);
     }
@@ -65,15 +55,12 @@ class ExplicitTransaction final : public Transaction {
     for (auto const& it : readCollections) {
       addCollection(it, AccessMode::Type::READ);
     }
-    
-    setAllowImplicitCollections(allowImplicitCollections);
+
+    _state->timeout(lockTimeout);
+    _state->waitForSync(waitForSync);
+    _state->allowImplicitCollections(allowImplicitCollections);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief end the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  ~ExplicitTransaction() {}
 };
 }
 

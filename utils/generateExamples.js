@@ -111,8 +111,12 @@ function main(argv) {
   }
 
   if (options.hasOwnProperty('server.endpoint')) {
+    if (scriptArguments.hasOwnProperty('onlyThisOne')) {
+      throw("don't run the full suite on pre-existing servers");
+    }
     startServer = false;
     serverEndpoint = options['server.endpoint'];
+    
   }
 
   let args = [theScript].concat(internal.toArgv(scriptArguments));

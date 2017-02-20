@@ -25,13 +25,14 @@
 #include "Aql/QueryCache.h"
 #include "Logger/Logger.h"
 #include "Basics/Exceptions.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesDocumentOperation.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesTransactionCollection.h"
 #include "StorageEngine/TransactionCollection.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 #include "VocBase/ticks.h"
@@ -50,21 +51,35 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
 
 /// @brief transaction type
 MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase)
-    : TransactionState(vocbase) {}
+    : TransactionState(vocbase),
+      _rocksTransaction(nullptr),
+      _beginWritten(false),
+      _hasOperations(false) {}
 
 /// @brief free a transaction container
-MMFilesTransactionState::~MMFilesTransactionState() {}
+MMFilesTransactionState::~MMFilesTransactionState() {
+  delete _rocksTransaction;
+}
+
+/// @brief get (or create) a rocksdb WriteTransaction
+rocksdb::Transaction* MMFilesTransactionState::rocksTransaction() {
+  if (_rocksTransaction == nullptr) {
+    _rocksTransaction = PersistentIndexFeature::instance()->db()->BeginTransaction(
+      rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
+  }
+  return _rocksTransaction;
+}
   
 /// @brief start a transaction
-int MMFilesTransactionState::beginTransaction(TransactionHints hints, int nestingLevel) {
+int MMFilesTransactionState::beginTransaction(transaction::Hints hints, int nestingLevel) {
   LOG_TRX(this, nestingLevel) << "beginning " << AccessMode::typeString(_type) << " transaction";
 
   if (nestingLevel == 0) {
-    TRI_ASSERT(_status == Transaction::Status::CREATED);
+    TRI_ASSERT(_status == transaction::Status::CREATED);
 
     auto logfileManager = MMFilesLogfileManager::instance();
 
-    if (!hasHint(TransactionHints::Hint::NO_THROTTLING) &&
+    if (!hasHint(transaction::Hints::Hint::NO_THROTTLING) &&
         AccessMode::isWriteOrExclusive(_type) &&
         logfileManager->canBeThrottled()) {
       // write-throttling?
@@ -96,7 +111,7 @@ int MMFilesTransactionState::beginTransaction(TransactionHints hints, int nestin
     }
   
   } else {
-    TRI_ASSERT(_status == Transaction::Status::RUNNING);
+    TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
 
   int res = useCollections(nestingLevel);
@@ -104,14 +119,14 @@ int MMFilesTransactionState::beginTransaction(TransactionHints hints, int nestin
   if (res == TRI_ERROR_NO_ERROR) {
     // all valid
     if (nestingLevel == 0) {
-      updateStatus(Transaction::Status::RUNNING);
+      updateStatus(transaction::Status::RUNNING);
 
       // defer writing of the begin marker until necessary!
     }
   } else {
     // something is wrong
     if (nestingLevel == 0) {
-      updateStatus(Transaction::Status::ABORTED);
+      updateStatus(transaction::Status::ABORTED);
     }
 
     // free what we have got so far
@@ -122,10 +137,10 @@ int MMFilesTransactionState::beginTransaction(TransactionHints hints, int nestin
 }
 
 /// @brief commit a transaction
-int MMFilesTransactionState::commitTransaction(arangodb::Transaction* activeTrx, int nestingLevel) {
+int MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx, int nestingLevel) {
   LOG_TRX(this, nestingLevel) << "committing " << AccessMode::typeString(_type) << " transaction";
 
-  TRI_ASSERT(_status == Transaction::Status::RUNNING);
+  TRI_ASSERT(_status == transaction::Status::RUNNING);
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -150,7 +165,7 @@ int MMFilesTransactionState::commitTransaction(arangodb::Transaction* activeTrx,
       return res;
     }
 
-    updateStatus(Transaction::Status::COMMITTED);
+    updateStatus(transaction::Status::COMMITTED);
 
     // if a write query, clear the query cache for the participating collections
     if (AccessMode::isWriteOrExclusive(_type) &&
@@ -168,17 +183,17 @@ int MMFilesTransactionState::commitTransaction(arangodb::Transaction* activeTrx,
 }
 
 /// @brief abort and rollback a transaction
-int MMFilesTransactionState::abortTransaction(arangodb::Transaction* activeTrx, int nestingLevel) {
+int MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx, int nestingLevel) {
   LOG_TRX(this, nestingLevel) << "aborting " << AccessMode::typeString(_type) << " transaction";
 
-  TRI_ASSERT(_status == Transaction::Status::RUNNING);
+  TRI_ASSERT(_status == transaction::Status::RUNNING);
 
   int res = TRI_ERROR_NO_ERROR;
 
   if (nestingLevel == 0) {
     res = writeAbortMarker();
 
-    updateStatus(Transaction::Status::ABORTED);
+    updateStatus(transaction::Status::ABORTED);
 
     freeOperations(activeTrx);
   }
@@ -196,7 +211,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
   LogicalCollection* collection = operation.collection();
   bool const isSingleOperationTransaction = isSingleOperation();
 
-  if (hasHint(TransactionHints::Hint::RECOVERY)) {
+  if (hasHint(transaction::Hints::Hint::RECOVERY)) {
     // turn off all waitForSync operations during recovery
     waitForSync = false;
   } else if (!waitForSync) {
@@ -257,7 +272,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
     }
     if (localWaitForSync) {
       // also sync RocksDB WAL
-      RocksDBFeature::syncWal();
+      PersistentIndexFeature::syncWal();
     }
     operation.setTick(slotInfo.tick);
     fid = slotInfo.logfileId;
@@ -272,6 +287,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
   TRI_ASSERT(fid > 0);
   TRI_ASSERT(position != nullptr);
 
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   if (operation.type() == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
       operation.type() == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
       operation.type() == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
@@ -279,7 +295,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
     uint8_t const* vpack = reinterpret_cast<uint8_t const*>(position) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
     TRI_ASSERT(fid > 0);
     operation.setVPack(vpack);
-    collection->updateRevision(revisionId, vpack, fid, true); // always in WAL
+    physical->updateRevision(revisionId, vpack, fid, true); // always in WAL
   }
 
   TRI_IF_FAILURE("TransactionOperationAfterAdjust") { return TRI_ERROR_DEBUG; }
@@ -298,7 +314,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
     arangodb::aql::QueryCache::instance()->invalidate(
         _vocbase, collection->name());
 
-    collection->increaseUncollectedLogfileEntries(1);
+    physical->increaseUncollectedLogfileEntries(1);
   } else {
     // operation is buffered and might be rolled back
     TransactionCollection* trxCollection = this->collection(collection->cid(), AccessMode::Type::WRITE);
@@ -322,7 +338,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
     _hasOperations = true;
   }
 
-  collection->setRevision(revisionId, false);
+  physical->setRevision(revisionId, false);
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 
@@ -330,8 +346,8 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
 }
 
 /// @brief free all operations for a transaction
-void MMFilesTransactionState::freeOperations(arangodb::Transaction* activeTrx) {
-  bool const mustRollback = (_status == Transaction::Status::ABORTED);
+void MMFilesTransactionState::freeOperations(transaction::Methods* activeTrx) {
+  bool const mustRollback = (_status == transaction::Status::ABORTED);
      
   TRI_ASSERT(activeTrx != nullptr);
    
@@ -346,7 +362,7 @@ int MMFilesTransactionState::writeBeginMarker() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (hasHint(TransactionHints::Hint::NO_BEGIN_MARKER)) {
+  if (hasHint(transaction::Hints::Hint::NO_BEGIN_MARKER)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -389,7 +405,7 @@ int MMFilesTransactionState::writeAbortMarker() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (hasHint(TransactionHints::Hint::NO_ABORT_MARKER)) {
+  if (hasHint(transaction::Hints::Hint::NO_ABORT_MARKER)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -448,7 +464,7 @@ int MMFilesTransactionState::writeCommitMarker() {
 
     if (_waitForSync) {
       // also sync RocksDB WAL
-      RocksDBFeature::syncWal();
+      PersistentIndexFeature::syncWal();
     }
     
     TRI_IF_FAILURE("TransactionWriteCommitMarkerThrow") { 

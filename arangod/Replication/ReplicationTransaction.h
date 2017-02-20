@@ -21,44 +21,36 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_REPLICATION_TRANSACTION_H
-#define ARANGOD_UTILS_REPLICATION_TRANSACTION_H 1
+#ifndef ARANGOD_REPLICATION_REPLICATION_TRANSACTION_H
+#define ARANGOD_REPLICATION_REPLICATION_TRANSACTION_H 1
 
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionState.h"
+#include "Utils/DatabaseGuard.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Utils/Transaction.h"
-
-struct TRI_vocbase_t;
+#include "Transaction/Methods.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 
-class ReplicationTransaction : public Transaction {
+class ReplicationTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction
   ReplicationTransaction(TRI_vocbase_t* vocbase)
-      : Transaction(StandaloneTransactionContext::Create(vocbase)) {
-
-    _vocbase->use();
-  }
-
-  /// @brief end the transaction
-  ~ReplicationTransaction() { _vocbase->release(); }
+      : transaction::Methods(StandaloneTransactionContext::Create(vocbase)),
+        _guard(vocbase) {}
 
  public:
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief get a collection by id
   /// this will automatically add the collection to the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
   inline TransactionCollection* trxCollection(TRI_voc_cid_t cid) {
     TRI_ASSERT(cid > 0);
 
     TransactionCollection* trxCollection = _state->collection(cid, AccessMode::Type::WRITE);
 
     if (trxCollection == nullptr) {
-      int res = _state->addCollection(cid, AccessMode::Type::WRITE, 0, true, true);
+      int res = _state->addCollection(cid, AccessMode::Type::WRITE, 0, true);
 
       if (res == TRI_ERROR_NO_ERROR) {
         res = _state->ensureCollections();
@@ -73,7 +65,11 @@ class ReplicationTransaction : public Transaction {
 
     return trxCollection;
   }
+
+ private:
+  DatabaseGuard _guard;
 };
+
 }
 
 #endif

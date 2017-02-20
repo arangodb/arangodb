@@ -8,6 +8,18 @@ v3.2.alpha1 (2017-02-05)
 * obsoleted startup options `--database.revision-cache-chunk-size` and
   `--database.revision-cache-target-size`
 
+* ui: fixed issue #2065
+
+* ui: fixed a dashboard related memory issue
+
+* Internal javascript rest actions will now hide their stack traces to the client
+  unless maintainer mode is activated. Instead they will always log to the logfile
+
+* Removed undocumented internal HTTP API:
+  * PUT _api/edges
+  
+  The documented GET _api/edges and the undocumented POST _api/edges remains unmodified.
+
 * moved V8 code into a git submodule
   this requires running the command
 
@@ -24,6 +36,12 @@ v3.2.alpha1 (2017-02-05)
 * change undocumented behaviour in case of invalid revision ids in
   JavaScript document operations from 1239 ("illegal document revision")
   to 1200 ("conflict").
+
+* added data export tool, arangoexport.
+
+  arangoexport can be used to export collections to json, jsonl or xml
+  and export a graph or collections to xgmml.
+
 
 v3.2.alpha1 (2017-02-05)
 ------------------------
@@ -47,8 +65,11 @@ v3.2.alpha1 (2017-02-05)
 * more detailed stacktraces in Foxx apps
 
 
-v3.1.11 (XXXX-XX-XX)
+v3.1.11 (2017-02-14)
 --------------------
+
+* fixed a race between connection closing and sending out last chunks of data to clients
+  when the "Connection: close" HTTP header was set in requests
 
 * ui: optimized smart graph creation usability
 
@@ -67,6 +88,21 @@ v3.1.11 (XXXX-XX-XX)
   leading to speedup of some join queries
 
 * supervision deals with demised coordinators correctly again
+
+* implement a timeout in TraverserEngineRegistry
+
+* agent communication reduced in large batches of append entries RPCs
+
+* inception no longer estimates RAFT timings
+
+* compaction in agents has been moved to a separate thread
+
+* replicated logs hold local timestamps
+
+* supervision jobs failed leader and failed follower revisited for
+  function in precarious stability situations
+
+* fixed bug in random number generator for 64bit int
 
 
 v3.1.10 (2017-02-02)

@@ -28,6 +28,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
 #include "Indexes/Index.h"
+#include "Transaction/Helpers.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"
@@ -37,6 +38,7 @@
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
@@ -223,8 +225,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // We directly read the entire cursor. so batchsize == limit
   std::unique_ptr<OperationCursor> opCursor =
-      trx.indexScan(collectionName, Transaction::CursorType::ALL,
-                    Transaction::IndexHandle(), {}, nullptr, skip, limit, limit, false);
+      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL, nullptr, skip,
+                    limit, limit, false);
 
   if (opCursor->failed()) {
     TRI_V8_THROW_EXCEPTION(opCursor->code);
@@ -393,10 +395,10 @@ static void JS_ChecksumCollection(
     collection->readDocument(&trx, mmdr, token);
     VPackSlice const slice(mmdr.vpack());
 
-    uint64_t localHash = Transaction::extractKeyFromDocument(slice).hashString(); 
+    uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString(); 
 
     if (withRevisions) {
-      localHash += Transaction::extractRevSliceFromDocument(slice).hash();
+      localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
     }
 
     if (withData) {

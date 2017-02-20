@@ -22,11 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShortestPathBlock.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
-#include "Utils/AqlTransaction.h"
 #include "Utils/OperationCursor.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 #include "VocBase/EdgeCollectionInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -34,10 +34,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef the template instantiation of the PathFinder
-////////////////////////////////////////////////////////////////////////////////
-
 typedef arangodb::basics::DynamicDistanceFinder<
     arangodb::velocypack::Slice, arangodb::velocypack::Slice, double,
     arangodb::traverser::ShortestPath> ArangoDBPathFinder;
@@ -53,11 +50,8 @@ typedef arangodb::basics::ConstDistanceFinder<arangodb::velocypack::Slice,
 
 using namespace arangodb::aql;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Local class to expand edges.
 ///        Will be handed over to the path finder
-////////////////////////////////////////////////////////////////////////////////
-
 namespace arangodb {
 namespace aql {
 struct ConstDistanceExpanderLocal {
@@ -75,14 +69,16 @@ struct ConstDistanceExpanderLocal {
 
   void operator()(VPackSlice const& v, std::vector<VPackSlice>& resEdges,
                   std::vector<VPackSlice>& neighbors) {
+    TRI_ASSERT(v.isString());
+    std::string id = v.copyString();
     ManagedDocumentResult* mmdr = _block->_mmdr.get();
     std::unique_ptr<arangodb::OperationCursor> edgeCursor;
     for (auto const& edgeCollection : _block->_collectionInfos) {
       TRI_ASSERT(edgeCollection != nullptr);
       if (_isReverse) {
-        edgeCursor = edgeCollection->getReverseEdges(v, mmdr);
+        edgeCursor = edgeCollection->getReverseEdges(id, mmdr);
       } else {
-        edgeCursor = edgeCollection->getEdges(v, mmdr);
+        edgeCursor = edgeCollection->getEdges(id, mmdr);
       }
     
       LogicalCollection* collection = edgeCursor->collection();
@@ -90,9 +86,9 @@ struct ConstDistanceExpanderLocal {
         if (collection->readDocument(_block->transaction(), *mmdr, element)) {
           VPackSlice edge(mmdr->vpack());
           VPackSlice from =
-              arangodb::Transaction::extractFromFromDocument(edge);
+              transaction::helpers::extractFromFromDocument(edge);
           if (from == v) {
-            VPackSlice to = arangodb::Transaction::extractToFromDocument(edge);
+            VPackSlice to = transaction::helpers::extractToFromDocument(edge);
             if (to != v) {
               resEdges.emplace_back(edge);
               neighbors.emplace_back(to);
@@ -109,11 +105,8 @@ struct ConstDistanceExpanderLocal {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Cluster class to expand edges.
 ///        Will be handed over to the path finder
-////////////////////////////////////////////////////////////////////////////////
-
 struct ConstDistanceExpanderCluster {
  private:
 
@@ -145,9 +138,9 @@ struct ConstDistanceExpanderCluster {
 
       VPackSlice edges = result.slice().get("edges");
       for (auto const& edge : VPackArrayIterator(edges)) {
-        VPackSlice from = arangodb::Transaction::extractFromFromDocument(edge);
+        VPackSlice from = transaction::helpers::extractFromFromDocument(edge);
         if (from == v) {
-          VPackSlice to = arangodb::Transaction::extractToFromDocument(edge);
+          VPackSlice to = transaction::helpers::extractToFromDocument(edge);
           if (to != v) {
             resEdges.emplace_back(edge);
             neighbors.emplace_back(to);
@@ -164,10 +157,7 @@ struct ConstDistanceExpanderCluster {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Expander for weighted edges
-////////////////////////////////////////////////////////////////////////////////
-
 struct EdgeWeightExpanderLocal {
 
  private:
@@ -208,15 +198,17 @@ struct EdgeWeightExpanderLocal {
 
   void operator()(VPackSlice const& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
+    TRI_ASSERT(source.isString());
+    std::string id = source.copyString();
     ManagedDocumentResult* mmdr = _block->_mmdr.get();
     std::unique_ptr<arangodb::OperationCursor> edgeCursor;
     std::unordered_map<VPackSlice, size_t> candidates;
     for (auto const& edgeCollection : _block->_collectionInfos) {
       TRI_ASSERT(edgeCollection != nullptr);
       if (_reverse) {
-        edgeCursor = edgeCollection->getReverseEdges(source, mmdr);
+        edgeCursor = edgeCollection->getReverseEdges(id, mmdr);
       } else {
-        edgeCursor = edgeCollection->getEdges(source, mmdr);
+        edgeCursor = edgeCollection->getEdges(id, mmdr);
       }
       
       candidates.clear();
@@ -226,8 +218,8 @@ struct EdgeWeightExpanderLocal {
         if (collection->readDocument(_block->transaction(), *mmdr, element)) {
           VPackSlice edge(mmdr->vpack());
           VPackSlice from =
-              arangodb::Transaction::extractFromFromDocument(edge);
-          VPackSlice to = arangodb::Transaction::extractToFromDocument(edge);
+              transaction::helpers::extractFromFromDocument(edge);
+          VPackSlice to = transaction::helpers::extractToFromDocument(edge);
           double currentWeight = edgeCollection->weightEdge(edge);
           if (from == source) {
             inserter(candidates, result, from, to, currentWeight, edge);
@@ -243,10 +235,7 @@ struct EdgeWeightExpanderLocal {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Expander for weighted edges
-////////////////////////////////////////////////////////////////////////////////
-
 struct EdgeWeightExpanderCluster {
 
  private:
@@ -304,8 +293,8 @@ struct EdgeWeightExpanderCluster {
 
       VPackSlice edges = edgesBuilder.slice().get("edges");
       for (auto const& edge : VPackArrayIterator(edges)) {
-        VPackSlice from = arangodb::Transaction::extractFromFromDocument(edge);
-        VPackSlice to = arangodb::Transaction::extractToFromDocument(edge);
+        VPackSlice from = transaction::helpers::extractFromFromDocument(edge);
+        VPackSlice to = transaction::helpers::extractToFromDocument(edge);
         double currentWeight = edgeCollection->weightEdge(edge);
         if (from == source) {
           inserter(from, to, currentWeight, edge);

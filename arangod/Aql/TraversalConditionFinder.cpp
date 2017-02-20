@@ -184,7 +184,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   auto unusedWalker = [](AstNode const* n, void*) {};
   bool isEdge = false;
   // We define that depth == UINT64_MAX is "ALL depths"
-  size_t depth = UINT64_MAX;
+  uint64_t depth = UINT64_MAX;
   void* unused = nullptr;
   AstNode* parentOfReplace = nullptr;
   size_t replaceIdx = 0;
@@ -239,7 +239,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
               notSupported = true;
               return node;
             }
-            depth = static_cast<size_t>(node->value.value._int);
+            depth = static_cast<uint64_t>(node->value.value._int);
             break;
           }
           case NODE_TYPE_ITERATOR:
@@ -451,7 +451,6 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
     case EN::SINGLETON:
     case EN::NORESULTS:
-    case EN::ILLEGAL:
       // in all these cases we better abort
       return true;
 

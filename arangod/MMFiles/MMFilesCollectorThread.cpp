@@ -27,9 +27,11 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/encoding.h"
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -39,11 +41,12 @@
 #include "RestServer/TransactionManagerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Helpers.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Utils/TransactionHints.h"
+#include "Transaction/Hints.h"
 #include "VocBase/CompactionLocker.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -144,7 +147,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       VPackSlice slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
-      state->documentOperations[collectionId][Transaction::extractKeyFromDocument(slice).copyString()] = marker;
+      state->documentOperations[collectionId][transaction::helpers::extractKeyFromDocument(slice).copyString()] = marker;
       state->operationsCount[collectionId]++;
       break;
     }
@@ -394,7 +397,7 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
       // reset collector status
       broadcastCollectorResult(res);
 
-      RocksDBFeature::syncWal();
+      PersistentIndexFeature::syncWal();
 
       _logfileManager->setCollectionDone(logfile);
     } else {
@@ -558,6 +561,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     arangodb::SingleCollectionTransaction& trx,
     LogicalCollection* collection, MMFilesCollectorCache* cache,
     MMFilesCollectorOperation const& operation) {
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   auto const* walMarker = reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
   TRI_ASSERT(walMarker != nullptr);
   TRI_ASSERT(reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition));
@@ -575,7 +579,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     
     VPackSlice keySlice;
     TRI_voc_rid_t revisionId = 0;
-    Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+    transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
     bool wasAdjusted = false;
     MMFilesSimpleIndexElement element = collection->primaryIndex()->lookupKey(&trx, keySlice);
@@ -584,18 +588,18 @@ void MMFilesCollectorThread::processCollectionMarker(
         element.revisionId() == revisionId) { 
       // make it point to datafile now
       TRI_df_marker_t const* newPosition = reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition);
-      wasAdjusted = collection->updateRevisionConditional(element.revisionId(), walMarker, newPosition, fid, false); 
+      wasAdjusted = physical->updateRevisionConditional(element.revisionId(), walMarker, newPosition, fid, false); 
     }
       
     if (wasAdjusted) {
       // revision is still active
       dfi.numberAlive++;
-      dfi.sizeAlive += MMFilesDatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
+      dfi.sizeAlive += encoding::alignedSize<int64_t>(datafileMarkerSize);
     } else {
       // somebody inserted a new revision of the document or the revision
       // was already moved by the compactor
       dfi.numberDead++;
-      dfi.sizeDead += MMFilesDatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
+      dfi.sizeDead += encoding::alignedSize<int64_t>(datafileMarkerSize);
     }
   } else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
     auto& dfi = cache->createDfi(fid);
@@ -607,7 +611,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     
     VPackSlice keySlice;
     TRI_voc_rid_t revisionId = 0;
-    Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+    transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
     MMFilesSimpleIndexElement found = collection->primaryIndex()->lookupKey(&trx, keySlice);
 
@@ -615,7 +619,7 @@ void MMFilesCollectorThread::processCollectionMarker(
         found.revisionId() > revisionId) {
       // somebody re-created the document with a newer revision
       dfi.numberDead++;
-      dfi.sizeDead += MMFilesDatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
+      dfi.sizeDead += encoding::alignedSize<int64_t>(datafileMarkerSize);
     }
   }
 }
@@ -631,10 +635,13 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
 
   TRI_ASSERT(collection != nullptr);
 
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
+
   // first try to read-lock the compactor-lock, afterwards try to write-lock the
   // collection
   // if any locking attempt fails, release and try again next time
-  TryCompactionPreventer compactionPreventer(collection);
+  TryCompactionPreventer compactionPreventer(physical);
   
   if (!compactionPreventer.isLocked()) {
     return TRI_ERROR_LOCK_TIMEOUT;
@@ -643,14 +650,12 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   arangodb::SingleCollectionTransaction trx(
       arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
       collection->cid(), AccessMode::Type::WRITE);
-  trx.addHint(TransactionHints::Hint::NO_USAGE_LOCK,
-              true);  // already locked by guard above
-  trx.addHint(TransactionHints::Hint::NO_COMPACTION_LOCK,
-              true);  // already locked above
-  trx.addHint(TransactionHints::Hint::NO_THROTTLING, true);
-  trx.addHint(TransactionHints::Hint::NO_BEGIN_MARKER, true);
-  trx.addHint(TransactionHints::Hint::NO_ABORT_MARKER, true);
-  trx.addHint(TransactionHints::Hint::TRY_LOCK, true);
+  trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);  // already locked by guard above
+  trx.addHint(transaction::Hints::Hint::NO_COMPACTION_LOCK);  // already locked above
+  trx.addHint(transaction::Hints::Hint::NO_THROTTLING);
+  trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER);
+  trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER);
+  trx.addHint(transaction::Hints::Hint::TRY_LOCK);
 
   int res = trx.begin();
 
@@ -678,7 +683,7 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
                << collection->name() << "'";
     updateDatafileStatistics(collection, cache);
 
-    collection->decreaseUncollectedLogfileEntries(cache->totalOperationsCount);
+    static_cast<arangodb::MMFilesCollection*>(collection->getPhysical())->decreaseUncollectedLogfileEntries(cache->totalOperationsCount);
 
     res = TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {

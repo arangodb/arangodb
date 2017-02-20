@@ -22,12 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraverserEngine.h"
-
 #include "Basics/Exceptions.h"
+#include "Aql/AqlTransaction.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
-#include "Utils/AqlTransaction.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/TransactionContext.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/TraverserOptions.h"
 
@@ -35,6 +35,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::traverser;
 
 static const std::string OPTIONS = "options";
@@ -93,7 +94,7 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
   auto params = std::make_shared<VPackBuilder>();
   auto opts = std::make_shared<VPackBuilder>();
 
-  _trx = new arangodb::AqlTransaction(
+  _trx = new aql::AqlTransaction(
       arangodb::StandaloneTransactionContext::Create(vocbase),
       _collections.collections(), false);
   _query = new aql::Query(true, vocbase, "", 0, params, opts, aql::PART_DEPENDENT);
@@ -117,24 +118,14 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
 }
 
 BaseTraverserEngine::~BaseTraverserEngine() {
-  /*
-  auto resolver = _trx->resolver();
-  // TODO Do we need this or will delete trx do this already?
-  for (auto const& shard : _locked) {
-    TRI_voc_cid_t cid = resolver->getCollectionIdLocal(shard);
-    if (cid == 0) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Failed to unlock shard " << shard << ": not found";
-      continue;
-    }
-    int res = _trx->unlock(_trx->trxCollection(cid), AccessMode::Type::READ);
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Failed to unlock shard " << shard << ": "
-               << TRI_errno_string(res);
-    }
-  }
-  */
   if (_trx) {
-    _trx->commit();
+    try {
+      _trx->commit();
+    } catch (...) {
+      // If we could not commit
+      // we are in a bad state.
+      // This is a READ-ONLY trx
+    }
   }
   delete _query;
 }
@@ -313,7 +304,7 @@ bool BaseTraverserEngine::lockCollection(std::string const& shard) {
   return true;
 }
 
-std::shared_ptr<arangodb::TransactionContext> BaseTraverserEngine::context() const {
+std::shared_ptr<TransactionContext> BaseTraverserEngine::context() const {
   return _trx->transactionContext();
 }
 

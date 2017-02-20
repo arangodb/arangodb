@@ -22,22 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlTransaction.h"
-#include "CollectionNameResolver.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
+using namespace arangodb::aql;
 
 /// @brief add a collection to the transaction
 int AqlTransaction::processCollection(aql::Collection* collection) {
-  int state = setupState();
-
-  if (state != TRI_ERROR_NO_ERROR) {
-    return state;
-  }
-
   if (ServerState::instance()->isCoordinator()) {
     return processCollectionCoordinator(collection);
   }

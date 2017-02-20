@@ -24,15 +24,16 @@
 #include "MMFilesWalSlots.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/encoding.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
-#include "VocBase/ticks.h"
 #include "MMFiles/MMFilesLogfileManager.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb;
   
-static uint32_t const PrologueSize = MMFilesDatafileHelper::AlignedSize<uint32_t>(sizeof(TRI_df_prologue_marker_t));
+static uint32_t const PrologueSize = encoding::alignedSize<uint32_t>(sizeof(TRI_df_prologue_marker_t));
 
 /// @brief create the slots
 MMFilesWalSlots::MMFilesWalSlots(MMFilesLogfileManager* logfileManager, size_t numberOfSlots,
@@ -130,7 +131,7 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_vo
                            uint32_t size) {
 
   // we need to use the aligned size for writing
-  uint32_t alignedSize = MMFilesDatafileHelper::AlignedSize<uint32_t>(size);
+  uint32_t alignedSize = encoding::alignedSize<uint32_t>(size);
   int iterations = 0;
   bool hasWaited = false;
   bool mustWritePrologue = false; 

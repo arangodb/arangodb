@@ -50,7 +50,6 @@ RegisterId const ExecutionNode::MaxRegisterId = 1000;
 
 /// @brief type names
 std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
-    {static_cast<int>(ILLEGAL), "ExecutionNode (abstract)"},
     {static_cast<int>(SINGLETON), "SingletonNode"},
     {static_cast<int>(ENUMERATE_COLLECTION), "EnumerateCollectionNode"},
     {static_cast<int>(ENUMERATE_LIST), "EnumerateListNode"},
@@ -258,9 +257,6 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
       return new ShortestPathNode(plan, slice);
-    case ILLEGAL: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid node type");
-    }
   }
   return nullptr;
 }
@@ -1099,11 +1095,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
         totalNrRegs++;
       }
       break;
-    }
-
-    case ExecutionNode::ILLEGAL: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     "node type not implemented");
     }
   }
 

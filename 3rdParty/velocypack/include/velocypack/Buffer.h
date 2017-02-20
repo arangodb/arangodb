@@ -145,7 +145,7 @@ class Buffer {
   }
 
   void resetTo(ValueLength position) {
-    if (position >= _alloc) { 
+    if (position > _alloc) { 
       throw Exception(Exception::IndexOutOfBounds);
     }
     _pos = position;
