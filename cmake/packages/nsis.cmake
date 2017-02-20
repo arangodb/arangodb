@@ -115,13 +115,13 @@ add_custom_target(copy_zip_packages
 list(APPEND COPY_PACKAGES_LIST copy_zip_packages)
 
 add_custom_target(remove_packages
-  COMMAND ${CMAKE_COMMAND} -E REMOVE_RECURSIVE _CPack_Packages
+  COMMAND ${CMAKE_COMMAND} -E remove_recursive _CPack_Packages
   COMMENT Removing server packaging build directory
-  COMMAND ${CMAKE_COMMAND} -E REMOVE ${CPACK_PACKAGE_FILE_NAME}.zip
+  COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_PACKAGE_FILE_NAME}.zip
   COMMENT Removing local target zip packages
-  COMMAND ${CMAKE_COMMAND} -E REMOVE ${CPACK_PACKAGE_FILE_NAME}.exe
+  COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_PACKAGE_FILE_NAME}.exe
   COMMENT Removing local target nsis packages
-  COMMAND ${CMAKE_COMMAND} -E REMOVE ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.exe
+  COMMAND ${CMAKE_COMMAND} -E remove ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.exe
   COMMENT Removing local target nsis client packages
   )
 
