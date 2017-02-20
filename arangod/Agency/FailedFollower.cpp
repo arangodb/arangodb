@@ -123,11 +123,8 @@ bool FailedFollower::start() {
   // DBservers
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  std::string curPath =
-      curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
 
   Node const& planned = _snapshot(planPath);
-
 
   // Copy todo to pending
   Builder todo, pending;

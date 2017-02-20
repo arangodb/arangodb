@@ -87,13 +87,6 @@ Constituent::~Constituent() { shutdown(); }
 /// Wait for sync
 bool Constituent::waitForSync() const { return _agent->config().waitForSync(); }
 
-/// Random sleep times in election process
-duration_t Constituent::sleepFor(double min_t, double max_t) {
-  int32_t left = static_cast<int32_t>(1000.0 * min_t),
-    right = static_cast<int32_t>(1000.0 * max_t);
-  return duration_t(static_cast<long>(RandomGenerator::interval(left, right)));
-}
-
 /// Get my term
 term_t Constituent::term() const {
   MUTEX_LOCKER(guard, _castLock);

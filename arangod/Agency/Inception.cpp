@@ -334,12 +334,6 @@ bool Inception::restartingActiveAgent() {
   
 }
 
-inline static int64_t timeStamp() {
-  using namespace std::chrono;
-  return duration_cast<microseconds>(
-    steady_clock::now().time_since_epoch()).count();
-}
-
 void Inception::reportIn(query_t const& query) {
 
   VPackSlice slice = query->slice();
