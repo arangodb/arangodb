@@ -1,6 +1,6 @@
 arangosh&gt; db.geo.ensureIndex({ <span class="hljs-attr">type</span>: <span class="hljs-string">"geo"</span>, <span class="hljs-attr">fields</span>: [ <span class="hljs-string">"loc"</span> ] });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"geo/19560"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"geo/19614"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"geo1"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"loc"</span> 
@@ -23,9 +23,9 @@ arangosh&gt; db.geo.count();
 arangosh&gt; db.geo.near(<span class="hljs-number">0</span>, <span class="hljs-number">0</span>).limit(<span class="hljs-number">3</span>).toArray();
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"20617"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/20617"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Uf_DVp2--E"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"20671"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/20671"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UjxO7W2--A"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/0"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">0</span>, 
@@ -33,9 +33,9 @@ arangosh&gt; db.geo.near(<span class="hljs-number">0</span>, <span class="hljs-n
     ] 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"20620"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/20620"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Uf_DVp6---"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"20674"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/20674"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UjxO7W6---"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/10"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">0</span>, 
@@ -43,9 +43,9 @@ arangosh&gt; db.geo.near(<span class="hljs-number">0</span>, <span class="hljs-n
     ] 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"20506"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/20506"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Uf_DVpi--A"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"20560"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/20560"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UjxO7WK--B"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-10/0"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">-10</span>, 

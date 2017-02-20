@@ -2,9 +2,9 @@ shell> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_adm
 
 HTTP/1.1 202 Accepted
 content-type: text/plain; charset=utf-8
-x-arango-async-id: 148633153307686
+x-arango-async-id: 148761569639052
 
-shell> curl --dump - http://localhost:8529/_api/job/148633153307686
+shell> curl --dump - http://localhost:8529/_api/job/148761569639052
 
 HTTP/1.1 204 No Content
 content-type: text/plain; charset=utf-8
