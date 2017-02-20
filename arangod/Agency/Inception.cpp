@@ -25,7 +25,6 @@
 
 #include "Agency/Agent.h"
 #include "Agency/GossipCallback.h"
-#include "Agency/MeasureCallback.h"
 #include "Basics/ConditionLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "GeneralServer/RestHandlerFactory.h"
@@ -341,11 +340,6 @@ inline static int64_t timeStamp() {
     steady_clock::now().time_since_epoch()).count();
 }
 
-void Inception::reportIn(std::string const& peerId, uint64_t start) {
-  MUTEX_LOCKER(lock, _pLock);
-  _pings.push_back(1.0e-3*(double)(timeStamp()-start));
-}
-
 void Inception::reportIn(query_t const& query) {
 
   VPackSlice slice = query->slice();
@@ -366,177 +360,13 @@ void Inception::reportIn(query_t const& query) {
 
 }
 
+
 void Inception::reportVersionForEp(std::string const& endpoint, size_t version) {
   MUTEX_LOCKER(versionLocker, _vLock);
   if (_acked[endpoint] < version) {
     _acked[endpoint] = version;
   }
 }
-
-
-bool Inception::estimateRAFTInterval() {
-  auto cc = arangodb::ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr only happens during controlled shutdown
-    return false;
-  }
-
-  using namespace std::chrono;
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Estimating RAFT timeouts ...";
-  size_t nrep = 10;
-    
-  std::string path("/_api/agency/config");
-  auto config = _agent->config();
-
-  auto myid = _agent->id();
-  auto to = duration<double,std::milli>(100.0); // 
-
-  for (size_t i = 0; i < nrep; ++i) {
-    for (auto const& peer : config.pool()) {
-      if (peer.first != myid) {
-        std::string clientid = peer.first + std::to_string(i);
-        auto hf =
-          std::make_unique<std::unordered_map<std::string, std::string>>();
-        cc->asyncRequest(
-          clientid, 1, peer.second, rest::RequestType::GET, path,
-          std::make_shared<std::string>(), hf,
-          std::make_shared<MeasureCallback>(this, peer.second, timeStamp()),
-          2.0, true);
-      }
-    }
-    std::this_thread::sleep_for(to);
-  }
-
-  auto s = system_clock::now();
-  seconds timeout(15);
-
-  CONDITION_LOCKER(guard, _cv);
-
-  while (true) {
-    
-    _cv.wait(50000);
-    
-    {
-      MUTEX_LOCKER(lock, _pLock);
-      if (_pings.size() == nrep*(config.size()-1)) {
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "All pings are in";
-        break;
-      }
-    }
-    
-    if ((system_clock::now() - s) > timeout) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Timed out waiting for pings";
-      break;
-    }
-    
-  }
-
-  if (! _pings.empty()) {
-
-    double mean, stdev, mx, mn;
-  
-    MUTEX_LOCKER(lock, _pLock);
-    size_t num = _pings.size();
-    mean   = std::accumulate(_pings.begin(), _pings.end(), 0.0) / num;
-    mx     = *std::max_element(_pings.begin(), _pings.end());
-    mn     = *std::min_element(_pings.begin(), _pings.end());
-    std::transform(_pings.begin(), _pings.end(), _pings.begin(),
-                   std::bind2nd(std::minus<double>(), mean));
-    stdev =
-      std::sqrt(
-        std::inner_product(
-          _pings.begin(), _pings.end(), _pings.begin(), 0.0) / num);
-    
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "mean(" << mean << ") stdev(" << stdev<< ")";
-      
-    Builder measurement;
-    measurement.openObject();
-    measurement.add("mean", VPackValue(mean));
-    measurement.add("stdev", VPackValue(stdev));
-    measurement.add("min", VPackValue(mn));
-    measurement.add("max", VPackValue(mx));
-    measurement.close();
-    std::string measjson = measurement.toJson();
-
-    path = privApiPrefix + "measure";
-    for (auto const& peer : config.pool()) {
-      if (peer.first != myid) {
-        auto clientId = "1";
-        auto comres   = cc->syncRequest(
-          clientId, 1, peer.second, rest::RequestType::POST, path,
-          measjson, std::unordered_map<std::string, std::string>(), 5.0);
-      }
-    }
-    
-    {
-      MUTEX_LOCKER(lock, _mLock);
-      _measurements.push_back(std::vector<double>({mean, stdev, mx, mn}));
-    }
-    s = system_clock::now();
-    while (true) {
-      
-      _cv.wait(50000);
-      
-      {
-        MUTEX_LOCKER(lock, _mLock);
-        if (_measurements.size() == config.size()) {
-          LOG_TOPIC(DEBUG, Logger::AGENCY) << "All measurements are in";
-          break;
-        }
-      }
-      
-      if ((system_clock::now() - s) > timeout) {
-        LOG_TOPIC(WARN, Logger::AGENCY) <<
-          "Timed out waiting for other measurements. Auto-adaptation failed!"
-          "Will stick to command line arguments";
-        return false;
-      }
-      
-    }
-
-    if (_measurements.size() == config.size()) {
-    
-      double maxmean  = .0;
-      double maxstdev = .0;
-      for (auto const& meas : _measurements) {
-        if (maxmean < meas[0]) {
-          maxmean = meas[0];
-        }
-        if (maxstdev < meas[1]) {
-          maxstdev = meas[1];
-        }
-      }
-
-      double precision = 1.0e-2;
-      mn = precision *
-        std::ceil((1. / precision)*(0.95 + precision * (maxmean + 3.*maxstdev)));
-      if (config.waitForSync()) {
-        mn *= 4.;
-      }
-      if (mn > 5.0) {
-        mn = 5.0;
-      }
-      mx = 5. * mn;
-      
-      LOG_TOPIC(INFO, Logger::AGENCY)
-        << "Auto-adapting RAFT bracket to: {"
-        << std::fixed << std::setprecision(2) << mn << ", " << mx << "} seconds";
-      
-      _agent->resetRAFTTimes(mn, mx);
-
-    } else {
-
-      return false;
-
-    }
-    
-  }
-
-  return true;
-  
-}
-  
 
 // @brief Thread main
 void Inception::run() {
@@ -576,12 +406,6 @@ void Inception::run() {
       << "Failed to build environment for RAFT algorithm. Bailing out!";
     FATAL_ERROR_EXIT();
   }
-
-  // If command line RAFT timings have not been set explicitly
-  // Try good estimate of RAFT time limits
-  /*if (!config.cmdLineTimings()) {
-    estimateRAFTInterval();
-    }*/
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent.";
   _agent->ready(true);
