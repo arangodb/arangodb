@@ -103,6 +103,8 @@ bool AddFollower::create() {
 
   path = _agencyPrefix + toDoPrefix + _jobId;
 
+  // FIXME: create a single larger AddFollower job with many shards
+
   _jb->add(path, VPackValue(VPackValueType::Object));
   _jb->add("creator", VPackValue(_creator));
   _jb->add("type", VPackValue("addFollower"));
@@ -163,6 +165,8 @@ bool AddFollower::start() {
     }
   }
 
+  // FIXME: move immediately to finished, since we no longer wait for Current
+
   // Copy todo to pending
   Builder todo, pending;
 
@@ -180,6 +184,8 @@ bool AddFollower::start() {
     todo.add(_jb->slice()[0].valueAt(0));
   }
   todo.close();
+
+  // FIXME: do no longer block toServer
 
   // Enter pending, remove todo, block toserver
   pending.openArray();
@@ -224,6 +230,7 @@ bool AddFollower::start() {
 
   // Preconditions
   
+  // FIXME: is this check really necessary?
   // --- Check that Current servers are as we expect
   pending.openObject();
   pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
@@ -240,6 +247,8 @@ bool AddFollower::start() {
               VPackValue(VPackValueType::Object));
   pending.add("oldEmpty", VPackValue(true));
   pending.close();
+
+  // FIXME: check also that toServer is not blocked in precondition
 
   pending.close();
   pending.close();
@@ -282,6 +291,8 @@ JOB_STATUS AddFollower::status() {
   }
 
   if (status == PENDING) {
+    // FIXME: delete this check, case PENDING does no longer happen in new spec
+   
     std::string curPath = curColPrefix + _database + "/" + _collection + "/" +
                           _shard + "/servers";
 
@@ -299,6 +310,6 @@ JOB_STATUS AddFollower::status() {
 }
 
 void AddFollower::abort() {
-  // TO BE IMPLEMENTED
+  // FIXME: TO BE IMPLEMENTED
 }
 

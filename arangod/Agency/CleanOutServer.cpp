@@ -86,6 +86,8 @@ JOB_STATUS CleanOutServer::status() {
       }
     }
 
+    // FIXME: implement timeout here?
+
     if (found == 0) {
       // Put server in /Target/CleanedServers:
       Builder reportTrx;
@@ -311,12 +313,22 @@ bool CleanOutServer::scheduleMoveShards() {
           return false;
         }
 
+        // FIXME: use RandomGenerator here
         try {
           toServer = servers.at(rand() % servers.size());
         } catch (...) {
           LOG_TOPIC(ERR, Logger::AGENCY)
             << "Range error picking destination for shard " + shard.first;
         }
+
+        // FIXME: check conditions: server healthy, not cleaned, not failed,
+        // FIXME: is this doen in checkFeasibility?
+        // FIXME: check shards being locked
+        // FIXME: check servers being locked
+        // FIXME: is it necessary to create all MoveShard jobs in one 
+        // FIXME: transaction? Do we need to check the precondition that
+        // FIXME: the server is not blocked?
+        // FIXME: What if some MoveShard job does not work?
 
         // Schedule move
         MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),

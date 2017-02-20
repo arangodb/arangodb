@@ -74,6 +74,9 @@ bool FailedLeader::create() {
   _jb->openArray();
   _jb->openObject();
 
+  // FIXME: consider clones and distributeShardsLike
+  // FIXME: determine toServer here or earlier or later?
+
   // Todo entry
   _jb->add(path, VPackValue(VPackValueType::Object));
   _jb->add("creator", VPackValue(_creator));
@@ -88,6 +91,8 @@ bool FailedLeader::create() {
   _jb->add("timeCreated",
            VPackValue(timepointToString(std::chrono::system_clock::now())));
   _jb->close();
+
+  // FIXME: is this FailedServers array containing shards still needed?
 
   // Add shard to /arango/Target/FailedServers/<server> array
   path = _agencyPrefix + failedServersPrefix + "/" + _from;
@@ -119,12 +124,17 @@ bool FailedLeader::start() {
   auto const& current = _snapshot(curPath).slice();
   auto const& planned = _snapshot(planPath).slice();
 
+  // FIXME: this seems only to check whether there is an in sync follower,
+  // FIXME: and not whether the toServer is in sync???
+
   if (current.length() == 1) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << "Failed to change leadership for shard " + _shard + " from " + _from 
       +  " to " + _to + ". No in-sync followers:" + current.toJson();
     return false;
   }
+
+  // FIXME: abort lower priority jobs here to solve locks of shards or server
 
   // Copy todo to pending
   Builder todo, pending;
@@ -182,6 +192,10 @@ bool FailedLeader::start() {
 
   pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
 
+  // FIXME: this is slightly different from design since the plan change
+  // FIXME: is done right away, the actual plan change is also slightly
+  // FIXME: different from spec, what do we want? Change specs?
+
   pending.add(VPackValue(_to));
   for (auto const& i : VPackArrayIterator(current)) {
     std::string s = i.copyString();
@@ -214,6 +228,12 @@ bool FailedLeader::start() {
   // Preconditions
   pending.openObject();
 
+  // FIXME: If we insist on Current servers still being the same we have
+  // FIXME: to allow for the fact that the toServer has been removed from
+  // FIXME: Current in the meantime. This means that the decision as to
+  // FIXME: what the toServer is has to be in the start() routine as
+  // FIXME: specified
+
   // --- Check that Current servers are as we expect
   pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
   pending.add("old", current);
@@ -230,6 +250,8 @@ bool FailedLeader::start() {
   pending.add("oldEmpty", VPackValue(true));
   pending.close();
 
+  // FIXME: also check that toServer is not locked in precondition
+ 
   pending.close();
 
   // Preconditions end
@@ -285,6 +307,8 @@ JOB_STATUS FailedLeader::status() {
 
     if (planned.slice()[0] == current.slice()[0]) {
 
+      // FIXME: is this array still needed?
+
       // Remove shard to /arango/Target/FailedServers/<server> array
       Builder del;
       del.openArray();
@@ -302,6 +326,7 @@ JOB_STATUS FailedLeader::status() {
         return FINISHED;
       }
     }
+    // FIXME: implement timeout check and rowing back
   }
 
   return status;

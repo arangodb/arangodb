@@ -77,6 +77,10 @@ bool FailedServer::start() {
   }
   todo.close();
 
+  // FIXME:  - check again that Supervision/Health/<server> is still "FAILED" 
+  // FIXME:    in snapshot
+  // FIXME:  - abort job that holds a lock on the server if there is one
+
   // Prepare peding entry, block toserver
   pending.openArray();
 
@@ -113,6 +117,7 @@ bool FailedServer::start() {
   pending.add("oldEmpty", VPackValue(true));
   pending.close();
 
+  // FIXME: Add precondition that Supervision/Health/<server> is still "FAILED"
   pending.close();
   pending.close();
 
@@ -128,6 +133,7 @@ bool FailedServer::start() {
 
     size_t sub = 0;
 
+    // FIXME: looks OK, but only the non-clone shards are put into the job
     for (auto const& database : databases) {
       auto cdatabase = current.at(database.first)->children();
 
@@ -243,6 +249,12 @@ bool FailedServer::create() {
 
   write_ret_t res = transact(_agent, *_jb);
 
+  // FIXME: - why is the plan version raised in this transaction?
+  // FIXME: - check that Supervision/Health/<server> is still "FAILED" as a
+  // FIXME:   precondition and do nothing if so
+  // FIXME: - add precondition that Target/FailedServers is as in snapshot
+  // FIXME:   and do nothing if so
+
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
   }
@@ -305,6 +317,9 @@ JOB_STATUS FailedServer::status() {
       }
     }
 
+    // FIXME: sub-jobs should terminate themselves if server "GOOD" again
+    // FIXME: thus the deleteTodos here is unnecessary
+ 
     if (deleteTodos) {
       LOG_TOPIC(INFO, Logger::AGENCY)
         << "Server " << _server << " is healthy again. Will try to delete"
@@ -321,6 +336,7 @@ JOB_STATUS FailedServer::status() {
       }
     }
 
+    // FIXME: what if some subjobs have failed, we should fail then
     if (!hasOpenChildTasks) {
       if (finish("DBServers/" + _server)) {
         return FINISHED;
@@ -332,6 +348,6 @@ JOB_STATUS FailedServer::status() {
 }
 
 void FailedServer::abort() {
-  // TO BE IMPLEMENTED
+  // FIXME: No abort procedure, simply throw error or so
 }
 

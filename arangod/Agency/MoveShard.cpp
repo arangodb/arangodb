@@ -191,6 +191,8 @@ bool MoveShard::start() {
     }
   }
   
+  // FIXME: can we use Job::clones here?
+
   // Are we distributeShardsLiked by others?
   // Invoke moveShard here with others
   auto collections = _snapshot(planColPrefix + _database).children();
@@ -212,6 +214,9 @@ bool MoveShard::start() {
     } catch (...) {}
   }
     
+  // FIXME: check in snapshot that toServer not in CleanedServers
+  // FIXME: check in snapshot that toServer not in FailedServers
+
   // DBservers
   std::string planPath =
     planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
@@ -224,6 +229,8 @@ bool MoveShard::start() {
   TRI_ASSERT(current.isArray());
   TRI_ASSERT(planned.isArray());
   
+  // FIXME: why this check in Current?
+
   for (auto const& srv : VPackArrayIterator(current)) {
     TRI_ASSERT(srv.isString());
     if (srv.copyString() == _to) {
@@ -340,6 +347,9 @@ bool MoveShard::start() {
   pending.close();
 
   // Preconditions
+  // FIXME: check server not locked
+  // FIXME: check all shards not only one
+
   // --- Check that Current servers are as we expect
   pending.openObject();
   pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
@@ -381,6 +391,8 @@ JOB_STATUS MoveShard::status() {
       _to = _snapshot(pos[status] + _jobId + "/toServer").getString();
       _shard =
         _snapshot(pos[status] + _jobId + "/shards").slice()[0].copyString();
+
+      // FIXME: this code is repeated a lot, we should factor it out to method
 
       // Lookup from server
       if (_from.compare(0, DBServer.length(), DBServer) == 0) {
@@ -517,6 +529,10 @@ JOB_STATUS MoveShard::status() {
           }
         }
       }
+      // FIXME: handle timeout if new server does not get in sync
+      // FIXME: check again in detail that this implements the two different
+      // FIXME: moveShard jobs in the design document, too many ifs here
+      // FIXME: handle timeout if old leader does not retire
     }
 
     if (done == collections.length()) {

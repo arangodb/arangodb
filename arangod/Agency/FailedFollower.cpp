@@ -67,6 +67,10 @@ bool FailedFollower::create() {
   LOG_TOPIC(INFO, Logger::AGENCY)
       << "Todo: failed Follower for " + _shard + " from " + _from + " to " + _to;
 
+  // FIXME: create one big FailedFollower job for all clones rather than
+  // FIXME: individual single shard jobs. This is important to be able to
+  // FIXME: change the plan for all shards in a clone set in one transaction.
+
   auto const& myClones = clones(_snapshot, _database, _collection, _shard);
   if (!myClones.empty()) {
     size_t sub = 0;
@@ -145,6 +149,9 @@ bool FailedFollower::start() {
   todo.close();
 
   
+  // FIXME: move to finished right away
+  // FIXME: also handle multiple collections and shards at the same time
+
   // Transaction
   pending.openArray();
 
@@ -200,6 +207,10 @@ bool FailedFollower::start() {
   pending.add("oldEmpty", VPackValue(true));
   pending.close();
 
+  // FIXME: add precondition that the shards are not blocked and that
+  // FIXME: the fromServer is still "FAILED", do nothing if precondition
+  // FIXME: not fulfilled
+
   pending.close();
   pending.close();
 
@@ -238,6 +249,12 @@ JOB_STATUS FailedFollower::status() {
   }
 
   if (status == PENDING) {
+
+    // FIXME: this is no more needed because all was done in start()
+    // FIXME: do not wait for in sync any more, so status == PENDING
+    // FIXME: has nothing to do any more
+    // FIXME: do we need a list of shards in FailedServers???
+
     Node const& job = _snapshot(pendingPrefix + _jobId);
     std::string database = job("database").toJson(),
                 collection = job("collection").toJson(),
@@ -275,6 +292,6 @@ JOB_STATUS FailedFollower::status() {
 }
 
 void FailedFollower::abort() {
-  // TO BE IMPLEMENTED
+  // FIXME: TO BE IMPLEMENTED
 }
 
