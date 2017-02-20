@@ -107,6 +107,8 @@ class PhysicalCollection {
   virtual int restoreIndex(transaction::Methods*, velocypack::Slice const&,
                            std::shared_ptr<Index>&) = 0;
 
+  virtual bool dropIndex(TRI_idx_iid_t iid, bool writeMarker) = 0;
+
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////

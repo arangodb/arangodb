@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesCollection.h"
+#include "Aql/QueryCache.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
@@ -53,6 +54,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -1780,6 +1782,56 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
+bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
+  if (iid == 0) {
+    // invalid index id or primary index
+    events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
+    return true;
+  }
+  auto vocbase = _logicalCollection->vocbase();
+
+  arangodb::aql::QueryCache::instance()->invalidate(vocbase, _logicalCollection->name());
+  if (!_logicalCollection->removeIndex(iid)) {
+    // We tried to remove an index that does not exist
+    events::DropIndex("", std::to_string(iid),
+                      TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+    return false;
+  }
+
+  auto cid = _logicalCollection->cid();
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->dropIndex(vocbase, cid, iid);
+
+  {
+    VPackBuilder builder;
+    bool const doSync =
+        application_features::ApplicationServer::getFeature<DatabaseFeature>(
+            "Database")
+            ->forceSyncProperties();
+    _logicalCollection->toVelocyPack(builder, false);
+    _logicalCollection->updateProperties(builder.slice(), doSync);
+  }
+
+  if (writeMarker) {
+    int res = TRI_ERROR_NO_ERROR;
+
+    VPackBuilder markerBuilder;
+    markerBuilder.openObject();
+    markerBuilder.add("id", VPackValue(std::to_string(iid)));
+    markerBuilder.close();
+    engine->dropIndexWalMarker(vocbase, cid, markerBuilder.slice(), writeMarker,
+                               res);
+
+    if(res == TRI_ERROR_NO_ERROR){
+      events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
+    } else {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save index drop marker in log: "
+              << TRI_errno_string(res);
+      events::DropIndex("", std::to_string(iid), res);
+    }
+  }
+  return true;
+}
 
 
 /// @brief garbage-collect a collection's indexes

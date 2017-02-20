@@ -55,7 +55,6 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -1257,51 +1256,8 @@ bool LogicalCollection::removeIndex(TRI_idx_iid_t iid) {
 /// @brief drops an index, including index file removal and replication
 bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (iid == 0) {
-    // invalid index id or primary index
-    events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
-    return true;
-  }
-
-  arangodb::aql::QueryCache::instance()->invalidate(_vocbase, name());
-  if (!removeIndex(iid)) {
-    // We tried to remove an index that does not exist
-    events::DropIndex("", std::to_string(iid),
-                      TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-    return false;
-  }
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->dropIndex(_vocbase, cid(), iid);
-
-  {
-    VPackBuilder builder;
-    bool const doSync =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database")
-            ->forceSyncProperties();
-    toVelocyPack(builder, false);
-    updateProperties(builder.slice(), doSync);
-  }
-
-  if (writeMarker) {
-    int res = TRI_ERROR_NO_ERROR;
-
-    VPackBuilder markerBuilder;
-    markerBuilder.openObject();
-    markerBuilder.add("id", VPackValue(std::to_string(iid)));
-    markerBuilder.close();
-    engine->dropIndexWalMarker(_vocbase, cid(), markerBuilder.slice(),writeMarker,res);
-
-    if(res == TRI_ERROR_NO_ERROR){
-      events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
-    } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save index drop marker in log: "
-              << TRI_errno_string(res);
-      events::DropIndex("", std::to_string(iid), res);
-    }
-  }
-  return true;
+  // TODO: Validate that writeMarker := (engine->inRevocery() == false)
+  return _physical->dropIndex(iid, writeMarker);
 }
 
 /// @brief creates the initial indexes for the collection
