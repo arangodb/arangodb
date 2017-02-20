@@ -105,22 +105,24 @@ add_custom_target(package-arongodb-client-nsis
 list(APPEND PACKAGES_LIST package-arongodb-client-nsis)
 
 add_custom_target(copy_nsis_packages
-  COMMAND ${CMAKE_COMMAND} -E copy *.exe ${PACKAGE_TARGET_DIR})
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_PACKAGE_FILE_NAME}.exe ${PACKAGE_TARGET_DIR})
 
 list(APPEND COPY_PACKAGES_LIST copy_nsis_packages)
 
 add_custom_target(copy_zip_packages
-  COMMAND ${CMAKE_COMMAND} -E copy *.zip ${PACKAGE_TARGET_DIR})
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_PACKAGE_FILE_NAME}.zip ${PACKAGE_TARGET_DIR})
 
 list(APPEND COPY_PACKAGES_LIST copy_zip_packages)
 
 add_custom_target(remove_packages
   COMMAND ${CMAKE_COMMAND} -E REMOVE_RECURSIVE _CPack_Packages
   COMMENT Removing server packaging build directory
-  COMMAND ${CMAKE_COMMAND} -E REMOVE *.zip
+  COMMAND ${CMAKE_COMMAND} -E REMOVE ${CPACK_PACKAGE_FILE_NAME}.zip
   COMMENT Removing local target zip packages
-  COMMAND ${CMAKE_COMMAND} -E REMOVE *.exe
+  COMMAND ${CMAKE_COMMAND} -E REMOVE ${CPACK_PACKAGE_FILE_NAME}.exe
   COMMENT Removing local target nsis packages
+  COMMAND ${CMAKE_COMMAND} -E REMOVE ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.exe
+  COMMENT Removing local target nsis client packages
   )
 
 list(APPEND CLEAN_PACKAGES_LIST remove_packages)
