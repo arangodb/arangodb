@@ -115,7 +115,7 @@ add_custom_target(copy_zip_packages
 list(APPEND COPY_PACKAGES_LIST copy_zip_packages)
 
 add_custom_target(remove_packages
-  COMMAND ${CMAKE_COMMAND} -E remove_recursive _CPack_Packages
+  COMMAND ${CMAKE_COMMAND} -E remove_directory _CPack_Packages
   COMMENT Removing server packaging build directory
   COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_PACKAGE_FILE_NAME}.zip
   COMMENT Removing local target zip packages
