@@ -30,7 +30,6 @@
 #include "Agency/UnassumedLeadership.h"
 
 using namespace arangodb::consensus;
-using namespace arangodb::velocypack;
 
 FailedServer::FailedServer(Node const& snapshot, Agent* agent,
                            std::string const& jobId, std::string const& creator,
@@ -286,7 +285,9 @@ JOB_STATUS FailedServer::status() {
             deleteTodos->openArray();
             deleteTodos->openObject();
           }
-          deleteTodos->add(_agencyPrefix + toDoPrefix + subJob.first, VPackValue(VPackValueType::Object));
+          deleteTodos->add(
+            _agencyPrefix + toDoPrefix + subJob.first,
+            VPackValue(VPackValueType::Object));
           deleteTodos->add("op", VPackValue("delete"));
           deleteTodos->close();
         } else {
@@ -302,7 +303,9 @@ JOB_STATUS FailedServer::status() {
     }
 
     if (deleteTodos) {
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Server " << _server << " is healthy again. Will try to delete any jobs which have not yet started!";
+      LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Server " << _server << " is healthy again. Will try to delete"
+        "any jobs which have not yet started!";
       deleteTodos->close();
       deleteTodos->close();
       // Transact to agency

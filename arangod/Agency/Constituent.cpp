@@ -146,6 +146,21 @@ void Constituent::termNoLock(term_t t) {
   }
 }
 
+bool Constituent::logUpToDate(
+  arangodb::consensus::index_t prevLogIndex, term_t prevLogTerm) const {
+  log_t myLastLogEntry = _agent->state().lastLog();
+  return (prevLogTerm > myLastLogEntry.term ||
+          (prevLogTerm == myLastLogEntry.term &&
+           prevLogIndex >= myLastLogEntry.index));
+}
+
+
+bool Constituent::logMatches(
+  arangodb::consensus::index_t prevLogIndex, term_t prevLogTerm) const {
+  return _agent->state().has(prevLogIndex, prevLogTerm);
+}
+
+
 /// My role
 role_t Constituent::role() const {
   MUTEX_LOCKER(guard, _castLock);
@@ -257,8 +272,8 @@ std::string Constituent::endpoint(std::string id) const {
 }
 
 /// @brief Check leader
-bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
-                              term_t prevLogTerm) {
+bool Constituent::checkLeader(
+  term_t term, std::string id, index_t prevLogIndex, term_t prevLogTerm) {
 
   TRI_ASSERT(_vocbase != nullptr);
 
@@ -277,6 +292,11 @@ bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
     if (term > _term) {
       termNoLock(term);
     }
+
+    if (!logMatches(prevLogIndex,prevLogTerm)) {
+      return false;
+    }
+    
     if (_leaderID != id) {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Set _leaderID to " << id << " in term " << _term;
@@ -421,7 +441,7 @@ void Constituent::callElection() {
     
     auto res = ClusterComm::instance()->wait(
       "", coordinatorTransactionID, 0, "",
-      duration<double>(steady_clock::now()-timeout).count());
+      duration<double>(timeout - steady_clock::now()).count());
 
     if (res.status == CL_COMM_SENT) {
       auto body = res.result->getBodyVelocyPack();
@@ -571,6 +591,11 @@ void Constituent::run() {
           if (_lastHeartbeatSeen > 0.0) {
             double now = TRI_microtime();
             randWait -= static_cast<int64_t>(M * (now-_lastHeartbeatSeen));
+            if (randWait < a) {
+              randWait = a;
+            } else if (randWait > b) {
+              randWait = b;
+            }
           }
         }
        

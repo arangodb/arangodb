@@ -629,6 +629,14 @@ class AgencyComm {
 
   void updateEndpoints(arangodb::velocypack::Slice const&);
 
+  bool lockRead(std::string const&, double, double);
+
+  bool lockWrite(std::string const&, double, double);
+
+  bool unlockRead(std::string const&, double);
+
+  bool unlockWrite(std::string const&, double);
+
   AgencyCommResult sendTransactionWithFailover(AgencyTransaction const&,
                                                double timeout = 0.0);
 
