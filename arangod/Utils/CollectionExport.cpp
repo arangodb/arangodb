@@ -31,6 +31,7 @@
 #include "Transaction/Hints.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -78,7 +79,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     uint64_t const maxTries = maxWaitTime / SleepTime;
 
     while (++tries < maxTries) {
-      if (_collection->isFullyCollected()) {
+      if (_collection->getPhysical()->isFullyCollected()) {
         break;
       }
       usleep(SleepTime);

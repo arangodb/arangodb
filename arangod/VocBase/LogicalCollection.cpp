@@ -525,11 +525,6 @@ bool LogicalCollection::IsAllowedName(bool allowSystem,
   return true;
 }
 
-/// @brief whether or not a collection is fully collected
-bool LogicalCollection::isFullyCollected() {
-  return getPhysical()->isFullyCollected();
-}
-
 uint64_t LogicalCollection::numberDocuments() const {
   // TODO Ask StorageEngine instead
   return primaryIndex()->size();

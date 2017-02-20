@@ -104,10 +104,6 @@ class LogicalCollection {
   static bool IsAllowedName(velocypack::Slice parameters);
   static bool IsAllowedName(bool isSystem, std::string const& name);
 
-  // TODO: MOVE TO PHYSICAL?
-  bool isFullyCollected(); //should not be exposed
-
-
   // SECTION: Meta Information
   uint32_t version() const { return _version; }
 

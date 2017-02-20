@@ -226,7 +226,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
         }
       }
   
-      if (!collection->isFullyCollected()) {
+      if (!collection->getPhysical()->isFullyCollected()) {
         bool isDeleted = false;
 
         // if there is still some garbage collection to perform,
