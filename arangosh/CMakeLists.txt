@@ -31,7 +31,6 @@ add_executable(${BIN_ARANGOBENCH}
 
 target_link_libraries(${BIN_ARANGOBENCH}
   ${LIB_ARANGO}
-  ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -78,7 +77,6 @@ add_executable(${BIN_ARANGODUMP}
 
 target_link_libraries(${BIN_ARANGODUMP}
   ${LIB_ARANGO}
-  ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -172,7 +170,6 @@ add_executable(${BIN_ARANGOIMP}
 
 target_link_libraries(${BIN_ARANGOIMP}
   ${LIB_ARANGO}
-  ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -219,7 +216,6 @@ add_executable(${BIN_ARANGORESTORE}
 
 target_link_libraries(${BIN_ARANGORESTORE}
   ${LIB_ARANGO}
-  ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
