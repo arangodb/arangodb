@@ -78,7 +78,7 @@ class MMFilesEngine final : public StorageEngine {
   TransactionCollection* createTransactionCollection(TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) override;
 
   // create storage-engine specific collection
-  PhysicalCollection* createPhysicalCollection(LogicalCollection*) override;
+  PhysicalCollection* createPhysicalCollection(LogicalCollection*, VPackSlice const&) override;
 
   // inventory functionality
   // -----------------------

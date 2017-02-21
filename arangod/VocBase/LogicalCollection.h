@@ -104,10 +104,6 @@ class LogicalCollection {
   static bool IsAllowedName(velocypack::Slice parameters);
   static bool IsAllowedName(bool isSystem, std::string const& name);
 
-  // TODO: MOVE TO PHYSICAL?
-  bool isFullyCollected(); //should not be exposed
-
-
   // SECTION: Meta Information
   uint32_t version() const { return _version; }
 
@@ -157,19 +153,13 @@ class LogicalCollection {
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
   std::string statusString();
 
-  TRI_voc_tick_t maxTick() const { return _maxTick; }
-  void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
 
   uint64_t numberDocuments() const;
-
-  // TODO this should be part of physical collection!
-  size_t journalSize() const;
 
   // SECTION: Properties
   TRI_voc_rid_t revision() const;
   bool isLocal() const;
   bool deleted() const;
-  bool doCompact() const;
   bool isSystem() const;
   bool isVolatile() const;
   bool waitForSync() const;
@@ -180,8 +170,6 @@ class LogicalCollection {
   std::unique_ptr<FollowerInfo> const& followers() const;
 
   void setDeleted(bool);
-
-  Ditches* ditches() const;
 
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
@@ -260,13 +248,6 @@ class LogicalCollection {
   int close();
 
   /// datafile management
-
-  /// @brief rotate the active journal - will do nothing if there is no journal
-  int rotateActiveJournal();
-
-  /// @brief increase dead stats for a datafile, if it exists
-  void updateStats(TRI_voc_fid_t fid,
-                   DatafileStatisticsContainer const& values);
 
   bool applyForTickRange(
       TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
@@ -392,11 +373,9 @@ private:
   // SECTION: Properties
   bool _isLocal;
   bool _isDeleted;
-  bool _doCompact;
   bool const _isSystem;
   bool const _isVolatile;
   bool _waitForSync;
-  TRI_voc_size_t _journalSize;
 
   // SECTION: Key Options
   // TODO Really VPack?
@@ -432,8 +411,6 @@ private:
  protected:
 
   std::unique_ptr<PhysicalCollection> _physical;
-
-  TRI_voc_tick_t _maxTick;
 
   std::unique_ptr<KeyGenerator> _keyGenerator;
 

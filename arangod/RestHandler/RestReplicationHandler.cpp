@@ -1258,7 +1258,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
   TRI_ASSERT(col != nullptr);
 
   /* Temporary ASSERTS to prove correctness of new constructor */
-  TRI_ASSERT(col->doCompact() ==
+  TRI_ASSERT(col->getPhysical()->doCompact() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
                  slice, "doCompact", true));
   TRI_ASSERT(

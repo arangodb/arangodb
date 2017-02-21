@@ -279,7 +279,9 @@ int MMFilesWalRecoverState::executeSingleOperation(
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  TRI_voc_tick_t maxTick = collection->maxTick();
+  auto mmfiles = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(mmfiles);
+  TRI_voc_tick_t maxTick = mmfiles->maxTick();
   if (marker->getTick() <= maxTick) {
     // already transferred this marker
     return TRI_ERROR_NO_ERROR;

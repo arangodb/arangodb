@@ -33,6 +33,7 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesWalLogfile.h"
 #include "MMFiles/MMFilesWalMarker.h"
+#include "MMFiles/MMFilesCollection.h" //TODO -- REMOVE
 #include "VocBase/CompactionLocker.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
@@ -611,8 +612,9 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   auto customTypeHandler = dump->_transactionContext->orderCustomTypeHandler();
   dump->_vpackOptions.customTypeHandler = customTypeHandler.get();
 
+  auto mmfiles = toMMFilesCollection(collection);
   // create a barrier so the underlying collection is not unloaded
-  auto b = collection->ditches()->createReplicationDitch(__FILE__, __LINE__);
+  auto b = mmfiles->ditches()->createReplicationDitch(__FILE__, __LINE__);
 
   if (b == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -634,7 +636,7 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   }
 
   // always execute this
-  collection->ditches()->freeDitch(b);
+  mmfiles->ditches()->freeDitch(b);
 
   return res;
 }

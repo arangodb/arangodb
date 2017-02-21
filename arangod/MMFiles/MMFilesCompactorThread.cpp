@@ -547,7 +547,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       removeDatafile(collection, compaction._datafile);
 
       // add a deletion ditch to the collection
-      auto b = collection->ditches()->createDropDatafileDitch(
+      auto b = toMMFilesCollection(collection)->ditches()->createDropDatafileDitch(
           compaction._datafile, collection, DropDatafileCallback, __FILE__,
           __LINE__);
       
@@ -576,7 +576,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
       if (i == 0) {
         // add a rename marker
-        auto b = collection->ditches()->createRenameDatafileDitch(
+        auto b = toMMFilesCollection(collection)->ditches()->createRenameDatafileDitch(
             compaction._datafile, context->_compactor, context->_collection, RenameDatafileCallback, __FILE__,
             __LINE__);
 
@@ -591,7 +591,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         removeDatafile(collection, compaction._datafile);
 
         // add a drop datafile marker
-        auto b = collection->ditches()->createDropDatafileDitch(
+        auto b = toMMFilesCollection(collection)->ditches()->createDropDatafileDitch(
             compaction._datafile, collection, DropDatafileCallback, __FILE__,
             __LINE__);
 
@@ -660,7 +660,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   uint64_t const numDocuments = getNumberOfDocuments(collection);
 
   // get maximum size of result file
-  uint64_t maxSize = maxSizeFactor() * (uint64_t)collection->journalSize();
+  uint64_t maxSize = maxSizeFactor() * (uint64_t)collection->getPhysical()->journalSize();
   if (maxSize < 8 * 1024 * 1024) {
     maxSize = 8 * 1024 * 1024;
   }
@@ -871,7 +871,7 @@ void MMFilesCompactorThread::run() {
               return;
             }
 
-            bool doCompact = collection->doCompact();
+            bool doCompact = collection->getPhysical()->doCompact();
 
             // for document collection, compactify datafiles
             if (collection->status() == TRI_VOC_COL_STATUS_LOADED && doCompact) {
@@ -891,7 +891,7 @@ void MMFilesCompactorThread::run() {
               try {
                 double const now = TRI_microtime();
                 if (physical->lastCompactionStamp() + compactionCollectionInterval() <= now) {
-                  auto ce = collection->ditches()->createCompactionDitch(__FILE__,
+                  auto ce = toMMFilesCollection(collection)->ditches()->createCompactionDitch(__FILE__,
                                                                         __LINE__);
 
                   if (ce == nullptr) {
@@ -913,7 +913,7 @@ void MMFilesCompactorThread::run() {
                       // in case an error occurs, we must still free this ditch
                     }
 
-                    collection->ditches()->freeDitch(ce);
+                    toMMFilesCollection(collection)->ditches()->freeDitch(ce);
                   }
                 }
               } catch (...) {

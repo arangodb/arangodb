@@ -101,7 +101,9 @@ class MMFilesCollection final : public PhysicalCollection {
   };
 
  public:
-  explicit MMFilesCollection(LogicalCollection*);
+  explicit MMFilesCollection(LogicalCollection*, VPackSlice const& info);
+  explicit MMFilesCollection(LogicalCollection*, PhysicalCollection*); //use in cluster only!!!!!
+
   ~MMFilesCollection();
   
   std::string const& path() const override {
@@ -112,6 +114,9 @@ class MMFilesCollection final : public PhysicalCollection {
     _path = path;
   };
 
+  virtual int updateProperties(VPackSlice const& slice, bool doSync) override;
+  virtual PhysicalCollection* clone(LogicalCollection*, PhysicalCollection*) override;
+
   TRI_voc_rid_t revision() const override;
 
   void setRevision(TRI_voc_rid_t revision, bool force);
@@ -120,9 +125,12 @@ class MMFilesCollection final : public PhysicalCollection {
 
   int64_t initialCount() const override;
   void updateCount(int64_t) override;
+  size_t journalSize() const override { return _journalSize; };
+  TRI_voc_tick_t maxTick() const { return _maxTick; }
+  void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
   
   /// @brief return engine-specific figures
-  void figures(std::shared_ptr<arangodb::velocypack::Builder>&) override;
+  void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
   
   // datafile management
   bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
@@ -157,7 +165,7 @@ class MMFilesCollection final : public PhysicalCollection {
   int sealDatafile(MMFilesDatafile* datafile, bool isCompactor);
 
   /// @brief increase dead stats for a datafile, if it exists
-  void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) override {
+  void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) {
     _datafileStatistics.update(fid, values);
   }
    
@@ -189,8 +197,7 @@ class MMFilesCollection final : public PhysicalCollection {
   double lastCompactionStamp() const { return _lastCompactionStamp; }
   void lastCompactionStamp(double value) { _lastCompactionStamp = value; }
 
-  
-  Ditches* ditches() const override { return &_ditches; }
+  Ditches* ditches() const { return &_ditches; }
   
   void open(bool ignoreErrors) override;
 
@@ -198,6 +205,9 @@ class MMFilesCollection final : public PhysicalCollection {
   int iterateMarkersOnLoad(arangodb::transaction::Methods* trx) override;
   
   bool isFullyCollected() const override;
+
+  bool doCompact() const override { return _doCompact; }
+
   
   int64_t uncollectedLogfileEntries() const {
     return _uncollectedLogfileEntries.load();
@@ -451,11 +461,25 @@ class MMFilesCollection final : public PhysicalCollection {
     char const* _lastCompactionStatus;
     double _lastCompactionStamp;
     std::string _path;
+    TRI_voc_size_t _journalSize;
 
     // whether or not secondary indexes should be filled
     bool _useSecondaryIndexes;
-
+    bool _doCompact;
+    TRI_voc_tick_t _maxTick;
 };
+
+inline MMFilesCollection* toMMFilesCollection(PhysicalCollection* physical){
+  auto rv =  dynamic_cast<MMFilesCollection*>(physical);
+  TRI_ASSERT(rv != nullptr);
+  return rv;
+}
+
+inline MMFilesCollection* toMMFilesCollection(LogicalCollection* logical){
+  auto phys = logical->getPhysical();
+  TRI_ASSERT(phys);
+  return toMMFilesCollection(phys);
+}
 
 }
 

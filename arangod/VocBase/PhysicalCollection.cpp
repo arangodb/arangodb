@@ -40,6 +40,11 @@
 
 using namespace arangodb;
 
+
+void PhysicalCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder){
+    this->figuresSpecific(builder);
+};
+
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
 

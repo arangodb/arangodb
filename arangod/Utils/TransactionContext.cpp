@@ -27,6 +27,7 @@
 #include "RestServer/TransactionManagerFeature.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesCollection.h" //TODO -- REMOVE
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
@@ -127,7 +128,7 @@ DocumentDitch* TransactionContext::orderDitch(LogicalCollection* collection) {
   }
 
   // this method will not throw, but may return a nullptr
-  auto ditch = collection->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
+  auto ditch = toMMFilesCollection(collection)->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
 
   if (ditch != nullptr) {
     try {

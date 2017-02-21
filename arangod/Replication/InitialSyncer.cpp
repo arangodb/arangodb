@@ -1052,7 +1052,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       return res;
     }
     
-    ditch = col->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+    ditch = toMMFilesCollection(col)->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
 
     if (ditch == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -1061,7 +1061,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 
   TRI_ASSERT(ditch != nullptr);
 
-  TRI_DEFER(col->ditches()->freeDitch(ditch));
+  TRI_DEFER(toMMFilesCollection(col)->ditches()->freeDitch(ditch));
 
   {
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);

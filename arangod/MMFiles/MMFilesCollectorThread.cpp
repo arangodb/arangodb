@@ -979,7 +979,9 @@ int MMFilesCollectorThread::updateDatafileStatistics(
   // iterate over all datafile infos and update the collection's datafile stats
   for (auto it = cache->dfi.begin(); it != cache->dfi.end();
        /* no hoisting */) {
-    collection->updateStats((*it).first, (*it).second);
+    MMFilesCollection* mmfiles = static_cast<MMFilesCollection*>(collection->getPhysical());
+    TRI_ASSERT(mmfiles);
+    mmfiles->updateStats((*it).first, (*it).second);
 
     // flush the local datafile info so we don't update the statistics twice
     // with the same values
@@ -989,7 +991,7 @@ int MMFilesCollectorThread::updateDatafileStatistics(
 
   return TRI_ERROR_NO_ERROR;
 }
-      
+
 void MMFilesCollectorThread::broadcastCollectorResult(int res) { 
   CONDITION_LOCKER(guard, _collectorResultCondition);
   _collectorResult = res;

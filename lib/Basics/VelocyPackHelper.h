@@ -244,11 +244,36 @@ class VelocyPackHelper {
     return defaultValue;
   }
 
+  template <typename T>
+  static T readNumericValue(VPackSlice info, std::string const& name, T def) {
+    if (!info.isObject()) {
+      return def;
+    }
+    return getNumericValue<T>(info, name.c_str(), def);
+  }
+
+  template <typename T, typename BaseType>
+  static T readNumericValue(VPackSlice info, std::string const& name, T def) {
+    if (!info.isObject()) {
+      return def;
+    }
+    // nice extra conversion required for Visual Studio pickyness
+    return static_cast<T>(getNumericValue<BaseType>(info, name.c_str(), static_cast<BaseType>(def)));
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a boolean sub-element, or a default if it does not exist
   //////////////////////////////////////////////////////////////////////////////
 
   static bool getBooleanValue(VPackSlice const&, char const*, bool);
+  static bool readBooleanValue(VPackSlice info, std::string const& name,
+                               bool def) {
+    if (!info.isObject()) {
+      return def;
+    }
+    return getBooleanValue(info, name.c_str(), def);
+  }
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string sub-element, or throws if <name> does not exist

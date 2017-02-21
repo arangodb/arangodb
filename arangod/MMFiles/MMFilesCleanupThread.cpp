@@ -164,7 +164,8 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
   // loop until done
 
   while (true) {
-    auto ditches = collection->ditches();
+    auto mmfiles = toMMFilesCollection(collection);
+    auto ditches = mmfiles->ditches();
 
     TRI_ASSERT(ditches != nullptr);
 
@@ -226,7 +227,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
         }
       }
   
-      if (!collection->isFullyCollected()) {
+      if (!collection->getPhysical()->isFullyCollected()) {
         bool isDeleted = false;
 
         // if there is still some garbage collection to perform,

@@ -1328,10 +1328,10 @@ static void JS_PropertiesVocbaseCol(
     TRI_GET_GLOBAL_STRING(IsVolatileKey);
     TRI_GET_GLOBAL_STRING(JournalSizeKey);
     TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-    result->Set(DoCompactKey, v8::Boolean::New(isolate, info->doCompact()));
+    result->Set(DoCompactKey, v8::Boolean::New(isolate, info->getPhysical()->doCompact()));
     result->Set(IsSystemKey, v8::Boolean::New(isolate, info->isSystem()));
     result->Set(IsVolatileKey, v8::Boolean::New(isolate, info->isVolatile()));
-    result->Set(JournalSizeKey, v8::Number::New(isolate, static_cast<double>(info->journalSize())));
+    result->Set(JournalSizeKey, v8::Number::New(isolate, static_cast<double>(info->getPhysical()->journalSize())));
     result->Set(WaitForSyncKey, v8::Boolean::New(isolate, info->waitForSync()));
     result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
                 v8::Number::New(isolate, info->indexBuckets()));
@@ -1457,12 +1457,12 @@ static void JS_PropertiesVocbaseCol(
   TRI_GET_GLOBAL_STRING(IsSystemKey);
   TRI_GET_GLOBAL_STRING(IsVolatileKey);
   TRI_GET_GLOBAL_STRING(JournalSizeKey);
-  result->Set(DoCompactKey, v8::Boolean::New(isolate, collection->doCompact()));
+  result->Set(DoCompactKey, v8::Boolean::New(isolate, collection->getPhysical()->doCompact()));
   result->Set(IsSystemKey, v8::Boolean::New(isolate, collection->isSystem()));
   result->Set(IsVolatileKey,
               v8::Boolean::New(isolate, collection->isVolatile()));
   result->Set(JournalSizeKey,
-              v8::Number::New(isolate, (double) collection->journalSize()));
+              v8::Number::New(isolate, (double) collection->getPhysical()->journalSize()));
   result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
               v8::Number::New(isolate, collection->indexBuckets()));
 
@@ -2095,7 +2095,7 @@ static void JS_RotateVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  res = collection->rotateActiveJournal();
+  res = collection->getPhysical()->rotateActiveJournal();
 
   trx.finish(res);
 

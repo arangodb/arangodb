@@ -37,7 +37,6 @@ namespace transaction {
 class Methods;
 }
 
-class Ditches;
 struct DocumentIdentifierToken;
 class Index;
 class LogicalCollection;
@@ -46,17 +45,18 @@ struct OperationOptions;
 
 class PhysicalCollection {
  protected:
-  explicit PhysicalCollection(LogicalCollection* collection) : _logicalCollection(collection) {}
+  explicit PhysicalCollection(LogicalCollection* collection, VPackSlice const& info) : _logicalCollection(collection) {}
 
  public:
   virtual ~PhysicalCollection() = default;
   
-  virtual Ditches* ditches() const = 0;
-
   //path to logical collection
   virtual std::string const& path() const = 0;
   virtual void setPath(std::string const&) = 0; // should be set during collection creation
                                                 // creation happens atm in engine->createCollection
+  virtual int updateProperties(VPackSlice const& slice, bool doSync) = 0;
+  
+  virtual PhysicalCollection* clone(LogicalCollection*, PhysicalCollection*) = 0;
 
   virtual TRI_voc_rid_t revision() const = 0;
   
@@ -64,19 +64,20 @@ class PhysicalCollection {
 
   virtual void updateCount(int64_t) = 0;
 
-  virtual void figures(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
+  virtual size_t journalSize() const = 0;
+  
+  virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
+  void figures(std::shared_ptr<arangodb::velocypack::Builder>& builder);
   
   virtual int close() = 0;
   
   /// @brief rotate the active journal - will do nothing if there is no journal
+  /// REVIEW - MOVE INTO MMFILES?? - used in v8-collection
   virtual int rotateActiveJournal() = 0;
   
   virtual bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                                  std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) = 0;
 
-  /// @brief increase dead stats for a datafile, if it exists
-  virtual void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) = 0;
-      
   /// @brief report extra memory used by indexes etc.
   virtual size_t memory() const = 0;
     
@@ -90,6 +91,7 @@ class PhysicalCollection {
   virtual uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const = 0;
 
   virtual bool isFullyCollected() const = 0;
+  virtual bool doCompact() const = 0;
 
   ////////////////////////////////////
   // -- SECTION Indexes --

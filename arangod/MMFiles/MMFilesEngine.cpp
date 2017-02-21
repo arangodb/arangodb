@@ -233,9 +233,9 @@ TransactionCollection* MMFilesEngine::createTransactionCollection(TransactionSta
 }
 
 // create storage-engine specific collection
-PhysicalCollection* MMFilesEngine::createPhysicalCollection(LogicalCollection* collection) {
+PhysicalCollection* MMFilesEngine::createPhysicalCollection(LogicalCollection* collection, VPackSlice const& info) {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
-  return new MMFilesCollection(collection);
+  return new MMFilesCollection(collection, info);
 }
 
 void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {    
@@ -618,10 +618,10 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
   std::string const path = databasePath(vocbase);
 
   // sanity check
-  if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameters->journalSize()) {
+  if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameters->getPhysical()->journalSize()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create datafile '" << parameters->name() << "' in '"
              << path << "', maximal size '"
-             << parameters->journalSize() << "' is too small";
+             << parameters->getPhysical()->journalSize() << "' is too small";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATAFILE_FULL);
   }
 
@@ -2126,7 +2126,9 @@ int MMFilesEngine::transferMarkersWorker(
   // used only for crash / recovery tests
   int numMarkers = 0;
 
-  TRI_voc_tick_t const minTransferTick = collection->maxTick();
+  MMFilesCollection* mmfiles = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(mmfiles);
+  TRI_voc_tick_t const minTransferTick = mmfiles->maxTick();
   TRI_ASSERT(!operations.empty());
 
   for (auto it2 = operations.begin(); it2 != operations.end(); ++it2) {
@@ -2217,7 +2219,7 @@ char* MMFilesEngine::nextFreeMarkerPosition(
     // we only need the ditches when we are outside the recovery
     // the compactor will not run during recovery
     auto ditch =
-        collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+        toMMFilesCollection(collection)->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
 
     if (ditch == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -2247,8 +2249,10 @@ void MMFilesEngine::finishMarker(char const* walPosition,
   // update ticks
   TRI_UpdateTicksDatafile(datafile, marker);
 
-  TRI_ASSERT(collection->maxTick() < tick);
-  collection->maxTick(tick);
+  MMFilesCollection* mmfiles = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(mmfiles);
+  TRI_ASSERT(mmfiles->maxTick() < tick);
+  mmfiles->maxTick(tick);
 
   cache->operations->emplace_back(MMFilesCollectorOperation(
       datafilePosition, marker->getSize(), walPosition, cache->lastFid));
