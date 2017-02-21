@@ -165,7 +165,7 @@ class MMFilesCollection final : public PhysicalCollection {
   int sealDatafile(MMFilesDatafile* datafile, bool isCompactor);
 
   /// @brief increase dead stats for a datafile, if it exists
-  void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) override {
+  void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) {
     _datafileStatistics.update(fid, values);
   }
    

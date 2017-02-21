@@ -877,11 +877,6 @@ int LogicalCollection::rotateActiveJournal() {
   return getPhysical()->rotateActiveJournal();
 }
 
-void LogicalCollection::updateStats(TRI_voc_fid_t fid,
-                                    DatafileStatisticsContainer const& values) {
-  return getPhysical()->updateStats(fid, values);
-}
-
 bool LogicalCollection::applyForTickRange(
     TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
     std::function<bool(TRI_voc_tick_t foundTick,

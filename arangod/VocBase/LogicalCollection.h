@@ -254,10 +254,6 @@ class LogicalCollection {
   /// @brief rotate the active journal - will do nothing if there is no journal
   int rotateActiveJournal();
 
-  /// @brief increase dead stats for a datafile, if it exists
-  void updateStats(TRI_voc_fid_t fid,
-                   DatafileStatisticsContainer const& values);
-
   bool applyForTickRange(
       TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
       std::function<bool(TRI_voc_tick_t foundTick,

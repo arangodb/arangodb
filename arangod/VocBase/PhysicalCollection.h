@@ -80,9 +80,6 @@ class PhysicalCollection {
   virtual bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                                  std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) = 0;
 
-  /// @brief increase dead stats for a datafile, if it exists
-  virtual void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) = 0;
-      
   /// @brief report extra memory used by indexes etc.
   virtual size_t memory() const = 0;
     
