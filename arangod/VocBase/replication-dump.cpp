@@ -571,7 +571,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
   };
 
   try {
-    bool hasMore = collection->applyForTickRange(dataMin, dataMax, callback);
+    bool hasMore = collection->getPhysical()->applyForTickRange(dataMin, dataMax, callback);
 
     if (lastFoundTick > 0) {
       // data available for requested range
