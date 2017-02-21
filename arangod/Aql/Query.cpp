@@ -462,7 +462,7 @@ void Query::registerWarning(int code, char const* details) {
 void Query::prepare(QueryRegistry* registry) {
   TRI_ASSERT(registry != nullptr);
 
-  std::unique_ptr<ExecutionPlan> plan(std::move(prepare()));
+  std::unique_ptr<ExecutionPlan> plan(prepare());
   TRI_ASSERT(plan != nullptr);
 
   enterState(EXECUTION);

@@ -330,7 +330,11 @@ while [ $# -gt 0 ];  do
         --targetDir)
             shift
             TARGET_DIR=$1
-            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DPACKAGE_TARGET_DIR=$1"
+            if test "`uname -o||true`" == "Cygwin"; then
+                CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DPACKAGE_TARGET_DIR=`cygpath --windows $1`"
+            else
+                CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DPACKAGE_TARGET_DIR=$1"
+            fi
             shift
             ;;
 

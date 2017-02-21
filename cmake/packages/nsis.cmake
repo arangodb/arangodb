@@ -82,6 +82,10 @@ list(APPEND PACKAGES_LIST package-arongodb-server-zip)
 ################################################################################
 # hook to build the client package
 ################################################################################
+set(CPACK_CLIENT_PACKAGE_NAME "${CPACK_PACKAGE_NAME}-client")
+
+set(ARANGODB_CLIENT_PACKAGE_FILE_NAME "${CPACK_CLIENT_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
+
 string(LENGTH "${CLIENT_BUILD_DIR}" CLIENT_BUILD_DIR_LEN)
 if (${CLIENT_BUILD_DIR_LEN} EQUAL 0)
   set(CLIENT_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/../p)
@@ -90,27 +94,35 @@ endif()
 configure_file(cmake/packages/client/nsis.txt ${CLIENT_BUILD_DIR}/CMakeLists.txt @ONLY)
 add_custom_target(package-arongodb-client-nsis
   COMMAND ${CMAKE_COMMAND} .
+  COMMENT "configuring client package environment"
   COMMAND ${CMAKE_CPACK_COMMAND} -G NSIS -C ${CMAKE_BUILD_TYPE}
-  COMMAND cp *.exe ${PROJECT_BINARY_DIR} 
+  COMMENT "building client packages"
+  COMMAND ${CMAKE_COMMAND} -E copy ${CLIENT_BUILD_DIR}/${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.exe ${PROJECT_BINARY_DIR}
+  COMMENT "uploading client packages"
   WORKING_DIRECTORY ${CLIENT_BUILD_DIR})
 
 
 list(APPEND PACKAGES_LIST package-arongodb-client-nsis)
 
 add_custom_target(copy_nsis_packages
-  COMMAND cp *.exe ${PACKAGE_TARGET_DIR})
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_PACKAGE_FILE_NAME}.exe ${PACKAGE_TARGET_DIR})
 
 list(APPEND COPY_PACKAGES_LIST copy_nsis_packages)
 
 add_custom_target(copy_zip_packages
-  COMMAND cp *.zip ${PACKAGE_TARGET_DIR})
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_PACKAGE_FILE_NAME}.zip ${PACKAGE_TARGET_DIR})
 
 list(APPEND COPY_PACKAGES_LIST copy_zip_packages)
 
 add_custom_target(remove_packages
-  COMMAND rm -f *.zip
-  COMMAND rm -f *.exe
-  COMMAND rm -rf _CPack_Packages
+  COMMAND ${CMAKE_COMMAND} -E remove_directory _CPack_Packages
+  COMMENT Removing server packaging build directory
+  COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_PACKAGE_FILE_NAME}.zip
+  COMMENT Removing local target zip packages
+  COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_PACKAGE_FILE_NAME}.exe
+  COMMENT Removing local target nsis packages
+  COMMAND ${CMAKE_COMMAND} -E remove ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.exe
+  COMMENT Removing local target nsis client packages
   )
 
 list(APPEND CLEAN_PACKAGES_LIST remove_packages)

@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
@@ -811,7 +811,7 @@ bool AgencyComm::exists(std::string const& key) {
     return false;
   }
 
-  auto parts = arangodb::basics::StringUtils::split(key, "/");
+  auto parts = basics::StringUtils::split(key, "/");
   std::vector<std::string> allParts;
   allParts.reserve(parts.size() + 1);
   allParts.push_back(AgencyCommManager::path());
@@ -1130,7 +1130,7 @@ bool AgencyComm::ensureStructureInitialized() {
       std::vector<std::string>({AgencyCommManager::path(), "Secret"}));
 
   if (!secretValue.isString()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Couldn't find secret in agency!";
+    LOG_TOPIC(ERR, Logger::CLUSTER) << "Couldn't find secret in agency!";
     return false;
   }
   std::string const secret = secretValue.copyString();
@@ -1489,16 +1489,7 @@ AgencyCommResult AgencyComm::send(
       << "': " << body;
 
   arangodb::httpclient::SimpleHttpClient client(connection, timeout, false);
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr only happens during controlled shutdown
-    result._message = "could not send request to agency because of shutdown";
-    LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
-      << "could not send request to agency because of shutdown";
-
-    return result;
-  }
-  client.setJwt(cc->jwt());
+  client.setJwt(ClusterComm::instance()->jwt());
   client.keepConnectionOnDestruction(true);
 
   // set up headers
@@ -1699,10 +1690,10 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
 
     return result.successful();
   } catch (std::exception const& e) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Fatal error initializing agency " << e.what();
+    LOG_TOPIC(FATAL, Logger::CLUSTER) << "Fatal error initializing agency " << e.what();
     FATAL_ERROR_EXIT();
   } catch (...) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Fatal error initializing agency";
+    LOG_TOPIC(FATAL, Logger::CLUSTER) << "Fatal error initializing agency";
     FATAL_ERROR_EXIT();
   }
 }
