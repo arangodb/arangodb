@@ -2,8 +2,8 @@
 # these are the install targets for the client package.
 # we can't use RUNTIME DESTINATION here.
 
-set(STRIP_DIR "${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}/strip")
-
+set(STRIP_DIR "${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}/cstrip")
+add_custom_target(strip_install_client ALL)
 strip_install_bin_and_config(arangobench   ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
 strip_install_bin_and_config(arangodump    ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
 strip_install_bin_and_config(arangoimp     ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
