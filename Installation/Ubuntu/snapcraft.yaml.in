@@ -17,7 +17,7 @@ parts:
   @CPACK_PACKAGE_NAME@:
     source: @CPACK_PACKAGE_TGZ@
     plugin: dump
-    snap:
+    prime:
       - -etc
       - -var
       - -lib
