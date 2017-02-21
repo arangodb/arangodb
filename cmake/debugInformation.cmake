@@ -5,16 +5,21 @@
 macro(install_debinfo
     STRIP_DIR
     USER_SUB_DEBINFO_DIR
-    USER_FILE
-    USER_STRIP_FILE)
+    USER_OUTPUT_DIRECTORY
+    USER_TARGET)
 
+  string(LENGTH "${USER_TARGET}" TLEN)
+  if (TLEN EQUAL 0)
+    message(FATAL_ERROR "empty target specified for creating debug file")
+  endif()
+  
   set(SUB_DEBINFO_DIR ${USER_SUB_DEBINFO_DIR})
-  set(FILE ${USER_FILE})
-  set(STRIP_FILE ${STRIP_DIR}/${USER_STRIP_FILE})
+  set(FILE ${USER_OUTPUT_DIRECTORY}/${USER_TARGET}${CMAKE_EXECUTABLE_SUFFIX})
+  set(STRIP_FILE ${STRIP_DIR}/${USER_TARGET}${CMAKE_EXECUTABLE_SUFFIX})
 
-  execute_process(COMMAND mkdir -p ${STRIP_DIR})
-  if (NOT MSVC AND CMAKE_STRIP AND FILE_EXECUTABLE)
-    execute_process(COMMAND "rm" -f ${STRIP_FILE})
+  if (NOT MSVC AND CMAKE_STRIP AND FILE_EXECUTABLE AND STRIP_FILE)
+    execute_process(COMMAND "${CMAKE_COMMAND} -E MAKE_DIRECTORY ${STRIP_DIR}")
+    execute_process(COMMAND "${CMAKE_COMMAND} -E REMOVE_RECURSE ${STRIP_FILE}")
     
     execute_process(
       COMMAND ${FILE_EXECUTABLE} ${FILE}
@@ -33,7 +38,7 @@ macro(install_debinfo
       set(SUB_DEBINFO_DIR .build-id/${SUB_DIR})
       set(STRIP_FILE "${STRIP_FILE}.debug")
     else ()
-      set(STRIP_FILE ${USER_STRIP_FILE})
+      set(STRIP_FILE ${USER_TARGET}${CMAKE_EXECUTABLE_SUFFIX})
     endif()
     execute_process(COMMAND ${CMAKE_OBJCOPY} --only-keep-debug ${FILE} ${STRIP_DIR}/${STRIP_FILE})
     set(FILE ${STRIP_DIR}/${STRIP_FILE})
@@ -42,7 +47,6 @@ macro(install_debinfo
       DESTINATION ${CMAKE_INSTALL_DEBINFO_DIR}/${SUB_DEBINFO_DIR})
   endif()
 endmacro()
-
 
 # Detect whether this system has SHA checksums
 macro(detect_binary_id_type sourceVar)
@@ -62,4 +66,38 @@ macro(detect_binary_id_type sourceVar)
       set(${sourceVar} true)
     endif()
   endif()
+endmacro()
+
+macro(strip_install_bin_and_config
+    TARGET
+    INTERMEDIATE_STRIP_DIR
+    TAGET_DIR
+    BIND_TARGET)
+  
+  string(LENGTH "${TARGET}" TLEN)
+  if (TLEN EQUAL 0)
+    message(FATAL_ERROR "empty target specified for creating stripped file")
+  endif()
+  set(FILE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}/${TARGET}${CMAKE_EXECUTABLE_SUFFIX})
+  set(STRIP_FILE ${INTERMEDIATE_STRIP_DIR}/${TARGET}${CMAKE_EXECUTABLE_SUFFIX})
+  if (NOT MSVC AND CMAKE_STRIP)
+    set(TARGET_NAME "${BIND_TARGET}_${TARGET}")
+    ExternalProject_Add("${TARGET_NAME}"
+      SOURCE_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}
+      
+      CONFIGURE_COMMAND ${CMAKE_COMMAND} -E make_directory ${INTERMEDIATE_STRIP_DIR}
+      COMMENT "creating strip directory"
+      
+      BUILD_COMMAND ${CMAKE_STRIP} ${FILE} -o ${STRIP_FILE}
+      COMMENT "stripping binary"
+
+      INSTALL_COMMAND  ${CMAKE_COMMAND} -E copy ${STRIP_FILE} ${TAGET_DIR}
+      )
+  else ()
+    install(
+      PROGRAMS ${FILE}
+      DESTINATION TAGET_DIR)
+  endif()
+  install_config(${TARGET})
+
 endmacro()

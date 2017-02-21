@@ -77,7 +77,7 @@ class Agent : public arangodb::Thread {
   bool fitness() const;
 
   /// @brief Leader ID
-  index_t lastCommitted() const;
+  std::pair<index_t, index_t> lastCommitted() const;
 
   /// @brief Leader ID
   std::string leaderID() const;
@@ -222,6 +222,9 @@ class Agent : public arangodb::Thread {
   /// @brief Update a peers endpoint in my configuration
   void updatePeerEndpoint(std::string const& id, std::string const& ep);
 
+  /// @brief Assemble an agency to commitId
+  query_t buildDB(index_t);
+
   /// @brief State reads persisted state and prepares the agent
   friend class State;
   friend class Compactor;
@@ -271,6 +274,9 @@ class Agent : public arangodb::Thread {
   index_t _lastAppliedIndex;
 
   /// @brief Last compaction index
+  index_t _lastCompactionIndex;
+
+  /// @brief Last compaction index
   index_t _leaderCommitIndex;
 
   /// @brief Spearhead (write) kv-store
@@ -281,6 +287,9 @@ class Agent : public arangodb::Thread {
 
   /// @brief Committed (read) kv-store
   Store _transient;
+
+  /// @brief Last compacted store
+  Store _compacted;
 
   /// @brief Condition variable for appendEntries
   arangodb::basics::ConditionVariable _appendCV;

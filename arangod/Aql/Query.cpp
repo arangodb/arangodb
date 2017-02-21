@@ -461,12 +461,12 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
   if (_queryString != nullptr && 
       queryStringHash != DontCache &&
       _part == PART_MAIN) {
-     // LOG_TOPIC(ERR, Logger::FIXME) << "TRYING TO FIND PLAN IN CACHE: " << std::string(_queryString, _queryStringLength) << ", HASH: " << queryStringHash;
+    // LOG_TOPIC(INFO, Logger::FIXME) << "trying to find query in execution plan cache: '" << std::string(_queryString, _queryStringLength) << "', hash: " << queryStringHash;
 
     // store & lookup velocypack plans!!
     std::shared_ptr<PlanCacheEntry> planCacheEntry = PlanCache::instance()->lookup(_vocbase, queryStringHash, _queryString, _queryStringLength);
     if (planCacheEntry != nullptr) {
-      // LOG_TOPIC(ERR, Logger::FIXME) << "FOUND PLAN IN CACHE FOR " << std::string(_queryString, _queryStringLength) << ", PART: " << (_part == PART_MAIN);
+      // LOG_TOPIC(INFO, Logger::FIXME) << "query found in execution plan cache: '" << std::string(_queryString, _queryStringLength) << "'";
 
       TRI_ASSERT(_trx == nullptr); 
       TRI_ASSERT(_collections.empty());
@@ -512,7 +512,7 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
         _part == PART_MAIN &&
         _warnings.empty() && 
         _ast->root()->isCacheable()) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "STORING PLAN IN CACHE FOR QUERY: " << std::string(_queryString, _queryStringLength) << ",  HASH: " << queryStringHash;
+      // LOG_TOPIC(INFO, Logger::FIXME) << "storing query in execution plan cache '" << std::string(_queryString, _queryStringLength) << "', hash: " << queryStringHash;
       PlanCache::instance()->store(_vocbase, queryStringHash, _queryString, _queryStringLength, plan.get());
     }
   }
