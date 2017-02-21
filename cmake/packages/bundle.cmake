@@ -5,7 +5,6 @@ else()
   set(CPACK_PACKAGE_NAME           "ArangoDB3-CLI")
 endif()
 set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
-set(CPACK_PACKAGE_FILE_NAME      "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_x86_64")
 
 set(CPACK_BUNDLE_ICON            "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/icon.icns")
 
