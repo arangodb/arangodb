@@ -34,6 +34,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexBlock.h"
 #include "Aql/ModificationBlocks.h"
+#include "Aql/Query.h"
 #include "Aql/SortBlock.h"
 #include "Aql/SubqueryBlock.h"
 #include "Aql/TraversalBlock.h"

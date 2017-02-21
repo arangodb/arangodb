@@ -33,10 +33,11 @@
 using namespace arangodb::aql;
 
 /// @brief create the generator
-VariableGenerator::VariableGenerator() : _variables(), _id(0) {
+VariableGenerator::VariableGenerator() 
+    : _variables(), _id(0) {
   _variables.reserve(8);
 }
-
+  
 /// @brief destroy the generator
 VariableGenerator::~VariableGenerator() {
   // free all variables
@@ -67,79 +68,50 @@ Variable* VariableGenerator::createVariable(char const* name, size_t length,
                                             bool isUserDefined) {
   TRI_ASSERT(name != nullptr);
 
-  auto variable = new Variable(std::string(name, length), nextId());
+  auto variable = std::make_unique<Variable>(std::string(name, length), nextId());
 
   if (isUserDefined) {
     TRI_ASSERT(variable->isUserDefined());
   }
 
-  try {
-    _variables.emplace(variable->id, variable);
-  } catch (...) {
-    // prevent memleak
-    delete variable;
-    throw;
-  }
-
-  return variable;
+  _variables.emplace(variable->id, variable.get());
+  return variable.release();
 }
 
 /// @brief generate a variable
 Variable* VariableGenerator::createVariable(std::string const& name,
                                             bool isUserDefined) {
-  auto variable = new Variable(name, nextId());
+  auto variable = std::make_unique<Variable>(name, nextId());
 
   if (isUserDefined) {
     TRI_ASSERT(variable->isUserDefined());
   }
 
-  try {
-    _variables.emplace(variable->id, variable);
-  } catch (...) {
-    // prevent memleak
-    delete variable;
-    throw;
-  }
-
-  return variable;
+  _variables.emplace(variable->id, variable.get());
+  return variable.release();
 }
 
 Variable* VariableGenerator::createVariable(Variable const* original) {
   TRI_ASSERT(original != nullptr);
-  auto variable = original->clone();
+  std::unique_ptr<Variable> variable(original->clone());
 
-  try {
-    _variables.emplace(variable->id, variable);
-  } catch (...) {
-    // prevent memleak
-    delete variable;
-    throw;
-  }
-
-  return variable;
+  _variables.emplace(variable->id, variable.get());
+  return variable.release();
 }
 
 /// @brief generate a variable from VelocyPack
-Variable* VariableGenerator::createVariable(
-    VPackSlice const slice) {
-  auto variable = new Variable(slice);
+Variable* VariableGenerator::createVariable(VPackSlice const slice) {
+  auto variable = std::make_unique<Variable>(slice);
 
   auto existing = getVariable(variable->id);
+  
   if (existing != nullptr) {
     // variable already existed.
-    delete variable;
     return existing;
   }
 
-  try {
-    _variables.emplace(variable->id, variable);
-  } catch (...) {
-    // prevent memleak
-    delete variable;
-    throw;
-  }
-
-  return variable;
+  _variables.emplace(variable->id, variable.get());
+  return variable.release();
 }
 
 /// @brief generate a temporary variable

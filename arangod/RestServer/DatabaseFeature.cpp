@@ -25,6 +25,7 @@
 
 #include "Agency/v8-agency.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -743,6 +744,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker,
     vocbase->setIsOwnAppsDirectory(removeAppsDirectory);
 
     // invalidate all entries for the database
+    arangodb::aql::PlanCache::instance()->invalidate(vocbase);
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
 
     engine->prepareDropDatabase(vocbase, writeMarker, res);

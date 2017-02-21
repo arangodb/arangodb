@@ -28,6 +28,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Functions.h"
+#include "Aql/Query.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"

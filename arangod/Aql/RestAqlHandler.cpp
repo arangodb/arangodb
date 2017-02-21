@@ -26,6 +26,7 @@
 #include "Aql/ClusterBlocks.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -99,7 +100,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
                                       (part == "main" ? PART_MAIN : PART_DEPENDENT));
   
   try {
-    query->prepare(_queryRegistry);
+    query->prepare(_queryRegistry, 0);
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query: " << ex.what();
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN, ex.what());
@@ -169,14 +170,12 @@ void RestAqlHandler::parseQuery() {
     return;
   }
 
-  auto query =
-      new Query(false, _vocbase, queryString.c_str(), queryString.size(),
+  auto query = std::make_unique<Query>(false, _vocbase, queryString.c_str(), queryString.size(),
                 std::shared_ptr<VPackBuilder>(), nullptr, PART_MAIN);
   QueryResult res = query->parse();
   if (res.code != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the Query: " << res.details;
     generateError(rest::ResponseCode::BAD, res.code, res.details);
-    delete query;
     return;
   }
 
@@ -315,7 +314,7 @@ void RestAqlHandler::createQueryFromString() {
                          (part == "main" ? PART_MAIN : PART_DEPENDENT));
   
   try {
-    query->prepare(_queryRegistry);
+    query->prepare(_queryRegistry, 0);
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query: " << ex.what();
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN, ex.what());
