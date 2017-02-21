@@ -35,7 +35,6 @@ namespace arangodb {
 namespace pregel {
 
 struct DMIDMessageFormat : public MessageFormat<DMIDMessage> {
-  static_assert(std::is_arithmetic<T>::value, "Message type must be numeric");
   DMIDMessageFormat() {}
   void unwrapValue(VPackSlice s, DMIDMessage& message) const override {
     VPackArrayIterator array(s);
@@ -43,7 +42,7 @@ struct DMIDMessageFormat : public MessageFormat<DMIDMessage> {
     message.senderId.key = (*(++array)).copyString();
     message.leaderId.shard = (*array).getUInt();
     message.leaderId.key = (*(++array)).copyString();
-    message.value = (*(++array)).getNumber<float>();
+    message.weight = (*(++array)).getNumber<float>();
   }
   void addValue(VPackBuilder& arrayBuilder,
                 DMIDMessage const& message) const override {
@@ -52,7 +51,7 @@ struct DMIDMessageFormat : public MessageFormat<DMIDMessage> {
     arrayBuilder.add(VPackValue(message.senderId.key));
     arrayBuilder.add(VPackValue(message.leaderId.shard));
     arrayBuilder.add(VPackValue(message.leaderId.key));
-    arrayBuilder.add(VPackValue(message.value));
+    arrayBuilder.add(VPackValue(message.weight));
     arrayBuilder.close();
   }
 };

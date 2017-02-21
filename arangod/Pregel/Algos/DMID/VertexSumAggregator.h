@@ -22,9 +22,10 @@
 
 #include <vector>
 #include <velocypack/Builder.h>
-#include <velocypack/Iterators.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+#include <string>
 #include "Pregel/Graph.h"
 
 #ifndef ARANGODB_PREGEL_AGG_DENSE_VECTOR_H
@@ -34,17 +35,17 @@ namespace arangodb {
 namespace pregel {
 
 struct VertexSumAggregator : public IAggregator {
-  static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
   typedef std::map<prgl_shard_t, std::unordered_map<std::string, double>> VertexMap;
+  typedef std::pair<prgl_shard_t, std::unordered_map<std::string, double>> MyPair;
 
   VertexSumAggregator(bool perm = false)
-  : _empty(empty), _permanent(perm) {}
+  : _permanent(perm) {}
   
   // if you use this from a vertex I will end you
-  void aggregate(void const* valuePtr) {
+  void aggregate(void const* valuePtr) override {
     VertexMap const* map = (VertexMap const*)valuePtr;
-    for (auto pair1 const& : map) {
-      for (auto pair2 const& : it.second) {
+    for (MyPair const& pair1 : *map) {
+      for (auto const& pair2 : pair1.second) {
         _entries[pair1.first][pair2.first] += pair2.second;
       }
     }
@@ -52,14 +53,14 @@ struct VertexSumAggregator : public IAggregator {
   
   void parseAggregate(VPackSlice const& slice) override {
     for (auto const& pair: VPackObjectIterator(slice)) {
-      prgl_shard_t shard = it.key.getUInt();
+      prgl_shard_t shard = std::stoi(pair.key.copyString());
       std::string key;
-      VPackLength i = 0;
+      VPackValueLength i = 0;
       for (VPackSlice const& val : VPackArrayIterator(pair.value)) {
         if (i % 2 == 0) {
           key = val.copyString();
         } else {
-          entries[shard][key] += val.getNumber<double>();
+          _entries[shard][key] += val.getNumber<double>();
         }
         i++;
       }
@@ -68,16 +69,16 @@ struct VertexSumAggregator : public IAggregator {
   
   void const* getAggregatedValue() const override { return &_entries; };
   
-  void setAggregatedValue(VPackSlice slice) override {
-    for (auto const& pair: VPackObjectIterator(slice)) {
-      prgl_shard_t shard = it.key.getUInt();
+  void setAggregatedValue(VPackSlice const& slice) override {
+    for (auto const& pair : VPackObjectIterator(slice)) {
+      prgl_shard_t shard = std::stoi(pair.key.copyString());
       std::string key;
-      VPackLength i = 0;
+      VPackValueLength i = 0;
       for (VPackSlice const& val : VPackArrayIterator(pair.value)) {
         if (i % 2 == 0) {
           key = val.copyString();
         } else {
-          entries[shard][key] = val.getNumber<double>();
+          _entries[shard][key] = val.getNumber<double>();
         }
         i++;
       }
@@ -85,9 +86,14 @@ struct VertexSumAggregator : public IAggregator {
   }
   
   void serialize(std::string const& key, VPackBuilder &builder) const override {
-    builder.add(key, VPackValueType::Array);
-    for (T const& e : _entries) {
-      builder.add(VPackValue(e));
+    builder.add(key, VPackValue(VPackValueType::Object));
+    for (auto const& pair1 : _entries) {
+      builder.add(std::to_string(pair1.first), VPackValue(VPackValueType::Array));
+      for (auto const& pair2 : pair1.second) {
+        builder.add(VPackValue(pair2.first));
+        builder.add(VPackValue(pair2.second));
+      }
+      builder.close();
     }
     builder.close();
   };
@@ -101,12 +107,12 @@ struct VertexSumAggregator : public IAggregator {
   double getAggregatedValue(prgl_shard_t shard, std::string const& key) {
     auto const& it1 = _entries.find(shard);
     if (it1 != _entries.end()) {
-      auto const& it2 = it1.second.find(key);
-      if (it2 != it1.second.end()) {
-        return it2.second;
+      auto const& it2 = it1->second.find(key);
+      if (it2 != it1->second.end()) {
+        return it2->second;
       }
     }
-    return _empty;
+    return _default;
   }
   
   //void setValue(prgl_shard_t shard, std::string const& key, double val) {
@@ -138,5 +144,6 @@ struct VertexSumAggregator : public IAggregator {
   double _default = 0;
   bool _permanent;
 };
+}
 }
 #endif

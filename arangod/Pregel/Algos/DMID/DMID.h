@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_SCC_H
-#define ARANGODB_PREGEL_ALGOS_SCC_H 1
+#ifndef ARANGODB_PREGEL_ALGOS_DMID_H
+#define ARANGODB_PREGEL_ALGOS_DMID_H 1
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"

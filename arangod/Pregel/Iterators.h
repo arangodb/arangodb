@@ -68,7 +68,7 @@ class MessageIterator {
 
   // postfix ++
   MessageIterator operator++(int) {
-    MessageIterator result(_data, _size);
+    MessageIterator result(*this);
     ++(*this);
     return result;
   }

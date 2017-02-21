@@ -31,6 +31,7 @@
 #include "Pregel/Algos/SSSP.h"
 #include "Pregel/Algos/ShortestPath.h"
 #include "Pregel/Algos/HITS.h"
+#include "Pregel/Algos/DMID/DMID.h"
 #include "Pregel/Utils.h"
 
 using namespace arangodb;
@@ -58,6 +59,8 @@ IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm,
     return new algos::AsyncSCC(userParams);
   } else if (algorithm == "hits") {
     return new algos::HITS(userParams);
+  } else if (algorithm == "dmid") {
+    return new algos::DMID(userParams);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
@@ -107,7 +110,9 @@ IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
     return createWorker(vocbase, new algos::AsyncSCC(userParams), body);
   } else if (algorithm == "hits") {
     return createWorker(vocbase, new algos::HITS(userParams), body);
-  }  else {
+  } else if (algorithm == "dmid") {
+    return createWorker(vocbase, new algos::DMID(userParams), body);
+  } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
   }

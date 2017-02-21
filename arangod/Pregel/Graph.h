@@ -39,8 +39,12 @@ struct PregelID {
   PregelID() : shard(0), key("") {}
   PregelID(prgl_shard_t s, std::string const& k) : shard(s), key(k) {}
 
-  inline bool operator==(const PregelID& rhs) {
+  inline bool operator==(const PregelID& rhs) const {
     return shard == rhs.shard && key == rhs.key;
+  }
+  
+  inline bool operator<(const PregelID& rhs) const {
+    return shard < rhs.shard || (shard == rhs.shard && key < rhs.key);
   }
   
   bool inline isValid() const {
