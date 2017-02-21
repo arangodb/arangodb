@@ -346,12 +346,15 @@ bool MMFilesCollection::OpenIterator(TRI_df_marker_t const* marker, MMFilesColle
     datafile->_tickMax = tick;
   }
 
-  if (tick > data->_collection->maxTick()) {
+  auto physical = data->_collection->getPhysical();
+  auto mmfiles = static_cast<MMFilesCollection*>(physical);
+  TRI_ASSERT(mmfiles);
+  if (tick > mmfiles->maxTick()) {
     if (type != TRI_DF_MARKER_HEADER &&
         type != TRI_DF_MARKER_FOOTER &&
         type != TRI_DF_MARKER_COL_HEADER &&
         type != TRI_DF_MARKER_PROLOGUE) {
-      data->_collection->maxTick(tick);
+      mmfiles->maxTick(tick);
     }
   }
 
@@ -374,7 +377,8 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection, VPackSlice c
           Helper::readNumericValue<TRI_voc_size_t>(info, "journalSize",
                                            TRI_JOURNAL_DEFAULT_SIZE))),
       _useSecondaryIndexes(true),
-      _doCompact(Helper::readBooleanValue(info, "doCompact", true))
+      _doCompact(Helper::readBooleanValue(info, "doCompact", true)),
+      _maxTick(0)
 {
   setCompactionStatus("compaction not yet started");
 }
@@ -393,6 +397,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical, PhysicalCollect
   _journalSize = mmfiles._journalSize;
   _path = mmfiles._path;
   _doCompact = mmfiles._doCompact;
+  _maxTick = mmfiles._maxTick;
   setCompactionStatus("compaction not yet started");
 
   //  not copied
@@ -970,37 +975,37 @@ bool MMFilesCollection::closeDatafiles(std::vector<MMFilesDatafile*> const& file
   return result;
 }
   
-void MMFilesCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
-    
-    // fills in compaction status
-    char const* lastCompactionStatus = "-";
-    char lastCompactionStampString[21];
-    lastCompactionStampString[0] = '-';
-    lastCompactionStampString[1] = '\0';
+void MMFilesCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
 
-    double lastCompactionStamp;
+  // fills in compaction status
+  char const* lastCompactionStatus = "-";
+  char lastCompactionStampString[21];
+  lastCompactionStampString[0] = '-';
+  lastCompactionStampString[1] = '\0';
 
-    {
-      MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-      lastCompactionStatus = _lastCompactionStatus;
-      lastCompactionStamp = _lastCompactionStamp;
+  double lastCompactionStamp;
+
+  {
+    MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+    lastCompactionStatus = _lastCompactionStatus;
+    lastCompactionStamp = _lastCompactionStamp;
+  }
+
+  if (lastCompactionStatus != nullptr) {
+    if (lastCompactionStamp == 0.0) {
+      lastCompactionStamp = TRI_microtime();
     }
+    struct tm tb;
+    time_t tt = static_cast<time_t>(lastCompactionStamp);
+    TRI_gmtime(tt, &tb);
+    strftime(&lastCompactionStampString[0], sizeof(lastCompactionStampString),
+             "%Y-%m-%dT%H:%M:%SZ", &tb);
+  }
 
-    if (lastCompactionStatus != nullptr) {
-      if (lastCompactionStamp == 0.0) {
-        lastCompactionStamp = TRI_microtime();
-      }
-      struct tm tb;
-      time_t tt = static_cast<time_t>(lastCompactionStamp);
-      TRI_gmtime(tt, &tb);
-      strftime(&lastCompactionStampString[0], sizeof(lastCompactionStampString),
-               "%Y-%m-%dT%H:%M:%SZ", &tb);
-    }
-
-    builder->add("compactionStatus", VPackValue(VPackValueType::Object));
-    builder->add("message", VPackValue(lastCompactionStatus));
-    builder->add("time", VPackValue(&lastCompactionStampString[0]));
-    builder->close();  // compactionStatus
+  builder->add("compactionStatus", VPackValue(VPackValueType::Object));
+  builder->add("message", VPackValue(lastCompactionStatus));
+  builder->add("time", VPackValue(&lastCompactionStampString[0]));
+  builder->close();  // compactionStatus
 
   builder->add("documentReferences", VPackValue(_ditches.numDocumentDitches()));
   
@@ -1056,6 +1061,10 @@ void MMFilesCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& 
   builder->add("count", VPackValue(_revisionsCache.size()));
   builder->add("size", VPackValue(_revisionsCache.memoryUsage()));
   builder->close(); // revisions
+    
+  builder->add("lastTick", VPackValue(_maxTick));
+  builder->add("uncollectedLogfileEntries", VPackValue(uncollectedLogfileEntries()));
+
 }
 
 /// @brief iterate over a vector of datafiles and pick those with a specific

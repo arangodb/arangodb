@@ -153,8 +153,6 @@ class LogicalCollection {
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
   std::string statusString();
 
-  TRI_voc_tick_t maxTick() const { return _maxTick; }
-  void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
 
   uint64_t numberDocuments() const;
 
@@ -422,8 +420,6 @@ private:
  protected:
 
   std::unique_ptr<PhysicalCollection> _physical;
-
-  TRI_voc_tick_t _maxTick;
 
   std::unique_ptr<KeyGenerator> _keyGenerator;
 

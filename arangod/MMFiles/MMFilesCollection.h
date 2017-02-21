@@ -126,9 +126,11 @@ class MMFilesCollection final : public PhysicalCollection {
   int64_t initialCount() const override;
   void updateCount(int64_t) override;
   size_t journalSize() const override { return _journalSize; };
+  TRI_voc_tick_t maxTick() const { return _maxTick; }
+  void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
   
   /// @brief return engine-specific figures
-  void figures(std::shared_ptr<arangodb::velocypack::Builder>&) override;
+  void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
   
   // datafile management
   bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
@@ -465,7 +467,7 @@ class MMFilesCollection final : public PhysicalCollection {
     // whether or not secondary indexes should be filled
     bool _useSecondaryIndexes;
     bool _doCompact;
-
+    TRI_voc_tick_t _maxTick;
 };
 
 }

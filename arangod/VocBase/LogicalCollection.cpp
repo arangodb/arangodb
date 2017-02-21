@@ -168,7 +168,6 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _cleanupIndexes(0),
       _persistentIndexes(0),
       _physical(other.getPhysical()->clone(this,other.getPhysical())),
-      _maxTick(0),
       _keyGenerator() {
   _keyGenerator.reset(KeyGenerator::factory(other.keyOptions()));
 
@@ -218,7 +217,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _cleanupIndexes(0),
       _persistentIndexes(0),
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(this,info)),
-      _maxTick(0),
       _keyGenerator() {
   getPhysical()->setPath(ReadStringValue(info, "path", ""));
   if (!IsAllowedName(info)) {
@@ -1092,15 +1090,6 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
     builder->add("count", VPackValue(numIndexes));
     builder->add("size", VPackValue(sizeIndexes));
     builder->close();  // indexes
-
-    builder->add("lastTick", VPackValue(_maxTick));
-    builder->add("uncollectedLogfileEntries",
-                 VPackValue(
-                   //MOVE TO PHYSICAL
-                   static_cast<arangodb::MMFilesCollection*>(getPhysical())
-                      ->uncollectedLogfileEntries()
-                 )
-                );
 
     // add engine-specific figures
     getPhysical()->figures(builder);

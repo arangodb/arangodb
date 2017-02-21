@@ -69,7 +69,8 @@ class PhysicalCollection {
 
   virtual size_t journalSize() const = 0;
   
-  virtual void figures(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
+  virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
+  void figures(std::shared_ptr<arangodb::velocypack::Builder>& builder);
   
   virtual int close() = 0;
   

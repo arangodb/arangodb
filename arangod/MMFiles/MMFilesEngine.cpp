@@ -2126,7 +2126,9 @@ int MMFilesEngine::transferMarkersWorker(
   // used only for crash / recovery tests
   int numMarkers = 0;
 
-  TRI_voc_tick_t const minTransferTick = collection->maxTick();
+  MMFilesCollection* mmfiles = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(mmfiles);
+  TRI_voc_tick_t const minTransferTick = mmfiles->maxTick();
   TRI_ASSERT(!operations.empty());
 
   for (auto it2 = operations.begin(); it2 != operations.end(); ++it2) {
@@ -2247,8 +2249,10 @@ void MMFilesEngine::finishMarker(char const* walPosition,
   // update ticks
   TRI_UpdateTicksDatafile(datafile, marker);
 
-  TRI_ASSERT(collection->maxTick() < tick);
-  collection->maxTick(tick);
+  MMFilesCollection* mmfiles = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(mmfiles);
+  TRI_ASSERT(mmfiles->maxTick() < tick);
+  mmfiles->maxTick(tick);
 
   cache->operations->emplace_back(MMFilesCollectorOperation(
       datafilePosition, marker->getSize(), walPosition, cache->lastFid));
