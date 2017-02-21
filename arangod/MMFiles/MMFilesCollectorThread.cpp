@@ -33,8 +33,9 @@
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
-#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesIndexElement.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesWalLogfile.h"
@@ -900,7 +901,8 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
   int res = TRI_ERROR_INTERNAL;
 
   try {
-    res = engine->transferMarkers(collection, cache.get(), operations);
+    auto en = static_cast<MMFilesEngine*>(engine);
+    res = en->transferMarkers(collection, cache.get(), operations);
     
     if (res == TRI_ERROR_NO_ERROR && !cache->operations->empty()) {
       queueOperations(logfile, cache);

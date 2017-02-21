@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "MMFiles/MMFilesDatafile.h"
+#include "MMFiles/MMFilesCollectorCache.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
 
@@ -249,7 +250,7 @@ public:
   
   /// @brief transfer markers into a collection
   int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
-                      MMFilesOperationsType const&) override;
+                      MMFilesOperationsType const&);
 
   /// @brief Add engine specific AQL functions.
 

@@ -28,7 +28,6 @@
 #include "Basics/Common.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Indexes/IndexFactory.h"
-#include "MMFiles/MMFilesCollectorCache.h"  //TODO -- REMOVE
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -308,10 +307,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual int shutdownDatabase(TRI_vocbase_t* vocbase) = 0;
 
   virtual int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) = 0;
-
-  /// @brief transfer markers into a collection
-  virtual int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
-                              MMFilesOperationsType const&) = 0;
 
   // AQL functions
   // -------------

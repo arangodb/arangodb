@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_VOCBASE_LOGICAL_COLLECTION_H

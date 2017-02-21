@@ -13,8 +13,8 @@ insert on the same document will result in the last insert discarding the
 previous operations. When a journal file of size (journalSize()) is full, it
 will be sealed and renamed. By applying these operations it will become a
 datafile that is read-only. Datafiles will eventually be merged by a compactor
-thread that does the about the same work as the transferMarkers function,
-reducing the size of the stored data.
+thread that does about the same work as the transferMarkers function, reducing
+the size of the stored data.
 
 Ditches
 -------
