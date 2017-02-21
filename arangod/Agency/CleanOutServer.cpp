@@ -34,7 +34,7 @@ CleanOutServer::CleanOutServer(Node const& snapshot, Agent* agent,
                                std::string const& creator,
                                std::string const& prefix,
                                std::string const& server)
-    : Job(snapshot, agent, jobId, creator, prefix), _server(server) {}
+    : Job(snapshot, agent, jobId, creator, prefix), _server(id(server)) {}
 
 CleanOutServer::~CleanOutServer() {}
 
@@ -124,16 +124,6 @@ JOB_STATUS CleanOutServer::status() {
 }
 
 bool CleanOutServer::create() {  // Only through shrink cluster
-
-  // Lookup server
-  if (_server.compare("DBServer") == 0) {
-    try {
-      _server = uuidLookup(_snapshot, _server);
-    } catch (...) {
-      LOG_TOPIC(ERR, Logger::AGENCY) <<
-        "MoveShard: To server " << _server << " does not exist";
-    }
-  }
 
   LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Todo: Clean out server " + _server + " for shrinkage";

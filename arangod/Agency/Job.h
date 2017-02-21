@@ -126,14 +126,15 @@ struct Job {
 
   virtual bool start() = 0;
 
+  std::string id(std::string const& idOrShortName);
+  std::string uuidLookup(std::string const& shortID);
+
   static std::vector<std::string> availableServers(
     const arangodb::consensus::Node&);
 
   static std::vector<shard_t> clones(
     Node const& snap, std::string const& db, std::string const& col,
     std::string const& shrd);
-
-  static std::string uuidLookup(Node const& snap, std::string const& shortID);
 
   Node const _snapshot;
   Agent* _agent;

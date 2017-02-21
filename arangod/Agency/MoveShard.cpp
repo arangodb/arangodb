@@ -26,8 +26,6 @@
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 
-static std::string const DBServer = "DBServer";
-
 using namespace arangodb::consensus;
 
 MoveShard::MoveShard(Node const& snapshot, Agent* agent,
@@ -39,8 +37,9 @@ MoveShard::MoveShard(Node const& snapshot, Agent* agent,
       _database(database),
       _collection(collection),
       _shard(shard),
-      _from(from),
-      _to(to) {}
+      _from(id(from)),
+      _to(id(to)) {
+}
 
 MoveShard::~MoveShard() {}
 
@@ -62,25 +61,6 @@ void MoveShard::run() {
 }
 
 bool MoveShard::create() {
-
-  // Lookup from server
-  if (_from.compare(0, DBServer.length(), DBServer) == 0) {
-    try {
-      _from = uuidLookup(_snapshot, _from);
-    } catch (...) {
-      LOG_TOPIC(ERR, Logger::AGENCY) <<
-        "MoveShard: From server " << _from << " does not exist";
-    }
-  }
-  // Lookup to Server
-  if (_to.compare(0, DBServer.length(), DBServer) == 0) {
-    try {
-      _to = uuidLookup(_snapshot, _to);
-    } catch (...) {
-      LOG_TOPIC(ERR, Logger::AGENCY) <<
-        "MoveShard: To server " << _to << " does not exist";
-    }
-  }
 
   LOG_TOPIC(DEBUG, Logger::AGENCY)
     << "Todo: Move shard " + _shard + " from " + _from + " to " << _to;
@@ -145,26 +125,6 @@ bool MoveShard::create() {
 
 bool MoveShard::start() {
   
-  // Lookup from server
-  if (_from.compare(0, DBServer.length(), DBServer) == 0) {
-    try {
-      _from = uuidLookup(_snapshot, _from);
-    } catch (...) {
-      LOG_TOPIC(ERR, Logger::AGENCY) <<
-        "MoveShard: From server " << _from << " does not exist";
-    }
-  }
-  
-  // Lookup to Server
-  if (_to.compare(0, DBServer.length(), DBServer) == 0) {
-    try {
-      _to = uuidLookup(_snapshot, _to);
-    } catch (...) {
-      LOG_TOPIC(ERR, Logger::AGENCY) <<
-        "MoveShard: To server " << _to << " does not exist";
-    }
-  }
-
   // Are we distributeShardsLiking other shard?
   // Invoke moveShard there
   auto collection = _snapshot(planColPrefix + _database + "/" + _collection);
@@ -391,29 +351,6 @@ JOB_STATUS MoveShard::status() {
       _to = _snapshot(pos[status] + _jobId + "/toServer").getString();
       _shard =
         _snapshot(pos[status] + _jobId + "/shards").slice()[0].copyString();
-
-      // FIXME: this code is repeated a lot, we should factor it out to method
-
-      // Lookup from server
-      if (_from.compare(0, DBServer.length(), DBServer) == 0) {
-        try {
-          _from = uuidLookup(_snapshot, _from);
-        } catch (...) {
-          LOG_TOPIC(ERR, Logger::AGENCY) <<
-            "MoveShard: From server " << _from << " does not exist";
-        }
-      }
-      
-      // Lookup to Server
-      if (_to.compare(0, DBServer.length(), DBServer) == 0) {
-        try {
-          _to = uuidLookup(_snapshot, _to);
-        } catch (...) {
-          LOG_TOPIC(ERR, Logger::AGENCY) <<
-            "MoveShard: To server " << _to << " does not exist";
-        }
-      }
-            
     } catch (std::exception const& e) {
       std::string err = 
         std::string("Failed to find job ") + _jobId + " in agency: " + e.what();
