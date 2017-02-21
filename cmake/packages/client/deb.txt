@@ -29,7 +29,7 @@ set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO @CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO@)
 
 set(INSTALL_CONFIGFILES_LIST)
 set(PACKAGING_HANDLE_CONFIG_FILES false)
-
+# set(CPACK_DEBIAN_PACKAGE_DEBUG TRUE)
 ################################################################################
 #   Substitute the install binaries:
 ################################################################################
