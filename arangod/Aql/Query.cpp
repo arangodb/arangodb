@@ -524,9 +524,11 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
   }
 
   enterState(EXECUTION);
-  TRI_ASSERT(_engine == nullptr);
+  // TRI_ASSERT(_engine == nullptr);
 
-  _engine.reset(ExecutionEngine::instantiateFromPlan(registry, this, plan.get(), _queryString != nullptr));
+  if (_engine == nullptr) {
+    _engine.reset(ExecutionEngine::instantiateFromPlan(registry, this, plan.get(), _queryString != nullptr));
+  }
   _plan = std::move(plan);
 }
 
