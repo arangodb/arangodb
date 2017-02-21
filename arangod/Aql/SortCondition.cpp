@@ -83,6 +83,10 @@ SortCondition::SortCondition(
         if (node->type == NODE_TYPE_REFERENCE) {
           handled = true;
 
+          if (fieldNames.size() > 1) {
+            std::reverse(fieldNames.begin(), fieldNames.end());
+          }
+
           _fields.emplace_back(std::make_pair(
               static_cast<Variable const*>(node->getData()), fieldNames));
 
@@ -144,7 +148,7 @@ size_t SortCondition::coveredAttributes(
     }
     
     auto const& field = _fields[fieldsPosition];
-
+      
     // ...and check if the field is present in the index definition too
     if (reference == field.first &&
         arangodb::basics::AttributeName::isIdentical(field.second, indexAttributes[i], false)) {
