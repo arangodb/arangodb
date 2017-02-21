@@ -23,6 +23,8 @@
 
 #include "Job.h"
 
+static std::string const DBServer = "DBServer";
+
 using namespace arangodb::consensus;
 
 bool arangodb::consensus::compareServerLists(Slice plan, Slice current) {
@@ -235,8 +237,8 @@ std::vector<Job::shard_t> Job::clones(
   
 }
 
-std::string Job::uuidLookup (Node const& snapshot, std::string const& shortID) {
-  for (auto const& uuid : snapshot(mapUniqueToShortID).children()) {
+std::string Job::uuidLookup (std::string const& shortID) {
+  for (auto const& uuid : _snapshot(mapUniqueToShortID).children()) {
     if ((*uuid.second)("ShortName").getString() == shortID) {
       return uuid.first;
     }
@@ -244,4 +246,10 @@ std::string Job::uuidLookup (Node const& snapshot, std::string const& shortID) {
   return std::string();
 }
 
-
+std::string Job::id(std::string const& idOrShortName) {
+  std::string id = uuidLookup(idOrShortName);
+  if (!id.empty()) {
+    return id;
+  }
+  return idOrShortName;
+}
