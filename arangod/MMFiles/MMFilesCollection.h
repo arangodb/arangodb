@@ -470,6 +470,18 @@ class MMFilesCollection final : public PhysicalCollection {
     TRI_voc_tick_t _maxTick;
 };
 
+inline MMFilesCollection* toMMFilesCollection(PhysicalCollection* physical){
+  auto rv =  dynamic_cast<MMFilesCollection*>(physical);
+  TRI_ASSERT(rv != nullptr);
+  return rv;
+}
+
+inline MMFilesCollection* toMMFilesCollection(LogicalCollection* logical){
+  auto phys = logical->getPhysical();
+  TRI_ASSERT(phys);
+  return toMMFilesCollection(phys);
+}
+
 }
 
 #endif
