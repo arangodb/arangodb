@@ -881,6 +881,82 @@ function ahuacatlQueryCacheTestSuite () {
       result = AQL_EXECUTE(query2, { "@collection": c1.name() });
       assertTrue(result.cached);
       assertEqual([ 6, 5, 4, 3, 2, 1 ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test transaction commit
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionCommit : function () {
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      
+      var query = "FOR doc IN @@collection RETURN doc.value";
+      var result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ ], result.json);
+
+      db._executeTransaction({
+        collections: { write: c1.name() },
+        action: function(params) {
+          var db = require("@arangodb").db;
+          db._collection(params.c1).insert({ value: "foo" });
+        },
+        params: { c1: c1.name() }
+      });
+      
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ "foo" ], result.json);
+      
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ "foo" ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test transaction rollback
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionRollback : function () {
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      
+      var query = "FOR doc IN @@collection RETURN doc.value";
+      
+      try {
+        db._executeTransaction({
+          collections: { write: c1.name() },
+          action: function(params) {
+            var result = AQL_EXECUTE(query, { "@collection": c1.name() });
+            assertFalse(result.cached);
+            assertEqual([ ], result.json);
+            
+            result = AQL_EXECUTE(query, { "@collection": c1.name() });
+            assertTrue(result.cached);
+            assertEqual([ ], result.json);
+
+            var db = require("@arangodb").db;
+            db._collection(params.c1).insert({ value: "foo" });
+        
+            result = AQL_EXECUTE(query, { "@collection": c1.name() });
+            assertFalse(result.cached);
+            assertEqual([ "foo" ], result.json);
+            
+            result = AQL_EXECUTE(query, { "@collection": c1.name() });
+            assertTrue(result.cached);
+            assertEqual([ "foo" ], result.json);
+
+            throw "peng!";
+          },
+          params: { c1: c1.name() }
+        });
+        fail();
+      } catch (err) {
+        assertEqual("peng!", String(err));
+      }
+            
+      var result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertFalse(result.cached);
+      assertEqual([ ], result.json);
     }
 
   };

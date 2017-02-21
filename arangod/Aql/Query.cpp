@@ -1299,6 +1299,16 @@ uint64_t Query::hash() const {
   } else {
     hash = fasthash64(TRI_CHAR_LENGTH_PAIR("count:false"), hash);
   }
+  
+  // also hash "optimizer" options
+  VPackSlice options = _options->slice();
+
+  if (options.isObject()) {
+    VPackSlice opt = options.get("optimizer");
+    hash ^= opt.hash();
+  } else {
+    hash ^= basics::VelocyPackHelper::EmptyObjectValue().hash();
+  }
 
   // blend query hash with bind parameters
   return hash ^ _bindParameters.hash();
