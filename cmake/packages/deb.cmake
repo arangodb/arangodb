@@ -117,7 +117,9 @@ list(APPEND PACKAGES_LIST package-arongodb-client)
 
 
 add_custom_target(copy_deb_packages
-  COMMAND ${CMAKE_COMMAND} -E copy ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.deb ${CPACK_PACKAGE_FILE_NAME}.deb ${ARANGODB_DBG_PACKAGE_FILE_NAME}.deb ${PACKAGE_TARGET_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.deb ${PACKAGE_TARGET_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_PACKAGE_FILE_NAME}.deb           ${PACKAGE_TARGET_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy ${ARANGODB_DBG_PACKAGE_FILE_NAME}.deb    ${PACKAGE_TARGET_DIR}
   COMMENT "copying packages to ${PACKAGE_TARGET_DIR}")
 
 list(APPEND COPY_PACKAGES_LIST copy_deb_packages)
@@ -127,7 +129,9 @@ add_custom_target(remove_packages
   COMMENT Removing server packaging build directory
   COMMAND ${CMAKE_COMMAND} -E remove_directory packages
   COMMENT Removing client packaging build directory
-  COMMAND ${CMAKE_COMMAND} -E remove ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.deb ${CPACK_PACKAGE_FILE_NAME}.deb ${ARANGODB_DBG_PACKAGE_FILE_NAME}.deb
+  COMMAND ${CMAKE_COMMAND} -E remove ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.deb
+  COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_PACKAGE_FILE_NAME}.deb
+  COMMAND ${CMAKE_COMMAND} -E remove ${ARANGODB_DBG_PACKAGE_FILE_NAME}.deb
   COMMENT Removing local target packages
   )
 
