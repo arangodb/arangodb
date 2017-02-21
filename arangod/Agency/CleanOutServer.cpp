@@ -333,7 +333,7 @@ bool CleanOutServer::scheduleMoveShards() {
         // Schedule move
         MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                   _jobId, _agencyPrefix, database.first, collptr.first,
-                  shard.first, _server, toServer);
+                  shard.first, _server, toServer).run();
         
       }
     }

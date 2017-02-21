@@ -199,7 +199,7 @@ bool FailedServer::start() {
           for (auto const& shard : collection("shards").children()) {
             UnassumedLeadership(
               _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
-              _agencyPrefix, database.first, collptr.first, shard.first, _server);
+              _agencyPrefix, database.first, collptr.first, shard.first, _server).run();
           }
         }
       }
