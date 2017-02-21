@@ -55,6 +55,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#undef USE_PLAN_CACHE
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -449,7 +451,7 @@ void Query::registerWarning(int code, char const* details) {
     _warnings.emplace_back(code, details);
   }
 }
-    
+
 void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
   TRI_ASSERT(registry != nullptr);
   
@@ -458,6 +460,7 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
 
   std::unique_ptr<ExecutionPlan> plan;
 
+#if USE_PLAN_CACHE
   if (_queryString != nullptr && 
       queryStringHash != DontCache &&
       _part == PART_MAIN) {
@@ -501,12 +504,14 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
       TRI_ASSERT(plan != nullptr);
     }
   }
+#endif
 
   if (plan == nullptr) {
     plan.reset(prepare());
 
     TRI_ASSERT(plan != nullptr);
 
+#if USE_PLAN_CACHE
     if (_queryString != nullptr && 
         queryStringHash != DontCache && 
         _part == PART_MAIN &&
@@ -515,6 +520,7 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
       // LOG_TOPIC(INFO, Logger::FIXME) << "storing query in execution plan cache '" << std::string(_queryString, _queryStringLength) << "', hash: " << queryStringHash;
       PlanCache::instance()->store(_vocbase, queryStringHash, _queryString, _queryStringLength, plan.get());
     }
+#endif
   }
 
   enterState(EXECUTION);
