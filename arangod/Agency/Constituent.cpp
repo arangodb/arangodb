@@ -109,33 +109,36 @@ void Constituent::termNoLock(term_t t) {
       << roleStr[_role] << " new term " << t;
 
     _cast = false;
-    Builder body;
-    body.add(VPackValue(VPackValueType::Object));
-    std::ostringstream i_str;
-    i_str << std::setw(20) << std::setfill('0') << t;
-    body.add("_key", Value(i_str.str()));
-    body.add("term", Value(t));
-    body.add("voted_for", Value(_votedFor));
-    body.close();
 
-    TRI_ASSERT(_vocbase != nullptr);
-    auto transactionContext =
+    if (!_votedFor.empty()) {
+      Builder body;
+      body.add(VPackValue(VPackValueType::Object));
+      std::ostringstream i_str;
+      i_str << std::setw(20) << std::setfill('0') << t;
+      body.add("_key", Value(i_str.str()));
+      body.add("term", Value(t));
+      body.add("voted_for", Value(_votedFor));
+      body.close();
+      
+      TRI_ASSERT(_vocbase != nullptr);
+      auto transactionContext =
         std::make_shared<StandaloneTransactionContext>(_vocbase);
-    SingleCollectionTransaction trx(transactionContext, "election",
-                                    TRI_TRANSACTION_WRITE);
-
-    int res = trx.begin();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
+      SingleCollectionTransaction trx(transactionContext, "election",
+                                      TRI_TRANSACTION_WRITE);
+      
+      int res = trx.begin();
+      
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      
+      OperationOptions options;
+      options.waitForSync = false;
+      options.silent = true;
+      
+      OperationResult result = trx.insert("election", body.slice(), options);
+      trx.finish(result.code);
     }
-
-    OperationOptions options;
-    options.waitForSync = false;
-    options.silent = true;
-
-    OperationResult result = trx.insert("election", body.slice(), options);
-    trx.finish(result.code);
   }
 }
 
