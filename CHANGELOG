@@ -1,13 +1,6 @@
 v3.2.alpha2 (2017-02-20)
 ------------------------
 
-* added figure `httpRequests` to AQL query statistics
-
-* removed revisions cache intermediate layer implementation
-
-* obsoleted startup options `--database.revision-cache-chunk-size` and
-  `--database.revision-cache-target-size`
-
 * ui: fixed issue #2065
 
 * ui: fixed a dashboard related memory issue
@@ -65,7 +58,13 @@ v3.2.alpha1 (2017-02-05)
 * more detailed stacktraces in Foxx apps
 
 
-v3.1.11 (2017-02-14)
+v3.1.12 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #2315
+
+
+v3.1.11 (2017-02-17)
 --------------------
 
 * fixed a race between connection closing and sending out last chunks of data to clients
