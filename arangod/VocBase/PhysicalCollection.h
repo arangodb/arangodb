@@ -78,6 +78,11 @@ class PhysicalCollection {
   virtual bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                                  std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) = 0;
 
+  // @brief Return the number of documents in this collection
+  virtual uint64_t numberDocuments() const = 0;
+
+  virtual void sizeHint(transaction::Methods* trx, int64_t hint) = 0;
+
   /// @brief report extra memory used by indexes etc.
   virtual size_t memory() const = 0;
     

@@ -58,6 +58,7 @@
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 
@@ -652,6 +653,7 @@ void TRI_vocbase_t::shutdown() {
 
   // free collections
   for (auto& collection : _collections) {
+    collection->getPhysical()->close();
     delete collection;
   }
   _collections.clear();

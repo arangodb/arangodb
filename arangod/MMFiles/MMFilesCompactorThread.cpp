@@ -272,6 +272,9 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
     /// @brief datafile iterator, calculates necessary total size
     auto calculateSize = [&context](TRI_df_marker_t const* marker, MMFilesDatafile* datafile) -> bool {
       LogicalCollection* collection = context._collection;
+      TRI_ASSERT(collection != nullptr);
+      auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+      TRI_ASSERT(physical != nullptr);
       TRI_df_marker_type_t const type = marker->getType();
 
       // new or updated document
@@ -282,12 +285,15 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
         VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
 
         // check if the document is still active
-        auto primaryIndex = collection->primaryIndex();
+        auto primaryIndex = physical->primaryIndex();
         TRI_df_marker_t const* markerPtr = nullptr;
         MMFilesSimpleIndexElement element = primaryIndex->lookupKey(context._trx, keySlice);
         if (element) {
-          MMFilesDocumentPosition const old = static_cast<MMFilesCollection*>(collection->getPhysical())->lookupRevision(element.revisionId());
-          markerPtr = reinterpret_cast<TRI_df_marker_t const*>(static_cast<uint8_t const*>(old.dataptr()) - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+          MMFilesDocumentPosition const old =
+              physical->lookupRevision(element.revisionId());
+          markerPtr = reinterpret_cast<TRI_df_marker_t const*>(
+              static_cast<uint8_t const*>(old.dataptr()) -
+              MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
         }
 
         bool deleted = (markerPtr == nullptr || marker != markerPtr);
@@ -361,7 +367,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   /// file.
   /// IMPORTANT: if the logic inside this function is adjusted, the total size
   /// calculated by function CalculateSize might need adjustment, too!!
-  auto compactifier = [&context, &collection, &physical, this](TRI_df_marker_t const* marker, MMFilesDatafile* datafile) -> bool {
+  auto compactifier = [&context, &physical, this](TRI_df_marker_t const* marker, MMFilesDatafile* datafile) -> bool {
     TRI_voc_fid_t const targetFid = context->_compactor->fid();
 
     TRI_df_marker_type_t const type = marker->getType();
@@ -374,7 +380,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
 
       // check if the document is still active
-      auto primaryIndex = collection->primaryIndex();
+      auto primaryIndex = physical->primaryIndex();
       TRI_df_marker_t const* markerPtr = nullptr;
       MMFilesSimpleIndexElement element = primaryIndex->lookupKey(context->_trx, keySlice);
       if (element) {

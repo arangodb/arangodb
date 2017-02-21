@@ -521,9 +521,9 @@ bool LogicalCollection::IsAllowedName(bool allowSystem,
   return true;
 }
 
+// @brief Return the number of documents in this collection
 uint64_t LogicalCollection::numberDocuments() const {
-  // TODO Ask StorageEngine instead
-  return primaryIndex()->size();
+  return getPhysical()->numberDocuments();
 }
 
 
@@ -657,28 +657,6 @@ uint32_t LogicalCollection::indexBuckets() const { return _indexBuckets; }
 std::vector<std::shared_ptr<arangodb::Index>> const&
 LogicalCollection::getIndexes() const {
   return _indexes;
-}
-
-/// @brief return the primary index
-// WARNING: Make sure that this LogicalCollection Instance
-// is somehow protected. If it goes out of all scopes
-// or it's indexes are freed the pointer returned will get invalidated.
-arangodb::MMFilesPrimaryIndex* LogicalCollection::primaryIndex() const {
-  TRI_ASSERT(!_indexes.empty());
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got invalid indexes for collection '" << _name << "'";
-    for (auto const& it : _indexes) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
-    }
-  }
-#endif
-
-  TRI_ASSERT(_indexes[0]->type() ==
-             Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  // the primary index must be the index at position #0
-  return static_cast<arangodb::MMFilesPrimaryIndex*>(_indexes[0].get());
 }
 
 void LogicalCollection::getIndexesVPack(VPackBuilder& result,
@@ -845,27 +823,6 @@ int LogicalCollection::rename(std::string const& newName) {
 
 int LogicalCollection::close() {
   // This was unload() in 3.0
-  auto primIdx = primaryIndex();
-  auto idxSize = primIdx->size();
-
-  if (!_isDeleted &&
-      _physical->initialCount() != static_cast<int64_t>(idxSize)) {
-    _physical->updateCount(idxSize);
-
-    // save new "count" value
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    bool const doSync =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database")
-            ->forceSyncProperties();
-    engine->changeCollection(_vocbase, _cid, this, doSync);
-  }
-
-  // We also have to unload the indexes.
-  for (auto& idx : _indexes) {
-    idx->unload();
-  }
-
   return getPhysical()->close();
 }
 
@@ -1163,6 +1120,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
     created = true;
     return idx;
   }
+
   int res = getPhysical()->saveIndex(trx, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1222,7 +1180,6 @@ bool LogicalCollection::removeIndex(TRI_idx_iid_t iid) {
 /// @brief drops an index, including index file removal and replication
 bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  // TODO: Validate that writeMarker := (engine->inRevocery() == false)
   return _physical->dropIndex(iid, writeMarker);
 }
 
@@ -1459,12 +1416,7 @@ void LogicalCollection::sizeHint(transaction::Methods* trx, int64_t hint) {
   if (hint <= 0) {
     return;
   }
-
-  int res = primaryIndex()->resize(trx, static_cast<size_t>(hint * 1.1));
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return;
-  }
+  getPhysical()->sizeHint(trx, hint);
 }
 
 bool LogicalCollection::readDocument(transaction::Methods* trx, DocumentIdentifierToken const& token, ManagedDocumentResult& result) {

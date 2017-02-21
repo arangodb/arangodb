@@ -66,9 +66,10 @@ class MMFilesCollection final : public PhysicalCollection {
     int64_t _initialCount;
     bool const _trackKeys;
 
-    OpenIteratorState(LogicalCollection* collection, transaction::Methods* trx) 
+    OpenIteratorState(LogicalCollection* collection, transaction::Methods* trx)
         : _collection(collection),
-          _primaryIndex(collection->primaryIndex()),
+          _primaryIndex(static_cast<MMFilesCollection*>(collection->getPhysical())
+                            ->primaryIndex()),
           _tid(0),
           _fid(0),
           _stats(),
@@ -169,6 +170,10 @@ class MMFilesCollection final : public PhysicalCollection {
     _datafileStatistics.update(fid, values);
   }
    
+  uint64_t numberDocuments() const override;
+
+  void sizeHint(transaction::Methods* trx, int64_t hint) override;
+
   /// @brief report extra memory used by indexes etc.
   size_t memory() const override;
 
@@ -228,6 +233,11 @@ class MMFilesCollection final : public PhysicalCollection {
   // -- SECTION Indexes --
   ///////////////////////////////////
 
+  // WARNING: Make sure that this Collection Instance
+  // is somehow protected. If it goes out of all scopes
+  // or it's indexes are freed the pointer returned will get invalidated.
+  MMFilesPrimaryIndex* primaryIndex() const;
+ 
   inline bool useSecondaryIndexes() const { return _useSecondaryIndexes; }
 
   void useSecondaryIndexes(bool value) { _useSecondaryIndexes = value; }

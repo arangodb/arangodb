@@ -39,6 +39,7 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -941,6 +942,10 @@ void transaction::Methods::invokeOnAllElements(std::string const& collectionName
   TransactionCollection* trxCol = trxCollection(cid);
   LogicalCollection* document = documentCollection(trxCol);
 
+  // TODO Should not directly use PrimaryIndex
+  auto physical = static_cast<MMFilesCollection*>(document->getPhysical());
+  TRI_ASSERT(physical != nullptr);
+
   orderDitch(cid); // will throw when it fails
 
   int res = lock(trxCol, AccessMode::Type::READ);
@@ -949,7 +954,7 @@ void transaction::Methods::invokeOnAllElements(std::string const& collectionName
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  auto primaryIndex = document->primaryIndex();
+  auto primaryIndex = physical->primaryIndex();
   primaryIndex->invokeOnAllElements(callback);
   
   res = unlock(trxCol, AccessMode::Type::READ);
@@ -2566,7 +2571,11 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
 
   switch (cursorType) {
     case CursorType::ANY: {
-      arangodb::MMFilesPrimaryIndex* idx = document->primaryIndex();
+      // TODO Should not directly use PrimaryIndex
+      auto physical = static_cast<MMFilesCollection*>(document->getPhysical());
+      TRI_ASSERT(physical != nullptr);
+
+      arangodb::MMFilesPrimaryIndex* idx = physical->primaryIndex();
 
       if (idx == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -2578,7 +2587,11 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
       break;
     }
     case CursorType::ALL: {
-      arangodb::MMFilesPrimaryIndex* idx = document->primaryIndex();
+      // TODO Should not directly use PrimaryIndex
+      auto physical = static_cast<MMFilesCollection*>(document->getPhysical());
+      TRI_ASSERT(physical != nullptr);
+
+      arangodb::MMFilesPrimaryIndex* idx = physical->primaryIndex();
 
       if (idx == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(

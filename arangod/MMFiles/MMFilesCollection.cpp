@@ -411,11 +411,6 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical, PhysicalCollect
 }
 
 MMFilesCollection::~MMFilesCollection() { 
-  try {
-    close(); 
-  } catch (...) {
-    // dtor must not propagate exceptions
-  }
 }
 
 TRI_voc_rid_t MMFilesCollection::revision() const { 
@@ -439,6 +434,30 @@ void MMFilesCollection::updateCount(int64_t count) {
   
 /// @brief closes an open collection
 int MMFilesCollection::close() {
+  if (!_logicalCollection->_isDeleted) {
+    auto primIdx = primaryIndex();
+    auto idxSize = primIdx->size();
+
+    if (initialCount() != static_cast<int64_t>(idxSize)) {
+      updateCount(idxSize);
+
+      // save new "count" value
+      StorageEngine* engine = EngineSelectorFeature::ENGINE;
+      bool const doSync =
+          application_features::ApplicationServer::getFeature<DatabaseFeature>(
+              "Database")
+              ->forceSyncProperties();
+      engine->changeCollection(_logicalCollection->vocbase(),
+                               _logicalCollection->cid(), _logicalCollection,
+                               doSync);
+    }
+  }
+
+  // We also have to unload the indexes.
+  for (auto& idx : *(_logicalCollection->indexList())) {
+    idx->unload();
+  }
+
   {
     WRITE_LOCKER(writeLocker, _filesLock);
 
@@ -1201,6 +1220,15 @@ bool MMFilesCollection::applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t
   return false; // hasMore = false
 }
   
+// @brief Return the number of documents in this collection
+uint64_t MMFilesCollection::numberDocuments() const {
+  return primaryIndex()->size();
+}
+
+void MMFilesCollection::sizeHint(transaction::Methods* trx, int64_t hint) {
+  primaryIndex()->resize(trx, static_cast<size_t>(hint * 1.1));
+}
+
 /// @brief report extra memory used by indexes etc.
 size_t MMFilesCollection::memory() const {
   return 0; // TODO
@@ -1282,6 +1310,30 @@ void MMFilesCollection::fillIndex(
   }
 }
 
+/// @brief return the primary index
+// WARNING: Make sure that this LogicalCollection Instance
+// is somehow protected. If it goes out of all scopes
+// or it's indexes are freed the pointer returned will get invalidated.
+arangodb::MMFilesPrimaryIndex* MMFilesCollection::primaryIndex() const {
+  // The primary index always has iid 0
+  auto primary = _logicalCollection->lookupIndex(0);
+  TRI_ASSERT(primary != nullptr);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (primary->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "got invalid indexes for collection '" << _logicalCollection->name()
+        << "'";
+    for (auto const& it : *(_logicalCollection->indexList())) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
+    }
+  }
+#endif
+  TRI_ASSERT(primary->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+  // the primary index must be the index at position #0
+  return static_cast<arangodb::MMFilesPrimaryIndex*>(primary.get());
+}
+
 int MMFilesCollection::fillAllIndexes(transaction::Methods* trx) {
   return fillIndexes(trx, *(_logicalCollection->indexList()));
 }
@@ -1326,9 +1378,9 @@ int MMFilesCollection::fillIndexes(
   // only log performance infos for indexes with more than this number of
   // entries
   static size_t const NotificationSizeThreshold = 131072;
-  auto primaryIndex = _logicalCollection->primaryIndex();
+  auto primaryIdx = primaryIndex();
 
-  if (primaryIndex->size() > NotificationSizeThreshold) {
+  if (primaryIdx->size() > NotificationSizeThreshold) {
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
         << "fill-indexes-document-collection { collection: "
         << _logicalCollection->vocbase() << "/" << _logicalCollection->name()
@@ -1341,7 +1393,7 @@ int MMFilesCollection::fillIndexes(
     TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
     // give the index a size hint
-    auto nrUsed = primaryIndex->size();
+    auto nrUsed = primaryIdx->size();
     for (size_t i = 0; i < n; i++) {
       auto idx = indexes[i];
       if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
@@ -1388,7 +1440,7 @@ int MMFilesCollection::fillIndexes(
 
       while (true) {
         MMFilesSimpleIndexElement element =
-            primaryIndex->lookupSequential(trx, position, total);
+            primaryIdx->lookupSequential(trx, position, total);
 
         if (!element) {
           break;
@@ -2131,7 +2183,7 @@ int MMFilesCollection::endWrite(bool useDeadlockDetector) {
 }
 
 void MMFilesCollection::truncate(transaction::Methods* trx, OperationOptions& options) {
-  auto primaryIndex = _logicalCollection->primaryIndex();
+  auto primaryIdx = primaryIndex();
 
   options.ignoreRevs = true;
 
@@ -2158,7 +2210,7 @@ void MMFilesCollection::truncate(transaction::Methods* trx, OperationOptions& op
 
     return true;
   };
-  primaryIndex->invokeOnAllElementsForRemoval(callback);
+  primaryIdx->invokeOnAllElementsForRemoval(callback);
 }
 
 int MMFilesCollection::insert(transaction::Methods* trx,
@@ -2404,7 +2456,7 @@ int MMFilesCollection::insertPrimaryIndex(transaction::Methods* trx,
   TRI_IF_FAILURE("InsertPrimaryIndex") { return TRI_ERROR_DEBUG; }
 
   // insert into primary index
-  return _logicalCollection->primaryIndex()->insertKey(trx, revisionId, doc);
+  return primaryIndex()->insertKey(trx, revisionId, doc);
 }
 
 /// @brief deletes an entry from the primary index
@@ -2413,7 +2465,7 @@ int MMFilesCollection::deletePrimaryIndex(arangodb::transaction::Methods* trx,
                                           VPackSlice const& doc) {
   TRI_IF_FAILURE("DeletePrimaryIndex") { return TRI_ERROR_DEBUG; }
 
-  return _logicalCollection->primaryIndex()->removeKey(trx, revisionId, doc);
+  return primaryIndex()->removeKey(trx, revisionId, doc);
 }
 
 /// @brief creates a new entry in the secondary indexes
@@ -3121,7 +3173,7 @@ int MMFilesCollection::lookupDocument(transaction::Methods* trx,
   }
 
   MMFilesSimpleIndexElement element =
-      _logicalCollection->primaryIndex()->lookupKey(trx, key, result);
+      primaryIndex()->lookupKey(trx, key, result);
   if (element) {
     TRI_voc_rid_t revisionId = element.revisionId();
     uint8_t const* vpack = lookupRevisionVPack(revisionId);
@@ -3165,7 +3217,7 @@ int MMFilesCollection::updateDocument(
   // adjusted)
   VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(newDoc));
   MMFilesSimpleIndexElement* element =
-      _logicalCollection->primaryIndex()->lookupKeyRef(trx, keySlice);
+      primaryIndex()->lookupKeyRef(trx, keySlice);
   if (element != nullptr && element->revisionId() != 0) {
     element->updateRevisionId(
         newRevisionId,

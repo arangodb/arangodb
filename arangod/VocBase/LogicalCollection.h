@@ -187,12 +187,7 @@ class LogicalCollection {
 
   std::vector<std::shared_ptr<Index>> const& getIndexes() const;
 
-  // WARNING: Make sure that this LogicalCollection Instance
-  // is somehow protected. If it goes out of all scopes
-  // or it's indexes are freed the pointer returned will get invalidated.
-  MMFilesPrimaryIndex* primaryIndex() const;
-
-  // Adds all properties to the builder (has to be an open object)
+ // Adds all properties to the builder (has to be an open object)
   // Does not add Shards or Indexes
   void getPropertiesVPack(velocypack::Builder&,
                           bool translateCids) const;
@@ -372,7 +367,9 @@ private:
 
   // SECTION: Properties
   bool _isLocal;
+ public:
   bool _isDeleted;
+ protected:
   bool const _isSystem;
   bool const _isVolatile;
   bool _waitForSync;

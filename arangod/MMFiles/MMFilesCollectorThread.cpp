@@ -562,6 +562,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     LogicalCollection* collection, MMFilesCollectorCache* cache,
     MMFilesCollectorOperation const& operation) {
   auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
   auto const* walMarker = reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
   TRI_ASSERT(walMarker != nullptr);
   TRI_ASSERT(reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition));
@@ -582,7 +583,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
     bool wasAdjusted = false;
-    MMFilesSimpleIndexElement element = collection->primaryIndex()->lookupKey(&trx, keySlice);
+    MMFilesSimpleIndexElement element = physical->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (element &&
         element.revisionId() == revisionId) { 
@@ -613,7 +614,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     TRI_voc_rid_t revisionId = 0;
     transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
-    MMFilesSimpleIndexElement found = collection->primaryIndex()->lookupKey(&trx, keySlice);
+    MMFilesSimpleIndexElement found = physical->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (found && 
         found.revisionId() > revisionId) {

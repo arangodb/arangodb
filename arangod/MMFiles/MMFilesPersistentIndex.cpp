@@ -571,7 +571,8 @@ PersistentIndexIterator* PersistentIndex::lookup(transaction::Methods* trx,
   // Secured by trx. The shared_ptr index stays valid in
   // _collection at least as long as trx is running.
   // Same for the iterator
-  auto idx = _collection->primaryIndex();
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  auto idx = physical->primaryIndex();
   return new PersistentIndexIterator(_collection, trx, mmdr, this, idx, _db, reverse, leftBorder, rightBorder);
 }
 
