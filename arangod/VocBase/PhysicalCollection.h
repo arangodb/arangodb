@@ -37,7 +37,6 @@ namespace transaction {
 class Methods;
 }
 
-class Ditches;
 struct DocumentIdentifierToken;
 class Index;
 class LogicalCollection;
@@ -51,8 +50,6 @@ class PhysicalCollection {
  public:
   virtual ~PhysicalCollection() = default;
   
-  virtual Ditches* ditches() const = 0;
-
   //path to logical collection
   virtual std::string const& path() const = 0;
   virtual void setPath(std::string const&) = 0; // should be set during collection creation

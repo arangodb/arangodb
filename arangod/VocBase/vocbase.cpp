@@ -48,6 +48,7 @@
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesCollection.h" // TODO - REMOVE
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -199,7 +200,7 @@ bool TRI_vocbase_t::UnloadCollectionCallback(LogicalCollection* collection) {
     return false;
   }
 
-  auto ditches = collection->ditches();
+  auto ditches = toMMFilesCollection(collection)->ditches();
 
   if (ditches->contains(arangodb::Ditch::TRI_DITCH_DOCUMENT) ||
       ditches->contains(arangodb::Ditch::TRI_DITCH_REPLICATION) ||
@@ -363,7 +364,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // release the WRITE lock and try again
   if (collection->status() == TRI_VOC_COL_STATUS_UNLOADING) {
     // check if there is a deferred drop action going on for this collection
-    if (collection->ditches()->contains(
+    if (toMMFilesCollection(collection)->ditches()->contains(
             arangodb::Ditch::TRI_DITCH_COLLECTION_DROP)) {
       // drop call going on, we must abort
       locker.unlock();
@@ -899,7 +900,7 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, boo
     collection->setStatus(TRI_VOC_COL_STATUS_UNLOADING);
 
     // add callback for unload
-    collection->ditches()->createUnloadCollectionDitch(
+    toMMFilesCollection(collection)->ditches()->createUnloadCollectionDitch(
         collection, UnloadCollectionCallback, __FILE__,
         __LINE__);
   } // release locks
@@ -938,7 +939,7 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool 
         DropCollectionCallback(collection);
       } else {
         // add callback for dropping
-        collection->ditches()->createDropCollectionDitch(
+        toMMFilesCollection(collection)->ditches()->createDropCollectionDitch(
             collection, DropCollectionCallback,
             __FILE__, __LINE__);
 

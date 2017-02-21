@@ -171,8 +171,6 @@ class LogicalCollection {
 
   void setDeleted(bool);
 
-  Ditches* ditches() const;
-
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
 

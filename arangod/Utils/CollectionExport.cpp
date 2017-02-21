@@ -33,6 +33,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "MMFiles/MMFilesCollection.h" //TODO -- REMOVE
 
 using namespace arangodb;
 
@@ -64,7 +65,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   // try to acquire the exclusive lock on the compaction
   engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
-    _ditch = _collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+    _ditch = toMMFilesCollection(_collection)->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
   });
 
   // now we either have a ditch or not

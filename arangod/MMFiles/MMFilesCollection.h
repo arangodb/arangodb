@@ -197,8 +197,7 @@ class MMFilesCollection final : public PhysicalCollection {
   double lastCompactionStamp() const { return _lastCompactionStamp; }
   void lastCompactionStamp(double value) { _lastCompactionStamp = value; }
 
-  
-  Ditches* ditches() const override { return &_ditches; }
+  Ditches* ditches() const { return &_ditches; }
   
   void open(bool ignoreErrors) override;
 

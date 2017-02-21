@@ -643,10 +643,6 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 
 void LogicalCollection::setDeleted(bool newValue) { _isDeleted = newValue; }
 
-Ditches* LogicalCollection::ditches() const {
-  return getPhysical()->ditches();
-}
-
 // SECTION: Key Options
 VPackSlice LogicalCollection::keyOptions() const {
   if (_keyOptions == nullptr) {
