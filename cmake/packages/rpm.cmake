@@ -34,10 +34,11 @@ install(
   RENAME ${RPM_INIT_SCRIPT_TARGET_NAME}
   )
 
-# 
+#
 set(PACKAGE_VERSION "-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}.${ARANGODB_PACKAGE_ARCHITECTURE}")
-set(CPACK_PACKAGE_FILE_NAME   "${CPACK_PACKAGE_NAME}${PACKAGE_VERSION}")
+set(CPACK_PACKAGE_FILE_NAME  "${CPACK_PACKAGE_NAME}${PACKAGE_VERSION}")
 set(CPACK_CLIENT_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-client${PACKAGE_VERSION}")
+set(CPACK_dbg_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-debuginfo${PACKAGE_VERSION}")
 set(CPACK_RPM_PACKAGE_RELOCATABLE FALSE)
 
 # set(CPACK_RPM_PACKAGE_DEBUG TRUE)
@@ -52,31 +53,28 @@ include(arangod/dbg.cmake)
 add_custom_target(package-arongodb-server
   COMMAND ${CMAKE_COMMAND} .
   COMMAND ${CMAKE_CPACK_COMMAND} -G RPM
-  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_TEMPORARY_DIRECTORY}/*.rpm ${PROJECT_BINARY_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy
+    ${CPACK_TEMPORARY_DIRECTORY}/${CPACK_PACKAGE_FILE_NAME}.rpm
+    ${CPACK_TEMPORARY_DIRECTORY}/${CPACK_CLIENT_PACKAGE_FILE_NAME}.rpm
+    ${CPACK_TEMPORARY_DIRECTORY}/${CPACK_dbg_PACKAGE_FILE_NAME}.rpm
+      ${PROJECT_BINARY_DIR}
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
 list(APPEND PACKAGES_LIST package-arongodb-server)
 
 #################################################################################
 ## hook to build the client package
 #################################################################################
-#set(CLIENT_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb-client)
-#configure_file(cmake/packages/client/rpm.txt ${CLIENT_BUILD_DIR}/CMakeLists.txt @ONLY)
-#add_custom_target(package-arongodb-client
-#  COMMAND ${CMAKE_COMMAND} .
-#  COMMAND ${CMAKE_CPACK_COMMAND} -G RPM
-#  COMMAND ${CMAKE_COMMAND} -E copy *.rpm ${PROJECT_BINARY_DIR}
-#  WORKING_DIRECTORY ${CLIENT_BUILD_DIR})
-#
-#
-#list(APPEND PACKAGES_LIST package-arongodb-client)
 add_custom_target(copy_rpm_packages
-  COMMAND ${CMAKE_COMMAND} -E copy *.rpm ${PACKAGE_TARGET_DIR})
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_PACKAGE_FILE_NAME}.rpm ${CPACK_CLIENT_PACKAGE_FILE_NAME}.rpm ${CPACK_dbg_PACKAGE_FILE_NAME}.rpm ${PACKAGE_TARGET_DIR})
 
 list(APPEND COPY_PACKAGES_LIST copy_rpm_packages)
 
 add_custom_target(remove_packages
-  COMMAND ${CMAKE_COMMAND} -E REMOVE_RECURSIVE _CPack_Packages
-  COMMAND ${CMAKE_COMMAND} -E REMOVE *.rpm
+  COMMAND ${CMAKE_COMMAND} -E remove_directory _CPack_Packages
+  COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_PACKAGE_FILE_NAME}.rpm ${CPACK_CLIENT_PACKAGE_FILE_NAME}.rpm ${CPACK_dbg_PACKAGE_FILE_NAME}.rpm
   )
 
 list(APPEND CLEAN_PACKAGES_LIST remove_packages)
+
+
+

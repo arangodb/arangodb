@@ -59,6 +59,8 @@ endif()
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE ${ARANGODB_PACKAGE_ARCHITECTURE})
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
 
+set(ARANGODB_DBG_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
+
 set(conffiles_list "")
 if ("${INSTALL_CONFIGFILES_LIST}" STREQUAL "")
   message("the list is empty in this turn")
@@ -115,17 +117,17 @@ list(APPEND PACKAGES_LIST package-arongodb-client)
 
 
 add_custom_target(copy_deb_packages
-  COMMAND ${CMAKE_COMMAND} -E copy *.deb ${PACKAGE_TARGET_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.deb ${CPACK_PACKAGE_FILE_NAME}.deb ${ARANGODB_DBG_PACKAGE_FILE_NAME}.deb ${PACKAGE_TARGET_DIR}
   COMMENT "copying packages to ${PACKAGE_TARGET_DIR}")
 
 list(APPEND COPY_PACKAGES_LIST copy_deb_packages)
 
 add_custom_target(remove_packages
-  COMMAND ${CMAKE_COMMAND} -E REMOVE_RECURSIVE _CPack_Packages
+  COMMAND ${CMAKE_COMMAND} -E remove_directory _CPack_Packages
   COMMENT Removing server packaging build directory
-  COMMAND ${CMAKE_COMMAND} -E REMOVE_RECURSIVE packages
+  COMMAND ${CMAKE_COMMAND} -E remove_directory packages
   COMMENT Removing client packaging build directory
-  COMMAND ${CMAKE_COMMAND} -E REMOVE *.deb
+  COMMAND ${CMAKE_COMMAND} -E remove ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.deb ${CPACK_PACKAGE_FILE_NAME}.deb ${ARANGODB_DBG_PACKAGE_FILE_NAME}.deb
   COMMENT Removing local target packages
   )
 
@@ -141,7 +143,7 @@ configure_file(cmake/packages/dbg/deb.txt ${DEBUG_BUILD_DIR}/CMakeLists.txt @ONL
 add_custom_target(package-arongodb-dbg
   COMMAND ${CMAKE_COMMAND} . -DCMAKE_OBJCOPY=${CMAKE_OBJCOPY}
   COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
-  COMMAND ${CMAKE_COMMAND} -E copy *.deb ${PROJECT_BINARY_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy ${ARANGODB_DBG_PACKAGE_FILE_NAME}.deb ${PROJECT_BINARY_DIR}
   WORKING_DIRECTORY ${DEBUG_BUILD_DIR})
 
 list(APPEND PACKAGES_LIST package-arongodb-dbg)
