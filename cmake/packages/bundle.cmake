@@ -5,6 +5,7 @@ else()
   set(CPACK_PACKAGE_NAME           "ArangoDB3-CLI")
 endif()
 set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
+set(CPACK_PACKAGE_FILE_NAME      "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_x86_64")
 
 set(CPACK_BUNDLE_ICON            "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/icon.icns")
 
@@ -44,13 +45,13 @@ add_custom_target(package-arongodb-server-bundle
 list(APPEND PACKAGES_LIST package-arongodb-server-bundle)
 
 add_custom_target(copy_bundle_packages
-  COMMAND ${CMAKE_COMMAND} -E copy *.dmg ${PACKAGE_TARGET_DIR})
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_PACKAGE_FILE_NAME}.dmg ${PACKAGE_TARGET_DIR})
 
 list(APPEND COPY_PACKAGES_LIST copy_bundle_packages)
 
 add_custom_target(remove_packages
-  COMMAND ${CMAKE_COMMAND} -E REMOVE *.dmg
-  COMMAND ${CMAKE_COMMAND} -E REMOVE_RECURSIVE _CPack_Packages
+  COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_PACKAGE_FILE_NAME}.dmg
+  COMMAND ${CMAKE_COMMAND} -E remove_directory _CPack_Packages
   )
 
 list(APPEND CLEAN_PACKAGES_LIST remove_packages)
