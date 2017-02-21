@@ -25,7 +25,8 @@ else ()
 endif ()
 set(ARANGODB_PACKAGE_ARCHITECTURE ${CMAKE_SYSTEM_PROCESSOR})
 # eventually the package string will be modified later on:
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}.${ARANGODB_PACKAGE_ARCHITECTURE}")
+set(ARANGODB_BASIC_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}.${ARANGODB_PACKAGE_ARCHITECTURE}")
+set(CPACK_PACKAGE_FILE_NAME "${ARANGODB_BASIC_PACKAGE_FILE_NAME}")
 
 if ("${PACKAGING}" STREQUAL "DEB")
   include(packages/deb)
@@ -40,7 +41,8 @@ endif ()
 ################################################################################
 ## generic tarball
 ################################################################################
-set(CPACK_PACKAGE_TGZ "${CMAKE_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}.tar.gz")
+set(CPACK_PACKAGE_FILE_NAME "${ARANGODB_BASIC_PACKAGE_FILE_NAME}")
+set(CPACK_PACKAGE_TGZ "${CMAKE_BINARY_DIR}/${ARANGODB_BASIC_PACKAGE_FILE_NAME}.tar.gz")
 add_custom_target(TGZ_package
   COMMENT "create TGZ-package"
   COMMAND ${CMAKE_CPACK_COMMAND} -G TGZ  -C ${CMAKE_BUILD_TYPE}
