@@ -64,6 +64,10 @@ class IniFileParser {
   // parse a config file. returns true if all is well, false otherwise
   // errors that occur during parse are reported to _options
   bool parse(std::string const& filename) {
+    if (filename.empty()) {
+      return _options->fail("unable to open configuration file: no configuration file specified");
+    }
+
     std::ifstream ifs(filename, std::ifstream::in);
 
     if (!ifs.is_open()) {
@@ -122,7 +126,7 @@ class IniFileParser {
 
         _seen.insert(include);
 
-        if (! basics::FileUtils::isRegularFile(include)) {
+        if (!basics::FileUtils::isRegularFile(include)) {
           auto dn = basics::FileUtils::dirname(filename);
           include = basics::FileUtils::buildFilename(dn, include);
         }
