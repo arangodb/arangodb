@@ -73,11 +73,12 @@ network setup like laptops.
 
 ### Special note on IPv6 link-local addresses
 
-ArangoDB can also listen to IPv6 link-local addresses. however, what you
-probably instead want is to bind to a local IPv6 address. Local IPv6
-addresses start with `fd`. If you only see a `fe80:` in your interface configuration but
-no IPv6 address starting with `fd` your interface has no local IPv6 address
-assigned.
+ArangoDB can also listen to IPv6 link-local addresses via adding the zone ID
+to the IPv6 address in the form `[ipv6-link-local-address%zone-id]`. However,
+what you probably instead want is to bind to a local IPv6 address. Local IPv6
+addresses start with `fd`. If you only see a `fe80:` IPv6 address in your
+interface configuration but no IPv6 address starting with `fd` your interface
+has no local IPv6 address assigned.
 
 
 ### Reuse address
