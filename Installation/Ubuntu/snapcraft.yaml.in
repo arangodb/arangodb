@@ -15,7 +15,7 @@ grade: stable
 
 parts:
   @CPACK_PACKAGE_NAME@:
-    source: @CPACK_PACKAGE_TGZ@
+    source: @ARANGODB_BASIC_PACKAGE_FILE_NAME@.tar.gz
     plugin: dump
     prime:
       - -etc
