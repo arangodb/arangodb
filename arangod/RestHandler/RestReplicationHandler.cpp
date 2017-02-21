@@ -1779,17 +1779,8 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
         errorMsg =
             "could not create index: " + std::string(TRI_errno_string(res));
         break;
-      } else {
-        TRI_ASSERT(idx != nullptr);
-
-        res = physical->saveIndex(&trx, idx);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          errorMsg =
-              "could not save index: " + std::string(TRI_errno_string(res));
-          break;
-        }
       }
+      TRI_ASSERT(idx != nullptr);
     }
   } catch (arangodb::basics::Exception const& ex) {
     errorMsg =

@@ -33,7 +33,10 @@
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
@@ -1073,13 +1076,13 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     // We do not take responsibility for the index.
     // The LogicalCollection is protected by trx.
     // Neither it nor it's indexes can be invalidated
-    auto idx = trx.documentCollection()->primaryIndex();
-    markers.reserve(idx->size());
+
+    markers.reserve(trx.documentCollection()->numberDocuments());
 
     uint64_t iterations = 0;
     ManagedDocumentResult mmdr;
-    trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations, &idx](DocumentIdentifierToken const& token) {
-      if (idx->collection()->readDocument(&trx, token, mmdr)) {
+    trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations](DocumentIdentifierToken const& token) {
+      if (trx.documentCollection()->readDocument(&trx, token, mmdr)) {
         markers.emplace_back(mmdr.vpack());
         
         if (++iterations % 10000 == 0) {
@@ -1286,7 +1289,11 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     // We do not take responsibility for the index.
     // The LogicalCollection is protected by trx.
     // Neither it nor it's indexes can be invalidated
-    auto idx = trx.documentCollection()->primaryIndex();
+
+    // TODO Move to MMFiles
+    auto physical = static_cast<MMFilesCollection*>(
+        trx.documentCollection()->getPhysical());
+    auto idx = physical->primaryIndex();
 
     size_t const currentChunkId = i;
     progress = "processing keys chunk " + std::to_string(currentChunkId) +
@@ -1886,16 +1893,6 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
                 errorMsg = "could not create index: " +
                             std::string(TRI_errno_string(res));
                 break;
-              } else {
-                TRI_ASSERT(idx != nullptr);
-
-                res = physical->saveIndex(&trx, idx);
-
-                if (res != TRI_ERROR_NO_ERROR) {
-                  errorMsg = "could not save index: " +
-                              std::string(TRI_errno_string(res));
-                  break;
-                }
               }
             }
       

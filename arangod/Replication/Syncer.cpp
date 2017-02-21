@@ -29,6 +29,8 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
@@ -565,11 +567,6 @@ int Syncer::createIndex(VPackSlice const& slice) {
     TRI_ASSERT(physical != nullptr);
     std::shared_ptr<arangodb::Index> idx;
     res = physical->restoreIndex(&trx, indexSlice, idx);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      res = physical->saveIndex(&trx, idx);
-    }
-
     res = trx.finish(res);
 
     return res;
