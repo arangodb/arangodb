@@ -19,7 +19,7 @@ if(SNAPCRAFT_FOUND)
   set(SNAPCRAFT_TEMPLATE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Ubuntu")
   set(SNAPCRAFT_SOURCE_DIR "${CMAKE_BINARY_DIR}/_CPack_Packages/SNAP")
 
-  message(STATUS "Create snap package")
+  message(STATUS "Creating snap package")
 
   if (VERBOSE)
     message(STATUS "CPACK_PACKAGE_FILE_NAME :" ${CPACK_PACKAGE_FILE_NAME})

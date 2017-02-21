@@ -18,8 +18,8 @@ macro(install_debinfo
   set(STRIP_FILE ${STRIP_DIR}/${USER_TARGET}${CMAKE_EXECUTABLE_SUFFIX})
 
   if (NOT MSVC AND CMAKE_STRIP AND FILE_EXECUTABLE AND STRIP_FILE)
-    execute_process(COMMAND "${CMAKE_COMMAND} -E MAKE_DIRECTORY ${STRIP_DIR}")
-    execute_process(COMMAND "${CMAKE_COMMAND} -E REMOVE_RECURSE ${STRIP_FILE}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${STRIP_DIR})
+    execute_process(COMMAND ${CMAKE_COMMAND} -E remove ${STRIP_FILE})
     
     execute_process(
       COMMAND ${FILE_EXECUTABLE} ${FILE}
