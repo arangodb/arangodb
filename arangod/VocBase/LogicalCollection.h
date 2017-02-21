@@ -249,9 +249,6 @@ class LogicalCollection {
 
   /// datafile management
 
-  /// @brief rotate the active journal - will do nothing if there is no journal
-  int rotateActiveJournal();
-
   bool applyForTickRange(
       TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
       std::function<bool(TRI_voc_tick_t foundTick,

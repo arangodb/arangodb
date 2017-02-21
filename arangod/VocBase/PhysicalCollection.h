@@ -72,6 +72,7 @@ class PhysicalCollection {
   virtual int close() = 0;
   
   /// @brief rotate the active journal - will do nothing if there is no journal
+  /// REVIEW - MOVE INTO MMFILES?? - used in v8-collection
   virtual int rotateActiveJournal() = 0;
   
   virtual bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,

@@ -869,10 +869,6 @@ int LogicalCollection::close() {
   return getPhysical()->close();
 }
 
-int LogicalCollection::rotateActiveJournal() {
-  return getPhysical()->rotateActiveJournal();
-}
-
 bool LogicalCollection::applyForTickRange(
     TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
     std::function<bool(TRI_voc_tick_t foundTick,
