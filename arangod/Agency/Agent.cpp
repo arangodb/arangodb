@@ -1,3 +1,4 @@
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -47,10 +48,12 @@ Agent::Agent(config_t const& config)
     _config(config),
     _lastCommitIndex(0),
     _lastAppliedIndex(0),
+    _lastCompactionIndex(0),
     _leaderCommitIndex(0),
     _spearhead(this),
     _readDB(this),
     _transient(this),
+    _compacted(this),
     _nextCompationAfter(_config.compactionStepSize()),
     _inception(std::make_unique<Inception>(this)),
     _activator(nullptr),
@@ -272,14 +275,14 @@ bool Agent::recvAppendEntriesRPC(
 
   // Update commit index
   if (queries->slice().type() != VPackValueType::Array) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Received malformed entries for appending. Discarding!";
     return false;
   }
 
   if (!_constituent.checkLeader(term, leaderId, prevIndex, prevTerm)) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Not accepting appendEntries from "
-      << leaderId;
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Not accepting appendEntries from " << leaderId;
     return false;
   }
 
@@ -324,8 +327,8 @@ bool Agent::recvAppendEntriesRPC(
 /// Leader's append entries
 void Agent::sendAppendEntriesRPC() {
 
-  std::chrono::duration<int, std::ratio<1, 1000000>> const dt (
-    (_config.waitForSync() ? 40000 : 2000));
+  std::chrono::duration<int, std::ratio<1, 1000>> const dt (
+    (_config.waitForSync() ? 40 : 2));
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr only happens during controlled shutdown
@@ -413,8 +416,9 @@ void Agent::sendAppendEntriesRPC() {
         "1", 1, _config.poolAt(followerId),
         arangodb::rest::RequestType::POST, path.str(),
         std::make_shared<std::string>(builder.toJson()), headerFields,
-        std::make_shared<AgentCallback>(this, followerId, highest, toLog),
-        5.0 * _config.maxPing(), true);
+        std::make_shared<AgentCallback>(
+          this, followerId, (toLog) ? highest : 0, toLog),
+        std::max(1.0e-3 * toLog * dt.count(), 0.25 * _config.minPing()), true);
 
       // _lastSent, _lastHighest: local and single threaded access
       _lastSent[followerId]        = system_clock::now();
@@ -422,7 +426,7 @@ void Agent::sendAppendEntriesRPC() {
 
       if (toLog > 0) {
         _earliestPackage[followerId] = system_clock::now() + toLog * dt;
-        LOG_TOPIC(TRACE, Logger::AGENCY)
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Appending " << unconfirmed.size() - 1 << " entries up to index "
           << highest << " to follower " << followerId << ". Message: "
           << builder.toJson() 
@@ -430,7 +434,7 @@ void Agent::sendAppendEntriesRPC() {
           <<  std::chrono::duration<double, std::milli>(
             _earliestPackage[followerId]-system_clock::now()).count() << "ms";
       } else {
-        LOG_TOPIC(TRACE, Logger::AGENCY)
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Just keeping follower " << followerId
           << " devout with " << builder.toJson();
       }
@@ -837,7 +841,7 @@ void Agent::run() {
       sendAppendEntriesRPC();
 
       // Don't panic
-      _appendCV.wait(1000);
+      _appendCV.wait(100);
 
       // Detect faulty agent and replace
       // if possible and only if not already activating
@@ -1173,13 +1177,19 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
     << _lastAppliedIndex << " to " << _leaderCommitIndex;
   
   _spearhead.apply(
-    _state.slices(_lastAppliedIndex+1, _leaderCommitIndex),
+    _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1),
     _leaderCommitIndex, _constituent.term());
   
   _readDB.apply(
-    _state.slices(_lastAppliedIndex+1, _leaderCommitIndex),
+    _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1),
     _leaderCommitIndex, _constituent.term());
+
+  _compacted.apply(
+    _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1),
+    _leaderCommitIndex, _constituent.term());
+
   _lastAppliedIndex = _leaderCommitIndex;
+  _lastCompactionIndex = _leaderCommitIndex;
   
   return _lastAppliedIndex;
 
@@ -1195,9 +1205,11 @@ void Agent::compact() {
 
 
 /// Last commit index
-arangodb::consensus::index_t Agent::lastCommitted() const {
+std::pair<arangodb::consensus::index_t, arangodb::consensus::index_t>
+  Agent::lastCommitted() const {
   MUTEX_LOCKER(ioLocker, _ioLock);
-  return _lastCommitIndex;
+  return std::pair<arangodb::consensus::index_t, arangodb::consensus::index_t>(
+    _lastCommitIndex,_leaderCommitIndex);
 }
 
 /// Last commit index
@@ -1382,8 +1394,42 @@ bool Agent::ready() const {
     return true;
   }
 
-  return _ready.load();
+  return _ready;
+
 }
 
+query_t Agent::buildDB(arangodb::consensus::index_t index) {
+
+  auto builder = std::make_shared<VPackBuilder>();
+  arangodb::consensus::index_t start = 0, end = 0;
+
+  Store store(this);
+  {
+
+    MUTEX_LOCKER(ioLocker, _ioLock);
+    store = _compacted;
+
+    MUTEX_LOCKER(liLocker, _liLock);
+    end = _leaderCommitIndex;
+    start = _lastCompactionIndex+1;
+    
+  }
+  
+  if (index > end) {
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Cannot snapshot beyond leaderCommitIndex: " << end;
+    index = end;
+  } else if (index < start) {
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Cannot snapshot before last compaction index: " << start;
+    index = start+1;
+  }
+  
+  store.apply(_state.slices(start+1, index), index, _constituent.term());
+  store.toBuilder(*builder);
+  
+  return builder;
+  
+}
 
 }}  // namespace

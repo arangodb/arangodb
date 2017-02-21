@@ -66,21 +66,27 @@ class State {
                            std::vector<bool> const& indices, term_t term);
 
   /// @brief Single log entry (leader)
-  arangodb::consensus::index_t log(
-    velocypack::Slice const& slice, term_t term,
-    std::string const& clientId = std::string());
+  index_t log(velocypack::Slice const& slice, term_t term,
+              std::string const& clientId = std::string());
     
   /// @brief Log entries (followers)
   arangodb::consensus::index_t log(query_t const& queries, size_t ndups = 0);
-
+  
   /// @brief Find entry at index with term
   bool find(index_t index, term_t term);
 
   /// @brief Get complete log entries bound by lower and upper bounds.
   ///        Default: [first, last]
   std::vector<log_t> get(
-      index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
-
+    index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
+  
+  /// @brief Get complete log entries bound by lower and upper bounds.
+  ///        Default: [first, last]
+  log_t at(index_t) const;
+  
+  /// @brief Has entry with index und term
+  bool has(index_t, term_t) const;
+  
   /// @brief Get log entries by client Id
   std::vector<std::vector<log_t>> inquire(query_t const&) const;
 
@@ -95,6 +101,10 @@ class State {
   /// @brief last log entry, copy entry because we do no longer have the lock
   /// after the return
   log_t lastLog() const;
+
+  /// @brief last log entry, copy entry because we do no longer have the lock
+  /// after the return
+  index_t lastIndex() const;
 
   /// @brief Set endpoint
   bool configure(Agent* agent);

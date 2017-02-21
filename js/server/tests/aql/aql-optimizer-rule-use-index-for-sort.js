@@ -1133,6 +1133,72 @@ function optimizerRuleTestSuite() {
         }
       });
       assertEqual(2, seen);
+    },
+
+    testSortOnSubAttributeAsc : function () {
+      skiplist.ensureIndex({ type: "skiplist", fields: [ "foo.bar" ], unique: false });
+      var query = "FOR v IN " + colName + " SORT v.foo.bar ASC RETURN v";
+      var rules = AQL_EXPLAIN(query).plan.rules;
+      assertNotEqual(-1, rules.indexOf(ruleName));
+
+      var nodes = AQL_EXPLAIN(query).plan.nodes;
+      var seen = false;
+      nodes.forEach(function(node) {
+        assertNotEqual("SortNode", node.type);
+        if (node.type === "IndexNode") {
+          assertEqual(1, node.indexes.length);
+          assertEqual(["foo.bar"], node.indexes[0].fields);
+          seen = true;
+          assertFalse(node.reverse); 
+        }
+      });
+      assertTrue(seen);
+    },
+
+    testSortOnSubAttributeDesc : function () {
+      skiplist.ensureIndex({ type: "skiplist", fields: [ "foo.bar" ], unique: false });
+      var query = "FOR v IN " + colName + " SORT v.foo.bar DESC RETURN v";
+      var rules = AQL_EXPLAIN(query).plan.rules;
+      assertNotEqual(-1, rules.indexOf(ruleName));
+
+      var nodes = AQL_EXPLAIN(query).plan.nodes;
+      var seen = false;
+      nodes.forEach(function(node) {
+        assertNotEqual("SortNode", node.type);
+        if (node.type === "IndexNode") {
+          assertEqual(1, node.indexes.length);
+          assertEqual(["foo.bar"], node.indexes[0].fields);
+          seen = true;
+          assertTrue(node.reverse); 
+        }
+      });
+      assertTrue(seen);
+    },
+
+    testSortOnNestedSubAttributeAsc : function () {
+      skiplist.ensureIndex({ type: "skiplist", fields: [ "foo.bar.baz" ], unique: false });
+      var query = "FOR v IN " + colName + " SORT v.foo.bar.baz ASC RETURN v";
+      var rules = AQL_EXPLAIN(query).plan.rules;
+      assertNotEqual(-1, rules.indexOf(ruleName));
+
+      var nodes = AQL_EXPLAIN(query).plan.nodes;
+      var seen = false;
+      nodes.forEach(function(node) {
+        assertNotEqual("SortNode", node.type);
+        if (node.type === "IndexNode") {
+          assertEqual(1, node.indexes.length);
+          assertEqual(["foo.bar.baz"], node.indexes[0].fields);
+          seen = true;
+          assertFalse(node.reverse); 
+        }
+      });
+      assertTrue(seen);
+    },
+    
+    testSortOnNonIndexedSubAttributeAsc : function () {
+      var query = "FOR v IN " + colName + " SORT v.foo.bar ASC RETURN v";
+      var rules = AQL_EXPLAIN(query).plan.rules;
+      assertEqual(-1, rules.indexOf(ruleName));
     }
 
   };
