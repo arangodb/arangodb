@@ -55,7 +55,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#undef USE_PLAN_CACHE 1
+#undef USE_PLAN_CACHE 
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -524,6 +524,8 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
   }
 
   enterState(EXECUTION);
+  TRI_ASSERT(_engine == nullptr);
+
   _engine.reset(ExecutionEngine::instantiateFromPlan(registry, this, plan.get(), _queryString != nullptr));
   _plan = std::move(plan);
 }
