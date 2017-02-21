@@ -21,15 +21,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "TransactionContext.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
+#include "MMFiles/MMFilesCollection.h"     //TODO -- REMOVE
+#include "MMFiles/MMFilesLogfileManager.h" //TODO -- REMOVE
 #include "RestServer/TransactionManagerFeature.h"
-#include "MMFiles/MMFilesDatafileHelper.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesCollection.h" //TODO -- REMOVE
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "TransactionContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"

@@ -24,9 +24,8 @@
 #include "CollectionKeys.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
-#include "MMFiles/MMFilesDatafileHelper.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesCollection.h" //TODO -- REMOVE
+#include "MMFiles/MMFilesLogfileManager.h" //TODO -- REMOVE
+#include "MMFiles/MMFilesCollection.h"     //TODO -- REMOVE
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"

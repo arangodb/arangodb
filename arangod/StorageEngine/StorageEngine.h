@@ -28,7 +28,7 @@
 #include "Basics/Common.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Indexes/IndexFactory.h"
-#include "MMFiles/MMFilesCollectorCache.h"
+#include "MMFiles/MMFilesCollectorCache.h"  //TODO -- REMOVE
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"

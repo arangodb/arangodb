@@ -39,14 +39,6 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "MMFiles/MMFilesDocumentOperation.h"
-#include "MMFiles/MMFilesCollection.h" //remove
-#include "MMFiles/MMFilesPrimaryIndex.h"
-#include "MMFiles/MMFilesIndexElement.h"
-#include "MMFiles/MMFilesToken.h"
-#include "MMFiles/MMFilesTransactionState.h"
-#include "MMFiles/MMFilesWalMarker.h" //crud marker -- TODO remove
-#include "MMFiles/MMFilesWalSlots.h"  //TODO -- remove
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
