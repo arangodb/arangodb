@@ -731,10 +731,6 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
   auto lhsType = lhs.type();
 
   switch (lhsType) {
-    case VPackValueType::Illegal:
-    case VPackValueType::MinKey:
-    case VPackValueType::MaxKey:
-    case VPackValueType::None:
     case VPackValueType::Null:
       return 0;
     case VPackValueType::Bool: {
@@ -811,29 +807,61 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
       return 0;
     }
     case VPackValueType::Object: {
-      std::set<std::string, AttributeSorterUTF8> keys;
-      VPackCollection::keys(lhs, keys);
-      VPackCollection::keys(rhs, keys);
-      for (auto const& key : keys) {
-        VPackSlice lhsValue = lhs.get(key).resolveExternal();
-        if (lhsValue.isNone()) {
-          // not present => null
-          lhsValue = VPackSlice::nullSlice();
-        }
-        VPackSlice rhsValue = rhs.get(key).resolveExternal();
-        if (rhsValue.isNone()) {
-          // not present => null
-          rhsValue = VPackSlice::nullSlice();
-        }
+      if (useUTF8) {
+        // must sort attributes by proper UTF8 values
+        // this is expensive
+        std::set<std::string, AttributeSorterUTF8> keys;
+        VPackCollection::keys(lhs, keys);
+        VPackCollection::keys(rhs, keys);
+        for (auto const& key : keys) {
+          VPackSlice lhsValue = lhs.get(key).resolveExternal();
+          if (lhsValue.isNone()) {
+            // not present => null
+            lhsValue = VPackSlice::nullSlice();
+          }
+          VPackSlice rhsValue = rhs.get(key).resolveExternal();
+          if (rhsValue.isNone()) {
+            // not present => null
+            rhsValue = VPackSlice::nullSlice();
+          }
 
-        int result = compare(lhsValue, rhsValue, useUTF8, options, &lhs, &rhs);
-        if (result != 0) {
-          return result;
+          int result = compare(lhsValue, rhsValue, useUTF8, options, &lhs, &rhs);
+          if (result != 0) {
+            return result;
+          }
+        }
+      } else {
+        // no UTF8-awareness is required here. do a quick and dirty comparison
+        std::set<std::string> keys;
+        VPackCollection::unorderedKeys(lhs, keys);
+        VPackCollection::unorderedKeys(rhs, keys);
+        for (auto const& key : keys) {
+          VPackSlice lhsValue = lhs.get(key).resolveExternal();
+          if (lhsValue.isNone()) {
+            // not present => null
+            lhsValue = VPackSlice::nullSlice();
+          }
+          VPackSlice rhsValue = rhs.get(key).resolveExternal();
+          if (rhsValue.isNone()) {
+            // not present => null
+            rhsValue = VPackSlice::nullSlice();
+          }
+
+          int result = compare(lhsValue, rhsValue, useUTF8, options, &lhs, &rhs);
+          if (result != 0) {
+            return result;
+          }
         }
       }
 
       return 0;
     }
+    case VPackValueType::Illegal:
+    case VPackValueType::MinKey:
+    case VPackValueType::MaxKey:
+    case VPackValueType::None:
+      // uncommon cases are compared at the end
+      return 0;
     default:
       // Contains all other ValueTypes of VelocyPack.
       // They are not used in ArangoDB so this cannot occur
