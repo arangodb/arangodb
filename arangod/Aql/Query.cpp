@@ -55,7 +55,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#undef USE_PLAN_CACHE
+#undef USE_PLAN_CACHE 1
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -1307,14 +1307,12 @@ uint64_t Query::hash() const {
   }
   
   // also hash "optimizer" options
-  VPackSlice options = _options->slice();
-
-  if (options.isObject()) {
-    VPackSlice opt = options.get("optimizer");
-    hash ^= opt.hash();
-  } else {
-    hash ^= basics::VelocyPackHelper::EmptyObjectValue().hash();
+  VPackSlice options = basics::VelocyPackHelper::EmptyObjectValue();
+  
+  if (_options != nullptr && _options->slice().isObject()) {
+    options = _options->slice().get("optimizer");
   }
+  hash ^= options.hash();
 
   // blend query hash with bind parameters
   return hash ^ _bindParameters.hash();
