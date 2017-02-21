@@ -71,7 +71,7 @@ endmacro()
 macro(strip_install_bin_and_config
     TARGET
     INTERMEDIATE_STRIP_DIR
-    TAGET_DIR
+    TARGET_DIR
     BIND_TARGET)
   
   string(LENGTH "${TARGET}" TLEN)
@@ -80,24 +80,24 @@ macro(strip_install_bin_and_config
   endif()
   set(FILE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}/${TARGET}${CMAKE_EXECUTABLE_SUFFIX})
   set(STRIP_FILE ${INTERMEDIATE_STRIP_DIR}/${TARGET}${CMAKE_EXECUTABLE_SUFFIX})
-  if (NOT MSVC AND CMAKE_STRIP)
-    set(TARGET_NAME "${BIND_TARGET}_${TARGET}")
-    ExternalProject_Add("${TARGET_NAME}"
-      SOURCE_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}
-      
-      CONFIGURE_COMMAND ${CMAKE_COMMAND} -E make_directory ${INTERMEDIATE_STRIP_DIR}
-      COMMENT "creating strip directory"
-      
-      BUILD_COMMAND ${CMAKE_STRIP} ${FILE} -o ${STRIP_FILE}
-      COMMENT "stripping binary"
-
-      INSTALL_COMMAND  ${CMAKE_COMMAND} -E copy ${STRIP_FILE} ${TAGET_DIR}
-      )
-  else ()
+#   if (NOT MSVC AND CMAKE_STRIP)
+#     set(TARGET_NAME "${BIND_TARGET}_${TARGET}")
+#     ExternalProject_Add("${TARGET_NAME}"
+#       SOURCE_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}
+#       
+#       CONFIGURE_COMMAND ${CMAKE_COMMAND} -E make_directory ${INTERMEDIATE_STRIP_DIR}
+#       COMMENT "creating strip directory"
+#       
+#       BUILD_COMMAND ${CMAKE_STRIP} ${FILE} -o ${STRIP_FILE}
+#       COMMENT "stripping binary"
+# 
+#       INSTALL_COMMAND  ${CMAKE_COMMAND} -E copy ${STRIP_FILE} ${TARGET_DIR}
+#       )
+#   else ()
     install(
       PROGRAMS ${FILE}
-      DESTINATION TAGET_DIR)
-  endif()
+      DESTINATION ${TARGET_DIR})
+#  endif()
   install_config(${TARGET})
 
 endmacro()
