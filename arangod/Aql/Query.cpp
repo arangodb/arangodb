@@ -524,11 +524,20 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
   }
 
   enterState(EXECUTION);
-  // TRI_ASSERT(_engine == nullptr);
-
+  
+  TRI_ASSERT(_engine == nullptr);
+  // note that the engine returned here may already be present in our
+  // own _engine attribute (the instanciation procedure may modify us
+  // by calling our engine(ExecutionEngine*) function
+  // this is confusing and should be fixed!
+  std::unique_ptr<ExecutionEngine> engine(ExecutionEngine::instantiateFromPlan(registry, this, plan.get(), _queryString != nullptr));
+  
   if (_engine == nullptr) {
-    _engine.reset(ExecutionEngine::instantiateFromPlan(registry, this, plan.get(), _queryString != nullptr));
+    _engine = std::move(engine);
+  } else {
+    engine.release();
   }
+
   _plan = std::move(plan);
 }
 
@@ -1126,7 +1135,9 @@ QueryResult Query::explain() {
   }
 }
    
-void Query::engine(ExecutionEngine* engine) { _engine.reset(engine); }
+void Query::engine(ExecutionEngine* engine) {
+  _engine.reset(engine); 
+}
 
 /// @brief get v8 executor
 Executor* Query::executor() {
