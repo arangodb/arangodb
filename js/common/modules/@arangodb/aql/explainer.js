@@ -987,7 +987,7 @@ function processQuery (query, explain) {
         }
         translate = ['ANY', 'INBOUND', 'OUTBOUND'];
         var defaultDirection = node.directions[0];
-        rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN") } ${keyword(translate[defaultDirection])} `;
+        rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN") } ${keyword(translate[defaultDirection])} ${keyword("SHORTEST_PATH") } `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
         } else {

@@ -28,6 +28,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Query.h"
 #include "Cluster/ClusterComm.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
@@ -178,6 +179,12 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
       } else {
         addEdgeColl(eColName, dir);
       }
+    
+      if (dir == TRI_EDGE_ANY) {
+        // collection with direction ANY must be added again
+        _graphInfo.add(VPackValue(eColName));
+      }
+
     }
     _graphInfo.close();
   } else {
@@ -337,9 +344,17 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
         THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
       }
 
-      auto eColls = _graphObj->edgeCollections();
-      for (auto const& n : eColls) {
-        _edgeColls.push_back(n);
+      auto const& eColls = _graphObj->edgeCollections();
+      for (auto const& it : eColls) {
+        _edgeColls.push_back(it);
+        
+        // if there are twice as many directions as collections, this means we
+        // have a shortest path with direction ANY. we must add each collection
+        // twice then
+        if (_directions.size() == 2 * eColls.size()) {
+          // add collection again
+          _edgeColls.push_back(it);
+        }
       }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,

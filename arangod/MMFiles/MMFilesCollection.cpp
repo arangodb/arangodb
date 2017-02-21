@@ -1212,6 +1212,9 @@ void MMFilesCollection::open(bool ignoreErrors) {
   arangodb::SingleCollectionTransaction trx(
       arangodb::StandaloneTransactionContext::Create(vocbase), cid,
       AccessMode::Type::WRITE);
+  // the underlying collections must not be locked here because the "load" 
+  // routine can be invoked from any other place, e.g. from an AQL query
+  trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
 
   // build the primary index
   double startIterate = TRI_microtime();

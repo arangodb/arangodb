@@ -35,13 +35,16 @@ class VariableGenerator {
  public:
   /// @brief create the generator
   VariableGenerator();
+  
+  VariableGenerator(VariableGenerator const& other) = delete;
+  VariableGenerator& operator=(VariableGenerator const& other) = delete;
 
   /// @brief destroy the generator
   ~VariableGenerator();
 
  public:
   /// @brief return a map of all variable ids with their names
-  std::unordered_map<VariableId, std::string const> variables(bool) const;
+  std::unordered_map<VariableId, std::string const> variables(bool includeTemporaries) const;
 
   /// @brief generate a variable
   Variable* createVariable(char const*, size_t, bool);

@@ -26,6 +26,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"

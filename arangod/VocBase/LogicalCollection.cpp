@@ -24,6 +24,7 @@
 
 #include "LogicalCollection.h"
 
+#include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
@@ -1272,6 +1273,8 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
     THROW_ARANGO_EXCEPTION(res);
   }
 
+  arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
+
   bool const writeMarker = !engine->inRecovery();
   res = saveIndex(idx.get(), writeMarker);
 
@@ -1403,7 +1406,9 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
     return true;
   }
 
+  arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
   arangodb::aql::QueryCache::instance()->invalidate(_vocbase, name());
+
   if (!removeIndex(iid)) {
     // We tried to remove an index that does not exist
     events::DropIndex("", std::to_string(iid),

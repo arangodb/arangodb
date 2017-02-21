@@ -41,7 +41,9 @@ class QueryResources {
 
   explicit QueryResources(ResourceMonitor*);
   ~QueryResources();
-  
+ 
+  void steal();
+   
   /// @brief add a node to the list of nodes
   void addNode(AstNode*);
   

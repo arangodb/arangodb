@@ -26,8 +26,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalNode.h"
-#include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Cluster/ClusterComm.h"
 #include "Indexes/Index.h"

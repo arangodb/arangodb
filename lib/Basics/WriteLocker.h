@@ -20,6 +20,7 @@
 ///
 /// @author Frank Celler
 /// @author Achim Brandt
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_BASICS_WRITE_LOCKER_H
@@ -35,10 +36,7 @@
 
 #include <thread>
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief construct locker with file and line information
-////////////////////////////////////////////////////////////////////////////////
-
 #define WRITE_LOCKER(obj, lock) \
   arangodb::basics::WriteLocker<std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
@@ -115,10 +113,10 @@ class WriteLocker {
 
   /// @brief eventually acquire the write lock
   void lockEventual() {
-    while (!_readWriteLock->tryWriteLock()) {
+    while (!tryLock()) {
       std::this_thread::yield();
     }
-    _isLocked = true;
+    TRI_ASSERT(_isLocked);
   }
   
   bool tryLock() {

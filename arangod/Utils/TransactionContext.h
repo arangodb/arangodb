@@ -43,13 +43,14 @@ class Builder;
 struct CustomTypeHandler;
 }
 
-class CollectionNameResolver;
-class DocumentDitch;
-class LogicalCollection;
 namespace transaction {
 class Methods;
 }
-;
+
+
+class CollectionNameResolver;
+class DocumentDitch;
+class LogicalCollection;
 class TransactionState;
 
 class TransactionContext {
