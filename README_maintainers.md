@@ -366,6 +366,29 @@ via the environment variable or in the menu. Given we want to store the symbols 
 
 You then will be able to see stack traces in the debugger.
 
+The symbolserver over at https://www.arangodb.com/repositories/symsrv/ is browseable; thus you can easily download the files you need by hand. It contains of a list of directories corosponding to the components of arangodb:
+
+  - arango - the basic arangodb library needed by all components
+  - arango_v8 - the basic V8 wrappers needed by all components
+  - arangod - the server process 
+  - the client utilities:
+    - arangob
+    - arangobench
+    - arangoexport
+    - arangoimp
+    - arangorestore
+    - arangosh
+    - arangovpack
+
+In these directories you will find subdirectories with the hash corosponding to the id of the binaries. Their date should corrospond to the release date of their respective arango release. 
+
+This means i.e. for ArangoDB 3.1.11: 
+
+ https://www.arangodb.com/repositories/symsrv/arangod.pdb/A8B899D2EDFC40E994C30C32FCE5FB3411/arangod.pd_
+
+This file is a microsoft cabinet file, which is a little bit compressed. You can dismantle it so the windows explorer offers you its proper handler by renaming it to .cab; click on the now named `arangod.cab`, copy the contained arangod.pdb into your symbol path.
+
+
 Coredump analysis
 -----------------
 While Visual studio may cary a nice shiny gui, the concept of GUI fails miserably i.e. in testautomation. Getting an overview over all running threads is a tedious task with it. Here the commandline version of [WinDBG](http://www.windbg.org/) cdb comes to the aid. `testing.js` utilizes it to obtain automatical stack traces for crashes.
