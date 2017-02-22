@@ -24,7 +24,9 @@
 
 using namespace arangodb;
 
-size_t SocketTcp::write(basics::StringBuffer* buffer, boost::system::error_code& ec) {
+size_t SocketTcp::write(basics::StringBuffer* buffer,
+                        boost::system::error_code& ec) {
+  MUTEX_LOCKER(guard, _lock);
   if (_encrypted) {
     return socketcommon::doWrite(_sslSocket, buffer, ec);
   } else {
@@ -32,7 +34,9 @@ size_t SocketTcp::write(basics::StringBuffer* buffer, boost::system::error_code&
   }
 }
 
-void SocketTcp::asyncWrite(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
+void SocketTcp::asyncWrite(boost::asio::mutable_buffers_1 const& buffer,
+                           AsyncHandler const& handler) {
+  MUTEX_LOCKER(guard, _lock);
   if (_encrypted) {
     return socketcommon::doAsyncWrite(_sslSocket, buffer, handler);
   } else {
@@ -40,7 +44,9 @@ void SocketTcp::asyncWrite(boost::asio::mutable_buffers_1 const& buffer, AsyncHa
   }
 }
 
-size_t SocketTcp::read(boost::asio::mutable_buffers_1 const& buffer, boost::system::error_code& ec) {
+size_t SocketTcp::read(boost::asio::mutable_buffers_1 const& buffer,
+                       boost::system::error_code& ec) {
+  MUTEX_LOCKER(guard, _lock);
   if (_encrypted) {
     return socketcommon::doRead(_sslSocket, buffer, ec);
   } else {
@@ -49,22 +55,28 @@ size_t SocketTcp::read(boost::asio::mutable_buffers_1 const& buffer, boost::syst
 }
 
 void SocketTcp::shutdownReceive() {
+  MUTEX_LOCKER(guard, _lock);
   _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive);
 }
 
 void SocketTcp::shutdownReceive(boost::system::error_code& ec) {
+  MUTEX_LOCKER(guard, _lock);
   _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive, ec);
 }
 
 void SocketTcp::shutdownSend(boost::system::error_code& ec) {
+  MUTEX_LOCKER(guard, _lock);
   _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
 }
 
 int SocketTcp::available(boost::system::error_code& ec) {
+  MUTEX_LOCKER(guard, _lock);
   return static_cast<int>(_socket.available(ec));
 }
 
-void SocketTcp::asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
+void SocketTcp::asyncRead(boost::asio::mutable_buffers_1 const& buffer,
+                          AsyncHandler const& handler) {
+  MUTEX_LOCKER(guard, _lock);
   if (_encrypted) {
     return socketcommon::doAsyncRead(_sslSocket, buffer, handler);
   } else {

@@ -3,6 +3,8 @@ v3.1.12 (XXXX-XX-XX)
 
 * fixed issue #2315
 
+* fixed a race condition when closing a connection
+
 
 v3.1.11 (2017-02-17)
 --------------------
