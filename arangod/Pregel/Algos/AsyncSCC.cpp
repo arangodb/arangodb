@@ -88,7 +88,6 @@ struct ASCCComputation
         // it can't be part of an SCC
         RangeIterator<Edge<int8_t>> edges = getEdges();
         if (vertexState->parents.size() == 0 || edges.size() == 0) {
-          vertexState->color = INT_MAX;
           voteHalt();
         } else {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
