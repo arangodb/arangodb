@@ -39,6 +39,7 @@ class Methods;
 
 struct DocumentIdentifierToken;
 class Index;
+class IndexIterator;
 class LogicalCollection;
 class ManagedDocumentResult;
 struct OperationOptions;
@@ -49,17 +50,18 @@ class PhysicalCollection {
 
  public:
   virtual ~PhysicalCollection() = default;
-  
+
   //path to logical collection
   virtual std::string const& path() const = 0;
   virtual void setPath(std::string const&) = 0; // should be set during collection creation
                                                 // creation happens atm in engine->createCollection
   virtual int updateProperties(VPackSlice const& slice, bool doSync) = 0;
-  
+  virtual int persistProperties() noexcept = 0;
+
   virtual PhysicalCollection* clone(LogicalCollection*, PhysicalCollection*) = 0;
 
   virtual TRI_voc_rid_t revision() const = 0;
-  
+
   virtual int64_t initialCount() const = 0;
 
   virtual void updateCount(int64_t) = 0;
@@ -112,6 +114,9 @@ class PhysicalCollection {
 
   virtual bool dropIndex(TRI_idx_iid_t iid) = 0;
 
+  virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) = 0;
+  virtual std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr) = 0;
+  virtual void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback) = 0;
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////

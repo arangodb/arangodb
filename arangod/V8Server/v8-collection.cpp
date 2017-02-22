@@ -1422,25 +1422,7 @@ static void JS_PropertiesVocbaseCol(
         TRI_V8_THROW_EXCEPTION(res);
       }
 
-      try {
-        VPackBuilder infoBuilder;
-        collection->toVelocyPack(infoBuilder, false);
-
-        // now log the property changes
-        res = TRI_ERROR_NO_ERROR;
-
-        MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, collection->vocbase()->id(), collection->cid(), infoBuilder.slice());
-        MMFilesWalSlotInfoCopy slotInfo =
-            MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
-
-        if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
-        }
-      } catch (arangodb::basics::Exception const& ex) {
-        res = ex.code();
-      } catch (...) {
-        res = TRI_ERROR_INTERNAL;
-      }
+      res = collection->getPhysical()->persistProperties();
 
       if (res != TRI_ERROR_NO_ERROR) {
         // TODO: what to do here

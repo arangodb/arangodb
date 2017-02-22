@@ -39,6 +39,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -434,6 +435,19 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
 LogicalCollection::~LogicalCollection() {}
 
+std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse){
+  return _physical->getAllIterator(trx, mdr, reverse);
+}
+
+std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr){
+  return _physical->getAnyIterator(trx, mdr);
+}
+
+void LogicalCollection::invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback){
+  _physical->invokeOnAllElements(callback);
+}
+
+
 bool LogicalCollection::IsAllowedName(VPackSlice parameters) {
   bool allowSystem = Helper::readBooleanValue(parameters, "isSystem", false);
   std::string name = ReadStringValue(parameters, "name", "");
@@ -669,16 +683,15 @@ void LogicalCollection::getPropertiesVPack(VPackBuilder& result, bool translateC
   result.add("type", VPackValue(static_cast<int>(_type)));
   result.add("status", VPackValue(_status));
   result.add("deleted", VPackValue(_isDeleted));
-  result.add("doCompact", VPackValue(getPhysical()->doCompact()));
   result.add("isSystem", VPackValue(_isSystem));
-  result.add("isVolatile", VPackValue(_isVolatile));
   result.add("waitForSync", VPackValue(_waitForSync));
-  // maybe add journalsize in Pysical - problem we need ot create one object
-  // we shold not merge one silice created by they physical with the one
-  // created in this place or maybe just split info in logical and pysical part
-  // that would probably result in bigger changes TODO FIXME
-  result.add("journalSize", VPackValue(getPhysical()->journalSize()));
-  result.add("indexBuckets", VPackValue(_indexBuckets));
+
+  //TODO
+  result.add("isVolatile", VPackValue(_isVolatile)); //MMFiles
+  result.add("journalSize", VPackValue(getPhysical()->journalSize())); //MMFiles
+  result.add("doCompact", VPackValue(getPhysical()->doCompact())); //MMFiles
+  result.add("indexBuckets", VPackValue(_indexBuckets)); //MMFiles
+  
   result.add("replicationFactor", VPackValue(_replicationFactor));
   if (!_distributeShardsLike.empty()) {
     if (translateCids) {
@@ -953,7 +966,7 @@ int LogicalCollection::updateProperties(VPackSlice const& slice, bool doSync) {
   }
 
   if (isVolatile() != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                          slice, "isVolatile", isVolatile())) {
+                          slice, "isVolatile", isVolatile())) { //MMFiles
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "isVolatile option cannot be changed at runtime");
@@ -972,7 +985,7 @@ int LogicalCollection::updateProperties(VPackSlice const& slice, bool doSync) {
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
   getPhysical()->updateProperties(slice,doSync);
   _indexBuckets =
-      Helper::getNumericValue<uint32_t>(slice, "indexBuckets", _indexBuckets);
+      Helper::getNumericValue<uint32_t>(slice, "indexBuckets", _indexBuckets); //MMFiles
 
   if (!_isLocal) {
     // We need to inform the cluster as well

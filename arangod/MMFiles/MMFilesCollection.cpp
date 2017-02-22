@@ -61,6 +61,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "Indexes/IndexIterator.h"
 
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
@@ -120,6 +121,22 @@ int MMFilesCollection::updateProperties(VPackSlice const& slice, bool doSync){
   }
   _doCompact = Helper::getBooleanValue(slice, "doCompact", _doCompact);
   return TRI_ERROR_NO_ERROR;
+}
+
+int MMFilesCollection::persistProperties() noexcept {
+  try {
+    VPackBuilder infoBuilder;
+    _logicalCollection->toVelocyPack(infoBuilder, false);
+
+    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, _logicalCollection->vocbase()->id(), _logicalCollection->cid(), infoBuilder.slice());
+    MMFilesWalSlotInfoCopy slotInfo =
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
+    return slotInfo.errorCode;
+  } catch (arangodb::basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
 }
 
 PhysicalCollection* MMFilesCollection::clone(LogicalCollection* logical,PhysicalCollection* physical){
@@ -1923,7 +1940,17 @@ int MMFilesCollection::cleanupIndexes() {
   return res;
 }
 
+std::unique_ptr<IndexIterator> MMFilesCollection::getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse){
+  return std::unique_ptr<IndexIterator>(primaryIndex()->allIterator(trx, mdr, reverse));
+}
 
+std::unique_ptr<IndexIterator> MMFilesCollection::getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr){
+  return std::unique_ptr<IndexIterator>(primaryIndex()->anyIterator(trx, mdr));
+}
+
+void MMFilesCollection::invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback){
+  primaryIndex()->invokeOnAllElements(callback);
+}
 
 /// @brief read locks a collection, with a timeout (in µseconds)
 int MMFilesCollection::beginReadTimed(bool useDeadlockDetector,

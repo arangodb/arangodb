@@ -53,6 +53,7 @@ struct DatafileStatisticsContainer;
 struct DocumentIdentifierToken;
 class FollowerInfo;
 class Index;
+class IndexIterator;
 class KeyGenerator;
 class ManagedDocumentResult;
 struct OperationOptions;
@@ -180,6 +181,12 @@ class LogicalCollection {
   }
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
+  
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse);
+  std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr);
+
+  void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback);
+
 
   // SECTION: Indexes
   uint32_t indexBuckets() const;
