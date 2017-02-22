@@ -602,7 +602,7 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 
     LogicalCollection* collection = guard.collection();
 
-    bool result = collection->dropIndex(iid, true);
+    bool result = collection->dropIndex(iid);
 
     if (!result) {
       return TRI_ERROR_NO_ERROR;

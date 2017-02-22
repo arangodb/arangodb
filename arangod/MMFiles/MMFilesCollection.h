@@ -251,7 +251,7 @@ class MMFilesCollection final : public PhysicalCollection {
                    std::shared_ptr<Index>&) override;
 
   /// @brief Drop an index with the given iid.
-  bool dropIndex(TRI_idx_iid_t iid, bool writeMarker) override;
+  bool dropIndex(TRI_idx_iid_t iid) override;
 
   int cleanupIndexes();
 

@@ -1046,7 +1046,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         // ignore any potential error returned by this call
         auto physical = static_cast<MMFilesCollection*>(col->getPhysical());
         TRI_ASSERT(physical != nullptr);
-        col->dropIndex(indexId, false);
+        col->dropIndex(indexId);
 
         PersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
 

@@ -1162,16 +1162,13 @@ bool LogicalCollection::removeIndex(TRI_idx_iid_t iid) {
 }
 
 /// @brief drops an index, including index file removal and replication
-bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
+bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  return _physical->dropIndex(iid, writeMarker);
+  return _physical->dropIndex(iid);
 }
 
 /// @brief creates the initial indexes for the collection
 void LogicalCollection::createInitialIndexes() {
-  // TODO Properly fix this. The outside should make sure that only NEW
-  // collections
-  // try to create the indexes.
   if (!_indexes.empty()) {
     return;
   }

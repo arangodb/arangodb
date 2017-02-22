@@ -1847,7 +1847,7 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
+bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
   if (iid == 0) {
     // invalid index id or primary index
     events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
@@ -1877,14 +1877,14 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
     _logicalCollection->updateProperties(builder.slice(), doSync);
   }
 
-  if (writeMarker) {
+  if (!engine->inRecovery()) {
     int res = TRI_ERROR_NO_ERROR;
 
     VPackBuilder markerBuilder;
     markerBuilder.openObject();
     markerBuilder.add("id", VPackValue(std::to_string(iid)));
     markerBuilder.close();
-    engine->dropIndexWalMarker(vocbase, cid, markerBuilder.slice(), writeMarker,
+    engine->dropIndexWalMarker(vocbase, cid, markerBuilder.slice(), true,
                                res);
 
     if(res == TRI_ERROR_NO_ERROR){

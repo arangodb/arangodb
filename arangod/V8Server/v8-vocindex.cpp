@@ -476,7 +476,7 @@ static void JS_DropIndexVocbaseCol(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  bool ok = col->dropIndex(idx->id(), true);
+  bool ok = col->dropIndex(idx->id());
 
   if (ok) {
     TRI_V8_RETURN_TRUE();

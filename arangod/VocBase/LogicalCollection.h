@@ -50,7 +50,6 @@ typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
 struct DatafileStatisticsContainer;
-class Ditches;
 struct DocumentIdentifierToken;
 class FollowerInfo;
 class Index;
@@ -58,7 +57,6 @@ class KeyGenerator;
 class ManagedDocumentResult;
 struct OperationOptions;
 class PhysicalCollection;
-class MMFilesPrimaryIndex;
 class StringRef;
 namespace transaction {
 class Methods;
@@ -264,7 +262,7 @@ class LogicalCollection {
   /// @brief Exposes a pointer to index list
   std::vector<std::shared_ptr<Index>> const* indexList() const;
 
-  bool dropIndex(TRI_idx_iid_t iid, bool writeMarker);
+  bool dropIndex(TRI_idx_iid_t iid);
 
   // SECTION: Index access (local only)
 
