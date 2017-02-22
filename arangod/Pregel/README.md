@@ -61,5 +61,5 @@ Make CSV file with arango compatible edges
 cat edges.csv | awk -F" " '{print "profiles/" $1 "\tprofiles/" $2 "\t" $1}' >> arango-edges.csv
 
 
-arangoimp --file vertices.csv --type csv --collection twitter_v --overwrite true --convert false --server.endpoint http+tcp://127.0.0.1:8530
-arangoimp --file arango-edges.csv --type csv --collection twitter_e --overwrite true --convert false --separator "\t" --server.endpoint http+tcp://127.0.0.1:8530
+arangoimp --file vertices.csv --type csv --collection twitter_v --overwrite true --convert false --server.endpoint http+tcp://127.0.0.1:8530  -c none
+arangoimp --file arango-edges.csv --type csv --collection twitter_e --overwrite true --convert false --separator "\t" --server.endpoint http+tcp://127.0.0.1:8530  -c none

@@ -137,6 +137,7 @@ struct ASCCComputation
             }
             aggregate(kConverged, true);
             voteHalt();
+            break;
           }
         }
         break;
@@ -215,7 +216,7 @@ struct ASCCMasterContext : public MasterContext {
         break;
 
       case SCCPhase::TRIMMING:
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Phase: TRANSPOSE";
+        LOG_TOPIC(INFO, Logger::PREGEL) << "Phase: TRIMMING";
         enterNextGlobalSuperstep();
         aggregate<uint32_t>(kPhase, SCCPhase::FORWARD_TRAVERSAL);
         break;

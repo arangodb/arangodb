@@ -63,7 +63,7 @@ struct SCC
 
   IAggregator* aggregator(std::string const& name) const override;
 
-  virtual uint64_t maxGlobalSuperstep() const override { return 1000; }
+  uint64_t maxGlobalSuperstep() const override { return 1000; }
 };
 }
 }
