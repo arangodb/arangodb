@@ -27,13 +27,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesCollection.h"
-#include "MMFiles/MMFilesDatafile.h"
-#include "MMFiles/MMFilesDatafileHelper.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesWalLogfile.h"
-#include "MMFiles/MMFilesWalMarker.h"
-#include "MMFiles/MMFilesCollection.h" //TODO -- REMOVE
+#include "MMFiles/MMFilesLogfileManager.h" //TODO -- remove
 #include "VocBase/CompactionLocker.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
