@@ -288,6 +288,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   LOG_TOPIC(INFO, Logger::PREGEL)
       << "Finished gss " << _globalSuperstep << " in "
       << (TRI_microtime() - _computationStartTimeSecs) << "s";
+  _statistics.debugOutput();
   _globalSuperstep++;
 
   // don't block the response for workers waiting on this callback

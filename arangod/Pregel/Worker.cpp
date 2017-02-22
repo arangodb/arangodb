@@ -423,17 +423,17 @@ bool Worker<V, E, M>::_processVertices(
   MessageStats stats;
   stats.sendCount = outCache->sendCount();
   stats.superstepRuntimeSecs = TRI_microtime() - start;
-  if (t > 0.005) {
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Total " << stats.superstepRuntimeSecs
-                                    << " s merge took " << t << " s";
-  }
-
   inCache->clear();
   outCache->clear();
 
   bool lastThread = false;
   {  // only one thread at a time
     MUTEX_LOCKER(guard, _threadMutex);
+    if (t > 0.005) {
+      LOG_TOPIC(INFO, Logger::PREGEL) << "Total " << stats.superstepRuntimeSecs
+      << " s merge took " << t << " s";
+    }
+    
     // merge the thread local stats and aggregators
     _workerAggregators->aggregateValues(workerAggregator);
     _messageStats.accumulate(stats);

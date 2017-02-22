@@ -110,6 +110,15 @@ struct StatsManager {
     }
     return send == received;
   }
+  
+  void debugOutput() {
+    uint64_t send = 0, received = 0;
+    for (auto const& pair : _serverStats) {
+      send += pair.second.sendCount;
+      received += pair.second.receivedCount;
+    }
+    LOG_TOPIC(INFO, Logger::PREGEL) << send << " - " << received << " : " << send - received;
+  }
 
   /// tests if active count is greater 0
   bool executionFinished() {
