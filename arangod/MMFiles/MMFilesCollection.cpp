@@ -61,6 +61,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "Indexes/IndexIterator.h"
 
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
@@ -1923,6 +1924,13 @@ int MMFilesCollection::cleanupIndexes() {
   return res;
 }
 
+std::unique_ptr<IndexIterator> MMFilesCollection::getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse){
+  return std::unique_ptr<IndexIterator>(primaryIndex()->allIterator(trx, mdr, reverse));
+}
+
+std::unique_ptr<IndexIterator> MMFilesCollection::getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr){
+  return std::unique_ptr<IndexIterator>(primaryIndex()->anyIterator(trx, mdr));
+}
 
 
 /// @brief read locks a collection, with a timeout (in µseconds)

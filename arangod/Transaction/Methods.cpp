@@ -2562,43 +2562,19 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
   }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  LogicalCollection* document = documentCollection(trxCollection(cid));
+  LogicalCollection* logical = documentCollection(trxCollection(cid));
   
   orderDitch(cid); // will throw when it fails 
 
-  std::unique_ptr<IndexIterator> iterator;
+  std::unique_ptr<IndexIterator> iterator = nullptr;
 
   switch (cursorType) {
     case CursorType::ANY: {
-      // TODO Should not directly use PrimaryIndex
-      auto physical = static_cast<MMFilesCollection*>(document->getPhysical());
-      TRI_ASSERT(physical != nullptr);
-
-      arangodb::MMFilesPrimaryIndex* idx = physical->primaryIndex();
-
-      if (idx == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-            "Could not find primary index in collection '" + collectionName + "'.");
-      }
-
-      iterator.reset(idx->anyIterator(this, mmdr));
+      iterator = logical->getAnyIterator(this, mmdr);
       break;
     }
     case CursorType::ALL: {
-      // TODO Should not directly use PrimaryIndex
-      auto physical = static_cast<MMFilesCollection*>(document->getPhysical());
-      TRI_ASSERT(physical != nullptr);
-
-      arangodb::MMFilesPrimaryIndex* idx = physical->primaryIndex();
-
-      if (idx == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-            "Could not find primary index in collection '" + collectionName + "'.");
-      }
-
-      iterator.reset(idx->allIterator(this, mmdr, reverse));
+      iterator = logical->getAllIterator(this, mmdr, reverse);
       break;
     }
   }

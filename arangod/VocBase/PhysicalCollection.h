@@ -39,6 +39,7 @@ class Methods;
 
 struct DocumentIdentifierToken;
 class Index;
+class IndexIterator;
 class LogicalCollection;
 class ManagedDocumentResult;
 struct OperationOptions;
@@ -112,6 +113,8 @@ class PhysicalCollection {
 
   virtual bool dropIndex(TRI_idx_iid_t iid, bool writeMarker) = 0;
 
+  virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) = 0;
+  virtual std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr) = 0;
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////

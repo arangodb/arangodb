@@ -245,6 +245,9 @@ class MMFilesCollection final : public PhysicalCollection {
   int fillAllIndexes(transaction::Methods*);
 
   int saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx) override;
+  
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) override;
+  std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr)  override;
 
   /// @brief Restores an index from VelocyPack.
   int restoreIndex(transaction::Methods*, velocypack::Slice const&,

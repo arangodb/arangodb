@@ -39,6 +39,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -433,6 +434,15 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 }
 
 LogicalCollection::~LogicalCollection() {}
+
+std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse){
+  return _physical->getAllIterator(trx, mdr, reverse);
+}
+
+std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr){
+  return _physical->getAnyIterator(trx, mdr);
+}
+
 
 bool LogicalCollection::IsAllowedName(VPackSlice parameters) {
   bool allowSystem = Helper::readBooleanValue(parameters, "isSystem", false);
