@@ -31,6 +31,7 @@
 #include "Basics/memory-map.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollection.h"
+#include "MMFiles/MMFilesCompactionLocker.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -41,7 +42,6 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
-#include "VocBase/CompactionLocker.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 

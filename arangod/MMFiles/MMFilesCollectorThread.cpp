@@ -32,6 +32,7 @@
 #include "Basics/memory-map.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollection.h"
+#include "MMFiles/MMFilesCompactionLocker.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -48,7 +49,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Transaction/Hints.h"
-#include "VocBase/CompactionLocker.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;

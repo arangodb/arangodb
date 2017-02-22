@@ -28,7 +28,8 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesLogfileManager.h" //TODO -- remove
-#include "VocBase/CompactionLocker.h"
+#include "MMFiles/MMFilesCompactionLocker.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -617,9 +618,8 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   // block compaction
   int res;
   {
-    auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
-    TRI_ASSERT(physical != nullptr);
-    CompactionPreventer compactionPreventer(physical);
+    auto mmfiles = toMMFilesCollection(collection);
+    CompactionPreventer compactionPreventer(mmfiles);
 
     try {
       res = DumpCollection(dump, collection, collection->vocbase()->id(),
