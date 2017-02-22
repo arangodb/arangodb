@@ -23,8 +23,7 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
-#include "MMFiles/MMFilesCollection.h"     //TODO -- REMOVE
-#include "MMFiles/MMFilesLogfileManager.h" //TODO -- REMOVE
+#include "MMFiles/MMFilesCollection.h" // Used to create Ditches
 #include "RestServer/TransactionManagerFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -33,6 +32,7 @@
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/TransactionManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
