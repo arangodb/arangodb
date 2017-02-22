@@ -106,16 +106,18 @@ class MMFilesCollection final : public PhysicalCollection {
   explicit MMFilesCollection(LogicalCollection*, PhysicalCollection*); //use in cluster only!!!!!
 
   ~MMFilesCollection();
-  
+
   std::string const& path() const override {
     return _path;
   };
-  
+
   void setPath(std::string const& path) override {
     _path = path;
   };
 
   virtual int updateProperties(VPackSlice const& slice, bool doSync) override;
+  virtual int persistProperties() noexcept override;
+
   virtual PhysicalCollection* clone(LogicalCollection*, PhysicalCollection*) override;
 
   TRI_voc_rid_t revision() const override;
@@ -129,7 +131,7 @@ class MMFilesCollection final : public PhysicalCollection {
   size_t journalSize() const override { return _journalSize; };
   TRI_voc_tick_t maxTick() const { return _maxTick; }
   void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
-  
+ 
   /// @brief return engine-specific figures
   void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
   

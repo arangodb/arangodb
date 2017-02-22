@@ -123,6 +123,22 @@ int MMFilesCollection::updateProperties(VPackSlice const& slice, bool doSync){
   return TRI_ERROR_NO_ERROR;
 }
 
+int MMFilesCollection::persistProperties() noexcept {
+  try {
+    VPackBuilder infoBuilder;
+    _logicalCollection->toVelocyPack(infoBuilder, false);
+
+    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, _logicalCollection->vocbase()->id(), _logicalCollection->cid(), infoBuilder.slice());
+    MMFilesWalSlotInfoCopy slotInfo =
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
+    return slotInfo.errorCode;
+  } catch (arangodb::basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
+}
+
 PhysicalCollection* MMFilesCollection::clone(LogicalCollection* logical,PhysicalCollection* physical){
   return new MMFilesCollection(logical, physical);
 }
