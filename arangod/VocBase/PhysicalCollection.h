@@ -115,6 +115,7 @@ class PhysicalCollection {
 
   virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr) = 0;
+  virtual void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback) = 0;
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////

@@ -186,6 +186,8 @@ class LogicalCollection {
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr);
 
+  void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback);
+
 
   // SECTION: Indexes
   uint32_t indexBuckets() const;

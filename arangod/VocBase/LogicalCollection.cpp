@@ -443,6 +443,10 @@ std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(transaction::Me
   return _physical->getAnyIterator(trx, mdr);
 }
 
+void LogicalCollection::invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback){
+  _physical->invokeOnAllElements(callback);
+}
+
 
 bool LogicalCollection::IsAllowedName(VPackSlice parameters) {
   bool allowSystem = Helper::readBooleanValue(parameters, "isSystem", false);

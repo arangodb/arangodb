@@ -1932,6 +1932,9 @@ std::unique_ptr<IndexIterator> MMFilesCollection::getAnyIterator(transaction::Me
   return std::unique_ptr<IndexIterator>(primaryIndex()->anyIterator(trx, mdr));
 }
 
+void MMFilesCollection::invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback){
+  primaryIndex()->invokeOnAllElements(callback);
+}
 
 /// @brief read locks a collection, with a timeout (in µseconds)
 int MMFilesCollection::beginReadTimed(bool useDeadlockDetector,

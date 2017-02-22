@@ -248,6 +248,7 @@ class MMFilesCollection final : public PhysicalCollection {
   
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr)  override;
+  void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback);
 
   /// @brief Restores an index from VelocyPack.
   int restoreIndex(transaction::Methods*, velocypack::Slice const&,
