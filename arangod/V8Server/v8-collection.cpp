@@ -1436,38 +1436,14 @@ static void JS_PropertiesVocbaseCol(
       }
     }
   }
+  VPackBuilder vpackProperties;
+  vpackProperties.openObject();
+  collection->getPropertiesVPack(vpackProperties, false, false);
+  vpackProperties.close();
 
   // return the current parameter set
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-
-  TRI_GET_GLOBAL_STRING(DoCompactKey);
-  TRI_GET_GLOBAL_STRING(IsSystemKey);
-  TRI_GET_GLOBAL_STRING(IsVolatileKey);
-  TRI_GET_GLOBAL_STRING(JournalSizeKey);
-  result->Set(DoCompactKey, v8::Boolean::New(isolate, collection->getPhysical()->doCompact()));
-  result->Set(IsSystemKey, v8::Boolean::New(isolate, collection->isSystem()));
-  result->Set(IsVolatileKey,
-              v8::Boolean::New(isolate, physical->isVolatile()));
-  result->Set(JournalSizeKey,
-              v8::Number::New(isolate, (double) physical->journalSize()));
-  result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
-              v8::Number::New(isolate, collection->indexBuckets()));
-
-  TRI_GET_GLOBAL_STRING(KeyOptionsKey);
-  try {
-    VPackBuilder optionsBuilder;
-    optionsBuilder.openObject();
-    collection->getPhysical()->keyGenerator()->toVelocyPack(optionsBuilder);
-    optionsBuilder.close();
-    result->Set(KeyOptionsKey,
-                TRI_VPackToV8(isolate, optionsBuilder.slice())->ToObject());
-  } catch (...) {
-    // Could not build the VPack
-    result->Set(KeyOptionsKey, v8::Array::New(isolate));
-  }
-  TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-  result->Set(WaitForSyncKey,
-              v8::Boolean::New(isolate, collection->waitForSync()));
+  v8::Handle<v8::Object> result =
+                TRI_VPackToV8(isolate, vpackProperties.slice())->ToObject();
 
   trx.finish(res);
 

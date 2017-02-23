@@ -1056,10 +1056,13 @@ void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   result.add("doCompact", VPackValue(_doCompact));
   result.add("isVolatile", VPackValue(_isVolatile));
 
+  result.add(VPackValue("keyOptions"));
   if (_keyGenerator != nullptr) {
-    result.add(VPackValue("keyOptions"));
     result.openObject();
     _keyGenerator->toVelocyPack(result);
+    result.close();
+  } else {
+    result.openArray();
     result.close();
   }
 

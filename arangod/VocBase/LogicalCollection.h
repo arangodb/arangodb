@@ -185,7 +185,8 @@ class LogicalCollection {
  // Adds all properties to the builder (has to be an open object)
   // Does not add Shards or Indexes
   void getPropertiesVPack(velocypack::Builder&,
-                          bool translateCids) const;
+                          bool includeCluster,
+                          bool translateIds) const;
   
   void getIndexesVPack(velocypack::Builder&, bool) const;
 
@@ -318,7 +319,11 @@ private:
   void increaseInternalVersion();
 
  protected:
-  void toVelocyPackInObject(velocypack::Builder& result,
+
+  void getFullProperties(velocypack::Builder& result,
+                         bool translateCids) const;
+
+  void toVelocyPackInObject( velocypack::Builder& result,
                             bool translateCids) const;
 
   // SECTION: Meta Information

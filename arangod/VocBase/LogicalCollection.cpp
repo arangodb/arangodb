@@ -633,13 +633,10 @@ void LogicalCollection::getIndexesVPack(VPackBuilder& result,
   result.close();
 }
 
-void LogicalCollection::getPropertiesVPack(VPackBuilder& result, bool translateCids) const {
+void LogicalCollection::getPropertiesVPack(VPackBuilder& result,
+                                           bool includeCluster,
+                                           bool translateCids) const {
   TRI_ASSERT(result.isOpenObject());
-  result.add("id", VPackValue(std::to_string(_cid)));
-  result.add("name", VPackValue(_name));
-  result.add("type", VPackValue(static_cast<int>(_type)));
-  result.add("status", VPackValue(_status));
-  result.add("deleted", VPackValue(_isDeleted));
   result.add("isSystem", VPackValue(_isSystem));
   result.add("waitForSync", VPackValue(_waitForSync));
 
@@ -648,25 +645,27 @@ void LogicalCollection::getPropertiesVPack(VPackBuilder& result, bool translateC
   result.add("indexBuckets", VPackValue(_indexBuckets)); //MMFiles
   // ODOT
 
-  result.add("replicationFactor", VPackValue(_replicationFactor));
-  if (!_distributeShardsLike.empty()) {
-    if (translateCids) {
-      CollectionNameResolver resolver(_vocbase);
-      result.add("distributeShardsLike",
-                 VPackValue(resolver.getCollectionNameCluster(
-                     static_cast<TRI_voc_cid_t>(
-                         basics::StringUtils::uint64(_distributeShardsLike)))));
-    } else {
-      result.add("distributeShardsLike", VPackValue(_distributeShardsLike));
+  if (includeCluster) {
+    result.add("replicationFactor", VPackValue(_replicationFactor));
+    if (!_distributeShardsLike.empty()) {
+      if (translateCids) {
+        CollectionNameResolver resolver(_vocbase);
+        result.add("distributeShardsLike",
+                   VPackValue(resolver.getCollectionNameCluster(
+                       static_cast<TRI_voc_cid_t>(
+                           basics::StringUtils::uint64(_distributeShardsLike)))));
+      } else {
+        result.add("distributeShardsLike", VPackValue(_distributeShardsLike));
+      }
     }
-  }
 
-  result.add(VPackValue("shardKeys"));
-  result.openArray();
-  for (auto const& key : _shardKeys) {
-    result.add(VPackValue(key));
+    result.add(VPackValue("shardKeys"));
+    result.openArray();
+    for (auto const& key : _shardKeys) {
+      result.add(VPackValue(key));
+    }
+    result.close();  // shardKeys
   }
-  result.close();  // shardKeys
 }
 
 // SECTION: Replication
@@ -855,8 +854,21 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result,
 
 // Internal helper that inserts VPack info into an existing object and leaves
 // the object open
+void LogicalCollection::getFullProperties(VPackBuilder& result, bool translateCids) const {
+  result.add("id", VPackValue(std::to_string(_cid)));
+  result.add("name", VPackValue(_name));
+  result.add("type", VPackValue(static_cast<int>(_type)));
+  result.add("status", VPackValue(_status));
+  result.add("deleted", VPackValue(_isDeleted));
+
+  getPropertiesVPack(result, true, translateCids);
+}
+
+// Internal helper that inserts VPack info into an existing object and leaves
+// the object open
 void LogicalCollection::toVelocyPackInObject(VPackBuilder& result, bool translateCids) const {
-  getPropertiesVPack(result, translateCids);
+  TRI_ASSERT(result.isOpenObject());
+  getFullProperties(result, translateCids);
   result.add("numberOfShards", VPackValue(_numberOfShards));
 
   if (!_avoidServers.empty()) {
