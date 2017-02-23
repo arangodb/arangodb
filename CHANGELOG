@@ -5,6 +5,10 @@ v3.1.12 (XXXX-XX-XX)
 
 * fixed a race condition when closing a connection
 
+* raised default hard limit on threads for very small to 64
+
+* fixed negative counting of http connection in UI
+
 
 v3.1.11 (2017-02-17)
 --------------------

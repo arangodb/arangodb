@@ -46,6 +46,14 @@ boost::lockfree::queue<
 // --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
 
+void ConnectionStatistics::SET_HTTP(ConnectionStatistics* stat) {
+  if (stat != nullptr) {
+    stat->_http = true;
+
+    TRI_HttpConnectionsStatistics.incCounter();
+  }
+}
+
 void ConnectionStatistics::initialize() {
   _statisticsBuffer.reset(new ConnectionStatistics[QUEUE_SIZE]());
 
