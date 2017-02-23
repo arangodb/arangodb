@@ -10,7 +10,7 @@ v3.2.alpha2 (2017-02-20)
 
 * Removed undocumented internal HTTP API:
   * PUT _api/edges
-  
+
   The documented GET _api/edges and the undocumented POST _api/edges remains unmodified.
 
 * moved V8 code into a git submodule
@@ -34,6 +34,12 @@ v3.2.alpha2 (2017-02-20)
 
   arangoexport can be used to export collections to json, jsonl or xml
   and export a graph or collections to xgmml.
+
+* fixed a race condition when closing a connection
+
+* raised default hard limit on threads for very small to 64
+
+* fixed negative counting of http connection in UI
 
 
 v3.2.alpha1 (2017-02-05)
@@ -61,7 +67,15 @@ v3.2.alpha1 (2017-02-05)
 v3.1.12 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #2320
+
 * fixed issue #2315
+
+* fixed a race condition when closing a connection
+
+* raised default hard limit on threads for very small to 64
+
+* fixed negative counting of http connection in UI
 
 
 v3.1.11 (2017-02-17)

@@ -2048,7 +2048,8 @@ static void JS_IsSystemDatabase(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fake this method so the interface is similar to the client.
 ////////////////////////////////////////////////////////////////////////////////
-static void JS_fakeFlushCache(v8::FunctionCallbackInfo<v8::Value> const& args) {
+
+static void JS_FakeFlushCache(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END;
@@ -2057,6 +2058,7 @@ static void JS_fakeFlushCache(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock databaseUseDatabase
 ////////////////////////////////////////////////////////////////////////////////
+
 static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -2125,7 +2127,7 @@ static void ListDatabasesCoordinator(
     std::vector<DatabaseID> list = ci->databases(true);
     v8::Handle<v8::Array> result = v8::Array::New(isolate);
     for (size_t i = 0; i < list.size(); ++i) {
-      result->Set((uint32_t)i, TRI_V8_STD_STRING(list[i]));
+      result->Set(static_cast<uint32_t>(i), TRI_V8_STD_STRING(list[i]));
     }
     TRI_V8_RETURN(result);
   } else {
@@ -2883,9 +2885,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                        JS_Databases);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_useDatabase"),
                        JS_UseDatabase);
-
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_flushCache"),
-                       JS_fakeFlushCache, true);
+                       JS_FakeFlushCache, true);
 
   TRI_InitV8Statistics(isolate, context);
 
