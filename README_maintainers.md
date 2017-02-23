@@ -366,6 +366,11 @@ via the environment variable or in the menu. Given we want to store the symbols 
 
 You then will be able to see stack traces in the debugger.
 
+You may also try to download the symbols manually using: 
+
+    symchk.exe arangod.exe /s SRV*e:/symbol_cache/cache*https://www.arangodb.com/repositories/symsrv/
+
+
 The symbolserver over at https://www.arangodb.com/repositories/symsrv/ is browseable; thus you can easily download the files you need by hand. It contains of a list of directories corosponding to the components of arangodb:
 
   - arango - the basic arangodb library needed by all components
@@ -384,7 +389,7 @@ In these directories you will find subdirectories with the hash corosponding to 
 
 This means i.e. for ArangoDB 3.1.11: 
 
- https://www.arangodb.com/repositories/symsrv/arangod.pdb/A8B899D2EDFC40E994C30C32FCE5FB3411/arangod.pd_
+ https://www.arangodb.com/repositories/symsrv/arangod.pdb/A8B899D2EDFC40E994C30C32FCE5FB346/arangod.pd_
 
 This file is a microsoft cabinet file, which is a little bit compressed. You can dismantle it so the windows explorer offers you its proper handler by renaming it to .cab; click on the now named `arangod.cab`, copy the contained arangod.pdb into your symbol path.
 
