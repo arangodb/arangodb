@@ -29,6 +29,9 @@
 #include "Cluster/TraverserEngine.h"
 #include "VocBase/ticks.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::traverser;
 
 #ifndef USE_ENTERPRISE

@@ -107,8 +107,9 @@ class TransactionContext {
   void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations) noexcept;
   
   /// @brief get a custom type handler
-  virtual std::shared_ptr<VPackCustomTypeHandler> orderCustomTypeHandler() = 0;
-  
+  virtual std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
+  orderCustomTypeHandler() = 0;
+
   /// @brief return the resolver
   virtual CollectionNameResolver const* getResolver() = 0;
 

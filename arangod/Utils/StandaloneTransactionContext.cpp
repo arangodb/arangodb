@@ -33,7 +33,7 @@ StandaloneTransactionContext::StandaloneTransactionContext(TRI_vocbase_t* vocbas
 }
 
 /// @brief order a custom type handler for the collection
-std::shared_ptr<VPackCustomTypeHandler> StandaloneTransactionContext::orderCustomTypeHandler() {
+std::shared_ptr<arangodb::velocypack::CustomTypeHandler> StandaloneTransactionContext::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
     _customTypeHandler.reset(TransactionContext::createCustomTypeHandler(_vocbase, getResolver()));
     _options.customTypeHandler = _customTypeHandler.get();

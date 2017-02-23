@@ -45,8 +45,9 @@ class StandaloneTransactionContext final : public TransactionContext {
  public:
 
   /// @brief order a custom type handler
-  std::shared_ptr<VPackCustomTypeHandler> orderCustomTypeHandler() override final;
-  
+  std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
+  orderCustomTypeHandler() override final;
+
   /// @brief return the resolver
   CollectionNameResolver const* getResolver() override final;
   

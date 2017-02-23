@@ -43,8 +43,9 @@ class V8TransactionContext final : public TransactionContext {
   ~V8TransactionContext() = default;
   
   /// @brief order a custom type handler
-  std::shared_ptr<VPackCustomTypeHandler> orderCustomTypeHandler() override final;
-  
+  std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
+  orderCustomTypeHandler() override final;
+
   /// @brief return the resolver
   CollectionNameResolver const* getResolver() override final;
   

@@ -57,7 +57,7 @@ class PhysicalCollection {
   virtual std::string const& path() const = 0;
   virtual void setPath(std::string const&) = 0; // should be set during collection creation
                                                 // creation happens atm in engine->createCollection
-  virtual int updateProperties(VPackSlice const& slice, bool doSync) = 0;
+  virtual int updateProperties(arangodb::velocypack::Slice const& slice, bool doSync) = 0;
   virtual int persistProperties() noexcept = 0;
 
   virtual PhysicalCollection* clone(LogicalCollection*, PhysicalCollection*) = 0;
@@ -146,8 +146,8 @@ class PhysicalCollection {
                      TRI_voc_tick_t& resultMarkerTick, bool lock) = 0;
 
   virtual int update(arangodb::transaction::Methods* trx,
-                     VPackSlice const newSlice, ManagedDocumentResult& result,
-                     OperationOptions& options,
+                     arangodb::velocypack::Slice const newSlice,
+                     ManagedDocumentResult& result, OperationOptions& options,
                      TRI_voc_tick_t& resultMarkerTick, bool lock,
                      TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
                      TRI_voc_rid_t const& revisionId,
