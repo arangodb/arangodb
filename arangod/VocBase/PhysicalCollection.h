@@ -70,7 +70,9 @@ class PhysicalCollection {
 
   virtual size_t journalSize() const = 0;
   
-  virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
+  /// @brief export properties
+  virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
+
   void figures(std::shared_ptr<arangodb::velocypack::Builder>& builder);
   
   virtual int close() = 0;
@@ -178,6 +180,9 @@ class PhysicalCollection {
 
 
  protected:
+
+  /// @brief Inject figures that are specific to StorageEngine
+  virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
 
   // SECTION: Document pre commit preperation
 

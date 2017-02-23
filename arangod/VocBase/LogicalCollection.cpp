@@ -658,19 +658,12 @@ void LogicalCollection::getPropertiesVPack(VPackBuilder& result, bool translateC
   result.add("isSystem", VPackValue(_isSystem));
   result.add("waitForSync", VPackValue(_waitForSync));
 
-  //TODO
+  getPhysical()->getPropertiesVPack(result);
+  // TODO
   result.add("isVolatile", VPackValue(_isVolatile)); //MMFiles
-  result.add("journalSize", VPackValue(getPhysical()->journalSize())); //MMFiles
-  result.add("doCompact", VPackValue(getPhysical()->doCompact())); //MMFiles
   result.add("indexBuckets", VPackValue(_indexBuckets)); //MMFiles
-  // MMFiles
-   if (getPhysical()->keyGenerator() != nullptr) {
-    result.add(VPackValue("keyOptions"));
-    result.openObject();
-    getPhysical()->keyGenerator()->toVelocyPack(result);
-    result.close();
-  }
- 
+  // ODOT
+
   result.add("replicationFactor", VPackValue(_replicationFactor));
   if (!_distributeShardsLike.empty()) {
     if (translateCids) {

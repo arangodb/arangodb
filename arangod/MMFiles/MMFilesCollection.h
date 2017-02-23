@@ -145,10 +145,9 @@ class MMFilesCollection final : public PhysicalCollection {
   size_t journalSize() const override { return _journalSize; };
   TRI_voc_tick_t maxTick() const { return _maxTick; }
   void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
- 
-  /// @brief return engine-specific figures
-  void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
-  
+
+  void getPropertiesVPack(velocypack::Builder&) const override;
+
   // datafile management
   bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                          std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) override;
@@ -431,6 +430,10 @@ class MMFilesCollection final : public PhysicalCollection {
                        MMFilesWalMarker const* marker, bool& waitForSync);
 
    private:
+
+    /// @brief return engine-specific figures
+    void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
+  
     // SECTION: Index storage
 
     /// @brief Detect all indexes form file

@@ -1012,7 +1012,22 @@ bool MMFilesCollection::closeDatafiles(std::vector<MMFilesDatafile*> const& file
   
   return result;
 }
-  
+
+
+void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
+  TRI_ASSERT(result.isOpenObject());
+  result.add("journalSize", VPackValue(_journalSize));
+  result.add("doCompact", VPackValue(_doCompact));
+  if (_keyGenerator != nullptr) {
+    result.add(VPackValue("keyOptions"));
+    result.openObject();
+    _keyGenerator->toVelocyPack(result);
+    result.close();
+  }
+
+  TRI_ASSERT(result.isOpenObject());
+}
+
 void MMFilesCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
 
   // fills in compaction status
