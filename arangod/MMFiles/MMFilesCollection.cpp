@@ -167,7 +167,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
   if (state->_trackKeys) {
     VPackValueLength length;
     char const* p = keySlice.getString(length);
-    collection->keyGenerator()->track(p, length);
+    physical->keyGenerator()->track(p, length);
   }
 
   ++state->_documents;
@@ -262,7 +262,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* m
   if (state->_trackKeys) {
     VPackValueLength length;
     char const* p = keySlice.getString(length);
-    collection->keyGenerator()->track(p, length);
+    physical->keyGenerator()->track(p, length);
   }
 
   ++state->_deletions;
@@ -400,11 +400,13 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection, VPackSlice c
   setCompactionStatus("compaction not yet started");
 }
 
-MMFilesCollection::MMFilesCollection(LogicalCollection* logical, PhysicalCollection* physical):
-  PhysicalCollection(logical, VPackSlice::emptyObjectSlice()),
-  _ditches(logical)
-{
+MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
+                                     PhysicalCollection* physical)
+    : PhysicalCollection(logical, VPackSlice::emptyObjectSlice()),
+      _ditches(logical) {
+  _keyOptions = VPackBuilder::clone(physical->keyOptions()).steal();
   MMFilesCollection& mmfiles = *static_cast<MMFilesCollection*>(physical);
+  _keyGenerator.reset(KeyGenerator::factory(mmfiles.keyOptions()));
   _initialCount = mmfiles._initialCount;
   _revisionError = mmfiles._revisionError;
   _lastRevision = mmfiles._lastRevision;

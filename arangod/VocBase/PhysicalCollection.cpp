@@ -25,6 +25,7 @@
 
 #include "Basics/encoding.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/KeyGenerator.h"
@@ -40,6 +41,17 @@
 
 using namespace arangodb;
 
+PhysicalCollection::PhysicalCollection(LogicalCollection* collection,
+                                       VPackSlice const& info)
+    : _logicalCollection(collection), _keyOptions(nullptr), _keyGenerator() {
+  TRI_ASSERT(info.isObject());
+  auto keyOpts = info.get("keyOptions");
+
+  _keyGenerator.reset(KeyGenerator::factory(keyOpts));
+  if (!keyOpts.isNone()) {
+    _keyOptions = VPackBuilder::clone(keyOpts).steal();
+  }
+}
 
 void PhysicalCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder){
     this->figuresSpecific(builder);
@@ -192,8 +204,7 @@ int PhysicalCollection::newObjectForInsert(
   if (s.isNone()) {
     TRI_ASSERT(!isRestore);  // need key in case of restore
     newRev = TRI_HybridLogicalClock();
-    std::string keyString =
-        _logicalCollection->keyGenerator()->generate(TRI_NewTickServer());
+    std::string keyString = keyGenerator()->generate(TRI_NewTickServer());
     if (keyString.empty()) {
       return TRI_ERROR_ARANGO_OUT_OF_KEYS;
     }
@@ -204,8 +215,7 @@ int PhysicalCollection::newObjectForInsert(
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   } else {
     std::string keyString = s.copyString();
-    int res =
-        _logicalCollection->keyGenerator()->validate(keyString, isRestore);
+    int res = keyGenerator()->validate(keyString, isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -331,4 +341,12 @@ int PhysicalCollection::checkRevision(transaction::Methods* trx,
     return TRI_ERROR_ARANGO_CONFLICT;
   }
   return TRI_ERROR_NO_ERROR;
+}
+
+// SECTION: Key Options
+VPackSlice PhysicalCollection::keyOptions() const {
+  if (_keyOptions == nullptr) {
+    return arangodb::basics::VelocyPackHelper::NullValue();
+  }
+  return VPackSlice(_keyOptions->data());
 }

@@ -40,13 +40,15 @@ class Methods;
 struct DocumentIdentifierToken;
 class Index;
 class IndexIterator;
+class KeyGenerator;
 class LogicalCollection;
 class ManagedDocumentResult;
 struct OperationOptions;
 
 class PhysicalCollection {
  protected:
-  explicit PhysicalCollection(LogicalCollection* collection, VPackSlice const& info) : _logicalCollection(collection) {}
+  PhysicalCollection(LogicalCollection* collection,
+                     arangodb::velocypack::Slice const& info);
 
  public:
   virtual ~PhysicalCollection() = default;
@@ -165,6 +167,16 @@ class PhysicalCollection {
                      TRI_voc_tick_t& resultMarkerTick, bool lock,
                      TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev) = 0;
 
+  // Get a reference to this KeyGenerator.
+  // Caller is not allowed to free it.
+  inline KeyGenerator* keyGenerator() const {
+    return _keyGenerator.get();
+  }
+
+  // SECTION: Key Options
+  velocypack::Slice keyOptions() const;
+
+
  protected:
 
   // SECTION: Document pre commit preperation
@@ -206,6 +218,15 @@ class PhysicalCollection {
 
  protected:
   LogicalCollection* _logicalCollection;
+
+  // SECTION: Key Options
+  // TODO Really VPack?
+  std::shared_ptr<velocypack::Buffer<uint8_t> const>
+      _keyOptions;  // options for key creation
+
+
+  std::unique_ptr<KeyGenerator> _keyGenerator;
+
 };
 
 } // namespace arangodb

@@ -95,7 +95,7 @@ class MMFilesCollection final : public PhysicalCollection {
           _documents(0),
           _operations(0),
           _initialCount(-1),
-          _trackKeys(collection->keyGenerator()->trackKeys()) {
+          _trackKeys(collection->getPhysical()->keyGenerator()->trackKeys()) {
       TRI_ASSERT(collection != nullptr);
       TRI_ASSERT(trx != nullptr);
     }

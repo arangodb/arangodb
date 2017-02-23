@@ -1347,7 +1347,7 @@ static void JS_PropertiesVocbaseCol(
 
     result->Set(TRI_V8_ASCII_STRING("numberOfShards"),
                 v8::Number::New(isolate, c->numberOfShards()));
-    auto keyOpts = info->keyOptions();
+    auto keyOpts = info->getPhysical()->keyOptions();
     if (keyOpts.isObject() && keyOpts.length() > 0) {
       TRI_GET_GLOBAL_STRING(KeyOptionsKey);
       result->Set(KeyOptionsKey, TRI_VPackToV8(isolate, keyOpts)->ToObject());
@@ -1452,7 +1452,7 @@ static void JS_PropertiesVocbaseCol(
   try {
     VPackBuilder optionsBuilder;
     optionsBuilder.openObject();
-    collection->keyGenerator()->toVelocyPack(optionsBuilder);
+    collection->getPhysical()->keyGenerator()->toVelocyPack(optionsBuilder);
     optionsBuilder.close();
     result->Set(KeyOptionsKey,
                 TRI_VPackToV8(isolate, optionsBuilder.slice())->ToObject());

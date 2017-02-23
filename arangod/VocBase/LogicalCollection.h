@@ -54,7 +54,6 @@ struct DocumentIdentifierToken;
 class FollowerInfo;
 class Index;
 class IndexIterator;
-class KeyGenerator;
 class ManagedDocumentResult;
 struct OperationOptions;
 class PhysicalCollection;
@@ -170,15 +169,6 @@ class LogicalCollection {
   std::unique_ptr<FollowerInfo> const& followers() const;
 
   void setDeleted(bool);
-
-  // SECTION: Key Options
-  velocypack::Slice keyOptions() const;
-
-  // Get a reference to this KeyGenerator.
-  // Caller is not allowed to free it.
-  inline KeyGenerator* keyGenerator() const {
-    return _keyGenerator.get();
-  }
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
   
@@ -375,11 +365,6 @@ private:
   bool const _isVolatile;
   bool _waitForSync;
 
-  // SECTION: Key Options
-  // TODO Really VPack?
-  std::shared_ptr<velocypack::Buffer<uint8_t> const>
-      _keyOptions;  // options for key creation
-
   uint32_t _version;
 
   // SECTION: Indexes
@@ -409,8 +394,6 @@ private:
  protected:
 
   std::unique_ptr<PhysicalCollection> _physical;
-
-  std::unique_ptr<KeyGenerator> _keyGenerator;
 
   mutable basics::ReadWriteLock
       _lock;  // lock protecting the status and name

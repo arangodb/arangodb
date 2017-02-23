@@ -116,18 +116,6 @@ static std::string const ReadStringValue(VPackSlice info,
   }
   return Helper::getStringValue(info, name, def);
 }
-
-static std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>
-CopySliceValue(VPackSlice info, std::string const& name) {
-  if (!info.isObject()) {
-    return nullptr;
-  }
-  info = info.get(name);
-  if (info.isNone()) {
-    return nullptr;
-  }
-  return VPackBuilder::clone(info).steal();
-}
 }
 
 /// @brief This the "copy" constructor used in the cluster
@@ -149,7 +137,6 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _isSystem(other.isSystem()),
       _isVolatile(other.isVolatile()),
       _waitForSync(other.waitForSync()),
-      _keyOptions(other._keyOptions),
       _version(other._version),
       _indexBuckets(other.indexBuckets()),
       _indexes(),
@@ -160,10 +147,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _vocbase(other.vocbase()),
       _cleanupIndexes(0),
       _persistentIndexes(0),
-      _physical(other.getPhysical()->clone(this,other.getPhysical())),
-      _keyGenerator() {
-  _keyGenerator.reset(KeyGenerator::factory(other.keyOptions()));
-
+      _physical(other.getPhysical()->clone(this, other.getPhysical())) {
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
     _followers.reset(new FollowerInfo(this));
@@ -198,7 +182,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                 Helper::readBooleanValue(info, "isSystem", false)),
       _isVolatile(Helper::readBooleanValue(info, "isVolatile", false)),
       _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
-      _keyOptions(CopySliceValue(info, "keyOptions")),
       _version(Helper::readNumericValue<uint32_t>(info, "version", currentVersion())),
       _indexBuckets(Helper::readNumericValue<uint32_t>(
           info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
@@ -209,8 +192,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _vocbase(vocbase),
       _cleanupIndexes(0),
       _persistentIndexes(0),
-      _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(this,info)),
-      _keyGenerator() {
+      _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(this,info)) {
   getPhysical()->setPath(ReadStringValue(info, "path", ""));
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -331,8 +313,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "invalid number of shard keys");
   }
-
-  _keyGenerator.reset(KeyGenerator::factory(info.get("keyOptions")));
 
   auto shardsSlice = info.get("shards");
   if (shardsSlice.isObject()) {
@@ -649,14 +629,6 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 
 void LogicalCollection::setDeleted(bool newValue) { _isDeleted = newValue; }
 
-// SECTION: Key Options
-VPackSlice LogicalCollection::keyOptions() const {
-  if (_keyOptions == nullptr) {
-    return Helper::NullValue();
-  }
-  return VPackSlice(_keyOptions->data());
-}
-
 // SECTION: Indexes
 uint32_t LogicalCollection::indexBuckets() const { return _indexBuckets; }
 
@@ -691,7 +663,14 @@ void LogicalCollection::getPropertiesVPack(VPackBuilder& result, bool translateC
   result.add("journalSize", VPackValue(getPhysical()->journalSize())); //MMFiles
   result.add("doCompact", VPackValue(getPhysical()->doCompact())); //MMFiles
   result.add("indexBuckets", VPackValue(_indexBuckets)); //MMFiles
-  
+  // MMFiles
+   if (getPhysical()->keyGenerator() != nullptr) {
+    result.add(VPackValue("keyOptions"));
+    result.openObject();
+    getPhysical()->keyGenerator()->toVelocyPack(result);
+    result.close();
+  }
+ 
   result.add("replicationFactor", VPackValue(_replicationFactor));
   if (!_distributeShardsLike.empty()) {
     if (translateCids) {
@@ -703,13 +682,6 @@ void LogicalCollection::getPropertiesVPack(VPackBuilder& result, bool translateC
     } else {
       result.add("distributeShardsLike", VPackValue(_distributeShardsLike));
     }
-  }
-
-  if (_keyGenerator != nullptr) {
-    result.add(VPackValue("keyOptions"));
-    result.openObject();
-    _keyGenerator->toVelocyPack(result);
-    result.close();
   }
 
   result.add(VPackValue("shardKeys"));
