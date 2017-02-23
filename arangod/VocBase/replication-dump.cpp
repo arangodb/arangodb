@@ -722,6 +722,10 @@ int TRI_DumpLogReplication(
               dump->_collectionNames[collectionId] = name.copyString();
             }
           }
+        } else if (type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION) {
+          // invalidate collection name cache because this is a
+          // rename operation
+          dump->_collectionNames.clear();
         }
 
         ptr += MMFilesDatafileHelper::AlignedMarkerSize<size_t>(marker);
