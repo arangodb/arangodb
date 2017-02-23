@@ -1013,8 +1013,6 @@ int LogicalCollection::rename(std::string const& newName) {
   // Otherwise caching is destroyed.
   TRI_ASSERT(!ServerState::instance()->isCoordinator());  // NOT YET IMPLEMENTED
 
-  WRITE_LOCKER_EVENTUAL(locker, _lock, 1000);
-
   // Check for illeagal states.
   switch (_status) {
     case TRI_VOC_COL_STATUS_CORRUPTED:
@@ -1024,12 +1022,6 @@ int LogicalCollection::rename(std::string const& newName) {
     default:
       // Fall through intentional
       break;
-  }
-
-  // Check for duplicate name
-  auto other = _vocbase->lookupCollection(newName);
-  if (other != nullptr) {
-    return TRI_ERROR_ARANGO_DUPLICATE_NAME;
   }
 
   switch (_status) {

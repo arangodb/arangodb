@@ -769,6 +769,34 @@ LogicalCollection* TRI_vocbase_t::lookupCollection(std::string const& name) {
   return (*it).second;
 }
 
+/// @brief looks up a collection by name
+LogicalCollection* TRI_vocbase_t::lookupCollectionNoLock(std::string const& name) {
+  if (name.empty()) {
+    return nullptr;
+  }
+
+  // if collection name is passed as a stringified id, we'll use the lookupbyid
+  // function
+  // this is safe because collection names must not start with a digit
+  if (name[0] >= '0' && name[0] <= '9') {
+    TRI_voc_cid_t id = StringUtils::uint64(name);
+    auto it = _collectionsById.find(id);
+
+    if (it == _collectionsById.end()) {
+      return nullptr;
+    }
+    return (*it).second;
+  }
+
+  // otherwise we'll look up the collection by name
+  auto it = _collectionsByName.find(name);
+
+  if (it == _collectionsByName.end()) {
+    return nullptr;
+  }
+  return (*it).second;
+}
+
 /// @brief looks up a collection by identifier
 LogicalCollection* TRI_vocbase_t::lookupCollection(TRI_voc_cid_t id) {
   READ_LOCKER(readLocker, _collectionsLock);
@@ -999,6 +1027,44 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
+  
+  CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock, false);
+  CONDITIONAL_WRITE_LOCKER(locker, collection->_lock, false);
+  
+  while (true) {
+    TRI_ASSERT(!writeLocker.isLocked());
+    TRI_ASSERT(!locker.isLocked());
+
+    // block until we have acquired this lock
+    writeLocker.lock();
+    // we now have the one lock
+
+    TRI_ASSERT(writeLocker.isLocked());
+
+    if (locker.tryLock()) {
+      // we now have both locks and can continue outside of this loop
+      break;
+    }
+
+    // unlock the write locker so we don't block other operations
+    writeLocker.unlock();
+    
+    TRI_ASSERT(!writeLocker.isLocked());
+    TRI_ASSERT(!locker.isLocked());
+
+    // sleep for a while
+    std::this_thread::yield();
+  }
+  
+  TRI_ASSERT(writeLocker.isLocked());
+  TRI_ASSERT(locker.isLocked());
+  
+  // Check for duplicate name
+  auto other = lookupCollectionNoLock(newName);
+
+  if (other != nullptr) {
+    return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+  }
 
   int res = collection->rename(newName);
 
@@ -1007,15 +1073,20 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
     return res;
   }
 
-  {
-    WRITE_LOCKER(writeLocker, _collectionsLock);
   // The collection is renamed. Now swap cache entries.
-    auto it2 = _collectionsByName.emplace(newName, collection);
-    TRI_ASSERT(it2.second);
+  auto it2 = _collectionsByName.emplace(newName, collection);
+  TRI_ASSERT(it2.second);
 
+  try {
     _collectionsByName.erase(oldName);
-    TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
+  } catch (...) {
+    _collectionsByName.erase(newName);
+    throw;
   }
+  TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
+
+  locker.unlock();
+  writeLocker.unlock();
 
   // invalidate all entries for the two collections
   arangodb::aql::QueryCache::instance()->invalidate(

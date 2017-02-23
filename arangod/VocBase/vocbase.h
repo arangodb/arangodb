@@ -221,7 +221,7 @@ struct TRI_vocbase_t {
     // increase the reference counter by 2.
     // this is because we use odd values to indicate that the database has been
     // marked as deleted
-    auto oldValue = _refCount.fetch_add(2, std::memory_order_release);
+    auto oldValue = _refCount.fetch_add(2);
     // check if the deleted bit is set
     return (oldValue % 2 != 1);
   }
@@ -231,8 +231,8 @@ struct TRI_vocbase_t {
     // decrease the reference counter by 2.
     // this is because we use odd values to indicate that the database has been
     // marked as deleted
-      auto oldValue = _refCount.fetch_sub(2, std::memory_order_release);
-      TRI_ASSERT(oldValue >= 2);
+    auto oldValue = _refCount.fetch_sub(2);
+    TRI_ASSERT(oldValue >= 2);
   }
 
   /// @brief returns whether the database can be dropped
@@ -248,7 +248,7 @@ struct TRI_vocbase_t {
 
   /// @brief marks a database as deleted
   bool markAsDropped() {
-    auto oldValue = _refCount.fetch_or(1, std::memory_order_release);
+    auto oldValue = _refCount.fetch_or(1);
     // if the previously stored value is odd, it means the database has already
     // been marked as deleted
     return (oldValue % 2 == 0);
@@ -329,6 +329,9 @@ struct TRI_vocbase_t {
   void releaseCollection(arangodb::LogicalCollection* collection);
 
  private:
+  /// @brief looks up a collection by name, without acquiring a lock
+  arangodb::LogicalCollection* lookupCollectionNoLock(std::string const& name);
+
   int loadCollection(arangodb::LogicalCollection* collection,
                      TRI_vocbase_col_status_e& status,
                      bool setStatus = true);

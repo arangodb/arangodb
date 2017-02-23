@@ -9,6 +9,8 @@ v3.1.12 (XXXX-XX-XX)
 
 * fixed negative counting of http connection in UI
 
+* fixed a race when renaming collections
+
 
 v3.1.11 (2017-02-17)
 --------------------
