@@ -1183,12 +1183,12 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
     _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1),
     _leaderCommitIndex, _constituent.term());
 
-  _compacted.apply(
+  /*_compacted.apply(
     _state.slices(_lastCompactionIndex+1, _leaderCommitIndex+1),
-    _leaderCommitIndex, _constituent.term());
+    _leaderCommitIndex, _constituent.term());*/
 
   _lastAppliedIndex = _leaderCommitIndex;
-  _lastCompactionIndex = _leaderCommitIndex;
+  //_lastCompactionIndex = _leaderCommitIndex;
   
   return _lastAppliedIndex;
 

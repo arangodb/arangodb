@@ -210,7 +210,10 @@ std::vector<check_t> Supervision::checkDBServers() {
                         "supervision", _agencyPrefix, serverID).run();
         }
       } else {
-        report->add("Status", VPackValue(Supervision::HEALTH_STATUS_BAD));
+        if (lastStatus != Supervision::HEALTH_STATUS_BAD) {
+          reportPersistent = true;
+          report->add("Status", VPackValue(Supervision::HEALTH_STATUS_BAD));
+        }
       }
       
     }

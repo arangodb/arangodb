@@ -133,7 +133,7 @@ void Constituent::termNoLock(term_t t) {
       }
       
       OperationOptions options;
-      options.waitForSync = false;
+      options.waitForSync = _agent->config().waitForSync();
       options.silent = true;
       
       OperationResult result = trx.insert("election", body.slice(), options);
