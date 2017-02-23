@@ -103,7 +103,57 @@ static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition, As
   return ast->createNodeBinaryOperator(type, lhs, rhs);
 }
 
-static inline bool IsSupportedNode(AstNode const* node) {
+static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
+  // do a quick first check for all comparisons
+  switch (node->type) {
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_NIN: {
+      // the following types of expressions are not supported
+      //   p.edges[0]._from  op  whatever attribute access 
+      //   whatever attribute access  op  p.edges[0]._from
+      AstNode const* lhs = node->getMember(0);
+      AstNode const* rhs = node->getMember(1);
+
+      if (lhs->isAttributeAccessForVariable(pathVar, true)) {
+        // p.xxx  op  whatever
+        if (rhs->type != NODE_TYPE_VALUE && 
+            rhs->type != NODE_TYPE_ARRAY &&
+            rhs->type != NODE_TYPE_OBJECT &&
+            rhs->type != NODE_TYPE_REFERENCE) {
+          return false;
+        }
+      } else if (rhs->isAttributeAccessForVariable(pathVar, true)) {
+        // whatever  op  p.xxx
+        if (lhs->type != NODE_TYPE_VALUE && 
+            lhs->type != NODE_TYPE_ARRAY &&
+            lhs->type != NODE_TYPE_OBJECT &&
+            lhs->type != NODE_TYPE_REFERENCE) {
+          return false;
+        }
+      }
+      break;
+    }
+    default: {
+      // intentionally no other cases defined...
+      // we'll simply fall through to the next switch..case statement
+      break;
+    }
+  }
+
   switch (node->type) {
     case NODE_TYPE_VARIABLE:
     case NODE_TYPE_OPERATOR_UNARY_PLUS:
@@ -169,7 +219,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
                                             Variable const* pathVar,
                                             bool& conditionIsImpossible) {
   AstNode* node = parent->getMemberUnchecked(testIndex);
-  if (!IsSupportedNode(node)) {
+  if (!IsSupportedNode(pathVar, node)) {
     return false;
   }
   // We need to walk through each branch and validate:
@@ -193,11 +243,11 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   // We define that patternStep >= 6 is complete Match.
   unsigned char patternStep = 0;
 
-  auto supportedGuard = [&notSupported](AstNode const* n, void*) -> bool {
+  auto supportedGuard = [&notSupported, pathVar](AstNode const* n, void*) -> bool {
     if (notSupported) {
       return false;
     }
-    if (!IsSupportedNode(n)) {
+    if (!IsSupportedNode(pathVar, n)) {
       notSupported = true;
       return false;
     }
