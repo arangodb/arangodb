@@ -112,6 +112,23 @@ static DatafileStatisticsContainer* FindDatafileStats(
 } // namespace
 
 int MMFilesCollection::updateProperties(VPackSlice const& slice, bool doSync){
+  // validation
+  if (isVolatile() &&
+      arangodb::basics::VelocyPackHelper::getBooleanValue(
+          slice, "waitForSync", _logicalCollection->waitForSync())) {
+    // the combination of waitForSync and isVolatile makes no sense
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "volatile collections do not support the waitForSync option");
+  }
+
+  if (isVolatile() != arangodb::basics::VelocyPackHelper::getBooleanValue(
+                          slice, "isVolatile", isVolatile())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "isVolatile option cannot be changed at runtime");
+  }
+
   if (slice.hasKey("journalSize")) {
     _journalSize = Helper::getNumericValue<TRI_voc_size_t>(slice, "journalSize",
                                                            _journalSize);
@@ -378,7 +395,8 @@ bool MMFilesCollection::OpenIterator(TRI_df_marker_t const* marker, MMFilesColle
   return (res == TRI_ERROR_NO_ERROR);
 }
 
-MMFilesCollection::MMFilesCollection(LogicalCollection* collection, VPackSlice const& info)
+MMFilesCollection::MMFilesCollection(LogicalCollection* collection,
+                                     VPackSlice const& info)
     : PhysicalCollection(collection, info),
       _ditches(collection),
       _initialCount(0),
@@ -392,18 +410,32 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection, VPackSlice c
           info, "maximalSize",  // Backwards compatibility. Agency uses
                                 // journalSize. paramters.json uses maximalSize
           Helper::readNumericValue<TRI_voc_size_t>(info, "journalSize",
-                                           TRI_JOURNAL_DEFAULT_SIZE))),
+                                                   TRI_JOURNAL_DEFAULT_SIZE))),
+      _isVolatile(arangodb::basics::VelocyPackHelper::readBooleanValue(
+          info, "isVolatile", false)),
       _useSecondaryIndexes(true),
       _doCompact(Helper::readBooleanValue(info, "doCompact", true)),
-      _maxTick(0)
-{
+      _maxTick(0) {
+  if (_isVolatile && _logicalCollection->waitForSync()) {
+    // Illegal collection configuration
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "volatile collections do not support the waitForSync option");
+  }
+
+  if (_journalSize < TRI_JOURNAL_MINIMAL_SIZE) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "<properties>.journalSize too small");
+  }
+
   setCompactionStatus("compaction not yet started");
 }
 
 MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
                                      PhysicalCollection* physical)
     : PhysicalCollection(logical, VPackSlice::emptyObjectSlice()),
-      _ditches(logical) {
+      _ditches(logical),
+      _isVolatile(static_cast<MMFilesCollection*>(physical)->isVolatile()) {
   _keyOptions = VPackBuilder::clone(physical->keyOptions()).steal();
   MMFilesCollection& mmfiles = *static_cast<MMFilesCollection*>(physical);
   _keyGenerator.reset(KeyGenerator::factory(mmfiles.keyOptions()));
@@ -450,7 +482,11 @@ int64_t MMFilesCollection::initialCount() const {
 void MMFilesCollection::updateCount(int64_t count) {
   _initialCount = count;
 }
-  
+
+size_t MMFilesCollection::journalSize() const { return _journalSize; };
+
+bool MMFilesCollection::isVolatile() const { return _isVolatile; }
+
 /// @brief closes an open collection
 int MMFilesCollection::close() {
   if (!_logicalCollection->_isDeleted) {
@@ -808,7 +844,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
 
   std::unique_ptr<MMFilesDatafile> datafile;
 
-  if (_logicalCollection->isVolatile()) {
+  if (isVolatile()) {
     // in-memory collection
     datafile.reset(MMFilesDatafile::create(StaticStrings::Empty, fid, journalSize, true));
   } else {
@@ -1018,6 +1054,8 @@ void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
   result.add("journalSize", VPackValue(_journalSize));
   result.add("doCompact", VPackValue(_doCompact));
+  result.add("isVolatile", VPackValue(_isVolatile));
+
   if (_keyGenerator != nullptr) {
     result.add(VPackValue("keyOptions"));
     result.openObject();

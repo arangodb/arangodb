@@ -135,9 +135,8 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _isLocal(false),
       _isDeleted(other._isDeleted),
       _isSystem(other.isSystem()),
-      _isVolatile(other.isVolatile()),
-      _waitForSync(other.waitForSync()),
       _version(other._version),
+      _waitForSync(other.waitForSync()),
       _indexBuckets(other.indexBuckets()),
       _indexes(),
       _replicationFactor(other.replicationFactor()),
@@ -180,9 +179,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _isDeleted(Helper::readBooleanValue(info, "deleted", false)),
       _isSystem(IsSystemName(_name) &&
                 Helper::readBooleanValue(info, "isSystem", false)),
-      _isVolatile(Helper::readBooleanValue(info, "isVolatile", false)),
-      _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
       _version(Helper::readNumericValue<uint32_t>(info, "version", currentVersion())),
+      _waitForSync(Helper::readBooleanValue(
+          info, "waitForSync", false)),
       _indexBuckets(Helper::readNumericValue<uint32_t>(
           info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
       _replicationFactor(1),
@@ -205,18 +204,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                          "with the --database.auto-upgrade option.");
 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
-  }
-
-  if (_isVolatile && _waitForSync) {
-    // Illegal collection configuration
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "volatile collections do not support the waitForSync option");
-  }
-
-  if (getPhysical()->journalSize() < TRI_JOURNAL_MINIMAL_SIZE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "<properties>.journalSize too small");
   }
 
   VPackSlice shardKeysSlice = info.get("shardKeys");
@@ -617,8 +604,6 @@ bool LogicalCollection::deleted() const { return _isDeleted; }
 
 bool LogicalCollection::isSystem() const { return _isSystem; }
 
-bool LogicalCollection::isVolatile() const { return _isVolatile; }
-
 bool LogicalCollection::waitForSync() const { return _waitForSync; }
 
 bool LogicalCollection::isSmart() const { return _isSmart; }
@@ -660,7 +645,6 @@ void LogicalCollection::getPropertiesVPack(VPackBuilder& result, bool translateC
 
   getPhysical()->getPropertiesVPack(result);
   // TODO
-  result.add("isVolatile", VPackValue(_isVolatile)); //MMFiles
   result.add("indexBuckets", VPackValue(_indexBuckets)); //MMFiles
   // ODOT
 
@@ -921,22 +905,6 @@ int LogicalCollection::updateProperties(VPackSlice const& slice, bool doSync) {
 
   WRITE_LOCKER(writeLocker, _infoLock);
 
-  // some basic validation...
-  if (isVolatile() && arangodb::basics::VelocyPackHelper::getBooleanValue(
-                          slice, "waitForSync", waitForSync())) {
-    // the combination of waitForSync and isVolatile makes no sense
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "volatile collections do not support the waitForSync option");
-  }
-
-  if (isVolatile() != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                          slice, "isVolatile", isVolatile())) { //MMFiles
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "isVolatile option cannot be changed at runtime");
-  }
-
   uint32_t tmp = arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
       slice, "indexBuckets",
       2 /*Just for validation, this default Value passes*/);
@@ -945,10 +913,13 @@ int LogicalCollection::updateProperties(VPackSlice const& slice, bool doSync) {
         TRI_ERROR_BAD_PARAMETER,
         "indexBuckets must be a two-power between 1 and 1024");
   }
-  // end of validation
+
+  // The physical may first reject illegal properties.
+  // After this call it either has thrown or the properties are stored
+  getPhysical()->updateProperties(slice, doSync);
 
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
-  getPhysical()->updateProperties(slice,doSync);
+
   _indexBuckets =
       Helper::getNumericValue<uint32_t>(slice, "indexBuckets", _indexBuckets); //MMFiles
 

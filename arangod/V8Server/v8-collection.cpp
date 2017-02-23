@@ -36,6 +36,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "RestServer/DatabaseFeature.h"
@@ -1268,6 +1269,8 @@ static void JS_PropertiesVocbaseCol(
     std::shared_ptr<LogicalCollection> info =
         ClusterInfo::instance()->getCollection(
             databaseName, collection->cid_as_string());
+    auto physical = static_cast<MMFilesCollection*>(info->getPhysical());
+    TRI_ASSERT(physical != nullptr);
 
     if (0 < args.Length()) {
       v8::Handle<v8::Value> par = args[0];
@@ -1292,13 +1295,13 @@ static void JS_PropertiesVocbaseCol(
                 "<properties>.journalSize too small");
           }
         }
-        if (info->isVolatile() !=
+        if (physical->isVolatile() !=
             arangodb::basics::VelocyPackHelper::getBooleanValue(
-                slice, "isVolatile", info->isVolatile())) {
+                slice, "isVolatile", physical->isVolatile())) {
           TRI_V8_THROW_EXCEPTION_PARAMETER(
               "isVolatile option cannot be changed at runtime");
         }
-        if (info->isVolatile() && info->waitForSync()) {
+        if (physical->isVolatile() && info->waitForSync()) {
           TRI_V8_THROW_EXCEPTION_PARAMETER(
               "volatile collections do not support the waitForSync option");
         }
@@ -1330,7 +1333,7 @@ static void JS_PropertiesVocbaseCol(
     TRI_GET_GLOBAL_STRING(WaitForSyncKey);
     result->Set(DoCompactKey, v8::Boolean::New(isolate, info->getPhysical()->doCompact()));
     result->Set(IsSystemKey, v8::Boolean::New(isolate, info->isSystem()));
-    result->Set(IsVolatileKey, v8::Boolean::New(isolate, info->isVolatile()));
+    result->Set(IsVolatileKey, v8::Boolean::New(isolate, physical->isVolatile()));
     result->Set(JournalSizeKey, v8::Number::New(isolate, static_cast<double>(info->getPhysical()->journalSize())));
     result->Set(WaitForSyncKey, v8::Boolean::New(isolate, info->waitForSync()));
     result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
@@ -1399,7 +1402,9 @@ static void JS_PropertiesVocbaseCol(
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-        
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
+
   // check if we want to change some parameters
   if (isModification) {
     v8::Handle<v8::Value> par = args[0];
@@ -1422,7 +1427,7 @@ static void JS_PropertiesVocbaseCol(
         TRI_V8_THROW_EXCEPTION(res);
       }
 
-      res = collection->getPhysical()->persistProperties();
+      res = physical->persistProperties();
 
       if (res != TRI_ERROR_NO_ERROR) {
         // TODO: what to do here
@@ -1442,9 +1447,9 @@ static void JS_PropertiesVocbaseCol(
   result->Set(DoCompactKey, v8::Boolean::New(isolate, collection->getPhysical()->doCompact()));
   result->Set(IsSystemKey, v8::Boolean::New(isolate, collection->isSystem()));
   result->Set(IsVolatileKey,
-              v8::Boolean::New(isolate, collection->isVolatile()));
+              v8::Boolean::New(isolate, physical->isVolatile()));
   result->Set(JournalSizeKey,
-              v8::Number::New(isolate, (double) collection->getPhysical()->journalSize()));
+              v8::Number::New(isolate, (double) physical->journalSize()));
   result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
               v8::Number::New(isolate, collection->indexBuckets()));
 

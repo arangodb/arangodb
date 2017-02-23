@@ -160,7 +160,6 @@ class LogicalCollection {
   bool isLocal() const;
   bool deleted() const;
   bool isSystem() const;
-  bool isVolatile() const;
   bool waitForSync() const;
   bool isSmart() const;
 
@@ -362,10 +361,10 @@ private:
   bool _isDeleted;
  protected:
   bool const _isSystem;
-  bool const _isVolatile;
-  bool _waitForSync;
 
   uint32_t _version;
+  bool _waitForSync;
+
 
   // SECTION: Indexes
   uint32_t _indexBuckets;

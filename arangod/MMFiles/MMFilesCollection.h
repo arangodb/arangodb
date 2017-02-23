@@ -142,7 +142,9 @@ class MMFilesCollection final : public PhysicalCollection {
 
   int64_t initialCount() const override;
   void updateCount(int64_t) override;
-  size_t journalSize() const override { return _journalSize; };
+  size_t journalSize() const override;
+  bool isVolatile() const;
+ 
   TRI_voc_tick_t maxTick() const { return _maxTick; }
   void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
 
@@ -495,6 +497,7 @@ class MMFilesCollection final : public PhysicalCollection {
     double _lastCompactionStamp;
     std::string _path;
     TRI_voc_size_t _journalSize;
+    bool const _isVolatile;
 
     // whether or not secondary indexes should be filled
     bool _useSecondaryIndexes;

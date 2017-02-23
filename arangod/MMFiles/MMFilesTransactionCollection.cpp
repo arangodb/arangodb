@@ -143,7 +143,7 @@ void MMFilesTransactionCollection::freeOperations(transaction::Methods* activeTr
 
   if (mustRollback) {
     physical->setRevision(_originalRevision, true);
-  } else if (!_collection->isVolatile() && !isSingleOperationTransaction) {
+  } else if (!physical->isVolatile() && !isSingleOperationTransaction) {
     // only count logfileEntries if the collection is durable
     physical->increaseUncollectedLogfileEntries(_operations->size());
   }

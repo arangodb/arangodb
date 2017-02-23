@@ -480,7 +480,9 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
             databaseId, collectionId, marker, datafile->fid(),
             [&](SingleCollectionTransaction* trx,
                 MMFilesMarkerEnvelope* envelope) -> int {
-              if (trx->documentCollection()->isVolatile()) {
+              if (arangodb::MMFilesCollection::toMMFilesCollection(
+                      trx->documentCollection())
+                      ->isVolatile()) {
                 return TRI_ERROR_NO_ERROR;
               }
 
@@ -554,7 +556,10 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
             databaseId, collectionId, marker, datafile->fid(),
             [&](SingleCollectionTransaction* trx,
                 MMFilesMarkerEnvelope* envelope) -> int {
-              if (trx->documentCollection()->isVolatile()) {
+
+              if (arangodb::MMFilesCollection::toMMFilesCollection(
+                      trx->documentCollection())
+                      ->isVolatile()) {
                 return TRI_ERROR_NO_ERROR;
               }
 

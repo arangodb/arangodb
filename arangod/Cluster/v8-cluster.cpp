@@ -31,6 +31,7 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -602,8 +603,11 @@ static void JS_GetCollectionInfoClusterInfo(
               v8::Boolean::New(isolate, ci->getPhysical()->doCompact()));
   result->Set(TRI_V8_ASCII_STRING("isSystem"),
               v8::Boolean::New(isolate, ci->isSystem()));
-  result->Set(TRI_V8_ASCII_STRING("isVolatile"),
-              v8::Boolean::New(isolate, ci->isVolatile()));
+  result->Set(
+      TRI_V8_ASCII_STRING("isVolatile"),
+      v8::Boolean::New(
+          isolate,
+          static_cast<MMFilesCollection*>(ci->getPhysical())->isVolatile()));
   result->Set(TRI_V8_ASCII_STRING("waitForSync"),
               v8::Boolean::New(isolate, ci->waitForSync()));
   result->Set(TRI_V8_ASCII_STRING("journalSize"),

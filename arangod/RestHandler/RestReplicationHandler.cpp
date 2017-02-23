@@ -1268,9 +1268,6 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
           application_features::ApplicationServer::getFeature<DatabaseFeature>(
               "Database")
               ->waitForSync()));
-  TRI_ASSERT(col->isVolatile() ==
-             arangodb::basics::VelocyPackHelper::getBooleanValue(
-                 slice, "isVolatile", false));
   TRI_ASSERT(col->isSystem() == (name[0] == '_'));
   TRI_ASSERT(
       col->indexBuckets() ==
