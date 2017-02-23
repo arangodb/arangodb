@@ -58,7 +58,6 @@
 #include "Rest/Version.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/VocbaseContext.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -2099,6 +2098,8 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
+  TRI_ASSERT(!vocbase->isDangling());
+
   // switch databases
   void* orig = v8g->_vocbase;
   TRI_ASSERT(orig != nullptr);
@@ -2368,6 +2369,8 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
+  TRI_ASSERT(!vocbase->isDangling());
+
   if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
   }
@@ -2408,6 +2411,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_ASSERT(database != nullptr);
+  TRI_ASSERT(!database->isDangling());
 
   // copy users into context
   if (args.Length() >= 3 && args[2]->IsArray()) {
@@ -2422,21 +2426,35 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // switch databases
-  TRI_vocbase_t* orig = v8g->_vocbase;
-  TRI_ASSERT(orig != nullptr);
+  {
+    TRI_vocbase_t* orig = v8g->_vocbase;
+    TRI_ASSERT(orig != nullptr);
 
-  v8g->_vocbase = database;
+    v8g->_vocbase = database;
 
-  // initalize database
-  V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
-      isolate, isolate->GetCurrentContext(),
-      "server/bootstrap/local-database.js");
+    // initalize database
+    try {
+      V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
+          isolate, isolate->GetCurrentContext(),
+          "server/bootstrap/local-database.js");
+      if (v8g->_vocbase == database) {
+        // decrease the reference-counter only if we are coming back with the same database
+        database->release();
+      }
 
-  // and switch back
-  v8g->_vocbase = orig;
+      // and switch back
+      v8g->_vocbase = orig;
+    } catch (...) {
+      if (v8g->_vocbase == database) {
+        // decrease the reference-counter only if we are coming back with the same database
+        database->release();
+      }
 
-  // finally decrease the reference-counter
-  database->release();
+      // and switch back
+      v8g->_vocbase = orig;
+      throw;
+    }
+  }
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -2515,6 +2533,7 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
+  
 
   // clear collections in cache object
   TRI_ClearObjectCacheV8(isolate);

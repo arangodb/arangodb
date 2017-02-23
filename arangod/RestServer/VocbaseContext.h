@@ -45,6 +45,9 @@ class VocbaseContext : public arangodb::RequestContext {
   static double ServerSessionTtl;
 
  public:
+  VocbaseContext(VocbaseContext const&) = delete;
+  VocbaseContext& operator=(VocbaseContext const&) = delete;
+
   VocbaseContext(GeneralRequest*, TRI_vocbase_t*);
   ~VocbaseContext();
 

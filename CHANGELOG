@@ -79,6 +79,8 @@ v3.1.12 (XXXX-XX-XX)
 
 * fixed a race when renaming collections
 
+* fixed a race when dropping databases
+
 
 v3.1.11 (2017-02-17)
 --------------------
@@ -190,9 +192,10 @@ shards.
 * added server startup option `--query.memory-limit`
 
 * added convenience function to create vertex-centric indexes.
-Usage: `db.collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"})`
-That will create an index that can be used on OUTBOUND with filtering on the
-edge attribute `label`.
+
+  Usage: `db.collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"})`
+  That will create an index that can be used on OUTBOUND with filtering on the
+  edge attribute `label`.
 
 * change default log output for tools to stdout (instead of stderr)
 

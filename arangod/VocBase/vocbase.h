@@ -208,51 +208,24 @@ struct TRI_vocbase_t {
   /// @brief signal the cleanup thread to wake up
   void signalCleanup();
 
-  /// @brief whether or not the vocbase has been marked as deleted
-  inline bool isDropped() const {
-    auto refCount = _refCount.load();
-    // if the stored value is odd, it means the database has been marked as
-    // deleted
-    return (refCount % 2 == 1);
-  }
+  /// @brief increase the reference counter for a database. 
+  /// will return true if the refeence counter was increased, false otherwise
+  /// in case false is returned, the database must not be used
+  bool use();
 
-  /// @brief increase the reference counter for a database
-  bool use() {
-    // increase the reference counter by 2.
-    // this is because we use odd values to indicate that the database has been
-    // marked as deleted
-    auto oldValue = _refCount.fetch_add(2);
-    // check if the deleted bit is set
-    return (oldValue % 2 != 1);
-  }
+  void forceUse();
 
   /// @brief decrease the reference counter for a database
-  void release() {
-    // decrease the reference counter by 2.
-    // this is because we use odd values to indicate that the database has been
-    // marked as deleted
-    auto oldValue = _refCount.fetch_sub(2);
-    TRI_ASSERT(oldValue >= 2);
-  }
+  void release();
+  
+  /// @brief returns whether the database is dangling
+  bool isDangling() const;
 
-  /// @brief returns whether the database can be dropped
-  bool canBeDropped() const {
-    if (isSystem()) {
-      return false;
-    }
-    auto refCount = _refCount.load();
-    // we are intentionally comparing with exactly 1 here, because a 1 means
-    // that noone else references the database but it has been marked as deleted
-    return (refCount == 1);
-  }
+  /// @brief whether or not the vocbase has been marked as deleted
+  bool isDropped() const;
 
   /// @brief marks a database as deleted
-  bool markAsDropped() {
-    auto oldValue = _refCount.fetch_or(1);
-    // if the previously stored value is odd, it means the database has already
-    // been marked as deleted
-    return (oldValue % 2 == 0);
-  }
+  bool markAsDropped();
 
   /// @brief returns whether the database is the system database
   bool isSystem() const { return name() == TRI_VOC_SYSTEM_DATABASE; }

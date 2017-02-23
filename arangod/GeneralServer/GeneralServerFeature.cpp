@@ -213,13 +213,17 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
   if (vocbase == nullptr) {
     return false;
   }
+  
+  TRI_ASSERT(!vocbase->isDangling());
 
   // database needs upgrade
   if (vocbase->state() == TRI_vocbase_t::State::FAILED_VERSION) {
     request->setRequestPath("/_msg/please-upgrade");
+    vocbase->release();
     return false;
   }
 
+  // the vocbase context is now responsible for releasing the vocbase
   VocbaseContext* ctx = new arangodb::VocbaseContext(request, vocbase);
   request->setRequestContext(ctx, true);
 
