@@ -65,6 +65,70 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+  
+/// @brief increase the reference counter for a database
+bool TRI_vocbase_t::use() {
+  auto expected = _refCount.load(std::memory_order_relaxed);
+  while (true) {
+    if ((expected & 1) != 0) {
+      // deleted bit is set
+      return false;
+    }
+    // increase the reference counter by 2.
+    // this is because we use odd values to indicate that the database has been
+    // marked as deleted
+    auto updated = expected + 2;
+    TRI_ASSERT((updated & 1) == 0);
+    if (_refCount.compare_exchange_weak(expected, updated, std::memory_order_release, std::memory_order_relaxed)) {
+      // compare-exchange worked. we're done
+      return true;
+    }
+    // compare-exchange failed. try again!
+    expected = _refCount.load(std::memory_order_relaxed);
+  }
+}
+
+void TRI_vocbase_t::forceUse() {
+  _refCount += 2;
+}
+
+/// @brief decrease the reference counter for a database
+void TRI_vocbase_t::release() {
+  // decrease the reference counter by 2.
+  // this is because we use odd values to indicate that the database has been
+  // marked as deleted
+  auto oldValue = _refCount.fetch_sub(2);
+  TRI_ASSERT(oldValue >= 2);
+}
+
+/// @brief returns whether the database can be dropped
+bool TRI_vocbase_t::isDangling() const {
+  if (isSystem()) {
+    return false;
+  }
+  auto refCount = _refCount.load();
+  // we are intentionally comparing with exactly 1 here, because a 1 means
+  // that noone else references the database but it has been marked as deleted
+  return (refCount == 1);
+}
+  
+/// @brief whether or not the vocbase has been marked as deleted
+bool TRI_vocbase_t::isDropped() const {
+  auto refCount = _refCount.load();
+  // if the stored value is odd, it means the database has been marked as
+  // deleted
+  return (refCount % 2 == 1);
+}
+
+/// @brief marks a database as deleted
+bool TRI_vocbase_t::markAsDropped() {
+  TRI_ASSERT(!isSystem());
+
+  auto oldValue = _refCount.fetch_or(1);
+  // if the previously stored value is odd, it means the database has already
+  // been marked as deleted
+  return (oldValue % 2 == 0);
+}
 
 /// @brief signal the cleanup thread to wake up
 void TRI_vocbase_t::signalCleanup() {

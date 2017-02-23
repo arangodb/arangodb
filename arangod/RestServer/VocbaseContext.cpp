@@ -54,9 +54,15 @@ VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_vocbase_t* vocbase)
   TRI_ASSERT(_vocbase != nullptr);
   _authentication = FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(_authentication != nullptr);
+
+  // _vocbase has already been refcounted for us
+  TRI_ASSERT(!_vocbase->isDangling());
 }
 
-VocbaseContext::~VocbaseContext() { _vocbase->release(); }
+VocbaseContext::~VocbaseContext() { 
+  TRI_ASSERT(!_vocbase->isDangling());
+  _vocbase->release(); 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the authentication

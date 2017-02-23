@@ -94,7 +94,7 @@ void DatabaseManagerThread::run() {
         auto theLists = databaseFeature->_databasesLists.load();
 
         for (TRI_vocbase_t* vocbase : theLists->_droppedDatabases) {
-          if (!vocbase->canBeDropped()) {
+          if (!vocbase->isDangling()) {
             continue;
           }
 
@@ -136,10 +136,12 @@ void DatabaseManagerThread::run() {
           // not possible that another thread has seen this very database
           // and tries to free it at the same time!
         }
-
+  
         if (database->type() != TRI_VOCBASE_TYPE_COORDINATOR) {
           // regular database
           // ---------------------------
+  
+          TRI_ASSERT(!database->isSystem());
 
           // delete persistent indexes for this database
           RocksDBFeature::dropDatabase(database->id());
@@ -614,7 +616,8 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
       }
 
       // increase reference counter
-      vocbase->use();
+      bool result = vocbase->use();
+      TRI_ASSERT(result);
     }
 
     {
@@ -726,13 +729,6 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker,
         // mark as deleted
         TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
-        if (!vocbase->markAsDropped()) {
-          // deleted by someone else?
-          delete newLists;
-          events::DropDatabase(name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-          return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-        }
-
         newLists->_databases.erase(it);
         newLists->_droppedDatabases.insert(vocbase);
       }
@@ -747,6 +743,10 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker,
     _databasesLists = newLists;
     _databasesProtector.scan();
     delete oldLists;
+       
+    TRI_ASSERT(!vocbase->isSystem()); 
+    bool result = vocbase->markAsDropped();
+    TRI_ASSERT(result);
 
     vocbase->setIsOwnAppsDirectory(removeAppsDirectory);
 
@@ -761,7 +761,9 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker,
         writeDropMarker(id);
       }
     }
-  }
+  } 
+  // must not use the database after here, as it may now be
+  // deleted by the DatabaseManagerThread!
 
   if (res == TRI_ERROR_NO_ERROR && waitForDeletion) {
     engine->waitUntilDeletion(id, true);
@@ -827,6 +829,9 @@ std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIds(
     for (auto& p : theLists->_databases) {
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
+      if (vocbase->isDropped()) {
+        continue;
+      }
       if (includeSystem || vocbase->name() != TRI_VOC_SYSTEM_DATABASE) {
         ids.emplace_back(vocbase->id());
       }
@@ -847,7 +852,9 @@ std::vector<std::string> DatabaseFeature::getDatabaseNames() {
     for (auto& p : theLists->_databases) {
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
-
+      if (vocbase->isDropped()) {
+        continue;
+      }
       names.emplace_back(vocbase->name());
     }
   }
@@ -871,6 +878,9 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
     for (auto& p : theLists->_databases) {
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
+      if (vocbase->isDropped()) {
+        continue;
+      }
 
       auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
           "Authentication");
@@ -893,7 +903,8 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
 }
 
 void DatabaseFeature::useSystemDatabase() {
-  useDatabase(TRI_VOC_SYSTEM_DATABASE);
+  bool result = useDatabase(TRI_VOC_SYSTEM_DATABASE);
+  TRI_ASSERT(result);
 }
 
 /// @brief get a coordinator database by its id
@@ -940,8 +951,9 @@ TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) {
 
   if (it != theLists->_databases.end()) {
     TRI_vocbase_t* vocbase = it->second;
-    vocbase->use();
-    return vocbase;
+    if (vocbase->use()) {
+      return vocbase;
+    }
   }
 
   return nullptr;
@@ -955,8 +967,10 @@ TRI_vocbase_t* DatabaseFeature::useDatabase(TRI_voc_tick_t id) {
     TRI_vocbase_t* vocbase = p.second;
 
     if (vocbase->id() == id) {
-      vocbase->use();
-      return vocbase;
+      if (vocbase->use()) {
+        return vocbase;
+      }
+      break;
     }
   }
 
