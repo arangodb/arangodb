@@ -1255,7 +1255,6 @@ static void JS_PropertiesVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  TRI_GET_GLOBALS();
 
   arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -1322,18 +1321,18 @@ static void JS_PropertiesVocbaseCol(
       }
 
     }
+
+    auto c = ClusterInfo::instance()->getCollection(
+        databaseName, StringUtils::itoa(collection->cid()));
+
     VPackBuilder vpackProperties;
     vpackProperties.openObject();
-    collection->toVelocyPackForV8(vpackProperties);
+    c->toVelocyPackForV8(vpackProperties);
     vpackProperties.close();
 
     // return the current parameter set
     v8::Handle<v8::Object> result =
                   TRI_VPackToV8(isolate, vpackProperties.slice())->ToObject();
-    /*
-    auto c = ClusterInfo::instance()->getCollection(
-        databaseName, StringUtils::itoa(collection->cid()));
-    */
     TRI_V8_RETURN(result);
   }
   
