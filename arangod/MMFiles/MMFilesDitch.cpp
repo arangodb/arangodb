@@ -21,7 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Ditch.h"
+#include "MMFilesDitch.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDatafile.h"

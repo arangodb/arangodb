@@ -29,8 +29,7 @@
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesLogfileManager.h" //TODO -- remove
 #include "MMFiles/MMFilesCompactionLocker.h"
-#include "MMFiles/MMFilesCollection.h"
-#include "VocBase/Ditch.h"
+#include "MMFiles/MMFilesDitch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -607,7 +606,7 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   auto customTypeHandler = dump->_transactionContext->orderCustomTypeHandler();
   dump->_vpackOptions.customTypeHandler = customTypeHandler.get();
 
-  auto mmfiles = toMMFilesCollection(collection);
+  auto mmfiles = arangodb::MMFilesCollection::toMMFilesCollection(collection);
   // create a barrier so the underlying collection is not unloaded
   auto b = mmfiles->ditches()->createReplicationDitch(__FILE__, __LINE__);
 
@@ -618,7 +617,7 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   // block compaction
   int res;
   {
-    auto mmfiles = toMMFilesCollection(collection);
+    auto mmfiles = arangodb::MMFilesCollection::toMMFilesCollection(collection);
     CompactionPreventer compactionPreventer(mmfiles);
 
     try {

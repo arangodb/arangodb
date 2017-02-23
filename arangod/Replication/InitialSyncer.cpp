@@ -37,11 +37,11 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
 #include "MMFiles/MMFilesCollection.h" //TODO -- Remove -- ditches 
+#include "MMFiles/MMFilesDitch.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "Utils/OperationOptions.h"
-#include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/PhysicalCollection.h"
@@ -1051,8 +1051,10 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       errorMsg = std::string("unable to start transaction: ") + TRI_errno_string(res);
       return res;
     }
-    
-    ditch = toMMFilesCollection(col)->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+
+    ditch = arangodb::MMFilesCollection::toMMFilesCollection(col)
+                ->ditches()
+                ->createDocumentDitch(false, __FILE__, __LINE__);
 
     if (ditch == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -1061,7 +1063,9 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 
   TRI_ASSERT(ditch != nullptr);
 
-  TRI_DEFER(toMMFilesCollection(col)->ditches()->freeDitch(ditch));
+  TRI_DEFER(arangodb::MMFilesCollection::toMMFilesCollection(col)
+                ->ditches()
+                ->freeDitch(ditch));
 
   {
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);

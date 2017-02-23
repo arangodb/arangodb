@@ -553,10 +553,12 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       removeDatafile(collection, compaction._datafile);
 
       // add a deletion ditch to the collection
-      auto b = toMMFilesCollection(collection)->ditches()->createDropDatafileDitch(
-          compaction._datafile, collection, DropDatafileCallback, __FILE__,
-          __LINE__);
-      
+      auto b = arangodb::MMFilesCollection::toMMFilesCollection(collection)
+                   ->ditches()
+                   ->createDropDatafileDitch(compaction._datafile, collection,
+                                             DropDatafileCallback, __FILE__,
+                                             __LINE__);
+
       if (b == nullptr) {
         LOG_TOPIC(ERR, Logger::COMPACTOR) << "out of memory when creating datafile-drop ditch";
       }
@@ -582,9 +584,12 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
       if (i == 0) {
         // add a rename marker
-        auto b = toMMFilesCollection(collection)->ditches()->createRenameDatafileDitch(
-            compaction._datafile, context->_compactor, context->_collection, RenameDatafileCallback, __FILE__,
-            __LINE__);
+        auto b = arangodb::MMFilesCollection::toMMFilesCollection(collection)
+                     ->ditches()
+                     ->createRenameDatafileDitch(
+                         compaction._datafile, context->_compactor,
+                         context->_collection, RenameDatafileCallback, __FILE__,
+                         __LINE__);
 
         if (b == nullptr) {
           LOG_TOPIC(ERR, Logger::COMPACTOR) << "out of memory when creating datafile-rename ditch";
@@ -597,9 +602,11 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         removeDatafile(collection, compaction._datafile);
 
         // add a drop datafile marker
-        auto b = toMMFilesCollection(collection)->ditches()->createDropDatafileDitch(
-            compaction._datafile, collection, DropDatafileCallback, __FILE__,
-            __LINE__);
+        auto b = arangodb::MMFilesCollection::toMMFilesCollection(collection)
+                     ->ditches()
+                     ->createDropDatafileDitch(compaction._datafile, collection,
+                                               DropDatafileCallback, __FILE__,
+                                               __LINE__);
 
         if (b == nullptr) {
           LOG_TOPIC(ERR, Logger::COMPACTOR) << "out of memory when creating datafile-drop ditch";
@@ -897,8 +904,10 @@ void MMFilesCompactorThread::run() {
               try {
                 double const now = TRI_microtime();
                 if (physical->lastCompactionStamp() + compactionCollectionInterval() <= now) {
-                  auto ce = toMMFilesCollection(collection)->ditches()->createCompactionDitch(__FILE__,
-                                                                        __LINE__);
+                  auto ce = arangodb::MMFilesCollection::toMMFilesCollection(
+                                collection)
+                                ->ditches()
+                                ->createCompactionDitch(__FILE__, __LINE__);
 
                   if (ce == nullptr) {
                     // out of memory
@@ -919,7 +928,9 @@ void MMFilesCompactorThread::run() {
                       // in case an error occurs, we must still free this ditch
                     }
 
-                    toMMFilesCollection(collection)->ditches()->freeDitch(ce);
+                    arangodb::MMFilesCollection::toMMFilesCollection(collection)
+                        ->ditches()
+                        ->freeDitch(ce);
                   }
                 }
               } catch (...) {

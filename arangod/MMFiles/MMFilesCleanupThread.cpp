@@ -30,10 +30,10 @@
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollection.h"
+#include "MMFiles/MMFilesDitch.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CursorRepository.h"
-#include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 
@@ -164,7 +164,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
   // loop until done
 
   while (true) {
-    auto mmfiles = toMMFilesCollection(collection);
+    auto mmfiles = arangodb::MMFilesCollection::toMMFilesCollection(collection);
     auto ditches = mmfiles->ditches();
 
     TRI_ASSERT(ditches != nullptr);

@@ -23,13 +23,13 @@
 
 #include "CollectionExport.h"
 #include "Basics/WriteLocker.h"
+#include "MMFiles/MMFilesDitch.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Transaction/Hints.h"
-#include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -65,7 +65,9 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   // try to acquire the exclusive lock on the compaction
   engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
-    _ditch = toMMFilesCollection(_collection)->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+    _ditch = arangodb::MMFilesCollection::toMMFilesCollection(_collection)
+                 ->ditches()
+                 ->createDocumentDitch(false, __FILE__, __LINE__);
   });
 
   // now we either have a ditch or not

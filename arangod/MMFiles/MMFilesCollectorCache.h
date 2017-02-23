@@ -25,8 +25,8 @@
 #define ARANGOD_MMFILES_COLLECTOR_CACHE_H 1
 
 #include "Basics/Common.h"
+#include "MMFiles/MMFilesDitch.h"
 #include "VocBase/DatafileStatisticsContainer.h"
-#include "VocBase/Ditch.h"
 #include "VocBase/voc-types.h"
 
 struct MMFilesDatafile;

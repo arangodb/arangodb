@@ -28,8 +28,8 @@
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexLookupContext.h"
 #include "MMFiles/MMFilesDatafileStatistics.h"
+#include "MMFiles/MMFilesDitch.h"
 #include "MMFiles/MMFilesRevisionsCache.h"
-#include "VocBase/Ditch.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/PhysicalCollection.h"
@@ -45,10 +45,24 @@ class MMFilesPrimaryIndex;
 class MMFilesWalMarker;
 
 class MMFilesCollection final : public PhysicalCollection {
- friend class MMFilesCompactorThread;
- friend class MMFilesEngine;
+  friend class MMFilesCompactorThread;
+  friend class MMFilesEngine;
 
  public:
+  static inline MMFilesCollection* toMMFilesCollection(
+      PhysicalCollection* physical) {
+    auto rv = static_cast<MMFilesCollection*>(physical);
+    TRI_ASSERT(rv != nullptr);
+    return rv;
+  }
+
+  static inline MMFilesCollection* toMMFilesCollection(
+      LogicalCollection* logical) {
+    auto phys = logical->getPhysical();
+    TRI_ASSERT(phys != nullptr);
+    return toMMFilesCollection(phys);
+  }
+
   /// @brief state during opening of a collection
   struct OpenIteratorState {
     LogicalCollection* _collection;
@@ -250,7 +264,7 @@ class MMFilesCollection final : public PhysicalCollection {
   
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr)  override;
-  void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback);
+  void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback) override;
 
   /// @brief Restores an index from VelocyPack.
   int restoreIndex(transaction::Methods*, velocypack::Slice const&,
@@ -484,18 +498,6 @@ class MMFilesCollection final : public PhysicalCollection {
     bool _doCompact;
     TRI_voc_tick_t _maxTick;
 };
-
-inline MMFilesCollection* toMMFilesCollection(PhysicalCollection* physical){
-  auto rv =  dynamic_cast<MMFilesCollection*>(physical);
-  TRI_ASSERT(rv != nullptr);
-  return rv;
-}
-
-inline MMFilesCollection* toMMFilesCollection(LogicalCollection* logical){
-  auto phys = logical->getPhysical();
-  TRI_ASSERT(phys);
-  return toMMFilesCollection(phys);
-}
 
 }
 

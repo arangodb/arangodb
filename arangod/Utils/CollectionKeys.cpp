@@ -25,14 +25,14 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "MMFiles/MMFilesLogfileManager.h" //TODO -- REMOVE
-#include "MMFiles/MMFilesCollection.h"     //TODO -- REMOVE
+#include "MMFiles/MMFilesCollection.h"
+#include "MMFiles/MMFilesDitch.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -89,7 +89,9 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
-    _ditch = toMMFilesCollection(_collection)->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+    _ditch = arangodb::MMFilesCollection::toMMFilesCollection(_collection)
+                 ->ditches()
+                 ->createDocumentDitch(false, __FILE__, __LINE__);
   });
 
   // now we either have a ditch or not

@@ -28,7 +28,6 @@
 #include "Utils/OperationResult.h"
 #include "Transaction/Methods.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;

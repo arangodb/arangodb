@@ -23,13 +23,13 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
-#include "MMFiles/MMFilesCollection.h" // Used to create Ditches
+#include "MMFiles/MMFilesCollection.h"
+#include "MMFiles/MMFilesDitch.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "TransactionContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/TransactionManager.h"
@@ -127,7 +127,7 @@ DocumentDitch* TransactionContext::orderDitch(LogicalCollection* collection) {
   }
 
   // this method will not throw, but may return a nullptr
-  auto ditch = toMMFilesCollection(collection)->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
+  auto ditch = arangodb::MMFilesCollection::toMMFilesCollection(collection)->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
 
   if (ditch != nullptr) {
     try {

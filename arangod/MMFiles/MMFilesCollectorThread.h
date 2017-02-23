@@ -30,7 +30,7 @@
 #include "Basics/Thread.h"
 #include "MMFiles/MMFilesCollectorCache.h"
 #include "MMFiles/MMFilesDatafile.h"
-#include "VocBase/Ditch.h"
+#include "MMFiles/MMFilesDitch.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {

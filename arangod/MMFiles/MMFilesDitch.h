@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_DITCH_H
-#define ARANGOD_VOC_BASE_DITCH_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_DITCH_H
+#define ARANGOD_MMFILES_MMFILES_DITCH_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
