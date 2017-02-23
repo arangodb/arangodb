@@ -1322,68 +1322,18 @@ static void JS_PropertiesVocbaseCol(
       }
 
     }
+    VPackBuilder vpackProperties;
+    vpackProperties.openObject();
+    collection->toVelocyPackForV8(vpackProperties);
+    vpackProperties.close();
 
     // return the current parameter set
-    v8::Handle<v8::Object> result = v8::Object::New(isolate);
-
-    TRI_GET_GLOBAL_STRING(DoCompactKey);
-    TRI_GET_GLOBAL_STRING(IsSystemKey);
-    TRI_GET_GLOBAL_STRING(IsVolatileKey);
-    TRI_GET_GLOBAL_STRING(JournalSizeKey);
-    TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-    result->Set(DoCompactKey, v8::Boolean::New(isolate, info->getPhysical()->doCompact()));
-    result->Set(IsSystemKey, v8::Boolean::New(isolate, info->isSystem()));
-    result->Set(IsVolatileKey, v8::Boolean::New(isolate, physical->isVolatile()));
-    result->Set(JournalSizeKey, v8::Number::New(isolate, static_cast<double>(info->getPhysical()->journalSize())));
-    result->Set(WaitForSyncKey, v8::Boolean::New(isolate, info->waitForSync()));
-    result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
-                v8::Number::New(isolate, info->indexBuckets()));
-
+    v8::Handle<v8::Object> result =
+                  TRI_VPackToV8(isolate, vpackProperties.slice())->ToObject();
+    /*
     auto c = ClusterInfo::instance()->getCollection(
         databaseName, StringUtils::itoa(collection->cid()));
-    v8::Handle<v8::Array> shardKeys = v8::Array::New(isolate);
-    std::vector<std::string> const sks = c->shardKeys();
-    for (size_t i = 0; i < sks.size(); ++i) {
-      shardKeys->Set((uint32_t)i, TRI_V8_STD_STRING(sks[i]));
-    }
-    result->Set(TRI_V8_ASCII_STRING("shardKeys"), shardKeys);
-
-    result->Set(TRI_V8_ASCII_STRING("numberOfShards"),
-                v8::Number::New(isolate, c->numberOfShards()));
-    auto keyOpts = info->getPhysical()->keyOptions();
-    if (keyOpts.isObject() && keyOpts.length() > 0) {
-      TRI_GET_GLOBAL_STRING(KeyOptionsKey);
-      result->Set(KeyOptionsKey, TRI_VPackToV8(isolate, keyOpts)->ToObject());
-    }
-    if (c->isSatellite()) {
-      result->Set(
-          TRI_V8_ASCII_STRING("replicationFactor"),
-          TRI_V8_STD_STRING(std::string("satellite")));
-    } else {
-      result->Set(
-          TRI_V8_ASCII_STRING("replicationFactor"),
-          v8::Number::New(isolate, static_cast<double>(c->replicationFactor())));
-    }
-    std::string shardsLike = c->distributeShardsLike();
-    if (!shardsLike.empty()) {
-      CollectionNameResolver resolver(c->vocbase());
-      TRI_voc_cid_t cid =
-        static_cast<TRI_voc_cid_t>(
-          arangodb::basics::StringUtils::uint64(shardsLike));
-      result->Set(
-        TRI_V8_ASCII_STRING("distributeShardsLike"),
-        TRI_V8_STD_STRING(resolver.getCollectionNameCluster(cid)));
-    }
-
-    std::vector<std::string> const avoidServers = c->avoidServers();
-    if (!avoidServers.empty()) {
-      v8::Handle<v8::Array> avoidKeys = v8::Array::New(isolate);
-      for (size_t i = 0; i < avoidServers.size(); ++i) {
-        avoidKeys->Set((uint32_t)i, TRI_V8_STD_STRING(avoidServers[i]));
-      }
-      result->Set(TRI_V8_ASCII_STRING("avoidServers"), avoidKeys);
-    }
-
+    */
     TRI_V8_RETURN(result);
   }
   
@@ -1438,7 +1388,7 @@ static void JS_PropertiesVocbaseCol(
   }
   VPackBuilder vpackProperties;
   vpackProperties.openObject();
-  collection->getPropertiesVPack(vpackProperties, false, false);
+  collection->toVelocyPackForV8(vpackProperties);
   vpackProperties.close();
 
   // return the current parameter set

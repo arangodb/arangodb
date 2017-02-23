@@ -809,6 +809,41 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
   }
 }
 
+void LogicalCollection::toVelocyPackForV8(VPackBuilder& result) const {
+  getPropertiesVPack(result, false, true);
+  // TODO We have to properly unify the VPack creation functions...
+  if (ServerState::instance()->isCoordinator()) {
+    result.add("numberOfShards", VPackValue(_numberOfShards));
+    if (isSatellite()) {
+      result.add("replicationFactor", VPackValue("satelite"));
+    } else {
+      result.add("replicationFactor", VPackValue(_replicationFactor));
+    }
+    if (!_distributeShardsLike.empty()) {
+      CollectionNameResolver resolver(_vocbase);
+        result.add("distributeShardsLike",
+                   VPackValue(resolver.getCollectionNameCluster(
+                       static_cast<TRI_voc_cid_t>(
+                           basics::StringUtils::uint64(_distributeShardsLike)))));
+    }
+    result.add(VPackValue("shardKeys"));
+    result.openArray();
+    for (auto const& key : _shardKeys) {
+      result.add(VPackValue(key));
+    }
+    result.close();  // shardKeys
+
+    if (!_avoidServers.empty()) {
+      result.add(VPackValue("avoidServers"));
+      result.openArray();
+      for (auto const& server : _avoidServers) {
+        result.add(VPackValue(server));
+      }
+      result.close();
+    }
+  }
+}
+
 void LogicalCollection::toVelocyPackForAgency(VPackBuilder& result) {
   _status = TRI_VOC_COL_STATUS_LOADED;
   result.openObject();

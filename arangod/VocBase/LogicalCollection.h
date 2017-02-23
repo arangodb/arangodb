@@ -216,6 +216,8 @@ class LogicalCollection {
 
   // SECTION: Serialisation
   void toVelocyPack(velocypack::Builder&, bool withPath) const;
+  virtual void toVelocyPackForV8(velocypack::Builder&) const;
+
   virtual void toVelocyPackForAgency(velocypack::Builder&);
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&,
                                                bool useSystem) const;
@@ -323,7 +325,7 @@ private:
   void getFullProperties(velocypack::Builder& result,
                          bool translateCids) const;
 
-  void toVelocyPackInObject( velocypack::Builder& result,
+  void toVelocyPackInObject(velocypack::Builder& result,
                             bool translateCids) const;
 
   // SECTION: Meta Information
