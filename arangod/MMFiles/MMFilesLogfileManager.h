@@ -68,8 +68,8 @@ struct MMFilesTransactionData final : public TransactionData {
   MMFilesTransactionData() = delete;
   MMFilesTransactionData(MMFilesWalLogfile::IdType lastCollectedId, MMFilesWalLogfile::IdType lastSealedId) :
       lastCollectedId(lastCollectedId), lastSealedId(lastSealedId) {}
-  MMFilesWalLogfile::IdType lastCollectedId;
-  MMFilesWalLogfile::IdType lastSealedId;
+  MMFilesWalLogfile::IdType const lastCollectedId;
+  MMFilesWalLogfile::IdType const lastSealedId;
 };
 
 struct MMFilesLogfileManagerState {
@@ -218,7 +218,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   }
 
   // registers a transaction
-  int registerTransaction(TRI_voc_tid_t);
+  int registerTransaction(TRI_voc_tid_t id, bool isReadOnlyTransaction);
 
   // return the set of dropped collections
   /// this is used during recovery and not used afterwards
@@ -459,8 +459,8 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   bool _allowOversizeEntries = true;
   bool _useMLock = false;
-  std::string _directory = "";
-  uint32_t _historicLogfiles = 10;
+  std::string _directory;
+  uint32_t _historicLogfiles = 10; 
   bool _ignoreLogfileErrors = false;
   bool _ignoreRecoveryErrors = false;
   uint64_t _flushTimeout = 15000;

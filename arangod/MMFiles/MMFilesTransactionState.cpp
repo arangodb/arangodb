@@ -104,8 +104,8 @@ int MMFilesTransactionState::beginTransaction(transaction::Hints hints, int nest
     _id = TRI_NewTickServer();
 
     // register a protector
-    int res = logfileManager->registerTransaction(_id);
-
+    int res = logfileManager->registerTransaction(_id, isReadOnlyTransaction());
+ 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }

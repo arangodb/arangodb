@@ -535,7 +535,7 @@ void MMFilesLogfileManager::unprepare() {
 }
 
 // registers a transaction
-int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId) {
+int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction) {
   auto lastCollectedId = _lastCollectedId.load();
   auto lastSealedId = _lastSealedId.load();
 
@@ -545,6 +545,16 @@ int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId) {
   }
     
   TRI_ASSERT(lastCollectedId <= lastSealedId);
+
+  if (isReadOnlyTransaction) {
+    // in case this is a read-only transaction, we are sure that the transaction can
+    // only see committed data (as itself it will not write anything, and write transactions
+    // run exclusively). we thus can allow the WAL collector to already seal and collect
+    // logfiles. the only thing that needs to be ensured for read-only transactions is
+    // that a logfile does not get thrown away while the read-only transaction is 
+    // ongoing
+    lastSealedId = 0;
+  }
 
   try {
     auto data = std::make_unique<MMFilesTransactionData>(lastCollectedId, lastSealedId);
