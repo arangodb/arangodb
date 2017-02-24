@@ -81,6 +81,10 @@ void ArrayOutCache<M>::appendMessage(prgl_shard_t shard, std::string const& key,
 
 template <typename M>
 void ArrayOutCache<M>::flushMessages() {
+  if (this->_containedMessages == 0) {
+    return;
+  }
+  
   // LOG_TOPIC(INFO, Logger::PREGEL) << "Beginning to send messages to other
   // machines";
   uint64_t gss = this->_config->globalSuperstep();
@@ -189,6 +193,10 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
 
 template <typename M>
 void CombiningOutCache<M>::flushMessages() {
+  if (this->_containedMessages == 0) {
+    return;
+  }
+  
   // LOG_TOPIC(INFO, Logger::PREGEL) << "Beginning to send messages to other
   // machines";
   uint64_t gss = this->_config->globalSuperstep();
