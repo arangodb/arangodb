@@ -1,6 +1,8 @@
 v3.1.12 (XXXX-XX-XX)
 --------------------
 
+* disable shell color escape sequences on Windows
+
 * fixed issue #2326
 
 * fixed issue #2320
