@@ -1198,7 +1198,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 /// @brief creates a collection, based on the VelocyPack provided TODO: MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::createCollection(VPackSlice const& slice,
+int RestReplicationHandler::createCollection(VPackSlice slice,
                                              arangodb::LogicalCollection** dst,
                                              bool reuseId) {
   if (dst != nullptr) {
@@ -1241,17 +1241,20 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     return TRI_ERROR_NO_ERROR;
   }
 
-  int res = TRI_ERROR_NO_ERROR;
-  try {
-    col = _vocbase->createCollection(slice, cid, true);
-  } catch (basics::Exception const& ex) {
-    res = ex.code();
-  } catch (...) {
-    res = TRI_ERROR_INTERNAL;
-  }
+  // always use current version number when restoring a collection,
+  // because the collection is effectively NEW
+  VPackBuilder patch;
+  patch.openObject();
+  patch.add("version", VPackValue(LogicalCollection::VERSION_31));
+  patch.close();
+  
+  VPackBuilder builder = VPackCollection::merge(slice, patch.slice(), false);
+  slice = builder.slice();
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  col = _vocbase->createCollection(slice, cid, true);
+
+  if (col == nullptr) {
+    return TRI_ERROR_INTERNAL;
   }
 
   TRI_ASSERT(col != nullptr);
@@ -1662,6 +1665,10 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     TRI_ASSERT(replicationFactor > 0);
     toMerge.add("replicationFactor", VPackValue(replicationFactor));
   }
+
+  // always use current version number when restoring a collection,
+  // because the collection is effectively NEW
+  toMerge.add("version", VPackValue(LogicalCollection::VERSION_31));
   toMerge.close();  // TopLevel
 
   VPackSlice const type = parameters.get("type");
@@ -1677,6 +1684,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
   VPackBuilder mergedBuilder =
       VPackCollection::merge(parameters, sliceToMerge, false);
   VPackSlice const merged = mergedBuilder.slice();
+
   try {
     auto col = ClusterMethods::createCollectionOnCoordinator(collectionType,
                                                              _vocbase, merged);
