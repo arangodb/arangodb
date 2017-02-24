@@ -228,8 +228,6 @@ void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast,
   }
 
   for (auto const& collection : VPackArrayIterator(collectionsSlice)) {
-    auto typeStr = arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
-        collection, "type");
     ast->query()->collections()->add(
         arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
                                                                    "name"),
@@ -276,8 +274,8 @@ class CloneNodeAdder final : public WalkerWorker<ExecutionNode> {
 };
 
 /// @brief clone an existing execution plan
-ExecutionPlan* ExecutionPlan::clone() {
-  auto plan = std::make_unique<ExecutionPlan>(_ast);
+ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
+  auto plan = std::make_unique<ExecutionPlan>(ast);
 
   plan->_root = _root->clone(plan.get(), true, false);
   plan->_nextId = _nextId;
@@ -297,13 +295,19 @@ ExecutionPlan* ExecutionPlan::clone() {
   return plan.release();
 }
 
+/// @brief clone an existing execution plan
+ExecutionPlan* ExecutionPlan::clone() {
+  return clone(_ast);
+}
+
 /// @brief create an execution plan identical to this one
 ///   keep the memory of the plan on the query object specified.
 ExecutionPlan* ExecutionPlan::clone(Query const& query) {
   auto otherPlan = std::make_unique<ExecutionPlan>(query.ast());
 
   for (auto const& it : _ids) {
-    otherPlan->registerNode(it.second->clone(otherPlan.get(), false, true));
+    auto clonedNode = it.second->clone(otherPlan.get(), false, true);
+    otherPlan->registerNode(clonedNode);
   }
 
   return otherPlan.release();

@@ -107,10 +107,10 @@ class Expression {
   }
 
   /// @brief clone the expression, needed to clone execution plans
-  Expression* clone() {
+  Expression* clone(Ast* ast) {
     // We do not need to copy the _ast, since it is managed by the
     // query object and the memory management of the ASTs
-    return new Expression(_ast, _node);
+    return new Expression(ast != nullptr ? ast : _ast, _node);
   }
 
   /// @brief return all variables used in the expression

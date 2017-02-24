@@ -26,6 +26,7 @@
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Query.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>

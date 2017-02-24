@@ -24,6 +24,7 @@
 
 #include "LogicalCollection.h"
 
+#include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
@@ -717,9 +718,7 @@ int LogicalCollection::rename(std::string const& newName) {
   // Otherwise caching is destroyed.
   TRI_ASSERT(!ServerState::instance()->isCoordinator());  // NOT YET IMPLEMENTED
 
-  WRITE_LOCKER_EVENTUAL(locker, _lock);
-
-  // Check for illeagal states.
+  // Check for illegal states.
   switch (_status) {
     case TRI_VOC_COL_STATUS_CORRUPTED:
       return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
@@ -728,12 +727,6 @@ int LogicalCollection::rename(std::string const& newName) {
     default:
       // Fall through intentional
       break;
-  }
-
-  // Check for duplicate name
-  auto other = _vocbase->lookupCollection(newName);
-  if (other != nullptr) {
-    return TRI_ERROR_ARANGO_DUPLICATE_NAME;
   }
 
   switch (_status) {
@@ -1107,6 +1100,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
     THROW_ARANGO_EXCEPTION(res);
   }
 
+  arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
   // Until here no harm is done if sth fails. The shared ptr will clean up. if
   // left before
 
@@ -1160,6 +1154,8 @@ bool LogicalCollection::removeIndex(TRI_idx_iid_t iid) {
 /// @brief drops an index, including index file removal and replication
 bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
+  arangodb::aql::QueryCache::instance()->invalidate(_vocbase, name());
   return _physical->dropIndex(iid);
 }
 

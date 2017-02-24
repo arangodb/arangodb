@@ -24,6 +24,7 @@
 #include "CollectNode.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/VariableGenerator.h"
 #include "Aql/WalkerWorker.h"
 
 using namespace arangodb::aql;

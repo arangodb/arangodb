@@ -1579,14 +1579,15 @@ function optimizeInSuite () {
       // if the rule is disabled we expect to do way more filtering
       var noOpt  = { optimizer: { rules: [ "-all" ] } };
       result = db._query(vertexQuery, bindVars, {}, noOpt);
+
       extra = result.getExtra();
-      // For each vertex not in the list we filter once for every conncted edge
+      // For each vertex not in the list we filter once for every connected edge
       assertEqual(extra.stats.filtered, 90 * 100);
       assertEqual(result.count(), 1000);
 
       result = db._query(edgeQuery, bindVars, {}, noOpt);
       extra = result.getExtra();
-      // For each vertex not in the list we filter once for every conncted edge
+      // For each vertex not in the list we filter once for every connected edge
       assertEqual(extra.stats.filtered, 90 * 100);
       assertEqual(result.count(), 1000);
     },
@@ -1660,25 +1661,25 @@ function optimizeInSuite () {
       var noOpt  = { optimizer: { rules: [ "-all" ] } };
       result = db._query(vertexQuery, bindVars, {}, noOpt);
       extra = result.getExtra();
-      // For each vertex not in the list we filter once for every conncted edge
+      // For each vertex not in the list we filter once for every connected edge
       assertEqual(extra.stats.filtered, 90 * 100);
       assertEqual(result.count(), 1000);
 
       result = db._query(edgeQuery, bindVars, {}, noOpt);
       extra = result.getExtra();
-      // For each vertex not in the list we filter once for every conncted edge
+      // For each vertex not in the list we filter once for every connected edge
       assertEqual(extra.stats.filtered, 90 * 100);
       assertEqual(result.count(), 1000);
 
       result = db._query(mixedQuery1, bindVars, {}, noOpt);
       extra = result.getExtra();
-      // For each vertex not in the list we filter once for every conncted edge
+      // For each vertex not in the list we filter once for every connected edge
       assertEqual(extra.stats.filtered, 90 * 100);
       assertEqual(result.count(), 1000);
 
       result = db._query(mixedQuery2, bindVars, {}, noOpt);
       extra = result.getExtra();
-      // For each vertex not in the list we filter once for every conncted edge
+      // For each vertex not in the list we filter once for every connected edge
       assertEqual(extra.stats.filtered, 90 * 100);
       assertEqual(result.count(), 1000);
     },

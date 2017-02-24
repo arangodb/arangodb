@@ -31,6 +31,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
+#include "Aql/PlanCache.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -66,6 +67,70 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+  
+/// @brief increase the reference counter for a database
+bool TRI_vocbase_t::use() {
+  auto expected = _refCount.load(std::memory_order_relaxed);
+  while (true) {
+    if ((expected & 1) != 0) {
+      // deleted bit is set
+      return false;
+    }
+    // increase the reference counter by 2.
+    // this is because we use odd values to indicate that the database has been
+    // marked as deleted
+    auto updated = expected + 2;
+    TRI_ASSERT((updated & 1) == 0);
+    if (_refCount.compare_exchange_weak(expected, updated, std::memory_order_release, std::memory_order_relaxed)) {
+      // compare-exchange worked. we're done
+      return true;
+    }
+    // compare-exchange failed. try again!
+    expected = _refCount.load(std::memory_order_relaxed);
+  }
+}
+
+void TRI_vocbase_t::forceUse() {
+  _refCount += 2;
+}
+
+/// @brief decrease the reference counter for a database
+void TRI_vocbase_t::release() {
+  // decrease the reference counter by 2.
+  // this is because we use odd values to indicate that the database has been
+  // marked as deleted
+  auto oldValue = _refCount.fetch_sub(2);
+  TRI_ASSERT(oldValue >= 2);
+}
+
+/// @brief returns whether the database can be dropped
+bool TRI_vocbase_t::isDangling() const {
+  if (isSystem()) {
+    return false;
+  }
+  auto refCount = _refCount.load();
+  // we are intentionally comparing with exactly 1 here, because a 1 means
+  // that noone else references the database but it has been marked as deleted
+  return (refCount == 1);
+}
+  
+/// @brief whether or not the vocbase has been marked as deleted
+bool TRI_vocbase_t::isDropped() const {
+  auto refCount = _refCount.load();
+  // if the stored value is odd, it means the database has been marked as
+  // deleted
+  return (refCount % 2 == 1);
+}
+
+/// @brief marks a database as deleted
+bool TRI_vocbase_t::markAsDropped() {
+  TRI_ASSERT(!isSystem());
+
+  auto oldValue = _refCount.fetch_or(1);
+  // if the previously stored value is odd, it means the database has already
+  // been marked as deleted
+  return (oldValue % 2 == 0);
+}
 
 /// @brief signal the cleanup thread to wake up
 void TRI_vocbase_t::signalCleanup() {
@@ -513,6 +578,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   TRI_ASSERT(writeLocker.isLocked());
   TRI_ASSERT(locker.isLocked());
 
+  arangodb::aql::PlanCache::instance()->invalidate(this);
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
   // collection already deleted
@@ -773,6 +839,34 @@ LogicalCollection* TRI_vocbase_t::lookupCollection(std::string const& name) {
   return (*it).second;
 }
 
+/// @brief looks up a collection by name
+LogicalCollection* TRI_vocbase_t::lookupCollectionNoLock(std::string const& name) {
+  if (name.empty()) {
+    return nullptr;
+  }
+
+  // if collection name is passed as a stringified id, we'll use the lookupbyid
+  // function
+  // this is safe because collection names must not start with a digit
+  if (name[0] >= '0' && name[0] <= '9') {
+    TRI_voc_cid_t id = StringUtils::uint64(name);
+    auto it = _collectionsById.find(id);
+
+    if (it == _collectionsById.end()) {
+      return nullptr;
+    }
+    return (*it).second;
+  }
+
+  // otherwise we'll look up the collection by name
+  auto it = _collectionsByName.find(name);
+
+  if (it == _collectionsByName.end()) {
+    return nullptr;
+  }
+  return (*it).second;
+}
+
 /// @brief looks up a collection by identifier
 LogicalCollection* TRI_vocbase_t::lookupCollection(TRI_voc_cid_t id) {
   READ_LOCKER(readLocker, _collectionsLock);
@@ -1003,6 +1097,44 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
+  
+  CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock, false);
+  CONDITIONAL_WRITE_LOCKER(locker, collection->_lock, false);
+  
+  while (true) {
+    TRI_ASSERT(!writeLocker.isLocked());
+    TRI_ASSERT(!locker.isLocked());
+
+    // block until we have acquired this lock
+    writeLocker.lock();
+    // we now have the one lock
+
+    TRI_ASSERT(writeLocker.isLocked());
+
+    if (locker.tryLock()) {
+      // we now have both locks and can continue outside of this loop
+      break;
+    }
+
+    // unlock the write locker so we don't block other operations
+    writeLocker.unlock();
+    
+    TRI_ASSERT(!writeLocker.isLocked());
+    TRI_ASSERT(!locker.isLocked());
+
+    // sleep for a while
+    std::this_thread::yield();
+  }
+  
+  TRI_ASSERT(writeLocker.isLocked());
+  TRI_ASSERT(locker.isLocked());
+  
+  // Check for duplicate name
+  auto other = lookupCollectionNoLock(newName);
+
+  if (other != nullptr) {
+    return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+  }
 
   int res = collection->rename(newName);
 
@@ -1011,17 +1143,23 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
     return res;
   }
 
-  {
-    WRITE_LOCKER(writeLocker, _collectionsLock);
   // The collection is renamed. Now swap cache entries.
-    auto it2 = _collectionsByName.emplace(newName, collection);
-    TRI_ASSERT(it2.second);
+  auto it2 = _collectionsByName.emplace(newName, collection);
+  TRI_ASSERT(it2.second);
 
+  try {
     _collectionsByName.erase(oldName);
-    TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
+  } catch (...) {
+    _collectionsByName.erase(newName);
+    throw;
   }
+  TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
+
+  locker.unlock();
+  writeLocker.unlock();
 
   // invalidate all entries for the two collections
+  arangodb::aql::PlanCache::instance()->invalidate(this);
   arangodb::aql::QueryCache::instance()->invalidate(
       this, std::vector<std::string>{oldName, newName});
 

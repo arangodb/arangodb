@@ -55,6 +55,12 @@ QueryResources::~QueryResources() {
   
   _resourceMonitor->decreaseMemoryUsage(_nodes.size() * sizeof(AstNode) + _nodes.capacity() * sizeof(AstNode*));
 }
+
+// TODO: FIXME
+void QueryResources::steal() {
+  _strings.clear();
+  _nodes.clear();
+}
   
 /// @brief add a node to the list of nodes
 void QueryResources::addNode(AstNode* node) { 

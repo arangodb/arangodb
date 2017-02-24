@@ -59,7 +59,6 @@ class Ast;
 class ExecutionEngine;
 class ExecutionPlan;
 class Executor;
-class Parser;
 class Query;
 class QueryRegistry;
 
@@ -164,10 +163,12 @@ class Query {
   char const* queryString() const { return _queryString; }
 
   /// @brief get the length of the query string
-  size_t queryLength() const { return _queryLength; }
+  size_t queryLength() const { return _queryStringLength; }
 
   /// @brief getter for _ast
-  Ast* ast() const { return _ast; }
+  Ast* ast() const { 
+    return _ast.get(); 
+  }
 
   /// @brief should we return verbose plans?
   bool verbosePlans() const { return getBooleanOption("verbosePlans", false); }
@@ -238,12 +239,8 @@ class Query {
 
   /// @brief register a warning
   void registerWarning(int, char const* = nullptr);
-
-  /// @brief prepare an AQL query, this is a preparation for execute, but
-  /// execute calls it internally. The purpose of this separate method is
-  /// to be able to only prepare a query from VelocyPack and then store it in the
-  /// QueryRegistry.
-  QueryResult prepare(QueryRegistry*);
+  
+  void prepare(QueryRegistry*, uint64_t queryStringHash);
 
   /// @brief execute an AQL query
   QueryResult execute(QueryRegistry*);
@@ -262,10 +259,10 @@ class Query {
   Executor* executor();
 
   /// @brief return the engine, if prepared
-  ExecutionEngine* engine() { return _engine; }
+  ExecutionEngine* engine() const { return _engine.get(); }
 
   /// @brief inject the engine
-  void engine(ExecutionEngine* engine) { _engine = engine; }
+  void engine(ExecutionEngine* engine);
 
   /// @brief return the transaction, if prepared
   inline transaction::Methods* trx() { return _trx; }
@@ -333,6 +330,12 @@ class Query {
   /// @brief initializes the query
   void init();
   
+  /// @brief prepare an AQL query, this is a preparation for execute, but
+  /// execute calls it internally. The purpose of this separate method is
+  /// to be able to only prepare a query from VelocyPack and then store it in the
+  /// QueryRegistry.
+  ExecutionPlan* prepare();
+
   void setExecutionTime();
 
   /// @brief log a query
@@ -371,8 +374,8 @@ class Query {
   /// @brief read the "optimizer.rules" section from the options
   std::vector<std::string> getRulesFromOptions() const;
 
-  /// @brief neatly format transaction errors to the user.
-  QueryResult transactionError(int errorCode) const;
+  /// @brief neatly format exception messages for the users
+  std::string buildErrorMessage(int errorCode) const;
 
   /// @brief enter a new state
   void enterState(ExecutionState);
@@ -400,7 +403,7 @@ class Query {
   TRI_vocbase_t* _vocbase;
 
   /// @brief V8 code executor
-  Executor* _executor;
+  std::unique_ptr<Executor> _executor;
 
   /// @brief the currently used V8 context
   V8Context* _context;
@@ -412,7 +415,7 @@ class Query {
   char const* _queryString;
 
   /// @brief length of the query string in bytes
-  size_t const _queryLength;
+  size_t const _queryStringLength;
 
   /// @brief query in a VelocyPack structure
   std::shared_ptr<arangodb::velocypack::Builder> const _queryBuilder;
@@ -428,20 +431,17 @@ class Query {
   
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even
   /// if we do not have a parser, because AstNodes occur in plans and engines
-  Ast* _ast;
+  std::unique_ptr<Ast> _ast;
 
   /// @brief query execution profile
-  Profile* _profile;
+  std::unique_ptr<Profile> _profile;
 
   /// @brief current state the query is in (used for profiling and error
   /// messages)
   ExecutionState _state;
 
   /// @brief the ExecutionPlan object, if the query is prepared
-  std::unique_ptr<ExecutionPlan> _plan;
-
-  /// @brief the Parser object, if the query is prepared
-  Parser* _parser;
+  std::shared_ptr<ExecutionPlan> _plan;
 
   /// @brief the transaction object, in a distributed query every part of
   /// the query has its own transaction object. The transaction object is
@@ -449,7 +449,7 @@ class Query {
   transaction::Methods* _trx;
 
   /// @brief the ExecutionEngine object, if the query is prepared
-  ExecutionEngine* _engine;
+  std::unique_ptr<ExecutionEngine> _engine;
 
   /// @brief maximum number of warnings
   size_t _maxWarningCount;

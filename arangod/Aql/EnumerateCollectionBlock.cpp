@@ -26,6 +26,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/FollowerInfo.h"
 #include "StorageEngine/DocumentIdentifierToken.h"

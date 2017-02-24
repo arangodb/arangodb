@@ -94,7 +94,6 @@ arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(
         "Each lookup requires expression to be an object");
   }
 
-
   expression = new aql::Expression(query->ast(), read);
 
   read = info.get("condition");
@@ -113,7 +112,7 @@ arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(
       indexCondition(other.indexCondition),
       conditionNeedUpdate(other.conditionNeedUpdate),
       conditionMemberToUpdate(other.conditionMemberToUpdate) {
-  expression = other.expression->clone();
+  expression = other.expression->clone(nullptr);
 }
 
 void arangodb::traverser::TraverserOptions::LookupInfo::buildEngineInfo(

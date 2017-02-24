@@ -512,12 +512,12 @@ void ClusterInfo::loadPlan() {
               // This should not happen in healthy situations.
               // If it happens in unhealthy situations the
               // cluster should not fail.
-              LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Failed to load information for collection '"
-                       << collectionId << "': " << ex.what()
-                       << ". invalid information in plan. The collection will "
-                          "be ignored for now and the invalid information will "
-                          "be repaired. VelocyPack: "
-                       << collectionSlice.toJson();
+              LOG_TOPIC(ERR, Logger::AGENCY)
+                << "Failed to load information for collection '" << collectionId
+                << "': " << ex.what() << ". invalid information in plan. The"
+                "collection will be ignored for now and the invalid information"
+                "will be repaired. VelocyPack: "
+                << collectionSlice.toJson();
 
               TRI_ASSERT(false);
               continue;
@@ -526,12 +526,12 @@ void ClusterInfo::loadPlan() {
               // This should not happen in healthy situations.
               // If it happens in unhealthy situations the
               // cluster should not fail.
-              LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Failed to load information for collection '"
-                       << collectionId
-                       << ". invalid information in plan. The collection will "
-                          "be ignored for now and the invalid information will "
-                          "be repaired. VelocyPack: "
-                       << collectionSlice.toJson();
+              LOG_TOPIC(ERR, Logger::AGENCY)
+                << "Failed to load information for collection '" << collectionId
+                << ". invalid information in plan. The collection will "
+                "be ignored for now and the invalid information will "
+                "be repaired. VelocyPack: "
+                << collectionSlice.toJson();
 
               TRI_ASSERT(false);
               continue;
@@ -886,14 +886,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   // AgencyCallback for this.
   auto agencyCallback = std::make_shared<AgencyCallback>(
       ac, "Current/Databases/" + name, dbServerChanged, true, false);
-
-  auto regres = _agencyCallbackRegistry->registerCallback(agencyCallback);
-  if (!regres.successful()) {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER) <<
-      "Could not register call back with error: " << regres.errorCode() <<
-      " - " << regres.errorMessage();
-  }
-
+  _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   AgencyOperation newVal("Plan/Databases/" + name,
@@ -988,14 +981,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
-
-  auto regres = _agencyCallbackRegistry->registerCallback(agencyCallback);
-  if (!regres.successful()) {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER) <<
-      "Could not register call back with error: " << regres.errorCode() <<
-      " - " << regres.errorMessage();
-  }
-  
+  _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   // Transact to agency
@@ -1151,14 +1137,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   auto agencyCallback = std::make_shared<AgencyCallback>(
       ac, "Current/Collections/" + databaseName + "/" + collectionID,
       dbServerChanged, true, false);
-
-  auto regres = _agencyCallbackRegistry->registerCallback(agencyCallback);
-  if (!regres.successful()) {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER) <<
-      "Could not register call back with error: " << regres.errorCode() <<
-      " - " << regres.errorMessage();
-  }
-  
+  _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   VPackBuilder builder;
@@ -1286,14 +1265,7 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
-
-  auto regres = _agencyCallbackRegistry->registerCallback(agencyCallback);
-  if (!regres.successful()) {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER) <<
-      "Could not register call back with error: " << regres.errorCode() <<
-      " - " << regres.errorMessage();
-  }
-  
+  _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   size_t numberOfShards = 0;
@@ -1544,8 +1516,6 @@ int ClusterInfo::ensureIndexCoordinator(
   if (idxSlice.isString()) {
     // use predefined index id
     iid = arangodb::basics::StringUtils::uint64(idxSlice.copyString());
-  } else if (idxSlice.isNumber()) {
-    iid = idxSlice.getNumber<uint64_t>();
   }
 
   if (iid == 0) {
@@ -1776,14 +1746,7 @@ int ClusterInfo::ensureIndexCoordinator(
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
-
-  auto regres = _agencyCallbackRegistry->registerCallback(agencyCallback);
-  if (!regres.successful()) {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER) <<
-      "Could not register call back with error: " << regres.errorCode() <<
-      " - " << regres.errorMessage();
-  }
-  
+  _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   AgencyOperation newValue(key, AgencyValueOperationType::SET,
@@ -1810,7 +1773,6 @@ int ClusterInfo::ensureIndexCoordinator(
       errorMsg += trx.toJson();
       errorMsg += "ClientId: " + result._clientId + " ";
       errorMsg += " ResultCode: " + std::to_string(result.errorCode()) + " ";
-      errorMsg += " Result: " + result.errorMessage() + " ";
       errorMsg += std::string(__FILE__) + ":" + std::to_string(__LINE__);
       resultBuilder = *resBuilder;
     }
@@ -1950,14 +1912,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   // AgencyCallback for this.
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
-
-  auto regres = _agencyCallbackRegistry->registerCallback(agencyCallback);
-  if (!regres.successful()) {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER) <<
-      "Could not register call back with error: " << regres.errorCode() <<
-      " - " << regres.errorMessage();
-  }
-  
+  _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   loadPlan();
@@ -2440,26 +2395,28 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(
 
   while (true) {
     {
-      READ_LOCKER(readLocker, _currentProt.lock);
-      // _shardIds is a map-type <ShardId,
-      // std::shared_ptr<std::vector<ServerId>>>
-      auto it = _shardIds.find(shardID);
+      {
+        READ_LOCKER(readLocker, _currentProt.lock);
+        // _shardIds is a map-type <ShardId,
+        // std::shared_ptr<std::vector<ServerId>>>
+        auto it = _shardIds.find(shardID);
 
-      if (it != _shardIds.end()) {
-        auto serverList = (*it).second;
-        if (serverList != nullptr && serverList->size() > 0 &&
-            (*serverList)[0].size() > 0 && (*serverList)[0][0] == '_') {
-          // This is a temporary situation in which the leader has already
-          // resigned, let's wait half a second and try again.
-          --tries;
-          LOG_TOPIC(INFO, Logger::CLUSTER)
-              << "getResponsibleServer: found resigned leader,"
-              << "waiting for half a second...";
-          usleep(500000);
-        } else {
-          return (*it).second;
+        if (it != _shardIds.end()) {
+          auto serverList = (*it).second;
+          if (serverList != nullptr && serverList->size() > 0 &&
+              (*serverList)[0].size() > 0 && (*serverList)[0][0] == '_') {
+            // This is a temporary situation in which the leader has already
+            // resigned, let's wait half a second and try again.
+            --tries;
+            LOG_TOPIC(INFO, Logger::CLUSTER)
+                << "getResponsibleServer: found resigned leader,"
+                << "waiting for half a second...";
+          } else {
+            return (*it).second;
+          }
         }
       }
+      usleep(500000);
     }
 
     if (++tries >= 2) {

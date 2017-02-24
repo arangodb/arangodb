@@ -25,38 +25,51 @@ else ()
 endif ()
 set(ARANGODB_PACKAGE_ARCHITECTURE ${CMAKE_SYSTEM_PROCESSOR})
 # eventually the package string will be modified later on:
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}.${ARANGODB_PACKAGE_ARCHITECTURE}")
 
 if ("${PACKAGING}" STREQUAL "DEB")
-  include(packages/deb)
-elseif ("${PACKAGING}" STREQUAL "RPM")
-  include(packages/rpm)
-elseif ("${PACKAGING}" STREQUAL "Bundle")
-  include(packages/bundle)
-elseif (MSVC)
-  include(packages/nsis)
-endif ()
-
-################################################################################
-## generic tarball
-################################################################################
-set(CPACK_PACKAGE_TGZ "${CMAKE_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}.tar.gz")
-add_custom_target(TGZ_package
-  COMMENT "create TGZ-package"
-  COMMAND ${CMAKE_CPACK_COMMAND} -G TGZ  -C ${CMAKE_BUILD_TYPE}
-  )
-
-
-################################################################################
-## SNAPCRAFT PACKAGE
-################################################################################
-
-if (USE_SNAPCRAFT)
-  if(NOT DEFINED SNAP_PORT)
-    set(SNAP_PORT 8529)
+  if(CMAKE_TARGET_ARCHITECTURES MATCHES ".*x86_64.*")
+    set(ARANGODB_PACKAGE_ARCHITECTURE "amd64")
+  elseif(CMAKE_TARGET_ARCHITECTURES MATCHES "aarch64")
+    set(ARANGODB_PACKAGE_ARCHITECTURE "arm64")
+  elseif(CMAKE_TARGET_ARCHITECTURES MATCHES "armv7")
+    set(ARANGODB_PACKAGE_ARCHITECTURE "armhf")
+  else()
+    set(ARANGODB_PACKAGE_ARCHITECTURE "i386")
   endif()
-  include(packages/snap)
+  
+  set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
+
+  include(packages/deb)
+  include(packages/tar)
+  if (USE_SNAPCRAFT)
+    if(NOT DEFINED SNAP_PORT)
+      set(SNAP_PORT 8529)
+    endif()
+    include(packages/snap)
+  endif ()
+elseif ("${PACKAGING}" STREQUAL "RPM")
+  set(PACKAGE_VERSION "-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}.${ARANGODB_PACKAGE_ARCHITECTURE}")
+  set(CPACK_PACKAGE_FILE_NAME  "${CPACK_PACKAGE_NAME}${PACKAGE_VERSION}")
+  include(packages/rpm)
+  include(packages/tar)
+elseif ("${PACKAGING}" STREQUAL "Bundle")
+  set(CPACK_PACKAGE_FILE_NAME      "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_x86_64")
+  include(packages/bundle)
+  include(packages/tar)
+elseif (MSVC)
+  if (CMAKE_CL_64)
+    SET(ARANGODB_PACKAGE_ARCHITECTURE "win64")
+  else ()
+    SET(ARANGODB_PACKAGE_ARCHITECTURE "win32")
+  endif ()
+  set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
+  include(packages/nsis)
+  include(packages/tar)
+else ()
+  set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
+  include(packages/tar)
 endif ()
+
 
 configure_file(
   "${CMAKE_SOURCE_DIR}/Installation/cmake/CMakeCPackOptions.cmake.in"

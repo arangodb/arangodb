@@ -190,6 +190,18 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading '" << filename << "'";
 
   if (!parser.parse(filename)) {
+    if (filename.empty()) {
+      size_t i = 0;
+      std::string locationMsg = "(tried locations: ";
+      for (auto const& it : locations) {
+        if (i++ > 0) {
+          locationMsg += ", ";
+        }
+        locationMsg += "'" + FileUtils::buildFilename(it, basename) + "'";
+      }
+      locationMsg += ")";
+      options->failNotice(locationMsg);
+    }
     exit(EXIT_FAILURE);
   }
 }

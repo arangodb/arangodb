@@ -617,14 +617,11 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
   // cleanup function for group values
   auto cleanup = [&allGroups]() -> void {
     for (auto& it : allGroups) {
-      if (it.second != nullptr) {
-        for (auto& it2 : *(it.second)) {
-          delete it2;
-        }
-        delete it.second;
+      for (auto& it2 : *(it.second)) {
+        delete it2;
       }
+      delete it.second;
     }
-    allGroups.clear();
   };
 
   // prevent memory leaks by always cleaning up the groups
@@ -643,8 +640,8 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
     size_t row = 0;
     for (auto& it : allGroups) {
-    
       auto& keys = it.first;
+      TRI_ASSERT(it.second != nullptr);
 
       TRI_ASSERT(keys.size() == _groupRegisters.size());
       size_t i = 0;
@@ -653,7 +650,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         const_cast<AqlValue*>(&key)->erase(); // to prevent double-freeing later
       }
 
-      if (it.second != nullptr && !en->_count) {
+      if (!en->_count) {
         TRI_ASSERT(it.second->size() == _aggregateRegisters.size());
         size_t j = 0;
         for (auto const& r : *(it.second)) {
@@ -662,7 +659,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         }
       } else if (en->_count) {
         // set group count in result register
-        TRI_ASSERT(it.second != nullptr);
+        TRI_ASSERT(!it.second->empty());
         result->setValue(row, _collectRegister,
                          it.second->back()->stealValue());
       }
@@ -749,10 +746,12 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         if (en->_aggregateVariables.empty()) {
           // no aggregate registers. simply increase the counter
           if (en->_count) {
+            TRI_ASSERT(!aggregateValues->empty());
             aggregateValues->back()->reduce(AqlValue());
           }
         } else {
           // apply the aggregators for the group
+          TRI_ASSERT(aggregateValues->size() == _aggregateRegisters.size());
           size_t j = 0;
           for (auto const& r : _aggregateRegisters) {
             (*aggregateValues)[j]->reduce(

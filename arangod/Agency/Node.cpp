@@ -33,9 +33,8 @@
 #include <deque>
 #include <regex>
 
-using namespace arangodb::basics;
 using namespace arangodb::consensus;
-using namespace arangodb::velocypack;
+using namespace arangodb::basics;
 
 struct NotEmpty {
   bool operator()(const std::string& s) { return !s.empty(); }
@@ -679,28 +678,6 @@ bool Node::applies(VPackSlice const& slice) {
 }
 
 void Node::toBuilder(Builder& builder, bool showHidden) const {
-  try {
-    if (type() == NODE) {
-      VPackObjectBuilder guard(&builder);
-      for (auto const& child : _children) {
-        if (child.first[0] == '.' && !showHidden) {
-          continue;
-        }
-        builder.add(VPackValue(child.first));
-        child.second->toBuilder(builder);
-      }
-    } else {
-      if (!slice().isNone()) {
-        builder.add(slice());
-      }
-    }
-
-  } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
-  }
-}
-
-void Node::toObject(Builder& builder, bool showHidden) const {
   try {
     if (type() == NODE) {
       VPackObjectBuilder guard(&builder);

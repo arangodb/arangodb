@@ -30,7 +30,6 @@
 #include <vector>
 
 using namespace arangodb::consensus;
-using namespace arangodb::velocypack;
 
 FailedLeader::FailedLeader(Node const& snapshot, Agent* agent,
                            std::string const& jobId, std::string const& creator,
@@ -173,17 +172,23 @@ bool FailedLeader::start() {
   //    Distribute shards like to come!
   std::vector<std::string> planv;
   for (auto const& i : VPackArrayIterator(planned)) {
-    planv.push_back(i.copyString());
+    auto s = i.copyString();
+    if (s != _from && s != _to) {
+      planv.push_back(i.copyString());
+    }
   }
 
   pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
+
+  pending.add(VPackValue(_to));
   for (auto const& i : VPackArrayIterator(current)) {
     std::string s = i.copyString();
-    if (s != _from) {
+    if (s != _from && s != _to) {
       pending.add(i);
       planv.erase(std::remove(planv.begin(), planv.end(), s), planv.end());
     }
   }
+  
   pending.add(VPackValue(_from));
   for (auto const& i : planv) {
     pending.add(VPackValue(i));

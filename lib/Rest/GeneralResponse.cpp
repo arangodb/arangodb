@@ -52,7 +52,7 @@ void GeneralResponse::addPayload(VPackSlice const& slice,
   if (!skipBody) {
     if (resolveExternals) {
       auto tmpBuffer =
-          basics::VelocyPackHelper::sanitizeExternalsChecked(slice, options);
+          basics::VelocyPackHelper::sanitizeNonClientTypesChecked(slice, options);
       _vpackPayloads.push_back(std::move(tmpBuffer));
     } else {
       // just copy
@@ -76,7 +76,7 @@ void GeneralResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   addPayloadPreHook(true, resolveExternals, skipBody);
   if (!skipBody) {
     if (resolveExternals) {
-      auto tmpBuffer = basics::VelocyPackHelper::sanitizeExternalsChecked(
+      auto tmpBuffer = basics::VelocyPackHelper::sanitizeNonClientTypesChecked(
           VPackSlice(buffer.data()), options);
       _vpackPayloads.push_back(std::move(tmpBuffer));
     } else {

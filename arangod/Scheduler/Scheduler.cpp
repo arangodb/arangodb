@@ -212,6 +212,10 @@ bool Scheduler::start(ConditionVariable* cv) {
     _nrRealMaximum = 4 * _nrMaximal;
   }
 
+  if (_nrRealMaximum <= 64) {
+    _nrRealMaximum = 64;
+  }
+
   for (size_t i = 0; i < 2; ++i) {
     startNewThread();
   }

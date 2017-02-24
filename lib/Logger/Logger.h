@@ -175,8 +175,8 @@ class Logger {
   };
 
   struct LINE {
-    explicit LINE(long int line) : _line(line){}
-    long int _line;
+    explicit LINE(int line) : _line(line){}
+    int _line;
   };
 
   struct FILE {
