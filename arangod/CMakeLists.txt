@@ -169,6 +169,20 @@ SET(ARANGOD_SOURCES
   Aql/VariableGenerator.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
+  Cache/Cache.cpp
+  Cache/CacheManagerFeature.cpp
+  Cache/CacheManagerFeatureThreads.cpp
+  Cache/CachedValue.cpp
+  Cache/Manager.cpp
+  Cache/ManagerTasks.cpp
+  Cache/Metadata.cpp
+  Cache/PlainBucket.cpp
+  Cache/PlainCache.cpp
+  Cache/Rebalancer.cpp
+  Cache/State.cpp
+  Cache/TransactionalBucket.cpp
+  Cache/TransactionalCache.cpp
+  Cache/TransactionWindow.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
   Cluster/ClusterComm.cpp
