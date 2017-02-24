@@ -117,7 +117,8 @@ struct State {
 };
 
 // ensure that state is exactly the size of uint32_t
-static_assert(sizeof(State) == sizeof(uint32_t));
+static_assert(sizeof(State) == sizeof(uint32_t),
+              "Expected sizeof(State) == sizeof(uint32_t).");
 
 };  // end namespace cache
 };  // end namespace arangodb

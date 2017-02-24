@@ -109,7 +109,7 @@ struct CachedValue {
 };
 
 // ensure that header size is what we expect
-static_assert(sizeof(CachedValue) == 16);
+static_assert(sizeof(CachedValue) == 16, "Expected sizeof(CachedValue) == 16.");
 
 };  // end namespace cache
 };  // end namespace arangodb
