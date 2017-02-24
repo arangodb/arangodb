@@ -88,9 +88,9 @@ Bind to a link-local and local IPv6 address.
     unix> ifconfig
 
 This command lists all interfaces and assigned ip addresses. The link-local
-address may be `fe80::6257:18ff:fe82:3ec6%eth0`. Ad local IPv6 address may be
-`fd12:3456::789a`. To bind ArangoDB to it start *arangod* with
-`--server.endpoint tcp://[fe80::6257:18ff:fe82:3ec6%eth0]:8529`.
+address may be `fe80::6257:18ff:fe82:3ec6%eth0` (IPv6 address plus interface name).
+A local IPv6 address may be `fd12:3456::789a`. To bind ArangoDB to it start
+*arangod* with `--server.endpoint tcp://[fe80::6257:18ff:fe82:3ec6%eth0]:8529`.
 Use telnet to test the connection.
 
     unix> telnet fe80::6257:18ff:fe82:3ec6%eth0 8529
