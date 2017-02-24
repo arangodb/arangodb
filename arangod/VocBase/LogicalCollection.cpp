@@ -939,7 +939,8 @@ void LogicalCollection::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
 
 void LogicalCollection::increaseInternalVersion() { ++_internalVersion; }
 
-int LogicalCollection::updateProperties(VPackSlice const& slice, bool doSync) {
+CollectionResult LogicalCollection::updateProperties(VPackSlice const& slice,
+                                                     bool doSync) {
   // the following collection properties are intentionally not updated as
   // updating
   // them would be very complicated:
@@ -956,9 +957,8 @@ int LogicalCollection::updateProperties(VPackSlice const& slice, bool doSync) {
       slice, "indexBuckets",
       2 /*Just for validation, this default Value passes*/);
   if (tmp == 0 || tmp > 1024) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "indexBuckets must be a two-power between 1 and 1024");
+    return {TRI_ERROR_BAD_PARAMETER,
+            "indexBuckets must be a two-power between 1 and 1024"};
   }
 
   // The physical may first reject illegal properties.
@@ -972,8 +972,9 @@ int LogicalCollection::updateProperties(VPackSlice const& slice, bool doSync) {
 
   if (!_isLocal) {
     // We need to inform the cluster as well
-    return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
+    int tmp = ClusterInfo::instance()->setCollectionPropertiesCoordinator(
         _vocbase->name(), cid_as_string(), this);
+    return CollectionResult{tmp};
   }
 
   int64_t count = arangodb::basics::VelocyPackHelper::getNumericValue<int64_t>(
@@ -984,7 +985,7 @@ int LogicalCollection::updateProperties(VPackSlice const& slice, bool doSync) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->changeCollection(_vocbase, _cid, this, doSync);
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 /// @brief return the figures for a collection

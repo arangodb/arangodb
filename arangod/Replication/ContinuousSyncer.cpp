@@ -784,7 +784,7 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
 
   arangodb::CollectionGuard guard(_vocbase, cid);
   bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-  return guard.collection()->updateProperties(data, doSync);
+  return guard.collection()->updateProperties(data, doSync).code;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

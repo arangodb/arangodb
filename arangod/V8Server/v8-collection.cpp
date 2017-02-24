@@ -1268,9 +1268,6 @@ static void JS_PropertiesVocbaseCol(
     std::shared_ptr<LogicalCollection> info =
         ClusterInfo::instance()->getCollection(
             databaseName, collection->cid_as_string());
-    auto physical = static_cast<MMFilesCollection*>(info->getPhysical());
-    TRI_ASSERT(physical != nullptr);
-
     if (0 < args.Length()) {
       v8::Handle<v8::Value> par = args[0];
 
@@ -1285,38 +1282,11 @@ static void JS_PropertiesVocbaseCol(
         }
 
         VPackSlice const slice = builder.slice();
-        if (slice.hasKey("journalSize")) {
-          VPackSlice maxSizeSlice = slice.get("journalSize");
-          TRI_voc_size_t maximalSize =
-              maxSizeSlice.getNumericValue<TRI_voc_size_t>();
-          if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-            TRI_V8_THROW_EXCEPTION_PARAMETER(
-                "<properties>.journalSize too small");
-          }
-        }
-        if (physical->isVolatile() !=
-            arangodb::basics::VelocyPackHelper::getBooleanValue(
-                slice, "isVolatile", physical->isVolatile())) {
-          TRI_V8_THROW_EXCEPTION_PARAMETER(
-              "isVolatile option cannot be changed at runtime");
-        }
-        if (physical->isVolatile() && info->waitForSync()) {
-          TRI_V8_THROW_EXCEPTION_PARAMETER(
-              "volatile collections do not support the waitForSync option");
-        }
-        uint32_t tmp =
-            arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-                slice, "indexBuckets",
-                2 /*Just for validation, this default Value passes*/);
-        if (tmp == 0 || tmp > 1024) {
-          TRI_V8_THROW_EXCEPTION_PARAMETER(
-              "indexBuckets must be a two-power between 1 and 1024");
-        }
 
-        int res = info->updateProperties(slice, false);
+        CollectionResult res = info->updateProperties(slice, false);
 
-        if (res != TRI_ERROR_NO_ERROR) {
-          TRI_V8_THROW_EXCEPTION(res);
+        if (!res.successful()) {
+          TRI_V8_THROW_EXCEPTION_MESSAGE(res.code, res.errorMessage);
         }
       }
 
@@ -1351,8 +1321,6 @@ static void JS_PropertiesVocbaseCol(
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
-  TRI_ASSERT(physical != nullptr);
 
   // check if we want to change some parameters
   if (isModification) {
@@ -1370,12 +1338,14 @@ static void JS_PropertiesVocbaseCol(
 
       // try to write new parameter to file
       bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-      res = collection->updateProperties(slice, doSync);
+      CollectionResult updateRes = collection->updateProperties(slice, doSync);
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        TRI_V8_THROW_EXCEPTION(res);
+      if (!updateRes.successful()) {
+        TRI_V8_THROW_EXCEPTION_MESSAGE(updateRes.code, updateRes.errorMessage);
       }
 
+      auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+      TRI_ASSERT(physical != nullptr);
       res = physical->persistProperties();
 
       if (res != TRI_ERROR_NO_ERROR) {

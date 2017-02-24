@@ -37,6 +37,7 @@ namespace transaction {
 class Methods;
 }
 
+struct CollectionResult;
 struct DocumentIdentifierToken;
 class Index;
 class IndexIterator;
@@ -57,7 +58,8 @@ class PhysicalCollection {
   virtual std::string const& path() const = 0;
   virtual void setPath(std::string const&) = 0; // should be set during collection creation
                                                 // creation happens atm in engine->createCollection
-  virtual int updateProperties(arangodb::velocypack::Slice const& slice, bool doSync) = 0;
+  virtual CollectionResult updateProperties(
+      arangodb::velocypack::Slice const& slice, bool doSync) = 0;
   virtual int persistProperties() noexcept = 0;
 
   virtual PhysicalCollection* clone(LogicalCollection*, PhysicalCollection*) = 0;

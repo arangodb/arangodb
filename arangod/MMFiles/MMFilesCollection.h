@@ -129,7 +129,7 @@ class MMFilesCollection final : public PhysicalCollection {
     _path = path;
   };
 
-  virtual int updateProperties(VPackSlice const& slice, bool doSync) override;
+  CollectionResult updateProperties(VPackSlice const& slice, bool doSync) override;
   virtual int persistProperties() noexcept override;
 
   virtual PhysicalCollection* clone(LogicalCollection*, PhysicalCollection*) override;
