@@ -78,7 +78,35 @@ to the IPv6 address in the form `[ipv6-link-local-address%zone-id]`. However,
 what you probably instead want is to bind to a local IPv6 address. Local IPv6
 addresses start with `fd`. If you only see a `fe80:` IPv6 address in your
 interface configuration but no IPv6 address starting with `fd` your interface
-has no local IPv6 address assigned.
+has no local IPv6 address assigned. You can read more about IPv6 link-local
+addresses [here](https://en.wikipedia.org/wiki/Link-local_address#IPv6).
+
+** Example **
+
+Bind to a link-local and local IPv6 address.
+
+    unix> ifconfig
+
+This command lists all interfaces and assigned ip addresses. The link-local
+address may be `fe80::6257:18ff:fe82:3ec6%eth0` (IPv6 address plus interface name).
+A local IPv6 address may be `fd12:3456::789a`. To bind ArangoDB to it start
+*arangod* with `--server.endpoint tcp://[fe80::6257:18ff:fe82:3ec6%eth0]:8529`.
+Use telnet to test the connection.
+
+    unix> telnet fe80::6257:18ff:fe82:3ec6%eth0 8529
+    Trying fe80::6257:18ff:fe82:3ec6...
+    Connected to my-machine.
+    Escape character is '^]'.
+    GET / HTTP/1.1
+    
+    HTTP/1.1 301 Moved Permanently
+    Location: /_db/_system/_admin/aardvark/index.html
+    Content-Type: text/html
+    Server: ArangoDB
+    Connection: Keep-Alive
+    Content-Length: 197
+    
+    <html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href="/_db/_system/_admin/aardvark/index.html">/_db/_system/_admin/aardvark/index.html</a>.</p></body></html>
 
 
 ### Reuse address

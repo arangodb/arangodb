@@ -30,6 +30,7 @@ compile_commands.json
 instanceinfo.json
 testresult.json
 testsStarted
+soc-pokec-*
 
 build.sh
 build*/
