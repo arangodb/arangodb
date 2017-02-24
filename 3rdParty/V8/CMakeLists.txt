@@ -580,11 +580,11 @@ set(ICU_DT_DEST ${ICU_DT_DEST} PARENT_SCOPE)
 
 configure_file(
   "${ICU_DT}"
-  "${CMAKE_BINARY_DIR}/bin/${CONFIGURATION}/${ICU_DT_DEST}"
+  "${CMAKE_BINARY_DIR}/bin/$<CONFIG>/${ICU_DT_DEST}"
   COPYONLY)
 configure_file(
   "${ICU_DT}"
-  "${CMAKE_BINARY_DIR}/tests/${CONFIGURATION}/${ICU_DT_DEST}"
+  "${CMAKE_BINARY_DIR}/tests/$<CONFIG>/${ICU_DT_DEST}"
   COPYONLY)
 if (NOT WIN32)
   add_custom_target(nonthinV8
