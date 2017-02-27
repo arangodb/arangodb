@@ -595,14 +595,10 @@ TransactionCollection* transaction::Methods::trxCollection(TRI_voc_cid_t cid) co
 }
 
 /// @brief order a ditch for a collection
-void transaction::Methods::orderDitch(TRI_voc_cid_t cid) {
+void transaction::Methods::pinData(TRI_voc_cid_t cid) {
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING ||
              _state->status() == transaction::Status::CREATED);
-
-  if (_ditchCache.cid == cid) {
-    return;
-  }
 
   TransactionCollection* trxCollection = _state->collection(cid, AccessMode::Type::READ);
 
@@ -612,19 +608,12 @@ void transaction::Methods::orderDitch(TRI_voc_cid_t cid) {
 
   TRI_ASSERT(trxCollection->collection() != nullptr);
 
-  DocumentDitch* ditch = _transactionContextPtr->orderDitch(trxCollection->collection());
-
-  if (ditch == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  _ditchCache.cid = cid;
-  _ditchCache.ditch = ditch;
+  _transactionContextPtr->pinData(trxCollection->collection());
 }
   
 /// @brief whether or not a ditch has been created for the collection
-bool transaction::Methods::hasDitch(TRI_voc_cid_t cid) const {
-  return (_transactionContextPtr->ditch(cid) != nullptr);
+bool transaction::Methods::isPinned(TRI_voc_cid_t cid) const {
+  return _transactionContextPtr->isPinned(cid);
 }
 
 /// @brief extract the _id attribute from a slice, and convert it into a 
@@ -820,7 +809,7 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
     throwCollectionNotFound(collectionName.c_str());
   }
  
-  orderDitch(cid); // will throw when it fails 
+  pinData(cid); // will throw when it fails 
   
   int res = lock(trxCollection(cid), AccessMode::Type::READ);
 
@@ -939,7 +928,7 @@ void transaction::Methods::invokeOnAllElements(std::string const& collectionName
   TransactionCollection* trxCol = trxCollection(cid);
   LogicalCollection* logical = documentCollection(trxCol);
 
-  orderDitch(cid); // will throw when it fails
+  pinData(cid); // will throw when it fails
 
   int res = lock(trxCol, AccessMode::Type::READ);
 
@@ -988,7 +977,7 @@ int transaction::Methods::documentFastPath(std::string const& collectionName,
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
-  orderDitch(cid); // will throw when it fails
+  pinData(cid); // will throw when it fails
 
   StringRef key(transaction::helpers::extractKeyPart(value));
   if (key.empty()) {
@@ -1010,7 +999,7 @@ int transaction::Methods::documentFastPath(std::string const& collectionName,
     return res;
   }
   
-  TRI_ASSERT(hasDitch(cid));
+  TRI_ASSERT(isPinned(cid));
 
   uint8_t const* vpack = mmdr->vpack();
   TRI_ASSERT(vpack != nullptr);
@@ -1032,7 +1021,7 @@ int transaction::Methods::documentFastPathLocal(std::string const& collectionNam
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
-  orderDitch(cid);  // will throw when it fails
+  pinData(cid);  // will throw when it fails
 
   if (key.empty()) {
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
@@ -1044,7 +1033,7 @@ int transaction::Methods::documentFastPathLocal(std::string const& collectionNam
     return res;
   }
     
-  TRI_ASSERT(hasDitch(cid));
+  TRI_ASSERT(isPinned(cid));
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1200,7 +1189,7 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   if (!options.silent) {
-    orderDitch(cid); // will throw when it fails
+    pinData(cid); // will throw when it fails
   }
  
   VPackBuilder resultBuilder;
@@ -1230,7 +1219,7 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
       return res;
     }
   
-    TRI_ASSERT(hasDitch(cid));
+    TRI_ASSERT(isPinned(cid));
 
     uint8_t const* vpack = result.vpack();
   
@@ -1358,7 +1347,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   if (options.returnNew) {
-    orderDitch(cid); // will throw when it fails 
+    pinData(cid); // will throw when it fails 
   }
 
   VPackBuilder resultBuilder;
@@ -1652,7 +1641,7 @@ OperationResult transaction::Methods::modifyLocal(
   LogicalCollection* collection = documentCollection(trxCollection(cid));
   
   if (options.returnOld || options.returnNew) {
-    orderDitch(cid); // will throw when it fails 
+    pinData(cid); // will throw when it fails 
   }
 
   // Update/replace are a read and a write, let's get the write lock already
@@ -1906,7 +1895,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
   LogicalCollection* collection = documentCollection(trxCollection(cid));
   
   if (options.returnOld) {
-    orderDitch(cid); // will throw when it fails 
+    pinData(cid); // will throw when it fails 
   }
  
   VPackBuilder resultBuilder;
@@ -2119,7 +2108,7 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
                                       OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   
-  orderDitch(cid); // will throw when it fails
+  pinData(cid); // will throw when it fails
   
   int res = lock(trxCollection(cid), AccessMode::Type::READ);
 
@@ -2197,7 +2186,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
                                            OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   
-  orderDitch(cid); // will throw when it fails
+  pinData(cid); // will throw when it fails
   
   int res = lock(trxCollection(cid), AccessMode::Type::WRITE);
 
@@ -2557,7 +2546,7 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   LogicalCollection* logical = documentCollection(trxCollection(cid));
   
-  orderDitch(cid); // will throw when it fails 
+  pinData(cid); // will throw when it fails 
 
   std::unique_ptr<IndexIterator> iterator = nullptr;
 

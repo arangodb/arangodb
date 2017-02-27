@@ -1,6 +1,12 @@
 devel
 -----
 
+* don't let read-only transactions block the WAL collector 
+
+
+v3.2.alpha2 (2017-02-20)
+------------------------
+
 * ui: fixed issue #2065
 
 * ui: fixed a dashboard related memory issue
@@ -10,12 +16,12 @@ devel
 
 * Removed undocumented internal HTTP API:
   * PUT _api/edges
-  
+
   The documented GET _api/edges and the undocumented POST _api/edges remains unmodified.
 
 * moved V8 code into a git submodule
   this requires running the command
-  
+
       git submodule update --init --recursive
 
   once after a source code update or fresh checkout
@@ -35,16 +41,22 @@ devel
   arangoexport can be used to export collections to json, jsonl or xml
   and export a graph or collections to xgmml.
 
+* fixed a race condition when closing a connection
+
+* raised default hard limit on threads for very small to 64
+
+* fixed negative counting of http connection in UI
+
 
 v3.2.alpha1 (2017-02-05)
 ------------------------
 
 * added figure `httpRequests` to AQL query statistics
-  
+
 * removed revisions cache intermediate layer implementation
- 
+
 * obsoleted startup options `--database.revision-cache-chunk-size` and
-  `--database.revision-cache-target-size` 
+  `--database.revision-cache-target-size`
 
 * fix potential port number over-/underruns
 
@@ -58,7 +70,29 @@ v3.2.alpha1 (2017-02-05)
 * more detailed stacktraces in Foxx apps
 
 
-v3.1.11 (2017-02-14)
+v3.1.12 (XXXX-XX-XX)
+--------------------
+
+* disable shell color escape sequences on Windows
+
+* fixed issue #2326
+
+* fixed issue #2320
+
+* fixed issue #2315
+
+* fixed a race condition when closing a connection
+
+* raised default hard limit on threads for very small to 64
+
+* fixed negative counting of http connection in UI
+
+* fixed a race when renaming collections
+
+* fixed a race when dropping databases
+
+
+v3.1.11 (2017-02-17)
 --------------------
 
 * fixed a race between connection closing and sending out last chunks of data to clients
@@ -168,9 +202,10 @@ shards.
 * added server startup option `--query.memory-limit`
 
 * added convenience function to create vertex-centric indexes.
-Usage: `db.collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"})`
-That will create an index that can be used on OUTBOUND with filtering on the
-edge attribute `label`.
+
+  Usage: `db.collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"})`
+  That will create an index that can be used on OUTBOUND with filtering on the
+  edge attribute `label`.
 
 * change default log output for tools to stdout (instead of stderr)
 
@@ -640,6 +675,8 @@ v3.1.alpha2 (2016-09-01)
 
 v3.0.13 (XXXX-XX-XX)
 --------------------
+
+* fixed issue #2315
 
 * fixed issue #2210
 

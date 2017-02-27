@@ -25,7 +25,6 @@
 #define ARANGOD_UTILS_TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/SmallVector.h"
 #include "VocBase/voc-types.h"
 
@@ -43,13 +42,14 @@ class Builder;
 struct CustomTypeHandler;
 }
 
-class CollectionNameResolver;
-class DocumentDitch;
-class LogicalCollection;
 namespace transaction {
 class Methods;
 }
-;
+
+
+class CollectionNameResolver;
+class MMFilesDocumentDitch;
+class LogicalCollection;
 class TransactionState;
 
 class TransactionContext {
@@ -75,15 +75,12 @@ class TransactionContext {
   /// @brief return the vocbase
   TRI_vocbase_t* vocbase() const { return _vocbase; }
   
-  /// @brief order a document ditch for the collection
-  /// this will create one if none exists. if no ditch can be created, the
-  /// function will return a nullptr!
-  DocumentDitch* orderDitch(arangodb::LogicalCollection*);
-  
-  /// @brief return the ditch for a collection
-  /// this will return a nullptr if no ditch exists
-  DocumentDitch* ditch(TRI_voc_cid_t) const;
+  /// @brief pin data for the collection
+  void pinData(arangodb::LogicalCollection*);
 
+  /// @brief whether or not the data for the collection is pinned
+  bool isPinned(TRI_voc_cid_t) const;
+  
   /// @brief temporarily lease a StringBuffer object
   basics::StringBuffer* leaseStringBuffer(size_t initialSize);
 
@@ -138,7 +135,7 @@ class TransactionContext {
   
   std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
   
-  std::unordered_map<TRI_voc_cid_t, DocumentDitch*> _ditches;
+  std::unordered_map<TRI_voc_cid_t, MMFilesDocumentDitch*> _ditches;
 
   SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
   SmallVector<arangodb::velocypack::Builder*, 32> _builders;

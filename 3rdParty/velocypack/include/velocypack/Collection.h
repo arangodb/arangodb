@@ -113,9 +113,14 @@ class Collection {
     ObjectIterator it(slice);
 
     while (it.valid()) {
-      result.emplace(std::move(it.key(true).copyString()));
+      result.emplace(it.key(true).copyString());
       it.next();
     }
+  }
+  
+  template<typename T>  
+  static void keys(Slice const* slice, T& result) {
+    return keys(*slice, result);
   }
   
   static void keys(Slice const& slice, std::vector<std::string>& result) {
@@ -130,9 +135,19 @@ class Collection {
     }
   }
 
+  template<typename T>
+  static void unorderedKeys(Slice const& slice, T& result) {
+    ObjectIterator it(slice, true);
+
+    while (it.valid()) {
+      result.emplace(it.key(true).copyString());
+      it.next();
+    }
+  }
+  
   template<typename T>  
-  static void keys(Slice const* slice, T& result) {
-    return keys(*slice, result);
+  static void unorderedKeys(Slice const* slice, T& result) {
+    return unorderedKeys(*slice, result);
   }
 
   static Builder extract(Slice const& slice, int64_t from, int64_t to = INT64_MAX);

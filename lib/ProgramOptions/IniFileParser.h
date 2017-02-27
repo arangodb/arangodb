@@ -23,7 +23,7 @@
 #ifndef ARANGODB_PROGRAM_OPTIONS_INI_FILE_PARSER_H
 #define ARANGODB_PROGRAM_OPTIONS_INI_FILE_PARSER_H 1
 
-#include "Basics/Common.h"
+#include "Basics/FileUtils.h"
 
 #include <fstream>
 #include <iostream>
@@ -64,6 +64,10 @@ class IniFileParser {
   // parse a config file. returns true if all is well, false otherwise
   // errors that occur during parse are reported to _options
   bool parse(std::string const& filename) {
+    if (filename.empty()) {
+      return _options->fail("unable to open configuration file: no configuration file specified");
+    }
+
     std::ifstream ifs(filename, std::ifstream::in);
 
     if (!ifs.is_open()) {
@@ -114,7 +118,6 @@ class IniFileParser {
         if (!basics::StringUtils::isSuffix(include, ".conf")) {
           include += ".conf";
         }
-
         if (_seen.find(include) != _seen.end()) {
           LOG_TOPIC(FATAL, Logger::CONFIG) << "recursive include of file '"
                                            << include << "'";
@@ -123,6 +126,11 @@ class IniFileParser {
 
         _seen.insert(include);
 
+        if (!basics::FileUtils::isRegularFile(include)) {
+          auto dn = basics::FileUtils::dirname(filename);
+          include = basics::FileUtils::buildFilename(dn, include);
+        }
+        
         LOG_TOPIC(DEBUG, Logger::CONFIG) << "reading include file '" << include
                                          << "'";
 

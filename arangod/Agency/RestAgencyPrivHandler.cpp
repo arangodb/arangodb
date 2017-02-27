@@ -32,6 +32,7 @@
 
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
 
 using namespace arangodb;
 

@@ -47,11 +47,7 @@ class ConnectionStatistics {
     }
   }
 
-  static void SET_HTTP(ConnectionStatistics* stat) {
-    if (stat != nullptr) {
-      stat->_http = true;
-    }
-  }
+  static void SET_HTTP(ConnectionStatistics* stat);
 
   static void fill(basics::StatisticsCounter& httpConnections,
                    basics::StatisticsCounter& totalRequests,

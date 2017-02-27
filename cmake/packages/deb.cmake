@@ -42,17 +42,13 @@ list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
   "${PROJECT_SOURCE_DIR}/Installation/debian/postrm"
   "${PROJECT_SOURCE_DIR}/Installation/debian/prerm")
 
-if(CMAKE_TARGET_ARCHITECTURES MATCHES ".*x86_64.*")
-  set(ARANGODB_PACKAGE_ARCHITECTURE "amd64")
-elseif(CMAKE_TARGET_ARCHITECTURES MATCHES "aarch64")
-  set(ARANGODB_PACKAGE_ARCHITECTURE "arm64")
-elseif(CMAKE_TARGET_ARCHITECTURES MATCHES "armv7")
-  set(ARANGODB_PACKAGE_ARCHITECTURE "armhf")
-else()
-  set(ARANGODB_PACKAGE_ARCHITECTURE "i386")
-endif()
+################################################################################
+# specify which target archcitecture the package is going to be:
+################################################################################
+
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE ${ARANGODB_PACKAGE_ARCHITECTURE})
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
+
+set(ARANGODB_DBG_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-dbg-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
 
 set(conffiles_list "")
 if ("${INSTALL_CONFIGFILES_LIST}" STREQUAL "")
@@ -91,26 +87,41 @@ list(APPEND PACKAGES_LIST package-arongodb-server)
 ################################################################################
 # hook to build the client package
 ################################################################################
+set(CPACK_CLIENT_PACKAGE_NAME "${CPACK_PACKAGE_NAME}-client")
+
+set(ARANGODB_CLIENT_PACKAGE_FILE_NAME "${CPACK_CLIENT_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
+
 set(CLIENT_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb-client)
 configure_file(cmake/packages/client/deb.txt ${CLIENT_BUILD_DIR}/CMakeLists.txt @ONLY)
 add_custom_target(package-arongodb-client
   COMMAND ${CMAKE_COMMAND} .
+  COMMENT "configuring client package environment"
   COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
-  COMMAND cp *.deb ${PROJECT_BINARY_DIR} 
+  COMMENT "building client packages"
+  COMMAND ${CMAKE_COMMAND} -E copy ${CLIENT_BUILD_DIR}/${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.deb ${PROJECT_BINARY_DIR}
+  COMMENT "uploading client packages"
   WORKING_DIRECTORY ${CLIENT_BUILD_DIR})
 
 list(APPEND PACKAGES_LIST package-arongodb-client)
 
 
 add_custom_target(copy_deb_packages
-  COMMAND cp *.deb ${PACKAGE_TARGET_DIR})
+  COMMAND ${CMAKE_COMMAND} -E copy ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.deb ${PACKAGE_TARGET_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_PACKAGE_FILE_NAME}.deb           ${PACKAGE_TARGET_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy ${ARANGODB_DBG_PACKAGE_FILE_NAME}.deb    ${PACKAGE_TARGET_DIR}
+  COMMENT "copying packages to ${PACKAGE_TARGET_DIR}")
 
 list(APPEND COPY_PACKAGES_LIST copy_deb_packages)
 
 add_custom_target(remove_packages
-  COMMAND rm -f *.deb
-  COMMAND rm -rf _CPack_Packages
-  COMMAND rm -rf packages
+  COMMAND ${CMAKE_COMMAND} -E remove_directory _CPack_Packages
+  COMMENT Removing server packaging build directory
+  COMMAND ${CMAKE_COMMAND} -E remove_directory packages
+  COMMENT Removing client packaging build directory
+  COMMAND ${CMAKE_COMMAND} -E remove ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.deb
+  COMMAND ${CMAKE_COMMAND} -E remove ${CPACK_PACKAGE_FILE_NAME}.deb
+  COMMAND ${CMAKE_COMMAND} -E remove ${ARANGODB_DBG_PACKAGE_FILE_NAME}.deb
+  COMMENT Removing local target packages
   )
 
 list(APPEND CLEAN_PACKAGES_LIST remove_packages)
@@ -123,9 +134,9 @@ set(DEBUG_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb3-dbg)
 configure_file(cmake/packages/dbg/deb.txt ${DEBUG_BUILD_DIR}/CMakeLists.txt @ONLY)
 
 add_custom_target(package-arongodb-dbg
-	COMMAND ${CMAKE_COMMAND} . -DCMAKE_OBJCOPY=${CMAKE_OBJCOPY} 
+  COMMAND ${CMAKE_COMMAND} . -DCMAKE_OBJCOPY=${CMAKE_OBJCOPY}
   COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
-  COMMAND cp *.deb ${PROJECT_BINARY_DIR} 
+  COMMAND ${CMAKE_COMMAND} -E copy ${ARANGODB_DBG_PACKAGE_FILE_NAME}.deb ${PROJECT_BINARY_DIR}
   WORKING_DIRECTORY ${DEBUG_BUILD_DIR})
 
 list(APPEND PACKAGES_LIST package-arongodb-dbg)

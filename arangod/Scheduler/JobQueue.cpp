@@ -76,7 +76,10 @@ class JobQueueThread final : public Thread {
 
             std::unique_ptr<Job> releaseGuard(job);
 
-            job->_callback(std::move(job->_handler));
+            try {
+              job->_callback(std::move(job->_handler));
+            } catch (...) {
+            }
             jobQueue->releaseActive();
             jobQueue->wakeup();
           });

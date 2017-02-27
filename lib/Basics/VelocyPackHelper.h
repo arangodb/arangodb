@@ -427,16 +427,20 @@ class VelocyPackHelper {
   static constexpr arangodb::velocypack::Slice IllegalValue() {
     return arangodb::velocypack::Slice::illegalSlice();
   }
+  
+  static bool hasNonClientTypes(arangodb::velocypack::Slice, bool checkExternals, bool checkCustom);
 
-  static void SanitizeExternals(arangodb::velocypack::Slice const,
-                                arangodb::velocypack::Builder&);
+  static void sanitizeNonClientTypes(arangodb::velocypack::Slice input,
+                                     arangodb::velocypack::Slice base,
+                                     arangodb::velocypack::Builder& output,
+                                     arangodb::velocypack::Options const*,
+                                     bool sanitizeExternals, bool sanitizeCustom);
 
-  static bool hasExternals(arangodb::velocypack::Slice const);
-
-  static VPackBuffer<uint8_t> sanitizeExternalsChecked(
-      arangodb::velocypack::Slice const,
+  static VPackBuffer<uint8_t> sanitizeNonClientTypesChecked(
+      arangodb::velocypack::Slice,
       VPackOptions const* options = &VPackOptions::Options::Defaults,
-      bool checkExternals = true);
+      bool sanitizeExternals = true,
+      bool sanitizeCustom = true);
 
   static uint64_t extractIdValue(VPackSlice const& slice);
 

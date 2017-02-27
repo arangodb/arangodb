@@ -40,9 +40,8 @@
 #include <iomanip>
 #include <regex>
 
-using namespace arangodb::basics;
 using namespace arangodb::consensus;
-using namespace arangodb::velocypack;
+using namespace arangodb::basics;
 
 /// Non-Emptyness of string
 struct NotEmpty {
@@ -353,15 +352,11 @@ std::vector<bool> Store::apply(
         auto headerFields =
           std::make_unique<std::unordered_map<std::string, std::string>>();
         
-        auto cc = ClusterComm::instance();
-        if (cc != nullptr) {
-          // nullptr only happens on controlled shutdown
-          cc->asyncRequest(
-            "1", 1, endpoint, rest::RequestType::POST, path,
-            std::make_shared<std::string>(body.toString()), headerFields,
-            std::make_shared<StoreCallback>(path, body.toJson()), 1.0, true,
-            0.01);
-        }
+        arangodb::ClusterComm::instance()->asyncRequest(
+          "1", 1, endpoint, rest::RequestType::POST, path,
+          std::make_shared<std::string>(body.toString()), headerFields,
+          std::make_shared<StoreCallback>(path, body.toJson()), 1.0, true, 0.01);
+        
       } else {
         LOG_TOPIC(WARN, Logger::AGENCY) << "Malformed URL " << url;
       }

@@ -81,6 +81,12 @@ class LoggerStream {
     _out << obj;
     return *this;
   }
+  
+  template <typename T1, typename T2>
+  LoggerStream& operator<<(std::pair<T1, T2> const& obj) {
+    _out << '(' << obj.first << ", " << obj.second << ')';
+    return *this;
+  }
 
   template <typename T>
   LoggerStream& operator<<(std::vector<T> const& obj) {
@@ -132,7 +138,7 @@ class LoggerStream {
   std::stringstream _out;
   size_t _topicId;
   LogLevel _level;
-  long int _line;
+  int _line;
   char const* _file;
   char const* _function;
 };

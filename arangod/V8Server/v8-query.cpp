@@ -381,7 +381,7 @@ static void JS_ChecksumCollection(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  trx.orderDitch(col->cid()); // will throw when it fails
+  trx.pinData(col->cid()); // will throw when it fails
   
   // get last tick
   LogicalCollection* collection = trx.documentCollection();

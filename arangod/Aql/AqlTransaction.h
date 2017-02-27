@@ -62,14 +62,14 @@ class AqlTransaction final : public transaction::Methods {
   /// @brief add a list of collections to the transaction
   int addCollections(
       std::map<std::string, aql::Collection*> const& collections) {
-    int ret = TRI_ERROR_NO_ERROR;
     for (auto const& it : collections) {
-      ret = processCollection(it.second);
-      if (ret != TRI_ERROR_NO_ERROR) {
-        break;
+      int res = processCollection(it.second);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
       }
     }
-    return ret;
+    return TRI_ERROR_NO_ERROR;
   }
 
   /// @brief add a collection to the transaction

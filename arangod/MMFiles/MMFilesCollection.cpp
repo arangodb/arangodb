@@ -1116,7 +1116,7 @@ void MMFilesCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Bu
   builder->add("time", VPackValue(&lastCompactionStampString[0]));
   builder->close();  // compactionStatus
 
-  builder->add("documentReferences", VPackValue(_ditches.numDocumentDitches()));
+  builder->add("documentReferences", VPackValue(_ditches.numMMFilesDocumentMMFilesDitches()));
   
   char const* waitingForDitch = _ditches.head();
   builder->add("waitingFor", VPackValue(waitingForDitch == nullptr ? "-" : waitingForDitch));
@@ -1660,6 +1660,9 @@ void MMFilesCollection::open(bool ignoreErrors) {
   arangodb::SingleCollectionTransaction trx(
       arangodb::StandaloneTransactionContext::Create(vocbase), cid,
       AccessMode::Type::WRITE);
+  // the underlying collections must not be locked here because the "load" 
+  // routine can be invoked from any other place, e.g. from an AQL query
+  trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
 
   // build the primary index
   double startIterate = TRI_microtime();
@@ -1945,7 +1948,6 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
   }
   auto vocbase = _logicalCollection->vocbase();
 
-  arangodb::aql::QueryCache::instance()->invalidate(vocbase, _logicalCollection->name());
   if (!_logicalCollection->removeIndex(iid)) {
     // We tried to remove an index that does not exist
     events::DropIndex("", std::to_string(iid),

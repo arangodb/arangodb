@@ -219,7 +219,7 @@ class MMFilesCollection final : public PhysicalCollection {
   double lastCompactionStamp() const { return _lastCompactionStamp; }
   void lastCompactionStamp(double value) { _lastCompactionStamp = value; }
 
-  Ditches* ditches() const { return &_ditches; }
+  MMFilesDitches* ditches() const { return &_ditches; }
   
   void open(bool ignoreErrors) override;
 
@@ -467,7 +467,7 @@ class MMFilesCollection final : public PhysicalCollection {
                        bool& waitForSync);
 
    private:
-    mutable arangodb::Ditches _ditches;
+    mutable arangodb::MMFilesDitches _ditches;
 
     // lock protecting the indexes
     mutable basics::ReadWriteLock _idxLock;

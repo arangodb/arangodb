@@ -26,22 +26,23 @@
 
 using namespace arangodb::aql;
 
-ShortestPathOptions::ShortestPathOptions(VPackSlice const& slice) {
-  VPackSlice obj = slice.get("shortestpathFlags");
-  
-  weightAttribute = "";
-  if (obj.hasKey("weightAttribute")) {
-    VPackSlice v = obj.get("weightAttribute");
-    if (v.isString()) {
-      weightAttribute = v.copyString();
+ShortestPathOptions::ShortestPathOptions(VPackSlice const& slice) 
+    : weightAttribute(), defaultWeight(1) {
+  VPackSlice obj = slice.get("shortestPathFlags");
+
+  if (obj.isObject()) {
+    if (obj.hasKey("weightAttribute")) {
+      VPackSlice v = obj.get("weightAttribute");
+      if (v.isString()) {
+        weightAttribute = v.copyString();
+      }
     }
-  }
-  
-  defaultWeight = 1;
-  if (obj.hasKey("defaultWeight")) {
-    VPackSlice v = obj.get("defaultWeight");
-    if (v.isNumber()) {
-      defaultWeight = v.getNumericValue<double>();
+    
+    if (obj.hasKey("defaultWeight")) {
+      VPackSlice v = obj.get("defaultWeight");
+      if (v.isNumber()) {
+        defaultWeight = v.getNumericValue<double>();
+      }
     }
   }
 }

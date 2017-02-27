@@ -64,7 +64,6 @@ class BaseTraverserEngine;
 
 /// @brief forward declarations
 class CollectionNameResolver;
-class DocumentDitch;
 struct DocumentIdentifierToken;
 class Index;
 class ManagedDocumentResult;
@@ -181,10 +180,10 @@ class Methods {
   std::string name(TRI_voc_cid_t cid) const;
 
   /// @brief order a ditch for a collection
-  void orderDitch(TRI_voc_cid_t);
+  void pinData(TRI_voc_cid_t);
   
   /// @brief whether or not a ditch has been created for the collection
-  bool hasDitch(TRI_voc_cid_t cid) const;
+  bool isPinned(TRI_voc_cid_t cid) const;
 
   /// @brief extract the _id attribute from a slice, and convert it into a 
   /// string
@@ -552,13 +551,6 @@ class Methods {
  private:
   /// @brief transaction hints
   transaction::Hints _localHints;
-
-  /// @brief cache for last handed out DocumentDitch
-  struct {
-    TRI_voc_cid_t cid = 0;
-    DocumentDitch* ditch = nullptr;
-  }
-  _ditchCache;
 
   struct {
     TRI_voc_cid_t cid = 0;

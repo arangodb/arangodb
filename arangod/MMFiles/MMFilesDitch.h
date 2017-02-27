@@ -32,19 +32,19 @@ struct MMFilesDatafile;
 namespace arangodb {
 class LogicalCollection;
 
-class Ditches;
+class MMFilesDitches;
 
-class Ditch {
-  friend class Ditches;
+class MMFilesDitch {
+  friend class MMFilesDitches;
 
  protected:
-  Ditch(Ditch const&) = delete;
-  Ditch& operator=(Ditch const&) = delete;
+  MMFilesDitch(MMFilesDitch const&) = delete;
+  MMFilesDitch& operator=(MMFilesDitch const&) = delete;
 
-  Ditch(Ditches*, char const*, int);
+  MMFilesDitch(MMFilesDitches*, char const*, int);
 
  public:
-  virtual ~Ditch();
+  virtual ~MMFilesDitch();
 
  public:
   /// @brief ditch type
@@ -72,33 +72,33 @@ class Ditch {
   int line() const { return _line; }
 
   /// @brief return the next ditch in the linked list
-  inline Ditch* next() const { return _next; }
+  inline MMFilesDitch* next() const { return _next; }
 
   /// @brief return the link to all ditches
-  Ditches* ditches() { return _ditches; }
+  MMFilesDitches* ditches() { return _ditches; }
 
   /// @brief return the associated collection
   LogicalCollection* collection() const;
 
  protected:
-  Ditches* _ditches;
+  MMFilesDitches* _ditches;
 
  private:
-  Ditch* _prev;
-  Ditch* _next;
+  MMFilesDitch* _prev;
+  MMFilesDitch* _next;
   char const* _filename;
   int _line;
 };
 
 /// @brief document ditch
-class DocumentDitch final : public Ditch {
-  friend class Ditches;
+class MMFilesDocumentDitch final : public MMFilesDitch {
+  friend class MMFilesDitches;
 
  public:
-  DocumentDitch(Ditches* ditches, bool usedByTransaction, char const* filename,
+  MMFilesDocumentDitch(MMFilesDitches* ditches, bool usedByTransaction, char const* filename,
                 int line);
 
-  ~DocumentDitch();
+  ~MMFilesDocumentDitch();
 
  public:
   DitchType type() const override final { return TRI_DITCH_DOCUMENT; }
@@ -112,11 +112,11 @@ class DocumentDitch final : public Ditch {
 };
 
 /// @brief replication ditch
-class ReplicationDitch final : public Ditch {
+class MMFilesReplicationDitch final : public MMFilesDitch {
  public:
-  ReplicationDitch(Ditches* ditches, char const* filename, int line);
+  MMFilesReplicationDitch(MMFilesDitches* ditches, char const* filename, int line);
 
-  ~ReplicationDitch();
+  ~MMFilesReplicationDitch();
 
  public:
   DitchType type() const override final { return TRI_DITCH_REPLICATION; }
@@ -125,11 +125,11 @@ class ReplicationDitch final : public Ditch {
 };
 
 /// @brief compaction ditch
-class CompactionDitch final : public Ditch {
+class MMFilesCompactionDitch final : public MMFilesDitch {
  public:
-  CompactionDitch(Ditches* ditches, char const* filename, int line);
+  MMFilesCompactionDitch(MMFilesDitches* ditches, char const* filename, int line);
 
-  ~CompactionDitch();
+  ~MMFilesCompactionDitch();
 
  public:
   DitchType type() const override final { return TRI_DITCH_COMPACTION; }
@@ -138,14 +138,14 @@ class CompactionDitch final : public Ditch {
 };
 
 /// @brief datafile removal ditch
-class DropDatafileDitch final : public Ditch {
+class MMFilesDropDatafileDitch final : public MMFilesDitch {
  public:
-  DropDatafileDitch(Ditches* ditches, MMFilesDatafile* datafile,
+  MMFilesDropDatafileDitch(MMFilesDitches* ditches, MMFilesDatafile* datafile,
                     LogicalCollection* collection,
                     std::function<void(MMFilesDatafile*, LogicalCollection*)> const& callback,
                     char const* filename, int line);
 
-  ~DropDatafileDitch();
+  ~MMFilesDropDatafileDitch();
 
  public:
   DitchType type() const override final { return TRI_DITCH_DATAFILE_DROP; }
@@ -161,14 +161,14 @@ class DropDatafileDitch final : public Ditch {
 };
 
 /// @brief datafile rename ditch
-class RenameDatafileDitch final : public Ditch {
+class MMFilesRenameDatafileDitch final : public MMFilesDitch {
  public:
-  RenameDatafileDitch(Ditches* ditches, MMFilesDatafile* datafile,
+  MMFilesRenameDatafileDitch(MMFilesDitches* ditches, MMFilesDatafile* datafile,
                       MMFilesDatafile* compactor, LogicalCollection* collection,
                       std::function<void(MMFilesDatafile*, MMFilesDatafile*, LogicalCollection*)> const& callback,
                       char const* filename, int line);
 
-  ~RenameDatafileDitch();
+  ~MMFilesRenameDatafileDitch();
 
  public:
   DitchType type() const override final { return TRI_DITCH_DATAFILE_RENAME; }
@@ -185,14 +185,14 @@ class RenameDatafileDitch final : public Ditch {
 };
 
 /// @brief collection unload ditch
-class UnloadCollectionDitch final : public Ditch {
+class MMFilesUnloadCollectionDitch final : public MMFilesDitch {
  public:
-  UnloadCollectionDitch(
-      Ditches* ditches, LogicalCollection* collection,
+  MMFilesUnloadCollectionDitch(
+      MMFilesDitches* ditches, LogicalCollection* collection,
       std::function<bool(LogicalCollection*)> const& callback,
       char const* filename, int line);
 
-  ~UnloadCollectionDitch();
+  ~MMFilesUnloadCollectionDitch();
 
   DitchType type() const override final { return TRI_DITCH_COLLECTION_UNLOAD; }
 
@@ -206,14 +206,14 @@ class UnloadCollectionDitch final : public Ditch {
 };
 
 /// @brief collection drop ditch
-class DropCollectionDitch final : public Ditch {
+class MMFilesDropCollectionDitch final : public MMFilesDitch {
  public:
-  DropCollectionDitch(
-      arangodb::Ditches* ditches, arangodb::LogicalCollection* collection,
+  MMFilesDropCollectionDitch(
+      arangodb::MMFilesDitches* ditches, arangodb::LogicalCollection* collection,
       std::function<bool(arangodb::LogicalCollection*)> callback,
       char const* filename, int line);
 
-  ~DropCollectionDitch();
+  ~MMFilesDropCollectionDitch();
 
   DitchType type() const override final { return TRI_DITCH_COLLECTION_DROP; }
 
@@ -227,14 +227,14 @@ class DropCollectionDitch final : public Ditch {
 };
 
 /// @brief doubly linked list of ditches
-class Ditches {
+class MMFilesDitches {
  public:
-  Ditches(Ditches const&) = delete;
-  Ditches& operator=(Ditches const&) = delete;
-  Ditches() = delete;
+  MMFilesDitches(MMFilesDitches const&) = delete;
+  MMFilesDitches& operator=(MMFilesDitches const&) = delete;
+  MMFilesDitches() = delete;
 
-  explicit Ditches(LogicalCollection*);
-  ~Ditches();
+  explicit MMFilesDitches(LogicalCollection*);
+  ~MMFilesDitches();
 
  public:
   /// @brief destroy the ditches - to be called on shutdown only
@@ -248,75 +248,75 @@ class Ditches {
 
   /// @brief process the first element from the list
   /// the list will remain unchanged if the first element is either a
-  /// DocumentDitch, a ReplicationDitch or a CompactionDitch, or if the list
-  /// contains any DocumentDitches.
-  Ditch* process(bool&, std::function<bool(Ditch const*)>);
+  /// MMFilesDocumentDitch, a MMFilesReplicationDitch or a MMFilesCompactionDitch, or if the list
+  /// contains any MMFilesDocumentMMFilesDitches.
+  MMFilesDitch* process(bool&, std::function<bool(MMFilesDitch const*)>);
 
   /// @brief return the type name of the ditch at the head of the active ditches
   char const* head();
 
   /// @brief return the number of document ditches active
-  uint64_t numDocumentDitches();
+  uint64_t numMMFilesDocumentMMFilesDitches();
 
   /// @brief check whether the ditches contain a ditch of a certain type
-  bool contains(Ditch::DitchType);
+  bool contains(MMFilesDitch::DitchType);
 
   /// @brief unlinks and frees a ditch
-  void freeDitch(Ditch*);
+  void freeDitch(MMFilesDitch*);
 
   /// @brief unlinks and frees a document ditch
   /// this is used for ditches used by transactions or by externals to protect
   /// the flags by the lock
-  void freeDocumentDitch(DocumentDitch*, bool fromTransaction);
+  void freeMMFilesDocumentDitch(MMFilesDocumentDitch*, bool fromTransaction);
 
   /// @brief creates a new document ditch and links it
-  DocumentDitch* createDocumentDitch(bool usedByTransaction,
+  MMFilesDocumentDitch* createMMFilesDocumentDitch(bool usedByTransaction,
                                      char const* filename, int line);
 
   /// @brief creates a new replication ditch and links it
-  ReplicationDitch* createReplicationDitch(char const* filename, int line);
+  MMFilesReplicationDitch* createMMFilesReplicationDitch(char const* filename, int line);
 
   /// @brief creates a new compaction ditch and links it
-  CompactionDitch* createCompactionDitch(char const* filename, int line);
+  MMFilesCompactionDitch* createMMFilesCompactionDitch(char const* filename, int line);
 
   /// @brief creates a new datafile deletion ditch
-  DropDatafileDitch* createDropDatafileDitch(
+  MMFilesDropDatafileDitch* createMMFilesDropDatafileDitch(
       MMFilesDatafile* datafile, LogicalCollection* collection, 
       std::function<void(MMFilesDatafile*, LogicalCollection*)> const& callback,
       char const* filename, int line);
 
   /// @brief creates a new datafile rename ditch
-  RenameDatafileDitch* createRenameDatafileDitch(
+  MMFilesRenameDatafileDitch* createMMFilesRenameDatafileDitch(
       MMFilesDatafile* datafile, MMFilesDatafile* compactor, LogicalCollection* collection,
       std::function<void(MMFilesDatafile*, MMFilesDatafile*, LogicalCollection*)> const& callback,
       char const* filename, int line);
 
   /// @brief creates a new collection unload ditch
-  UnloadCollectionDitch* createUnloadCollectionDitch(
+  MMFilesUnloadCollectionDitch* createMMFilesUnloadCollectionDitch(
       LogicalCollection* collection,
       std::function<bool(LogicalCollection*)> const& callback,
       char const* filename, int line);
 
   /// @brief creates a new collection drop ditch
-  DropCollectionDitch* createDropCollectionDitch(
+  MMFilesDropCollectionDitch* createMMFilesDropCollectionDitch(
       arangodb::LogicalCollection* collection, 
       std::function<bool(arangodb::LogicalCollection*)> callback,
       char const* filename, int line);
 
  private:
   /// @brief inserts the ditch into the linked list of ditches
-  void link(Ditch*);
+  void link(MMFilesDitch*);
 
   /// @brief unlinks the ditch from the linked list of ditches
-  void unlink(Ditch*);
+  void unlink(MMFilesDitch*);
 
  private:
   LogicalCollection* _collection;
 
   arangodb::Mutex _lock;
-  Ditch* _begin;
-  Ditch* _end;
-  uint64_t _numDocumentDitches;
+  MMFilesDitch* _begin;
+  MMFilesDitch* _end;
+  uint64_t _numMMFilesDocumentMMFilesDitches;
 };
 }
 

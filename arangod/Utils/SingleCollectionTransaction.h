@@ -30,7 +30,7 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-class DocumentDitch;
+class MMFilesDocumentDitch;
 class TransactionContext;
 
 class SingleCollectionTransaction final : public transaction::Methods {

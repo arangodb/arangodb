@@ -789,7 +789,7 @@ int InitialSyncer::handleCollectionDump(
         return res;
       }
      
-      trx.orderDitch(col->cid()); // will throw when it fails
+      trx.pinData(col->cid()); // will throw when it fails
 
       if (res == TRI_ERROR_NO_ERROR) {
         res = applyCollectionDump(trx, collectionName, response.get(), markersProcessed, errorMsg);
@@ -1038,7 +1038,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
   // fetch all local keys from primary index
   std::vector<uint8_t const*> markers;
     
-  DocumentDitch* ditch = nullptr;
+  MMFilesDocumentDitch* ditch = nullptr;
 
   // acquire a replication ditch so no datafiles are thrown away from now on
   // note: the ditch also protects against unloading the collection
@@ -1054,7 +1054,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 
     ditch = arangodb::MMFilesCollection::toMMFilesCollection(col)
                 ->ditches()
-                ->createDocumentDitch(false, __FILE__, __LINE__);
+                ->createMMFilesDocumentDitch(false, __FILE__, __LINE__);
 
     if (ditch == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -1288,7 +1288,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       return res;
     }
     
-    trx.orderDitch(col->cid()); // will throw when it fails
+    trx.pinData(col->cid()); // will throw when it fails
     
     // We do not take responsibility for the index.
     // The LogicalCollection is protected by trx.
@@ -1871,7 +1871,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
               return res;
             }
 
-            trx.orderDitch(col->cid()); // will throw when it fails
+            trx.pinData(col->cid()); // will throw when it fails
       
             LogicalCollection* document = trx.documentCollection();
             TRI_ASSERT(document != nullptr);

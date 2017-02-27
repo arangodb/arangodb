@@ -55,7 +55,7 @@ CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
 
 CollectionExport::~CollectionExport() {
   if (_ditch != nullptr) {
-    _ditch->ditches()->freeDocumentDitch(_ditch, false);
+    _ditch->ditches()->freeMMFilesDocumentDitch(_ditch, false);
   }
 }
 
@@ -67,7 +67,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     // create a ditch under the compaction lock
     _ditch = arangodb::MMFilesCollection::toMMFilesCollection(_collection)
                  ->ditches()
-                 ->createDocumentDitch(false, __FILE__, __LINE__);
+                 ->createMMFilesDocumentDitch(false, __FILE__, __LINE__);
   });
 
   // now we either have a ditch or not

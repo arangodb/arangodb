@@ -32,12 +32,13 @@
 #include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
 
 using namespace arangodb;
+
 using namespace arangodb::basics;
-using namespace arangodb::consensus;
 using namespace arangodb::rest;
-using namespace arangodb::velocypack;
+using namespace arangodb::consensus;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
@@ -216,6 +217,31 @@ RestStatus RestAgencyHandler::handleStores() {
     generateError(rest::ResponseCode::BAD, 400);
   }
   return RestStatus::DONE;
+}
+
+RestStatus RestAgencyHandler::handleStore() {
+
+  if (_request->requestType() == rest::RequestType::POST) {
+
+    arangodb::velocypack::Options options;
+    auto query = _request->toVelocyPackBuilderPtr(&options);
+    arangodb::consensus::index_t index = 0;
+
+    try {
+      index = query->slice().getUInt();
+    } catch (...) {
+      index = _agent->lastCommitted().second;
+    }
+    
+    query_t builder = _agent->buildDB(index);
+    generateResult(rest::ResponseCode::OK, builder->slice());
+    
+  } else {
+    generateError(rest::ResponseCode::BAD, 400);
+  }
+  
+  return RestStatus::DONE;
+  
 }
 
 RestStatus RestAgencyHandler::handleWrite() {
@@ -624,12 +650,14 @@ RestStatus RestAgencyHandler::handleConfig() {
   }
 
   // Respond with configuration
+  auto last = _agent->lastCommitted();
   Builder body;
   {
     VPackObjectBuilder b(&body);
     body.add("term", Value(_agent->term()));
     body.add("leaderId", Value(_agent->leaderID()));
-    body.add("lastCommitted", Value(_agent->lastCommitted()));
+    body.add("lastCommitted", Value(last.first));
+    body.add("leaderCommitted", Value(last.second));
     body.add("lastAcked", _agent->lastAckedAgo()->slice());
     body.add("configuration", _agent->config().toBuilder()->slice());
   }
@@ -691,6 +719,8 @@ RestStatus RestAgencyHandler::execute() {
         return handleState();
       } else if (suffixes[0] == "stores") {
         return handleStores();
+      } else if (suffixes[0] == "store") {
+        return handleStore();
       } else {
         return reportUnknownMethod();
       }

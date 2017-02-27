@@ -39,10 +39,9 @@ std::string const GRAPHS = "_graphs";
 /// @brief Load a graph from the _graphs collection; local and coordinator way
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::aql::Graph* arangodb::lookupGraphByName(TRI_vocbase_t* vocbase,
+arangodb::aql::Graph* arangodb::lookupGraphByName(std::shared_ptr<TransactionContext> transactionContext,
                                                   std::string const& name) {
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
-                                          GRAPHS, AccessMode::Type::READ);
+  SingleCollectionTransaction trx(transactionContext, GRAPHS, AccessMode::Type::READ);
 
   int res = trx.begin();
 

@@ -104,8 +104,8 @@ int MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
     _id = TRI_NewTickServer();
 
     // register a protector
-    int res = logfileManager->registerTransaction(_id);
-
+    int res = logfileManager->registerTransaction(_id, isReadOnlyTransaction());
+ 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -194,6 +194,12 @@ int MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx) {
     res = writeAbortMarker();
 
     updateStatus(transaction::Status::ABORTED);
+
+    if (_hasOperations) {
+      // must clean up the query cache because the transaction
+      // may have queried something via AQL that is now rolled back
+      clearQueryCache();
+    }
 
     freeOperations(activeTrx);
   }
@@ -336,6 +342,9 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
     copy.release();
     operation.swapped();
     _hasOperations = true;
+    
+    arangodb::aql::QueryCache::instance()->invalidate(
+        _vocbase, collection->name());
   }
 
   physical->setRevision(revisionId, false);

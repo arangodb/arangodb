@@ -28,7 +28,6 @@
 #include "Agency/MoveShard.h"
 
 using namespace arangodb::consensus;
-using namespace arangodb::velocypack;
 
 CleanOutServer::CleanOutServer(Node const& snapshot, Agent* agent,
                                std::string const& jobId,

@@ -31,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/ShortestPathNode.h"
@@ -1375,7 +1376,7 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  auto c = new CalculationNode(plan, _id, _expression->clone(),
+  auto c = new CalculationNode(plan, _id, _expression->clone(plan->getAst()),
                                conditionVariable, outVariable);
   c->_canRemoveIfThrows = _canRemoveIfThrows;
 
