@@ -65,7 +65,7 @@ struct PRComputation : public VertexComputation<float, float, float> {
       *ptr = 0.85 * sum + 0.15 / context()->vertexCount();
     }
     float diff = fabs(copy - *ptr);
-    aggregate(kConvergence, diff);
+    aggregate<float>(kConvergence, diff);
 
     RangeIterator<Edge<float>> edges = getEdges();
     float val = *ptr / edges.size();

@@ -353,6 +353,7 @@ void Worker<V, E, M>::_startProcessing() {
     i++;
   } while (start != total);
   TRI_ASSERT(_runningThreads == i);
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Using " << i << " Threads";
 }
 
 template <typename V, typename E, typename M>
@@ -378,8 +379,10 @@ bool Worker<V, E, M>::_processVertices(
   if (_config.asynchronousMode()) {
     outCache->sendToNextGSS(_requestedNextGSS);
     outCache->setLocalCacheNextGSS(_writeCacheNextGSS);
+    TRI_ASSERT(outCache->sendCountNextGSS() == 0);
   }
-
+  TRI_ASSERT(outCache->sendCount() == 0);
+  
   AggregatorHandler workerAggregator(_algorithm.get());
   // TODO look if we can avoid instantiating this
   std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
