@@ -28,7 +28,8 @@
 
 using namespace arangodb;
 
-MMFilesTransactionContextData::MMFilesTransactionContextData() {}
+MMFilesTransactionContextData::MMFilesTransactionContextData()
+    : _lastPinnedCid(0) {}
 
 MMFilesTransactionContextData::~MMFilesTransactionContextData() {
   for (auto& it : _ditches) {
@@ -41,7 +42,12 @@ MMFilesTransactionContextData::~MMFilesTransactionContextData() {
 
 /// @brief pin data for the collection
 void MMFilesTransactionContextData::pinData(LogicalCollection* collection) {
-  TRI_voc_cid_t cid = collection->cid();
+  TRI_voc_cid_t const cid = collection->cid();
+
+  if (_lastPinnedCid == cid) {
+    // already pinned data for this collection
+    return;
+  }
 
   auto it = _ditches.find(cid);
 
@@ -67,6 +73,8 @@ void MMFilesTransactionContextData::pinData(LogicalCollection* collection) {
     ditch->ditches()->freeMMFilesDocumentDitch(ditch, true);
     throw;
   }
+
+  _lastPinnedCid = cid;
 }
 
 /// @brief whether or not the data for the collection is pinned

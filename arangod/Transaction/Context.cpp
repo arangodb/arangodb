@@ -22,10 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Context.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
-#include "MMFiles/MMFilesCollection.h"
-#include "MMFiles/MMFilesDitch.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"

@@ -46,6 +46,8 @@ class MMFilesTransactionContextData final : public transaction::ContextData {
   
  private:
   std::unordered_map<TRI_voc_cid_t, MMFilesDocumentDitch*> _ditches;
+
+  TRI_voc_cid_t _lastPinnedCid;
 };
 
 }

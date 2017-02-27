@@ -39,7 +39,6 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesDitch.h"
 #include "MMFiles/MMFilesLogfileManager.h" //TODO -- remove -- waitForTick 
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
