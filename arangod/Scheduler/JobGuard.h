@@ -35,6 +35,9 @@ class Scheduler;
 
 class JobGuard {
  public:
+  JobGuard(JobGuard const&) = delete;
+  JobGuard& operator=(JobGuard const&) = delete;
+
   explicit JobGuard(EventLoop const& loop) : _scheduler(loop._scheduler) {}
   explicit JobGuard(rest::Scheduler* scheduler) : _scheduler(scheduler) {}
   ~JobGuard() { release(); }
@@ -43,6 +46,8 @@ class JobGuard {
   bool isIdle() { return _scheduler->isIdle(); }
 
   void work() {
+    TRI_ASSERT(!_isWorkingFlag);
+
     if (0 == _isWorking) {
       _scheduler->workThread();
     }
@@ -52,6 +57,8 @@ class JobGuard {
   }
 
   void block() {
+    TRI_ASSERT(!_isBlockedFlag);
+
     if (0 == _isBlocked) {
       _scheduler->blockThread();
     }
