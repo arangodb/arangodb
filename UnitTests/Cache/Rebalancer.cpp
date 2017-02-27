@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE(tst_rebalancing) {
 
     // commence mixed workload
     for (uint64_t i = 0; i < operationCount; i++) {
-      uint32_t r = RandomGenerator::interval(99UL);
+      uint32_t r = RandomGenerator::interval(static_cast<uint32_t>(99UL));
 
       if (r >= 99) {  // remove something
         if (validLower == validUpper) {

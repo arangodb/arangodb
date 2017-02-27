@@ -211,7 +211,7 @@ BOOST_AUTO_TEST_CASE(tst_lifecycle_chaos) {
     std::queue<std::shared_ptr<Cache>> caches;
 
     for (uint64_t i = 0; i < operationCount; i++) {
-      uint32_t r = RandomGenerator::interval(1UL);
+      uint32_t r = RandomGenerator::interval(static_cast<uint32_t>(1UL));
       switch (r) {
         case 0: {
           caches.emplace(manager.createCache(Manager::CacheType::Plain,
