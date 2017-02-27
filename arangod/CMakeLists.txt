@@ -250,6 +250,7 @@ SET(ARANGOD_SOURCES
   MMFiles/MMFilesSkiplistIndex.cpp
   MMFiles/MMFilesSynchronizerThread.cpp
   MMFiles/MMFilesTransactionCollection.cpp
+  MMFiles/MMFilesTransactionContextData.cpp
   MMFiles/MMFilesTransactionState.cpp
   MMFiles/MMFilesWalLogfile.cpp
   MMFiles/MMFilesWalRecoverState.cpp

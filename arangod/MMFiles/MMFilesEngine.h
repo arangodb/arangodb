@@ -40,6 +40,10 @@ class MMFilesCompactorThread;
 class TransactionCollection;
 class TransactionState;
 
+namespace transaction {
+class ContextData;
+}
+
 /// @brief collection file structure
 struct MMFilesEngineCollectionFiles {
   std::vector<std::string> journals;
@@ -75,6 +79,7 @@ class MMFilesEngine final : public StorageEngine {
   // flush wal wait for collector
   void stop() override;
 
+  transaction::ContextData* createTransactionContextData() override;
   TransactionState* createTransactionState(TRI_vocbase_t*) override;
   TransactionCollection* createTransactionCollection(TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) override;
 

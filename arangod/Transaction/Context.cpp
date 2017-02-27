@@ -27,6 +27,9 @@
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDitch.h"
 #include "RestServer/TransactionManagerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "Transaction/ContextData.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
@@ -68,7 +71,6 @@ transaction::Context::Context(TRI_vocbase_t* vocbase)
     : _vocbase(vocbase), 
       _resolver(nullptr), 
       _customTypeHandler(),
-      _ditches(),
       _builders{_arena},
       _stringBuffer(),
       _options(arangodb::velocypack::Options::Defaults),
@@ -83,13 +85,6 @@ transaction::Context::~Context() {
   // unregister the transaction from the logfile manager
   if (_transaction.id > 0) {
     TransactionManagerFeature::MANAGER->unregisterTransaction(_transaction.id, _transaction.hasFailedOperations);
-  }
-
-  for (auto& it : _ditches) {
-    // we're done with this ditch
-    auto& ditch = it.second;
-    ditch->ditches()->freeMMFilesDocumentDitch(ditch, true /* fromTransaction */);
-    // If some external entity is still using the ditch, it is kept!
   }
 
   // free all VPackBuilders we handed out
@@ -111,37 +106,12 @@ VPackCustomTypeHandler* transaction::Context::createCustomTypeHandler(TRI_vocbas
   
 /// @brief pin data for the collection
 void transaction::Context::pinData(LogicalCollection* collection) {
-  TRI_voc_cid_t cid = collection->cid();
-
-  auto it = _ditches.find(cid);
-
-  if (it != _ditches.end()) {
-    // tell everyone else this ditch is still in use,
-    // at least until the transaction is over
-    TRI_ASSERT((*it).second->usedByTransaction());
-    // ditch already exists
-    return;
-  }
-
-  // this method will not throw, but may return a nullptr
-  auto ditch = arangodb::MMFilesCollection::toMMFilesCollection(collection)->ditches()->createMMFilesDocumentDitch(true, __FILE__, __LINE__);
-
-  if (ditch == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  try {
-    _ditches.emplace(cid, ditch);
-  }
-  catch (...) {
-    ditch->ditches()->freeMMFilesDocumentDitch(ditch, true);
-    throw;
-  }
+  contextData()->pinData(collection);
 }
 
 /// @brief whether or not the data for the collection is pinned
-bool transaction::Context::isPinned(TRI_voc_cid_t cid) const {
-  return (_ditches.find(cid) != _ditches.end());
+bool transaction::Context::isPinned(TRI_voc_cid_t cid) {
+  return contextData()->isPinned(cid);
 }
   
 /// @brief temporarily lease a StringBuffer object
@@ -220,4 +190,11 @@ void transaction::Context::storeTransactionResult(TRI_voc_tid_t id, bool hasFail
   _transaction.id = id;
   _transaction.hasFailedOperations = hasFailedOperations;
 }
-
+  
+transaction::ContextData* transaction::Context::contextData() {
+  if (_contextData == nullptr) {
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    _contextData.reset(engine->createTransactionContextData());
+  }
+  return _contextData.get();
+}

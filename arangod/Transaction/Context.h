@@ -43,11 +43,11 @@ struct CustomTypeHandler;
 }
 
 class CollectionNameResolver;
-class MMFilesDocumentDitch;
 class LogicalCollection;
 class TransactionState;
 
 namespace transaction {
+class ContextData;
 class Methods;
 
 class Context {
@@ -77,7 +77,7 @@ class Context {
   void pinData(arangodb::LogicalCollection*);
 
   /// @brief whether or not the data for the collection is pinned
-  bool isPinned(TRI_voc_cid_t) const;
+  bool isPinned(TRI_voc_cid_t);
   
   /// @brief temporarily lease a StringBuffer object
   basics::StringBuffer* leaseStringBuffer(size_t initialSize);
@@ -124,6 +124,8 @@ class Context {
   
   /// @brief create a resolver
   CollectionNameResolver const* createResolver();
+
+  transaction::ContextData* contextData();
  
  protected:
   
@@ -133,8 +135,6 @@ class Context {
   
   std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
   
-  std::unordered_map<TRI_voc_cid_t, MMFilesDocumentDitch*> _ditches;
-
   SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
   SmallVector<arangodb::velocypack::Builder*, 32> _builders;
   
@@ -142,6 +142,8 @@ class Context {
 
   arangodb::velocypack::Options _options;
   arangodb::velocypack::Options _dumpOptions;
+  
+  std::unique_ptr<transaction::ContextData> _contextData;
 
   struct {
     TRI_voc_tid_t id; 
