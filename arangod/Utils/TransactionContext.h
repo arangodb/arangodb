@@ -25,7 +25,6 @@
 #define ARANGOD_UTILS_TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/SmallVector.h"
 #include "VocBase/voc-types.h"
 
@@ -49,7 +48,7 @@ class Methods;
 
 
 class CollectionNameResolver;
-class DocumentDitch;
+class MMFilesDocumentDitch;
 class LogicalCollection;
 class TransactionState;
 
@@ -136,7 +135,7 @@ class TransactionContext {
   
   std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
   
-  std::unordered_map<TRI_voc_cid_t, DocumentDitch*> _ditches;
+  std::unordered_map<TRI_voc_cid_t, MMFilesDocumentDitch*> _ditches;
 
   SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
   SmallVector<arangodb::velocypack::Builder*, 32> _builders;

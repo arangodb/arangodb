@@ -269,9 +269,9 @@ bool TRI_vocbase_t::UnloadCollectionCallback(LogicalCollection* collection) {
   auto ditches =
       arangodb::MMFilesCollection::toMMFilesCollection(collection)->ditches();
 
-  if (ditches->contains(arangodb::Ditch::TRI_DITCH_DOCUMENT) ||
-      ditches->contains(arangodb::Ditch::TRI_DITCH_REPLICATION) ||
-      ditches->contains(arangodb::Ditch::TRI_DITCH_COMPACTION)) {
+  if (ditches->contains(arangodb::MMFilesDitch::TRI_DITCH_DOCUMENT) ||
+      ditches->contains(arangodb::MMFilesDitch::TRI_DITCH_REPLICATION) ||
+      ditches->contains(arangodb::MMFilesDitch::TRI_DITCH_COMPACTION)) {
     locker.unlock();
 
     // still some ditches left...
@@ -433,7 +433,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     // check if there is a deferred drop action going on for this collection
     if (arangodb::MMFilesCollection::toMMFilesCollection(collection)
             ->ditches()
-            ->contains(arangodb::Ditch::TRI_DITCH_COLLECTION_DROP)) {
+            ->contains(arangodb::MMFilesDitch::TRI_DITCH_COLLECTION_DROP)) {
       // drop call going on, we must abort
       locker.unlock();
 
@@ -1000,7 +1000,7 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, boo
     // add callback for unload
     arangodb::MMFilesCollection::toMMFilesCollection(collection)
         ->ditches()
-        ->createUnloadCollectionDitch(collection, UnloadCollectionCallback,
+        ->createMMFilesUnloadCollectionDitch(collection, UnloadCollectionCallback,
                                       __FILE__, __LINE__);
   } // release locks
 
@@ -1040,7 +1040,7 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool 
         // add callback for dropping
         arangodb::MMFilesCollection::toMMFilesCollection(collection)
             ->ditches()
-            ->createDropCollectionDitch(collection, DropCollectionCallback,
+            ->createMMFilesDropCollectionDitch(collection, DropCollectionCallback,
                                         __FILE__, __LINE__);
 
         // wake up the cleanup thread

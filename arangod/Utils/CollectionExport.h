@@ -34,7 +34,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 class CollectionGuard;
-class DocumentDitch;
+class MMFilesDocumentDitch;
 
 class CollectionExport {
   friend class ExportCursor;
@@ -63,7 +63,7 @@ class CollectionExport {
  private:
   std::unique_ptr<arangodb::CollectionGuard> _guard;
   LogicalCollection* _collection;
-  arangodb::DocumentDitch* _ditch;
+  arangodb::MMFilesDocumentDitch* _ditch;
   std::string const _name;
   arangodb::CollectionNameResolver _resolver;
   Restrictions _restrictions;

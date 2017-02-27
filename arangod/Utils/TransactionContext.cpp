@@ -88,7 +88,7 @@ TransactionContext::~TransactionContext() {
   for (auto& it : _ditches) {
     // we're done with this ditch
     auto& ditch = it.second;
-    ditch->ditches()->freeDocumentDitch(ditch, true /* fromTransaction */);
+    ditch->ditches()->freeMMFilesDocumentDitch(ditch, true /* fromTransaction */);
     // If some external entity is still using the ditch, it is kept!
   }
 
@@ -124,7 +124,7 @@ void TransactionContext::pinData(LogicalCollection* collection) {
   }
 
   // this method will not throw, but may return a nullptr
-  auto ditch = arangodb::MMFilesCollection::toMMFilesCollection(collection)->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
+  auto ditch = arangodb::MMFilesCollection::toMMFilesCollection(collection)->ditches()->createMMFilesDocumentDitch(true, __FILE__, __LINE__);
 
   if (ditch == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -134,7 +134,7 @@ void TransactionContext::pinData(LogicalCollection* collection) {
     _ditches.emplace(cid, ditch);
   }
   catch (...) {
-    ditch->ditches()->freeDocumentDitch(ditch, true);
+    ditch->ditches()->freeMMFilesDocumentDitch(ditch, true);
     throw;
   }
 }

@@ -2220,7 +2220,7 @@ char* MMFilesEngine::nextFreeMarkerPosition(
     // the compactor will not run during recovery
     auto ditch = arangodb::MMFilesCollection::toMMFilesCollection(collection)
                      ->ditches()
-                     ->createDocumentDitch(false, __FILE__, __LINE__);
+                     ->createMMFilesDocumentDitch(false, __FILE__, __LINE__);
 
     if (ditch == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

@@ -74,7 +74,7 @@ CollectionKeys::~CollectionKeys() {
   engine->removeCompactionBlocker(_vocbase, _blockerId);
 
   if (_ditch != nullptr) {
-    _ditch->ditches()->freeDocumentDitch(_ditch, false);
+    _ditch->ditches()->freeMMFilesDocumentDitch(_ditch, false);
   }
 }
 
@@ -91,7 +91,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
     // create a ditch under the compaction lock
     _ditch = arangodb::MMFilesCollection::toMMFilesCollection(_collection)
                  ->ditches()
-                 ->createDocumentDitch(false, __FILE__, __LINE__);
+                 ->createMMFilesDocumentDitch(false, __FILE__, __LINE__);
   });
 
   // now we either have a ditch or not

@@ -555,7 +555,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       // add a deletion ditch to the collection
       auto b = arangodb::MMFilesCollection::toMMFilesCollection(collection)
                    ->ditches()
-                   ->createDropDatafileDitch(compaction._datafile, collection,
+                   ->createMMFilesDropDatafileDitch(compaction._datafile, collection,
                                              DropDatafileCallback, __FILE__,
                                              __LINE__);
 
@@ -586,7 +586,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         // add a rename marker
         auto b = arangodb::MMFilesCollection::toMMFilesCollection(collection)
                      ->ditches()
-                     ->createRenameDatafileDitch(
+                     ->createMMFilesRenameDatafileDitch(
                          compaction._datafile, context->_compactor,
                          context->_collection, RenameDatafileCallback, __FILE__,
                          __LINE__);
@@ -604,7 +604,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         // add a drop datafile marker
         auto b = arangodb::MMFilesCollection::toMMFilesCollection(collection)
                      ->ditches()
-                     ->createDropDatafileDitch(compaction._datafile, collection,
+                     ->createMMFilesDropDatafileDitch(compaction._datafile, collection,
                                                DropDatafileCallback, __FILE__,
                                                __LINE__);
 
@@ -907,7 +907,7 @@ void MMFilesCompactorThread::run() {
                   auto ce = arangodb::MMFilesCollection::toMMFilesCollection(
                                 collection)
                                 ->ditches()
-                                ->createCompactionDitch(__FILE__, __LINE__);
+                                ->createMMFilesCompactionDitch(__FILE__, __LINE__);
 
                   if (ce == nullptr) {
                     // out of memory

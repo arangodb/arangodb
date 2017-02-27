@@ -608,7 +608,7 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
 
   auto mmfiles = arangodb::MMFilesCollection::toMMFilesCollection(collection);
   // create a barrier so the underlying collection is not unloaded
-  auto b = mmfiles->ditches()->createReplicationDitch(__FILE__, __LINE__);
+  auto b = mmfiles->ditches()->createMMFilesReplicationDitch(__FILE__, __LINE__);
 
   if (b == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;

@@ -1101,7 +1101,7 @@ void MMFilesCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Bu
   builder->add("time", VPackValue(&lastCompactionStampString[0]));
   builder->close();  // compactionStatus
 
-  builder->add("documentReferences", VPackValue(_ditches.numDocumentDitches()));
+  builder->add("documentReferences", VPackValue(_ditches.numMMFilesDocumentMMFilesDitches()));
   
   char const* waitingForDitch = _ditches.head();
   builder->add("waitingFor", VPackValue(waitingForDitch == nullptr ? "-" : waitingForDitch));
