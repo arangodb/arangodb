@@ -1252,9 +1252,7 @@ void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
       << "Removing endpoint " << i << " from agent pool";
     AgencyCommManager::MANAGER->removeEndpoint(i);
   }
-  
 }
-
 
 AgencyCommResult AgencyComm::sendWithFailover(
     arangodb::rest::RequestType method, double const timeout,
@@ -1400,11 +1398,6 @@ AgencyCommResult AgencyComm::sendWithFailover(
           "Inquiry failed (" << inq._statusCode << "). Keep trying ...";
         continue;
       }
-    
-      AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
-      endpoint.clear();
-      connection = AgencyCommManager::MANAGER->acquire(endpoint);
-      continue;
     }
     
     // sometimes the agency will return a 307 (temporary redirect)
@@ -1424,11 +1417,11 @@ AgencyCommResult AgencyComm::sendWithFailover(
       break;
     }
 
-    if (tries%50 == 0) {
+    if (tries % 50 == 0) {
       LOG_TOPIC(WARN, Logger::AGENCYCOMM)
         << "Bad agency communiction! Unsuccessful consecutive tries:"
         << tries << " (" << elapsed << "s). Network checks needed!";
-    } else if (tries%15 == 0) {
+    } else if (tries % 15 == 0) {
       LOG_TOPIC(INFO, Logger::AGENCYCOMM)
         << "Flaky agency communication. Unsuccessful consecutive tries: "
         << tries << " (" << elapsed << "s). Network checks advised.";
