@@ -49,10 +49,10 @@ struct Aggregator {
   virtual void reduce(AqlValue const&) = 0;
   virtual AqlValue stealValue() = 0;
 
-  static Aggregator* fromTypeString(transaction::Methods*,
-                                    std::string const&);
-  static Aggregator* fromVPack(transaction::Methods*,
-                               arangodb::velocypack::Slice const&, char const*);
+  static std::unique_ptr<Aggregator> fromTypeString(transaction::Methods*,
+                                                    std::string const&);
+  static std::unique_ptr<Aggregator> fromVPack(transaction::Methods*,
+                                               arangodb::velocypack::Slice const&, char const*);
 
   static bool isSupported(std::string const&);
   static bool requiresInput(std::string const&);
