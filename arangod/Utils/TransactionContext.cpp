@@ -109,11 +109,8 @@ VPackCustomTypeHandler* TransactionContext::createCustomTypeHandler(TRI_vocbase_
   return new CustomTypeHandler(vocbase, resolver);
 }
   
-/// @brief order a document ditch for the collection
-/// this will create one if none exists. if no ditch can be created, the
-/// function will return a nullptr!
-DocumentDitch* TransactionContext::orderDitch(LogicalCollection* collection) {
-
+/// @brief pin data for the collection
+void TransactionContext::pinData(LogicalCollection* collection) {
   TRI_voc_cid_t cid = collection->cid();
 
   auto it = _ditches.find(cid);
@@ -122,35 +119,29 @@ DocumentDitch* TransactionContext::orderDitch(LogicalCollection* collection) {
     // tell everyone else this ditch is still in use,
     // at least until the transaction is over
     TRI_ASSERT((*it).second->usedByTransaction());
-    // ditch already exists, return it
-    return (*it).second;
+    // ditch already exists
+    return;
   }
 
   // this method will not throw, but may return a nullptr
   auto ditch = arangodb::MMFilesCollection::toMMFilesCollection(collection)->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
 
-  if (ditch != nullptr) {
-    try {
-      _ditches.emplace(cid, ditch);
-    }
-    catch (...) {
-      ditch->ditches()->freeDocumentDitch(ditch, true);
-      ditch = nullptr; // return a nullptr
-    }
+  if (ditch == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  return ditch;
+  try {
+    _ditches.emplace(cid, ditch);
+  }
+  catch (...) {
+    ditch->ditches()->freeDocumentDitch(ditch, true);
+    throw;
+  }
 }
-  
-/// @brief return the ditch for a collection
-/// this will return a nullptr if no ditch exists
-DocumentDitch* TransactionContext::ditch(TRI_voc_cid_t cid) const {
-  auto it = _ditches.find(cid);
 
-  if (it == _ditches.end()) {
-    return nullptr;
-  }
-  return (*it).second;
+/// @brief whether or not the data for the collection is pinned
+bool TransactionContext::isPinned(TRI_voc_cid_t cid) const {
+  return (_ditches.find(cid) != _ditches.end());
 }
   
 /// @brief temporarily lease a StringBuffer object

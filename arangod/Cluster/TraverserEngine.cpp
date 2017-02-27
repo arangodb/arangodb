@@ -294,7 +294,7 @@ bool BaseTraverserEngine::lockCollection(std::string const& shard) {
   if (cid == 0) {
     return false;
   }
-  _trx->orderDitch(cid); // will throw when it fails 
+  _trx->pinData(cid); // will throw when it fails 
   int res = _trx->lock(_trx->trxCollection(cid), AccessMode::Type::READ);
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Logging Shard " << shard << " lead to exception '"

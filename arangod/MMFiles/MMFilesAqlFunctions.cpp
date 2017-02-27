@@ -165,7 +165,7 @@ static arangodb::MMFilesGeoIndex* getGeoIndex(
                                   collectionName.c_str());
   }
 
-  trx->orderDitch(cid);
+  trx->pinData(cid);
 
   return index;
 }
@@ -260,7 +260,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
                                   collectionName.c_str());
   }
 
-  trx->orderDitch(cid);
+  trx->pinData(cid);
 
   TRI_fulltext_query_t* ft =
       TRI_CreateQueryMMFilesFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS, maxResults);
@@ -286,7 +286,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   
-  TRI_ASSERT(trx->hasDitch(cid));
+  TRI_ASSERT(trx->isPinned(cid));
 
   transaction::BuilderLeaser builder(trx);
   try {
@@ -364,7 +364,7 @@ AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
   arangodb::MMFilesGeoIndex* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
-  TRI_ASSERT(trx->hasDitch(cid));
+  TRI_ASSERT(trx->isPinned(cid));
 
   GeoCoordinates* cors = index->nearQuery(
       trx, latitude.toDouble(trx), longitude.toDouble(trx), static_cast<size_t>(limitValue));
@@ -415,7 +415,7 @@ AqlValue MMFilesAqlFunctions::Within(
   arangodb::MMFilesGeoIndex* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
-  TRI_ASSERT(trx->hasDitch(cid));
+  TRI_ASSERT(trx->isPinned(cid));
 
   GeoCoordinates* cors = index->withinQuery(
       trx, latitudeValue.toDouble(trx), longitudeValue.toDouble(trx), radiusValue.toDouble(trx));

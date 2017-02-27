@@ -96,7 +96,7 @@ bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id, std::string const& collectionName,
     TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
     std::function<void(DocumentIdentifierToken const&)> cb) {
-  trx.orderDitch(trx.cid());  // will throw when it fails
+  trx.pinData(trx.cid());  // will throw when it fails
 
   // Create a conditionBuilder that manages the AstNodes for querying
   aql::EdgeConditionBuilderContainer condBuilder;

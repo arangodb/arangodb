@@ -789,7 +789,7 @@ int InitialSyncer::handleCollectionDump(
         return res;
       }
      
-      trx.orderDitch(col->cid()); // will throw when it fails
+      trx.pinData(col->cid()); // will throw when it fails
 
       if (res == TRI_ERROR_NO_ERROR) {
         res = applyCollectionDump(trx, collectionName, response.get(), markersProcessed, errorMsg);
@@ -1288,7 +1288,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       return res;
     }
     
-    trx.orderDitch(col->cid()); // will throw when it fails
+    trx.pinData(col->cid()); // will throw when it fails
     
     // We do not take responsibility for the index.
     // The LogicalCollection is protected by trx.
@@ -1871,7 +1871,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
               return res;
             }
 
-            trx.orderDitch(col->cid()); // will throw when it fails
+            trx.pinData(col->cid()); // will throw when it fails
       
             LogicalCollection* document = trx.documentCollection();
             TRI_ASSERT(document != nullptr);
