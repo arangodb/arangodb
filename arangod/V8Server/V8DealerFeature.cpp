@@ -31,6 +31,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/TimedAction.h"
 #include "Basics/WorkMonitor.h"
 #include "Cluster/ServerState.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -457,6 +458,10 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
+  TimedAction exitWhenNoContext([](double waitTime) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "giving up waiting for V8 context after " << Logger::FIXED(waitTime) << " s";
+  }, 60);
+
 
   V8Context* context = nullptr;
 
@@ -536,6 +541,11 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         jobGuard.block();
         
         guard.wait();
+      }
+
+      if (exitWhenNoContext.tick()) {
+        vocbase->release();
+        return nullptr;
       }
     }
 
