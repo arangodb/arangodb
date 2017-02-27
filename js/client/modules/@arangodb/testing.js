@@ -179,7 +179,7 @@ const optionsDefaults = {
   'skipArangoBenchNonConnKeepAlive': true,
   'skipAuthentication': false,
   'skipBoost': false,
-  'skipCache': false,
+  'skipCache': true,
   'skipEndpoints': false,
   'skipGeo': false,
   'skipLogAnalysis': true,
@@ -2662,7 +2662,7 @@ testFuncs.boost = function (options) {
     }
   }
 
-  if (!options.skipHashCache) {
+  if (!options.skipCache) {
     const run = locateBoostTest('cache_suite');
 
     if (run !== '') {
