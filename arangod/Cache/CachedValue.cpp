@@ -66,7 +66,9 @@ bool CachedValue::isFreeable() { return (refCount.load() == 0); }
 CachedValue* CachedValue::copy() const {
   uint8_t* buf = new uint8_t[size()];
   memcpy(buf, this, size());
-  return reinterpret_cast<CachedValue*>(buf);
+  CachedValue* value = reinterpret_cast<CachedValue*>(buf);
+  value->refCount = 0;
+  return value;
 }
 
 CachedValue* CachedValue::construct(void const* k, uint32_t kSize,

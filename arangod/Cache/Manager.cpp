@@ -434,7 +434,9 @@ void Manager::internalResize(uint64_t newGlobalLimit, bool firstAttempt) {
   }
 
   // if limit is safe, just set it
-  done = adjustGlobalLimitsIfAllowed(newGlobalLimit);
+  if (!done) {
+    done = adjustGlobalLimitsIfAllowed(newGlobalLimit);
+  }
 
   // see if we can free enough from unused tables
   if (!done) {
@@ -461,11 +463,11 @@ void Manager::internalResize(uint64_t newGlobalLimit, bool firstAttempt) {
   // by allowing use of background tasks to actually free memory from caches
   if (!done) {
     if ((_resizeAttempt % 2) == 0) {
-      reclaimed = resizeAllCaches(TaskEnvironment::resizing, cacheList, false,
-                                  true, _globalAllocation - _globalSoftLimit);
+      resizeAllCaches(TaskEnvironment::resizing, cacheList, false, true,
+                      _globalAllocation - _globalSoftLimit);
     } else {
-      reclaimed = migrateAllCaches(TaskEnvironment::resizing, cacheList,
-                                   _globalAllocation - _globalSoftLimit);
+      migrateAllCaches(TaskEnvironment::resizing, cacheList,
+                       _globalAllocation - _globalSoftLimit);
     }
   }
 

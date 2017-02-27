@@ -225,6 +225,7 @@ BOOST_AUTO_TEST_CASE(tst_st_shrink) {
     }
   }
 
+  cache->disableGrowth();
   uint64_t target = cache->usage() / 2;
   while (!cache->resize(target)) {
   };
@@ -238,13 +239,7 @@ BOOST_AUTO_TEST_CASE(tst_st_shrink) {
     }
   }
 
-  uint64_t lastUsage = cache->usage();
-  while (true) {
-    usleep(10000);
-    if (cache->usage() == lastUsage) {
-      break;
-    }
-    lastUsage = cache->usage();
+  while (cache->isResizing()) {
   }
   BOOST_CHECK_MESSAGE(cache->usage() <= target,
                       cache->usage() << " !<= " << target);
