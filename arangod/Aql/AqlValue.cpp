@@ -26,7 +26,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 

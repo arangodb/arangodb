@@ -32,7 +32,7 @@
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -104,7 +104,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   // copy all datafile markers into the result under the read-lock
   {
     SingleCollectionTransaction trx(
-        StandaloneTransactionContext::Create(_collection->vocbase()), _name,
+        transaction::StandaloneContext::Create(_collection->vocbase()), _name,
         AccessMode::Type::READ);
 
     int res = trx.begin();

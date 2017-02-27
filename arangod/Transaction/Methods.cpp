@@ -51,7 +51,7 @@
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
@@ -530,7 +530,7 @@ bool transaction::Methods::findIndexHandleForAndNode(
   return true;
 }
 
-transaction::Methods::Methods(std::shared_ptr<TransactionContext> transactionContext)
+transaction::Methods::Methods(std::shared_ptr<transaction::Context> transactionContext)
     : _state(nullptr),
       _transactionContext(transactionContext),
       _transactionContextPtr(transactionContext.get()) {

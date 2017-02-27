@@ -42,9 +42,9 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class TransactionContext;
 
 namespace transaction {
+class Context;
 class Methods;
 }
 
@@ -383,8 +383,8 @@ class Query {
   /// @brief cleanup plan and engine for current query
   void cleanupPlanAndEngine(int, VPackBuilder* statsBuilder = nullptr);
 
-  /// @brief create a TransactionContext
-  std::shared_ptr<TransactionContext> createTransactionContext();
+  /// @brief create a transaction::Context
+  std::shared_ptr<transaction::Context> createTransactionContext();
 
   /// @brief returns the next query id
   static TRI_voc_tick_t NextId();

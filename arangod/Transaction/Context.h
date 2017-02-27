@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_TRANSACTION_CONTEXT_H
-#define ARANGOD_UTILS_TRANSACTION_CONTEXT_H 1
+#ifndef ARANGOD_TRANSACTION_CONTEXT_H
+#define ARANGOD_TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
@@ -42,30 +42,28 @@ class Builder;
 struct CustomTypeHandler;
 }
 
-namespace transaction {
-class Methods;
-}
-
-
 class CollectionNameResolver;
 class MMFilesDocumentDitch;
 class LogicalCollection;
 class TransactionState;
 
-class TransactionContext {
+namespace transaction {
+class Methods;
+
+class Context {
  public:
-  TransactionContext(TransactionContext const&) = delete;
-  TransactionContext& operator=(TransactionContext const&) = delete;
+  Context(Context const&) = delete;
+  Context& operator=(Context const&) = delete;
 
  protected:
 
   /// @brief create the context
-  explicit TransactionContext(TRI_vocbase_t* vocbase);
+  explicit Context(TRI_vocbase_t* vocbase);
 
  public:
 
   /// @brief destroy the context
-  virtual ~TransactionContext();
+  virtual ~Context();
 
   /// @brief factory to create a custom type handler, not managed
   static arangodb::velocypack::CustomTypeHandler* createCustomTypeHandler(
@@ -152,6 +150,8 @@ class TransactionContext {
 
   bool _ownsResolver;
 };
+
+}
 }
 
 #endif

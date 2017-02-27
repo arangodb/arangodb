@@ -29,7 +29,7 @@
 #include "Rest/HttpRequest.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/Hints.h"
 #include "VocBase/vocbase.h"
 
@@ -123,7 +123,7 @@ bool RestDocumentHandler::createDocument() {
   opOptions.silent = extractBooleanParameter(StaticStrings::SilentString, false);
 
   // find and load collection given by name or identifier
-  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::WRITE);
   bool const isMultiple = body.isArray();
@@ -230,7 +230,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collection,
                                   AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -417,7 +417,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   // find and load collection given by name or identifier
-  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::WRITE);
   if (!isArrayCase) {
@@ -506,7 +506,7 @@ bool RestDocumentHandler::deleteDocument() {
   opOptions.waitForSync = extractBooleanParameter(StaticStrings::WaitForSyncString, false);
   opOptions.silent = extractBooleanParameter(StaticStrings::SilentString, false);
 
-  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
 
   VPackBuilder builder;
   VPackSlice search;
@@ -596,7 +596,7 @@ bool RestDocumentHandler::readManyDocuments() {
   OperationOptions opOptions;
   opOptions.ignoreRevs = extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
 
-  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::READ);
 

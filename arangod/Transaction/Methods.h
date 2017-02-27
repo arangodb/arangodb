@@ -55,11 +55,15 @@ struct Variable;
 }
 
 namespace rest {
-  enum class ResponseCode; 
+enum class ResponseCode; 
 }
 
 namespace traverser {
 class BaseTraverserEngine;
+}
+
+namespace transaction {
+class Context;
 }
 
 /// @brief forward declarations
@@ -69,7 +73,6 @@ class Index;
 class ManagedDocumentResult;
 struct OperationCursor;
 struct OperationOptions;
-class TransactionContext;
 class TransactionState;
 class TransactionCollection;
 
@@ -119,7 +122,7 @@ class Methods {
  protected:
 
   /// @brief create the transaction
-  explicit Methods(std::shared_ptr<TransactionContext> transactionContext);
+  explicit Methods(std::shared_ptr<transaction::Context> transactionContext);
 
  public:
 
@@ -147,11 +150,11 @@ class Methods {
   int resolveId(char const* handle, size_t length, TRI_voc_cid_t& cid, char const*& key, size_t& outLength); 
   
   /// @brief return a pointer to the transaction context
-  std::shared_ptr<TransactionContext> transactionContext() const {
+  std::shared_ptr<transaction::Context> transactionContext() const {
     return _transactionContext;
   }
   
-  inline TransactionContext* transactionContextPtr() const {
+  inline transaction::Context* transactionContextPtr() const {
     return _transactionContextPtr;
   }
   
@@ -543,10 +546,10 @@ class Methods {
   TransactionState* _state;
 
   /// @brief the transaction context
-  std::shared_ptr<TransactionContext> _transactionContext;
+  std::shared_ptr<transaction::Context> _transactionContext;
   
   /// @brief pointer to transaction context (faster than shared ptr)
-  TransactionContext* const _transactionContextPtr;
+  transaction::Context* const _transactionContextPtr;
  
  private:
   /// @brief transaction hints

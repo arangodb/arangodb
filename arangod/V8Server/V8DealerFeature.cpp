@@ -39,7 +39,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Utils/V8TransactionContext.h"
+#include "Transaction/V8Context.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -1119,7 +1119,7 @@ void V8DealerFeature::shutdownV8Instance(V8Context* context) {
 
       if (v8g != nullptr) {
         if (v8g->_transactionContext != nullptr) {
-          delete static_cast<V8TransactionContext*>(v8g->_transactionContext);
+          delete static_cast<transaction::V8Context*>(v8g->_transactionContext);
           v8g->_transactionContext = nullptr;
         }
         delete v8g;

@@ -57,7 +57,7 @@
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -1643,7 +1643,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
   }
 
   arangodb::SingleCollectionTransaction trx(
-      arangodb::StandaloneTransactionContext::Create(vocbase), cid,
+      arangodb::transaction::StandaloneContext::Create(vocbase), cid,
       AccessMode::Type::WRITE);
   // the underlying collections must not be locked here because the "load" 
   // routine can be invoked from any other place, e.g. from an AQL query

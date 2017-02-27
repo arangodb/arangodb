@@ -35,8 +35,10 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
-;
-class TransactionContext;
+
+namespace transaction {
+class Context;
+}
 
 namespace aql {
 class Collections;
@@ -83,7 +85,7 @@ class BaseTraverserEngine {
 
    bool lockCollection(std::string const&);
 
-   std::shared_ptr<TransactionContext> context() const;
+   std::shared_ptr<transaction::Context> context() const;
 
   protected:
     std::unique_ptr<TraverserOptions> _opts;

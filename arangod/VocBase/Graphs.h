@@ -31,7 +31,9 @@ namespace aql {
 class Graph;
 }
 
-class TransactionContext;
+namespace transaction {
+class Context;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get an instance of Graph by Name.
@@ -39,13 +41,9 @@ class TransactionContext;
 ///  The caller has to take care for the memory.
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::aql::Graph* lookupGraphByName(std::shared_ptr<TransactionContext>, std::string const& name);
+arangodb::aql::Graph* lookupGraphByName(std::shared_ptr<transaction::Context>, std::string const& name);
 
 }  // namespace arangodb
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
