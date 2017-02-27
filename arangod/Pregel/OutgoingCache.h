@@ -68,13 +68,20 @@ class OutCache {
   virtual void _removeContainedMessages() = 0;
   
  public:
-  OutCache(WorkerConfig* state, InCache<M>* cache, InCache<M>* nextGSSCache);
+  OutCache(WorkerConfig* state, MessageFormat<M> const* format);
   virtual ~OutCache(){};
 
   size_t sendCount() const { return _sendCount; }
   size_t sendCountNextGSS() const { return _sendCountNextGSS; }
   uint32_t batchSize() const { return _batchSize; }
   void setBatchSize(uint32_t bs) { _batchSize = bs; }
+  inline void setLocalCache(InCache<M> *cache) {
+    _localCache = cache;
+  }
+  inline void setLocalCacheNextGSS(InCache<M> *cache) {
+    _localCacheNextGSS = cache;
+  }
+  
   void sendToNextGSS(bool np) {
     if (np != _sendToNextGSS) {
       flushMessages();
@@ -102,9 +109,8 @@ class ArrayOutCache : public OutCache<M> {
   void _removeContainedMessages() override;
   
  public:
-  ArrayOutCache(WorkerConfig* state, InCache<M>* cache,
-                InCache<M>* nextGSSCache)
-      : OutCache<M>(state, cache, nextGSSCache) {}
+  ArrayOutCache(WorkerConfig* state, MessageFormat<M> const* format)
+      : OutCache<M>(state, format) {}
   ~ArrayOutCache();
 
   void appendMessage(prgl_shard_t shard, std::string const& key,
@@ -122,8 +128,9 @@ class CombiningOutCache : public OutCache<M> {
   void _removeContainedMessages() override;
 
  public:
-  CombiningOutCache(WorkerConfig* state, CombiningInCache<M>* cache,
-                    InCache<M>* nextPhase);
+  CombiningOutCache(WorkerConfig* state,
+                    MessageFormat<M> const* format,
+                    MessageCombiner<M> const* combiner);
   ~CombiningOutCache();
 
   void appendMessage(prgl_shard_t shard, std::string const& key,

@@ -61,7 +61,7 @@ class Edge {
   template <typename V, typename E2>
   friend class GraphStore;
 
-  prgl_shard_t _sourceShard;
+  //prgl_shard_t _sourceShard;
   prgl_shard_t _targetShard;
   std::string _toKey;
   E _data;
@@ -69,8 +69,8 @@ class Edge {
  public:
   // EdgeEntry() : _nextEntryOffset(0), _dataSize(0), _vertexIDSize(0) {}
   Edge() {}
-  Edge(prgl_shard_t source, prgl_shard_t target, std::string const& key)
-      : _sourceShard(source), _targetShard(target), _toKey(key) {}
+  Edge(prgl_shard_t target, std::string const& key)
+      : _targetShard(target), _toKey(key) {}
 
   // size_t getSize() { return sizeof(EdgeEntry) + _vertexIDSize + _dataSize; }
   std::string const& toKey() const { return _toKey; }
@@ -78,7 +78,7 @@ class Edge {
   inline E* data() {
     return &_data;  // static_cast<E>(this + sizeof(EdgeEntry) + _vertexIDSize);
   }
-  inline prgl_shard_t sourceShard() const { return _sourceShard; }
+  //inline prgl_shard_t sourceShard() const { return _sourceShard; }
   inline prgl_shard_t targetShard() const { return _targetShard; }
 };
 

@@ -395,10 +395,10 @@ void GraphStore<V, E>::_loadEdges(Transaction* trx, ShardID const& edgeShard,
         ShardID responsibleShard;
         Utils::resolveShard(collInfo.get(), StaticStrings::KeyString,
                             edge._toKey, responsibleShard);
-        edge._sourceShard = (prgl_shard_t)_config->shardId(edgeShard);
+        prgl_shard_t sourceShard = (prgl_shard_t)_config->shardId(edgeShard);
         edge._targetShard = (prgl_shard_t)_config->shardId(responsibleShard);
         _graphFormat->copyEdgeData(document, edge.data(), sizeof(E));
-        if (edge._sourceShard == (prgl_shard_t)-1 ||
+        if (sourceShard == (prgl_shard_t)-1 ||
             edge._targetShard == (prgl_shard_t)-1) {
           return;
         }

@@ -155,7 +155,8 @@ void Worker<V, E, M>::_initializeMessageCaches() {
           nullptr, _messageFormat.get(), _messageCombiner.get());
       _inCaches.push_back(incoming.get());
       _outCaches.push_back(new CombiningOutCache<M>(
-          &_config, incoming.release(), _writeCacheNextGSS));
+          &_config, _messageFormat.get(), _messageCombiner.get()));
+      incoming.release();
     }
   } else {
     _readCache = new ArrayInCache<M>(&_config, _messageFormat.get());
@@ -164,9 +165,11 @@ void Worker<V, E, M>::_initializeMessageCaches() {
       _writeCacheNextGSS = new ArrayInCache<M>(&_config, _messageFormat.get());
     }
     for (size_t i = 0; i < p; i++) {
-      _inCaches.push_back(new ArrayInCache<M>(nullptr, _messageFormat.get()));
+      auto incoming = std::make_unique<ArrayInCache<M>>(nullptr, _messageFormat.get());
+      _inCaches.push_back(incoming.get());
       _outCaches.push_back(
-          new ArrayOutCache<M>(&_config, _inCaches.back(), _writeCacheNextGSS));
+          new ArrayOutCache<M>(&_config, _messageFormat.get()));
+      incoming.release();
     }
   }
 }
@@ -371,8 +374,10 @@ bool Worker<V, E, M>::_processVertices(
   InCache<M>* inCache = _inCaches[threadId];
   OutCache<M>* outCache = _outCaches[threadId];
   outCache->setBatchSize(_messageBatchSize);
+  outCache->setLocalCache(inCache);
   if (_config.asynchronousMode()) {
     outCache->sendToNextGSS(_requestedNextGSS);
+    outCache->setLocalCacheNextGSS(_writeCacheNextGSS);
   }
 
   AggregatorHandler workerAggregator(_algorithm.get());
@@ -531,6 +536,8 @@ void Worker<V, E, M>::_finishedProcessing() {
   }
 
   if (_config.asynchronousMode()) {
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Finished Iter: " << package.toString();
+    
     bool proceed = false;
     // if the conductor is unreachable or has send data (try to) proceed
     std::unique_ptr<ClusterCommResult> result = _callConductorWithResponse(
@@ -564,6 +571,9 @@ void Worker<V, E, M>::_continueAsync() {
     {  // swap these pointers atomically
       MY_WRITE_LOCKER(guard, _cacheRWLock);
       std::swap(_readCache, _writeCache);
+      if (_writeCacheNextGSS->containedMessageCount() > 0) {
+        _requestedNextGSS = true;
+      }
     }
     // overwrite conductor values with local values
     _conductorAggregators->resetValues();

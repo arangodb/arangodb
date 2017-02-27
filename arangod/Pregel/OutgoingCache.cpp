@@ -38,12 +38,8 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 template <typename M>
-OutCache<M>::OutCache(WorkerConfig* state, InCache<M>* cache,
-                      InCache<M>* nextGSS)
-    : _config(state),
-      _format(cache->format()),
-      _localCache(cache),
-      _localCacheNextGSS(nextGSS) {
+OutCache<M>::OutCache(WorkerConfig* state, MessageFormat<M> const* format)
+    : _config(state), _format(format) {
   _baseUrl = Utils::baseUrl(_config->database());
 }
 
@@ -148,9 +144,9 @@ void ArrayOutCache<M>::flushMessages() {
 
 template <typename M>
 CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state,
-                                        CombiningInCache<M>* cache,
-                                        InCache<M>* nextPhase)
-    : OutCache<M>(state, cache, nextPhase), _combiner(cache->combiner()) {}
+                                        MessageFormat<M> const* format,
+                                        MessageCombiner<M> const* combiner)
+    : OutCache<M>(state, format), _combiner(combiner) {}
 
 template <typename M>
 CombiningOutCache<M>::~CombiningOutCache() {}
