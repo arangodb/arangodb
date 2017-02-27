@@ -176,7 +176,7 @@ class LogicalCollection {
   /// if the boolean is false, the return value is always
   /// TRI_VOC_COL_STATUS_CORRUPTED
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
-  std::string statusString();
+  std::string statusString() const;
 
 
   uint64_t numberDocuments() const;
@@ -241,12 +241,17 @@ class LogicalCollection {
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialisation
-  void toVelocyPack(velocypack::Builder&, bool withPath) const;
-  virtual void toVelocyPackForV8(velocypack::Builder&) const;
+  void toVelocyPack2(velocypack::Builder&, bool translateCids) const;
 
-  virtual void toVelocyPackForAgency(velocypack::Builder&);
+  velocypack::Builder toVelocyPackIgnore(
+      std::unordered_set<std::string> const& ignoreKeys,
+      bool translateCids) const;
+
+  void toVelocyPack(velocypack::Builder&, bool withPath) const;
+
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&,
                                                bool useSystem) const;
+  // virtual void toVelocyPackForClusterCollectionInfo(velocypack::Builder&) const;
 
   /// @brief transform the information for this collection to velocypack
   ///        The builder has to be an opened Type::Object
@@ -347,6 +352,7 @@ private:
   void increaseInternalVersion();
 
  protected:
+  virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
   void getFullProperties(velocypack::Builder& result,
                          bool translateCids) const;

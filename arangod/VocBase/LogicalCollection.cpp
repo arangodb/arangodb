@@ -572,7 +572,7 @@ TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
 }
 
 /// @brief returns a translation of a collection status
-std::string LogicalCollection::statusString() {
+std::string LogicalCollection::statusString() const {
   READ_LOCKER(readLocker, _lock);
   switch (_status) {
     case TRI_VOC_COL_STATUS_UNLOADED:
@@ -809,49 +809,6 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
   }
 }
 
-void LogicalCollection::toVelocyPackForV8(VPackBuilder& result) const {
-  getPropertiesVPack(result, false, true);
-  // TODO We have to properly unify the VPack creation functions...
-  if (ServerState::instance()->isCoordinator()) {
-    result.add("numberOfShards", VPackValue(_numberOfShards));
-    if (isSatellite()) {
-      result.add("replicationFactor", VPackValue("satelite"));
-    } else {
-      result.add("replicationFactor", VPackValue(_replicationFactor));
-    }
-    if (!_distributeShardsLike.empty()) {
-      CollectionNameResolver resolver(_vocbase);
-        result.add("distributeShardsLike",
-                   VPackValue(resolver.getCollectionNameCluster(
-                       static_cast<TRI_voc_cid_t>(
-                           basics::StringUtils::uint64(_distributeShardsLike)))));
-    }
-    result.add(VPackValue("shardKeys"));
-    result.openArray();
-    for (auto const& key : _shardKeys) {
-      result.add(VPackValue(key));
-    }
-    result.close();  // shardKeys
-
-    if (!_avoidServers.empty()) {
-      result.add(VPackValue("avoidServers"));
-      result.openArray();
-      for (auto const& server : _avoidServers) {
-        result.add(VPackValue(server));
-      }
-      result.close();
-    }
-  }
-}
-
-void LogicalCollection::toVelocyPackForAgency(VPackBuilder& result) {
-  _status = TRI_VOC_COL_STATUS_LOADED;
-  result.openObject();
-  toVelocyPackInObject(result, false);
-
-  result.close();  // Base Object
-}
-
 void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                                         bool useSystem) const {
   if (_isSystem && !useSystem) {
@@ -885,6 +842,106 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result,
   result.add("allowUserKeys", VPackValue(_allowUserKeys));
 
   result.close();
+}
+
+void LogicalCollection::toVelocyPack2(VPackBuilder& result, bool translateCids) const {
+  // We write into an open object
+  TRI_ASSERT(result.isOpenObject());
+
+  // Collection Meta Information
+  result.add("cid", VPackValue(std::to_string(_cid)));
+  result.add("id", VPackValue(std::to_string(_cid)));
+  result.add("name", VPackValue(_name));
+  result.add("type", VPackValue(static_cast<int>(_type)));
+  result.add("status", VPackValue(_status));
+  result.add("statusString", VPackValue(statusString()));
+  result.add("version", VPackValue(_version));
+
+  // Collection Flags
+  result.add("deleted", VPackValue(_isDeleted));
+  result.add("isSystem", VPackValue(_isSystem));
+  result.add("waitForSync", VPackValue(_waitForSync));
+
+  // TODO is this still releveant or redundant in keyGenerator?
+  result.add("allowUserKeys", VPackValue(_allowUserKeys));
+
+
+  // Physical Information
+  getPhysical()->getPropertiesVPack(result);
+  // TODO
+  result.add("count", VPackValue(_physical->initialCount()));
+  result.add("indexBuckets", VPackValue(_indexBuckets)); //MMFiles
+  // ODOT
+
+  // Indexes
+  result.add(VPackValue("indexes"));
+  getIndexesVPack(result, false);
+
+  // Cluster Specific
+  result.add("isSmart", VPackValue(_isSmart));
+  result.add("planId", VPackValue(std::to_string(_planId)));
+  result.add("numberOfShards", VPackValue(_numberOfShards));
+  result.add(VPackValue("shards"));
+  result.openObject();
+  for (auto const& shards : *_shardIds) {
+    result.add(VPackValue(shards.first));
+    result.openArray();
+    for (auto const& servers : shards.second) {
+      result.add(VPackValue(servers));
+    }
+    result.close();  // server array
+  }
+  result.close();  // shards
+
+  if (isSatellite()) {
+    result.add("replicationFactor", VPackValue("satelite"));
+  } else {
+    result.add("replicationFactor", VPackValue(_replicationFactor));
+  }
+  if (!_distributeShardsLike.empty()) {
+    if (translateCids) {
+      CollectionNameResolver resolver(_vocbase);
+      result.add("distributeShardsLike",
+                 VPackValue(resolver.getCollectionNameCluster(
+                     static_cast<TRI_voc_cid_t>(
+                         basics::StringUtils::uint64(_distributeShardsLike)))));
+    } else {
+      result.add("distributeShardsLike", VPackValue(_distributeShardsLike));
+    }
+  }
+
+  result.add(VPackValue("shardKeys"));
+  result.openArray();
+  for (auto const& key : _shardKeys) {
+    result.add(VPackValue(key));
+  }
+  result.close();  // shardKeys
+
+  if (!_avoidServers.empty()) {
+    result.add(VPackValue("avoidServers"));
+    result.openArray();
+    for (auto const& server : _avoidServers) {
+      result.add(VPackValue(server));
+    }
+    result.close();
+  }
+
+  includeVelocyPackEnterprise(result);
+
+  TRI_ASSERT(result.isOpenObject());
+  // We leave the object open
+}
+
+VPackBuilder LogicalCollection::toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys, bool translateCids) const {
+  VPackBuilder full;
+  full.openObject();
+  toVelocyPack2(full, translateCids);
+  full.close();
+  return VPackCollection::remove(full.slice(), ignoreKeys);
+}
+
+void LogicalCollection::includeVelocyPackEnterprise(VPackBuilder&) const {
+  // We ain't no enterprise
 }
 
 // Internal helper that inserts VPack info into an existing object and leaves

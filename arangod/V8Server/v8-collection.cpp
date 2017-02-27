@@ -1295,10 +1295,11 @@ static void JS_PropertiesVocbaseCol(
     auto c = ClusterInfo::instance()->getCollection(
         databaseName, StringUtils::itoa(collection->cid()));
 
-    VPackBuilder vpackProperties;
-    vpackProperties.openObject();
-    c->toVelocyPackForV8(vpackProperties);
-    vpackProperties.close();
+    std::unordered_set<std::string> const ignoreKeys{
+        "allowUserKeys", "cid",  "count",  "deleted", "id",
+        "indexes",       "name", "path",   "planId",  "shards",
+        "status",        "type", "version"};
+    VPackBuilder vpackProperties = c->toVelocyPackIgnore(ignoreKeys, true);
 
     // return the current parameter set
     v8::Handle<v8::Object> result =
@@ -1355,10 +1356,14 @@ static void JS_PropertiesVocbaseCol(
       }
     }
   }
-  VPackBuilder vpackProperties;
-  vpackProperties.openObject();
-  collection->toVelocyPackForV8(vpackProperties);
-  vpackProperties.close();
+
+  std::unordered_set<std::string> const ignoreKeys{
+      "allowUserKeys", "cid", "count", "deleted", "id", "indexes", "name",
+      "path", "planId", "shards", "status", "type", "version",
+      /* These are only relevant for cluster */
+      "distributeShardsLike", "isSmart", "numberOfShards", "replicationFactor",
+      "shardKeys"};
+  VPackBuilder vpackProperties = collection->toVelocyPackIgnore(ignoreKeys, true);
 
   // return the current parameter set
   v8::Handle<v8::Object> result =

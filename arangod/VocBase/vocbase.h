@@ -344,8 +344,7 @@ struct TRI_vocbase_t {
 
   /// @brief creates a new collection, worker function
   arangodb::LogicalCollection* createCollectionWorker(
-      arangodb::velocypack::Slice parameters, TRI_voc_cid_t& cid,
-      bool writeMarker, VPackBuilder& builder);
+      arangodb::velocypack::Slice parameters, TRI_voc_cid_t& cid);
 
   /// @brief drops a collection, worker function
   int dropCollectionWorker(arangodb::LogicalCollection* collection,
