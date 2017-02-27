@@ -337,8 +337,7 @@ bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection* collecti
 
 /// @brief creates a new collection, worker function
 arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
-    VPackSlice parameters, TRI_voc_cid_t& cid,
-    bool writeMarker, VPackBuilder& builder) {
+    VPackSlice parameters, TRI_voc_cid_t& cid) {
   std::string name = arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name" , "");
   TRI_ASSERT(!name.empty());
     
@@ -369,10 +368,6 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
     // set collection version to 3.1, as the collection is just created
     collection->setVersion(LogicalCollection::VERSION_31);
-
-    if (writeMarker) {
-      collection->toVelocyPack(builder, false);
-    }
     events::CreateCollection(name, TRI_ERROR_NO_ERROR);
     return collection;
   } catch (...) {
@@ -648,10 +643,10 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     VPackBuilder builder;
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     engine->getCollectionInfo(this, collection->cid(), builder, false, 0);
-    int res = collection->updateProperties(builder.slice().get("parameters"), doSync);
+    CollectionResult res = collection->updateProperties(builder.slice().get("parameters"), doSync);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (!res.successful()) {
+      return res.code;
     }
 
     collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
@@ -797,6 +792,7 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(TRI_voc_tick_t maxTick,
 
   builder->close();
 
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "toVpack( true, maxTick): " << builder->slice().toJson();
   return builder;
 }
 
@@ -892,12 +888,11 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
   
-  VPackBuilder builder;
 
   READ_LOCKER(readLocker, _inventoryLock);
 
   // note: cid may be modified by this function call
-  arangodb::LogicalCollection* collection = createCollectionWorker(parameters, cid, writeMarker, builder);
+  arangodb::LogicalCollection* collection = createCollectionWorker(parameters, cid);
   
   if (!writeMarker) {
     return collection;
@@ -908,6 +903,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     return nullptr;
   }
 
+  VPackBuilder builder = collection->toVelocyPackIgnore({"statusString"}, true);
   VPackSlice const slice = builder.slice();
 
   TRI_ASSERT(cid != 0);

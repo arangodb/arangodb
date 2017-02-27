@@ -111,7 +111,8 @@ static DatafileStatisticsContainer* FindDatafileStats(
 
 } // namespace
 
-int MMFilesCollection::updateProperties(VPackSlice const& slice, bool doSync){
+CollectionResult MMFilesCollection::updateProperties(VPackSlice const& slice,
+                                                     bool doSync) {
   // validation
   if (isVolatile() &&
       arangodb::basics::VelocyPackHelper::getBooleanValue(
@@ -128,6 +129,19 @@ int MMFilesCollection::updateProperties(VPackSlice const& slice, bool doSync){
         TRI_ERROR_BAD_PARAMETER,
         "isVolatile option cannot be changed at runtime");
   }
+  auto journalSlice = slice.get("journalSize");
+
+  if (journalSlice.isNone()) {
+    // In some apis maximalSize is allowed instead
+    journalSlice = slice.get("maximalSize");
+  }
+  
+  if (!journalSlice.isNone()) {
+    TRI_voc_size_t toUpdate = journalSlice.getNumericValue<TRI_voc_size_t>();
+    if (toUpdate < TRI_JOURNAL_MINIMAL_SIZE) {
+      return {TRI_ERROR_BAD_PARAMETER, "<properties>.journalSize too small"};
+    }
+  }
 
   if (slice.hasKey("journalSize")) {
     _journalSize = Helper::getNumericValue<TRI_voc_size_t>(slice, "journalSize",
@@ -137,7 +151,8 @@ int MMFilesCollection::updateProperties(VPackSlice const& slice, bool doSync){
                                                            _journalSize);
   }
   _doCompact = Helper::getBooleanValue(slice, "doCompact", _doCompact);
-  return TRI_ERROR_NO_ERROR;
+
+  return CollectionResult{TRI_ERROR_NO_ERROR};
 }
 
 int MMFilesCollection::persistProperties() noexcept {

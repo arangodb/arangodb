@@ -1140,12 +1140,9 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
-  VPackBuilder builder;
-  builder.add(json);
-
   AgencyOperation createCollection(
       "Plan/Collections/" + databaseName + "/" + collectionID,
-      AgencyValueOperationType::SET, builder.slice());
+      AgencyValueOperationType::SET, json); 
   AgencyOperation increaseVersion("Plan/Version",
                                   AgencySimpleOperationType::INCREMENT_OP);
 
@@ -1549,7 +1546,7 @@ int ClusterInfo::ensureIndexCoordinator(
   auto numberOfShardsMutex = std::make_shared<Mutex>();
   auto numberOfShards = std::make_shared<int>(0);
   auto resBuilder = std::make_shared<VPackBuilder>();
-  auto collectionBuilder = std::make_shared<VPackBuilder>();
+  VPackBuilder collectionBuilder;
 
   {
     std::shared_ptr<LogicalCollection> c =
@@ -1607,9 +1604,14 @@ int ClusterInfo::ensureIndexCoordinator(
     }
 
     // now create a new index
-    c->toVelocyPackForAgency(*collectionBuilder);
+    std::unordered_set<std::string> const ignoreKeys{
+        "allowUserKeys", "cid", /* cid really ignore?*/
+        "count",         "planId", "version",
+    };
+    c->setStatus(TRI_VOC_COL_STATUS_LOADED);
+    collectionBuilder = c->toVelocyPackIgnore(ignoreKeys, false);
   }
-  VPackSlice const collectionSlice = collectionBuilder->slice();
+  VPackSlice const collectionSlice = collectionBuilder.slice();
 
   auto newBuilder = std::make_shared<VPackBuilder>();
   if (!collectionSlice.isObject()) {
