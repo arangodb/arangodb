@@ -25,6 +25,7 @@
 #include "Aql/QueryCache.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/PerformanceLogScope.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Timers.h"
@@ -1457,32 +1458,21 @@ int MMFilesCollection::fillIndexes(
                       // feasible
     }
   };
-
-  double start = TRI_microtime();
+  
+  TRI_ASSERT(n > 0);
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   auto ioService = SchedulerFeature::SCHEDULER->ioService();
   TRI_ASSERT(ioService != nullptr);
   arangodb::basics::LocalTaskQueue queue(ioService);
 
-  // only log performance infos for indexes with more than this number of
-  // entries
-  static size_t const NotificationSizeThreshold = 131072;
-  auto primaryIdx = primaryIndex();
-
-  if (primaryIdx->size() > NotificationSizeThreshold) {
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "fill-indexes-document-collection { collection: "
-        << _logicalCollection->vocbase() << "/" << _logicalCollection->name()
-        << " }, indexes: " << (n - 1);
-  }
-
-  TRI_ASSERT(n > 0);
+  PerformanceLogScope logScope(std::string("fill-indexes-document-collection { collection: ") + _logicalCollection->vocbase()->name() + "/" + _logicalCollection->name() + " }, indexes: " + std::to_string(n - 1));
 
   try {
     TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
     // give the index a size hint
+    auto primaryIdx = primaryIndex();
     auto nrUsed = primaryIdx->size();
     for (size_t i = 0; i < n; i++) {
       auto idx = indexes[i];
@@ -1558,8 +1548,6 @@ int MMFilesCollection::fillIndexes(
     if (queue.status() == TRI_ERROR_NO_ERROR && !documents.empty()) {
       insertInAllIndexes();
     }
-
-    // TODO: fix perf logging?
   } catch (arangodb::basics::Exception const& ex) {
     queue.setStatus(ex.code());
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception while filling indexes: " << ex.what();
@@ -1580,39 +1568,23 @@ int MMFilesCollection::fillIndexes(
     }
   }
 
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-      << " s, fill-indexes-document-collection { collection: "
-      << _logicalCollection->dbName() << "/" << _logicalCollection->name() << " }, indexes: " << (n - 1);
-
   return queue.status();
 }
 
-
-
 /// @brief opens an existing collection
 int MMFilesCollection::openWorker(bool ignoreErrors) {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  double start = TRI_microtime();
   auto vocbase = _logicalCollection->vocbase();
-
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "open-collection { collection: " << vocbase->name() << "/" << _logicalCollection->name()
-      << " }";
+  PerformanceLogScope logScope(std::string("open-collection { collection: ") + vocbase->name() + "/" + _logicalCollection->name() + " }");
 
   try {
     // check for journals and datafiles
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
     int res = engine->openCollection(vocbase, _logicalCollection, ignoreErrors);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot open '" << path() << "', check failed";
       return res;
     }
-
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-        << " s, open-collection { collection: " << vocbase->name() << "/"
-        << _logicalCollection->name() << " }";
 
     return TRI_ERROR_NO_ERROR;
   } catch (basics::Exception const& ex) {
@@ -1642,11 +1614,8 @@ void MMFilesCollection::open(bool ignoreErrors) {
       updateCount(count);
     }
   }
-  double start = TRI_microtime();
 
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "open-document-collection { collection: " << vocbase->name() << "/"
-      << _logicalCollection->name() << " }";
+  PerformanceLogScope logScope(std::string("open-document-collection { collection: ") + vocbase->name() + "/" + _logicalCollection->name() + " }");
 
   int res = openWorker(ignoreErrors);
 
@@ -1664,26 +1633,17 @@ void MMFilesCollection::open(bool ignoreErrors) {
   // routine can be invoked from any other place, e.g. from an AQL query
   trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
 
-  // build the primary index
-  double startIterate = TRI_microtime();
+  {
+    PerformanceLogScope logScope(std::string("iterate-markers { collection: ") + vocbase->name() + "/" + _logicalCollection->name() + " }");
+    // iterate over all markers of the collection
+    res = iterateMarkersOnLoad(&trx);
 
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "iterate-markers { collection: " << vocbase->name() << "/" << _logicalCollection->name()
-      << " }";
-
-  // iterate over all markers of the collection
-  res = iterateMarkersOnLoad(&trx);
-
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "[timer] " << Logger::FIXED(TRI_microtime() - startIterate)
-      << " s, iterate-markers { collection: " << vocbase->name() << "/"
-      << _logicalCollection->name() << " }";
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        res,
-        std::string("cannot iterate data of document collection: ") +
-            TRI_errno_string(res));
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          res,
+          std::string("cannot iterate data of document collection: ") +
+              TRI_errno_string(res));
+    }
   }
 
   // build the indexes meta-data, but do not fill the indexes yet
@@ -1720,11 +1680,6 @@ void MMFilesCollection::open(bool ignoreErrors) {
     // build the index structures, and fill the indexes
     fillIndexes(&trx, *(_logicalCollection->indexList()));
   }
-
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-      << " s, open-document-collection { collection: " << vocbase->name()
-      << "/" << _logicalCollection->name() << " }";
 
   // successfully opened collection. now adjust version number
   if (_logicalCollection->version() != LogicalCollection::VERSION_31 && !_revisionError &&
