@@ -58,7 +58,8 @@ Agent::Agent(config_t const& config)
     _inception(std::make_unique<Inception>(this)),
     _activator(nullptr),
     _compactor(this),
-    _ready(false) {
+    _ready(false),
+    _preparing(false) {
   _state.configure(this);
   _constituent.configure(this);
 }
@@ -156,7 +157,7 @@ std::string Agent::leaderID() const {
 
 /// Are we leading?
 bool Agent::leading() const {
-  return _constituent.leading();
+  return _preparing || _constituent.leading();
 }
 
 /// Start constituent personality
@@ -354,12 +355,6 @@ void Agent::sendAppendEntriesRPC() {
 
       std::vector<log_t> unconfirmed = _state.get(last_confirmed);
 
-      if (unconfirmed.empty()) {
-        // this can only happen if the log is totally empty (I think, Max)
-        // and so it is OK, to skip the time check here
-        continue;
-      }
-
       index_t highest = unconfirmed.back().index;
 
       // _lastSent, _lastHighest: local and single threaded access
@@ -381,7 +376,8 @@ void Agent::sendAppendEntriesRPC() {
       // Body
       Builder builder;
       builder.add(VPackValue(VPackValueType::Array));
-      if ((system_clock::now() - _earliestPackage[followerId]).count() > 0) {
+      if (!_preparing &&
+          ((system_clock::now() - _earliestPackage[followerId]).count() > 0)) {
         for (size_t i = 1; i < unconfirmed.size(); ++i) {
           auto const& entry = unconfirmed.at(i);
           builder.add(VPackValue(VPackValueType::Object));
@@ -1004,6 +1000,7 @@ void Agent::beginShutdown() {
 
 void Agent::prepareLead() {
 
+  _preparing = true;
   // Key value stores
   rebuildDBs();
   
@@ -1024,8 +1021,10 @@ void Agent::lead() {
   // Wake up run
   {
     CONDITION_LOCKER(guard, _appendCV);
+    _preparing = false;
     guard.broadcast();
   }
+
 
   // Agency configuration
   term_t myterm;
@@ -1173,7 +1172,7 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
 
   // Apply logs from last applied index to leader's commit index
   LOG_TOPIC(DEBUG, Logger::AGENCY)
-    << "Rebuilding kvstores from index "
+    << "Rebuilding key-value stores from index "
     << _lastAppliedIndex << " to " << _leaderCommitIndex;
   
   _spearhead.apply(
@@ -1184,12 +1183,12 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
     _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1),
     _leaderCommitIndex, _constituent.term());
 
-  _compacted.apply(
-    _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1),
-    _leaderCommitIndex, _constituent.term());
+  /*_compacted.apply(
+    _state.slices(_lastCompactionIndex+1, _leaderCommitIndex+1),
+    _leaderCommitIndex, _constituent.term());*/
 
   _lastAppliedIndex = _leaderCommitIndex;
-  _lastCompactionIndex = _leaderCommitIndex;
+  //_lastCompactionIndex = _leaderCommitIndex;
   
   return _lastAppliedIndex;
 
