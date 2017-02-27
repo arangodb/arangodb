@@ -50,7 +50,7 @@ uint64_t Manager::MINIMUM_SIZE = 1024 * 1024;
 static constexpr size_t TABLE_LOG_SIZE_ADJUSTMENT = 6;
 static constexpr size_t MIN_TABLE_LOG_SIZE = 3;
 static constexpr size_t MIN_LOG_SIZE = 10;
-static constexpr size_t MIN_CACHE_SIZE = 1024;
+static constexpr uint64_t MIN_CACHE_SIZE = 1024;
 // use 16 for sizeof std::list node -- should be valid for most libraries
 static constexpr uint64_t CACHE_RECORD_OVERHEAD = sizeof(Metadata) + 16;
 // assume at most 16 slots in each stack -- TODO: check validity
@@ -500,7 +500,7 @@ uint64_t Manager::resizeAllCaches(Manager::TaskEnvironment environment,
           (noTasks ? std::max(metadata->usage(), metadata->hardLimit() / 2)
                    : std::min(metadata->usage(), metadata->hardLimit() / 2));
     }
-    newLimit = std::max(newLimit, MIN_CACHE_SIZE);
+    newLimit = (std::max)(newLimit, MIN_CACHE_SIZE);
 
     reclaimed += metadata->hardLimit() - newLimit;
     resizeCache(environment, metadata, newLimit);  // unlocks cache

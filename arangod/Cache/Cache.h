@@ -151,6 +151,8 @@ class Cache {
   Cache(Manager* manager, uint64_t requestedLimit, bool allowGrowth,
         std::function<void(Cache*)> deleter);
 
+  virtual ~Cache() = default;
+
   bool isOperational() const;
   void startOperation();
   void endOperation();
