@@ -32,7 +32,9 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include <regex>
 #include <boost/property_tree/detail/xml_parser_utils.hpp>
+#include <boost/algorithm/string.hpp>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -47,6 +49,8 @@ ExportFeature::ExportFeature(application_features::ApplicationServer* server,
       _graphName(),
       _xgmmlLabelAttribute("label"),
       _typeExport("json"),
+      _csvFieldOptions(),
+      _csvFields(),
       _xgmmlLabelOnly(false),
       _outputDirectory(),
       _overwrite(false),
@@ -92,7 +96,10 @@ void ExportFeature::collectOptions(
   options->addOption("--progress", "show progress",
                      new BooleanParameter(&_progress));
 
-  std::unordered_set<std::string> exports = {"json", "jsonl", "xgmml", "xml"};
+  options->addOption("--fields", "comma separated list of fileds to export into a csv file",
+                     new StringParameter(&_csvFieldOptions));
+
+  std::unordered_set<std::string> exports = {"csv", "json", "jsonl", "xgmml", "xml"};
   options->addOption(
       "--type", "type of export", new DiscreteValuesParameter<StringParameter>(&_typeExport, exports));
 }
@@ -123,9 +130,24 @@ void ExportFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  if (_typeExport == "xgmml" && _graphName.empty() ) {
+  if (_typeExport == "xgmml" && _graphName.empty()) {
     LOG_TOPIC(FATAL, Logger::CONFIG) << "expecting a graph name to dump a graph";
     FATAL_ERROR_EXIT();
+  }
+
+  if ( (_typeExport == "json" || _typeExport == "jsonl" || _typeExport == "csv") &&
+        _collections.empty()) {
+          LOG_TOPIC(FATAL, Logger::CONFIG) << "expecting at least one collection";
+          FATAL_ERROR_EXIT();
+  }
+
+  if (_typeExport == "csv") {
+    if (_csvFieldOptions.empty()) {
+      LOG_TOPIC(FATAL, Logger::CONFIG) << "expecting at least one field definition";
+      FATAL_ERROR_EXIT();
+    }
+
+    boost::split(_csvFields, _csvFieldOptions, boost::is_any_of(","));
   }
 }
 
@@ -209,7 +231,7 @@ void ExportFeature::start() {
 
   uint64_t exportedSize = 0;
 
-  if (_typeExport == "json" || _typeExport == "jsonl" || _typeExport == "xml") {
+  if (_typeExport == "json" || _typeExport == "jsonl" || _typeExport == "xml" || _typeExport == "csv") {
     if (_collections.size()) {
       collectionExport(httpClient.get());
 
@@ -282,12 +304,27 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
     if (_typeExport == "json") {
       std::string openingBracket = "[";
       writeToFile(fd, openingBracket, fileName);
+
     } else if (_typeExport == "xml") {
       std::string xmlHeader = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
                               "<collection name=\"";
       xmlHeader.append(encode_char_entities(collection));
       xmlHeader.append("\">\n");
       writeToFile(fd, xmlHeader, fileName);
+
+    } else if (_typeExport == "csv") {
+      std::string firstLine = "";
+      bool isFirstValue = true;
+      for(auto const& str : _csvFields) {
+        if (isFirstValue) {
+          firstLine += str;
+          isFirstValue = false;
+        } else {
+          firstLine += "," + str;
+        }
+      }
+      firstLine += "\n";
+      writeToFile(fd, firstLine, fileName);
     }
 
     writeCollectionBatch(fd, VPackArrayIterator(body.get("result")), fileName);
@@ -331,6 +368,41 @@ void ExportFeature::writeCollectionBatch(int fd, VPackArrayIterator it, std::str
         _firstLine = false;
       }
       line += doc.toJson();
+      writeToFile(fd, line, fileName);
+    }
+  } else if (_typeExport == "csv") {
+    for (auto const& doc : it) {
+      line.clear();
+      bool isFirstValue = true;
+
+      for(auto const& key : _csvFields) {
+        std::string value = "";
+
+        if (isFirstValue) {
+          isFirstValue = false;
+        } else {
+          line.append(",");
+        }
+
+        if (doc.hasKey(key)) {
+          VPackSlice val = doc.get(key);
+
+          if (val.isArray() || val.isObject()) {
+            value = val.toJson();
+          } else {
+            if (val.isString()) {
+              value = val.copyString();
+            } else {
+              value = val.toString();
+            }
+          }
+
+          value = std::regex_replace(value, std::regex("\""), "\"\"");
+          value = std::regex_replace(value, std::regex(","), "\",");
+        }
+        line.append(value);
+      }
+      line.append("\n");
       writeToFile(fd, line, fileName);
     }
   } else if (_typeExport == "xml") {
@@ -378,7 +450,7 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClie
       if (_currentGraph.size()) {
         LOG_TOPIC(FATAL, Logger::CONFIG) << "Graph '" << _currentGraph << "' not found.";
       } else if (_currentCollection.size()) {
-        LOG_TOPIC(FATAL, Logger::CONFIG) << "Collection " << _currentCollection << "not found.";
+        LOG_TOPIC(FATAL, Logger::CONFIG) << "Collection " << _currentCollection << " not found.";
       }
 
       FATAL_ERROR_EXIT();
