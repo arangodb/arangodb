@@ -38,6 +38,7 @@
 #include "Basics/IndexBucket.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/PerformanceLogScope.h"
 #include "Basics/gcd.h"
 #include "Basics/prime-numbers.h"
 #include "Logger/Logger.h"
@@ -158,21 +159,10 @@ class AssocUnique {
 
     std::string const cb(_contextCallback());
 
-    // only log performance infos for indexes with more than this number of
-    // entries
-    static uint64_t const NotificationSizeThreshold = 131072;
-
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "resizing hash " << cb << ", target size: " << targetSize;
-
-    double start = TRI_microtime();
-    if (targetSize > NotificationSizeThreshold) {
-      LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "hash-resize " << cb
-                                            << ", target size: " << targetSize;
-    }
-
     TRI_ASSERT(targetSize > 0);
-
     targetSize = TRI_NearPrime(targetSize);
+    
+    PerformanceLogScope logScope(std::string("unique hash-resize ") + cb + ", target size: " + std::to_string(targetSize));
 
     Bucket copy;
     copy.allocate(targetSize);
@@ -206,12 +196,6 @@ class AssocUnique {
     }
 
     b = std::move(copy);
-
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "resizing hash " << cb << " done";
-
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-        << " s, hash-resize, " << cb << ", target size: " << targetSize;
   }
 
   //////////////////////////////////////////////////////////////////////////////
