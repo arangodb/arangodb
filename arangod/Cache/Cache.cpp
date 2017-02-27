@@ -264,8 +264,8 @@ bool Cache::reclaimMemory(uint64_t size) {
 }
 
 uint32_t Cache::hashKey(void const* key, uint32_t keySize) const {
-  return std::max(static_cast<uint32_t>(1),
-                  fasthash32(key, keySize, 0xdeadbeefUL));
+  return (std::max)(static_cast<uint32_t>(1),
+                   fasthash32(key, keySize, 0xdeadbeefUL));
 }
 
 void Cache::recordStat(Cache::Stat stat) {

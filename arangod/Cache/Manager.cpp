@@ -494,11 +494,11 @@ uint64_t Manager::resizeAllCaches(Manager::TaskEnvironment environment,
     if (aggressive) {
       newLimit =
           (noTasks ? metadata->usage()
-                   : std::min(metadata->usage(), metadata->hardLimit() / 4));
+                   : (std::min)(metadata->usage(), metadata->hardLimit() / 4));
     } else {
       newLimit =
-          (noTasks ? std::max(metadata->usage(), metadata->hardLimit() / 2)
-                   : std::min(metadata->usage(), metadata->hardLimit() / 2));
+          (noTasks ? (std::max)(metadata->usage(), metadata->hardLimit() / 2)
+                   : (std::min)(metadata->usage(), metadata->hardLimit() / 2));
     }
     newLimit = (std::max)(newLimit, MIN_CACHE_SIZE);
 
