@@ -19,6 +19,8 @@ v3.1.12 (XXXX-XX-XX)
 
 * fixed a race when dropping databases
 
+* fixed a rare race in agency compaction
+
 
 v3.1.11 (2017-02-17)
 --------------------
