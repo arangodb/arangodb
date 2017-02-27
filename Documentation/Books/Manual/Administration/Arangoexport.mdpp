@@ -53,7 +53,7 @@ This exports the collection *test* into the output directory *export* as [jsonl]
 Export CSV
 ----------
 
-    unix> arangoexport --type CSV --collection test --fields _key,_id,_rev
+    unix> arangoexport --type csv --collection test --fields _key,_id,_rev
 
 This exports the collection *test* into the output directory *export* as CSV. The first
 line contains the header with all field names. Each line is one document represented as
