@@ -24,6 +24,7 @@
 #include "MMFilesCollection.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/PerformanceLogScope.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -1144,27 +1145,18 @@ void MMFilesCollection::finishCompaction() {
 
 /// @brief opens an existing collection
 int MMFilesCollection::openWorker(bool ignoreErrors) {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  double start = TRI_microtime();
   auto vocbase = _logicalCollection->vocbase();
-
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "open-collection { collection: " << vocbase->name() << "/" << _logicalCollection->name()
-      << " }";
+  PerformanceLogScope logScope(std::string("open-collection { collection: ") + vocbase->name() + "/" + _logicalCollection->name() + " }");
 
   try {
     // check for journals and datafiles
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
     int res = engine->openCollection(vocbase, _logicalCollection, ignoreErrors);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot open '" << path() << "', check failed";
       return res;
     }
-
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-        << " s, open-collection { collection: " << vocbase->name() << "/"
-        << _logicalCollection->name() << " }";
 
     return TRI_ERROR_NO_ERROR;
   } catch (basics::Exception const& ex) {
@@ -1194,11 +1186,8 @@ void MMFilesCollection::open(bool ignoreErrors) {
       updateCount(count);
     }
   }
-  double start = TRI_microtime();
 
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "open-document-collection { collection: " << vocbase->name() << "/"
-      << _logicalCollection->name() << " }";
+  PerformanceLogScope logScope(std::string("open-document-collection { collection: ") + vocbase->name() + "/" + _logicalCollection->name() + " }");
 
   int res = openWorker(ignoreErrors);
 
@@ -1216,26 +1205,17 @@ void MMFilesCollection::open(bool ignoreErrors) {
   // routine can be invoked from any other place, e.g. from an AQL query
   trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
 
-  // build the primary index
-  double startIterate = TRI_microtime();
+  {
+    PerformanceLogScope logScope(std::string("iterate-markers { collection: ") + vocbase->name() + "/" + _logicalCollection->name() + " }");
+    // iterate over all markers of the collection
+    res = iterateMarkersOnLoad(&trx);
 
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "iterate-markers { collection: " << vocbase->name() << "/" << _logicalCollection->name()
-      << " }";
-
-  // iterate over all markers of the collection
-  res = iterateMarkersOnLoad(&trx);
-
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "[timer] " << Logger::FIXED(TRI_microtime() - startIterate)
-      << " s, iterate-markers { collection: " << vocbase->name() << "/"
-      << _logicalCollection->name() << " }";
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        res,
-        std::string("cannot iterate data of document collection: ") +
-            TRI_errno_string(res));
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          res,
+          std::string("cannot iterate data of document collection: ") +
+              TRI_errno_string(res));
+    }
   }
 
   // build the indexes meta-data, but do not fill the indexes yet
@@ -1272,11 +1252,6 @@ void MMFilesCollection::open(bool ignoreErrors) {
     // build the index structures, and fill the indexes
     _logicalCollection->fillIndexes(&trx, *(_logicalCollection->indexList()));
   }
-
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-      << " s, open-document-collection { collection: " << vocbase->name()
-      << "/" << _logicalCollection->name() << " }";
 
   // successfully opened collection. now adjust version number
   if (_logicalCollection->version() != LogicalCollection::VERSION_31 && !_revisionError &&

@@ -27,6 +27,7 @@
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Basics/LocalTaskQueue.h"
+#include "Basics/PerformanceLogScope.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -1532,27 +1533,17 @@ int LogicalCollection::fillIndexes(
     }
   };
 
-  double start = TRI_microtime();
-
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   auto ioService = SchedulerFeature::SCHEDULER->ioService();
   TRI_ASSERT(ioService != nullptr);
   arangodb::basics::LocalTaskQueue queue(ioService);
-
-  // only log performance infos for indexes with more than this number of
-  // entries
-  static size_t const NotificationSizeThreshold = 131072;
-  auto primaryIndex = this->primaryIndex();
-
-  if (primaryIndex->size() > NotificationSizeThreshold) {
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "fill-indexes-document-collection { collection: " << _vocbase->name()
-        << "/" << name() << " }, indexes: " << (n - 1);
-  }
-
+  
   TRI_ASSERT(n > 0);
+  
+  PerformanceLogScope logScope(std::string("fill-indexes-document-collection { collection: ") + _vocbase->name() + "/" + name() + " }, indexes: " + std::to_string(n - 1));
 
   try {
+    auto primaryIndex = this->primaryIndex();
     TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
     // give the index a size hint
@@ -1653,11 +1644,6 @@ int LogicalCollection::fillIndexes(
     } catch (...) {
     }
   }
-
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-      << " s, fill-indexes-document-collection { collection: "
-      << _vocbase->name() << "/" << name() << " }, indexes: " << (n - 1);
 
   return queue.status();
 }
