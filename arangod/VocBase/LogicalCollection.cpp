@@ -823,15 +823,19 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   }
   result.openObject();
   result.add(VPackValue("parameters"));
-  result.openObject();
-  toVelocyPackInObject(result, true);
-  result.close();
+
+  std::unordered_set<std::string> ignoreKeys{"allowUserKeys", "cid", "count",
+                                             "statusString"
+                                             "version"};
+  VPackBuilder params = toVelocyPackIgnore(ignoreKeys, true);
+  result.add(params.slice());
+
   result.add(VPackValue("indexes"));
   getIndexesVPack(result, false);
   result.close(); // CollectionInfo
 }
 
-void LogicalCollection::toVelocyPack2(VPackBuilder& result, bool translateCids) const {
+void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids) const {
   // We write into an open object
   TRI_ASSERT(result.isOpenObject());
 
@@ -922,7 +926,7 @@ void LogicalCollection::toVelocyPack2(VPackBuilder& result, bool translateCids) 
 VPackBuilder LogicalCollection::toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys, bool translateCids) const {
   VPackBuilder full;
   full.openObject();
-  toVelocyPack2(full, translateCids);
+  toVelocyPack(full, translateCids);
   full.close();
   return VPackCollection::remove(full.slice(), ignoreKeys);
 }
@@ -972,13 +976,6 @@ void LogicalCollection::toVelocyPackInObject(VPackBuilder& result, bool translat
 
   result.add(VPackValue("indexes"));
   getIndexesVPack(result, false);
-}
-
-void LogicalCollection::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
-                                     TRI_voc_tick_t maxTick) {
-  TRI_ASSERT(!builder.isClosed());
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->getCollectionInfo(_vocbase, _cid, builder, includeIndexes, maxTick);
 }
 
 void LogicalCollection::increaseInternalVersion() { ++_internalVersion; }

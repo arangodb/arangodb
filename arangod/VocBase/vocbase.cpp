@@ -783,7 +783,10 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(TRI_voc_tick_t maxTick,
       continue;
     }
 
-    collection->toVelocyPack(*builder, true, maxTick);
+    TRI_ASSERT(!builder->isClosed());
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    engine->getCollectionInfo(collection->vocbase(), collection->cid(),
+                              *(builder.get()), true, maxTick);
   }
 
   builder->close();

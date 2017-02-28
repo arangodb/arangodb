@@ -243,21 +243,14 @@ class LogicalCollection {
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialisation
-  void toVelocyPack2(velocypack::Builder&, bool translateCids) const;
+  void toVelocyPack(velocypack::Builder&, bool translateCids) const;
 
   velocypack::Builder toVelocyPackIgnore(
       std::unordered_set<std::string> const& ignoreKeys,
       bool translateCids) const;
 
-  // void toVelocyPack(velocypack::Builder&, bool withPath) const;
-
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&,
                                                bool useSystem) const;
-  // virtual void toVelocyPackForClusterCollectionInfo(velocypack::Builder&) const;
-
-  /// @brief transform the information for this collection to velocypack
-  ///        The builder has to be an opened Type::Object
-  void toVelocyPack(velocypack::Builder&, bool, TRI_voc_tick_t);
 
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 
