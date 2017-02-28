@@ -39,6 +39,7 @@
     "timezone": "1.0.6",
     "type-is": "1.6.13",
     "underscore": "1.8.3",
-    "vary": "1.1.0"
+    "vary": "1.1.0",
+    "xmldom": "0.1.27"
   }
 }
