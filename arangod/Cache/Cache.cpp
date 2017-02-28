@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <chrono>
 #include <list>
+#include <thread>
 
 using namespace arangodb::cache;
 
@@ -139,6 +140,18 @@ uint64_t Cache::usage() {
   return usage;
 }
 
+void Cache::disableGrowth() {
+  _state.lock();
+  _allowGrowth = false;
+  _state.unlock();
+}
+
+void Cache::enableGrowth() {
+  _state.lock();
+  _allowGrowth = false;
+  _state.unlock();
+}
+
 bool Cache::resize(uint64_t requestedLimit) {
   _state.lock();
   bool allowed = isOperational();
@@ -159,8 +172,22 @@ bool Cache::resize(uint64_t requestedLimit) {
 
     resized = requestResize(requestedLimit, false);
   }
+
   endOperation();
   return resized;
+}
+
+bool Cache::isResizing() {
+  bool resizing = false;
+  _state.lock();
+  if (isOperational()) {
+    _metadata->lock();
+    resizing = _metadata->isSet(State::Flag::resizing);
+    _metadata->unlock();
+    _state.unlock();
+  }
+
+  return resizing;
 }
 
 Cache::Cache(Manager* manager, uint64_t requestedLimit, bool allowGrowth,
@@ -170,7 +197,7 @@ Cache::Cache(Manager* manager, uint64_t requestedLimit, bool allowGrowth,
       _evictionStats(1024),
       _insertionCount(0),
       _manager(manager),
-      _openOperations(),
+      _openOperations(0),
       _migrateRequestTime(std::chrono::steady_clock::now()),
       _resizeRequestTime(std::chrono::steady_clock::now()) {
   try {
@@ -248,7 +275,7 @@ void Cache::requestMigrate(uint32_t requestedLogSize) {
 
 void Cache::freeValue(CachedValue* value) {
   while (value->refCount.load() > 0) {
-    usleep(1);
+    std::this_thread::yield();
   }
 
   delete value;
@@ -265,7 +292,7 @@ bool Cache::reclaimMemory(uint64_t size) {
 
 uint32_t Cache::hashKey(void const* key, uint32_t keySize) const {
   return (std::max)(static_cast<uint32_t>(1),
-                   fasthash32(key, keySize, 0xdeadbeefUL));
+                    fasthash32(key, keySize, 0xdeadbeefUL));
 }
 
 void Cache::recordStat(Cache::Stat stat) {
@@ -292,7 +319,7 @@ void Cache::shutdown() {
 
     while (_openOperations.load() > 0) {
       _state.unlock();
-      usleep(10);
+      std::this_thread::yield();
       _state.lock();
     }
 

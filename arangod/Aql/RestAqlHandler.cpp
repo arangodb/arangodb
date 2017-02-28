@@ -875,7 +875,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
 std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
   try {
     std::shared_ptr<VPackBuilder> body =
-        _request->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+        _request->toVelocyPackBuilderPtr();
     if (body == nullptr) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot parse json object";
       generateError(rest::ResponseCode::BAD,

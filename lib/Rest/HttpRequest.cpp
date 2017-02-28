@@ -546,25 +546,23 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
   TRI_ASSERT(key != nullptr);
   TRI_ASSERT(value != nullptr);
 
-  if (keyLength == 14 &&
-      memcmp(key, "content-length", keyLength) ==
+  if (keyLength == StaticStrings::ContentLength.size() &&
+      memcmp(key, StaticStrings::ContentLength.c_str(), keyLength) ==
           0) {  // 14 = strlen("content-length")
     _contentLength = StringUtils::int64(value, valueLength);
     // do not store this header
     return;
   }
 
-  if (keyLength == 6 && memcmp(key, "accept", keyLength) == 0) {
-    if (valueLength == std::strlen("application/x-velocypack") &&
-        memcmp(value, "application/x-velocypack", valueLength) == 0) {
-      _contentTypeResponse = ContentType::VPACK;
-      return;
-    }
-  }
-
-  if (keyLength == 12 && valueLength == 24 &&
-      memcmp(key, "content-type", keyLength) == 0 &&
-      memcmp(value, "application/x-velocypack", valueLength) == 0) {
+  if (keyLength == StaticStrings::Accept.size() && 
+      valueLength == StaticStrings::MimeTypeVPack.size() &&
+      memcmp(key, StaticStrings::Accept.c_str(), keyLength) == 0 &&
+      memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
+    _contentTypeResponse = ContentType::VPACK;
+  } else if (keyLength == StaticStrings::ContentTypeHeader.size() && 
+      valueLength == StaticStrings::MimeTypeVPack.size() &&
+      memcmp(key, StaticStrings::ContentTypeHeader.c_str(), keyLength) == 0 &&
+      memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
     _contentType = ContentType::VPACK;
     return;
   }

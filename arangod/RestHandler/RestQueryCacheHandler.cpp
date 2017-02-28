@@ -103,7 +103,7 @@ bool RestQueryCacheHandler::replaceProperties() {
   }
   bool validBody = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, validBody);
+      parseVelocyPackBody(validBody);
 
   if (!validBody) {
     // error message generated in parseJsonBody

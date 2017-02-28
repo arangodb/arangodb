@@ -116,11 +116,10 @@ bool PlainCache::remove(void const* key, uint32_t keySize) {
   std::tie(ok, bucket) = getBucket(hash, TRIES_SLOW);
 
   if (ok) {
-    int64_t change = 0;
     CachedValue* candidate = bucket->remove(hash, key, keySize);
 
     if (candidate != nullptr) {
-      change -= candidate->size();
+      int64_t change = -static_cast<int64_t>(candidate->size());
 
       _metadata->lock();
       bool allowed = _metadata->adjustUsageIfAllowed(change);
@@ -158,6 +157,11 @@ PlainCache::PlainCache(Manager* manager, uint64_t requestedLimit,
                        bool allowGrowth)
     : Cache(manager, requestedLimit, allowGrowth,
             [](Cache* p) -> void { delete reinterpret_cast<PlainCache*>(p); }),
+      _table(nullptr),
+      _logSize(0),
+      _tableSize(1),
+      _maskShift(32),
+      _bucketMask(0),
       _auxiliaryTable(nullptr),
       _auxiliaryLogSize(0),
       _auxiliaryTableSize(1),
@@ -168,7 +172,7 @@ PlainCache::PlainCache(Manager* manager, uint64_t requestedLimit,
     _metadata->lock();
     _table = reinterpret_cast<PlainBucket*>(_metadata->table());
     _logSize = _metadata->logSize();
-    _tableSize = (1 << _logSize);
+    _tableSize = (1ULL << _logSize);
     _maskShift = 32 - _logSize;
     _bucketMask = (_tableSize - 1) << _maskShift;
     _metadata->unlock();
@@ -197,6 +201,7 @@ bool PlainCache::freeMemory() {
   _state.unlock();
 
   bool underLimit = reclaimMemory(0ULL);
+  uint64_t failures = 0;
   while (!underLimit) {
     // pick a random bucket
     uint32_t randomHash = RandomGenerator::interval(UINT32_MAX);
@@ -205,6 +210,7 @@ bool PlainCache::freeMemory() {
     std::tie(ok, bucket) = getBucket(randomHash, TRIES_FAST, false);
 
     if (ok) {
+      failures = 0;
       // evict LRU freeable value if exists
       CachedValue* candidate = bucket->evictionCandidate();
 
@@ -217,6 +223,19 @@ bool PlainCache::freeMemory() {
       }
 
       bucket->unlock();
+    } else {
+      failures++;
+      if (failures > 100) {
+        _state.lock();
+        bool shouldQuit = !isOperational();
+        _state.unlock();
+
+        if (shouldQuit) {
+          break;
+        } else {
+          failures = 0;
+        }
+      }
     }
   }
 
@@ -240,7 +259,7 @@ bool PlainCache::migrate() {
   }
   _auxiliaryTable = reinterpret_cast<PlainBucket*>(_metadata->auxiliaryTable());
   _auxiliaryLogSize = _metadata->auxiliaryLogSize();
-  _auxiliaryTableSize = (1 << _auxiliaryLogSize);
+  _auxiliaryTableSize = (1ULL << _auxiliaryLogSize);
   _auxiliaryMaskShift = (32 - _auxiliaryLogSize);
   _auxiliaryBucketMask = (_auxiliaryTableSize - 1) << _auxiliaryMaskShift;
   _metadata->unlock();
@@ -278,14 +297,23 @@ bool PlainCache::migrate() {
         uint32_t targetIndex =
             (hash & _auxiliaryBucketMask) >> _auxiliaryMaskShift;
         PlainBucket* targetBucket = &(_auxiliaryTable[targetIndex]);
+        bool haveSpace = true;
         if (targetBucket->isFull()) {
           CachedValue* candidate = targetBucket->evictionCandidate();
-          targetBucket->evict(candidate, true);
-          uint64_t size = candidate->size();
-          freeValue(candidate);
-          reclaimMemory(size);
+          if (candidate != nullptr) {
+            targetBucket->evict(candidate, true);
+            uint64_t size = candidate->size();
+            freeValue(candidate);
+            reclaimMemory(size);
+          } else {
+            haveSpace = false;
+          }
         }
-        targetBucket->insert(hash, value);
+        if (haveSpace) {
+          targetBucket->insert(hash, value);
+        } else {
+          freeValue(value);
+        }
 
         (*bucket)._cachedHashes[k] = 0;
         (*bucket)._cachedData[k] = nullptr;
@@ -346,10 +374,10 @@ std::pair<bool, PlainBucket*> PlainCache::getBucket(uint32_t hash,
                                                     int64_t maxTries,
                                                     bool singleOperation) {
   PlainBucket* bucket = nullptr;
-  bool started = false;
 
   bool ok = _state.lock(maxTries);
   if (ok) {
+    bool started = false;
     ok = isOperational();
     if (ok) {
       if (singleOperation) {

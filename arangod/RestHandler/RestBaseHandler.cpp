@@ -47,11 +47,10 @@ RestBaseHandler::RestBaseHandler(GeneralRequest* request,
 /// @brief parses the body as VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> RestBaseHandler::parseVelocyPackBody(
-    VPackOptions const* options, bool& success) {
+std::shared_ptr<VPackBuilder> RestBaseHandler::parseVelocyPackBody(bool& success) {
   try {
     success = true;
-    return _request->toVelocyPackBuilderPtr(options);
+    return _request->toVelocyPackBuilderPtr();
   } catch (VPackException const& e) {
     std::string errmsg("VPackError error: ");
     errmsg.append(e.what());

@@ -704,6 +704,12 @@ void TRI_vocbase_t::shutdown() {
   // this will signal the cleanup thread to do one last iteration
   setState(TRI_vocbase_t::State::SHUTDOWN_CLEANUP);
 
+  {
+    WRITE_LOCKER(readLocker, _collectionsLock);
+    _collectionsByName.clear();
+    _collectionsById.clear();
+  }
+
   // free dead collections (already dropped but pointers still around)
   for (auto& collection : _deadCollections) {
     delete collection;

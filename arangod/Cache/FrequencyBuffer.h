@@ -65,7 +65,7 @@ class FrequencyBuffer {
     size_t i = 0;
     for (; (1ULL << i) < capacity; i++) {
     }
-    _capacity = (1 << i);
+    _capacity = (1ULL << i);
     _mask = _capacity - 1;
     _buffer.reset(new T[_capacity]());
   }

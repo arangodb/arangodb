@@ -422,7 +422,6 @@ void Manager::internalResize(uint64_t newGlobalLimit, bool firstAttempt) {
   TRI_ASSERT(_state.isLocked());
   bool done = false;
   std::shared_ptr<PriorityList> cacheList(nullptr);
-  uint64_t reclaimed = 0;
 
   if (firstAttempt) {
     _resizeAttempt = 0;
@@ -434,7 +433,9 @@ void Manager::internalResize(uint64_t newGlobalLimit, bool firstAttempt) {
   }
 
   // if limit is safe, just set it
-  done = adjustGlobalLimitsIfAllowed(newGlobalLimit);
+  if (!done) {
+    done = adjustGlobalLimitsIfAllowed(newGlobalLimit);
+  }
 
   // see if we can free enough from unused tables
   if (!done) {
@@ -451,8 +452,8 @@ void Manager::internalResize(uint64_t newGlobalLimit, bool firstAttempt) {
     cacheList = priorityList();
 
     // first just adjust limits down to usage
-    reclaimed = resizeAllCaches(TaskEnvironment::resizing, cacheList, true,
-                                true, _globalAllocation - _globalSoftLimit);
+    uint64_t reclaimed = resizeAllCaches(TaskEnvironment::resizing, cacheList, true,
+                                         true, _globalAllocation - _globalSoftLimit);
     _globalAllocation -= reclaimed;
     done = adjustGlobalLimitsIfAllowed(newGlobalLimit);
   }
@@ -461,11 +462,11 @@ void Manager::internalResize(uint64_t newGlobalLimit, bool firstAttempt) {
   // by allowing use of background tasks to actually free memory from caches
   if (!done) {
     if ((_resizeAttempt % 2) == 0) {
-      reclaimed = resizeAllCaches(TaskEnvironment::resizing, cacheList, false,
-                                  true, _globalAllocation - _globalSoftLimit);
+      resizeAllCaches(TaskEnvironment::resizing, cacheList, false, true,
+                      _globalAllocation - _globalSoftLimit);
     } else {
-      reclaimed = migrateAllCaches(TaskEnvironment::resizing, cacheList,
-                                   _globalAllocation - _globalSoftLimit);
+      migrateAllCaches(TaskEnvironment::resizing, cacheList,
+                       _globalAllocation - _globalSoftLimit);
     }
   }
 

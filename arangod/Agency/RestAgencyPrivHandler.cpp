@@ -86,7 +86,6 @@ RestStatus RestAgencyPrivHandler::execute() {
     result.add(VPackValue(VPackValueType::Object));
     result.add("id", VPackValue(_agent->id()));
     result.add("endpoint", VPackValue(_agent->endpoint()));
-    arangodb::velocypack::Options opts;
 
     auto const& suffixes = _request->suffixes();
 
@@ -109,7 +108,7 @@ RestStatus RestAgencyPrivHandler::execute() {
             readValue("leaderCommit", leaderCommit)) {  // found all values
           bool ret = _agent->recvAppendEntriesRPC(
               term, id, prevLogIndex, prevLogTerm, leaderCommit,
-              _request->toVelocyPackBuilderPtr(&opts));
+              _request->toVelocyPackBuilderPtr());
           result.add("success", VPackValue(ret));
         } else {
           return reportBadQuery();  // bad query
@@ -129,7 +128,7 @@ RestStatus RestAgencyPrivHandler::execute() {
         }
         if (readValue("term", term) && readValue("agencyId", id)) {
           priv_rpc_ret_t ret = _agent->requestVote(
-              term, id, 0, 0, _request->toVelocyPackBuilderPtr(&opts));
+              term, id, 0, 0, _request->toVelocyPackBuilderPtr());
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         } else {
@@ -139,10 +138,9 @@ RestStatus RestAgencyPrivHandler::execute() {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
-        arangodb::velocypack::Options options;
         query_t everything;
         try {
-          everything = _request->toVelocyPackBuilderPtr(&options);
+          everything = _request->toVelocyPackBuilderPtr();
         } catch (std::exception const& e) {
           LOG_TOPIC(ERR, Logger::AGENCY)
             << "Failure getting activation body:" <<  e.what();
@@ -160,8 +158,7 @@ RestStatus RestAgencyPrivHandler::execute() {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
-        arangodb::velocypack::Options options;
-        query_t query = _request->toVelocyPackBuilderPtr(&options);
+        query_t query = _request->toVelocyPackBuilderPtr();
         try {
           query_t ret = _agent->gossip(query);
           result.add("pool", ret->slice().get("pool"));
@@ -172,8 +169,7 @@ RestStatus RestAgencyPrivHandler::execute() {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
-        arangodb::velocypack::Options options;
-        auto query = _request->toVelocyPackBuilderPtr(&options);
+        auto query = _request->toVelocyPackBuilderPtr();
         try {
           _agent->reportMeasurement(query);
         } catch (std::exception const& e) {
@@ -188,8 +184,7 @@ RestStatus RestAgencyPrivHandler::execute() {
                      _agent->config().activeAgentsToBuilder()->slice());
         }
       } else if (suffixes[0] == "inform") {
-        arangodb::velocypack::Options options;
-        query_t query = _request->toVelocyPackBuilderPtr(&options);
+        query_t query = _request->toVelocyPackBuilderPtr();
         try {
           _agent->notify(query);
         } catch (std::exception const& e) {

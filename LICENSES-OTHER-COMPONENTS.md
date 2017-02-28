@@ -263,16 +263,21 @@
 * GitHub: https://github.com/jshttp/type-is
 * License: [MIT License](https://github.com/jshttp/type-is/blob/master/LICENSE)
 
-#### vary
-
-* GitHub: https://github.com/jshttp/vary
-* License: [MIT License](https://github.com/jshttp/vary/blob/master/LICENSE)
-
 #### underscore
 
 * Project Home: http://underscorejs.org
 * GitHub: https://github.com/jashkenas/underscore
 * License: [MIT-style License](https://github.com/jashkenas/underscore/blob/master/LICENSE)
+
+#### vary
+
+* GitHub: https://github.com/jshttp/vary
+* License: [MIT License](https://github.com/jshttp/vary/blob/master/LICENSE)
+
+#### xmldom
+
+* GitHub: https://github.com/jindw/xmldom
+* License: [MIT License](https://github.com/jindw/xmldom/blob/master/LICENSE)
 
 ### Frontend libraries
 

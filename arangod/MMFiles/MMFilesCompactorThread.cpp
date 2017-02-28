@@ -894,7 +894,7 @@ void MMFilesCompactorThread::run() {
               auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
               TRI_ASSERT(physical != nullptr);
 
-              TryCompactionLocker compactionLocker(physical);
+              MMFilesTryCompactionLocker compactionLocker(physical);
 
               if (!compactionLocker.isLocked()) {
                 // someone else is holding the compactor lock, we'll not compact
