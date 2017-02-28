@@ -32,8 +32,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/StandaloneContext.h"
+#include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Traverser.h"
 

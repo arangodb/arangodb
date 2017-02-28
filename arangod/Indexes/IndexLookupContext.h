@@ -48,7 +48,7 @@ class IndexLookupContext {
 
   uint8_t const* lookup(DocumentIdentifierToken token) {
     try {
-      if (_collection->readDocument(_trx, *_result, token)) {
+      if (_collection->readDocument(_trx, token, *_result)) {
         return _result->vpack();
       } 
     } catch (...) {

@@ -31,12 +31,14 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/ticks.h"
 #include "V8Server/v8-vocbaseprivate.h"
 
@@ -598,15 +600,18 @@ static void JS_GetCollectionInfoClusterInfo(
   result->Set(TRI_V8_ASCII_STRING("deleted"),
               v8::Boolean::New(isolate, ci->deleted()));
   result->Set(TRI_V8_ASCII_STRING("doCompact"),
-              v8::Boolean::New(isolate, ci->doCompact()));
+              v8::Boolean::New(isolate, ci->getPhysical()->doCompact()));
   result->Set(TRI_V8_ASCII_STRING("isSystem"),
               v8::Boolean::New(isolate, ci->isSystem()));
-  result->Set(TRI_V8_ASCII_STRING("isVolatile"),
-              v8::Boolean::New(isolate, ci->isVolatile()));
+  result->Set(
+      TRI_V8_ASCII_STRING("isVolatile"),
+      v8::Boolean::New(
+          isolate,
+          static_cast<MMFilesCollection*>(ci->getPhysical())->isVolatile()));
   result->Set(TRI_V8_ASCII_STRING("waitForSync"),
               v8::Boolean::New(isolate, ci->waitForSync()));
   result->Set(TRI_V8_ASCII_STRING("journalSize"),
-              v8::Number::New(isolate, static_cast<double>(ci->journalSize())));
+              v8::Number::New(isolate, static_cast<double>(ci->getPhysical()->journalSize())));
   result->Set(TRI_V8_ASCII_STRING("replicationFactor"),
               v8::Number::New(isolate, ci->replicationFactor()));
   result->Set(TRI_V8_ASCII_STRING("isSmart"),

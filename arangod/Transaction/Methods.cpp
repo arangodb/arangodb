@@ -39,9 +39,7 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesPrimaryIndex.h"
-#include "MMFiles/MMFilesIndexElement.h"
+#include "MMFiles/MMFilesLogfileManager.h" //TODO -- remove -- waitForTick 
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -52,8 +50,7 @@
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/TransactionContext.h"
-#include "VocBase/Ditch.h"
+#include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
@@ -532,17 +529,8 @@ bool transaction::Methods::findIndexHandleForAndNode(
   return true;
 }
 
-
-/// @brief if this pointer is set to an actual set, then for each request
-/// sent to a shardId using the ClusterComm library, an X-Arango-Nolock
-/// header is generated.
-thread_local std::unordered_set<std::string>* transaction::Methods::_makeNolockHeaders =
-    nullptr;
-  
-      
-transaction::Methods::Methods(std::shared_ptr<TransactionContext> transactionContext)
-    : _hints(),
-      _state(nullptr),
+transaction::Methods::Methods(std::shared_ptr<transaction::Context> transactionContext)
+    : _state(nullptr),
       _transactionContext(transactionContext),
       _transactionContextPtr(transactionContext.get()) {
   TRI_ASSERT(_transactionContextPtr != nullptr);
@@ -606,14 +594,10 @@ TransactionCollection* transaction::Methods::trxCollection(TRI_voc_cid_t cid) co
 }
 
 /// @brief order a ditch for a collection
-void transaction::Methods::orderDitch(TRI_voc_cid_t cid) {
+void transaction::Methods::pinData(TRI_voc_cid_t cid) {
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING ||
              _state->status() == transaction::Status::CREATED);
-
-  if (_ditchCache.cid == cid) {
-    return;
-  }
 
   TransactionCollection* trxCollection = _state->collection(cid, AccessMode::Type::READ);
 
@@ -623,19 +607,12 @@ void transaction::Methods::orderDitch(TRI_voc_cid_t cid) {
 
   TRI_ASSERT(trxCollection->collection() != nullptr);
 
-  DocumentDitch* ditch = _transactionContextPtr->orderDitch(trxCollection->collection());
-
-  if (ditch == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  _ditchCache.cid = cid;
-  _ditchCache.ditch = ditch;
+  _transactionContextPtr->pinData(trxCollection->collection());
 }
   
 /// @brief whether or not a ditch has been created for the collection
-bool transaction::Methods::hasDitch(TRI_voc_cid_t cid) const {
-  return (_transactionContextPtr->ditch(cid) != nullptr);
+bool transaction::Methods::isPinned(TRI_voc_cid_t cid) const {
+  return _transactionContextPtr->isPinned(cid);
 }
 
 /// @brief extract the _id attribute from a slice, and convert it into a 
@@ -742,7 +719,7 @@ int transaction::Methods::begin() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return _state->beginTransaction(_hints, _state->nestingLevel());
+  return _state->beginTransaction(_localHints);
 }
   
 /// @brief commit / finish the transaction
@@ -759,7 +736,7 @@ int transaction::Methods::commit() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return _state->commitTransaction(this, _state->nestingLevel());
+  return _state->commitTransaction(this);
 }
   
 /// @brief abort the transaction
@@ -777,7 +754,7 @@ int transaction::Methods::abort() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return _state->abortTransaction(this, _state->nestingLevel());
+  return _state->abortTransaction(this);
 }
   
 /// @brief finish a transaction (commit or abort), based on the previous state
@@ -831,7 +808,7 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
     throwCollectionNotFound(collectionName.c_str());
   }
  
-  orderDitch(cid); // will throw when it fails 
+  pinData(cid); // will throw when it fails 
   
   int res = lock(trxCollection(cid), AccessMode::Type::READ);
 
@@ -850,7 +827,7 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
 
   LogicalCollection* collection = cursor->collection();
   auto cb = [&] (DocumentIdentifierToken const& token) {
-    if (collection->readDocument(this, mmdr, token)) {
+    if (collection->readDocument(this, token, mmdr)) {
       uint8_t const* vpack = mmdr.vpack();
       resultBuilder.add(VPackSlice(vpack));
     }
@@ -945,24 +922,23 @@ void transaction::Methods::invokeOnAllElements(std::string const& collectionName
   if (_state->isCoordinator()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
-  
+
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TransactionCollection* trxCol = trxCollection(cid);
-  LogicalCollection* document = documentCollection(trxCol);
+  LogicalCollection* logical = documentCollection(trxCol);
 
-  orderDitch(cid); // will throw when it fails
+  pinData(cid); // will throw when it fails
 
   int res = lock(trxCol, AccessMode::Type::READ);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  auto primaryIndex = document->primaryIndex();
-  primaryIndex->invokeOnAllElements(callback);
-  
+  logical->invokeOnAllElements(callback);
+
   res = unlock(trxCol, AccessMode::Type::READ);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1000,7 +976,7 @@ int transaction::Methods::documentFastPath(std::string const& collectionName,
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
-  orderDitch(cid); // will throw when it fails
+  pinData(cid); // will throw when it fails
 
   StringRef key(transaction::helpers::extractKeyPart(value));
   if (key.empty()) {
@@ -1022,7 +998,7 @@ int transaction::Methods::documentFastPath(std::string const& collectionName,
     return res;
   }
   
-  TRI_ASSERT(hasDitch(cid));
+  TRI_ASSERT(isPinned(cid));
 
   uint8_t const* vpack = mmdr->vpack();
   TRI_ASSERT(vpack != nullptr);
@@ -1044,7 +1020,7 @@ int transaction::Methods::documentFastPathLocal(std::string const& collectionNam
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
-  orderDitch(cid);  // will throw when it fails
+  pinData(cid);  // will throw when it fails
 
   if (key.empty()) {
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
@@ -1056,7 +1032,7 @@ int transaction::Methods::documentFastPathLocal(std::string const& collectionNam
     return res;
   }
     
-  TRI_ASSERT(hasDitch(cid));
+  TRI_ASSERT(isPinned(cid));
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1212,7 +1188,7 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   if (!options.silent) {
-    orderDitch(cid); // will throw when it fails
+    pinData(cid); // will throw when it fails
   }
  
   VPackBuilder resultBuilder;
@@ -1242,7 +1218,7 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
       return res;
     }
   
-    TRI_ASSERT(hasDitch(cid));
+    TRI_ASSERT(isPinned(cid));
 
     uint8_t const* vpack = result.vpack();
   
@@ -1370,7 +1346,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   if (options.returnNew) {
-    orderDitch(cid); // will throw when it fails 
+    pinData(cid); // will throw when it fails 
   }
 
   VPackBuilder resultBuilder;
@@ -1664,7 +1640,7 @@ OperationResult transaction::Methods::modifyLocal(
   LogicalCollection* collection = documentCollection(trxCollection(cid));
   
   if (options.returnOld || options.returnNew) {
-    orderDitch(cid); // will throw when it fails 
+    pinData(cid); // will throw when it fails 
   }
 
   // Update/replace are a read and a write, let's get the write lock already
@@ -1918,7 +1894,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
   LogicalCollection* collection = documentCollection(trxCollection(cid));
   
   if (options.returnOld) {
-    orderDitch(cid); // will throw when it fails 
+    pinData(cid); // will throw when it fails 
   }
  
   VPackBuilder resultBuilder;
@@ -2131,7 +2107,7 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
                                       OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   
-  orderDitch(cid); // will throw when it fails
+  pinData(cid); // will throw when it fails
   
   int res = lock(trxCollection(cid), AccessMode::Type::READ);
 
@@ -2154,7 +2130,7 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
 
   LogicalCollection* collection = cursor->collection();
   auto cb = [&] (DocumentIdentifierToken const& token) {
-    if (collection->readDocument(this, mmdr, token)) {
+    if (collection->readDocument(this, token, mmdr)) {
       uint8_t const* vpack = mmdr.vpack();
       resultBuilder.add(VPackSlice(vpack));
     }
@@ -2209,7 +2185,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
                                            OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   
-  orderDitch(cid); // will throw when it fails
+  pinData(cid); // will throw when it fails
   
   int res = lock(trxCollection(cid), AccessMode::Type::WRITE);
 
@@ -2567,35 +2543,19 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
   }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  LogicalCollection* document = documentCollection(trxCollection(cid));
+  LogicalCollection* logical = documentCollection(trxCollection(cid));
   
-  orderDitch(cid); // will throw when it fails 
+  pinData(cid); // will throw when it fails 
 
-  std::unique_ptr<IndexIterator> iterator;
+  std::unique_ptr<IndexIterator> iterator = nullptr;
 
   switch (cursorType) {
     case CursorType::ANY: {
-      arangodb::MMFilesPrimaryIndex* idx = document->primaryIndex();
-
-      if (idx == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-            "Could not find primary index in collection '" + collectionName + "'.");
-      }
-
-      iterator.reset(idx->anyIterator(this, mmdr));
+      iterator = logical->getAnyIterator(this, mmdr);
       break;
     }
     case CursorType::ALL: {
-      arangodb::MMFilesPrimaryIndex* idx = document->primaryIndex();
-
-      if (idx == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-            "Could not find primary index in collection '" + collectionName + "'.");
-      }
-
-      iterator.reset(idx->allIterator(this, mmdr, reverse));
+      iterator = logical->getAllIterator(this, mmdr, reverse);
       break;
     }
   }

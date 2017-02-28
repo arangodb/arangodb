@@ -44,7 +44,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 

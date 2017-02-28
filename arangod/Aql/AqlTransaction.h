@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/Collection.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
@@ -38,7 +38,7 @@ class AqlTransaction final : public transaction::Methods {
   /// @brief create the transaction and add all collections from the query
   /// context
   AqlTransaction(
-      std::shared_ptr<TransactionContext> transactionContext, 
+      std::shared_ptr<transaction::Context> transactionContext, 
       std::map<std::string, aql::Collection*> const* collections,
       bool isMainTransaction)
       : transaction::Methods(transactionContext),
@@ -88,7 +88,7 @@ class AqlTransaction final : public transaction::Methods {
   /// distributed
   /// AQL query running on the coordinator
   transaction::Methods* clone() const override {
-    return new AqlTransaction(StandaloneTransactionContext::Create(vocbase()),
+    return new AqlTransaction(transaction::StandaloneContext::Create(vocbase()),
         &_collections, false);
   }
 

@@ -28,7 +28,7 @@
 #include "Basics/encoding.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Context.h"
 
 #include <velocypack/Builder.h>
 
@@ -388,7 +388,7 @@ transaction::StringBufferLeaser::StringBufferLeaser(transaction::Methods* trx)
 }
 
 /// @brief constructor, leases a StringBuffer
-transaction::StringBufferLeaser::StringBufferLeaser(TransactionContext* transactionContext) 
+transaction::StringBufferLeaser::StringBufferLeaser(transaction::Context* transactionContext) 
       : _transactionContext(transactionContext), 
         _stringBuffer(_transactionContext->leaseStringBuffer(32)) {
 }
@@ -406,7 +406,7 @@ transaction::BuilderLeaser::BuilderLeaser(transaction::Methods* trx)
 }
 
 /// @brief constructor, leases a builder
-transaction::BuilderLeaser::BuilderLeaser(TransactionContext* transactionContext) 
+transaction::BuilderLeaser::BuilderLeaser(transaction::Context* transactionContext) 
       : _transactionContext(transactionContext), 
         _builder(_transactionContext->leaseBuilder()) {
   TRI_ASSERT(_builder != nullptr);

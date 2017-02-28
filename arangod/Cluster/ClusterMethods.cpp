@@ -2242,8 +2242,12 @@ ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
   }
   col->setShardMap(shards);
 
-  VPackBuilder velocy;
-  col->toVelocyPackForAgency(velocy);
+  std::unordered_set<std::string> const ignoreKeys{
+      "allowUserKeys", "cid", /* cid really ignore?*/
+      "count",         "planId", "version",
+  };
+  col->setStatus(TRI_VOC_COL_STATUS_LOADED);
+  VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false);
 
   std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(

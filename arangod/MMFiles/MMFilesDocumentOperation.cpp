@@ -157,8 +157,9 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
       }
     }
    
-    // let the primary index entry point to the correct document 
-    MMFilesSimpleIndexElement* element = _collection->primaryIndex()->lookupKeyRef(trx, transaction::helpers::extractKeyFromDocument(newDoc));
+    // let the primary index entry point to the correct document
+    MMFilesSimpleIndexElement* element = physical->primaryIndex()->lookupKeyRef(
+        trx, transaction::helpers::extractKeyFromDocument(newDoc));
     if (element != nullptr && element->revisionId() != 0) {
       VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(oldDoc));
       element->updateRevisionId(oldRevisionId, static_cast<uint32_t>(keySlice.begin() - oldDoc.begin()));

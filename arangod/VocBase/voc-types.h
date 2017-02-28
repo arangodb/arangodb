@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 /// @brief tick type (56bit)
 typedef uint64_t TRI_voc_tick_t;
@@ -97,9 +96,9 @@ enum TRI_edge_direction_e {
 namespace std {
 
 template <>
-struct hash<std::vector<VPackSlice>> {
-  size_t operator()(std::vector<VPackSlice> const& x) const {
-    std::hash<VPackSlice> sliceHash;
+struct hash<std::vector<arangodb::velocypack::Slice>> {
+  size_t operator()(std::vector<arangodb::velocypack::Slice> const& x) const {
+    std::hash<arangodb::velocypack::Slice> sliceHash;
     size_t res = 0xdeadbeef;
     for (auto& el : x) {
       res ^= sliceHash(el);
@@ -121,12 +120,6 @@ struct DocumentDescriptor {
     _vpack = other._vpack;
   }
 
-/*
-  void reset(TRI_voc_rid_t revisionId, uint8_t const* vpack) {
-    _revisionId = revisionId;
-    _vpack = vpack;
-  }
-*/
   void clear() {
     _revisionId = 0;
     _vpack = nullptr;

@@ -29,6 +29,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
@@ -359,7 +360,9 @@ int PersistentIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
       if (uniqueConstraintViolated) {
         // duplicate key
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-        if (!_collection->useSecondaryIndexes()) {
+        auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+        TRI_ASSERT(physical != nullptr);
+        if (!physical->useSecondaryIndexes()) {
           // suppress the error during recovery
           res = TRI_ERROR_NO_ERROR;
         }
@@ -568,7 +571,8 @@ PersistentIndexIterator* PersistentIndex::lookup(transaction::Methods* trx,
   // Secured by trx. The shared_ptr index stays valid in
   // _collection at least as long as trx is running.
   // Same for the iterator
-  auto idx = _collection->primaryIndex();
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  auto idx = physical->primaryIndex();
   return new PersistentIndexIterator(_collection, trx, mmdr, this, idx, _db, reverse, leftBorder, rightBorder);
 }
 

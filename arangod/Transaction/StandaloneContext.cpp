@@ -21,21 +21,20 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "StandaloneTransactionContext.h"
+#include "StandaloneContext.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 
 using namespace arangodb;
 
 /// @brief create the context
-StandaloneTransactionContext::StandaloneTransactionContext(TRI_vocbase_t* vocbase)
-    : TransactionContext(vocbase) {
-}
+transaction::StandaloneContext::StandaloneContext(TRI_vocbase_t* vocbase)
+    : Context(vocbase) {}
 
 /// @brief order a custom type handler for the collection
-std::shared_ptr<VPackCustomTypeHandler> StandaloneTransactionContext::orderCustomTypeHandler() {
+std::shared_ptr<arangodb::velocypack::CustomTypeHandler> transaction::StandaloneContext::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
-    _customTypeHandler.reset(TransactionContext::createCustomTypeHandler(_vocbase, getResolver()));
+    _customTypeHandler.reset(transaction::Context::createCustomTypeHandler(_vocbase, getResolver()));
     _options.customTypeHandler = _customTypeHandler.get();
     _dumpOptions.customTypeHandler = _customTypeHandler.get();
   }
@@ -45,7 +44,7 @@ std::shared_ptr<VPackCustomTypeHandler> StandaloneTransactionContext::orderCusto
 }
 
 /// @brief return the resolver
-CollectionNameResolver const* StandaloneTransactionContext::getResolver() {
+CollectionNameResolver const* transaction::StandaloneContext::getResolver() {
   if (_resolver == nullptr) {
     createResolver();
   }
@@ -54,7 +53,7 @@ CollectionNameResolver const* StandaloneTransactionContext::getResolver() {
 }
 
 /// @brief create a context, returned in a shared ptr
-std::shared_ptr<StandaloneTransactionContext> StandaloneTransactionContext::Create(TRI_vocbase_t* vocbase) {
-  return std::make_shared<StandaloneTransactionContext>(vocbase);
+std::shared_ptr<transaction::StandaloneContext> transaction::StandaloneContext::Create(TRI_vocbase_t* vocbase) {
+  return std::make_shared<transaction::StandaloneContext>(vocbase);
 }
 

@@ -62,7 +62,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/UserTransaction.h"
-#include "Utils/V8TransactionContext.h"
+#include "Transaction/V8Context.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
@@ -361,7 +361,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto transactionContext =
-      std::make_shared<V8TransactionContext>(vocbase, embed);
+      std::make_shared<transaction::V8Context>(vocbase, embed);
 
   // start actual transaction
   UserTransaction trx(transactionContext, readCollections, writeCollections, exclusiveCollections,
@@ -2856,8 +2856,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g->_transactionContext == nullptr);
-  v8g->_transactionContext = new V8TransactionContext(vocbase, true);
-  static_cast<V8TransactionContext*>(v8g->_transactionContext)->makeGlobal();
+  v8g->_transactionContext = new transaction::V8Context(vocbase, true);
+  static_cast<transaction::V8Context*>(v8g->_transactionContext)->makeGlobal();
 
   // register the query registry
   TRI_ASSERT(queryRegistry != nullptr);

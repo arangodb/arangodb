@@ -40,7 +40,7 @@
 #include "Transaction/Hints.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>
@@ -218,8 +218,10 @@ arangodb::LogicalCollection* MMFilesWalRecoverState::useCollection(
     return nullptr;
   }
 
+  auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
   // disable secondary indexes for the moment
-  collection->useSecondaryIndexes(false);
+  physical->useSecondaryIndexes(false);
 
   openedCollections.emplace(collectionId, collection);
   res = TRI_ERROR_NO_ERROR;
@@ -277,7 +279,9 @@ int MMFilesWalRecoverState::executeSingleOperation(
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  TRI_voc_tick_t maxTick = collection->maxTick();
+  auto mmfiles = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(mmfiles);
+  TRI_voc_tick_t maxTick = mmfiles->maxTick();
   if (marker->getTick() <= maxTick) {
     // already transferred this marker
     return TRI_ERROR_NO_ERROR;
@@ -286,7 +290,7 @@ int MMFilesWalRecoverState::executeSingleOperation(
   res = TRI_ERROR_INTERNAL;
 
   try {
-    SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(vocbase), collectionId, AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase), collectionId, AccessMode::Type::WRITE);
 
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
     trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER);
@@ -476,7 +480,9 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
             databaseId, collectionId, marker, datafile->fid(),
             [&](SingleCollectionTransaction* trx,
                 MMFilesMarkerEnvelope* envelope) -> int {
-              if (trx->documentCollection()->isVolatile()) {
+              if (arangodb::MMFilesCollection::toMMFilesCollection(
+                      trx->documentCollection())
+                      ->isVolatile()) {
                 return TRI_ERROR_NO_ERROR;
               }
 
@@ -550,7 +556,10 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
             databaseId, collectionId, marker, datafile->fid(),
             [&](SingleCollectionTransaction* trx,
                 MMFilesMarkerEnvelope* envelope) -> int {
-              if (trx->documentCollection()->isVolatile()) {
+
+              if (arangodb::MMFilesCollection::toMMFilesCollection(
+                      trx->documentCollection())
+                      ->isVolatile()) {
                 return TRI_ERROR_NO_ERROR;
               }
 
@@ -723,12 +732,11 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         // be
         // dropped later
         bool const forceSync = state->willBeDropped(databaseId, collectionId);
-        int res = collection->updateProperties(payloadSlice, forceSync);
-
-        if (res != TRI_ERROR_NO_ERROR) {
+        CollectionResult res = collection->updateProperties(payloadSlice, forceSync);
+        if (res.successful()) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot change collection properties for collection "
                     << collectionId << " in database " << databaseId << ": "
-                    << TRI_errno_string(res);
+                    << res.errorMessage;
           ++state->errorCount;
           return state->canContinue();
         }
@@ -800,10 +808,10 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           return state->canContinue();
         } else {
           arangodb::SingleCollectionTransaction trx(
-              arangodb::StandaloneTransactionContext::Create(vocbase),
+              arangodb::transaction::StandaloneContext::Create(vocbase),
               collectionId, AccessMode::Type::WRITE);
           std::shared_ptr<arangodb::Index> unused;
-          int res = col->restoreIndex(&trx, payloadSlice, unused);
+          int res = physical->restoreIndex(&trx, payloadSlice, unused);
 
           if (res != TRI_ERROR_NO_ERROR) {
             LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create index " << indexId << ", collection "
@@ -1042,7 +1050,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         // ignore any potential error returned by this call
         auto physical = static_cast<MMFilesCollection*>(col->getPhysical());
         TRI_ASSERT(physical != nullptr);
-        col->dropIndex(indexId, false);
+        col->dropIndex(indexId);
 
         PersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
 
@@ -1255,14 +1263,16 @@ int MMFilesWalRecoverState::fillIndexes() {
        ++it) {
     arangodb::LogicalCollection* collection = (*it).second;
 
+    auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+    TRI_ASSERT(physical != nullptr);
     // activate secondary indexes
-    collection->useSecondaryIndexes(true);
+    physical->useSecondaryIndexes(true);
 
     arangodb::SingleCollectionTransaction trx(
-        arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
+        arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
         collection->cid(), AccessMode::Type::WRITE);
 
-    int res = collection->fillIndexes(&trx, *(collection->indexList()));
+    int res = physical->fillAllIndexes(&trx);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;

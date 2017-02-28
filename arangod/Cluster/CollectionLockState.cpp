@@ -18,32 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_GRAPHS_H
-#define ARANGOD_VOCBASE_GRAPHS_H 1
+#include "CollectionLockState.h"
 
-#include "VocBase/vocbase.h"
+using namespace arangodb;
 
-namespace arangodb {
-namespace aql {
-class Graph;
-}
-
-namespace transaction {
-class Context;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get an instance of Graph by Name.
-///  returns nullptr if graph is not existing
-///  The caller has to take care for the memory.
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::aql::Graph* lookupGraphByName(std::shared_ptr<transaction::Context>, std::string const& name);
-
-}  // namespace arangodb
-
-#endif
-
+/// @brief if this pointer is set to an actual set, then for each request
+/// sent to a shardId using the ClusterComm library, an X-Arango-Nolock
+/// header is generated.
+thread_local std::unordered_set<std::string>* CollectionLockState::_noLockHeaders =
+    nullptr;
+  

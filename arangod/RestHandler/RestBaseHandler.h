@@ -29,7 +29,9 @@
 #include "Rest/GeneralResponse.h"
 
 namespace arangodb {
-class TransactionContext;
+namespace transaction {
+class Context;
+}
 
 namespace velocypack {
 class Builder;
@@ -55,7 +57,7 @@ class RestBaseHandler : public rest::RestHandler {
   // generates a result from VelocyPack
   template <typename Payload>
   void generateResult(rest::ResponseCode, Payload&&,
-                      std::shared_ptr<TransactionContext> context);
+                      std::shared_ptr<transaction::Context> context);
 
   // generates an error
   void generateError(rest::ResponseCode, int);

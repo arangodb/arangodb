@@ -30,10 +30,10 @@
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollection.h"
+#include "MMFiles/MMFilesDitch.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CursorRepository.h"
-#include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 
@@ -164,13 +164,14 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
   // loop until done
 
   while (true) {
-    auto ditches = collection->ditches();
+    auto mmfiles = arangodb::MMFilesCollection::toMMFilesCollection(collection);
+    auto ditches = mmfiles->ditches();
 
     TRI_ASSERT(ditches != nullptr);
 
     // check and remove all callback elements at the beginning of the list
-    auto callback = [&](arangodb::Ditch const* ditch) -> bool {
-      if (ditch->type() == arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD) {
+    auto callback = [&](arangodb::MMFilesDitch const* ditch) -> bool {
+      if (ditch->type() == arangodb::MMFilesDitch::TRI_DITCH_COLLECTION_UNLOAD) {
         // check if we can really unload, this is only the case if the
         // collection's WAL markers
         // were fully collected
@@ -214,9 +215,9 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
       if (gotStatus && !isUnloading) {
         popped = false;
         auto unloader =
-            ditches->process(popped, [](arangodb::Ditch const* ditch) -> bool {
+            ditches->process(popped, [](arangodb::MMFilesDitch const* ditch) -> bool {
               return (ditch->type() ==
-                      arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD);
+                      arangodb::MMFilesDitch::TRI_DITCH_COLLECTION_UNLOAD);
             });
         if (popped) {
           // we've changed the list. try with current state in next turn
@@ -226,7 +227,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
         }
       }
   
-      if (!collection->isFullyCollected()) {
+      if (!collection->getPhysical()->isFullyCollected()) {
         bool isDeleted = false;
 
         // if there is still some garbage collection to perform,
@@ -263,17 +264,17 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
     // execute callback, some of the callbacks might delete or unload our collection
     auto const type = ditch->type();
   
-    if (type == arangodb::Ditch::TRI_DITCH_DATAFILE_DROP) {
-      dynamic_cast<arangodb::DropDatafileDitch*>(ditch)->executeCallback();
+    if (type == arangodb::MMFilesDitch::TRI_DITCH_DATAFILE_DROP) {
+      dynamic_cast<arangodb::MMFilesDropDatafileDitch*>(ditch)->executeCallback();
       delete ditch;
       // next iteration
-    } else if (type == arangodb::Ditch::TRI_DITCH_DATAFILE_RENAME) {
-      dynamic_cast<arangodb::RenameDatafileDitch*>(ditch)->executeCallback();
+    } else if (type == arangodb::MMFilesDitch::TRI_DITCH_DATAFILE_RENAME) {
+      dynamic_cast<arangodb::MMFilesRenameDatafileDitch*>(ditch)->executeCallback();
       delete ditch;
       // next iteration
-    } else if (type == arangodb::Ditch::TRI_DITCH_COLLECTION_UNLOAD) {
+    } else if (type == arangodb::MMFilesDitch::TRI_DITCH_COLLECTION_UNLOAD) {
       // collection will be unloaded
-      bool hasUnloaded = dynamic_cast<arangodb::UnloadCollectionDitch*>(ditch)
+      bool hasUnloaded = dynamic_cast<arangodb::MMFilesUnloadCollectionDitch*>(ditch)
                              ->executeCallback();
       delete ditch;
 
@@ -281,9 +282,9 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
         // this has unloaded and freed the collection
         return;
       }
-    } else if (type == arangodb::Ditch::TRI_DITCH_COLLECTION_DROP) {
+    } else if (type == arangodb::MMFilesDitch::TRI_DITCH_COLLECTION_DROP) {
       // collection will be dropped
-      bool hasDropped = dynamic_cast<arangodb::DropCollectionDitch*>(ditch)
+      bool hasDropped = dynamic_cast<arangodb::MMFilesDropCollectionDitch*>(ditch)
                             ->executeCallback();
       delete ditch;
 

@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_COMPACTION_LOCKER_H
-#define ARANGOD_VOCBASE_COMPACTION_LOCKER_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_COMPACTION_LOCKER_H
+#define ARANGOD_MMFILES_MMFILES_COMPACTION_LOCKER_H 1
 
 #include "Basics/Common.h"
 #include "MMFiles/MMFilesCollection.h"

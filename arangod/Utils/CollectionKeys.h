@@ -41,7 +41,7 @@ class Slice;
 }
 
 class CollectionGuard;
-class DocumentDitch;
+class MMFilesDocumentDitch;
 
 typedef TRI_voc_tick_t CollectionKeysId;
 
@@ -115,7 +115,7 @@ class CollectionKeys {
   TRI_vocbase_t* _vocbase;
   std::unique_ptr<arangodb::CollectionGuard> _guard;
   arangodb::LogicalCollection* _collection;
-  arangodb::DocumentDitch* _ditch;
+  arangodb::MMFilesDocumentDitch* _ditch;
   std::string const _name;
   arangodb::CollectionNameResolver _resolver;
   TRI_voc_tick_t _blockerId;

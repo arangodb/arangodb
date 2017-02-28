@@ -21,54 +21,35 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_COLLECTION_EXPORT_H
-#define ARANGOD_UTILS_COLLECTION_EXPORT_H 1
+#ifndef ARANGOD_MMFILES_TRANSACTION_CONTEXT_DATA_H
+#define ARANGOD_MMFILES_TRANSACTION_CONTEXT_DATA_H 1
 
 #include "Basics/Common.h"
-#include "Utils/CollectionNameResolver.h"
-#include "VocBase/ManagedDocumentResult.h"
+#include "Transaction/ContextData.h"
 #include "VocBase/voc-types.h"
-
-struct TRI_vocbase_t;
-
+                                
 namespace arangodb {
-
-class CollectionGuard;
+class LogicalCollection;
 class MMFilesDocumentDitch;
 
-class CollectionExport {
-  friend class ExportCursor;
-
+/// @brief transaction type
+class MMFilesTransactionContextData final : public transaction::ContextData {
  public:
-  struct Restrictions {
-    enum Type { RESTRICTION_NONE, RESTRICTION_INCLUDE, RESTRICTION_EXCLUDE };
+  MMFilesTransactionContextData();
+  ~MMFilesTransactionContextData();
+  
+  /// @brief pin data for the collection
+  void pinData(arangodb::LogicalCollection*) override;
 
-    Restrictions() : fields(), type(RESTRICTION_NONE) {}
-
-    std::unordered_set<std::string> fields;
-    Type type;
-  };
-
- public:
-  CollectionExport(CollectionExport const&) = delete;
-  CollectionExport& operator=(CollectionExport const&) = delete;
-
-  CollectionExport(TRI_vocbase_t*, std::string const&, Restrictions const&);
-
-  ~CollectionExport();
-
- public:
-  void run(uint64_t, size_t);
-
+  /// @brief whether or not the data for the collection is pinned
+  bool isPinned(TRI_voc_cid_t) const override;
+  
  private:
-  std::unique_ptr<arangodb::CollectionGuard> _guard;
-  LogicalCollection* _collection;
-  arangodb::MMFilesDocumentDitch* _ditch;
-  std::string const _name;
-  arangodb::CollectionNameResolver _resolver;
-  Restrictions _restrictions;
-  std::vector<uint8_t const*> _vpack;
+  std::unordered_map<TRI_voc_cid_t, MMFilesDocumentDitch*> _ditches;
+
+  TRI_voc_cid_t _lastPinnedCid;
 };
+
 }
 
 #endif

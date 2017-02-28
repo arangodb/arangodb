@@ -311,8 +311,7 @@ struct TRI_vocbase_t {
 
   /// @brief adds a new collection
   /// caller must hold _collectionsLock in write mode or set doLock
-  arangodb::LogicalCollection* registerCollection(
-      bool doLock, arangodb::velocypack::Slice parameters);
+  void registerCollection(bool doLock, arangodb::LogicalCollection* collection);
 
   /// @brief removes a collection from the global list of collections
   /// This function is called when a collection is dropped.
@@ -320,8 +319,7 @@ struct TRI_vocbase_t {
 
   /// @brief creates a new collection, worker function
   arangodb::LogicalCollection* createCollectionWorker(
-      arangodb::velocypack::Slice parameters, TRI_voc_cid_t& cid,
-      bool writeMarker, VPackBuilder& builder);
+      arangodb::velocypack::Slice parameters, TRI_voc_cid_t& cid);
 
   /// @brief drops a collection, worker function
   int dropCollectionWorker(arangodb::LogicalCollection* collection,
