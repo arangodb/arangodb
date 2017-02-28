@@ -47,7 +47,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -650,7 +650,7 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   }
 
   arangodb::SingleCollectionTransaction trx(
-      arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
+      arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
       collection->cid(), AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);  // already locked by guard above
   trx.addHint(transaction::Hints::Hint::NO_COMPACTION_LOCK);  // already locked above

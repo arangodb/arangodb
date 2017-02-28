@@ -18,32 +18,42 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_GRAPHS_H
-#define ARANGOD_VOCBASE_GRAPHS_H 1
+#ifndef ARANGOD_TRANSACTION_CONTEXT_DATA_H
+#define ARANGOD_TRANSACTION_CONTEXT_DATA_H 1
 
-#include "VocBase/vocbase.h"
+#include "Basics/Common.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace aql {
-class Graph;
-}
+class LogicalCollection;
 
 namespace transaction {
-class Context;
+class ContextData {
+ public:
+  ContextData(ContextData const&) = delete;
+  ContextData& operator=(ContextData const&) = delete;
+
+ protected:
+
+  /// @brief create the context data
+  ContextData() = default;
+
+ public:
+
+  /// @brief destroy the context data
+  virtual ~ContextData() = default;
+  
+  /// @brief pin data for the collection
+  virtual void pinData(arangodb::LogicalCollection*) = 0;
+
+  /// @brief whether or not the data for the collection is pinned
+  virtual bool isPinned(TRI_voc_cid_t) const = 0;
+};
+
+}
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get an instance of Graph by Name.
-///  returns nullptr if graph is not existing
-///  The caller has to take care for the memory.
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::aql::Graph* lookupGraphByName(std::shared_ptr<transaction::Context>, std::string const& name);
-
-}  // namespace arangodb
-
 #endif
-

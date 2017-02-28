@@ -33,7 +33,7 @@
 #include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -292,7 +292,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     }
   }
 
-  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
   writeResult(builder.slice(), *(transactionContext->getVPackOptionsForDump()));
 }
 

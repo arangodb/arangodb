@@ -30,7 +30,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -224,7 +224,7 @@ bool RestEdgesHandler::readEdges() {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), collectionName,
+      transaction::StandaloneContext::Create(_vocbase), collectionName,
       AccessMode::Type::READ);
 
   // .............................................................................
@@ -368,7 +368,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), collectionName,
+      transaction::StandaloneContext::Create(_vocbase), collectionName,
       AccessMode::Type::READ);
 
   // .............................................................................

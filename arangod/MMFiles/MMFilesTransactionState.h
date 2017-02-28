@@ -45,7 +45,6 @@ class MMFilesWalMarker;
 namespace transaction {
 class Methods;
 }
-;
 class TransactionCollection;
 
 /// @brief transaction type

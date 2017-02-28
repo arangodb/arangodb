@@ -45,6 +45,10 @@ class PhysicalCollection;
 class TransactionCollection;
 class TransactionState;
 
+namespace transaction {
+class ContextData;
+}
+
 class StorageEngine : public application_features::ApplicationFeature {
  public:
 
@@ -71,6 +75,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void start() {}
   virtual void stop() {}
 
+  virtual transaction::ContextData* createTransactionContextData() = 0;
   virtual TransactionState* createTransactionState(TRI_vocbase_t*) = 0;
   virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
 

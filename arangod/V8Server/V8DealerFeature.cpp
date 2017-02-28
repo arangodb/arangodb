@@ -31,6 +31,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/TimedAction.h"
 #include "Basics/WorkMonitor.h"
 #include "Cluster/ServerState.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -39,7 +40,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Utils/V8TransactionContext.h"
+#include "Transaction/V8Context.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -457,6 +458,10 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
+  TimedAction exitWhenNoContext([](double waitTime) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "giving up waiting for V8 context after " << Logger::FIXED(waitTime) << " s";
+  }, 60);
+
 
   V8Context* context = nullptr;
 
@@ -536,6 +541,11 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         jobGuard.block();
         
         guard.wait();
+      }
+
+      if (exitWhenNoContext.tick()) {
+        vocbase->release();
+        return nullptr;
       }
     }
 
@@ -1119,7 +1129,7 @@ void V8DealerFeature::shutdownV8Instance(V8Context* context) {
 
       if (v8g != nullptr) {
         if (v8g->_transactionContext != nullptr) {
-          delete static_cast<V8TransactionContext*>(v8g->_transactionContext);
+          delete static_cast<transaction::V8Context*>(v8g->_transactionContext);
           v8g->_transactionContext = nullptr;
         }
         delete v8g;

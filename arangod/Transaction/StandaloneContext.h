@@ -21,26 +21,28 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_STANDALONE_TRANSACTION_CONTEXT_H
-#define ARANGOD_UTILS_STANDALONE_TRANSACTION_CONTEXT_H 1
+#ifndef ARANGOD_TRANSACTION_STANDALONE_CONTEXT_H
+#define ARANGOD_TRANSACTION_STANDALONE_CONTEXT_H 1
 
+#include "Context.h"
 #include "Basics/Common.h"
-#include "Utils/TransactionContext.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 class TransactionState;
 
-class StandaloneTransactionContext final : public TransactionContext {
+namespace transaction {
+
+class StandaloneContext final : public Context {
 
  public:
 
   /// @brief create the context
-  explicit StandaloneTransactionContext(TRI_vocbase_t*);
+  explicit StandaloneContext(TRI_vocbase_t*);
 
   /// @brief destroy the context
-  ~StandaloneTransactionContext() = default;
+  ~StandaloneContext() = default;
  
  public:
 
@@ -64,9 +66,11 @@ class StandaloneTransactionContext final : public TransactionContext {
   bool isEmbeddable() const override { return false; }
   
   /// @brief create a context, returned in a shared ptr
-  static std::shared_ptr<StandaloneTransactionContext> Create(TRI_vocbase_t*);
+  static std::shared_ptr<transaction::StandaloneContext> Create(TRI_vocbase_t*);
 
 };
+
+}
 }
 
 #endif

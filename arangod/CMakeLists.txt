@@ -250,6 +250,7 @@ SET(ARANGOD_SOURCES
   MMFiles/MMFilesSkiplistIndex.cpp
   MMFiles/MMFilesSynchronizerThread.cpp
   MMFiles/MMFilesTransactionCollection.cpp
+  MMFiles/MMFilesTransactionContextData.cpp
   MMFiles/MMFilesTransactionState.cpp
   MMFiles/MMFilesWalLogfile.cpp
   MMFiles/MMFilesWalRecoverState.cpp
@@ -328,8 +329,11 @@ SET(ARANGOD_SOURCES
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
+  Transaction/Context.cpp
   Transaction/Helpers.cpp
   Transaction/Methods.cpp
+  Transaction/StandaloneContext.cpp
+  Transaction/V8Context.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp
@@ -338,9 +342,6 @@ SET(ARANGOD_SOURCES
   Utils/CursorRepository.cpp
   Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
-  Utils/StandaloneTransactionContext.cpp
-  Utils/TransactionContext.cpp
-  Utils/V8TransactionContext.cpp
   Utils/WorkMonitorArangod.cpp
   V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp

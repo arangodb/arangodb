@@ -28,7 +28,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/PhysicalCollection.h"
@@ -91,7 +91,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
 
   {
     SingleCollectionTransaction trx(
-        StandaloneTransactionContext::Create(_collection->vocbase()), _name,
+        transaction::StandaloneContext::Create(_collection->vocbase()), _name,
         AccessMode::Type::READ);
 
     // already locked by guard above

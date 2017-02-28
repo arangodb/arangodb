@@ -555,7 +555,7 @@ int Syncer::createIndex(VPackSlice const& slice) {
 
     LogicalCollection* collection = guard.collection();
 
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), guard.collection()->cid(), AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), guard.collection()->cid(), AccessMode::Type::WRITE);
 
     int res = trx.begin();
 

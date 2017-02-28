@@ -28,7 +28,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 
 using namespace arangodb;
 
@@ -39,7 +39,7 @@ std::string const GRAPHS = "_graphs";
 /// @brief Load a graph from the _graphs collection; local and coordinator way
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::aql::Graph* arangodb::lookupGraphByName(std::shared_ptr<TransactionContext> transactionContext,
+arangodb::aql::Graph* arangodb::lookupGraphByName(std::shared_ptr<transaction::Context> transactionContext,
                                                   std::string const& name) {
   SingleCollectionTransaction trx(transactionContext, GRAPHS, AccessMode::Type::READ);
 

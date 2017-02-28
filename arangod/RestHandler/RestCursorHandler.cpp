@@ -31,7 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Context.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>

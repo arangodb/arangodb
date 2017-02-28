@@ -25,7 +25,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Context.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/TraverserOptions.h"
 

@@ -47,8 +47,8 @@
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/StandaloneTransactionContext.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/StandaloneContext.h"
+#include "Transaction/Context.h"
 #include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/PhysicalCollection.h"
@@ -963,7 +963,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   }
 
   auto transactionContext =
-      std::make_shared<StandaloneTransactionContext>(_vocbase);
+      std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   // initialize the dump container
   TRI_replication_dump_t dump(transactionContext,
@@ -1067,7 +1067,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
   }
 
   auto transactionContext =
-      std::make_shared<StandaloneTransactionContext>(_vocbase);
+      std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   // initialize the dump container
   TRI_replication_dump_t dump(
@@ -1502,7 +1502,7 @@ int RestReplicationHandler::processRestoreCollection(
 
         // instead, truncate them
         SingleCollectionTransaction trx(
-            StandaloneTransactionContext::Create(_vocbase), col->cid(),
+            transaction::StandaloneContext::Create(_vocbase), col->cid(),
             AccessMode::Type::WRITE);
         trx.addHint(transaction::Hints::Hint::RECOVERY); // to turn off waitForSync!
 
@@ -1756,7 +1756,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     LogicalCollection* collection = guard.collection();
 
     SingleCollectionTransaction trx(
-        StandaloneTransactionContext::Create(_vocbase), collection->cid(),
+        transaction::StandaloneContext::Create(_vocbase), collection->cid(),
         AccessMode::Type::WRITE);
 
     int res = trx.begin();
@@ -2255,7 +2255,7 @@ int RestReplicationHandler::processRestoreData(
     bool force, std::string& errorMsg) {
 
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), colName,
+      transaction::StandaloneContext::Create(_vocbase), colName,
       AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::RECOVERY); // to turn off waitForSync!
 
@@ -2535,8 +2535,8 @@ void RestReplicationHandler::handleCommandFetchKeys() {
   }
 
   try {
-    std::shared_ptr<TransactionContext> transactionContext =
-        StandaloneTransactionContext::Create(_vocbase);
+    std::shared_ptr<transaction::Context> transactionContext =
+        transaction::StandaloneContext::Create(_vocbase);
 
     VPackBuilder resultBuilder(transactionContext->getVPackOptions());
     resultBuilder.openArray();
@@ -2711,7 +2711,7 @@ void RestReplicationHandler::handleCommandDump() {
   TRI_ASSERT(col != nullptr);
 
   auto transactionContext =
-      std::make_shared<StandaloneTransactionContext>(_vocbase);
+      std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   // initialize the dump container
   TRI_replication_dump_t dump(transactionContext,
@@ -3443,7 +3443,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     _holdReadLockJobs.emplace(id, false);
   }
 
-  auto trxContext = StandaloneTransactionContext::Create(_vocbase);
+  auto trxContext = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(trxContext, col->cid(), AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
   int res = trx.begin();

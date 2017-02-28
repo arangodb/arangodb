@@ -31,7 +31,7 @@
 #include "Transaction/Helpers.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/V8TransactionContext.h"
+#include "Transaction/V8Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -212,8 +212,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   std::string const collectionName(collection->name());
 
-  std::shared_ptr<V8TransactionContext> transactionContext =
-      V8TransactionContext::Create(collection->vocbase(), true);
+  std::shared_ptr<transaction::V8Context> transactionContext =
+      transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, collection->cid(),
                                   AccessMode::Type::READ);
 
@@ -306,8 +306,8 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const collectionName(col->name());
 
-  std::shared_ptr<V8TransactionContext> transactionContext =
-      V8TransactionContext::Create(col->vocbase(), true);
+  std::shared_ptr<transaction::V8Context> transactionContext =
+      transaction::V8Context::Create(col->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, col->cid(),
                                   AccessMode::Type::READ);
 
@@ -372,7 +372,7 @@ static void JS_ChecksumCollection(
     }
   }
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(col->vocbase(), true),
+  SingleCollectionTransaction trx(transaction::V8Context::Create(col->vocbase(), true),
                                           col->cid(), AccessMode::Type::READ);
 
   int res = trx.begin();

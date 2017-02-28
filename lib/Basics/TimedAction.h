@@ -18,32 +18,45 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_GRAPHS_H
-#define ARANGOD_VOCBASE_GRAPHS_H 1
+#ifndef ARANGODB_BASICS_TIMED_ACTION_H
+#define ARANGODB_BASICS_TIMED_ACTION_H 1
 
-#include "VocBase/vocbase.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
-namespace aql {
-class Graph;
+
+class TimedAction {
+ public:
+  TimedAction(TimedAction const&) = delete;
+  TimedAction& operator=(TimedAction const&) = delete;
+
+  TimedAction(std::function<void(double)> const& callback, double threshold)
+      : _callback(callback), _threshold(threshold), _start(TRI_microtime()), _done(false) {}
+  
+  ~TimedAction() {}
+
+ public:
+  bool tick() {
+    if (!_done) {
+      if (TRI_microtime() - _start >= _threshold) {
+        _done = true;
+        _callback(_threshold);
+        return true;
+      }
+    }
+    return false;
+  }
+
+ private:
+  std::function<void(double)> const _callback;
+  double const _threshold;
+  double _start;
+  bool _done;
+};
+
 }
-
-namespace transaction {
-class Context;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get an instance of Graph by Name.
-///  returns nullptr if graph is not existing
-///  The caller has to take care for the memory.
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::aql::Graph* lookupGraphByName(std::shared_ptr<transaction::Context>, std::string const& name);
-
-}  // namespace arangodb
 
 #endif
-

@@ -18,32 +18,41 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_GRAPHS_H
-#define ARANGOD_VOCBASE_GRAPHS_H 1
+#ifndef ARANGODB_BASICS_PERFORMANCE_LOG_SCOPE_H
+#define ARANGODB_BASICS_PERFORMANCE_LOG_SCOPE_H 1
 
-#include "VocBase/vocbase.h"
+#include "Basics/Common.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
-namespace aql {
-class Graph;
+
+class PerformanceLogScope {
+ public:
+  PerformanceLogScope(PerformanceLogScope const&) = delete;
+  PerformanceLogScope& operator=(PerformanceLogScope const&) = delete;
+
+  explicit PerformanceLogScope(std::string const& message, double minElapsedTime = 0.0) 
+      : _message(message), _start(TRI_microtime()), _minElapsedTime(minElapsedTime) {
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << _message;
+  }
+
+  ~PerformanceLogScope() {
+    double const elapsed = TRI_microtime() - _start;
+
+    if (elapsed >= _minElapsedTime) {
+      LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(elapsed) << " s, " << _message;
+    }
+  }
+
+ private:
+  std::string const _message;
+  double const _start;
+  double const _minElapsedTime;
+};
+
 }
-
-namespace transaction {
-class Context;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get an instance of Graph by Name.
-///  returns nullptr if graph is not existing
-///  The caller has to take care for the memory.
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::aql::Graph* lookupGraphByName(std::shared_ptr<transaction::Context>, std::string const& name);
-
-}  // namespace arangodb
 
 #endif
-

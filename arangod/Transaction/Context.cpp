@@ -21,14 +21,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/MutexLocker.h"
+#include "Context.h"
 #include "Basics/StringBuffer.h"
-#include "MMFiles/MMFilesCollection.h"
-#include "MMFiles/MMFilesDitch.h"
 #include "RestServer/TransactionManagerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "Transaction/ContextData.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "TransactionContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -64,11 +64,10 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 };
 
 /// @brief create the context
-TransactionContext::TransactionContext(TRI_vocbase_t* vocbase) 
+transaction::Context::Context(TRI_vocbase_t* vocbase) 
     : _vocbase(vocbase), 
       _resolver(nullptr), 
       _customTypeHandler(),
-      _ditches(),
       _builders{_arena},
       _stringBuffer(),
       _options(arangodb::velocypack::Options::Defaults),
@@ -79,17 +78,10 @@ TransactionContext::TransactionContext(TRI_vocbase_t* vocbase)
 }
 
 /// @brief destroy the context
-TransactionContext::~TransactionContext() {
+transaction::Context::~Context() {
   // unregister the transaction from the logfile manager
   if (_transaction.id > 0) {
     TransactionManagerFeature::MANAGER->unregisterTransaction(_transaction.id, _transaction.hasFailedOperations);
-  }
-
-  for (auto& it : _ditches) {
-    // we're done with this ditch
-    auto& ditch = it.second;
-    ditch->ditches()->freeMMFilesDocumentDitch(ditch, true /* fromTransaction */);
-    // If some external entity is still using the ditch, it is kept!
   }
 
   // free all VPackBuilders we handed out
@@ -104,48 +96,23 @@ TransactionContext::~TransactionContext() {
 }
 
 /// @brief factory to create a custom type handler, not managed
-VPackCustomTypeHandler* TransactionContext::createCustomTypeHandler(TRI_vocbase_t* vocbase, 
+VPackCustomTypeHandler* transaction::Context::createCustomTypeHandler(TRI_vocbase_t* vocbase, 
                                                                     CollectionNameResolver const* resolver) {
   return new CustomTypeHandler(vocbase, resolver);
 }
   
 /// @brief pin data for the collection
-void TransactionContext::pinData(LogicalCollection* collection) {
-  TRI_voc_cid_t cid = collection->cid();
-
-  auto it = _ditches.find(cid);
-
-  if (it != _ditches.end()) {
-    // tell everyone else this ditch is still in use,
-    // at least until the transaction is over
-    TRI_ASSERT((*it).second->usedByTransaction());
-    // ditch already exists
-    return;
-  }
-
-  // this method will not throw, but may return a nullptr
-  auto ditch = arangodb::MMFilesCollection::toMMFilesCollection(collection)->ditches()->createMMFilesDocumentDitch(true, __FILE__, __LINE__);
-
-  if (ditch == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  try {
-    _ditches.emplace(cid, ditch);
-  }
-  catch (...) {
-    ditch->ditches()->freeMMFilesDocumentDitch(ditch, true);
-    throw;
-  }
+void transaction::Context::pinData(LogicalCollection* collection) {
+  contextData()->pinData(collection);
 }
 
 /// @brief whether or not the data for the collection is pinned
-bool TransactionContext::isPinned(TRI_voc_cid_t cid) const {
-  return (_ditches.find(cid) != _ditches.end());
+bool transaction::Context::isPinned(TRI_voc_cid_t cid) {
+  return contextData()->isPinned(cid);
 }
   
 /// @brief temporarily lease a StringBuffer object
-basics::StringBuffer* TransactionContext::leaseStringBuffer(size_t initialSize) {
+basics::StringBuffer* transaction::Context::leaseStringBuffer(size_t initialSize) {
   if (_stringBuffer == nullptr) {
     _stringBuffer.reset(new basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, initialSize, false));
   } else {
@@ -156,12 +123,12 @@ basics::StringBuffer* TransactionContext::leaseStringBuffer(size_t initialSize) 
 }
 
 /// @brief return a temporary StringBuffer object
-void TransactionContext::returnStringBuffer(basics::StringBuffer* stringBuffer) {
+void transaction::Context::returnStringBuffer(basics::StringBuffer* stringBuffer) {
   _stringBuffer.reset(stringBuffer);
 }
 
 /// @brief temporarily lease a Builder object
-VPackBuilder* TransactionContext::leaseBuilder() {
+VPackBuilder* transaction::Context::leaseBuilder() {
   if (_builders.empty()) {
     // create a new builder and return it
     return new VPackBuilder();
@@ -176,7 +143,7 @@ VPackBuilder* TransactionContext::leaseBuilder() {
 }
   
 /// @brief return a temporary Builder object
-void TransactionContext::returnBuilder(VPackBuilder* builder) {
+void transaction::Context::returnBuilder(VPackBuilder* builder) {
   try {
     // put builder back into our vector of builders
     _builders.emplace_back(builder);
@@ -187,7 +154,7 @@ void TransactionContext::returnBuilder(VPackBuilder* builder) {
 }
   
 /// @brief get velocypack options with a custom type handler
-VPackOptions* TransactionContext::getVPackOptions() {
+VPackOptions* transaction::Context::getVPackOptions() {
   if (_customTypeHandler == nullptr) {
     // this modifies options!
     orderCustomTypeHandler();
@@ -196,7 +163,7 @@ VPackOptions* TransactionContext::getVPackOptions() {
 }
 
 /// @brief get velocypack options with a custom type handler for dumping
-VPackOptions* TransactionContext::getVPackOptionsForDump() {
+VPackOptions* transaction::Context::getVPackOptionsForDump() {
   if (_customTypeHandler == nullptr) {
     // this modifies options!
     orderCustomTypeHandler();
@@ -205,7 +172,7 @@ VPackOptions* TransactionContext::getVPackOptionsForDump() {
 }
 
 /// @brief create a resolver
-CollectionNameResolver const* TransactionContext::createResolver() {
+CollectionNameResolver const* transaction::Context::createResolver() {
   TRI_ASSERT(_resolver == nullptr);
   _resolver = new CollectionNameResolver(_vocbase);
   _ownsResolver = true;
@@ -214,10 +181,17 @@ CollectionNameResolver const* TransactionContext::createResolver() {
 
 /// @brief unregister the transaction
 /// this will save the transaction's id and status locally
-void TransactionContext::storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations) noexcept {
+void transaction::Context::storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations) noexcept {
   TRI_ASSERT(_transaction.id == 0);
 
   _transaction.id = id;
   _transaction.hasFailedOperations = hasFailedOperations;
 }
-
+  
+transaction::ContextData* transaction::Context::contextData() {
+  if (_contextData == nullptr) {
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    _contextData.reset(engine->createTransactionContextData());
+  }
+  return _contextData.get();
+}

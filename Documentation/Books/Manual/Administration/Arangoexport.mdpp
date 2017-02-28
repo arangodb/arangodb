@@ -50,6 +50,16 @@ Export JSONL
 
 This exports the collection *test* into the output directory *export* as [jsonl](http://jsonlines.org). Every line in the export is one document from the collection *test* as json.
 
+Export CSV
+----------
+
+    unix> arangoexport --type csv --collection test --fields _key,_id,_rev
+
+This exports the collection *test* into the output directory *export* as CSV. The first
+line contains the header with all field names. Each line is one document represented as
+CSV and separated with a comma. Objects and Arrays are represented as a JSON string.
+
+
 Export XML
 ----------
 

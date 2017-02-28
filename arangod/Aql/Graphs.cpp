@@ -99,9 +99,8 @@ AstNode* EdgeConditionBuilder::getInboundCondition() {
 EdgeConditionBuilderContainer::EdgeConditionBuilderContainer() :
   EdgeConditionBuilder(nullptr) {
     auto node = std::make_unique<AstNode>(NODE_TYPE_OPERATOR_NARY_AND);
-    _modCondition = node.get();
     _astNodes.emplace_back(node.get());
-    node.release();
+    _modCondition = node.release();
 
     auto comp = std::make_unique<AstNode>(NODE_TYPE_VALUE);
     comp->setValueType(VALUE_TYPE_STRING);
