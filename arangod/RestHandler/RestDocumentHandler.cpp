@@ -105,11 +105,8 @@ bool RestDocumentHandler::createDocument() {
   }
 
   bool parseSuccess = true;
-  // copy default options
-  VPackOptions options = VPackOptions::Defaults;
-  options.checkAttributeUniqueness = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
     return false;
   }
@@ -364,7 +361,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
     return false;
   }
@@ -526,7 +523,7 @@ bool RestDocumentHandler::deleteDocument() {
   } else {
     try {
       TRI_ASSERT(_request != nullptr);
-      builderPtr = _request->toVelocyPackBuilderPtr(transactionContext->getVPackOptions());
+      builderPtr = _request->toVelocyPackBuilderPtr();
     } catch (...) {
       // If an error occurs here the body is not parsable. Fail with bad
       // parameter

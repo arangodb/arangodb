@@ -527,7 +527,7 @@ void RestReplicationHandler::handleCommandBatch() {
   if (type == rest::RequestType::POST) {
     // create a new blocker
     std::shared_ptr<VPackBuilder> input =
-        _request->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+        _request->toVelocyPackBuilderPtr();
 
     if (input == nullptr || !input->slice().isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -560,7 +560,7 @@ void RestReplicationHandler::handleCommandBatch() {
     TRI_voc_tick_t id =
         static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
-    auto input = _request->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+    auto input = _request->toVelocyPackBuilderPtr();
 
     if (input == nullptr || !input->slice().isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -621,7 +621,7 @@ void RestReplicationHandler::handleCommandBarrier() {
     // create a new barrier
 
     std::shared_ptr<VPackBuilder> input =
-        _request->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+        _request->toVelocyPackBuilderPtr();
 
     if (input == nullptr || !input->slice().isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -666,7 +666,7 @@ void RestReplicationHandler::handleCommandBarrier() {
     TRI_voc_tick_t id = StringUtils::uint64(suffixes[1]);
 
     std::shared_ptr<VPackBuilder> input =
-        _request->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+        _request->toVelocyPackBuilderPtr();
 
     if (input == nullptr || !input->slice().isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -1309,12 +1309,8 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
 void RestReplicationHandler::handleCommandRestoreCollection() {
   std::shared_ptr<VPackBuilder> parsedRequest;
 
-  // copy default options
-  VPackOptions options = VPackOptions::Defaults;
-  options.checkAttributeUniqueness = true;
-
   try {
-    parsedRequest = _request->toVelocyPackBuilderPtr(&options);
+    parsedRequest = _request->toVelocyPackBuilderPtr();
   } catch (...) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid JSON");
@@ -1389,12 +1385,8 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
 void RestReplicationHandler::handleCommandRestoreIndexes() {
   std::shared_ptr<VPackBuilder> parsedRequest;
 
-  // copy default options
-  VPackOptions options = VPackOptions::Defaults;
-  options.checkAttributeUniqueness = true;
-
   try {
-    parsedRequest = _request->toVelocyPackBuilderPtr(&options);
+    parsedRequest = _request->toVelocyPackBuilderPtr();
   } catch (...) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid JSON");
@@ -2556,7 +2548,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
     } else {
       bool success;
       std::shared_ptr<VPackBuilder> parsedIds =
-          parseVelocyPackBody(&VPackOptions::Defaults, success);
+          parseVelocyPackBody(success);
       if (!success) {
         // error already created
         collectionKeys->release();
@@ -2777,7 +2769,7 @@ void RestReplicationHandler::handleCommandDump() {
 void RestReplicationHandler::handleCommandMakeSlave() {
   bool success;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, success);
+      parseVelocyPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -2954,7 +2946,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 void RestReplicationHandler::handleCommandSync() {
   bool success;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, success);
+      parseVelocyPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -3102,7 +3094,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
 
   bool success;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, success);
+      parseVelocyPackBody(success);
 
   if (!success) {
     // error already created
@@ -3302,7 +3294,7 @@ void RestReplicationHandler::handleCommandApplierDeleteState() {
 void RestReplicationHandler::handleCommandAddFollower() {
   bool success = false;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, success);
+      parseVelocyPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -3349,7 +3341,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 void RestReplicationHandler::handleCommandRemoveFollower() {
   bool success = false;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, success);
+      parseVelocyPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -3395,7 +3387,7 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
 void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   bool success = false;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, success);
+      parseVelocyPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -3513,7 +3505,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
   bool success = false;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, success);
+      parseVelocyPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -3565,7 +3557,7 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
 void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
   bool success = false;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, success);
+      parseVelocyPackBody(success);
   if (!success) {
     // error already created
     return;

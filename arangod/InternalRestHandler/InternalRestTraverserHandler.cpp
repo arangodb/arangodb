@@ -93,7 +93,7 @@ void InternalRestTraverserHandler::createEngine() {
 
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
     generateError(
@@ -168,7 +168,7 @@ void InternalRestTraverserHandler::queryEngine() {
 
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
     generateError(

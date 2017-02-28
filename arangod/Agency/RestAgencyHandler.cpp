@@ -94,10 +94,9 @@ RestStatus RestAgencyHandler::handleTransient() {
   }
 
   // Convert to velocypack
-  arangodb::velocypack::Options options;
   query_t query;
   try {
-    query = _request->toVelocyPackBuilderPtr(&options);
+    query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << e.what() << " " << __FILE__ << ":" << __LINE__;
@@ -222,9 +221,7 @@ RestStatus RestAgencyHandler::handleStores() {
 RestStatus RestAgencyHandler::handleStore() {
 
   if (_request->requestType() == rest::RequestType::POST) {
-
-    arangodb::velocypack::Options options;
-    auto query = _request->toVelocyPackBuilderPtr(&options);
+    auto query = _request->toVelocyPackBuilderPtr();
     arangodb::consensus::index_t index = 0;
 
     try {
@@ -250,12 +247,11 @@ RestStatus RestAgencyHandler::handleWrite() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
   }
   
-  arangodb::velocypack::Options options;
   query_t query;
 
   // Convert to velocypack
   try {
-    query = _request->toVelocyPackBuilderPtr(&options);
+    query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << e.what() << " " << __FILE__ << ":" << __LINE__;
@@ -403,12 +399,11 @@ RestStatus RestAgencyHandler::handleTransact() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
   }
   
-  arangodb::velocypack::Options options;
   query_t query;
 
   // Convert to velocypack
   try {
-    query = _request->toVelocyPackBuilderPtr(&options);
+    query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << e.what() << " " << __FILE__ << ":" << __LINE__;
@@ -510,12 +505,11 @@ inline RestStatus RestAgencyHandler::handleInquire() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
   }
   
-  arangodb::velocypack::Options options;
   query_t query;
 
   // Get query from body
   try {
-    query = _request->toVelocyPackBuilderPtr(&options);
+    query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& e) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << e.what() << " " << __FILE__ << ":" << __LINE__;
@@ -577,11 +571,10 @@ inline RestStatus RestAgencyHandler::handleInquire() {
 }
 
 inline RestStatus RestAgencyHandler::handleRead() {
-  arangodb::velocypack::Options options;
   if (_request->requestType() == rest::RequestType::POST) {
     query_t query;
     try {
-      query = _request->toVelocyPackBuilderPtr(&options);
+      query = _request->toVelocyPackBuilderPtr();
     } catch (std::exception const& e) {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << e.what() << " " << __FILE__ << ":" << __LINE__;
@@ -640,8 +633,7 @@ RestStatus RestAgencyHandler::handleConfig() {
   // Update endpoint of peer
   if (_request->requestType() == rest::RequestType::POST) {
     try {
-      arangodb::velocypack::Options options;
-      _agent->updatePeerEndpoint(_request->toVelocyPackBuilderPtr(&options));
+      _agent->updatePeerEndpoint(_request->toVelocyPackBuilderPtr());
     } catch (std::exception const& e) {
       generateError(
         rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());

@@ -72,7 +72,7 @@ RestStatus RestSimpleQueryHandler::execute() {
 void RestSimpleQueryHandler::allDocuments() {
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
     return;
@@ -163,7 +163,7 @@ void RestSimpleQueryHandler::allDocuments() {
 void RestSimpleQueryHandler::allDocumentKeys() {
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
     return;

@@ -170,15 +170,13 @@ class GeneralRequest {
   virtual std::unordered_map<std::string, std::vector<std::string>>
   arrayValues() const = 0;
 
-  bool velocyPackResponse() const;
-
-  // should toVelocyPack be renamed to payload?
   virtual VPackSlice payload(arangodb::velocypack::Options const* options =
-                                 &VPackOptions::Defaults) = 0;
+                             &VPackOptions::Defaults) = 0;
 
-  std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr(
-      arangodb::velocypack::Options const* options) {
-    return std::make_shared<VPackBuilder>(payload(options), options);
+  std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr() {
+    VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
+    optionsWithUniquenessCheck.checkAttributeUniqueness = true;
+    return std::make_shared<VPackBuilder>(payload(&optionsWithUniquenessCheck), &optionsWithUniquenessCheck);
   };
 
   ContentType contentType() const { return _contentType; }
