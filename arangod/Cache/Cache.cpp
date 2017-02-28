@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <list>
 #include <thread>
 
@@ -140,6 +141,39 @@ uint64_t Cache::usage() {
   return usage;
 }
 
+std::pair<double, double> Cache::hitRates() {
+  double lifetimeRate = std::nan("");
+  double windowedRate = std::nan("");
+
+  uint64_t currentMisses = _findMisses.load();
+  uint64_t currentHits = _findHits.load();
+  lifetimeRate = 100 * (static_cast<double>(currentHits) /
+                        static_cast<double>(currentHits + currentMisses));
+
+  if (_enableWindowedStats && _findStats.get() != nullptr) {
+    auto stats = _findStats->getFrequencies();
+    if (stats->size() == 1) {
+      if ((*stats)[0].first == static_cast<uint8_t>(Stat::findHit)) {
+        windowedRate = 100.0;
+      } else {
+        windowedRate = 0.0;
+      }
+    } else if (stats->size() == 2) {
+      if ((*stats)[0].first == static_cast<uint8_t>(Stat::findHit)) {
+        currentHits = (*stats)[0].second;
+        currentMisses = (*stats)[1].second;
+      } else {
+        currentHits = (*stats)[1].second;
+        currentMisses = (*stats)[0].second;
+      }
+      windowedRate = 100 * (static_cast<double>(currentHits) /
+                            static_cast<double>(currentHits + currentMisses));
+    }
+  }
+
+  return std::pair<double, double>(lifetimeRate, windowedRate);
+}
+
 void Cache::disableGrowth() {
   _state.lock();
   _allowGrowth = false;
@@ -191,22 +225,37 @@ bool Cache::isResizing() {
 }
 
 Cache::Cache(Manager* manager, uint64_t requestedLimit, bool allowGrowth,
-             std::function<void(Cache*)> deleter)
+             bool enableWindowedStats, std::function<void(Cache*)> deleter,
+             uint64_t size)
     : _state(),
       _allowGrowth(allowGrowth),
       _evictionStats(1024),
       _insertionCount(0),
+      _enableWindowedStats(enableWindowedStats),
+      _findStats(nullptr),
+      _findHits(0),
+      _findMisses(0),
       _manager(manager),
       _openOperations(0),
       _migrateRequestTime(std::chrono::steady_clock::now()),
       _resizeRequestTime(std::chrono::steady_clock::now()) {
   try {
-    _metadata = _manager->registerCache(this, requestedLimit, deleter);
+    uint64_t fullSize =
+        size + _evictionStats.memoryUsage() +
+        ((_findStats.get() == nullptr) ? 0 : _findStats->memoryUsage());
+    _metadata =
+        _manager->registerCache(this, requestedLimit, deleter, fullSize);
   } catch (std::bad_alloc) {
     // could not register, mark as non-operational
     if (!_state.isSet(State::Flag::shutdown)) {
       _state.toggleFlag(State::Flag::shutdown);
     }
+  }
+  try {
+    _findStats.reset(new StatBuffer(16384));
+  } catch (std::bad_alloc) {
+    _findStats.reset(nullptr);
+    _enableWindowedStats = false;
   }
 }
 
@@ -249,9 +298,10 @@ void Cache::requestMigrate(uint32_t requestedLogSize) {
   if ((++_insertionCount & 0xFFF) == 0) {
     auto stats = _evictionStats.getFrequencies();
     if (((stats->size() == 1) &&
-         ((*stats)[0].first == static_cast<uint8_t>(Stat::eviction))) ||
+         ((*stats)[0].first == static_cast<uint8_t>(Stat::insertEviction))) ||
         ((stats->size() == 2) &&
-         ((*stats)[0].second * 16 > (*stats)[1].second))) {
+         (((*stats)[0].first == static_cast<uint8_t>(Stat::insertNoEviction)) ||
+          ((*stats)[0].second * 16 > (*stats)[1].second)))) {
       bool ok = _state.lock(10LL);
       if (ok) {
         if (!isMigrating() &&
@@ -296,7 +346,30 @@ uint32_t Cache::hashKey(void const* key, uint32_t keySize) const {
 }
 
 void Cache::recordStat(Cache::Stat stat) {
-  _evictionStats.insertRecord(static_cast<uint8_t>(stat));
+  switch (stat) {
+    case Stat::insertEviction:
+    case Stat::insertNoEviction: {
+      _evictionStats.insertRecord(static_cast<uint8_t>(stat));
+      break;
+    }
+    case Stat::findHit: {
+      _findHits++;
+      if (_enableWindowedStats && _findStats.get() != nullptr) {
+        _findStats->insertRecord(static_cast<uint8_t>(Stat::findHit));
+      }
+      _manager->recordHitStat(Manager::Stat::findHit);
+      break;
+    }
+    case Stat::findMiss: {
+      _findMisses++;
+      if (_enableWindowedStats && _findStats.get() != nullptr) {
+        _findStats->insertRecord(static_cast<uint8_t>(Stat::findMiss));
+      }
+      _manager->recordHitStat(Manager::Stat::findMiss);
+      break;
+    }
+    default: { break; }
+  }
 }
 
 Manager::MetadataItr& Cache::metadata() { return _metadata; }
