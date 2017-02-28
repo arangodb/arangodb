@@ -12,16 +12,16 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10642"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10642"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UhdWKv2--_"</span>, 
-      <span class="hljs-string">"text"</span> : <span class="hljs-string">"this text also has a word"</span> 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10639"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10639"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UmOYwtG---"</span>, 
+      <span class="hljs-string">"text"</span> : <span class="hljs-string">"this text contains word"</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10638"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10638"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UhdWKv2---"</span>, 
-      <span class="hljs-string">"text"</span> : <span class="hljs-string">"this text contains word"</span> 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10643"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10643"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UmOYwtK---"</span>, 
+      <span class="hljs-string">"text"</span> : <span class="hljs-string">"this text also has a word"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 

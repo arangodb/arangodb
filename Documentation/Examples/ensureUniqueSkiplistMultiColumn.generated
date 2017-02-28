@@ -15,19 +15,19 @@ arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span cla
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/15309"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15309"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UhdWzZ2---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UmOZZIq---"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"jens"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"jensen"</span> }});
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/15313"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15313"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UhdWzZ2--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UmOZZIq--_"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"hans"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"jensen"</span> }});
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/15316"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15316"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UhdWzZ6---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UmOZZIu---"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"hans"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"hansen"</span> }});
 [ArangoError <span class="hljs-number">1210</span>: cannot create <span class="hljs-built_in">document</span>, unique constraint violated]
