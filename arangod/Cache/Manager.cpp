@@ -422,7 +422,6 @@ void Manager::internalResize(uint64_t newGlobalLimit, bool firstAttempt) {
   TRI_ASSERT(_state.isLocked());
   bool done = false;
   std::shared_ptr<PriorityList> cacheList(nullptr);
-  uint64_t reclaimed = 0;
 
   if (firstAttempt) {
     _resizeAttempt = 0;
@@ -453,8 +452,8 @@ void Manager::internalResize(uint64_t newGlobalLimit, bool firstAttempt) {
     cacheList = priorityList();
 
     // first just adjust limits down to usage
-    reclaimed = resizeAllCaches(TaskEnvironment::resizing, cacheList, true,
-                                true, _globalAllocation - _globalSoftLimit);
+    uint64_t reclaimed = resizeAllCaches(TaskEnvironment::resizing, cacheList, true,
+                                         true, _globalAllocation - _globalSoftLimit);
     _globalAllocation -= reclaimed;
     done = adjustGlobalLimitsIfAllowed(newGlobalLimit);
   }
