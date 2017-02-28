@@ -2908,7 +2908,7 @@ testFuncs.export = function (options) {
   const DOMParser = new xmldom.DOMParser({locator: {}, errorHandler: {
     warning: function(err) { xmlErrors = err; }, error: function(err) { xmlErrors = err; }, fatalError: function(err) { xmlErrors = err; }
   }});
-  let xmlErrors = undefined;
+  let xmlErrors = null;
 
   print(CYAN + 'export tests...' + RESET);
 
@@ -2983,7 +2983,7 @@ testFuncs.export = function (options) {
     DOMParser.parseFromString(filesContent);
     results.parseXgmml = { status: true };
 
-    if (xmlErrors !== undefined) {
+    if (xmlErrors !== null) {
       results.parseXgmml = { status: false, message: xmlErrors };
     }
   } catch(e) {
