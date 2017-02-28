@@ -31,7 +31,9 @@ namespace velocypack {
 class Builder;
 }
 
-class TransactionContext;
+namespace transaction {
+class Context;
+}
 
 namespace aql {
 
@@ -63,7 +65,7 @@ struct QueryResult {
   std::shared_ptr<arangodb::velocypack::Builder> result;
   std::shared_ptr<arangodb::velocypack::Builder> stats;
   std::shared_ptr<arangodb::velocypack::Builder> profile;
-  std::shared_ptr<TransactionContext> context;
+  std::shared_ptr<transaction::Context> context;
 };
 }
 }

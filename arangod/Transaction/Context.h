@@ -21,11 +21,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_TRANSACTION_CONTEXT_H
-#define ARANGOD_UTILS_TRANSACTION_CONTEXT_H 1
+#ifndef ARANGOD_TRANSACTION_CONTEXT_H
+#define ARANGOD_TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/SmallVector.h"
 #include "VocBase/voc-types.h"
 
@@ -43,30 +42,28 @@ class Builder;
 struct CustomTypeHandler;
 }
 
-namespace transaction {
-class Methods;
-}
-
-
 class CollectionNameResolver;
-class DocumentDitch;
 class LogicalCollection;
 class TransactionState;
 
-class TransactionContext {
+namespace transaction {
+class ContextData;
+class Methods;
+
+class Context {
  public:
-  TransactionContext(TransactionContext const&) = delete;
-  TransactionContext& operator=(TransactionContext const&) = delete;
+  Context(Context const&) = delete;
+  Context& operator=(Context const&) = delete;
 
  protected:
 
   /// @brief create the context
-  explicit TransactionContext(TRI_vocbase_t* vocbase);
+  explicit Context(TRI_vocbase_t* vocbase);
 
  public:
 
   /// @brief destroy the context
-  virtual ~TransactionContext();
+  virtual ~Context();
 
   /// @brief factory to create a custom type handler, not managed
   static arangodb::velocypack::CustomTypeHandler* createCustomTypeHandler(
@@ -76,15 +73,12 @@ class TransactionContext {
   /// @brief return the vocbase
   TRI_vocbase_t* vocbase() const { return _vocbase; }
   
-  /// @brief order a document ditch for the collection
-  /// this will create one if none exists. if no ditch can be created, the
-  /// function will return a nullptr!
-  DocumentDitch* orderDitch(arangodb::LogicalCollection*);
-  
-  /// @brief return the ditch for a collection
-  /// this will return a nullptr if no ditch exists
-  DocumentDitch* ditch(TRI_voc_cid_t) const;
+  /// @brief pin data for the collection
+  void pinData(arangodb::LogicalCollection*);
 
+  /// @brief whether or not the data for the collection is pinned
+  bool isPinned(TRI_voc_cid_t);
+  
   /// @brief temporarily lease a StringBuffer object
   basics::StringBuffer* leaseStringBuffer(size_t initialSize);
 
@@ -108,8 +102,9 @@ class TransactionContext {
   void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations) noexcept;
   
   /// @brief get a custom type handler
-  virtual std::shared_ptr<VPackCustomTypeHandler> orderCustomTypeHandler() = 0;
-  
+  virtual std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
+  orderCustomTypeHandler() = 0;
+
   /// @brief return the resolver
   virtual CollectionNameResolver const* getResolver() = 0;
 
@@ -129,6 +124,8 @@ class TransactionContext {
   
   /// @brief create a resolver
   CollectionNameResolver const* createResolver();
+
+  transaction::ContextData* contextData();
  
  protected:
   
@@ -138,8 +135,6 @@ class TransactionContext {
   
   std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
   
-  std::unordered_map<TRI_voc_cid_t, DocumentDitch*> _ditches;
-
   SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
   SmallVector<arangodb::velocypack::Builder*, 32> _builders;
   
@@ -147,6 +142,8 @@ class TransactionContext {
 
   arangodb::velocypack::Options _options;
   arangodb::velocypack::Options _dumpOptions;
+  
+  std::unique_ptr<transaction::ContextData> _contextData;
 
   struct {
     TRI_voc_tid_t id; 
@@ -155,6 +152,8 @@ class TransactionContext {
 
   bool _ownsResolver;
 };
+
+}
 }
 
 #endif

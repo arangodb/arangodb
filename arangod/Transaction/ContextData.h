@@ -21,54 +21,39 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_COLLECTION_EXPORT_H
-#define ARANGOD_UTILS_COLLECTION_EXPORT_H 1
+#ifndef ARANGOD_TRANSACTION_CONTEXT_DATA_H
+#define ARANGOD_TRANSACTION_CONTEXT_DATA_H 1
 
 #include "Basics/Common.h"
-#include "Utils/CollectionNameResolver.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+class LogicalCollection;
 
-class CollectionGuard;
-class MMFilesDocumentDitch;
+namespace transaction {
+class ContextData {
+ public:
+  ContextData(ContextData const&) = delete;
+  ContextData& operator=(ContextData const&) = delete;
 
-class CollectionExport {
-  friend class ExportCursor;
+ protected:
+
+  /// @brief create the context data
+  ContextData() = default;
 
  public:
-  struct Restrictions {
-    enum Type { RESTRICTION_NONE, RESTRICTION_INCLUDE, RESTRICTION_EXCLUDE };
 
-    Restrictions() : fields(), type(RESTRICTION_NONE) {}
+  /// @brief destroy the context data
+  virtual ~ContextData() = default;
+  
+  /// @brief pin data for the collection
+  virtual void pinData(arangodb::LogicalCollection*) = 0;
 
-    std::unordered_set<std::string> fields;
-    Type type;
-  };
-
- public:
-  CollectionExport(CollectionExport const&) = delete;
-  CollectionExport& operator=(CollectionExport const&) = delete;
-
-  CollectionExport(TRI_vocbase_t*, std::string const&, Restrictions const&);
-
-  ~CollectionExport();
-
- public:
-  void run(uint64_t, size_t);
-
- private:
-  std::unique_ptr<arangodb::CollectionGuard> _guard;
-  LogicalCollection* _collection;
-  arangodb::MMFilesDocumentDitch* _ditch;
-  std::string const _name;
-  arangodb::CollectionNameResolver _resolver;
-  Restrictions _restrictions;
-  std::vector<uint8_t const*> _vpack;
+  /// @brief whether or not the data for the collection is pinned
+  virtual bool isPinned(TRI_voc_cid_t) const = 0;
 };
+
+}
 }
 
 #endif

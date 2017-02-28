@@ -31,7 +31,7 @@
 #include "Transaction/Helpers.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
@@ -357,7 +357,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), collectionName,
+      transaction::StandaloneContext::Create(_vocbase), collectionName,
       AccessMode::Type::WRITE);
 
   // .............................................................................
@@ -563,7 +563,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), collectionName,
+      transaction::StandaloneContext::Create(_vocbase), collectionName,
       AccessMode::Type::WRITE);
 
   // .............................................................................
@@ -737,7 +737,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), collectionName,
+      transaction::StandaloneContext::Create(_vocbase), collectionName,
       AccessMode::Type::WRITE);
 
   // .............................................................................

@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "MMFiles/MMFilesDatafile.h"
+#include "MMFiles/MMFilesCollectorCache.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
 
@@ -38,6 +39,10 @@ class MMFilesCleanupThread;
 class MMFilesCompactorThread;
 class TransactionCollection;
 class TransactionState;
+
+namespace transaction {
+class ContextData;
+}
 
 /// @brief collection file structure
 struct MMFilesEngineCollectionFiles {
@@ -74,11 +79,12 @@ class MMFilesEngine final : public StorageEngine {
   // flush wal wait for collector
   void stop() override;
 
+  transaction::ContextData* createTransactionContextData() override;
   TransactionState* createTransactionState(TRI_vocbase_t*) override;
   TransactionCollection* createTransactionCollection(TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) override;
 
   // create storage-engine specific collection
-  PhysicalCollection* createPhysicalCollection(LogicalCollection*) override;
+  PhysicalCollection* createPhysicalCollection(LogicalCollection*, VPackSlice const&) override;
 
   // inventory functionality
   // -----------------------
@@ -180,9 +186,6 @@ public:
   void createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                    TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) override;
   
-  virtual void createIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
-                                    arangodb::velocypack::Slice const& data, bool useMarker, int&) override;
-
   // asks the storage engine to drop the specified index and persist the deletion 
   // info. Note that physical deletion of the index must not be carried out by this call, 
   // as there may still be users of the index. It is recommended that this operation
@@ -252,7 +255,7 @@ public:
   
   /// @brief transfer markers into a collection
   int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
-                      MMFilesOperationsType const&) override;
+                      MMFilesOperationsType const&);
 
   /// @brief Add engine specific AQL functions.
 
@@ -329,7 +332,7 @@ public:
                           arangodb::LogicalCollection const* parameters,
                           bool forceSync) const;
 
-  LogicalCollection* loadCollectionInfo(TRI_vocbase_t* vocbase, std::string const& path);
+  arangodb::velocypack::Builder loadCollectionInfo(TRI_vocbase_t* vocbase, std::string const& path);
   
   // start the cleanup thread for the database 
   int startCleanup(TRI_vocbase_t* vocbase);

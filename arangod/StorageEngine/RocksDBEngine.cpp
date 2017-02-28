@@ -37,10 +37,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-
-#include "MMFiles/MMFilesPersistentIndexFeature.h"
-#include "MMFiles/MMFilesPersistentIndex.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>

@@ -45,7 +45,6 @@ class MMFilesWalMarker;
 namespace transaction {
 class Methods;
 }
-;
 class TransactionCollection;
 
 /// @brief transaction type
@@ -55,13 +54,13 @@ class MMFilesTransactionState final : public TransactionState {
   ~MMFilesTransactionState();
 
   /// @brief begin a transaction
-  int beginTransaction(transaction::Hints hints, int nestingLevel) override;
+  int beginTransaction(transaction::Hints hints) override;
 
   /// @brief commit a transaction
-  int commitTransaction(transaction::Methods* trx, int nestingLevel) override;
+  int commitTransaction(transaction::Methods* trx) override;
 
   /// @brief abort a transaction
-  int abortTransaction(transaction::Methods* trx, int nestingLevel) override;
+  int abortTransaction(transaction::Methods* trx) override;
 
   bool hasFailedOperations() const override {
     return (_hasOperations && _status == transaction::Status::ABORTED);

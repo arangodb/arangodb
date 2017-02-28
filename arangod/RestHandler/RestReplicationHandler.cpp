@@ -47,10 +47,11 @@
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/StandaloneTransactionContext.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/StandaloneContext.h"
+#include "Transaction/Context.h"
 #include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
 #include "VocBase/ticks.h"
@@ -962,7 +963,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   }
 
   auto transactionContext =
-      std::make_shared<StandaloneTransactionContext>(_vocbase);
+      std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   // initialize the dump container
   TRI_replication_dump_t dump(transactionContext,
@@ -1066,7 +1067,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
   }
 
   auto transactionContext =
-      std::make_shared<StandaloneTransactionContext>(_vocbase);
+      std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   // initialize the dump container
   TRI_replication_dump_t dump(
@@ -1260,7 +1261,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   TRI_ASSERT(col != nullptr);
 
   /* Temporary ASSERTS to prove correctness of new constructor */
-  TRI_ASSERT(col->doCompact() ==
+  TRI_ASSERT(col->getPhysical()->doCompact() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
                  slice, "doCompact", true));
   TRI_ASSERT(
@@ -1270,9 +1271,6 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
           application_features::ApplicationServer::getFeature<DatabaseFeature>(
               "Database")
               ->waitForSync()));
-  TRI_ASSERT(col->isVolatile() ==
-             arangodb::basics::VelocyPackHelper::getBooleanValue(
-                 slice, "isVolatile", false));
   TRI_ASSERT(col->isSystem() == (name[0] == '_'));
   TRI_ASSERT(
       col->indexBuckets() ==
@@ -1504,7 +1502,7 @@ int RestReplicationHandler::processRestoreCollection(
 
         // instead, truncate them
         SingleCollectionTransaction trx(
-            StandaloneTransactionContext::Create(_vocbase), col->cid(),
+            transaction::StandaloneContext::Create(_vocbase), col->cid(),
             AccessMode::Type::WRITE);
         trx.addHint(transaction::Hints::Hint::RECOVERY); // to turn off waitForSync!
 
@@ -1758,7 +1756,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     LogicalCollection* collection = guard.collection();
 
     SingleCollectionTransaction trx(
-        StandaloneTransactionContext::Create(_vocbase), collection->cid(),
+        transaction::StandaloneContext::Create(_vocbase), collection->cid(),
         AccessMode::Type::WRITE);
 
     int res = trx.begin();
@@ -1769,12 +1767,14 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
       THROW_ARANGO_EXCEPTION(res);
     }
 
+    auto physical = collection->getPhysical();
+    TRI_ASSERT(physical != nullptr);
     for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
       std::shared_ptr<arangodb::Index> idx;
 
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
 
-      res = collection->restoreIndex(&trx, idxDef, idx);
+      res = physical->restoreIndex(&trx, idxDef, idx);
 
       if (res == TRI_ERROR_NOT_IMPLEMENTED) {
         continue;
@@ -1784,17 +1784,8 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
         errorMsg =
             "could not create index: " + std::string(TRI_errno_string(res));
         break;
-      } else {
-        TRI_ASSERT(idx != nullptr);
-
-        res = collection->saveIndex(idx.get(), true);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          errorMsg =
-              "could not save index: " + std::string(TRI_errno_string(res));
-          break;
-        }
       }
+      TRI_ASSERT(idx != nullptr);
     }
   } catch (arangodb::basics::Exception const& ex) {
     errorMsg =
@@ -2264,7 +2255,7 @@ int RestReplicationHandler::processRestoreData(
     bool force, std::string& errorMsg) {
 
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), colName,
+      transaction::StandaloneContext::Create(_vocbase), colName,
       AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::RECOVERY); // to turn off waitForSync!
 
@@ -2544,8 +2535,8 @@ void RestReplicationHandler::handleCommandFetchKeys() {
   }
 
   try {
-    std::shared_ptr<TransactionContext> transactionContext =
-        StandaloneTransactionContext::Create(_vocbase);
+    std::shared_ptr<transaction::Context> transactionContext =
+        transaction::StandaloneContext::Create(_vocbase);
 
     VPackBuilder resultBuilder(transactionContext->getVPackOptions());
     resultBuilder.openArray();
@@ -2720,7 +2711,7 @@ void RestReplicationHandler::handleCommandDump() {
   TRI_ASSERT(col != nullptr);
 
   auto transactionContext =
-      std::make_shared<StandaloneTransactionContext>(_vocbase);
+      std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   // initialize the dump container
   TRI_replication_dump_t dump(transactionContext,
@@ -3452,7 +3443,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     _holdReadLockJobs.emplace(id, false);
   }
 
-  auto trxContext = StandaloneTransactionContext::Create(_vocbase);
+  auto trxContext = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(trxContext, col->cid(), AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
   int res = trx.begin();

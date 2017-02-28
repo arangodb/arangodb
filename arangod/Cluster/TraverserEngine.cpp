@@ -27,7 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Context.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/TraverserOptions.h"
 
@@ -95,7 +95,7 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
   auto opts = std::make_shared<VPackBuilder>();
 
   _trx = new aql::AqlTransaction(
-      arangodb::StandaloneTransactionContext::Create(vocbase),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       _collections.collections(), false);
   _query = new aql::Query(true, vocbase, "", 0, params, opts, aql::PART_DEPENDENT);
   _query->injectTransaction(_trx);
@@ -294,7 +294,7 @@ bool BaseTraverserEngine::lockCollection(std::string const& shard) {
   if (cid == 0) {
     return false;
   }
-  _trx->orderDitch(cid); // will throw when it fails 
+  _trx->pinData(cid); // will throw when it fails 
   int res = _trx->lock(_trx->trxCollection(cid), AccessMode::Type::READ);
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Logging Shard " << shard << " lead to exception '"
@@ -304,7 +304,7 @@ bool BaseTraverserEngine::lockCollection(std::string const& shard) {
   return true;
 }
 
-std::shared_ptr<TransactionContext> BaseTraverserEngine::context() const {
+std::shared_ptr<transaction::Context> BaseTraverserEngine::context() const {
   return _trx->transactionContext();
 }
 

@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/DatabaseGuard.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
@@ -37,7 +37,7 @@ class ReplicationTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction
   ReplicationTransaction(TRI_vocbase_t* vocbase)
-      : transaction::Methods(StandaloneTransactionContext::Create(vocbase)),
+      : transaction::Methods(transaction::StandaloneContext::Create(vocbase)),
         _guard(vocbase) {}
 
  public:

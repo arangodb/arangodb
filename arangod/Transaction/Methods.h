@@ -55,22 +55,24 @@ struct Variable;
 }
 
 namespace rest {
-  enum class ResponseCode; 
+enum class ResponseCode; 
 }
 
 namespace traverser {
 class BaseTraverserEngine;
 }
 
+namespace transaction {
+class Context;
+}
+
 /// @brief forward declarations
 class CollectionNameResolver;
-class DocumentDitch;
 struct DocumentIdentifierToken;
 class Index;
 class ManagedDocumentResult;
 struct OperationCursor;
 struct OperationOptions;
-class TransactionContext;
 class TransactionState;
 class TransactionCollection;
 
@@ -120,7 +122,7 @@ class Methods {
  protected:
 
   /// @brief create the transaction
-  explicit Methods(std::shared_ptr<TransactionContext> transactionContext);
+  explicit Methods(std::shared_ptr<transaction::Context> transactionContext);
 
  public:
 
@@ -148,16 +150,16 @@ class Methods {
   int resolveId(char const* handle, size_t length, TRI_voc_cid_t& cid, char const*& key, size_t& outLength); 
   
   /// @brief return a pointer to the transaction context
-  std::shared_ptr<TransactionContext> transactionContext() const {
+  std::shared_ptr<transaction::Context> transactionContext() const {
     return _transactionContext;
   }
   
-  inline TransactionContext* transactionContextPtr() const {
+  inline transaction::Context* transactionContextPtr() const {
     return _transactionContextPtr;
   }
   
   /// @brief add a transaction hint
-  void addHint(transaction::Hints::Hint hint) { _hints.set(hint); }
+  void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
 
   /// @brief whether or not the transaction consists of a single operation only
   bool isSingleOperationTransaction() const;
@@ -181,10 +183,10 @@ class Methods {
   std::string name(TRI_voc_cid_t cid) const;
 
   /// @brief order a ditch for a collection
-  void orderDitch(TRI_voc_cid_t);
+  void pinData(TRI_voc_cid_t);
   
   /// @brief whether or not a ditch has been created for the collection
-  bool hasDitch(TRI_voc_cid_t cid) const;
+  bool isPinned(TRI_voc_cid_t cid) const;
 
   /// @brief extract the _id attribute from a slice, and convert it into a 
   /// string
@@ -539,36 +541,25 @@ class Methods {
   /// @brief set up a top-level transaction
   void setupToplevel(TRI_vocbase_t*);
 
- private:
-  /// @brief transaction hints
-  transaction::Hints _hints;
-
  protected:
   /// @brief the state 
   TransactionState* _state;
 
   /// @brief the transaction context
-  std::shared_ptr<TransactionContext> _transactionContext;
-
-  /// @brief cache for last handed out DocumentDitch
-  struct {
-    TRI_voc_cid_t cid = 0;
-    DocumentDitch* ditch = nullptr;
-  }
-  _ditchCache;
+  std::shared_ptr<transaction::Context> _transactionContext;
+  
+  /// @brief pointer to transaction context (faster than shared ptr)
+  transaction::Context* const _transactionContextPtr;
+ 
+ private:
+  /// @brief transaction hints
+  transaction::Hints _localHints;
 
   struct {
     TRI_voc_cid_t cid = 0;
     std::string name;
   }
   _collectionCache;
-  
-  /// @brief pointer to transaction context (faster than shared ptr)
-  TransactionContext* const _transactionContextPtr;
-
- public:
-  /// @brief makeNolockHeaders
-  static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
 };
 
 }

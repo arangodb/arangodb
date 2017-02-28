@@ -18,32 +18,42 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_GRAPHS_H
-#define ARANGOD_VOCBASE_GRAPHS_H 1
+#ifndef ARANGODB_BASICS_SAME_THREAD_ASSERTER_H
+#define ARANGODB_BASICS_SAME_THREAD_ASSERTER_H 1
 
-#include "VocBase/vocbase.h"
+#include "Basics/Common.h"
+#include "Basics/Thread.h"
 
 namespace arangodb {
-namespace aql {
-class Graph;
-}
 
-namespace transaction {
-class Context;
-}
+class SameThreadAsserter {
+ public:
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get an instance of Graph by Name.
-///  returns nullptr if graph is not existing
-///  The caller has to take care for the memory.
-////////////////////////////////////////////////////////////////////////////////
+  SameThreadAsserter() 
+      : _startingThreadId(currentThreadId()) {}
 
-arangodb::aql::Graph* lookupGraphByName(std::shared_ptr<transaction::Context>, std::string const& name);
+  ~SameThreadAsserter() {
+    TRI_ASSERT(_startingThreadId == currentThreadId());
+  }
 
-}  // namespace arangodb
+ private:
+  TRI_tid_t currentThreadId() const { return Thread::currentThreadId(); }
+
+ private:
+  TRI_tid_t const _startingThreadId;
+
+#else
+
+  SameThreadAsserter() {} 
+  ~SameThreadAsserter() {} 
 
 #endif
+};
 
+}
+
+#endif

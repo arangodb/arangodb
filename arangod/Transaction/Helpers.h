@@ -34,7 +34,6 @@
 
 namespace arangodb {
 class CollectionNameResolver;
-class TransactionContext;
 
 namespace basics {
 class StringBuffer;
@@ -45,6 +44,7 @@ class Builder;
 }
 
 namespace transaction {
+class Context;
 class Methods;
 
 namespace helpers {
@@ -98,20 +98,20 @@ namespace helpers {
 class StringBufferLeaser {
  public:
   explicit StringBufferLeaser(Methods*); 
-  explicit StringBufferLeaser(TransactionContext*); 
+  explicit StringBufferLeaser(transaction::Context*); 
   ~StringBufferLeaser();
   arangodb::basics::StringBuffer* stringBuffer() const { return _stringBuffer; }
   arangodb::basics::StringBuffer* operator->() const { return _stringBuffer; }
   arangodb::basics::StringBuffer* get() const { return _stringBuffer; }
  private:
-  TransactionContext* _transactionContext;
+  transaction::Context* _transactionContext;
   arangodb::basics::StringBuffer* _stringBuffer;
 };
 
 class BuilderLeaser {
  public:
   explicit BuilderLeaser(transaction::Methods*); 
-  explicit BuilderLeaser(TransactionContext*); 
+  explicit BuilderLeaser(transaction::Context*); 
   ~BuilderLeaser();
   inline arangodb::velocypack::Builder* builder() const { return _builder; }
   inline arangodb::velocypack::Builder* operator->() const { return _builder; }
@@ -122,7 +122,7 @@ class BuilderLeaser {
     return res;
   }
  private:
-  TransactionContext* _transactionContext;
+  transaction::Context* _transactionContext;
   arangodb::velocypack::Builder* _builder;
 };
 

@@ -43,8 +43,8 @@
 #include "RestServer/AqlFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
-#include "Utils/StandaloneTransactionContext.h"
-#include "Utils/V8TransactionContext.h"
+#include "Transaction/StandaloneContext.h"
+#include "Transaction/V8Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -285,7 +285,7 @@ Query::~Query() {
     ISOLATE;
     TRI_GET_GLOBALS();
     auto ctx =
-        static_cast<arangodb::V8TransactionContext*>(v8g->_transactionContext);
+        static_cast<arangodb::transaction::V8Context*>(v8g->_transactionContext);
     if (ctx != nullptr) {
       ctx->unregisterTransaction();
     }
@@ -669,7 +669,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
         QueryResult res;
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result
-        res.context = std::make_shared<StandaloneTransactionContext>(_vocbase);
+        res.context = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
         res.warnings = warningsToVelocyPack();
         TRI_ASSERT(cacheEntry->_queryResult != nullptr);
@@ -853,7 +853,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         QueryResultV8 result;
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result
-        result.context = std::make_shared<StandaloneTransactionContext>(_vocbase);
+        result.context = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
         v8::Handle<v8::Value> values =
             TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(),
@@ -1168,7 +1168,7 @@ void Query::enterContext() {
 
       ISOLATE;
       TRI_GET_GLOBALS();
-      auto ctx = static_cast<arangodb::V8TransactionContext*>(
+      auto ctx = static_cast<arangodb::transaction::V8Context*>(
           v8g->_transactionContext);
       if (ctx != nullptr) {
         ctx->registerTransaction(_trx->state());
@@ -1186,7 +1186,7 @@ void Query::exitContext() {
       // unregister transaction and resolver in context
       ISOLATE;
       TRI_GET_GLOBALS();
-      auto ctx = static_cast<arangodb::V8TransactionContext*>(
+      auto ctx = static_cast<arangodb::transaction::V8Context*>(
           v8g->_transactionContext);
       if (ctx != nullptr) {
         ctx->unregisterTransaction();
@@ -1474,14 +1474,14 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
   _plan.reset();
 }
 
-/// @brief create a TransactionContext
-std::shared_ptr<TransactionContext> Query::createTransactionContext() {
+/// @brief create a transaction::Context
+std::shared_ptr<transaction::Context> Query::createTransactionContext() {
   if (_contextOwnedByExterior) {
     // we can use v8
-    return arangodb::V8TransactionContext::Create(_vocbase, true);
+    return arangodb::transaction::V8Context::Create(_vocbase, true);
   }
 
-  return arangodb::StandaloneTransactionContext::Create(_vocbase);
+  return arangodb::transaction::StandaloneContext::Create(_vocbase);
 }
 
 /// @brief look up a graph either from our cache list or from the _graphs

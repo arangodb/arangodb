@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "V8TransactionContext.h"
+#include "V8Context.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 
@@ -31,10 +31,10 @@
 using namespace arangodb;
 
 /// @brief create the context
-V8TransactionContext::V8TransactionContext(TRI_vocbase_t* vocbase,
+transaction::V8Context::V8Context(TRI_vocbase_t* vocbase,
                                            bool embeddable)
-    : TransactionContext(vocbase),
-      _sharedTransactionContext(static_cast<V8TransactionContext*>(
+    : Context(vocbase),
+      _sharedTransactionContext(static_cast<transaction::V8Context*>(
           static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData(
                                             V8PlatformFeature::V8_DATA_SLOT))
               ->_transactionContext)),
@@ -44,15 +44,15 @@ V8TransactionContext::V8TransactionContext(TRI_vocbase_t* vocbase,
 
 /// @brief order a custom type handler for the collection
 std::shared_ptr<VPackCustomTypeHandler>
-V8TransactionContext::orderCustomTypeHandler() {
+transaction::V8Context::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
-    V8TransactionContext* main = _sharedTransactionContext->_mainScope;
+    transaction::V8Context* main = _sharedTransactionContext->_mainScope;
 
     if (main != nullptr && main != this && !main->isGlobal()) {
       _customTypeHandler = main->orderCustomTypeHandler();
     } else {
       _customTypeHandler.reset(
-          TransactionContext::createCustomTypeHandler(_vocbase, getResolver()));
+          transaction::Context::createCustomTypeHandler(_vocbase, getResolver()));
     }
     _options.customTypeHandler = _customTypeHandler.get();
     _dumpOptions.customTypeHandler = _customTypeHandler.get();
@@ -65,9 +65,9 @@ V8TransactionContext::orderCustomTypeHandler() {
 }
 
 /// @brief return the resolver
-CollectionNameResolver const* V8TransactionContext::getResolver() {
+CollectionNameResolver const* transaction::V8Context::getResolver() {
   if (_resolver == nullptr) {
-    V8TransactionContext* main = _sharedTransactionContext->_mainScope;
+    transaction::V8Context* main = _sharedTransactionContext->_mainScope;
 
     if (main != nullptr && main != this && !main->isGlobal()) {
       _resolver = main->getResolver();
@@ -82,13 +82,13 @@ CollectionNameResolver const* V8TransactionContext::getResolver() {
 }
 
 /// @brief get parent transaction (if any)
-TransactionState* V8TransactionContext::getParentTransaction() const {
+TransactionState* transaction::V8Context::getParentTransaction() const {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   return _sharedTransactionContext->_currentTransaction;
 }
 
 /// @brief register the transaction in the context
-void V8TransactionContext::registerTransaction(TransactionState* trx) {
+void transaction::V8Context::registerTransaction(TransactionState* trx) {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   TRI_ASSERT(_sharedTransactionContext->_currentTransaction == nullptr);
   TRI_ASSERT(_sharedTransactionContext->_mainScope == nullptr);
@@ -97,37 +97,37 @@ void V8TransactionContext::registerTransaction(TransactionState* trx) {
 }
 
 /// @brief unregister the transaction from the context
-void V8TransactionContext::unregisterTransaction() noexcept {
+void transaction::V8Context::unregisterTransaction() noexcept {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   _sharedTransactionContext->_currentTransaction = nullptr;
   _sharedTransactionContext->_mainScope = nullptr;
 }
 
 /// @brief whether or not the transaction is embeddable
-bool V8TransactionContext::isEmbeddable() const { return _embeddable; }
+bool transaction::V8Context::isEmbeddable() const { return _embeddable; }
 
 /// @brief make this context a global context
 /// this is only called upon V8 context initialization
-void V8TransactionContext::makeGlobal() { _sharedTransactionContext = this; }
+void transaction::V8Context::makeGlobal() { _sharedTransactionContext = this; }
 
 /// @brief whether or not the transaction context is a global one
-bool V8TransactionContext::isGlobal() const {
+bool transaction::V8Context::isGlobal() const {
   return _sharedTransactionContext == this;
 }
 
 /// @brief check whether the transaction is embedded
-bool V8TransactionContext::IsEmbedded() {
+bool transaction::V8Context::IsEmbedded() {
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
       v8::Isolate::GetCurrent()->GetData(V8PlatformFeature::V8_DATA_SLOT));
   if (v8g->_transactionContext == nullptr) {
     return false;
   }
-  return static_cast<V8TransactionContext*>(v8g->_transactionContext)
+  return static_cast<transaction::V8Context*>(v8g->_transactionContext)
              ->_currentTransaction != nullptr;
 }
 
 /// @brief create a context, returned in a shared ptr
-std::shared_ptr<V8TransactionContext> V8TransactionContext::Create(
+std::shared_ptr<transaction::V8Context> transaction::V8Context::Create(
     TRI_vocbase_t* vocbase, bool embeddable) {
-  return std::make_shared<V8TransactionContext>(vocbase, embeddable);
+  return std::make_shared<transaction::V8Context>(vocbase, embeddable);
 }

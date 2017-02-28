@@ -45,6 +45,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionLockState.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
@@ -1139,8 +1140,8 @@ int ExecutionEngine::shutdown(int errorCode) {
   if (_root != nullptr && !_wasShutdown) {
     // Take care of locking prevention measures in the cluster:
     if (_lockedShards != nullptr) {
-      if (transaction::Methods::_makeNolockHeaders == _lockedShards) {
-        transaction::Methods::_makeNolockHeaders = _previouslyLockedShards;
+      if (CollectionLockState::_noLockHeaders == _lockedShards) {
+        CollectionLockState::_noLockHeaders = _previouslyLockedShards;
       }
       delete _lockedShards;
       _lockedShards = nullptr;
@@ -1190,10 +1191,10 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
         engine = inst.get()->buildEngines();
         root = engine->root();
         // Now find all shards that take part:
-        if (transaction::Methods::_makeNolockHeaders != nullptr) {
+        if (CollectionLockState::_noLockHeaders != nullptr) {
           engine->_lockedShards = new std::unordered_set<std::string>(
-              *transaction::Methods::_makeNolockHeaders);
-          engine->_previouslyLockedShards = transaction::Methods::_makeNolockHeaders;
+              *CollectionLockState::_noLockHeaders);
+          engine->_previouslyLockedShards = CollectionLockState::_noLockHeaders;
         } else {
           engine->_lockedShards = new std::unordered_set<std::string>();
           engine->_previouslyLockedShards = nullptr;
@@ -1291,7 +1292,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
                 TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED, message);
           }
         }
-        transaction::Methods::_makeNolockHeaders = engine->_lockedShards;
+        CollectionLockState::_noLockHeaders = engine->_lockedShards;
       } catch (...) {
         // We need to destroy all queries that we have built and stuffed
         // into the QueryRegistry as well as those that we have pushed to

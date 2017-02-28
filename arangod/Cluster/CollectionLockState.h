@@ -18,32 +18,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_GRAPHS_H
-#define ARANGOD_VOCBASE_GRAPHS_H 1
+#ifndef ARANGOD_CLUSTER_COLLECTION_LOCK_STATE_H
+#define ARANGOD_CLUSTER_COLLECTION_LOCK_STATE_H 1
 
-#include "VocBase/vocbase.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
-namespace aql {
-class Graph;
+
+struct CollectionLockState {
+  /// @brief collections for which there does not need to be an extra lock
+  static thread_local std::unordered_set<std::string>* _noLockHeaders;
+};
+
 }
-
-namespace transaction {
-class Context;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get an instance of Graph by Name.
-///  returns nullptr if graph is not existing
-///  The caller has to take care for the memory.
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::aql::Graph* lookupGraphByName(std::shared_ptr<transaction::Context>, std::string const& name);
-
-}  // namespace arangodb
 
 #endif
-

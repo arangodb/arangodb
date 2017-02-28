@@ -88,8 +88,6 @@ class IndexIterator {
   virtual bool next(TokenCallback const& callback, size_t limit) = 0;
   virtual bool nextExtra(ExtraCallback const& callback, size_t limit);
 
-//  virtual DocumentIdentifierToken next();
-
   virtual void reset();
 
   virtual void skip(uint64_t count, uint64_t& skipped);

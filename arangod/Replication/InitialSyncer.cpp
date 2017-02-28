@@ -33,14 +33,18 @@
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
+#include "MMFiles/MMFilesCollection.h" //TODO -- Remove -- ditches 
+#include "MMFiles/MMFilesDitch.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "Utils/OperationOptions.h"
-#include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -775,7 +779,7 @@ int InitialSyncer::handleCollectionDump(
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
+      SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
       
       res = trx.begin();
 
@@ -785,7 +789,7 @@ int InitialSyncer::handleCollectionDump(
         return res;
       }
      
-      trx.orderDitch(col->cid()); // will throw when it fails
+      trx.pinData(col->cid()); // will throw when it fails
 
       if (res == TRI_ERROR_NO_ERROR) {
         res = applyCollectionDump(trx, collectionName, response.get(), markersProcessed, errorMsg);
@@ -979,7 +983,7 @@ int InitialSyncer::handleCollectionSync(
 
   if (count.getNumber<size_t>() <= 0) {
     // remote collection has no documents. now truncate our local collection
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
 
     int res = trx.begin();
 
@@ -1034,12 +1038,12 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
   // fetch all local keys from primary index
   std::vector<uint8_t const*> markers;
     
-  DocumentDitch* ditch = nullptr;
+  MMFilesDocumentDitch* ditch = nullptr;
 
   // acquire a replication ditch so no datafiles are thrown away from now on
   // note: the ditch also protects against unloading the collection
   {    
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
   
     int res = trx.begin();
   
@@ -1047,8 +1051,10 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       errorMsg = std::string("unable to start transaction: ") + TRI_errno_string(res);
       return res;
     }
-    
-    ditch = col->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+
+    ditch = arangodb::MMFilesCollection::toMMFilesCollection(col)
+                ->ditches()
+                ->createMMFilesDocumentDitch(false, __FILE__, __LINE__);
 
     if (ditch == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -1057,10 +1063,12 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 
   TRI_ASSERT(ditch != nullptr);
 
-  TRI_DEFER(col->ditches()->freeDitch(ditch));
+  TRI_DEFER(arangodb::MMFilesCollection::toMMFilesCollection(col)
+                ->ditches()
+                ->freeDitch(ditch));
 
   {
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
   
     int res = trx.begin();
   
@@ -1072,13 +1080,13 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     // We do not take responsibility for the index.
     // The LogicalCollection is protected by trx.
     // Neither it nor it's indexes can be invalidated
-    auto idx = trx.documentCollection()->primaryIndex();
-    markers.reserve(idx->size());
+
+    markers.reserve(trx.documentCollection()->numberDocuments());
 
     uint64_t iterations = 0;
     ManagedDocumentResult mmdr;
-    trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations, &idx](DocumentIdentifierToken const& token) {
-      if (idx->collection()->readDocument(&trx, mmdr, token)) {
+    trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations](DocumentIdentifierToken const& token) {
+      if (trx.documentCollection()->readDocument(&trx, token, mmdr)) {
         markers.emplace_back(mmdr.vpack());
         
         if (++iterations % 10000 == 0) {
@@ -1200,7 +1208,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
   // remove all keys that are below first remote key or beyond last remote key
   if (n > 0) {
     // first chunk
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
   
     int res = trx.begin();
   
@@ -1271,7 +1279,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
     
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
   
     int res = trx.begin();
   
@@ -1280,12 +1288,16 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       return res;
     }
     
-    trx.orderDitch(col->cid()); // will throw when it fails
+    trx.pinData(col->cid()); // will throw when it fails
     
     // We do not take responsibility for the index.
     // The LogicalCollection is protected by trx.
     // Neither it nor it's indexes can be invalidated
-    auto idx = trx.documentCollection()->primaryIndex();
+
+    // TODO Move to MMFiles
+    auto physical = static_cast<MMFilesCollection*>(
+        trx.documentCollection()->getPhysical());
+    auto idx = physical->primaryIndex();
 
     size_t const currentChunkId = i;
     progress = "processing keys chunk " + std::to_string(currentChunkId) +
@@ -1639,7 +1651,7 @@ int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,
           "Database")
           ->forceSyncProperties();
 
-  return guard.collection()->updateProperties(slice, doSync);
+  return guard.collection()->updateProperties(slice, doSync).code;
 }
  
 ////////////////////////////////////////////////////////////////////////////////
@@ -1647,7 +1659,7 @@ int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,
 ////////////////////////////////////////////////////////////////////////////////
 
 int64_t InitialSyncer::getSize(arangodb::LogicalCollection* col) {
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
+  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::READ);
 
   int res = trx.begin();
 
@@ -1735,7 +1747,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
           // system collection
           setProgress("truncating " + collectionMsg);
 
-          SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
+          SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
 
           int res = trx.begin();
 
@@ -1850,7 +1862,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
           setProgress(progress);
 
           try {
-            SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
+            SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), col->cid(), AccessMode::Type::WRITE);
       
             res = trx.begin();
 
@@ -1859,10 +1871,12 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
               return res;
             }
 
-            trx.orderDitch(col->cid()); // will throw when it fails
+            trx.pinData(col->cid()); // will throw when it fails
       
             LogicalCollection* document = trx.documentCollection();
             TRI_ASSERT(document != nullptr);
+            auto physical = document->getPhysical();
+            TRI_ASSERT(physical != nullptr);
 
             for (auto const& idxDef : VPackArrayIterator(indexes)) {
               std::shared_ptr<arangodb::Index> idx;
@@ -1877,22 +1891,12 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
                 }
               }
 
-              res = document->restoreIndex(&trx, idxDef, idx);
+              res = physical->restoreIndex(&trx, idxDef, idx);
 
               if (res != TRI_ERROR_NO_ERROR) {
                 errorMsg = "could not create index: " +
                             std::string(TRI_errno_string(res));
                 break;
-              } else {
-                TRI_ASSERT(idx != nullptr);
-
-                res = document->saveIndex(idx.get(), true);
-
-                if (res != TRI_ERROR_NO_ERROR) {
-                  errorMsg = "could not save index: " +
-                              std::string(TRI_errno_string(res));
-                  break;
-                }
               }
             }
       

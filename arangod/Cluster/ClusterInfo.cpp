@@ -42,6 +42,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/SmartVertexCollection.h"
@@ -1144,7 +1145,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
   AgencyOperation createCollection(
       "Plan/Collections/" + databaseName + "/" + collectionID,
-      AgencyValueOperationType::SET, builder.slice());
+      AgencyValueOperationType::SET, builder.slice()); 
   AgencyOperation increaseVersion("Plan/Version",
                                   AgencySimpleOperationType::INCREMENT_OP);
 
@@ -1393,8 +1394,8 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
         copy.add(key, entry.value);
       }
     }
-    copy.add("doCompact", VPackValue(info->doCompact()));
-    copy.add("journalSize", VPackValue(info->journalSize()));
+    copy.add("doCompact", VPackValue(info->getPhysical()->doCompact()));
+    copy.add("journalSize", VPackValue(info->getPhysical()->journalSize()));
     copy.add("waitForSync", VPackValue(info->waitForSync()));
     copy.add("indexBuckets", VPackValue(info->indexBuckets()));
   } catch (...) {
@@ -1548,7 +1549,7 @@ int ClusterInfo::ensureIndexCoordinator(
   auto numberOfShardsMutex = std::make_shared<Mutex>();
   auto numberOfShards = std::make_shared<int>(0);
   auto resBuilder = std::make_shared<VPackBuilder>();
-  auto collectionBuilder = std::make_shared<VPackBuilder>();
+  VPackBuilder collectionBuilder;
 
   {
     std::shared_ptr<LogicalCollection> c =
@@ -1606,9 +1607,14 @@ int ClusterInfo::ensureIndexCoordinator(
     }
 
     // now create a new index
-    c->toVelocyPackForAgency(*collectionBuilder);
+    std::unordered_set<std::string> const ignoreKeys{
+        "allowUserKeys", "cid", /* cid really ignore?*/
+        "count",         "planId", "version",
+    };
+    c->setStatus(TRI_VOC_COL_STATUS_LOADED);
+    collectionBuilder = c->toVelocyPackIgnore(ignoreKeys, false);
   }
-  VPackSlice const collectionSlice = collectionBuilder->slice();
+  VPackSlice const collectionSlice = collectionBuilder.slice();
 
   auto newBuilder = std::make_shared<VPackBuilder>();
   if (!collectionSlice.isObject()) {

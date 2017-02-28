@@ -102,7 +102,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
  private:
   // Send slice as result with the given response type.
   void sendResponse(rest::ResponseCode,
-                    arangodb::velocypack::Slice const, TransactionContext*);
+                    arangodb::velocypack::Slice const, transaction::Context*);
 
   // handle for useQuery
   void handleUseQuery(std::string const&, Query*,

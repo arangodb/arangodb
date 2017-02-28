@@ -84,7 +84,7 @@ struct ConstDistanceExpanderLocal {
     
       LogicalCollection* collection = edgeCursor->collection();
       auto cb = [&] (DocumentIdentifierToken const& element) {
-        if (collection->readDocument(_block->transaction(), *mmdr, element)) {
+        if (collection->readDocument(_block->transaction(), element, *mmdr)) {
           VPackSlice edge(mmdr->vpack());
           VPackSlice from =
               transaction::helpers::extractFromFromDocument(edge);
@@ -216,7 +216,7 @@ struct EdgeWeightExpanderLocal {
 
       LogicalCollection* collection = edgeCursor->collection();
       auto cb = [&] (DocumentIdentifierToken const& element) {
-        if (collection->readDocument(_block->transaction(), *mmdr, element)) {
+        if (collection->readDocument(_block->transaction(), element, *mmdr)) {
           VPackSlice edge(mmdr->vpack());
           VPackSlice from =
               transaction::helpers::extractFromFromDocument(edge);
