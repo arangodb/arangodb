@@ -114,7 +114,7 @@ FOR vertex[, edge[, path]]
     If omitted, *max* defaults to *min*. Thus only the vertices and edges in
     the range of *min* are returned. *max* can not be specified without *min*.
 - `OUTBOUND|INBOUND|ANY`: follow outgoing, incoming, or edges pointing in either
-  direction in the traversal
+  direction in the traversal; Please note that this can't be replaced by a bind parameter.
 - **startVertex** (string|object): a vertex where the traversal will originate from.
   This can be specified in the form of an ID string or in the form of a document
   with the attribute `_id`. All other values will lead to a warning and an empty
@@ -401,6 +401,8 @@ have edges in other directions and they will be traversed.
 **Note**: The traverser may use identical edges multiple times. For instance,
 if it walks from **E** to **F**, it will continue to walk from **F** to **E**
 using the same edge once again. Due to this we will see duplicate nodes in the result.
+
+Please note that the direction can't be passed in by a bind parameter.
 
 Use the AQL explainer for optimizations
 ---------------------------------------
