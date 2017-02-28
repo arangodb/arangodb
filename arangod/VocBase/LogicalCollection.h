@@ -210,12 +210,6 @@ class LogicalCollection {
 
   std::vector<std::shared_ptr<Index>> const& getIndexes() const;
 
- // Adds all properties to the builder (has to be an open object)
-  // Does not add Shards or Indexes
-  void getPropertiesVPack(velocypack::Builder&,
-                          bool includeCluster,
-                          bool translateIds) const;
-  
   void getIndexesVPack(velocypack::Builder&, bool) const;
 
   // SECTION: Replication
@@ -348,12 +342,6 @@ private:
 
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
-
-  void getFullProperties(velocypack::Builder& result,
-                         bool translateCids) const;
-
-  void toVelocyPackInObject(velocypack::Builder& result,
-                            bool translateCids) const;
 
   // SECTION: Meta Information
   //
