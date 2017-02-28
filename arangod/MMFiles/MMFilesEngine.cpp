@@ -495,15 +495,16 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
     int res = TRI_ERROR_NO_ERROR;
 
     try {
-      std::unique_ptr<LogicalCollection> collection(loadCollectionInfo(vocbase, directory));
-     
-      if (collection->deleted()) {
-        _deleted.emplace_back(std::make_pair(collection->name(), directory));
+      VPackBuilder builder = loadCollectionInfo(vocbase, directory);
+      VPackSlice info = builder.slice();
+
+      if (VelocyPackHelper::readBooleanValue(info, "deleted", false)) {
+        std::string name = VelocyPackHelper::getStringValue(info, "name", "");
+        _deleted.emplace_back(std::make_pair(name, directory));
         continue;
       }
-
       // add collection info
-      collection->toVelocyPack(result, true);
+      result.add(info);
     } catch (arangodb::basics::Exception const& e) {
       std::string tmpfile = FileUtils::buildFilename(directory, ".tmp");
 
@@ -1270,7 +1271,13 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
-      arangodb::LogicalCollection* collection = StorageEngine::registerCollection(vocbase.get(), it);
+      auto uniqCol = std::make_unique<arangodb::LogicalCollection>(vocbase.get(), it, true);
+      auto collection = uniqCol.get();
+      TRI_ASSERT(collection != nullptr);
+      StorageEngine::registerCollection(vocbase.get(), uniqCol.get());
+      // The vocbase has taken over control
+      uniqCol.release();
+
 
       auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
       TRI_ASSERT(physical != nullptr);
@@ -1400,9 +1407,8 @@ void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,
                                        bool forceSync) const {
   std::string const filename = collectionParametersFilename(vocbase->id(), id);
 
-  VPackBuilder builder;
-  parameters->toVelocyPack(builder, false);
-
+  VPackBuilder builder =
+      parameters->toVelocyPackIgnore({"path", "statusString"}, true);
   TRI_ASSERT(id != 0);
 
   bool ok = VelocyPackHelper::velocyPackToFile(filename,
@@ -1415,7 +1421,7 @@ void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,
   }
 }
 
-LogicalCollection* MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase, std::string const& path) {
+VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase, std::string const& path) {
   // find parameter file
   std::string filename =
       arangodb::basics::FileUtils::buildFilename(path, parametersFilename());
@@ -1532,10 +1538,7 @@ LogicalCollection* MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase, std
   indexesPatch.close();
   indexesPatch.close();
 
-  VPackBuilder b3 = VPackCollection::merge(slice, indexesPatch.slice(), false);
-  slice = b3.slice();
-  
-  return new LogicalCollection(vocbase, slice, true);
+  return VPackCollection::merge(slice, indexesPatch.slice(), false);
 }
 
 /// @brief remove data of expired compaction blockers

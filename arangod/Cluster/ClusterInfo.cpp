@@ -1140,9 +1140,12 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
+  VPackBuilder builder;
+  builder.add(json);
+
   AgencyOperation createCollection(
       "Plan/Collections/" + databaseName + "/" + collectionID,
-      AgencyValueOperationType::SET, json); 
+      AgencyValueOperationType::SET, builder.slice()); 
   AgencyOperation increaseVersion("Plan/Version",
                                   AgencySimpleOperationType::INCREMENT_OP);
 

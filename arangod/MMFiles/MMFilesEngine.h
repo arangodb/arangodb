@@ -327,7 +327,7 @@ public:
                           arangodb::LogicalCollection const* parameters,
                           bool forceSync) const;
 
-  LogicalCollection* loadCollectionInfo(TRI_vocbase_t* vocbase, std::string const& path);
+  arangodb::velocypack::Builder loadCollectionInfo(TRI_vocbase_t* vocbase, std::string const& path);
   
   // start the cleanup thread for the database 
   int startCleanup(TRI_vocbase_t* vocbase);

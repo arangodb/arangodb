@@ -311,8 +311,7 @@ struct TRI_vocbase_t {
 
   /// @brief adds a new collection
   /// caller must hold _collectionsLock in write mode or set doLock
-  arangodb::LogicalCollection* registerCollection(
-      bool doLock, arangodb::velocypack::Slice parameters);
+  void registerCollection(bool doLock, arangodb::LogicalCollection* collection);
 
   /// @brief removes a collection from the global list of collections
   /// This function is called when a collection is dropped.

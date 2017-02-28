@@ -146,8 +146,10 @@ class LogicalCollection {
 
   std::string name() const;
   std::string dbName() const;
-  std::string const& distributeShardsLike() const;
-  void distributeShardsLike(std::string const&);
+
+  // Does always return the cid
+  std::string const distributeShardsLike() const;
+  void distributeShardsLike(std::string const& cid);
 
   std::vector<std::string> const& avoidServers() const;
   void avoidServers(std::vector<std::string> const&);
@@ -247,7 +249,7 @@ class LogicalCollection {
       std::unordered_set<std::string> const& ignoreKeys,
       bool translateCids) const;
 
-  void toVelocyPack(velocypack::Builder&, bool withPath) const;
+  // void toVelocyPack(velocypack::Builder&, bool withPath) const;
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&,
                                                bool useSystem) const;

@@ -315,9 +315,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void addAqlFunctions() const = 0;
 
  protected:
-  arangodb::LogicalCollection* registerCollection(
-      TRI_vocbase_t* vocbase, arangodb::velocypack::Slice params) {
-    return vocbase->registerCollection(true, params);
+  void registerCollection(TRI_vocbase_t* vocbase,
+                          arangodb::LogicalCollection* collection) {
+    vocbase->registerCollection(true, collection);
   }
 
  private:

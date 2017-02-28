@@ -140,18 +140,15 @@ void TRI_vocbase_t::signalCleanup() {
 
 /// @brief adds a new collection
 /// caller must hold _collectionsLock in write mode or set doLock
-arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
-    bool doLock, VPackSlice parameters) {
-  // create a new proxy
-  std::unique_ptr<arangodb::LogicalCollection> collection =
-      std::make_unique<arangodb::LogicalCollection>(this, parameters, true);
+void TRI_vocbase_t::registerCollection(
+    bool doLock, arangodb::LogicalCollection* collection) {
   std::string name = collection->name();
   TRI_voc_cid_t cid = collection->cid();
   {
     CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock, doLock);
 
     // check name
-    auto it = _collectionsByName.emplace(name, collection.get());
+    auto it = _collectionsByName.emplace(name, collection);
         
     if (!it.second) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "duplicate entry for collection name '" << name << "'";
@@ -164,7 +161,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
 
     // check collection identifier
     try {
-      auto it2 = _collectionsById.emplace(cid, collection.get());
+      auto it2 = _collectionsById.emplace(cid, collection);
 
       if (!it2.second) {
         _collectionsByName.erase(name);
@@ -183,7 +180,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
     TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
 
     try {
-      _collections.emplace_back(collection.get());
+      _collections.emplace_back(collection);
     }
     catch (...) {
       _collectionsByName.erase(name);
@@ -195,8 +192,6 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
     collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
     TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
   }
-
-  return collection.release();
 }
 
 /// @brief write a drop collection marker into the log
@@ -341,6 +336,12 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   std::string name = arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name" , "");
   TRI_ASSERT(!name.empty());
     
+  // Try to create a new collection. This is not registered yet
+
+  std::unique_ptr<arangodb::LogicalCollection> collection =
+      std::make_unique<arangodb::LogicalCollection>(this, parameters, true);
+  TRI_ASSERT(collection != nullptr);
+
   WRITE_LOCKER(writeLocker, _collectionsLock);
 
   // reserve room for the new collection
@@ -354,12 +355,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
 
-  arangodb::LogicalCollection* collection =
-      registerCollection(basics::ConditionalLocking::DoNotLock, parameters);
-
-  // Register collection cannot return a nullptr.
-  // If it would return a nullptr it should have thrown instead
-  TRI_ASSERT(collection != nullptr);
+  registerCollection(basics::ConditionalLocking::DoNotLock, collection.get());
 
   try {
     // cid might have been assigned
@@ -369,9 +365,9 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     // set collection version to 3.1, as the collection is just created
     collection->setVersion(LogicalCollection::VERSION_31);
     events::CreateCollection(name, TRI_ERROR_NO_ERROR);
-    return collection;
+    return collection.release();
   } catch (...) {
-    unregisterCollection(collection);
+    unregisterCollection(collection.get());
     throw;
   }
 }
@@ -791,8 +787,6 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(TRI_voc_tick_t maxTick,
   }
 
   builder->close();
-
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "toVpack( true, maxTick): " << builder->slice().toJson();
   return builder;
 }
 
@@ -903,7 +897,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     return nullptr;
   }
 
-  VPackBuilder builder = collection->toVelocyPackIgnore({"statusString"}, true);
+  VPackBuilder builder = collection->toVelocyPackIgnore({"path", "statusString"}, true);
   VPackSlice const slice = builder.slice();
 
   TRI_ASSERT(cid != 0);

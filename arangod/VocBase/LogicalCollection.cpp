@@ -67,6 +67,25 @@ using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 
+static std::string translateStatus(TRI_vocbase_col_status_e status) {
+  switch (status) {
+    case TRI_VOC_COL_STATUS_UNLOADED:
+      return "unloaded";
+    case TRI_VOC_COL_STATUS_LOADED:
+      return "loaded";
+    case TRI_VOC_COL_STATUS_UNLOADING:
+      return "unloading";
+    case TRI_VOC_COL_STATUS_DELETED:
+      return "deleted";
+    case TRI_VOC_COL_STATUS_LOADING:
+      return "loading";
+    case TRI_VOC_COL_STATUS_CORRUPTED:
+    case TRI_VOC_COL_STATUS_NEW_BORN:
+    default:
+      return "unknown";
+  }
+}
+
 static TRI_voc_cid_t ReadCid(VPackSlice info) {
   if (!info.isObject()) {
     // ERROR CASE
@@ -129,7 +148,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _planId(other.planId()),
       _type(other.type()),
       _name(other.name()),
-      _distributeShardsLike(other.distributeShardsLike()),
+      _distributeShardsLike(other._distributeShardsLike),
       _avoidServers(other.avoidServers()),
       _isSmart(other.isSmart()),
       _status(other.status()),
@@ -169,8 +188,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     : _internalVersion(0),
       _cid(ReadCid(info)),
       _planId(ReadPlanId(info, _cid)),
-      _type(Helper::readNumericValue<TRI_col_type_e, int>(info, "type",
-                                                  TRI_COL_TYPE_UNKNOWN)),
+      _type(Helper::readNumericValue<TRI_col_type_e, int>(
+          info, "type", TRI_COL_TYPE_UNKNOWN)),
       _name(ReadStringValue(info, "name", "")),
       _distributeShardsLike(ReadStringValue(info, "distributeShardsLike", "")),
       _isSmart(Helper::readBooleanValue(info, "isSmart", false)),
@@ -180,19 +199,21 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _isDeleted(Helper::readBooleanValue(info, "deleted", false)),
       _isSystem(IsSystemName(_name) &&
                 Helper::readBooleanValue(info, "isSystem", false)),
-      _version(Helper::readNumericValue<uint32_t>(info, "version", currentVersion())),
-      _waitForSync(Helper::readBooleanValue(
-          info, "waitForSync", false)),
+      _version(Helper::readNumericValue<uint32_t>(info, "version",
+                                                  currentVersion())),
+      _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
       _indexBuckets(Helper::readNumericValue<uint32_t>(
           info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
       _replicationFactor(1),
-      _numberOfShards(Helper::readNumericValue<size_t>(info, "numberOfShards", 1)),
+      _numberOfShards(
+          Helper::readNumericValue<size_t>(info, "numberOfShards", 1)),
       _allowUserKeys(Helper::readBooleanValue(info, "allowUserKeys", true)),
       _shardIds(new ShardMap()),
       _vocbase(vocbase),
       _cleanupIndexes(0),
       _persistentIndexes(0),
-      _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(this,info)) {
+      _physical(
+          EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)) {
   getPhysical()->setPath(ReadStringValue(info, "path", ""));
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -517,8 +538,15 @@ std::string LogicalCollection::name() const {
   return _name;
 }
 
-std::string const& LogicalCollection::distributeShardsLike() const {
-  return _distributeShardsLike;
+std::string const LogicalCollection::distributeShardsLike() const {
+  if (!_distributeShardsLike.empty()) {
+    CollectionNameResolver resolver(_vocbase);
+    TRI_voc_cid_t shardLike = resolver.getCollectionIdCluster(_distributeShardsLike);
+    if (shardLike != 0) {
+      return basics::StringUtils::itoa(shardLike);
+    }
+  }
+  return "";
 }
 
 void LogicalCollection::distributeShardsLike(std::string const& cid) {
@@ -575,22 +603,7 @@ TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
 /// @brief returns a translation of a collection status
 std::string LogicalCollection::statusString() const {
   READ_LOCKER(readLocker, _lock);
-  switch (_status) {
-    case TRI_VOC_COL_STATUS_UNLOADED:
-      return "unloaded";
-    case TRI_VOC_COL_STATUS_LOADED:
-      return "loaded";
-    case TRI_VOC_COL_STATUS_UNLOADING:
-      return "unloading";
-    case TRI_VOC_COL_STATUS_DELETED:
-      return "deleted";
-    case TRI_VOC_COL_STATUS_LOADING:
-      return "loading";
-    case TRI_VOC_COL_STATUS_CORRUPTED:
-    case TRI_VOC_COL_STATUS_NEW_BORN:
-    default:
-      return "unknown";
-  }
+  return ::translateStatus(_status);
 }
 
 // SECTION: Properties
@@ -648,15 +661,15 @@ void LogicalCollection::getPropertiesVPack(VPackBuilder& result,
 
   if (includeCluster) {
     result.add("replicationFactor", VPackValue(_replicationFactor));
-    if (!_distributeShardsLike.empty()) {
+    if (!_distributeShardsLike.empty() && !ServerState::instance()->isDBServer()) {
       if (translateCids) {
         CollectionNameResolver resolver(_vocbase);
         result.add("distributeShardsLike",
                    VPackValue(resolver.getCollectionNameCluster(
-                       static_cast<TRI_voc_cid_t>(
-                           basics::StringUtils::uint64(_distributeShardsLike)))));
+                       static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(
+                           distributeShardsLike())))));
       } else {
-        result.add("distributeShardsLike", VPackValue(_distributeShardsLike));
+        result.add("distributeShardsLike", VPackValue(distributeShardsLike()));
       }
     }
 
@@ -817,26 +830,6 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   result.close(); // CollectionInfo
 }
 
-void LogicalCollection::toVelocyPack(VPackBuilder& result,
-                                     bool withPath) const {
-  result.openObject();
-  toVelocyPackInObject(result, false);
-  result.add(
-      "cid",
-      VPackValue(std::to_string(_cid)));  // export cid for compatibility, too
-  result.add("planId",
-             VPackValue(std::to_string(_planId)));  // export planId for cluster
-  result.add("version", VPackValue(_version));
-  result.add("count", VPackValue(_physical->initialCount()));
-
-  if (withPath) {
-    result.add("path", VPackValue(getPhysical()->path()));
-  }
-  result.add("allowUserKeys", VPackValue(_allowUserKeys));
-
-  result.close();
-}
-
 void LogicalCollection::toVelocyPack2(VPackBuilder& result, bool translateCids) const {
   // We write into an open object
   TRI_ASSERT(result.isOpenObject());
@@ -847,7 +840,7 @@ void LogicalCollection::toVelocyPack2(VPackBuilder& result, bool translateCids) 
   result.add("name", VPackValue(_name));
   result.add("type", VPackValue(static_cast<int>(_type)));
   result.add("status", VPackValue(_status));
-  result.add("statusString", VPackValue(statusString()));
+  result.add("statusString", VPackValue(::translateStatus(_status)));
   result.add("version", VPackValue(_version));
 
   // Collection Flags
@@ -887,19 +880,19 @@ void LogicalCollection::toVelocyPack2(VPackBuilder& result, bool translateCids) 
   result.close();  // shards
 
   if (isSatellite()) {
-    result.add("replicationFactor", VPackValue("satelite"));
+    result.add("replicationFactor", VPackValue("satellite"));
   } else {
     result.add("replicationFactor", VPackValue(_replicationFactor));
   }
-  if (!_distributeShardsLike.empty()) {
+  if (!_distributeShardsLike.empty() && !ServerState::instance()->isDBServer()) {
     if (translateCids) {
       CollectionNameResolver resolver(_vocbase);
       result.add("distributeShardsLike",
                  VPackValue(resolver.getCollectionNameCluster(
                      static_cast<TRI_voc_cid_t>(
-                         basics::StringUtils::uint64(_distributeShardsLike)))));
+                         basics::StringUtils::uint64(distributeShardsLike())))));
     } else {
-      result.add("distributeShardsLike", VPackValue(_distributeShardsLike));
+      result.add("distributeShardsLike", VPackValue(distributeShardsLike()));
     }
   }
 
@@ -1164,12 +1157,11 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
 
   addIndex(idx);
   {
-    VPackBuilder builder;
     bool const doSync =
         application_features::ApplicationServer::getFeature<DatabaseFeature>(
             "Database")
             ->forceSyncProperties();
-    toVelocyPack(builder, false);
+    VPackBuilder builder = toVelocyPackIgnore({"path", "statusString"}, true);
     updateProperties(builder.slice(), doSync);
   }
   created = true;

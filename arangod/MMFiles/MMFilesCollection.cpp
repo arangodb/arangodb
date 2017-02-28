@@ -157,9 +157,8 @@ CollectionResult MMFilesCollection::updateProperties(VPackSlice const& slice,
 
 int MMFilesCollection::persistProperties() noexcept {
   try {
-    VPackBuilder infoBuilder;
-    _logicalCollection->toVelocyPack(infoBuilder, false);
-
+    VPackBuilder infoBuilder =
+        _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
     MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, _logicalCollection->vocbase()->id(), _logicalCollection->cid(), infoBuilder.slice());
     MMFilesWalSlotInfoCopy slotInfo =
         MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
@@ -1067,6 +1066,7 @@ bool MMFilesCollection::closeDatafiles(std::vector<MMFilesDatafile*> const& file
 
 void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
+  result.add("path", VPackValue(_path));
   result.add("journalSize", VPackValue(_journalSize));
   result.add("doCompact", VPackValue(_doCompact));
   result.add("isVolatile", VPackValue(_isVolatile));
@@ -1960,12 +1960,12 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
   engine->dropIndex(vocbase, cid, iid);
 
   {
-    VPackBuilder builder;
     bool const doSync =
         application_features::ApplicationServer::getFeature<DatabaseFeature>(
             "Database")
             ->forceSyncProperties();
-    _logicalCollection->toVelocyPack(builder, false);
+    VPackBuilder builder =
+        _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
     _logicalCollection->updateProperties(builder.slice(), doSync);
   }
 
