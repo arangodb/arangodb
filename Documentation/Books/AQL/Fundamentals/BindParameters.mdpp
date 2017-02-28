@@ -113,6 +113,8 @@ FOR u IN @@collection
 { "@collection": "myCollection" }
 ```
 
+Keywords can't be replaced by bind-values; i.e. `FOR`, `FILTER`, `IN`, `INBOUND` or function calls.
+
 Specific information about parameters binding can also be found in:
 
 - [AQL with Web Interface](../Invocation/WithWebInterface.md)
