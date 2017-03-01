@@ -112,21 +112,24 @@ void ApplicationFeature::determineAncestors() {
   std::vector<std::string> path;
 
   std::function<void(std::string const&)> build = [this, &build, &path](std::string const& name) {
-    path.emplace_back(name);
+    // lookup the feature first. it may not exist
+    ApplicationFeature* other = this->server()->lookupFeature(name);
 
-    for (auto& ancestor : this->server()->feature(name)->startsAfter()) {
-      if (_ancestors.emplace(ancestor).second) {
-        if (ancestor == _name) {
-          path.emplace_back(ancestor);
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            "dependencies for feature '" + _name + "' are cyclic: " + arangodb::basics::StringUtils::join(path, " <= "));
+    if (other != nullptr) {
+      path.emplace_back(name);
+      for (auto& ancestor : other->startsAfter()) {
+        if (_ancestors.emplace(ancestor).second) {
+          if (ancestor == _name) {
+            path.emplace_back(ancestor);
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              "dependencies for feature '" + _name + "' are cyclic: " + arangodb::basics::StringUtils::join(path, " <= "));
+          }
+          build(ancestor);
         }
-        build(ancestor);
       }
+      path.pop_back();
     }
-
-    path.pop_back();
   };
 
   build(_name);
