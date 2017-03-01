@@ -10,8 +10,6 @@ devel
 
 * don't let read-only transactions block the WAL collector
 
-* allow passing own `graphql-sync` module instance to Foxx GraphQL router
-
 
 v3.2.alpha2 (2017-02-20)
 ------------------------
@@ -77,6 +75,8 @@ v3.2.alpha1 (2017-02-05)
 * changed index filling to make it more parallel, dispatch tasks to boost::asio
 
 * more detailed stacktraces in Foxx apps
+
+* generated Foxx services now use swagger tags
 
 
 v3.1.12 (XXXX-XX-XX)
