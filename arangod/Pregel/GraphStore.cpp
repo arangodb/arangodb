@@ -69,7 +69,7 @@ std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
   uint64_t count = 0;
   for (auto const& shard : _config->localVertexShardIDs()) {
     OperationResult opResult = countTrx->count(shard, true);
-    if (opResult.failed()) {
+    if (opResult.failed() || _destroyed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
     shardSizes[shard] = opResult.slice().getUInt();
@@ -82,7 +82,7 @@ std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
   count = 0;
   for (auto const& shard : _config->localEdgeShardIDs()) {
     OperationResult opResult = countTrx->count(shard, true);
-    if (opResult.failed()) {
+    if (opResult.failed() || _destroyed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
     shardSizes[shard] = opResult.slice().getUInt();
@@ -335,6 +335,10 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     }
   };
   while (cursor->getMore(cb, 1000)) {
+    if (_destroyed) {
+      LOG_TOPIC(WARN, Logger::PREGEL) << "Aborted loading graph";
+      break;
+    }
   }
 
   // Add all new vertices
