@@ -34,6 +34,7 @@
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
+#include "Aql/QueryProfile.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WorkMonitor.h"
@@ -68,75 +69,6 @@ static std::atomic<TRI_voc_tick_t> NextQueryId(1);
 constexpr uint64_t DontCache = 0;
 }
 
-/// @brief names of query phases / states
-static std::string StateNames[] = {
-    "initializing",        // INITIALIZATION
-    "parsing",             // PARSING
-    "optimizing ast",      // AST_OPTIMIZATION
-    "loading collections", // LOADING_COLLECTIONS
-    "instantiating plan",  // PLAN_INSTANTIATION
-    "optimizing plan",     // PLAN_OPTIMIZATION
-    "executing",           // EXECUTION
-    "finalizing",          // FINALIZATION
-
-    "invalid"  // INVALID
-};
-
-// make sure the state strings and the actual states match
-static_assert(sizeof(StateNames) / sizeof(std::string) ==
-                  static_cast<size_t>(ExecutionState::INVALID_STATE) + 1,
-              "invalid number of ExecutionState values");
-
-/// @brief create a profile
-Profile::Profile(Query* query)
-    : query(query), results(), stamp(query->startTime()), tracked(false) {
-  auto queryList = query->vocbase()->queryList();
-
-  try {
-    tracked = queryList->insert(query, stamp);
-  } catch (...) {
-  }
-}
-
-/// @brief destroy a profile
-Profile::~Profile() {
-  // only remove from list when the query was inserted into it...
-  if (tracked) {
-    auto queryList = query->vocbase()->queryList();
-
-    try {
-      queryList->remove(query, stamp);
-     } catch (...) {
-    }
-  }
-}
-
-/// @brief sets a state to done
-void Profile::setDone(ExecutionState state) {
-  double const now = TRI_microtime();
-
-  if (state != ExecutionState::INVALID_STATE) {
-    // record duration of state
-    results.emplace_back(state, now - stamp);
-  }
-
-  // set timestamp
-  stamp = now;
-}
-
-/// @brief convert the profile to VelocyPack
-std::shared_ptr<VPackBuilder> Profile::toVelocyPack() {
-  auto result = std::make_shared<VPackBuilder>();
-  {
-    VPackObjectBuilder b(result.get());
-    for (auto const& it : results) {
-      result->add(StateNames[static_cast<int>(it.first)],
-                  VPackValue(it.second));
-    }
-  }
-  return result;
-}
-
 /// @brief global memory limit for AQL queries
 uint64_t Query::MemoryLimitValue = 0;
 
@@ -162,7 +94,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _bindParameters(bindParameters),
       _options(options),
       _collections(vocbase),
-      _state(INVALID_STATE),
+      _state(QueryExecutionState::ValueType::INVALID_STATE),
       _trx(nullptr),
       _maxWarningCount(10),
       _warnings(),
@@ -229,7 +161,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _queryBuilder(queryStruct),
       _options(options),
       _collections(vocbase),
-      _state(INVALID_STATE),
+      _state(QueryExecutionState::ValueType::INVALID_STATE),
       _trx(nullptr),
       _maxWarningCount(10),
       _warnings(),
@@ -458,7 +390,7 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
   TRI_ASSERT(registry != nullptr);
   
   init();
-  enterState(PARSING);
+  enterState(QueryExecutionState::ValueType::PARSING);
 
   std::unique_ptr<ExecutionPlan> plan;
 
@@ -487,7 +419,7 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
       ExecutionPlan::getCollectionsFromVelocyPack(_ast.get(), slice);
       _ast->variables()->fromVelocyPack(slice);
     
-      enterState(LOADING_COLLECTIONS);
+      enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
     
       int res = trx->addCollections(*_collections.collections());
       
@@ -499,7 +431,7 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
         THROW_ARANGO_EXCEPTION_MESSAGE(res, buildErrorMessage(res));
       }
     
-      enterState(PLAN_INSTANTIATION);
+      enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
     
       plan.reset(ExecutionPlan::instantiateFromVelocyPack(_ast.get(), slice));
 
@@ -525,7 +457,7 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryStringHash) {
 #endif
   }
 
-  enterState(EXECUTION);
+  enterState(QueryExecutionState::ValueType::EXECUTION);
   
   TRI_ASSERT(_engine == nullptr);
   // note that the engine returned here may already be present in our
@@ -575,11 +507,11 @@ ExecutionPlan* Query::prepare() {
   if (_queryString != nullptr) {
     // we have an AST
     // optimize the ast
-    enterState(AST_OPTIMIZATION);
+    enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
 
     _ast->validateAndOptimize();
     
-    enterState(LOADING_COLLECTIONS);
+    enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
   
     int res = _trx->begin();
 
@@ -587,7 +519,7 @@ ExecutionPlan* Query::prepare() {
       THROW_ARANGO_EXCEPTION_MESSAGE(res, buildErrorMessage(res));
     }
 
-    enterState(PLAN_INSTANTIATION);
+    enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
     plan.reset(ExecutionPlan::instantiateFromAst(_ast.get()));
 
     if (plan.get() == nullptr) {
@@ -596,7 +528,7 @@ ExecutionPlan* Query::prepare() {
     }
 
     // Run the query optimizer:
-    enterState(PLAN_OPTIMIZATION);
+    enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     arangodb::aql::Optimizer opt(maxNumberOfPlans());
     // get enabled/disabled rules
     opt.createPlans(plan.release(), getRulesFromOptions(),
@@ -612,7 +544,7 @@ ExecutionPlan* Query::prepare() {
     // we need to add them to the transaction now (otherwise the query will
     // fail)
     
-    enterState(LOADING_COLLECTIONS);
+    enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
     
     int res = trx->addCollections(*_collections.collections());
 
@@ -624,7 +556,7 @@ ExecutionPlan* Query::prepare() {
       THROW_ARANGO_EXCEPTION_MESSAGE(res, buildErrorMessage(res));
     }
     
-    enterState(PLAN_INSTANTIATION);
+    enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
 
     // we have an execution plan in VelocyPack format
     plan.reset(ExecutionPlan::instantiateFromVelocyPack(_ast.get(), _queryBuilder->slice()));
@@ -788,7 +720,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
     auto stats = std::make_shared<VPackBuilder>();
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, stats.get());
 
-    enterState(FINALIZATION);
+    enterState(QueryExecutionState::ValueType::FINALIZATION);
  
     result.warnings = warningsToVelocyPack();
     result.result = resultBuilder;
@@ -810,22 +742,22 @@ QueryResult Query::execute(QueryRegistry* registry) {
   } catch (arangodb::basics::Exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngine(ex.code());
-    return QueryResult(ex.code(), ex.message() + getStateString());
+    return QueryResult(ex.code(), ex.message() + QueryExecutionState::toString(_state));
   } catch (std::bad_alloc const&) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
     return QueryResult(
         TRI_ERROR_OUT_OF_MEMORY,
-        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + getStateString());
+        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + QueryExecutionState::toString(_state));
   } catch (std::exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-    return QueryResult(TRI_ERROR_INTERNAL, ex.what() + getStateString());
+    return QueryResult(TRI_ERROR_INTERNAL, ex.what() + QueryExecutionState::toString(_state));
   } catch (...) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL,
-                       TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
+                       TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toString(_state));
   }
 }
 
@@ -975,7 +907,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     auto stats = std::make_shared<VPackBuilder>();
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, stats.get());
 
-    enterState(FINALIZATION);
+    enterState(QueryExecutionState::ValueType::FINALIZATION);
 
     result.warnings = warningsToVelocyPack();
     result.stats = stats;
@@ -996,22 +928,22 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
   } catch (arangodb::basics::Exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngine(ex.code());
-    return QueryResultV8(ex.code(), ex.message() + getStateString());
+    return QueryResultV8(ex.code(), ex.message() + QueryExecutionState::toString(_state));
   } catch (std::bad_alloc const&) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
     return QueryResultV8(
         TRI_ERROR_OUT_OF_MEMORY,
-        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + getStateString());
+        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + QueryExecutionState::toString(_state));
   } catch (std::exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-    return QueryResultV8(TRI_ERROR_INTERNAL, ex.what() + getStateString());
+    return QueryResultV8(TRI_ERROR_INTERNAL, ex.what() + QueryExecutionState::toString(_state));
   } catch (...) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL,
-                       TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
+                       TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toString(_state));
   }
 }
 
@@ -1040,7 +972,7 @@ QueryResult Query::parse() {
 QueryResult Query::explain() {
   try {
     init();
-    enterState(PARSING);
+    enterState(QueryExecutionState::ValueType::PARSING);
 
     Parser parser(this);
 
@@ -1048,11 +980,11 @@ QueryResult Query::explain() {
     // put in bind parameters
     parser.ast()->injectBindParameters(_bindParameters);
 
-    enterState(AST_OPTIMIZATION);
+    enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
     // optimize and validate the ast
     parser.ast()->validateAndOptimize();
     
-    enterState(LOADING_COLLECTIONS);
+    enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
     // create the transaction object, but do not start it yet
     _trx = new AqlTransaction(createTransactionContext(),
@@ -1065,7 +997,7 @@ QueryResult Query::explain() {
       THROW_ARANGO_EXCEPTION_MESSAGE(res, buildErrorMessage(res));
     }
 
-    enterState(PLAN_INSTANTIATION);
+    enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
     ExecutionPlan* plan = ExecutionPlan::instantiateFromAst(parser.ast());
 
     if (plan == nullptr) {
@@ -1074,12 +1006,12 @@ QueryResult Query::explain() {
     }
 
     // Run the query optimizer:
-    enterState(PLAN_OPTIMIZATION);
+    enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     arangodb::aql::Optimizer opt(maxNumberOfPlans());
     // get enabled/disabled rules
     opt.createPlans(plan, getRulesFromOptions(), inspectSimplePlans());
 
-    enterState(FINALIZATION);
+    enterState(QueryExecutionState::ValueType::FINALIZATION);
 
     QueryResult result(TRI_ERROR_NO_ERROR);
 
@@ -1124,16 +1056,16 @@ QueryResult Query::explain() {
 
     return result;
   } catch (arangodb::basics::Exception const& ex) {
-    return QueryResult(ex.code(), ex.message() + getStateString());
+    return QueryResult(ex.code(), ex.message() + QueryExecutionState::toString(_state));
   } catch (std::bad_alloc const&) {
     return QueryResult(
         TRI_ERROR_OUT_OF_MEMORY,
-        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + getStateString());
+        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + QueryExecutionState::toString(_state));
   } catch (std::exception const& ex) {
-    return QueryResult(TRI_ERROR_INTERNAL, ex.what() + getStateString());
+    return QueryResult(TRI_ERROR_INTERNAL, ex.what() + QueryExecutionState::toString(_state));
   } catch (...) {
     return QueryResult(TRI_ERROR_INTERNAL,
-                       TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
+                       TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toString(_state));
   }
 }
    
@@ -1279,8 +1211,8 @@ void Query::init() {
   TRI_ASSERT(_id != 0);
 
   TRI_ASSERT(_profile == nullptr);
-  _profile.reset(new Profile(this));
-  enterState(INITIALIZATION);
+  _profile.reset(new QueryProfile(this));
+  enterState(QueryExecutionState::ValueType::INITIALIZATION);
 
   TRI_ASSERT(_ast == nullptr);
   _ast.reset(new Ast(this));
@@ -1432,7 +1364,7 @@ std::vector<std::string> Query::getRulesFromOptions() const {
 }
 
 /// @brief enter a new state
-void Query::enterState(ExecutionState state) {
+void Query::enterState(QueryExecutionState::ValueType state) {
   LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                     << "Query::enterState: " << state
                                     << " this: " << (uintptr_t) this;
@@ -1443,11 +1375,6 @@ void Query::enterState(ExecutionState state) {
 
   // and adjust the state
   _state = state;
-}
-
-/// @brief get a description of the query's current state
-std::string Query::getStateString() const {
-  return std::string(" (while " + StateNames[_state] + ")");
 }
 
 /// @brief cleanup plan and engine for current query

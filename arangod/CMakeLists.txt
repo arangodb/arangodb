@@ -144,6 +144,8 @@ SET(ARANGOD_SOURCES
   Aql/OptimizerRules.cpp
   Aql/Parser.cpp
   Aql/PlanCache.cpp
+  Aql/QueryExecutionState.cpp
+  Aql/QueryProfile.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
