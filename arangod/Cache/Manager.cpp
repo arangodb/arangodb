@@ -57,12 +57,17 @@ static constexpr uint64_t CACHE_RECORD_OVERHEAD = sizeof(Metadata) + 16;
 static constexpr uint64_t TABLE_LISTS_OVERHEAD = 32 * 16 * 8;
 static constexpr int64_t TRIES_FAST = 100;
 
-Manager::Manager(boost::asio::io_service* ioService, uint64_t globalLimit)
+Manager::Manager(boost::asio::io_service* ioService, uint64_t globalLimit,
+                 bool enableWindowedStats)
     : _state(),
       _accessStats((globalLimit >= (1024ULL * 1024ULL * 1024ULL))
                        ? ((1024ULL * 1024ULL) / sizeof(std::shared_ptr<Cache>))
                        : (globalLimit / 8192ULL)),
       _accessCounter(0),
+      _enableWindowedStats(enableWindowedStats),
+      _findStats(nullptr),
+      _findHits(0),
+      _findMisses(0),
       _caches(),
       _globalSoftLimit(globalLimit),
       _globalHardLimit(globalLimit),
@@ -76,13 +81,20 @@ Manager::Manager(boost::asio::io_service* ioService, uint64_t globalLimit)
       _resizingTasks(0) {
   TRI_ASSERT(_globalAllocation < _globalSoftLimit);
   TRI_ASSERT(_globalAllocation < _globalHardLimit);
+  try {
+    _findStats.reset(new Manager::FindStatBuffer(16384));
+  } catch (std::bad_alloc) {
+    _findStats.reset(nullptr);
+    _enableWindowedStats = false;
+  }
 }
 
 Manager::~Manager() { shutdown(); }
 
 std::shared_ptr<Cache> Manager::createCache(Manager::CacheType type,
                                             uint64_t requestedLimit,
-                                            bool allowGrowth) {
+                                            bool allowGrowth,
+                                            bool enableWindowedStats) {
   std::shared_ptr<Cache> result(nullptr);
   _state.lock();
   bool allowed = isOperational();
@@ -91,10 +103,12 @@ std::shared_ptr<Cache> Manager::createCache(Manager::CacheType type,
   if (allowed) {
     switch (type) {
       case CacheType::Plain:
-        result = PlainCache::create(this, requestedLimit, allowGrowth);
+        result = PlainCache::create(this, requestedLimit, allowGrowth,
+                                    enableWindowedStats);
         break;
       case CacheType::Transactional:
-        result = TransactionalCache::create(this, requestedLimit, allowGrowth);
+        result = TransactionalCache::create(this, requestedLimit, allowGrowth,
+                                            enableWindowedStats);
         break;
       default:
         break;
@@ -182,13 +196,47 @@ uint64_t Manager::globalAllocation() {
   return allocation;
 }
 
+std::pair<double, double> Manager::globalHitRates() {
+  double lifetimeRate = std::nan("");
+  double windowedRate = std::nan("");
+
+  uint64_t currentMisses = _findMisses.load();
+  uint64_t currentHits = _findHits.load();
+  lifetimeRate = 100 * (static_cast<double>(currentHits) /
+                        static_cast<double>(currentHits + currentMisses));
+
+  if (_enableWindowedStats && _findStats.get() != nullptr) {
+    auto stats = _findStats->getFrequencies();
+    if (stats->size() == 1) {
+      if ((*stats)[0].first == static_cast<uint8_t>(Manager::Stat::findHit)) {
+        windowedRate = 100.0;
+      } else {
+        windowedRate = 0.0;
+      }
+    } else if (stats->size() == 2) {
+      if ((*stats)[0].first == static_cast<uint8_t>(Manager::Stat::findHit)) {
+        currentHits = (*stats)[0].second;
+        currentMisses = (*stats)[1].second;
+      } else {
+        currentHits = (*stats)[1].second;
+        currentMisses = (*stats)[0].second;
+      }
+      windowedRate = 100 * (static_cast<double>(currentHits) /
+                            static_cast<double>(currentHits + currentMisses));
+    }
+  }
+
+  return std::pair<double, double>(lifetimeRate, windowedRate);
+}
+
 void Manager::startTransaction() { _transactions.start(); }
 
 void Manager::endTransaction() { _transactions.end(); }
 
-Manager::MetadataItr Manager::registerCache(
-    Cache* cache, uint64_t requestedLimit,
-    std::function<void(Cache*)> deleter) {
+Manager::MetadataItr Manager::registerCache(Cache* cache,
+                                            uint64_t requestedLimit,
+                                            std::function<void(Cache*)> deleter,
+                                            uint64_t fixedSize) {
   uint32_t logSize = 0;
   uint32_t tableLogSize = MIN_TABLE_LOG_SIZE;
   for (; (1ULL << logSize) < requestedLimit; logSize++) {
@@ -207,8 +255,8 @@ Manager::MetadataItr Manager::registerCache(
   while (logSize >= MIN_LOG_SIZE) {
     uint64_t tableAllocation =
         _tables[tableLogSize].empty() ? tableSize(tableLogSize) : 0;
-    if (increaseAllowed(grantedLimit + tableAllocation +
-                        CACHE_RECORD_OVERHEAD)) {
+    if (increaseAllowed(grantedLimit + tableAllocation + CACHE_RECORD_OVERHEAD +
+                        fixedSize)) {
       break;
     }
 
@@ -224,7 +272,7 @@ Manager::MetadataItr Manager::registerCache(
     throw std::bad_alloc();
   }
 
-  _globalAllocation += (grantedLimit + CACHE_RECORD_OVERHEAD);
+  _globalAllocation += (grantedLimit + CACHE_RECORD_OVERHEAD + fixedSize);
   _caches.emplace_front(std::shared_ptr<Cache>(cache, deleter), grantedLimit);
   MetadataItr metadata = _caches.begin();
   metadata->lock();
@@ -317,6 +365,26 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(
 void Manager::reportAccess(std::shared_ptr<Cache> cache) {
   if (((++_accessCounter) & 0x7FULL) == 0) {  // record 1 in 128
     _accessStats.insertRecord(cache);
+  }
+}
+
+void Manager::recordHitStat(Manager::Stat stat) {
+  switch (stat) {
+    case Stat::findHit: {
+      _findHits++;
+      if (_enableWindowedStats && _findStats.get() != nullptr) {
+        _findStats->insertRecord(static_cast<uint8_t>(Stat::findHit));
+      }
+      break;
+    }
+    case Stat::findMiss: {
+      _findMisses++;
+      if (_enableWindowedStats && _findStats.get() != nullptr) {
+        _findStats->insertRecord(static_cast<uint8_t>(Stat::findMiss));
+      }
+      break;
+    }
+    default: { break; }
   }
 }
 

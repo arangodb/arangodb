@@ -109,6 +109,16 @@ class Cache {
   uint64_t usage();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns the cache hit-rates.
+  ///
+  /// The first return value is the lifetime hit-rate for this cache. The second
+  /// is the "windowed" hit-rate, that is the hit-rate when only considering the
+  /// past several thousand find operations. If windowed stats are not enabled,
+  /// this will be NaN.
+  //////////////////////////////////////////////////////////////////////////////
+  std::pair<double, double> hitRates();
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Disallows the cache from requesting to be resized when it runs out
   /// of space.
   //////////////////////////////////////////////////////////////////////////////
@@ -140,10 +150,19 @@ class Cache {
   // whether to allow the cache to resize larger when it fills
   bool _allowGrowth;
 
-  // structures to handle eviction-upon-insertion rate
-  enum class Stat : uint8_t { eviction = 1, noEviction = 2 };
+  // structures to handle statistics
+  enum class Stat : uint8_t {
+    findHit = 1,
+    findMiss = 2,
+    insertEviction = 3,
+    insertNoEviction = 4
+  };
   StatBuffer _evictionStats;
   std::atomic<uint64_t> _insertionCount;
+  bool _enableWindowedStats;
+  std::unique_ptr<StatBuffer> _findStats;
+  std::atomic<uint64_t> _findHits;
+  std::atomic<uint64_t> _findMisses;
 
   // allow communication with manager
   Manager* _manager;
@@ -166,7 +185,8 @@ class Cache {
   static void destroy(std::shared_ptr<Cache> cache);
 
   Cache(Manager* manager, uint64_t requestedLimit, bool allowGrowth,
-        std::function<void(Cache*)> deleter);
+        bool enableWindowedStats, std::function<void(Cache*)> deleter,
+        uint64_t size);
 
   virtual ~Cache() = default;
 

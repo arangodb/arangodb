@@ -69,7 +69,8 @@ class Rebalancer;      // forward declaration
 class Manager {
  public:
   static uint64_t MINIMUM_SIZE;
-  typedef FrequencyBuffer<std::shared_ptr<Cache>> StatBuffer;
+  typedef FrequencyBuffer<std::shared_ptr<Cache>> AccessStatBuffer;
+  typedef FrequencyBuffer<uint8_t> FindStatBuffer;
   typedef std::vector<std::shared_ptr<Cache>> PriorityList;
   typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
   typedef std::list<Metadata>::iterator MetadataItr;
@@ -78,7 +79,8 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize the manager with an io_service and global usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  Manager(boost::asio::io_service* ioService, uint64_t globalLimit);
+  Manager(boost::asio::io_service* ioService, uint64_t globalLimit,
+          bool enableWindowedStats = true);
   ~Manager();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -101,7 +103,8 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<Cache> createCache(Manager::CacheType type,
                                      uint64_t requestedLimit,
-                                     bool allowGrowth = true);
+                                     bool allowGrowth = true,
+                                     bool enableWindowedStats = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destroy the given cache.
@@ -138,6 +141,8 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   uint64_t globalAllocation();
 
+  std::pair<double, double> globalHitRates();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Signal the beginning of a transaction.
   //////////////////////////////////////////////////////////////////////////////
@@ -153,8 +158,15 @@ class Manager {
   State _state;
 
   // structure to handle access frequency monitoring
-  Manager::StatBuffer _accessStats;
+  Manager::AccessStatBuffer _accessStats;
   std::atomic<uint64_t> _accessCounter;
+
+  // structures to handle hit rate monitoring
+  enum class Stat : uint8_t { findHit = 1, findMiss = 2 };
+  bool _enableWindowedStats;
+  std::unique_ptr<Manager::FindStatBuffer> _findStats;
+  std::atomic<uint64_t> _findHits;
+  std::atomic<uint64_t> _findMisses;
 
   // list of metadata objects to keep track of all the registered caches
   std::list<Metadata> _caches;
@@ -189,7 +201,8 @@ class Manager {
  private:  // used by caches
   // register and unregister individual caches
   Manager::MetadataItr registerCache(Cache* cache, uint64_t requestedLimit,
-                                     std::function<void(Cache*)> deleter);
+                                     std::function<void(Cache*)> deleter,
+                                     uint64_t fixedSize);
   void unregisterCache(Manager::MetadataItr& metadata);
 
   // allow individual caches to request changes to their allocations
@@ -198,8 +211,9 @@ class Manager {
   std::pair<bool, Manager::time_point> requestMigrate(
       Manager::MetadataItr& metadata, uint32_t requestedLogSize);
 
-  // method for lr-accessed heuristics
+  // stat reporting
   void reportAccess(std::shared_ptr<Cache> cache);
+  void recordHitStat(Manager::Stat stat);
 
  private:  // used internally and by tasks
   // check if shutdown or shutting down

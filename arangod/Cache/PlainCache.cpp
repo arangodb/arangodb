@@ -53,6 +53,7 @@ Cache::Finding PlainCache::find(void const* key, uint32_t keySize) {
 
   if (ok) {
     result.reset(bucket->find(hash, key, keySize));
+    recordStat(result.found() ? Stat::findHit : Stat::findMiss);
     bucket->unlock();
     endOperation();
   }
@@ -88,9 +89,9 @@ bool PlainCache::insert(CachedValue* value) {
       if (candidate != nullptr) {
         bucket->evict(candidate, true);
         freeValue(candidate);
-        recordStat(Stat::eviction);
+        recordStat(Stat::insertEviction);
       } else {
-        recordStat(Stat::noEviction);
+        recordStat(Stat::insertNoEviction);
       }
       bucket->insert(hash, value);
       inserted = true;
@@ -139,8 +140,10 @@ bool PlainCache::remove(void const* key, uint32_t keySize) {
 
 std::shared_ptr<Cache> PlainCache::create(Manager* manager,
                                           uint64_t requestedSize,
-                                          bool allowGrowth) {
-  PlainCache* cache = new PlainCache(manager, requestedSize, allowGrowth);
+                                          bool allowGrowth,
+                                          bool enableWindowedStats) {
+  PlainCache* cache =
+      new PlainCache(manager, requestedSize, allowGrowth, enableWindowedStats);
 
   if (cache == nullptr) {
     return std::shared_ptr<Cache>(nullptr);
@@ -154,9 +157,10 @@ std::shared_ptr<Cache> PlainCache::create(Manager* manager,
 }
 
 PlainCache::PlainCache(Manager* manager, uint64_t requestedLimit,
-                       bool allowGrowth)
-    : Cache(manager, requestedLimit, allowGrowth,
-            [](Cache* p) -> void { delete reinterpret_cast<PlainCache*>(p); }),
+                       bool allowGrowth, bool enableWindowedStats)
+    : Cache(manager, requestedLimit, allowGrowth, enableWindowedStats,
+            [](Cache* p) -> void { delete reinterpret_cast<PlainCache*>(p); },
+            sizeof(PlainCache)),
       _table(nullptr),
       _logSize(0),
       _tableSize(1),
