@@ -42,11 +42,11 @@ FailedLeader::FailedLeader(Node const& snapshot, Agent* agent,
       _database(database),
       _collection(collection),
       _shard(shard),
-      _from(from),
-      _to(to) {
+      _from(from) {
+  
   try {
     JOB_STATUS js = status();
-
+    
     if (js == TODO) {
       start();
     } else if (js == NOTFOUND) {
@@ -58,11 +58,15 @@ FailedLeader::FailedLeader(Node const& snapshot, Agent* agent,
     LOG_TOPIC(DEBUG, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     finish("Shards/" + _shard, false, e.what());
   }
+  
 }
 
 FailedLeader::~FailedLeader() {}
 
 bool FailedLeader::create() {
+
+  using namespace std::chrono;
+  
   LOG_TOPIC(INFO, Logger::AGENCY)
       << "Handle failed Leader for " + _shard + " from " + _from + " to " + _to;
 
@@ -80,11 +84,8 @@ bool FailedLeader::create() {
   _jb->add("collection", VPackValue(_collection));
   _jb->add("shard", VPackValue(_shard));
   _jb->add("fromServer", VPackValue(_from));
-  _jb->add("toServer", VPackValue(_to));
-  _jb->add("isLeader", VPackValue(true));
   _jb->add("jobId", VPackValue(_jobId));
-  _jb->add("timeCreated",
-           VPackValue(timepointToString(std::chrono::system_clock::now())));
+  _jb->add("timeCreated", VPackValue(timepointToString(system_clock::now())));
   _jb->close();
 
   // Add shard to /arango/Target/FailedServers/<server> array
@@ -105,17 +106,46 @@ bool FailedLeader::create() {
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to insert job " + _jobId;
   return false;
+  
 }
 
 bool FailedLeader::start() {
+
+  using namespace std::chrono;
+  
+  // Look for common in sync follower
+  auto clones = Job::clones(_snapshot, _database, _collection, _shard);
+  std::map<std::string, size_t> serverCounts;
+  for (auto const& clone : clones) {
+    auto const& current =
+      _snapshot(curColPrefix + _database + "/" + clone.collection + "/"
+                + clone.shard + "/servers").getArray();
+    if (current.isArray() && current.length() > 1) {
+      size_t i = 0;
+      for (auto const& server : VPackArrayIterator(current)) {
+        if (i++ > 0) {
+          ++serverCounts[server.copyString()];
+        }
+      }
+    }
+  }
+  for (auto const& server : serverCounts) {
+    if (server.second == clones.size()) {
+      LOG_TOPIC(WARN, Logger::AGENCY) << server.first << " it is.";
+    }
+  }
+  
   // DBservers
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
   std::string curPath =
       curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
 
+  // Collection should still exist and shards look the same
   auto const& current = _snapshot(curPath).slice();
-  auto const& planned = _snapshot(planPath).slice();
+
+  // Collection should still exist and shards look the same
+  auto const& planned = _snapshot(planPath).slice(); 
 
   if (current.length() == 1) {
     LOG_TOPIC(ERR, Logger::AGENCY)
@@ -150,8 +180,7 @@ bool FailedLeader::start() {
   pending.openObject();
   pending.add(_agencyPrefix + pendingPrefix + _jobId,
               VPackValue(VPackValueType::Object));
-  pending.add("timeStarted",
-              VPackValue(timepointToString(std::chrono::system_clock::now())));
+  pending.add("timeStarted", VPackValue(timepointToString(system_clock::now())));
   for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
     pending.add(obj.key.copyString(), obj.value);
   }
@@ -213,15 +242,12 @@ bool FailedLeader::start() {
   pending.openObject();
 
   // --- Check that Current servers are as we expect
-  pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
-  pending.add("old", current);
-  pending.close();
-
-  // --- Check that Current servers are as we expect
   pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Object));
   pending.add("old", planned);
   pending.close();
 
+  // --- Check fromServer
+  
   // --- Check if shard is not blocked
   pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
               VPackValue(VPackValueType::Object));

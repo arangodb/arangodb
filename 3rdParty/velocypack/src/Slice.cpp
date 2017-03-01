@@ -888,7 +888,9 @@ std::ostream& operator<<(std::ostream& stream, Slice const* slice) {
 }
 
 std::ostream& operator<<(std::ostream& stream, Slice const& slice) {
-  return operator<<(stream, &slice);
+  stream << slice.toJson();
+  return stream;
+  //return operator<<(stream, &slice);
 }
 
 static_assert(sizeof(arangodb::velocypack::Slice) ==

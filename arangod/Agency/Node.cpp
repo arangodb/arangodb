@@ -701,25 +701,12 @@ void Node::toBuilder(Builder& builder, bool showHidden) const {
 
 // Print internals to ostream
 std::ostream& Node::print(std::ostream& o) const {
-  Node const* par = _parent;
-  while (par != nullptr) {
-    par = par->_parent;
-    o << "  ";
+  Builder builder;
+  {
+    VPackArrayBuilder b(&builder);
+    toBuilder(builder);
   }
-
-  o << _node_name << " : ";
-
-  if (type() == NODE) {
-    o << std::endl;
-    for (auto const& i : _children) o << *(i.second);
-  } else {
-    o << ((slice().isNone()) ? "NONE" : slice().toJson());
-    if (_ttl != std::chrono::system_clock::time_point()) {
-      o << " ttl! ";
-    }
-    o << std::endl;
-  }
-
+  o << builder.toJson();
   return o;
 }
 

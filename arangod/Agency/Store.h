@@ -45,7 +45,7 @@ class Store : public arangodb::Thread {
   virtual ~Store();
 
   /// @brief Copy constructor
-  Store(Store const& other) = delete;
+  Store(Store const& other);
 
   /// @brief Move constructor
   Store(Store&& other);
