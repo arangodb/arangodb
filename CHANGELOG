@@ -1,6 +1,13 @@
 devel
 -----
 
+* always validate incoming JSON HTTP requests for duplicate attribute names
+  
+  Incoming JSON data with duplicate attribute names will now be rejected as
+  invalid. Previous versions of ArangoDB only validated the uniqueness of
+  attribute names inside incoming JSON for some API endpoints, but not
+  consistently for all APIs. 
+
 * don't let read-only transactions block the WAL collector
 
 * allow passing own `graphql-sync` module instance to Foxx GraphQL router
