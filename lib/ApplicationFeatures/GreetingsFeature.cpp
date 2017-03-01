@@ -27,21 +27,17 @@
 using namespace arangodb;
 
 GreetingsFeature::GreetingsFeature(
-    application_features::ApplicationServer* server, char const* progname)
-    : ApplicationFeature(server, "Greetings"), _progname(progname) {
+    application_features::ApplicationServer* server)
+    : ApplicationFeature(server, "Greetings") {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
 }
 
 void GreetingsFeature::prepare() {
-  if (strcmp(_progname, "arangod") == 0) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "" << rest::Version::getVerboseVersionString();
-  }
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "" << rest::Version::getVerboseVersionString();
 }
 
 void GreetingsFeature::unprepare() {
-  if (strcmp(_progname, "arangod") == 0) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB has been shut down";
-  }
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB has been shut down";
 }
