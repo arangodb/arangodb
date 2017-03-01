@@ -146,6 +146,8 @@ shards.
 
 * improve cluster stability in various ways
 
+* add support for Swagger tags in Foxx
+
 
 v3.1.9 (2017-01-23)
 -------------------
