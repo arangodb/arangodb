@@ -52,6 +52,7 @@
     },
 
     hideSmartGraphOptions: function () {
+      $('#tab-smartGraph').parent().remove();
       $('#row_general-numberOfShards').show();
       $('#smartGraphInfo').hide();
       $('#row_new-numberOfShards').hide();
@@ -640,10 +641,12 @@
           };
         }
       } else {
-        if ($('#general-numberOfShards').val().length > 0) {
-          newCollectionObject.options = {
-            numberOfShards: $('#general-numberOfShards').val()
-          };
+        if (frontendConfig.isCluster) {
+          if ($('#general-numberOfShards').val().length > 0) {
+            newCollectionObject.options = {
+              numberOfShards: $('#general-numberOfShards').val()
+            };
+          }
         }
       }
 
