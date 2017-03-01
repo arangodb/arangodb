@@ -1,3 +1,11 @@
+v3.1.13 (XXXX-XX-XX)
+--------------------
+
+* changed thread handling to queue only user requests on coordinator
+
+* use exponential backoff when waiting for collection locks
+
+
 v3.1.12 (2017-02-28)
 --------------------
 
