@@ -511,7 +511,7 @@ function splitUrl (url) {
   parts = url.split('/');
   cleaned = [];
 
-  for (i = 0;  i < parts.length;  ++i) {
+  for (i = 0; i < parts.length; i++) {
     var part = parts[i];
 
     if (part !== '' && part !== '.') {
@@ -639,7 +639,7 @@ function defineRoutePart (storage, route, parts, pos, constraint, callback) {
     }
 
     if (ok) {
-      for (i = 0;  i < part.parameters.length;  ++i) {
+      for (i = 0; i < part.parameters.length; i++) {
         var p = part.parameters[i];
         var subsub = { parameter: p, match: {} };
         storage.parameters.push(subsub);
@@ -710,7 +710,7 @@ function intersectMethods (a, b) {
   a = a || ALL_METHODS;
   b = b || ALL_METHODS;
 
-  for (i = 0; i < b.length;  i++) {
+  for (i = 0; i < b.length; i++) {
     d[b[i].toUpperCase()] = true;
   }
 
@@ -736,7 +736,7 @@ function defineRoute (storage, route, url, callback) {
 
   var methods = intersectMethods(url.methods, callback.methods);
 
-  for (j = 0;  j < methods.length;  ++j) {
+  for (j = 0; j < methods.length; j++) {
     var method = methods[j];
 
     defineRoutePart(storage[method], route, url.urlParts, 0, url.constraint, callback);
@@ -787,13 +787,13 @@ function analyseRoutes (storage, routes) {
   // install the routes
   var keys = [ 'routes', 'middleware' ];
 
-  for (j = 0;  j < keys.length;  ++j) {
+  for (j = 0; j < keys.length; j++) {
     var key = keys[j];
 
     if (routes.hasOwnProperty(key)) {
       var r = routes[key];
 
-      for (i = 0;  i < r.length;  ++i) {
+      for (i = 0; i < r.length; i++) {
         installRoute(storage[key],
           r[i],
           urlPrefix,
@@ -814,14 +814,14 @@ function buildRoutingTree (routes) {
 
   var storage = { routes: {}, middleware: {} };
 
-  for (j = 0;  j < ALL_METHODS.length;  ++j) {
+  for (j = 0; j < ALL_METHODS.length; j++) {
     var method = ALL_METHODS[j];
 
     storage.routes[method] = {};
     storage.middleware[method] = {};
   }
 
-  for (j = 0;  j < routes.length;  ++j) {
+  for (j = 0; j < routes.length; j++) {
     var route = routes[j];
 
     try {
@@ -883,7 +883,7 @@ function flattenRouting (routes, path, rexpr, urlParameters, depth, prefix) {
   // .............................................................................
 
   if (routes.hasOwnProperty('parameters')) {
-    for (i = 0;  i < routes.parameters.length;  ++i) {
+    for (i = 0; i < routes.parameters.length; i++) {
       parameter = routes.parameters[i];
 
       if (parameter.hasOwnProperty('constraint')) {
@@ -927,7 +927,7 @@ function flattenRouting (routes, path, rexpr, urlParameters, depth, prefix) {
       return b.priority - a.priority;
     })];
 
-    for (i = 0;  i < sorted.length;  ++i) {
+    for (i = 0; i < sorted.length; i++) {
       sorted[i] = {
         path: path,
         regexp: new RegExp('^' + rexpr + '$'),
@@ -970,7 +970,7 @@ function flattenRoutingTree (tree) {
 
   var flat = {};
 
-  for (i = 0;  i < ALL_METHODS.length;  ++i) {
+  for (i = 0; i < ALL_METHODS.length; i++) {
     var method = ALL_METHODS[i];
 
     var a = flattenRouting(tree.routes[method], '', '', {}, 0, false);
@@ -1067,7 +1067,7 @@ function buildRouting (dbname) {
   // install the foxx routes
   var foxxes = foxxManager.mountPoints();
 
-  for (let i = 0;  i < foxxes.length;  ++i) {
+  for (let i = 0; i < foxxes.length; i++) {
     var foxx = foxxes[i];
 
     routes.push({
@@ -1094,7 +1094,7 @@ function nextRouting (state) {
   var i;
   var k;
 
-  for (i = state.position + 1;  i < state.routing.length;  ++i) {
+  for (i = state.position + 1; i < state.routing.length; i++) {
     var route = state.routing[i];
 
     if (route.regexp.test(state.url)) {
@@ -1104,9 +1104,11 @@ function nextRouting (state) {
       if (route.prefix) {
         state.prefix = '/' + state.parts.slice(0, route.depth - 1).join('/');
         state.suffix = state.parts.slice(route.depth - 1, state.parts.length);
+        state.rawSuffix = state.rawParts.slice(route.depth - 1, state.rawParts.length);
       } else {
         delete state.prefix;
         delete state.suffix;
+        delete state.rawSuffix;
       }
 
       state.urlParameters = {};
@@ -1126,6 +1128,7 @@ function nextRouting (state) {
   delete state.route;
   delete state.prefix;
   delete state.suffix;
+  delete state.rawSuffix;
   state.urlParameters = {};
 
   return state;
@@ -1135,36 +1138,28 @@ function nextRouting (state) {
 // @brief finds the first routing
 //
 
-function firstRouting (type, parts, routes) {
+function firstRouting (type, parts, routes, rawParts) {
   'use strict';
 
-  var url = parts;
-
-  if (typeof url === 'string') {
-    parts = url.split('/');
-
-    if (parts[0] === '') {
-      parts.shift();
-    }
-  } else {
-    url = '/' + parts.join('/');
-  }
+  var url = '/' + parts.join('/');
 
   if (!routes || !routes.hasOwnProperty(type)) {
     return {
-      parts: parts,
       position: -1,
-      url: url,
-      urlParameters: {}
+      urlParameters: {},
+      parts,
+      rawParts,
+      url
     };
   }
 
   return nextRouting({
     routing: routes[type],
-    parts: parts,
     position: -1,
-    url: url,
-    urlParameters: {}
+    urlParameters: {},
+    parts,
+    rawParts,
+    url
   });
 }
 
@@ -1183,7 +1178,7 @@ function routeRequest (req, res, routes) {
     routes = RoutingList[dbname];
   }
 
-  var action = firstRouting(req.requestType, req.suffix, routes);
+  var action = firstRouting(req.requestType, req.suffix, routes, req.rawSuffix);
 
   function execute () {
     if (action.route === undefined) {
@@ -1208,6 +1203,12 @@ function routeRequest (req, res, routes) {
       req.suffix = action.suffix;
     } else {
       delete req.suffix;
+    }
+
+    if (action.rawSuffix !== undefined) {
+      req.rawSuffix = action.rawSuffix;
+    } else {
+      delete req.rawSuffix;
     }
 
     if (action.urlParameters !== undefined) {
@@ -1290,7 +1291,7 @@ function startup () {
   var actions = fs.listTree(actionPath);
   var i;
 
-  for (i = 0;  i < actions.length;  ++i) {
+  for (i = 0; i < actions.length; i++) {
     var file = actions[i];
     var full = fs.join(actionPath, file);
 
@@ -1990,31 +1991,6 @@ function redirectRequest (req, res, options, next) {
 }
 
 //
-// @brief rewrites a request
-//
-
-function rewriteRequest (req, res, options, next) {
-  'use strict';
-
-  var i = 0;
-  var suffix = options.destination.split('/');
-
-  for (i = 0;  i < suffix.length;  ++i) {
-    if (suffix[i] !== '') {
-      break;
-    }
-  }
-
-  if (0 < i) {
-    suffix = suffix.splice(i);
-  }
-
-  req.suffix = suffix;
-
-  next(true);
-}
-
-//
 // @brief redirects a request
 //
 
@@ -2022,7 +1998,7 @@ function pathHandler (req, res, options, next) {
   'use strict';
 
   var filepath, root, filename, encodedFilename;
-  filepath = req.suffix.length ? path.normalize(['', ...req.suffix.map((part) => decodeURIComponent(part))].join(path.sep)) : '';
+  filepath = req.suffix.length ? path.normalize(['', ...req.suffix.map((part) => part)].join(path.sep)) : '';
   root = options.path;
 
   if (options.root) {
@@ -2073,18 +2049,23 @@ exports.startup = startup;
 exports.buildRouting = buildRouting;
 exports.buildRoutingTree = buildRoutingTree;
 exports.flattenRoutingTree = flattenRoutingTree;
-exports.routingTree = function () { return RoutingTree; };
-exports.routingList = function () { return RoutingList; };
+exports.nextRouting = nextRouting;
+exports.firstRouting = function (method, parts, routes) {
+  if (typeof parts === 'string') {
+    parts = parts.split('/').filter(s => s !== '');
+  }
+  return firstRouting(method, parts, routes, parts);
+};
 
 // public functions
+exports.routingTree = () => RoutingTree;
+exports.routingList = () => RoutingList;
 exports.routeRequest = routeRequest;
 exports.defineHttp = defineHttp;
 exports.getErrorMessage = getErrorMessage;
 exports.getJsonBody = getJsonBody;
 exports.errorFunction = errorFunction;
 exports.reloadRouting = reloadRouting;
-exports.firstRouting = firstRouting;
-exports.nextRouting = nextRouting;
 exports.addCookie = addCookie;
 exports.stringifyRequest = stringifyRequest;
 exports.arangoErrorToHttpCode = arangoErrorToHttpCode;
@@ -2111,7 +2092,6 @@ exports.easyPostCallback = easyPostCallback;
 exports.echoRequest = echoRequest;
 exports.logRequest = logRequest;
 exports.redirectRequest = redirectRequest;
-exports.rewriteRequest = rewriteRequest;
 exports.pathHandler = pathHandler;
 
 // some useful constants

@@ -24,10 +24,10 @@
 
 #include <iostream>
 
-#include "Basics/directories.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
-#include "Basics/ArangoGlobalContext.h"
+#include "Basics/directories.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/IniFileParser.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -58,7 +58,8 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--config", "the configuration file or 'none'",
                            new StringParameter(&_file));
 
-  options->addHiddenOption("--define,-D", "define key=value for a @key@ entry in config file",
+  options->addHiddenOption("--define,-D",
+                           "define key=value for a @key@ entry in config file",
                            new VectorParameter<StringParameter>(&_defines));
 
   options->addHiddenOption("--check-configuration",
@@ -83,117 +84,124 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
                                    std::string const& progname,
                                    char const* binaryPath) {
   if (StringUtils::tolower(_file) == "none") {
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "use no config file at all";
+    LOG_TOPIC(DEBUG, Logger::CONFIG) << "using no config file at all";
     return;
   }
 
-  std::vector<std::string> files;
-  std::set<std::string> seen;
-
   // always prefer an explicitly given config file
-  if (_file.empty()) {
-    files.emplace_back(progname);
-  } else {
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "using user supplied config file '"
-                                     << _file << "'";
-
-    IniFileParser parser(options.get());
-
-    if (!parser.parse(_file)) {
-      exit(EXIT_FAILURE);
-    }
-
-    auto includes = parser.includes();
-    files.insert(files.end(), includes.begin(), includes.end());
-
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "seen @includes: " << includes;
-  }
-
-  for (size_t i = 0; i < files.size(); ++i) {
-    auto name = files[i];
-
-    if (seen.find(name) != seen.end()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "circular includes, seen '" << name << "' twice";
+  if (!_file.empty()) {
+    if (!FileUtils::exists(_file)) {
+      LOG_TOPIC(FATAL, Logger::CONFIG) << "cannot read config file '" << _file
+                                       << "'";
       FATAL_ERROR_EXIT();
     }
 
-    seen.insert(name);
+    auto local = _file + ".local";
 
-    // clang-format off
-    //
-    // check in order:
-    //
-    //   <PRGNAME>.conf
-    //   ./etc/relative/<PRGNAME>.conf
-    //   ${HOME}/.arangodb/<PRGNAME>.conf
-    //   /etc/arangodb/<PRGNAME>.conf
-    //
-    // clang-format on
-
-    auto context = ArangoGlobalContext::CONTEXT;
-    std::string basename = name;
-    std::string filename;
-
-    if (!StringUtils::isSuffix(name, ".conf")) {
-      basename += ".conf";
-    }
-
-    if (context != nullptr) {
-      filename = FileUtils::buildFilename(FileUtils::buildFilename(context->runRoot(), _SYSCONFDIR_), basename);
-      LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
-    }
-
-    if (filename.length() == 0 || !FileUtils::exists(filename)) {
-      filename =  FileUtils::buildFilename(FileUtils::currentDirectory(), basename);
-    
-      LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
-
-      if (!FileUtils::exists(filename)) {
-        filename = FileUtils::buildFilename(FileUtils::currentDirectory(),
-                                            "etc/relative/" + basename);
-        LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
-
-        if (!FileUtils::exists(filename)) {
-          filename =
-            FileUtils::buildFilename(FileUtils::homeDirectory(), basename);
-
-          LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
-
-          if (!FileUtils::exists(filename)) {
-            filename =
-              FileUtils::buildFilename(FileUtils::configDirectory(binaryPath), basename);
-
-            LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
-
-            if (!FileUtils::exists(filename)) {
-              LOG_TOPIC(DEBUG, Logger::CONFIG) << "cannot find any config file";
-            }
-          }
-        }
-      }
-    }
-    
     IniFileParser parser(options.get());
 
-    std::string local = filename + ".local";
-
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking override '" << local << "'";
-
     if (FileUtils::exists(local)) {
-      LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading '" << local << "'";
+      LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading override '" << local << "'";
 
       if (!parser.parse(local)) {
-        exit(EXIT_FAILURE);
+        FATAL_ERROR_EXIT();
       }
     }
 
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading '" << filename << "'";
+    LOG_TOPIC(DEBUG, Logger::CONFIG) << "using user supplied config file '"
+                                     << _file << "'";
 
-    if (!parser.parse(filename)) {
-      exit(EXIT_FAILURE);
+    if (!parser.parse(_file)) {
+      FATAL_ERROR_EXIT();
     }
 
-    auto includes = parser.includes();
-    files.insert(files.end(), includes.begin(), includes.end());
+    return;
+  }
+
+  // clang-format off
+  //
+  // check the following location in this order:
+  //
+  //   <PRGNAME>.conf
+  //   ./etc/relative/<PRGNAME>.conf
+  //   ${HOME}/.arangodb/<PRGNAME>.conf
+  //   /etc/arangodb/<PRGNAME>.conf
+  //
+  // clang-format on
+
+  auto context = ArangoGlobalContext::CONTEXT;
+  std::string basename = progname;
+
+  if (!StringUtils::isSuffix(basename, ".conf")) {
+    basename += ".conf";
+  }
+
+  std::vector<std::string> locations;
+
+  if (context != nullptr) {
+    auto root = context->runRoot();
+    auto location = FileUtils::buildFilename(root, _SYSCONFDIR_);
+
+    LOG_TOPIC(TRACE, Logger::CONFIG) << "checking root location '" << root
+                                     << "'";
+
+    locations.emplace_back(location);
+  }
+
+  locations.emplace_back(FileUtils::currentDirectory());
+  locations.emplace_back(FileUtils::buildFilename(FileUtils::currentDirectory(),
+                                                  "etc", "relative"));
+  locations.emplace_back(
+      FileUtils::buildFilename(FileUtils::homeDirectory(), ".arangodb"));
+  locations.emplace_back(FileUtils::configDirectory(binaryPath));
+
+  std::string filename;
+
+  for (auto const& location : locations) {
+    auto name = FileUtils::buildFilename(location, basename);
+    LOG_TOPIC(TRACE, Logger::CONFIG) << "checking config file '" << name << "'";
+
+    if (FileUtils::exists(name)) {
+      LOG_TOPIC(DEBUG, Logger::CONFIG) << "found config file '" << name << "'";
+      filename = name;
+      break;
+    }
+  }
+
+  if (filename.empty()) {
+    LOG_TOPIC(DEBUG, Logger::CONFIG) << "cannot find any config file";
+  }
+
+  IniFileParser parser(options.get());
+  std::string local = filename + ".local";
+
+  LOG_TOPIC(TRACE, Logger::CONFIG) << "checking override '" << local << "'";
+
+  if (FileUtils::exists(local)) {
+    LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading override '" << local << "'";
+
+    if (!parser.parse(local)) {
+      FATAL_ERROR_EXIT();
+    }
+  } else {
+    LOG_TOPIC(TRACE, Logger::CONFIG) << "no override file found";
+  }
+
+  LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading '" << filename << "'";
+
+  if (!parser.parse(filename)) {
+    if (filename.empty()) {
+      size_t i = 0;
+      std::string locationMsg = "(tried locations: ";
+      for (auto const& it : locations) {
+        if (i++ > 0) {
+          locationMsg += ", ";
+        }
+        locationMsg += "'" + FileUtils::buildFilename(it, basename) + "'";
+      }
+      locationMsg += ")";
+      options->failNotice(locationMsg);
+    }
+    exit(EXIT_FAILURE);
   }
 }

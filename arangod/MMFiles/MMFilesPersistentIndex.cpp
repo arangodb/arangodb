@@ -29,12 +29,15 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesPersistentIndexKeyComparator.h"
 #include "MMFiles/MMFilesToken.h"
-#include "Utils/Transaction.h"
+#include "MMFiles/MMFilesTransactionState.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/utilities/optimistic_transaction_db.h>
@@ -84,7 +87,7 @@ static size_t sortWeight(arangodb::aql::AstNode const* node) {
 // ...........................................................................
   
 PersistentIndexIterator::PersistentIndexIterator(LogicalCollection* collection,
-                                 arangodb::Transaction* trx, 
+                                 transaction::Methods* trx, 
                                  ManagedDocumentResult* mmdr,
                                  arangodb::PersistentIndex const* index,
                                  arangodb::MMFilesPrimaryIndex* primaryIndex,
@@ -139,7 +142,7 @@ void PersistentIndexIterator::reset() {
 }
 
 bool PersistentIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  auto comparator = RocksDBFeature::instance()->comparator();
+  auto comparator = PersistentIndexFeature::instance()->comparator();
   while (limit > 0) {
     if (!_cursor->Valid()) {
       // We are exhausted already, sorry
@@ -208,7 +211,7 @@ PersistentIndex::PersistentIndex(TRI_idx_iid_t iid,
                            arangodb::LogicalCollection* collection,
                            arangodb::velocypack::Slice const& info)
     : MMFilesPathBasedIndex(iid, collection, info, 0, true),
-      _db(RocksDBFeature::instance()->db()) {}
+      _db(PersistentIndexFeature::instance()->db()) {}
 
 /// @brief destroy the index
 PersistentIndex::~PersistentIndex() {}
@@ -232,9 +235,9 @@ void PersistentIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 /// @brief inserts a document into the index
-int PersistentIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+int PersistentIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                          VPackSlice const& doc, bool isRollback) {
-  auto comparator = RocksDBFeature::instance()->comparator();
+  auto comparator = PersistentIndexFeature::instance()->comparator();
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
@@ -259,7 +262,7 @@ int PersistentIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
   
   ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
-  VPackSlice const key = Transaction::extractKeyFromDocument(doc);
+  VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
   std::string const prefix =
       buildPrefix(trx->vocbase()->id(), _collection->cid(), _iid);
 
@@ -325,7 +328,7 @@ int PersistentIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
     }
   }
 
-  auto rocksTransaction = trx->rocksTransaction();
+  auto rocksTransaction = static_cast<MMFilesTransactionState*>(trx->state())->rocksTransaction();
   TRI_ASSERT(rocksTransaction != nullptr);
 
   rocksdb::ReadOptions readOptions;
@@ -357,7 +360,9 @@ int PersistentIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
       if (uniqueConstraintViolated) {
         // duplicate key
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-        if (!_collection->useSecondaryIndexes()) {
+        auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+        TRI_ASSERT(physical != nullptr);
+        if (!physical->useSecondaryIndexes()) {
           // suppress the error during recovery
           res = TRI_ERROR_NO_ERROR;
         }
@@ -389,7 +394,7 @@ int PersistentIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
 }
 
 /// @brief removes a document from the index
-int PersistentIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+int PersistentIndex::remove(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                          VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
@@ -415,7 +420,7 @@ int PersistentIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
   
   ManagedDocumentResult result; 
   IndexLookupContext context(trx, _collection, &result, numPaths()); 
-  VPackSlice const key = Transaction::extractKeyFromDocument(doc);
+  VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
   
   VPackBuilder builder;
   std::vector<std::string> values;
@@ -436,7 +441,7 @@ int PersistentIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
     values.emplace_back(std::move(value));
   }
   
-  auto rocksTransaction = trx->rocksTransaction();
+  auto rocksTransaction = static_cast<MMFilesTransactionState*>(trx->state())->rocksTransaction();
   TRI_ASSERT(rocksTransaction != nullptr);
 
   size_t const count = elements.size();
@@ -462,14 +467,14 @@ int PersistentIndex::unload() {
 
 /// @brief called when the index is dropped
 int PersistentIndex::drop() {
-  return RocksDBFeature::instance()->dropIndex(_collection->vocbase()->id(),
+  return PersistentIndexFeature::instance()->dropIndex(_collection->vocbase()->id(),
                                                _collection->cid(), _iid);
 }
 
 /// @brief attempts to locate an entry in the index
 /// Warning: who ever calls this function is responsible for destroying
 /// the PersistentIndexIterator* results
-PersistentIndexIterator* PersistentIndex::lookup(arangodb::Transaction* trx,
+PersistentIndexIterator* PersistentIndex::lookup(transaction::Methods* trx,
                                       ManagedDocumentResult* mmdr,
                                       VPackSlice const searchValues,
                                       bool reverse) const {
@@ -566,7 +571,8 @@ PersistentIndexIterator* PersistentIndex::lookup(arangodb::Transaction* trx,
   // Secured by trx. The shared_ptr index stays valid in
   // _collection at least as long as trx is running.
   // Same for the iterator
-  auto idx = _collection->primaryIndex();
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  auto idx = physical->primaryIndex();
   return new PersistentIndexIterator(_collection, trx, mmdr, this, idx, _db, reverse, leftBorder, rightBorder);
 }
 
@@ -857,7 +863,7 @@ bool PersistentIndex::supportsSortCondition(
 }
 
 IndexIterator* PersistentIndex::iteratorForCondition(
-    arangodb::Transaction* trx, 
+    transaction::Methods* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {

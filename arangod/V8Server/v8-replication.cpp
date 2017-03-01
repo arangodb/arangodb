@@ -163,7 +163,7 @@ static void JS_LastLoggerReplication(
         "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
   }
     
-  auto transactionContext = std::make_shared<StandaloneTransactionContext>(vocbase);
+  auto transactionContext = std::make_shared<transaction::StandaloneContext>(vocbase);
 
   TRI_replication_dump_t dump(transactionContext, 0, true, 0);
   TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(args[0], true);

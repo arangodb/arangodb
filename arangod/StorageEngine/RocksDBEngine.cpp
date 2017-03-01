@@ -37,10 +37,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-
-#include "MMFiles/MMFilesPersistentIndexFeature.h"
-#include "MMFiles/MMFilesPersistentIndex.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -325,7 +321,7 @@ int RocksDBEngine::insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
   CompactionBlocker blocker(TRI_NewTickServer(), TRI_microtime() + ttl);
 
   {
-    WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
+    WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock); 
 
     auto it = _compactionBlockers.find(vocbase);
 
@@ -348,7 +344,7 @@ int RocksDBEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_
     return TRI_ERROR_BAD_PARAMETER;
   }
 
-  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
+  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock); 
 
   auto it = _compactionBlockers.find(vocbase);
 
@@ -369,7 +365,7 @@ int RocksDBEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_
 /// @brief remove an existing compaction blocker
 int RocksDBEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase,
                                            TRI_voc_tick_t id) {
-  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
+  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock); 
   
   auto it = _compactionBlockers.find(vocbase);
 
@@ -397,7 +393,7 @@ int RocksDBEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase,
 
 void RocksDBEngine::preventCompaction(TRI_vocbase_t* vocbase,
                                       std::function<void(TRI_vocbase_t*)> const& callback) {
-  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 5000);
+  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock);
   callback(vocbase);
 }
 

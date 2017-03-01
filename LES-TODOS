@@ -31,7 +31,12 @@ MMFiles reference removals from files:
   - Persistent
   - Geo
   - Fulltext
-
+- index API
+- StorageEngine specific AQL functions
+  - Register for specific function names => branches to StorageEngine impl
+  - Storage Engine can implement these functions with specific code and interna
+    - e.g.: Geo, Fulltext
+- Replace Usage of new callback-based IndexIterator
 
 
 in progress
@@ -45,7 +50,6 @@ to do
 - fix includes during API conversion
 - DML API
 - DDL API
-- index API
 - add new serialization RW lock to LogicalCollection. all DML ops must acquire it in read mode, the explicit lock command must acquire it in write mode.
 - StorageEngineAPI readDocument requires 2 functions:
   - void readDocument(TOKEN id, VPackBuilder& result)  => Collects the document and inserts it asis into result. Does NOT clear result.
@@ -56,11 +60,6 @@ to do
   - We need to keep in mind the cluster. If a DBServer creates this token-type it has to be translated BEFORE the register is teleported to coordinator
 - Remove temporary wrapper LogCol::readDocument()
 - InitialySyncer.cpp knows details of StorageEngine MMFiles
-- StorageEngine specific AQL functions
-  - Register for specific function names => branches to StorageEngine impl
-  - Storage Engine can implement these functions with specific code and interna
-    - e.g.: Geo, Fulltext
-- Replace Usage of new callback-based IndexIterator
 
 MMFiles are known to the following files:
 * arangod/Aql/Functions.cpp
@@ -95,12 +94,11 @@ MMFiles are known to the following files:
 - Implement new IndexIterator API nextExtra(callback, limit)
   - Geo
 
+- OperationOptions
+  - revoryMarker
 
-
-
-
-
-
+- re-enable RocksDB storage engine (e.g arangod.cpp)
+- implement RocksDB storage engine
 
 Questions
 ---------
@@ -113,3 +111,4 @@ OpenIssues Hacki
 * SingleServerTraverser API does NOT takeover responsibility for slice data. getMore() hopes slices to not go away
   * This API can be improved if we make better use of those callbacks.
 * ShortestPathBlock does assume that slices do not walk away.
+* EdgeCollectionInfos in ShortestPath could share one conditionBuilder.

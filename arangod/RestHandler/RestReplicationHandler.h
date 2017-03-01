@@ -33,7 +33,10 @@ namespace arangodb {
 class ClusterInfo;
 class CollectionNameResolver;
 class LogicalCollection;
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication request handler
@@ -160,7 +163,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief creates a collection, based on the VelocyPack provided TODO: MOVE
   //////////////////////////////////////////////////////////////////////////////
 
-  int createCollection(VPackSlice const&, arangodb::LogicalCollection**, bool);
+  int createCollection(VPackSlice, arangodb::LogicalCollection**, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a restore command for a specific collection
@@ -204,7 +207,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief apply a single marker from the collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDumpMarker(arangodb::Transaction&,
+  int applyCollectionDumpMarker(transaction::Methods&,
                                 CollectionNameResolver const&,
                                 std::string const&,
                                 TRI_replication_operation_e,
@@ -215,7 +218,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of a collection TODO MOVE
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreDataBatch(arangodb::Transaction&,
+  int processRestoreDataBatch(transaction::Methods&,
                               std::string const&, bool, bool,
                               std::string&);
 

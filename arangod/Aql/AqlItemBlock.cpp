@@ -30,6 +30,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
@@ -568,7 +569,7 @@ AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
 ///                      corresponding position
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                      such that actual indices start at 2
-void AqlItemBlock::toVelocyPack(arangodb::Transaction* trx,
+void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
                                 VPackBuilder& result) const {
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;

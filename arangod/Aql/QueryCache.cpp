@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/QueryCache.h"
+#include "QueryCache.h"
 #include "Basics/fasthash.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"

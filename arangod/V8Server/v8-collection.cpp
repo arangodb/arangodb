@@ -36,15 +36,17 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesEngine.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/TransactionHints.h"
-#include "Utils/V8TransactionContext.h"
+#include "Transaction/Hints.h"
+#include "Transaction/V8Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -53,12 +55,12 @@
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/modes.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Worker.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HexDump.h>
@@ -308,7 +310,7 @@ static void ExistsVocbaseVPack(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+  auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
 
   VPackBuilder builder;
   std::string collectionName;
@@ -335,7 +337,7 @@ static void ExistsVocbaseVPack(
   TRI_ASSERT(search.isObject());
 
   SingleCollectionTransaction trx(transactionContext, collectionName, AccessMode::Type::READ);
-  trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   res = trx.begin();
 
@@ -430,12 +432,12 @@ static void DocumentVocbaseCol(
 
 
   TIMER_START(JS_DOCUMENT_CREATE_TRX);
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+  auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
 
   SingleCollectionTransaction trx(transactionContext, collectionName, 
                                   AccessMode::Type::READ);
   if (!args[0]->IsArray()) {
-    trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
   
   TIMER_STOP(JS_DOCUMENT_CREATE_TRX);
@@ -493,7 +495,7 @@ static void DocumentVocbase(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+  auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
 
   VPackBuilder builder;
   std::string collectionName;
@@ -521,7 +523,7 @@ static void DocumentVocbase(
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::READ);
-  trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   int res = trx.begin();
 
@@ -609,11 +611,11 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+  auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
 
   SingleCollectionTransaction trx(transactionContext, collectionName, AccessMode::Type::WRITE);
   if (!args[0]->IsArray()) {
-    trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
   int res = trx.begin();
@@ -730,7 +732,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+  auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
 
   VPackBuilder builder;
   std::string collectionName;
@@ -756,7 +758,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::WRITE);
-  trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   int res = trx.begin();
 
@@ -927,7 +929,7 @@ static void JS_FiguresVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
     
-  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->vocbase(), true), collection->cid(), 
+  SingleCollectionTransaction trx(transaction::V8Context::Create(collection->vocbase(), true), collection->cid(), 
                                   AccessMode::Type::READ);
   int res = trx.begin();
 
@@ -1155,7 +1157,7 @@ static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   SingleCollectionTransaction trx(
-    V8TransactionContext::Create(collection->vocbase(), true),
+    transaction::V8Context::Create(collection->vocbase(), true),
     collection->cid(), AccessMode::Type::READ);
   
   int res = trx.begin();
@@ -1217,7 +1219,7 @@ static void JS_PathVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  std::string const path(collection->path());
+  std::string const path(collection->getPhysical()->path());
   v8::Handle<v8::Value> result = TRI_V8_STD_STRING(path);
 
   TRI_V8_RETURN(result);
@@ -1257,7 +1259,6 @@ static void JS_PropertiesVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  TRI_GET_GLOBALS();
 
   arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -1271,7 +1272,6 @@ static void JS_PropertiesVocbaseCol(
     std::shared_ptr<LogicalCollection> info =
         ClusterInfo::instance()->getCollection(
             databaseName, collection->cid_as_string());
-
     if (0 < args.Length()) {
       v8::Handle<v8::Value> par = args[0];
 
@@ -1286,115 +1286,39 @@ static void JS_PropertiesVocbaseCol(
         }
 
         VPackSlice const slice = builder.slice();
-        if (slice.hasKey("journalSize")) {
-          VPackSlice maxSizeSlice = slice.get("journalSize");
-          TRI_voc_size_t maximalSize =
-              maxSizeSlice.getNumericValue<TRI_voc_size_t>();
-          if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-            TRI_V8_THROW_EXCEPTION_PARAMETER(
-                "<properties>.journalSize too small");
-          }
-        }
-        if (info->isVolatile() !=
-            arangodb::basics::VelocyPackHelper::getBooleanValue(
-                slice, "isVolatile", info->isVolatile())) {
-          TRI_V8_THROW_EXCEPTION_PARAMETER(
-              "isVolatile option cannot be changed at runtime");
-        }
-        if (info->isVolatile() && info->waitForSync()) {
-          TRI_V8_THROW_EXCEPTION_PARAMETER(
-              "volatile collections do not support the waitForSync option");
-        }
-        uint32_t tmp =
-            arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-                slice, "indexBuckets",
-                2 /*Just for validation, this default Value passes*/);
-        if (tmp == 0 || tmp > 1024) {
-          TRI_V8_THROW_EXCEPTION_PARAMETER(
-              "indexBuckets must be a two-power between 1 and 1024");
-        }
 
-        int res = info->update(slice, false);
+        CollectionResult res = info->updateProperties(slice, false);
 
-        if (res != TRI_ERROR_NO_ERROR) {
-          TRI_V8_THROW_EXCEPTION(res);
+        if (!res.successful()) {
+          TRI_V8_THROW_EXCEPTION_MESSAGE(res.code, res.errorMessage);
         }
       }
 
     }
-
-    // return the current parameter set
-    v8::Handle<v8::Object> result = v8::Object::New(isolate);
-
-    TRI_GET_GLOBAL_STRING(DoCompactKey);
-    TRI_GET_GLOBAL_STRING(IsSystemKey);
-    TRI_GET_GLOBAL_STRING(IsVolatileKey);
-    TRI_GET_GLOBAL_STRING(JournalSizeKey);
-    TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-    result->Set(DoCompactKey, v8::Boolean::New(isolate, info->doCompact()));
-    result->Set(IsSystemKey, v8::Boolean::New(isolate, info->isSystem()));
-    result->Set(IsVolatileKey, v8::Boolean::New(isolate, info->isVolatile()));
-    result->Set(JournalSizeKey, v8::Number::New(isolate, static_cast<double>(info->journalSize())));
-    result->Set(WaitForSyncKey, v8::Boolean::New(isolate, info->waitForSync()));
-    result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
-                v8::Number::New(isolate, info->indexBuckets()));
 
     auto c = ClusterInfo::instance()->getCollection(
         databaseName, StringUtils::itoa(collection->cid()));
-    v8::Handle<v8::Array> shardKeys = v8::Array::New(isolate);
-    std::vector<std::string> const sks = c->shardKeys();
-    for (size_t i = 0; i < sks.size(); ++i) {
-      shardKeys->Set((uint32_t)i, TRI_V8_STD_STRING(sks[i]));
-    }
-    result->Set(TRI_V8_ASCII_STRING("shardKeys"), shardKeys);
 
-    result->Set(TRI_V8_ASCII_STRING("numberOfShards"),
-                v8::Number::New(isolate, c->numberOfShards()));
-    auto keyOpts = info->keyOptions();
-    if (keyOpts.isObject() && keyOpts.length() > 0) {
-      TRI_GET_GLOBAL_STRING(KeyOptionsKey);
-      result->Set(KeyOptionsKey, TRI_VPackToV8(isolate, keyOpts)->ToObject());
-    }
-    if (c->isSatellite()) {
-      result->Set(
-          TRI_V8_ASCII_STRING("replicationFactor"),
-          TRI_V8_STD_STRING(std::string("satellite")));
-    } else {
-      result->Set(
-          TRI_V8_ASCII_STRING("replicationFactor"),
-          v8::Number::New(isolate, static_cast<double>(c->replicationFactor())));
-    }
-    std::string shardsLike = c->distributeShardsLike();
-    if (!shardsLike.empty()) {
-      CollectionNameResolver resolver(c->vocbase());
-      TRI_voc_cid_t cid =
-        static_cast<TRI_voc_cid_t>(
-          arangodb::basics::StringUtils::uint64(shardsLike));
-      result->Set(
-        TRI_V8_ASCII_STRING("distributeShardsLike"),
-        TRI_V8_STD_STRING(resolver.getCollectionNameCluster(cid)));
-    }
+    std::unordered_set<std::string> const ignoreKeys{
+        "allowUserKeys", "cid",  "count",  "deleted", "id",
+        "indexes",       "name", "path",   "planId",  "shards",
+        "status",        "type", "version"};
+    VPackBuilder vpackProperties = c->toVelocyPackIgnore(ignoreKeys, true);
 
-    std::vector<std::string> const avoidServers = c->avoidServers();
-    if (!avoidServers.empty()) {
-      v8::Handle<v8::Array> avoidKeys = v8::Array::New(isolate);
-      for (size_t i = 0; i < avoidServers.size(); ++i) {
-        avoidKeys->Set((uint32_t)i, TRI_V8_STD_STRING(avoidServers[i]));
-      }
-      result->Set(TRI_V8_ASCII_STRING("avoidServers"), avoidKeys);
-    }
-
+    // return the current parameter set
+    v8::Handle<v8::Object> result =
+                  TRI_VPackToV8(isolate, vpackProperties.slice())->ToObject();
     TRI_V8_RETURN(result);
   }
   
   bool const isModification = (args.Length() != 0);
   SingleCollectionTransaction trx(
-      V8TransactionContext::Create(collection->vocbase(), true),
+      transaction::V8Context::Create(collection->vocbase(), true),
       collection->cid(),
       isModification ? AccessMode::Type::WRITE : AccessMode::Type::READ);
 
   if (!isModification) {
-    trx.addHint(TransactionHints::Hint::NO_USAGE_LOCK, false);
+    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
   }
   
   int res = trx.begin();
@@ -1402,7 +1326,7 @@ static void JS_PropertiesVocbaseCol(
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-        
+
   // check if we want to change some parameters
   if (isModification) {
     v8::Handle<v8::Value> par = args[0];
@@ -1419,31 +1343,15 @@ static void JS_PropertiesVocbaseCol(
 
       // try to write new parameter to file
       bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-      res = collection->update(slice, doSync);
+      CollectionResult updateRes = collection->updateProperties(slice, doSync);
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        TRI_V8_THROW_EXCEPTION(res);
+      if (!updateRes.successful()) {
+        TRI_V8_THROW_EXCEPTION_MESSAGE(updateRes.code, updateRes.errorMessage);
       }
 
-      try {
-        VPackBuilder infoBuilder;
-        collection->toVelocyPack(infoBuilder, false);
-
-        // now log the property changes
-        res = TRI_ERROR_NO_ERROR;
-
-        MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, collection->vocbase()->id(), collection->cid(), infoBuilder.slice());
-        MMFilesWalSlotInfoCopy slotInfo =
-            MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
-
-        if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
-        }
-      } catch (arangodb::basics::Exception const& ex) {
-        res = ex.code();
-      } catch (...) {
-        res = TRI_ERROR_INTERNAL;
-      }
+      auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+      TRI_ASSERT(physical != nullptr);
+      res = physical->persistProperties();
 
       if (res != TRI_ERROR_NO_ERROR) {
         // TODO: what to do here
@@ -1453,37 +1361,17 @@ static void JS_PropertiesVocbaseCol(
     }
   }
 
+  std::unordered_set<std::string> const ignoreKeys{
+      "allowUserKeys", "cid", "count", "deleted", "id", "indexes", "name",
+      "path", "planId", "shards", "status", "type", "version",
+      /* These are only relevant for cluster */
+      "distributeShardsLike", "isSmart", "numberOfShards", "replicationFactor",
+      "shardKeys"};
+  VPackBuilder vpackProperties = collection->toVelocyPackIgnore(ignoreKeys, true);
+
   // return the current parameter set
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-
-  TRI_GET_GLOBAL_STRING(DoCompactKey);
-  TRI_GET_GLOBAL_STRING(IsSystemKey);
-  TRI_GET_GLOBAL_STRING(IsVolatileKey);
-  TRI_GET_GLOBAL_STRING(JournalSizeKey);
-  result->Set(DoCompactKey, v8::Boolean::New(isolate, collection->doCompact()));
-  result->Set(IsSystemKey, v8::Boolean::New(isolate, collection->isSystem()));
-  result->Set(IsVolatileKey,
-              v8::Boolean::New(isolate, collection->isVolatile()));
-  result->Set(JournalSizeKey,
-              v8::Number::New(isolate, (double) collection->journalSize()));
-  result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
-              v8::Number::New(isolate, collection->indexBuckets()));
-
-  TRI_GET_GLOBAL_STRING(KeyOptionsKey);
-  try {
-    VPackBuilder optionsBuilder;
-    optionsBuilder.openObject();
-    collection->keyGenerator()->toVelocyPack(optionsBuilder);
-    optionsBuilder.close();
-    result->Set(KeyOptionsKey,
-                TRI_VPackToV8(isolate, optionsBuilder.slice())->ToObject());
-  } catch (...) {
-    // Could not build the VPack
-    result->Set(KeyOptionsKey, v8::Array::New(isolate));
-  }
-  TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-  result->Set(WaitForSyncKey,
-              v8::Boolean::New(isolate, collection->waitForSync()));
+  v8::Handle<v8::Object> result =
+                TRI_VPackToV8(isolate, vpackProperties.slice())->ToObject();
 
   trx.finish(res);
 
@@ -1799,13 +1687,13 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   VPackSlice const update = updateBuilder.slice();
 
 
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+  auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
   
   // Now start the transaction:
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::WRITE);
   if (!args[0]->IsArray()) {
-    trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
   int res = trx.begin();
@@ -1908,7 +1796,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+  auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
   
   VPackBuilder updateBuilder;
 
@@ -1932,7 +1820,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::WRITE);
-  trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2187,7 +2075,7 @@ static int GetRevision(arangodb::LogicalCollection* collection, TRI_voc_rid_t& r
   TRI_ASSERT(collection != nullptr);
 
   SingleCollectionTransaction trx(
-      V8TransactionContext::Create(collection->vocbase(), true),
+      transaction::V8Context::Create(collection->vocbase(), true),
       collection->cid(), AccessMode::Type::READ);
 
   int res = trx.begin();
@@ -2279,7 +2167,7 @@ static void JS_RotateVocbaseCol(
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
 
   SingleCollectionTransaction trx(
-      V8TransactionContext::Create(collection->vocbase(), true),
+      transaction::V8Context::Create(collection->vocbase(), true),
       collection->cid(), AccessMode::Type::READ);
 
   int res = trx.begin();
@@ -2288,7 +2176,7 @@ static void JS_RotateVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  res = collection->rotateActiveJournal();
+  res = collection->getPhysical()->rotateActiveJournal();
 
   trx.finish(res);
 
@@ -2364,10 +2252,10 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // load collection
-  auto transactionContext(V8TransactionContext::Create(vocbase, true));
+  auto transactionContext(transaction::V8Context::Create(vocbase, true));
   SingleCollectionTransaction trx(transactionContext,
                                   collectionName, AccessMode::Type::WRITE);
-  trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   res = trx.begin();
 
@@ -2525,12 +2413,12 @@ static void JS_InsertVocbaseCol(
   TIMER_START(JS_INSERT_CREATE_TRX);
   // load collection
   auto transactionContext =
-      std::make_shared<V8TransactionContext>(collection->vocbase(), true);
+      std::make_shared<transaction::V8Context>(collection->vocbase(), true);
 
   SingleCollectionTransaction trx(transactionContext, collection->cid(),
                                   AccessMode::Type::WRITE);
   if (!payloadIsArray) {
-    trx.addHint(TransactionHints::Hint::SINGLE_OPERATION, false);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
   TIMER_STOP(JS_INSERT_CREATE_TRX);
 
@@ -2626,7 +2514,7 @@ static void JS_TruncateVocbaseCol(
   }
 
   SingleCollectionTransaction trx(
-      V8TransactionContext::Create(collection->vocbase(), true),
+      transaction::V8Context::Create(collection->vocbase(), true),
       collection->cid(), AccessMode::Type::WRITE);
 
   int res = trx.begin();
@@ -3129,7 +3017,7 @@ static void JS_CountVocbaseCol(
   
   std::string collectionName(col->name());
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true), collectionName, AccessMode::Type::READ);
+  SingleCollectionTransaction trx(transaction::V8Context::Create(vocbase, true), collectionName, AccessMode::Type::READ);
 
   int res = trx.begin();
 
@@ -3189,7 +3077,7 @@ static void JS_DatafilesVocbaseCol(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
 
-  MMFilesEngineCollectionFiles structure = dynamic_cast<MMFilesEngine*>(engine)->scanCollectionDirectory(collection->path());
+  MMFilesEngineCollectionFiles structure = dynamic_cast<MMFilesEngine*>(engine)->scanCollectionDirectory(collection->getPhysical()->path());
 
   // build result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);

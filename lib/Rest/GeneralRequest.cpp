@@ -226,9 +226,3 @@ void GeneralRequest::addSuffix(std::string&& part) {
   // part will not be URL-decoded here!
   _suffixes.emplace_back(std::move(part));
 }
-
-bool GeneralRequest::velocyPackResponse() const {
-  // needs only to be used in http case?!
-  std::string const& result = header(StaticStrings::Accept);
-  return (result.compare(StaticStrings::MimeTypeVPack) == 0);
-}

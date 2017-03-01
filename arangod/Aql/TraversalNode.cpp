@@ -26,8 +26,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalNode.h"
-#include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Cluster/ClusterComm.h"
 #include "Indexes/Index.h"
@@ -982,25 +983,28 @@ void TraversalNode::prepareOptions() {
     // We now have to check if we need _from / _to inside the index lookup and which position
     // it is used in. Such that the traverser can update the respective string value
     // in-place
-    // TODO This place can be optimized.
-    if (info.idxHandles[0].isMMFilesEdgeIndex()) {
-      // Special case for edge index....
-      // It serves two attributes, but can only be asked for one of them...
-      info.conditionNeedUpdate = true;
-      info.conditionMemberToUpdate = 0;
-    } else {
-      std::vector<std::vector<std::string>> fieldNames =
-          info.idxHandles[0].fieldNames();
-      size_t max = info.indexCondition->numMembers();
-      TRI_ASSERT(max <= fieldNames.size());
-      for (size_t i = 0; i < max; ++i) {
-        auto const& f = fieldNames[i];
-        if (f.size() == 1 && f[0] == usedField) {
-          // we only work for _from and _to not _from.foo which would be null anyways...
+    std::pair<Variable const*, std::vector<basics::AttributeName>> pathCmp;
+    for (size_t i = 0; i < info.indexCondition->numMembers(); ++i) {
+      // We search through the nary-and and look for EQ - _from/_to
+      auto eq = info.indexCondition->getMemberUnchecked(i);
+      if (eq->type != NODE_TYPE_OPERATOR_BINARY_EQ) {
+        // No equality. Skip
+        continue;
+      }
+      TRI_ASSERT(eq->numMembers() == 2);
+      // It is sufficient to only check member one.
+      // We build the condition this way.
+      auto mem = eq->getMemberUnchecked(0);
+      if (mem->isAttributeAccessForVariable(pathCmp)) {
+        if (pathCmp.first != _tmpObjVariable) {
+          continue;
+        }
+        if (pathCmp.second.size() == 1 && pathCmp.second[0].name == usedField) {
           info.conditionNeedUpdate = true;
           info.conditionMemberToUpdate = i;
           break;
         }
+        continue;
       }
     }
     _options->_baseLookupInfos.emplace_back(std::move(info));
@@ -1052,26 +1056,31 @@ void TraversalNode::prepareOptions() {
       // We now have to check if we need _from / _to inside the index lookup and which position
       // it is used in. Such that the traverser can update the respective string value
       // in-place
-      // TODO This place can be optimized.
-      if (info.idxHandles[0].isMMFilesEdgeIndex()) {
-        // Special case for edge index....
-        // It serves two attributes, but can only be asked for one of them...
-        info.conditionNeedUpdate = true;
-        info.conditionMemberToUpdate = 0;
-      } else {
-        std::vector<std::vector<std::string>> fieldNames =
-            info.idxHandles[0].fieldNames();
-        for (size_t i = 0; i < fieldNames.size(); ++i) {
-          auto f = fieldNames[i];
-          if (f.size() == 1 && f[0] == usedField) {
-            // we only work for _from and _to not _from.foo which would be null anyways...
+      
+      std::pair<Variable const*, std::vector<basics::AttributeName>> pathCmp;
+      for (size_t i = 0; i < info.indexCondition->numMembers(); ++i) {
+        // We search through the nary-and and look for EQ - _from/_to
+        auto eq = info.indexCondition->getMemberUnchecked(i);
+        if (eq->type != NODE_TYPE_OPERATOR_BINARY_EQ) {
+          // No equality. Skip
+          continue;
+        }
+        TRI_ASSERT(eq->numMembers() == 2);
+        // It is sufficient to only check member one.
+        // We build the condition this way.
+        auto mem = eq->getMemberUnchecked(0);
+        if (mem->isAttributeAccessForVariable(pathCmp)) {
+          if (pathCmp.first != _tmpObjVariable) {
+            continue;
+          }
+          if (pathCmp.second.size() == 1 && pathCmp.second[0].name == usedField) {
             info.conditionNeedUpdate = true;
             info.conditionMemberToUpdate = i;
             break;
           }
+          continue;
         }
       }
-
       infos.emplace_back(std::move(info));
     }
   }
@@ -1121,7 +1130,7 @@ void TraversalNode::setCondition(arangodb::aql::Condition* condition) {
 }
 
 void TraversalNode::registerCondition(bool isConditionOnEdge,
-                                      size_t conditionLevel,
+                                      uint64_t conditionLevel,
                                       AstNode const* condition) {
   Ast::getReferencedVariables(condition, _conditionVariables);
   if (isConditionOnEdge) {

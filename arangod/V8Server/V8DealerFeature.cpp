@@ -31,6 +31,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/TimedAction.h"
 #include "Basics/WorkMonitor.h"
 #include "Cluster/ServerState.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -39,7 +40,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Utils/V8TransactionContext.h"
+#include "Transaction/V8Context.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -452,6 +453,15 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
   if (_stopping) {
     return nullptr;
   }
+  
+  if (!vocbase->use()) {
+    return nullptr;
+  }
+
+  TimedAction exitWhenNoContext([](double waitTime) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "giving up waiting for V8 context after " << Logger::FIXED(waitTime) << " s";
+  }, 60);
+
 
   V8Context* context = nullptr;
 
@@ -506,6 +516,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
     }
 
     if (context == nullptr) {
+      vocbase->release();
       return nullptr;
     }
   }
@@ -531,11 +542,17 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         
         guard.wait();
       }
+
+      if (exitWhenNoContext.tick()) {
+        vocbase->release();
+        return nullptr;
+      }
     }
 
     // in case we are in the shutdown phase, do not enter a context!
     // the context might have been deleted by the shutdown
     if (_stopping) {
+      vocbase->release();
       return nullptr;
     }
 
@@ -550,7 +567,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
     // should not fail because we reserved enough space beforehand
     _busyContexts.emplace(context);
   }
-
+  
   // when we get here, we should have a context and an isolate
   TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->_isolate != nullptr);
@@ -579,8 +596,6 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
       v8g->_query = nullptr;
       v8g->_vocbase = vocbase;
       v8g->_allowUseDatabase = allowUseDatabase;
-
-      vocbase->use();
 
       try {
         LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "entering V8 context " << context->_id;
@@ -752,7 +767,7 @@ void V8DealerFeature::applyContextUpdates() {
           vocbase, true, static_cast<ssize_t>(i));
 
       if (context == nullptr) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not updated V8 context #" << i;
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not update V8 context #" << i;
         FATAL_ERROR_EXIT();
       }
 
@@ -1114,7 +1129,7 @@ void V8DealerFeature::shutdownV8Instance(V8Context* context) {
 
       if (v8g != nullptr) {
         if (v8g->_transactionContext != nullptr) {
-          delete static_cast<V8TransactionContext*>(v8g->_transactionContext);
+          delete static_cast<transaction::V8Context*>(v8g->_transactionContext);
           v8g->_transactionContext = nullptr;
         }
         delete v8g;

@@ -55,7 +55,10 @@
 namespace arangodb {
 class Index;
 class LogicalCollection;
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 
 /// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself
@@ -71,21 +74,19 @@ class IndexIterator {
   IndexIterator& operator=(IndexIterator const&) = delete;
   IndexIterator() = delete;
 
-  IndexIterator(LogicalCollection*, arangodb::Transaction*, ManagedDocumentResult*, arangodb::Index const*);
+  IndexIterator(LogicalCollection*, transaction::Methods*, ManagedDocumentResult*, arangodb::Index const*);
 
   virtual ~IndexIterator();
 
   virtual char const* typeName() const = 0;
 
   LogicalCollection* collection() const { return _collection; }
-  arangodb::Transaction* transaction() const { return _trx; }
+  transaction::Methods* transaction() const { return _trx; }
 
   virtual bool hasExtra() const;
 
   virtual bool next(TokenCallback const& callback, size_t limit) = 0;
   virtual bool nextExtra(ExtraCallback const& callback, size_t limit);
-
-//  virtual DocumentIdentifierToken next();
 
   virtual void reset();
 
@@ -93,7 +94,7 @@ class IndexIterator {
 
  protected:
   LogicalCollection* _collection;
-  arangodb::Transaction* _trx;
+  transaction::Methods* _trx;
   ManagedDocumentResult* _mmdr;
   IndexLookupContext _context;
   bool _responsible;
@@ -102,7 +103,7 @@ class IndexIterator {
 /// @brief Special iterator if the condition cannot have any result
 class EmptyIndexIterator final : public IndexIterator {
   public:
-    EmptyIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, ManagedDocumentResult* mmdr, arangodb::Index const* index) 
+    EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, ManagedDocumentResult* mmdr, arangodb::Index const* index) 
         : IndexIterator(collection, trx, mmdr, index) {}
 
     ~EmptyIndexIterator() {}
@@ -128,7 +129,7 @@ class EmptyIndexIterator final : public IndexIterator {
 class MultiIndexIterator final : public IndexIterator {
 
   public:
-   MultiIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx,
+   MultiIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                       ManagedDocumentResult* mmdr,
                       arangodb::Index const* index,
                       std::vector<IndexIterator*> const& iterators)

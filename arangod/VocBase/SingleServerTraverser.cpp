@@ -23,7 +23,7 @@
 
 #include "SingleServerTraverser.h"
 #include "Basics/StringRef.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -37,7 +37,7 @@ using namespace arangodb::traverser;
 ///        On all other cases this function throws.
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FetchDocumentById(arangodb::Transaction* trx,
+static int FetchDocumentById(transaction::Methods* trx,
                              StringRef const& id,
                              ManagedDocumentResult& result) {
   size_t pos = id.find('/');
@@ -56,7 +56,7 @@ static int FetchDocumentById(arangodb::Transaction* trx,
 }
 
 SingleServerEdgeCursor::SingleServerEdgeCursor(ManagedDocumentResult* mmdr,
-    Transaction* trx,
+    transaction::Methods* trx,
     size_t nrCursors, std::vector<size_t> const* mapping)
     : _trx(trx),
       _mmdr(mmdr), 
@@ -77,7 +77,7 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
   }
   if (_cachePos < _cache.size()) {
     LogicalCollection* collection = _cursors[_currentCursor][_currentSubCursor]->collection();
-    if (collection->readDocument(_trx, *_mmdr, _cache[_cachePos++])) {
+    if (collection->readDocument(_trx, _cache[_cachePos++], *_mmdr)) {
       result.emplace_back(_mmdr->vpack());
     }
     if (_internalCursorMapping != nullptr) {
@@ -131,7 +131,7 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
 
   TRI_ASSERT(_cachePos < _cache.size());
   LogicalCollection* collection = cursor->collection();
-  if (collection->readDocument(_trx, *_mmdr, _cache[_cachePos++])) {
+  if (collection->readDocument(_trx, _cache[_cachePos++], *_mmdr)) {
     result.emplace_back(_mmdr->vpack());
   }
   if (_internalCursorMapping != nullptr) {
@@ -160,7 +160,7 @@ bool SingleServerEdgeCursor::readAll(std::unordered_set<VPackSlice>& result,
   for (auto& cursor : cursorSet) {
     LogicalCollection* collection = cursor->collection(); 
     auto cb = [&] (DocumentIdentifierToken const& token) {
-      if (collection->readDocument(_trx, *_mmdr, token)) {
+      if (collection->readDocument(_trx, token, *_mmdr)) {
         result.emplace(_mmdr->vpack());
       }
     };
@@ -172,7 +172,7 @@ bool SingleServerEdgeCursor::readAll(std::unordered_set<VPackSlice>& result,
 }
 
 SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts,
-                                             arangodb::Transaction* trx,
+                                             transaction::Methods* trx,
                                              ManagedDocumentResult* mmdr)
     : Traverser(opts, trx, mmdr) {}
 
@@ -259,6 +259,6 @@ bool SingleServerTraverser::getVertex(VPackSlice edge,
 }
 
 bool SingleServerTraverser::getSingleVertex(VPackSlice edge, VPackSlice vertex,
-                                            size_t depth, VPackSlice& result) {
+                                            uint64_t depth, VPackSlice& result) {
   return _vertexGetter->getSingleVertex(edge, vertex, depth, result);
 }

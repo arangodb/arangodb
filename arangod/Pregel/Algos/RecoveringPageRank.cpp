@@ -28,13 +28,6 @@
 #include "Pregel/Utils.h"
 #include "Pregel/VertexComputation.h"
 
-#include "Cluster/ClusterInfo.h"
-#include "Utils/OperationCursor.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
-#include "Utils/Transaction.h"
-#include "VocBase/vocbase.h"
-
 using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;

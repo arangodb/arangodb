@@ -37,6 +37,7 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -47,21 +48,11 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::pregel;
 
-#ifdef TRI_SHOW_LOCK_TIME
-
 #define MY_READ_LOCKER(obj, lock) \
-  ReadLocker<ReadWriteLock> obj(&lock, __FILE__, __LINE__)
+  ReadLocker<ReadWriteLock> obj(&lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
 #define MY_WRITE_LOCKER(obj, lock) \
-  WriteLocker<ReadWriteLock> obj(&lock, __FILE__, __LINE__)
-
-#else
-
-#define MY_READ_LOCKER(obj, lock) ReadLocker<ReadWriteLock> obj(&lock)
-
-#define MY_WRITE_LOCKER(obj, lock) WriteLocker<ReadWriteLock> obj(&lock)
-
-#endif
+  WriteLocker<ReadWriteLock> obj(&lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
 template <typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
@@ -352,7 +343,7 @@ void Worker<V, E, M>::_startProcessing() {
     }
     i++;
   } while (start != total);
-  TRI_ASSERT(_runningThreads == i);
+  //TRI_ASSERT(_runningThreads == i);
   LOG_TOPIC(INFO, Logger::PREGEL) << "Using " << i << " Threads";
 }
 

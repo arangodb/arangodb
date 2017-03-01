@@ -144,10 +144,12 @@ class Logger {
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
   static LogTopic REQUESTS;
+  static LogTopic SSL;
   static LogTopic STARTUP;
   static LogTopic SUPERVISION;
   static LogTopic SYSCALL;
   static LogTopic THREADS;
+  static LogTopic TRANSACTIONS;
   static LogTopic V8;
 
  public:
@@ -174,8 +176,8 @@ class Logger {
   };
 
   struct LINE {
-    explicit LINE(long int line) : _line(line){}
-    long int _line;
+    explicit LINE(int line) : _line(line){}
+    int _line;
   };
 
   struct FILE {

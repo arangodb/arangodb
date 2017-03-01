@@ -31,7 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Context.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
@@ -412,7 +412,7 @@ void RestCursorHandler::createCursor() {
   try {
     bool parseSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+        parseVelocyPackBody(parseSuccess);
 
     if (!parseSuccess) {
       return;

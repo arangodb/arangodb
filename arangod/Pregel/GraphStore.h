@@ -36,8 +36,10 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class Transaction;
 class LogicalCollection;
+namespace transaction {
+  class Methods;
+}
 namespace pregel {
 
 class WorkerConfig;
@@ -75,11 +77,11 @@ class GraphStore {
   void _loadVertices(ShardID const& vertexShard,
                      std::vector<ShardID> const& edgeShards,
                      uint64_t vertexOffset, uint64_t edgeOffset);
-  void _loadEdges(Transaction* trx, ShardID const& shard,
+  void _loadEdges(transaction::Methods* trx, ShardID const& shard,
                   VertexEntry& vertexEntry, std::string const& documentID);
   void _storeVertices(std::vector<ShardID> const& globalShards,
                       RangeIterator<VertexEntry> &it);
-  std::unique_ptr<Transaction> _createTransaction();
+  std::unique_ptr<transaction::Methods> _createTransaction();
   bool _destroyed = false;
 
  public:

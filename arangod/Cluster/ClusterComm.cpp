@@ -26,6 +26,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
@@ -34,7 +35,7 @@
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpCommunicatorResult.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
 
 #include <thread>
@@ -1079,11 +1080,11 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
 
   std::unordered_map<std::string, std::string> headersCopy(headerFields);
   if (destination.substr(0, 6) == "shard:") {
-    if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    if (CollectionLockState::_noLockHeaders != nullptr) {
       // LOCKING-DEBUG
       // std::cout << "Found Nolock header\n";
-      auto it = arangodb::Transaction::_makeNolockHeaders->find(result->shardID);
-      if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      auto it = CollectionLockState::_noLockHeaders->find(result->shardID);
+      if (it != CollectionLockState::_noLockHeaders->end()) {
         // LOCKING-DEBUG
         // std::cout << "Found our shard\n";
         headersCopy["X-Arango-Nolock"] = result->shardID;

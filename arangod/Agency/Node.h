@@ -163,9 +163,6 @@ class Node {
   /// @brief Create Builder representing this store
   void toBuilder(Builder&, bool showHidden = false) const;
 
-  /// @brief Create Builder representing this store
-  void toObject(Builder&, bool showHidden = false) const;
-
   /// @brief Access children
   Children& children();
 

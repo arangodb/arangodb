@@ -77,7 +77,7 @@ function SynchronousReplicationSuite () {
         s => global.ArangoClusterInfo.getCollectionInfoCurrent(database, cn, s)
       );
       let replicas = ccinfo.map(s => s.servers.length);
-      if (_.every(replicas, x => x === 2)) {
+      if (_.every(replicas, x => x > 1)) {
         console.info("Replication up and running!");
         return true;
       }

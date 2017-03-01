@@ -44,6 +44,9 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <algorithm>
+#include <vector>
+
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -453,7 +456,7 @@ static void collectResultsFromAllShards(
     } else {
       TRI_ASSERT(res.answer != nullptr);
       resultMap.emplace(res.shardID,
-                        res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
+                        res.answer->toVelocyPackBuilderPtr());
       extractErrorCodes(res, errorCounter, true);
       responseCode = res.answer_code;
     }
@@ -889,7 +892,7 @@ int createDocumentOnCoordinator(
 
     responseCode = res.answer_code;
     TRI_ASSERT(res.answer != nullptr);
-    auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+    auto parsedResult = res.answer->toVelocyPackBuilderPtr();
     resultBody.swap(parsedResult);
     return TRI_ERROR_NO_ERROR;
   }
@@ -962,7 +965,7 @@ int deleteDocumentOnCoordinator(
         VPackSlice const node, VPackValueLength const index) -> int {
       // Sort out the _key attribute and identify the shard responsible for it.
 
-      StringRef _key(Transaction::extractKeyPart(node));
+      StringRef _key(transaction::helpers::extractKeyPart(node));
       ShardID shardID;
       if (_key.empty()) {
         // We have invalid input at this point.
@@ -1053,7 +1056,7 @@ int deleteDocumentOnCoordinator(
 
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
-      auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+      auto parsedResult = res.answer->toVelocyPackBuilderPtr();
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1105,7 +1108,7 @@ int deleteDocumentOnCoordinator(
 
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtr();
           resultBody.swap(parsedResult);
         }
       }
@@ -1136,7 +1139,7 @@ int deleteDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr());
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -1350,7 +1353,7 @@ int getDocumentOnCoordinator(
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
 
-      auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+      auto parsedResult = res.answer->toVelocyPackBuilderPtr();
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1422,7 +1425,7 @@ int getDocumentOnCoordinator(
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtr();
           resultBody.swap(parsedResult);
         }
       } else {
@@ -1457,7 +1460,7 @@ int getDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr());
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -1531,7 +1534,7 @@ int fetchEdgesFromEngines(
       return commError;
     }
     TRI_ASSERT(res.answer != nullptr);
-    auto resBody = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+    auto resBody = res.answer->toVelocyPackBuilderPtr();
     VPackSlice resSlice = resBody->slice();
     if (!resSlice.isObject()) {
       // Response has invalid format
@@ -1620,7 +1623,7 @@ void fetchVerticesFromEngines(
       THROW_ARANGO_EXCEPTION(commError);
     }
     TRI_ASSERT(res.answer != nullptr);
-    auto resBody = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+    auto resBody = res.answer->toVelocyPackBuilderPtr();
     VPackSlice resSlice = resBody->slice();
     if (!resSlice.isObject()) {
       // Response has invalid format
@@ -1730,7 +1733,7 @@ int getFilteredEdgesOnCoordinator(
       return error;
     }
     TRI_ASSERT(res.answer != nullptr);
-    std::shared_ptr<VPackBuilder> shardResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+    std::shared_ptr<VPackBuilder> shardResult = res.answer->toVelocyPackBuilderPtr();
 
     if (shardResult == nullptr) {
       return TRI_ERROR_INTERNAL;
@@ -1940,7 +1943,7 @@ int modifyDocumentOnCoordinator(
 
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
-      auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+      auto parsedResult = res.answer->toVelocyPackBuilderPtr();
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1997,7 +2000,7 @@ int modifyDocumentOnCoordinator(
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtr();
           resultBody.swap(parsedResult);
         }
       } else {
@@ -2032,7 +2035,7 @@ int modifyDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr());
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -2180,18 +2183,21 @@ std::unique_ptr<LogicalCollection>
 ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> dbServers;
-
+  std::vector<std::string> avoid = col->avoidServers();
+    
   ClusterInfo* ci = ClusterInfo::instance();
   if (!distributeShardsLike.empty()) {
+
     CollectionNameResolver resolver(col->vocbase());
     TRI_voc_cid_t otherCid =
-        resolver.getCollectionIdCluster(distributeShardsLike);
+      resolver.getCollectionIdCluster(distributeShardsLike);
+
     if (otherCid != 0) {
       std::string otherCidString 
-          = arangodb::basics::StringUtils::itoa(otherCid);
+        = arangodb::basics::StringUtils::itoa(otherCid);
       try {
         std::shared_ptr<LogicalCollection> collInfo =
-            ci->getCollection(col->dbName(), otherCidString);
+          ci->getCollection(col->dbName(), otherCidString);
         auto shards = collInfo->shardIds();
         auto shardList = ci->getShardList(otherCidString);
         for (auto const& s : *shardList) {
@@ -2206,6 +2212,20 @@ ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
       }
       col->distributeShardsLike(otherCidString);
     }
+    
+  } else if(!avoid.empty()) {
+    
+    size_t replicationFactor = col->replicationFactor();
+    dbServers = ci->getCurrentDBServers();
+    if (dbServers.size() - avoid.size() >= replicationFactor) {
+      dbServers.erase(
+        std::remove_if(
+          dbServers.begin(), dbServers.end(), [&](const std::string&x) {
+            return std::find(avoid.begin(), avoid.end(), x) != avoid.end();
+          }), dbServers.end());
+    }
+    std::random_shuffle(dbServers.begin(), dbServers.end());
+    
   }
   
   // If the list dbServers is still empty, it will be filled in
@@ -2222,8 +2242,12 @@ ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
   }
   col->setShardMap(shards);
 
-  VPackBuilder velocy;
-  col->toVelocyPackForAgency(velocy);
+  std::unordered_set<std::string> const ignoreKeys{
+      "allowUserKeys", "cid", /* cid really ignore?*/
+      "count",         "planId", "version",
+  };
+  col->setStatus(TRI_VOC_COL_STATUS_LOADED);
+  VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false);
 
   std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(

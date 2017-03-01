@@ -699,28 +699,6 @@ void Node::toBuilder(Builder& builder, bool showHidden) const {
   }
 }
 
-void Node::toObject(Builder& builder, bool showHidden) const {
-  try {
-    if (type() == NODE) {
-      VPackObjectBuilder guard(&builder);
-      for (auto const& child : _children) {
-        if (child.first[0] == '.' && !showHidden) {
-          continue;
-        }
-        builder.add(VPackValue(child.first));
-        child.second->toBuilder(builder);
-      }
-    } else {
-      if (!slice().isNone()) {
-        builder.add(slice());
-      }
-    }
-
-  } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
-  }
-}
-
 // Print internals to ostream
 std::ostream& Node::print(std::ostream& o) const {
   Node const* par = _parent;

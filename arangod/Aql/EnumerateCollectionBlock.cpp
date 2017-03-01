@@ -26,6 +26,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/FollowerInfo.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
@@ -43,10 +44,9 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
       _mmdr(new ManagedDocumentResult),
       _cursor(_trx->indexScan(
           _collection->getName(),
-          (ep->_random ? arangodb::Transaction::CursorType::ANY
-                       : arangodb::Transaction::CursorType::ALL),
-          Transaction::IndexHandle(), VPackSlice(), _mmdr.get(), 0, UINT64_MAX,
-          1000, false)),
+          (ep->_random ? transaction::Methods::CursorType::ANY
+                       : transaction::Methods::CursorType::ALL),
+          _mmdr.get(), 0, UINT64_MAX, 1000, false)),
       _mustStoreResult(true) {
   TRI_ASSERT(_cursor->successful());
 }
@@ -185,7 +185,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     std::function<void(DocumentIdentifierToken const& tkn)> cb;
     if (_mustStoreResult) {
       cb = [&] (DocumentIdentifierToken const& tkn) {
-        if (c->readDocument(_trx, *_mmdr, tkn)) {
+        if (c->readDocument(_trx, tkn, *_mmdr)) {
           // The result is in the first variable of this depth,
           // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
           // but can just take cur->getNrRegs() as registerId:

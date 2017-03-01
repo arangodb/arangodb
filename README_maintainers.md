@@ -366,6 +366,34 @@ via the environment variable or in the menu. Given we want to store the symbols 
 
 You then will be able to see stack traces in the debugger.
 
+You may also try to download the symbols manually using: 
+
+    symchk.exe arangod.exe /s SRV*e:/symbol_cache/cache*https://www.arangodb.com/repositories/symsrv/
+
+
+The symbolserver over at https://www.arangodb.com/repositories/symsrv/ is browseable; thus you can easily download the files you need by hand. It contains of a list of directories corosponding to the components of arangodb:
+
+  - arango - the basic arangodb library needed by all components
+  - arango_v8 - the basic V8 wrappers needed by all components
+  - arangod - the server process 
+  - the client utilities:
+    - arangob
+    - arangobench
+    - arangoexport
+    - arangoimp
+    - arangorestore
+    - arangosh
+    - arangovpack
+
+In these directories you will find subdirectories with the hash corosponding to the id of the binaries. Their date should corrospond to the release date of their respective arango release. 
+
+This means i.e. for ArangoDB 3.1.11: 
+
+ https://www.arangodb.com/repositories/symsrv/arangod.pdb/A8B899D2EDFC40E994C30C32FCE5FB346/arangod.pd_
+
+This file is a microsoft cabinet file, which is a little bit compressed. You can dismantle it so the windows explorer offers you its proper handler by renaming it to .cab; click on the now named `arangod.cab`, copy the contained arangod.pdb into your symbol path.
+
+
 Coredump analysis
 -----------------
 While Visual studio may cary a nice shiny gui, the concept of GUI fails miserably i.e. in testautomation. Getting an overview over all running threads is a tedious task with it. Here the commandline version of [WinDBG](http://www.windbg.org/) cdb comes to the aid. `testing.js` utilizes it to obtain automatical stack traces for crashes.
@@ -462,7 +490,9 @@ It does not, if `SUMMARY.md` in `Books/ppbooks/` looks like this:
 If sub-chapters do not show in the navigation, try another browser (Firefox).
 Chrome's security policies are pretty strict about localhost and file://
 protocol. You may access the docs through a local web server to lift the
-restrictions.
+restrictions. You can use pythons build in http server for this.
+
+    ~/books$ python -m SimpleHTTPServer 8000
 
 To only regereneate one file (faster) you may specify a filter:
 
@@ -498,8 +528,9 @@ generate
  - `./utils/generateExamples.sh --onlyThisOne geoIndexSelect` will only produce one example - *geoIndexSelect*
  - `./utils/generateExamples.sh --onlyThisOne 'MOD.*'` will only produce the examples matching that regex; Note that
    examples with enumerations in their name may base on others in their series - so you should generate the whole group.
- - `./utils/generateExamples.sh --server.endpoint tcp://127.0.0.1:8529` will utilize an existing arangod instead of starting a new one.
-   this does seriously cut down the execution time.
+ - running `onlyThisOne` in conjunction with a pre-started server cuts down the execution time even more.
+   In addition to the `--onlyThisOne ...` specify i.e. `--server.endpoint tcp://127.0.0.1:8529` to utilize your already running arangod.
+   Please note that examples may collide with existing collections like 'test' - you need to make sure your server is clean enough.
  - you can use generateExamples like that:
     `./utils/generateExamples.sh \
        --server.endpoint 'tcp://127.0.0.1:8529' \

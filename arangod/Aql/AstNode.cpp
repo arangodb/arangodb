@@ -33,7 +33,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>

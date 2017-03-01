@@ -86,6 +86,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       PortKey(),
       PortTypeKey(),
       ProtocolKey(),
+      RawSuffixKey(),
       RequestBodyKey(),
       RequestTypeKey(),
       ResponseCodeKey(),
@@ -177,6 +178,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   PortKey.Reset(isolate, TRI_V8_ASCII_STRING("port"));
   PortTypeKey.Reset(isolate, TRI_V8_ASCII_STRING("portType"));
   ProtocolKey.Reset(isolate, TRI_V8_ASCII_STRING("protocol"));
+  RawSuffixKey.Reset(isolate, TRI_V8_ASCII_STRING("rawSuffix"));
   RequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING("requestBody"));
   RequestTypeKey.Reset(isolate, TRI_V8_ASCII_STRING("requestType"));
   ResponseCodeKey.Reset(isolate, TRI_V8_ASCII_STRING("responseCode"));
@@ -209,10 +211,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
 
 TRI_v8_global_s::~TRI_v8_global_s() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a global context
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
 
@@ -223,10 +222,7 @@ TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate) {
   return v8g;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a global context
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
 
@@ -238,10 +234,7 @@ TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {
   return v8g;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a method to an object
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_AddMethodVocbase(
     v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> tpl,
     v8::Handle<v8::String> name,
@@ -255,10 +248,7 @@ void TRI_AddMethodVocbase(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a global function to the given context
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_AddGlobalFunctionVocbase(
     v8::Isolate* isolate, v8::Handle<v8::Context> context,
     v8::Handle<v8::String> name,
@@ -275,10 +265,7 @@ void TRI_AddGlobalFunctionVocbase(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a global function to the given context
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate,
                                   v8::Handle<v8::Context> context,
                                   v8::Handle<v8::String> name,
@@ -293,10 +280,7 @@ void TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a global read-only variable to the given context
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_AddGlobalVariableVocbase(v8::Isolate* isolate,
                                   v8::Handle<v8::Context> context,
                                   v8::Handle<v8::String> name,

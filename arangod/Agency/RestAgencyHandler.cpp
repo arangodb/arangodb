@@ -32,6 +32,7 @@
 #include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
 
 using namespace arangodb;
 
@@ -93,10 +94,9 @@ RestStatus RestAgencyHandler::handleTransient() {
   }
 
   // Convert to velocypack
-  arangodb::velocypack::Options options;
   query_t query;
   try {
-    query = _request->toVelocyPackBuilderPtr(&options);
+    query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << e.what() << " " << __FILE__ << ":" << __LINE__;
@@ -218,18 +218,40 @@ RestStatus RestAgencyHandler::handleStores() {
   return RestStatus::DONE;
 }
 
+RestStatus RestAgencyHandler::handleStore() {
+
+  if (_request->requestType() == rest::RequestType::POST) {
+    auto query = _request->toVelocyPackBuilderPtr();
+    arangodb::consensus::index_t index = 0;
+
+    try {
+      index = query->slice().getUInt();
+    } catch (...) {
+      index = _agent->lastCommitted().second;
+    }
+    
+    query_t builder = _agent->buildDB(index);
+    generateResult(rest::ResponseCode::OK, builder->slice());
+    
+  } else {
+    generateError(rest::ResponseCode::BAD, 400);
+  }
+  
+  return RestStatus::DONE;
+  
+}
+
 RestStatus RestAgencyHandler::handleWrite() {
 
   if (_request->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
   }
   
-  arangodb::velocypack::Options options;
   query_t query;
 
   // Convert to velocypack
   try {
-    query = _request->toVelocyPackBuilderPtr(&options);
+    query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << e.what() << " " << __FILE__ << ":" << __LINE__;
@@ -377,12 +399,11 @@ RestStatus RestAgencyHandler::handleTransact() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
   }
   
-  arangodb::velocypack::Options options;
   query_t query;
 
   // Convert to velocypack
   try {
-    query = _request->toVelocyPackBuilderPtr(&options);
+    query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << e.what() << " " << __FILE__ << ":" << __LINE__;
@@ -484,12 +505,11 @@ inline RestStatus RestAgencyHandler::handleInquire() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
   }
   
-  arangodb::velocypack::Options options;
   query_t query;
 
   // Get query from body
   try {
-    query = _request->toVelocyPackBuilderPtr(&options);
+    query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& e) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << e.what() << " " << __FILE__ << ":" << __LINE__;
@@ -551,11 +571,10 @@ inline RestStatus RestAgencyHandler::handleInquire() {
 }
 
 inline RestStatus RestAgencyHandler::handleRead() {
-  arangodb::velocypack::Options options;
   if (_request->requestType() == rest::RequestType::POST) {
     query_t query;
     try {
-      query = _request->toVelocyPackBuilderPtr(&options);
+      query = _request->toVelocyPackBuilderPtr();
     } catch (std::exception const& e) {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << e.what() << " " << __FILE__ << ":" << __LINE__;
@@ -614,8 +633,7 @@ RestStatus RestAgencyHandler::handleConfig() {
   // Update endpoint of peer
   if (_request->requestType() == rest::RequestType::POST) {
     try {
-      arangodb::velocypack::Options options;
-      _agent->updatePeerEndpoint(_request->toVelocyPackBuilderPtr(&options));
+      _agent->updatePeerEndpoint(_request->toVelocyPackBuilderPtr());
     } catch (std::exception const& e) {
       generateError(
         rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
@@ -624,12 +642,14 @@ RestStatus RestAgencyHandler::handleConfig() {
   }
 
   // Respond with configuration
+  auto last = _agent->lastCommitted();
   Builder body;
   {
     VPackObjectBuilder b(&body);
     body.add("term", Value(_agent->term()));
     body.add("leaderId", Value(_agent->leaderID()));
-    body.add("lastCommitted", Value(_agent->lastCommitted()));
+    body.add("lastCommitted", Value(last.first));
+    body.add("leaderCommitted", Value(last.second));
     body.add("lastAcked", _agent->lastAckedAgo()->slice());
     body.add("configuration", _agent->config().toBuilder()->slice());
   }
@@ -691,6 +711,8 @@ RestStatus RestAgencyHandler::execute() {
         return handleState();
       } else if (suffixes[0] == "stores") {
         return handleStores();
+      } else if (suffixes[0] == "store") {
+        return handleStore();
       } else {
         return reportUnknownMethod();
       }

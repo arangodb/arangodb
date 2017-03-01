@@ -94,7 +94,6 @@ arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(
         "Each lookup requires expression to be an object");
   }
 
-
   expression = new aql::Expression(query->ast(), read);
 
   read = info.get("condition");
@@ -113,7 +112,7 @@ arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(
       indexCondition(other.indexCondition),
       conditionNeedUpdate(other.conditionNeedUpdate),
       conditionMemberToUpdate(other.conditionMemberToUpdate) {
-  expression = other.expression->clone();
+  expression = other.expression->clone(nullptr);
 }
 
 void arangodb::traverser::TraverserOptions::LookupInfo::buildEngineInfo(
@@ -138,7 +137,7 @@ void arangodb::traverser::TraverserOptions::LookupInfo::buildEngineInfo(
 }
 
 arangodb::traverser::TraverserOptions::TraverserOptions(
-    arangodb::Transaction* trx, VPackSlice const& slice)
+    transaction::Methods* trx, VPackSlice const& slice)
     : _trx(trx),
       _baseVertexExpression(nullptr),
       _tmpVar(nullptr),
@@ -296,7 +295,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
     }
     _depthLookupInfo.reserve(read.length());
     for (auto const& depth : VPackObjectIterator(read)) {
-      size_t d = basics::StringUtils::uint64(depth.key.copyString());
+      uint64_t d = basics::StringUtils::uint64(depth.key.copyString());
       auto it = _depthLookupInfo.emplace(d, std::vector<LookupInfo>());
       TRI_ASSERT(it.second);
       VPackSlice list = depth.value;
@@ -318,7 +317,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
 
     _vertexExpressions.reserve(read.length());
     for (auto const& info : VPackObjectIterator(read)) {
-      size_t d = basics::StringUtils::uint64(info.key.copyString());
+      uint64_t d = basics::StringUtils::uint64(info.key.copyString());
 #ifdef ARANGODB_ENABLE_MAINAINER_MODE
       auto it = _vertexExpressions.emplace(
           d, new aql::Expression(query->ast(), info.value));
@@ -528,7 +527,7 @@ void arangodb::traverser::TraverserOptions::buildEngineInfo(VPackBuilder& result
 }
 
 bool arangodb::traverser::TraverserOptions::vertexHasFilter(
-    size_t depth) const {
+    uint64_t depth) const {
   if (_baseVertexExpression != nullptr) {
     return true;
   }
@@ -537,7 +536,7 @@ bool arangodb::traverser::TraverserOptions::vertexHasFilter(
 
 bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
     arangodb::velocypack::Slice edge, arangodb::velocypack::Slice vertex,
-    size_t depth, size_t cursorId) const {
+    uint64_t depth, size_t cursorId) const {
   if (_isCoordinator) {
     // The Coordinator never checks conditions. The DBServer is responsible!
     return true;
@@ -589,7 +588,7 @@ bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
 }
 
 bool arangodb::traverser::TraverserOptions::evaluateVertexExpression(
-    arangodb::velocypack::Slice vertex, size_t depth) const {
+    arangodb::velocypack::Slice vertex, uint64_t depth) const {
   arangodb::aql::Expression* expression = nullptr;
 
   auto specific = _vertexExpressions.find(depth);
@@ -620,7 +619,7 @@ bool arangodb::traverser::TraverserOptions::evaluateVertexExpression(
 arangodb::traverser::EdgeCursor*
 arangodb::traverser::TraverserOptions::nextCursor(ManagedDocumentResult* mmdr,
                                                   VPackSlice vertex,
-                                                  size_t depth) const {
+                                                  uint64_t depth) const {
   if (_isCoordinator) {
     return nextCursorCoordinator(vertex, depth);
   }
@@ -637,7 +636,7 @@ arangodb::traverser::TraverserOptions::nextCursor(ManagedDocumentResult* mmdr,
 
 arangodb::traverser::EdgeCursor*
 arangodb::traverser::TraverserOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
-    VPackSlice vertex, size_t depth, std::vector<LookupInfo>& list) const {
+    VPackSlice vertex, uint64_t depth, std::vector<LookupInfo>& list) const {
   TRI_ASSERT(mmdr != nullptr);
   auto allCursor = std::make_unique<SingleServerEdgeCursor>(mmdr, _trx, list.size());
   auto& opCursors = allCursor->getCursors();
@@ -670,7 +669,7 @@ arangodb::traverser::TraverserOptions::nextCursorLocal(ManagedDocumentResult* mm
 
 arangodb::traverser::EdgeCursor*
 arangodb::traverser::TraverserOptions::nextCursorCoordinator(
-    VPackSlice vertex, size_t depth) const {
+    VPackSlice vertex, uint64_t depth) const {
   TRI_ASSERT(_traverser != nullptr);
   auto cursor = std::make_unique<ClusterEdgeCursor>(vertex, depth, _traverser);
   return cursor.release();

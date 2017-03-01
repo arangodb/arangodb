@@ -40,7 +40,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -127,7 +127,7 @@ void Constituent::termNoLock(term_t t) {
 
     TRI_ASSERT(_vocbase != nullptr);
     auto transactionContext =
-        std::make_shared<StandaloneTransactionContext>(_vocbase);
+        std::make_shared<transaction::StandaloneContext>(_vocbase);
     SingleCollectionTransaction trx(transactionContext, "election",
                                     AccessMode::Type::WRITE);
 
@@ -145,6 +145,21 @@ void Constituent::termNoLock(term_t t) {
     trx.finish(result.code);
   }
 }
+
+bool Constituent::logUpToDate(
+  arangodb::consensus::index_t prevLogIndex, term_t prevLogTerm) const {
+  log_t myLastLogEntry = _agent->state().lastLog();
+  return (prevLogTerm > myLastLogEntry.term ||
+          (prevLogTerm == myLastLogEntry.term &&
+           prevLogIndex >= myLastLogEntry.index));
+}
+
+
+bool Constituent::logMatches(
+  arangodb::consensus::index_t prevLogIndex, term_t prevLogTerm) const {
+  return _agent->state().has(prevLogIndex, prevLogTerm);
+}
+
 
 /// My role
 role_t Constituent::role() const {
@@ -257,8 +272,8 @@ std::string Constituent::endpoint(std::string id) const {
 }
 
 /// @brief Check leader
-bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
-                              term_t prevLogTerm) {
+bool Constituent::checkLeader(
+  term_t term, std::string id, index_t prevLogIndex, term_t prevLogTerm) {
 
   TRI_ASSERT(_vocbase != nullptr);
 
@@ -277,6 +292,11 @@ bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
     if (term > _term) {
       termNoLock(term);
     }
+
+    if (!logMatches(prevLogIndex,prevLogTerm)) {
+      return false;
+    }
+    
     if (_leaderID != id) {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Set _leaderID to " << id << " in term " << _term;
@@ -389,17 +409,11 @@ void Constituent::callElection() {
        << "&prevLogTerm=" << _agent->lastLog().term;
 
   // Ask everyone for their vote
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // only happens on controlled shutdown
-    follow(_term);
-    return;
-  }
   for (auto const& i : active) {
     if (i != _id) {
       auto headerFields =
         std::make_unique<std::unordered_map<std::string, std::string>>();
-      cc->asyncRequest(
+      ClusterComm::instance()->asyncRequest(
         "", coordinatorTransactionID, _agent->config().poolAt(i),
         rest::RequestType::GET, path.str(),
         std::make_shared<std::string>(body), headerFields,
@@ -425,8 +439,9 @@ void Constituent::callElection() {
       break;
     }
     
-    auto res = cc->wait("", coordinatorTransactionID, 0, "",
-      duration<double>(steady_clock::now()-timeout).count());
+    auto res = ClusterComm::instance()->wait(
+      "", coordinatorTransactionID, 0, "",
+      duration<double>(timeout - steady_clock::now()).count());
 
     if (res.status == CL_COMM_SENT) {
       auto body = res.result->getBodyVelocyPack();
@@ -466,7 +481,7 @@ void Constituent::callElection() {
     << (yea >= majority ? "yeas" : "nays") << " have it.";
 
   // Clean up
-  cc->drop("", coordinatorTransactionID, 0, "");
+  ClusterComm::instance()->drop("", coordinatorTransactionID, 0, "");
   
 }
 
@@ -569,10 +584,18 @@ void Constituent::run() {
         {
           MUTEX_LOCKER(guard, _castLock);
 
-          // in the beginning, pure random
+          // in the beginning, pure random, after that, we might have to
+          // wait for less than planned, since the last heartbeat we have
+          // seen is already some time ago, note that this waiting time
+          // can become negative:
           if (_lastHeartbeatSeen > 0.0) {
             double now = TRI_microtime();
-            randWait += static_cast<int64_t>(M * (now-_lastHeartbeatSeen));
+            randWait -= static_cast<int64_t>(M * (now-_lastHeartbeatSeen));
+            if (randWait < a) {
+              randWait = a;
+            } else if (randWait > b) {
+              randWait = b;
+            }
           }
         }
        

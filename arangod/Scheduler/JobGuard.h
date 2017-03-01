@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/SameThreadAsserter.h"
 #include "Scheduler/EventLoop.h"
 #include "Scheduler/Scheduler.h"
 
@@ -33,16 +34,21 @@ namespace rest {
 class Scheduler;
 }
 
-class JobGuard {
+class JobGuard : public SameThreadAsserter {
  public:
-  explicit JobGuard(EventLoop const& loop) : _scheduler(loop._scheduler) {}
-  explicit JobGuard(rest::Scheduler* scheduler) : _scheduler(scheduler) {}
+  JobGuard(JobGuard const&) = delete;
+  JobGuard& operator=(JobGuard const&) = delete;
+
+  explicit JobGuard(EventLoop const& loop) : SameThreadAsserter(), _scheduler(loop._scheduler) {}
+  explicit JobGuard(rest::Scheduler* scheduler) : SameThreadAsserter(), _scheduler(scheduler) {}
   ~JobGuard() { release(); }
 
  public:
   bool isIdle() { return _scheduler->isIdle(); }
 
   void work() {
+    TRI_ASSERT(!_isWorkingFlag);
+
     if (0 == _isWorking) {
       _scheduler->workThread();
     }
@@ -52,6 +58,8 @@ class JobGuard {
   }
 
   void block() {
+    TRI_ASSERT(!_isBlockedFlag);
+
     if (0 == _isBlocked) {
       _scheduler->blockThread();
     }

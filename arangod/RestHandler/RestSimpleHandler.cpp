@@ -32,8 +32,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/StandaloneContext.h"
+#include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Traverser.h"
 
@@ -62,7 +62,7 @@ RestStatus RestSimpleHandler::execute() {
   if (type == rest::RequestType::PUT) {
     bool parsingSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(&VPackOptions::Defaults, parsingSuccess);
+        parseVelocyPackBody(parsingSuccess);
 
     if (!parsingSuccess) {
       return RestStatus::DONE;

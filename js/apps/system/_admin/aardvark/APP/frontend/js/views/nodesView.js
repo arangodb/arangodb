@@ -93,7 +93,7 @@
         }, this.interval);
       }
     },
-    
+
     deleteNode: function (elem) {
       if ($(elem.currentTarget).hasClass('noHover')) {
         return;

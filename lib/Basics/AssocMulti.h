@@ -37,6 +37,7 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/PerformanceLogScope.h"
 #include "Basics/prime-numbers.h"
 #include "Logger/Logger.h"
 
@@ -1038,14 +1039,9 @@ class AssocMulti {
   void resizeInternal(UserData* userData, Bucket& b, size_t targetSize) {
     std::string const cb(_contextCallback());
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "resizing hash " << cb << ", target size: " << targetSize;
-
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "hash-resize " << cb
-                                          << ", target size: " << targetSize;
-
-    double start = TRI_microtime();
-
     targetSize = TRI_NearPrime(targetSize);
+    
+    PerformanceLogScope logScope(std::string("multi hash-resize ") + cb + ", target size: " + std::to_string(targetSize));
 
     Bucket copy;
     copy.allocate(targetSize);
@@ -1093,12 +1089,6 @@ class AssocMulti {
     }
 
     b = std::move(copy);
-
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "resizing hash " << cb << " done";
-
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-        << " s, hash-resize, " << cb << ", target size: " << targetSize;
   }
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH

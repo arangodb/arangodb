@@ -25,16 +25,15 @@
 #define ARANGOD_AQL_EXECUTION_ENGINE_H 1
 
 #include "Basics/Common.h"
-#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/QueryRegistry.h"
-#include "Utils/AqlTransaction.h"
 
 namespace arangodb {
 namespace aql {
+class AqlItemBlock;
 
 class ExecutionEngine {
  public:
@@ -75,27 +74,7 @@ class ExecutionEngine {
   }
 
   /// @brief shutdown, will be called exactly once for the whole query
-  int shutdown(int errorCode) {
-    if (_root != nullptr && !_wasShutdown) {
-      // Take care of locking prevention measures in the cluster:
-      if (_lockedShards != nullptr) {
-        if (arangodb::Transaction::_makeNolockHeaders == _lockedShards) {
-          arangodb::Transaction::_makeNolockHeaders = _previouslyLockedShards;
-        }
-        delete _lockedShards;
-        _lockedShards = nullptr;
-        _previouslyLockedShards = nullptr;
-      }
-
-      // prevent a duplicate shutdown
-      int res = _root->shutdown(errorCode);
-      _wasShutdown = true;
-
-      return res;
-    }
-
-    return TRI_ERROR_NO_ERROR;
-  }
+  int shutdown(int errorCode);
 
   /// @brief getSome
   AqlItemBlock* getSome(size_t atLeast, size_t atMost) {

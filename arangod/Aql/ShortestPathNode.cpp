@@ -28,8 +28,11 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Query.h"
+#include "Cluster/ClusterComm.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/LogicalCollection.h"
 #include "V8Server/V8Traverser.h"
 
 #include <velocypack/Iterator.h>
@@ -97,26 +100,61 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
 
   TRI_edge_direction_e baseDirection = parseDirection(direction);
 
+  std::unordered_map<std::string, TRI_edge_direction_e> seenCollections;
+  auto addEdgeColl = [&](std::string const& n, TRI_edge_direction_e dir) -> void {
+    if (dir == TRI_EDGE_ANY) {
+      _directions.emplace_back(TRI_EDGE_OUT);
+      _edgeColls.emplace_back(n);
+
+      _directions.emplace_back(TRI_EDGE_IN);
+      _edgeColls.emplace_back(std::move(n));
+    } else {
+      _directions.emplace_back(dir);
+      _edgeColls.emplace_back(std::move(n));
+    }
+  };
+
+  auto ci = ClusterInfo::instance();
+
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
     auto resolver = std::make_unique<CollectionNameResolver>(vocbase);
     _graphInfo.openArray();
     _edgeColls.reserve(edgeCollectionCount);
     _directions.reserve(edgeCollectionCount);
+
     // List of edge collection names
     for (size_t i = 0; i < edgeCollectionCount; ++i) {
+      TRI_edge_direction_e dir = TRI_EDGE_ANY;
       auto col = graph->getMember(i);
+
       if (col->type == NODE_TYPE_DIRECTION) {
+        TRI_ASSERT(col->numMembers() == 2);
+        auto dirNode = col->getMember(0);
         // We have a collection with special direction.
-        TRI_ASSERT(col->getMember(0)->isIntValue());
-        TRI_edge_direction_e dir = parseDirection(col->getMember(0)->getIntValue());
-        _directions.emplace_back(dir);
+        TRI_ASSERT(dirNode->isIntValue());
+        dir = parseDirection(dirNode->getIntValue());
         col = col->getMember(1);
       } else {
-        _directions.emplace_back(baseDirection);
+        dir = baseDirection;
       }
-
+ 
       std::string eColName = col->getString();
+
+      // now do some uniqueness checks for the specified collections
+      auto it = seenCollections.find(eColName);
+      if (it != seenCollections.end()) {
+        if ((*it).second != dir) {
+          std::string msg("conflicting directions specified for collection '" +
+                          std::string(eColName));
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                                         msg);
+        }
+        // do not re-add the same collection!
+        continue;
+      }
+      seenCollections.emplace(eColName, dir);
+ 
       auto eColType = resolver->getCollectionTypeCluster(eColName);
       if (eColType != TRI_COL_TYPE_EDGE) {
         std::string msg("collection type invalid for collection '" +
@@ -125,10 +163,29 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
                                        msg);
       }
-      _graphInfo.add(VPackValue(eColName));
-      _edgeColls.emplace_back(std::move(eColName));
-    }
 
+      _graphInfo.add(VPackValue(eColName));
+      if (ServerState::instance()->isRunningInCluster()) {
+        auto c = ci->getCollection(_vocbase->name(), eColName);
+        if (!c->isSmart()) {
+          addEdgeColl(eColName, dir);
+        } else {
+          std::vector<std::string> names;
+          names = c->realNamesForRead();
+          for (auto const& name : names) {
+            addEdgeColl(name, dir);
+          }
+        }
+      } else {
+        addEdgeColl(eColName, dir);
+      }
+    
+      if (dir == TRI_EDGE_ANY) {
+        // collection with direction ANY must be added again
+        _graphInfo.add(VPackValue(eColName));
+      }
+
+    }
     _graphInfo.close();
   } else {
     if (_edgeColls.empty()) {
@@ -150,8 +207,20 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
         _directions.reserve(length);
 
         for (const auto& n : eColls) {
-          _edgeColls.push_back(n);
-          _directions.emplace_back(baseDirection);
+          if (ServerState::instance()->isRunningInCluster()) {
+            auto c = ci->getCollection(_vocbase->name(), n);
+            if (!c->isSmart()) {
+              addEdgeColl(n, baseDirection);
+            } else {
+              std::vector<std::string> names;
+              names = c->realNamesForRead();
+              for (auto const& name : names) {
+                addEdgeColl(name, baseDirection);
+              }
+            }
+          } else {
+            addEdgeColl(n, baseDirection);
+          }
         }
       }
     }
@@ -275,9 +344,17 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
         THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
       }
 
-      auto eColls = _graphObj->edgeCollections();
-      for (auto const& n : eColls) {
-        _edgeColls.push_back(n);
+      auto const& eColls = _graphObj->edgeCollections();
+      for (auto const& it : eColls) {
+        _edgeColls.push_back(it);
+        
+        // if there are twice as many directions as collections, this means we
+        // have a shortest path with direction ANY. we must add each collection
+        // twice then
+        if (_directions.size() == 2 * eColls.size()) {
+          // add collection again
+          _edgeColls.push_back(it);
+        }
       }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,

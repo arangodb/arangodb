@@ -46,7 +46,7 @@ RestStatus RestPregelHandler::execute() {
   try {    
     bool parseSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody =
-    parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+    parseVelocyPackBody(parseSuccess);
     VPackSlice body(parsedBody->start());// never nullptr
     
     if (!parseSuccess || !body.isObject()) {

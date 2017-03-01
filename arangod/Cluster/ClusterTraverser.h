@@ -32,7 +32,10 @@
 namespace arangodb {
 class CollectionNameResolver;
 class ManagedDocumentResult;
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 
 namespace traverser {
 class ClusterEdgeCursor;
@@ -47,7 +50,7 @@ class ClusterTraverser final : public Traverser {
       TraverserOptions* opts,
       ManagedDocumentResult* mmdr,
       std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-      std::string const& dbname, Transaction* trx);
+      std::string const& dbname, transaction::Methods* trx);
 
   ~ClusterTraverser() {}
 
@@ -65,7 +68,7 @@ class ClusterTraverser final : public Traverser {
   ///        Returns true if the vertex passes filtering conditions
 
   bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::Slice,
-                       size_t, arangodb::velocypack::Slice&) override;
+                       uint64_t, arangodb::velocypack::Slice&) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of a vertex into an AQLValue

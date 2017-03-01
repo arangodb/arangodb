@@ -31,8 +31,7 @@
 namespace arangodb {
 
 // to be derived by storage engines
-struct TransactionData {
-};
+struct TransactionData {};
 
 class TransactionManager {
   static constexpr size_t numBuckets = 16;
@@ -59,7 +58,7 @@ class TransactionManager {
   void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed);
 
   // iterate all the active transactions
-  void iterateActiveTransactions(std::function<void(TRI_voc_tid_t, TransactionData*)> const& callback);
+  void iterateActiveTransactions(std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback);
 
  private:
   // hashes the transaction id into a bucket

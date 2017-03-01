@@ -31,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/ShortestPathNode.h"
@@ -50,7 +51,6 @@ RegisterId const ExecutionNode::MaxRegisterId = 1000;
 
 /// @brief type names
 std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
-    {static_cast<int>(ILLEGAL), "ExecutionNode (abstract)"},
     {static_cast<int>(SINGLETON), "SingletonNode"},
     {static_cast<int>(ENUMERATE_COLLECTION), "EnumerateCollectionNode"},
     {static_cast<int>(ENUMERATE_LIST), "EnumerateListNode"},
@@ -258,9 +258,6 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
       return new ShortestPathNode(plan, slice);
-    case ILLEGAL: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid node type");
-    }
   }
   return nullptr;
 }
@@ -1100,11 +1097,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       }
       break;
     }
-
-    case ExecutionNode::ILLEGAL: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     "node type not implemented");
-    }
   }
 
   en->_depth = depth;
@@ -1384,7 +1376,7 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  auto c = new CalculationNode(plan, _id, _expression->clone(),
+  auto c = new CalculationNode(plan, _id, _expression->clone(plan->getAst()),
                                conditionVariable, outVariable);
   c->_canRemoveIfThrows = _canRemoveIfThrows;
 

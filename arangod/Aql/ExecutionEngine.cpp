@@ -34,6 +34,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexBlock.h"
 #include "Aql/ModificationBlocks.h"
+#include "Aql/Query.h"
 #include "Aql/SortBlock.h"
 #include "Aql/SubqueryBlock.h"
 #include "Aql/TraversalBlock.h"
@@ -44,8 +45,10 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionLockState.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Logger/Logger.h"
+#include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -157,9 +160,6 @@ static ExecutionBlock* CreateBlock(
       auto remote = static_cast<RemoteNode const*>(en);
       return new RemoteBlock(engine, remote, remote->server(),
                              remote->ownName(), remote->queryId());
-    }
-    case ExecutionNode::ILLEGAL: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
     }
   }
 
@@ -1134,6 +1134,29 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     engines[currentEngineId].nodes.emplace_back(en);
   }
 };
+  
+/// @brief shutdown, will be called exactly once for the whole query
+int ExecutionEngine::shutdown(int errorCode) {
+  if (_root != nullptr && !_wasShutdown) {
+    // Take care of locking prevention measures in the cluster:
+    if (_lockedShards != nullptr) {
+      if (CollectionLockState::_noLockHeaders == _lockedShards) {
+        CollectionLockState::_noLockHeaders = _previouslyLockedShards;
+      }
+      delete _lockedShards;
+      _lockedShards = nullptr;
+      _previouslyLockedShards = nullptr;
+    }
+
+    // prevent a duplicate shutdown
+    int res = _root->shutdown(errorCode);
+    _wasShutdown = true;
+
+    return res;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 /// @brief create an execution engine from a plan
 ExecutionEngine* ExecutionEngine::instantiateFromPlan(
@@ -1168,10 +1191,10 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
         engine = inst.get()->buildEngines();
         root = engine->root();
         // Now find all shards that take part:
-        if (Transaction::_makeNolockHeaders != nullptr) {
+        if (CollectionLockState::_noLockHeaders != nullptr) {
           engine->_lockedShards = new std::unordered_set<std::string>(
-              *Transaction::_makeNolockHeaders);
-          engine->_previouslyLockedShards = Transaction::_makeNolockHeaders;
+              *CollectionLockState::_noLockHeaders);
+          engine->_previouslyLockedShards = CollectionLockState::_noLockHeaders;
         } else {
           engine->_lockedShards = new std::unordered_set<std::string>();
           engine->_previouslyLockedShards = nullptr;
@@ -1269,7 +1292,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
                 TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED, message);
           }
         }
-        Transaction::_makeNolockHeaders = engine->_lockedShards;
+        CollectionLockState::_noLockHeaders = engine->_lockedShards;
       } catch (...) {
         // We need to destroy all queries that we have built and stuffed
         // into the QueryRegistry as well as those that we have pushed to

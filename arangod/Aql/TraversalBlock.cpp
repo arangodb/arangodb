@@ -22,10 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalBlock.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Functions.h"
+#include "Aql/Query.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ClusterComm.h"
@@ -33,8 +35,9 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Cluster/SmartGraphTraverser.h"
 #endif
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
-#include "Utils/Transaction.h"
 #include "V8/v8-globals.h"
 #include "VocBase/SingleServerTraverser.h"
 #include "VocBase/ticks.h"
@@ -244,7 +247,7 @@ bool TraversalBlock::morePaths(size_t hint) {
     _paths.reserve(hint);
   }
 
-  TransactionBuilderLeaser tmp(_trx);
+  transaction::BuilderLeaser tmp(_trx);
   for (size_t j = 0; j < hint; ++j) {
     if (!_traverser->next()) {
       // There are no further paths available.

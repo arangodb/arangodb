@@ -26,7 +26,8 @@
 
 #include "Basics/Common.h"
 #include "Aql/FixedVarExpressionContext.h"
-#include "Utils/Transaction.h"
+#include "StorageEngine/TransactionState.h"
+#include "Transaction/Methods.h"
 
 namespace arangodb {
 class ManagedDocumentResult;
@@ -73,7 +74,7 @@ struct TraverserOptions {
   struct LookupInfo {
     // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
-    std::vector<arangodb::Transaction::IndexHandle> idxHandles;
+    std::vector<transaction::Methods::IndexHandle> idxHandles;
     aql::Expression* expression;
     aql::AstNode* indexCondition;
     // Flag if we have to update _from / _to in the index search condition
@@ -95,11 +96,11 @@ struct TraverserOptions {
   };
 
  public:
-  arangodb::Transaction* _trx;
+  transaction::Methods* _trx;
  protected:
   std::vector<LookupInfo> _baseLookupInfos;
-  std::unordered_map<size_t, std::vector<LookupInfo>> _depthLookupInfo;
-  std::unordered_map<size_t, aql::Expression*> _vertexExpressions;
+  std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
+  std::unordered_map<uint64_t, aql::Expression*> _vertexExpressions;
   aql::Expression* _baseVertexExpression;
   aql::Variable const* _tmpVar;
   aql::FixedVarExpressionContext* _ctx;
@@ -117,20 +118,20 @@ struct TraverserOptions {
 
   UniquenessLevel uniqueEdges;
 
-  explicit TraverserOptions(arangodb::Transaction* trx)
+  explicit TraverserOptions(transaction::Methods* trx)
       : _trx(trx),
         _baseVertexExpression(nullptr),
         _tmpVar(nullptr),
         _ctx(new aql::FixedVarExpressionContext()),
         _traverser(nullptr),
-        _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
+        _isCoordinator(trx->state()->isCoordinator()),
         minDepth(1),
         maxDepth(1),
         useBreadthFirst(false),
         uniqueVertices(UniquenessLevel::NONE),
         uniqueEdges(UniquenessLevel::PATH) {}
 
-  TraverserOptions(arangodb::Transaction*, arangodb::velocypack::Slice const&);
+  TraverserOptions(transaction::Methods*, arangodb::velocypack::Slice const&);
 
   TraverserOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
                    arangodb::velocypack::Slice);
@@ -151,15 +152,15 @@ struct TraverserOptions {
   ///        for DBServer traverser engines.
   void buildEngineInfo(arangodb::velocypack::Builder&) const;
 
-  bool vertexHasFilter(size_t) const;
+  bool vertexHasFilter(uint64_t) const;
 
   bool evaluateEdgeExpression(arangodb::velocypack::Slice,
-                              arangodb::velocypack::Slice, size_t,
+                              arangodb::velocypack::Slice, uint64_t,
                               size_t) const;
 
-  bool evaluateVertexExpression(arangodb::velocypack::Slice, size_t) const;
+  bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t) const;
 
-  EdgeCursor* nextCursor(ManagedDocumentResult*, arangodb::velocypack::Slice, size_t) const;
+  EdgeCursor* nextCursor(ManagedDocumentResult*, arangodb::velocypack::Slice, uint64_t) const;
 
   void clearVariableValues();
 
@@ -171,10 +172,10 @@ struct TraverserOptions {
 
  private:
   EdgeCursor* nextCursorLocal(ManagedDocumentResult*,
-                              arangodb::velocypack::Slice, size_t,
+                              arangodb::velocypack::Slice, uint64_t,
                               std::vector<LookupInfo>&) const;
 
-  EdgeCursor* nextCursorCoordinator(arangodb::velocypack::Slice, size_t) const;
+  EdgeCursor* nextCursorCoordinator(arangodb::velocypack::Slice, uint64_t) const;
 };
 
 }

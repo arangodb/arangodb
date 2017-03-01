@@ -30,7 +30,13 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+struct DocumentIdentifierToken;
 class SingleCollectionTransaction;
+
+namespace aql {
+struct AstNode;
+struct Variable;
+}
 
 class RestEdgesHandler : public RestVocbaseBaseHandler {
  public:
@@ -48,10 +54,19 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   bool readEdges();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief reads all edges in given direction for a given list of vertices
+  /// @brief reads all edges in given direction for a list of vertices
   //////////////////////////////////////////////////////////////////////////////
 
   bool readEdgesForMultipleVertices();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief find the index and read it completely with the given callback
+  //////////////////////////////////////////////////////////////////////////////
+
+  void readCursor(aql::AstNode* condition, aql::Variable const* var,
+                  std::string const& collectionName,
+                  SingleCollectionTransaction& trx,
+                  std::function<void(DocumentIdentifierToken const&)> cb);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get all edges for a given vertex. Independent from the request
@@ -60,16 +75,19 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   bool getEdgesForVertex(
       std::string const& id, std::string const& collectionName,
       TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
-      arangodb::velocypack::Builder&, size_t& scannedIndex, size_t& filtered);
+      std::function<void(DocumentIdentifierToken const&)> cb);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get all edges for a list of vertices. Independent from the request
+  /// @brief Parse the direction parameter
   //////////////////////////////////////////////////////////////////////////////
 
-  bool getEdgesForVertexList(
-      arangodb::velocypack::Slice const ids,
-      TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
-      arangodb::velocypack::Builder&, size_t& scannedIndex, size_t& filtered);
+  bool parseDirection(TRI_edge_direction_e& direction);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Validate that the collection exists and is an edge collection
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool validateCollection(std::string const& name);
 };
 }
 

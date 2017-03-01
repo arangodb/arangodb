@@ -276,7 +276,7 @@ router.post('/', function (req, res) {
     orphanCollections: joi.array().optional(),
     isSmart: joi.boolean().optional(),
     options: joi.object({
-      smartGraphAttribute: joi.string().required(),
+      smartGraphAttribute: joi.string().optional(),
       numberOfShards: joi.number().integer().greater(0).required()
     }).optional()
   }).required(), 'The required information for a graph')

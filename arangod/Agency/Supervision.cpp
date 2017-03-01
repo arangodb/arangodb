@@ -552,11 +552,13 @@ void Supervision::handleShutdown() {
       del->close();
       auto result = _agent->write(del);
       if (result.indices.size() != 1) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Invalid resultsize of " << result.indices.size()
-                 << " found during shutdown";
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << "Invalid resultsize of " << result.indices.size()
+          << " found during shutdown";
       } else {
         if (_agent->waitFor(result.indices.at(0)) != Agent::raft_commit_t::OK) {
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Result was not written to followers during shutdown";
+          LOG_TOPIC(ERR, Logger::AGENCY)
+            << "Result was not written to followers during shutdown";
         }
       }
     }

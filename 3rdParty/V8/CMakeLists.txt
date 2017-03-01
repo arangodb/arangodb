@@ -512,14 +512,7 @@ else ()
     -Dlinux_use_gold_flags=0
     -Dv8_no_strict_aliasing=1
     -Dwerror=
-  )
-
-  if (CROSS_COMPILING)
-    list(APPEND V8_GYP_ARGS -Dv8_use_snapshot=false )
-#  dependenis 'v8_libbase' and 'v8_libplatform' need be added in v8.gyp  (under 'v8_use_snapshot!="true"')
-  else ()
-    list(APPEND V8_GYP_ARGS -Dv8_use_snapshot=true )
-  endif()
+    -Dv8_use_snapshot=true )
 
   if (APPLE AND CMAKE_COMPILER_IS_CLANG)
     set(V8_CXXFLAGS "${V8_CXXFLAGS} -stdlib=libc++")
@@ -585,14 +578,24 @@ set(ICU_DT ${ICU_DT} PARENT_SCOPE)
 set(ICU_DT_DEST "icudtl.dat" )
 set(ICU_DT_DEST ${ICU_DT_DEST} PARENT_SCOPE)
 
-configure_file(
-  "${ICU_DT}"
-  "${CMAKE_BINARY_DIR}/bin/${CONFIGURATION}/${ICU_DT_DEST}"
-  COPYONLY)
-configure_file(
-  "${ICU_DT}"
-  "${CMAKE_BINARY_DIR}/tests/${CONFIGURATION}/${ICU_DT_DEST}"
-  COPYONLY)
+
+if (MSVC)
+  add_custom_command(
+    TARGET v8_build POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${ICU_DT} ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/${ICU_DT_DEST})
+
+  add_custom_command(
+    TARGET v8_build POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${ICU_DT} ${CMAKE_BINARY_DIR}/tests/$<CONFIG>/${ICU_DT_DEST})
+else()
+  add_custom_command(
+    TARGET v8_build POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${ICU_DT} ${CMAKE_BINARY_DIR}/bin/${ICU_DT_DEST})
+
+  add_custom_command(
+    TARGET v8_build POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${ICU_DT} ${CMAKE_BINARY_DIR}/tests/${ICU_DT_DEST})
+endif()
 if (NOT WIN32)
   add_custom_target(nonthinV8
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../Installation/archive-de-thinner.sh ${V8_REL_TARGET_PATH}

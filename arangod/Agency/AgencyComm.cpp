@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
@@ -811,7 +811,7 @@ bool AgencyComm::exists(std::string const& key) {
     return false;
   }
 
-  auto parts = arangodb::basics::StringUtils::split(key, "/");
+  auto parts = basics::StringUtils::split(key, "/");
   std::vector<std::string> allParts;
   allParts.reserve(parts.size() + 1);
   allParts.push_back(AgencyCommManager::path());
@@ -1000,8 +1000,8 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
   return oldValue;
 }
 
-bool AgencyComm::registerCallback(std::string const& key,
-                                  std::string const& endpoint) {
+AgencyCommResult AgencyComm::registerCallback(std::string const& key,
+                                              std::string const& endpoint) {
   VPackBuilder builder;
   builder.add(VPackValue(endpoint));
 
@@ -1010,11 +1010,11 @@ bool AgencyComm::registerCallback(std::string const& key,
   AgencyWriteTransaction transaction(operation);
 
   auto result = sendTransactionWithFailover(transaction);
-  return result.successful();
+  return result;
 }
 
-bool AgencyComm::unregisterCallback(std::string const& key,
-                                    std::string const& endpoint) {
+AgencyCommResult AgencyComm::unregisterCallback(std::string const& key,
+                                                std::string const& endpoint) {
   VPackBuilder builder;
   builder.add(VPackValue(endpoint));
 
@@ -1023,47 +1023,7 @@ bool AgencyComm::unregisterCallback(std::string const& key,
   AgencyWriteTransaction transaction(operation);
 
   auto result = sendTransactionWithFailover(transaction);
-  return result.successful();
-}
-
-bool AgencyComm::lockRead(std::string const& key, double ttl, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("READ"));
-  } catch (...) {
-    return false;
-  }
-  return lock(key, ttl, timeout, builder.slice());
-}
-
-bool AgencyComm::lockWrite(std::string const& key, double ttl, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("WRITE"));
-  } catch (...) {
-    return false;
-  }
-  return lock(key, ttl, timeout, builder.slice());
-}
-
-bool AgencyComm::unlockRead(std::string const& key, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("READ"));
-  } catch (...) {
-    return false;
-  }
-  return unlock(key, builder.slice(), timeout);
-}
-
-bool AgencyComm::unlockWrite(std::string const& key, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("WRITE"));
-  } catch (...) {
-    return false;
-  }
-  return unlock(key, builder.slice(), timeout);
+  return result;
 }
 
 AgencyCommResult AgencyComm::sendTransactionWithFailover(
@@ -1170,7 +1130,7 @@ bool AgencyComm::ensureStructureInitialized() {
       std::vector<std::string>({AgencyCommManager::path(), "Secret"}));
 
   if (!secretValue.isString()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Couldn't find secret in agency!";
+    LOG_TOPIC(ERR, Logger::CLUSTER) << "Couldn't find secret in agency!";
     return false;
   }
   std::string const secret = secretValue.copyString();
@@ -1292,9 +1252,7 @@ void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
       << "Removing endpoint " << i << " from agent pool";
     AgencyCommManager::MANAGER->removeEndpoint(i);
   }
-  
 }
-
 
 AgencyCommResult AgencyComm::sendWithFailover(
     arangodb::rest::RequestType method, double const timeout,
@@ -1440,11 +1398,6 @@ AgencyCommResult AgencyComm::sendWithFailover(
           "Inquiry failed (" << inq._statusCode << "). Keep trying ...";
         continue;
       }
-    
-      AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
-      endpoint.clear();
-      connection = AgencyCommManager::MANAGER->acquire(endpoint);
-      continue;
     }
     
     // sometimes the agency will return a 307 (temporary redirect)
@@ -1464,11 +1417,11 @@ AgencyCommResult AgencyComm::sendWithFailover(
       break;
     }
 
-    if (tries%50 == 0) {
+    if (tries % 50 == 0) {
       LOG_TOPIC(WARN, Logger::AGENCYCOMM)
         << "Bad agency communiction! Unsuccessful consecutive tries:"
         << tries << " (" << elapsed << "s). Network checks needed!";
-    } else if (tries%15 == 0) {
+    } else if (tries % 15 == 0) {
       LOG_TOPIC(INFO, Logger::AGENCYCOMM)
         << "Flaky agency communication. Unsuccessful consecutive tries: "
         << tries << " (" << elapsed << "s). Network checks advised.";
@@ -1529,15 +1482,7 @@ AgencyCommResult AgencyComm::send(
       << "': " << body;
 
   arangodb::httpclient::SimpleHttpClient client(connection, timeout, false);
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr only happens during controlled shutdown
-    result._message = "could not send request to agency because of shutdown";
-    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "could not send request to agency";
-
-    return result;
-  }
-  client.setJwt(cc->jwt());
+  client.setJwt(ClusterComm::instance()->jwt());
   client.keepConnectionOnDestruction(true);
 
   // set up headers
@@ -1738,10 +1683,10 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
 
     return result.successful();
   } catch (std::exception const& e) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Fatal error initializing agency " << e.what();
+    LOG_TOPIC(FATAL, Logger::CLUSTER) << "Fatal error initializing agency " << e.what();
     FATAL_ERROR_EXIT();
   } catch (...) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Fatal error initializing agency";
+    LOG_TOPIC(FATAL, Logger::CLUSTER) << "Fatal error initializing agency";
     FATAL_ERROR_EXIT();
   }
 }

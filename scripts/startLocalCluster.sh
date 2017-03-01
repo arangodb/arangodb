@@ -407,12 +407,14 @@ if [ "$SECONDARIES" == "1" ] ; then
     let index=1
     PORTTOPSE=`expr 8729 + $NRDBSERVERS - 1` 
     for PORT in `seq 8729 $PORTTOPSE` ; do
+        let dbserverindex=$index-1
         mkdir cluster/data$PORT
         
         CLUSTER_ID="Secondary$index"
         
-        echo Registering secondary $CLUSTER_ID for "DBServer$index"
-        curl -f -X PUT --data "{\"primary\": \"DBServer$index\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" localhost:$CO_BASE/_admin/cluster/replaceSecondary
+        DBSERVER_ID=$(curl -s 127.0.0.1:$CO_BASE/_admin/cluster/health | jq '.Health | to_entries | map(select(.value.Role == "DBServer")) | .' | jq -r ".[$dbserverindex].key")
+        echo Registering secondary $CLUSTER_ID for $DBSERVER_ID
+        curl -s -f -X PUT --data "{\"primary\": \"$DBSERVER_ID\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" localhost:$CO_BASE/_admin/cluster/replaceSecondary
         echo Starting Secondary $CLUSTER_ID on port $PORT
         ${BUILD}/bin/arangod \
             -c none \

@@ -2,7 +2,7 @@ Fulltext queries
 ================
 
 {% hint 'warning' %}
-It is recommended to use AQL instead, see [Fulltext functions](../../../../AQL/Functions/Fulltext.html).
+It is recommended to use AQL instead, see [**Fulltext functions**](../../../../AQL/Functions/Fulltext.html).
 {% endhint %}
 
 ArangoDB allows to run queries on text contained in document attributes.  To use

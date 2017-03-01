@@ -30,10 +30,10 @@
 #include "MMFiles/fulltext-result.h"
 #include "MMFiles/MMFilesFulltextIndex.h"
 #include "MMFiles/MMFilesGeoIndex.h"
-
 #include "StorageEngine/DocumentIdentifierToken.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -48,7 +48,7 @@ static ExecutionCondition const NotInCoordinator = [] {
          !arangodb::ServerState::instance()->isCoordinator();
 };
 
-static AqlValue buildGeoResult(arangodb::Transaction* trx,
+static AqlValue buildGeoResult(transaction::Methods* trx,
                                LogicalCollection* collection,
                                arangodb::aql::Query* query,
                                GeoCoordinates* cors,
@@ -99,14 +99,14 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
 
   try {
     ManagedDocumentResult mmdr;
-    TransactionBuilderLeaser builder(trx);
+    transaction::BuilderLeaser builder(trx);
     builder->openArray();
     if (!attributeName.empty()) {
       // We have to copy the entire document
       for (auto& it : distances) {
         VPackObjectBuilder docGuard(builder.get());
         builder->add(attributeName, VPackValue(it._distance));
-        if (collection->readDocument(trx, mmdr, it._token)) {
+        if (collection->readDocument(trx, it._token, mmdr)) {
           VPackSlice doc(mmdr.vpack());
           for (auto const& entry : VPackObjectIterator(doc)) {
             std::string key = entry.key.copyString();
@@ -119,7 +119,7 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
 
     } else {
       for (auto& it : distances) {
-        if (collection->readDocument(trx, mmdr, it._token)) {
+        if (collection->readDocument(trx, it._token, mmdr)) {
           builder->addExternal(mmdr.vpack());
         }
       }
@@ -134,7 +134,7 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
 
 /// @brief Load geoindex for collection name
 static arangodb::MMFilesGeoIndex* getGeoIndex(
-    arangodb::Transaction* trx, TRI_voc_cid_t const& cid,
+    transaction::Methods* trx, TRI_voc_cid_t const& cid,
     std::string const& collectionName) {
   // NOTE:
   // Due to trx lock the shared_index stays valid
@@ -165,14 +165,14 @@ static arangodb::MMFilesGeoIndex* getGeoIndex(
                                   collectionName.c_str());
   }
 
-  trx->orderDitch(cid);
+  trx->pinData(cid);
 
   return index;
 }
 
 /// @brief function FULLTEXT
 AqlValue MMFilesAqlFunctions::Fulltext(
-    arangodb::aql::Query* query, arangodb::Transaction* trx,
+    arangodb::aql::Query* query, transaction::Methods* trx,
     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "FULLTEXT", 3, 4);
 
@@ -260,7 +260,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
                                   collectionName.c_str());
   }
 
-  trx->orderDitch(cid);
+  trx->pinData(cid);
 
   TRI_fulltext_query_t* ft =
       TRI_CreateQueryMMFilesFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS, maxResults);
@@ -286,16 +286,16 @@ AqlValue MMFilesAqlFunctions::Fulltext(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   
-  TRI_ASSERT(trx->hasDitch(cid));
+  TRI_ASSERT(trx->isPinned(cid));
 
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   try {
     builder->openArray();
 
     ManagedDocumentResult mmdr;
     size_t const numResults = queryResult->_numDocuments;
     for (size_t i = 0; i < numResults; ++i) {
-      if (collection->readDocument(trx, mmdr, queryResult->_documents[i])) {
+      if (collection->readDocument(trx, queryResult->_documents[i], mmdr)) {
         builder->addExternal(mmdr.vpack());
       }
     }
@@ -311,7 +311,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
 
 /// @brief function NEAR
 AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
-                                   arangodb::Transaction* trx,
+                                   transaction::Methods* trx,
                                    VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "NEAR", 3, 5);
 
@@ -364,7 +364,7 @@ AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
   arangodb::MMFilesGeoIndex* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
-  TRI_ASSERT(trx->hasDitch(cid));
+  TRI_ASSERT(trx->isPinned(cid));
 
   GeoCoordinates* cors = index->nearQuery(
       trx, latitude.toDouble(trx), longitude.toDouble(trx), static_cast<size_t>(limitValue));
@@ -374,7 +374,7 @@ AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
 
 /// @brief function WITHIN
 AqlValue MMFilesAqlFunctions::Within(
-    arangodb::aql::Query* query, arangodb::Transaction* trx,
+    arangodb::aql::Query* query, transaction::Methods* trx,
     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "WITHIN", 4, 5);
 
@@ -415,7 +415,7 @@ AqlValue MMFilesAqlFunctions::Within(
   arangodb::MMFilesGeoIndex* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
-  TRI_ASSERT(trx->hasDitch(cid));
+  TRI_ASSERT(trx->isPinned(cid));
 
   GeoCoordinates* cors = index->withinQuery(
       trx, latitudeValue.toDouble(trx), longitudeValue.toDouble(trx), radiusValue.toDouble(trx));

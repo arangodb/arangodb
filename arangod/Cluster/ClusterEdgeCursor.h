@@ -32,7 +32,7 @@ namespace traverser {
 class ClusterEdgeCursor : public EdgeCursor {
 
  public:
-  ClusterEdgeCursor(arangodb::velocypack::Slice, size_t, ClusterTraverser*);
+  ClusterEdgeCursor(arangodb::velocypack::Slice, uint64_t, ClusterTraverser*);
 
   ~ClusterEdgeCursor() {
   }

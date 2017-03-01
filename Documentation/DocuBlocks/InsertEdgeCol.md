@@ -22,6 +22,8 @@ of *true*.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_01_SaveEdgeCol}
+  ~db._drop("vertex");
+  ~db._drop("relation");
   db._create("vertex");
   db._createEdgeCollection("relation");
   v1 = db.vertex.insert({ name : "vertex 1" });

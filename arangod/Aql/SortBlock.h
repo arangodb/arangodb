@@ -29,7 +29,10 @@
 #include "Aql/SortNode.h"
 
 namespace arangodb {
-class Transaction;
+namespace transaction {
+class Methods;
+}
+;
 
 namespace aql {
 
@@ -54,7 +57,7 @@ class SortBlock final : public ExecutionBlock {
   /// @brief OurLessThan
   class OurLessThan {
    public:
-    OurLessThan(arangodb::Transaction* trx,
+    OurLessThan(transaction::Methods* trx,
                 std::deque<AqlItemBlock*>& buffer,
                 std::vector<std::pair<RegisterId, bool>>& sortRegisters)
         : _trx(trx),
@@ -65,7 +68,7 @@ class SortBlock final : public ExecutionBlock {
                     std::pair<size_t, size_t> const& b) const;
 
    private:
-    arangodb::Transaction* _trx;
+    transaction::Methods* _trx;
     std::deque<AqlItemBlock*>& _buffer;
     std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
   };

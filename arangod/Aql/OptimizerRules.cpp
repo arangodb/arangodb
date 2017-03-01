@@ -32,6 +32,7 @@
 #include "Aql/Function.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/Query.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
@@ -44,7 +45,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Cluster/ClusterInfo.h"
-#include "Utils/Transaction.h"
+#include "Transaction/Methods.h"
 #include "VocBase/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include <boost/optional.hpp>
@@ -1773,7 +1774,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       // now check if any of the collection's indexes covers it
 
       Variable const* outVariable = enumerateCollectionNode->outVariable();
-      std::vector<arangodb::Transaction::IndexHandle> usedIndexes;
+      std::vector<transaction::Methods::IndexHandle> usedIndexes;
       auto trx = _plan->getAst()->query()->trx();
       size_t coveredAttributes = 0;
       auto resultPair = trx->getIndexForSortCondition(
@@ -1829,7 +1830,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(outVariable != nullptr);
 
     auto index = indexes[0];
-    arangodb::Transaction* trx = indexNode->trx();
+    transaction::Methods* trx = indexNode->trx();
     bool isSorted = false;
     bool isSparse = false;
     std::vector<std::vector<arangodb::basics::AttributeName>> fields =
@@ -1968,7 +1969,6 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::DISTRIBUTE:
       case EN::GATHER:
       case EN::REMOTE:
-      case EN::ILLEGAL:
       case EN::LIMIT:  // LIMIT is criterion to stop
         return true;   // abort.
 
@@ -2686,7 +2686,6 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
         case EN::SCATTER:
         case EN::DISTRIBUTE:
         case EN::GATHER:
-        case EN::ILLEGAL:
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::SORT:
@@ -2788,7 +2787,6 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::SCATTER:
         case EN::DISTRIBUTE:
         case EN::GATHER:
-        case EN::ILLEGAL:
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::INDEX:
@@ -3058,7 +3056,6 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
       case EN::UPSERT:
       case EN::RETURN:
       case EN::NORESULTS:
-      case EN::ILLEGAL:
       case EN::LIMIT:
       case EN::SORT:
       case EN::TRAVERSAL:
@@ -3947,11 +3944,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// GEO RULE ///////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-struct MMFilesGeoIndexInfo{
+struct MMFilesGeoIndexInfo {
   operator bool() const { return distanceNode && valid; }
   void invalidate() { valid = false; }
   MMFilesGeoIndexInfo()
@@ -3964,7 +3957,7 @@ struct MMFilesGeoIndexInfo{
     , distanceNode(nullptr)
     , index(nullptr)
     , range(nullptr)
-    , executionNodeType(EN::ILLEGAL)
+    , executionNodeType(EN::NORESULTS)
     , within(false)
     , lessgreaterequal(false)
     , valid(true)
@@ -3988,7 +3981,6 @@ struct MMFilesGeoIndexInfo{
   std::pair<AstNode*,AstNode*> constantPair;
 };
 
-//////////////////////////////////////////////////////////////////////
 //candidate checking
 
 AstNode* isValueOrRefNode(AstNode* node){
@@ -4269,7 +4261,6 @@ MMFilesGeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType typ
   return rv;
 };
 
-//////////////////////////////////////////////////////////////////////
 //modify plan
 
 // builds a condition that can be used with the index interface and
@@ -4395,7 +4386,7 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, MMFilesGeoIndexInfo& f
   auto inode = new IndexNode(
           plan, plan->nextId(), first.collectionNode->vocbase(),
           first.collectionNode->collection(), first.collectionNode->outVariable(),
-          std::vector<Transaction::IndexHandle>{Transaction::IndexHandle{first.index}},
+          std::vector<transaction::Methods::IndexHandle>{transaction::Methods::IndexHandle{first.index}},
           condition.get(), false);
   plan->registerNode(inode);
   condition.release();

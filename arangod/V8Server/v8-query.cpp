@@ -28,15 +28,17 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
 #include "Indexes/Index.h"
+#include "Transaction/Helpers.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/V8TransactionContext.h"
+#include "Transaction/V8Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
@@ -210,8 +212,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   std::string const collectionName(collection->name());
 
-  std::shared_ptr<V8TransactionContext> transactionContext =
-      V8TransactionContext::Create(collection->vocbase(), true);
+  std::shared_ptr<transaction::V8Context> transactionContext =
+      transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, collection->cid(),
                                   AccessMode::Type::READ);
 
@@ -223,8 +225,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // We directly read the entire cursor. so batchsize == limit
   std::unique_ptr<OperationCursor> opCursor =
-      trx.indexScan(collectionName, Transaction::CursorType::ALL,
-                    Transaction::IndexHandle(), {}, nullptr, skip, limit, limit, false);
+      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL, nullptr, skip,
+                    limit, limit, false);
 
   if (opCursor->failed()) {
     TRI_V8_THROW_EXCEPTION(opCursor->code);
@@ -257,7 +259,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
   auto cb = [&resultBuilder, &mmdr, &trx, &collection](DocumentIdentifierToken const& tkn) {
-   if (collection->readDocument(&trx, mmdr, tkn)) {
+   if (collection->readDocument(&trx, tkn, mmdr)) {
       resultBuilder.add(VPackSlice(mmdr.vpack()));
     }
   };
@@ -304,8 +306,8 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const collectionName(col->name());
 
-  std::shared_ptr<V8TransactionContext> transactionContext =
-      V8TransactionContext::Create(col->vocbase(), true);
+  std::shared_ptr<transaction::V8Context> transactionContext =
+      transaction::V8Context::Create(col->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, col->cid(),
                                   AccessMode::Type::READ);
 
@@ -370,7 +372,7 @@ static void JS_ChecksumCollection(
     }
   }
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(col->vocbase(), true),
+  SingleCollectionTransaction trx(transaction::V8Context::Create(col->vocbase(), true),
                                           col->cid(), AccessMode::Type::READ);
 
   int res = trx.begin();
@@ -379,7 +381,7 @@ static void JS_ChecksumCollection(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  trx.orderDitch(col->cid()); // will throw when it fails
+  trx.pinData(col->cid()); // will throw when it fails
   
   // get last tick
   LogicalCollection* collection = trx.documentCollection();
@@ -390,13 +392,13 @@ static void JS_ChecksumCollection(
         
   ManagedDocumentResult mmdr;
   trx.invokeOnAllElements(col->name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](DocumentIdentifierToken const& token) {
-    collection->readDocument(&trx, mmdr, token);
+    collection->readDocument(&trx, token, mmdr);
     VPackSlice const slice(mmdr.vpack());
 
-    uint64_t localHash = Transaction::extractKeyFromDocument(slice).hashString(); 
+    uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString(); 
 
     if (withRevisions) {
-      localHash += Transaction::extractRevSliceFromDocument(slice).hash();
+      localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
     }
 
     if (withData) {

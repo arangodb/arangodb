@@ -23,10 +23,12 @@
 
 #include "MMFilesDocumentOperation.h"
 #include "Indexes/IndexIterator.h"
-#include "Utils/Transaction.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -88,7 +90,7 @@ void MMFilesDocumentOperation::setRevisions(DocumentDescriptor const& oldRevisio
   }
 }
 
-void MMFilesDocumentOperation::revert(arangodb::Transaction* trx) {
+void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
   TRI_ASSERT(trx != nullptr);
   
   if (_status == StatusType::SWAPPED || _status == StatusType::REVERTED) {
@@ -115,6 +117,9 @@ void MMFilesDocumentOperation::revert(arangodb::Transaction* trx) {
     newDoc = VPackSlice(_newRevision._vpack);
   }
 
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
+
   if (_type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     TRI_ASSERT(_oldRevision.empty());
     TRI_ASSERT(!_newRevision.empty());
@@ -122,14 +127,14 @@ void MMFilesDocumentOperation::revert(arangodb::Transaction* trx) {
     if (status != StatusType::CREATED) { 
       // remove revision from indexes
       try {
-        _collection->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
+        physical->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
       } catch (...) {
       }
     }
 
     // remove now obsolete new revision
     try {
-      _collection->removeRevision(newRevisionId, true);
+      physical->removeRevision(newRevisionId, true);
     } catch (...) {
       // operation probably was never inserted
     }
@@ -140,31 +145,32 @@ void MMFilesDocumentOperation::revert(arangodb::Transaction* trx) {
     
     try {
       // re-insert the old revision
-      _collection->insertRevision(_oldRevision._revisionId, _oldRevision._vpack, 0, true);
+      physical->insertRevision(_oldRevision._revisionId, _oldRevision._vpack, 0, true, true);
     } catch (...) {
     }
 
     if (status != StatusType::CREATED) { 
       try {
         // restore the old index state
-        _collection->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
+        physical->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
       } catch (...) {
       }
     }
    
-    // let the primary index entry point to the correct document 
-    MMFilesSimpleIndexElement* element = _collection->primaryIndex()->lookupKeyRef(trx, Transaction::extractKeyFromDocument(newDoc));
+    // let the primary index entry point to the correct document
+    MMFilesSimpleIndexElement* element = physical->primaryIndex()->lookupKeyRef(
+        trx, transaction::helpers::extractKeyFromDocument(newDoc));
     if (element != nullptr && element->revisionId() != 0) {
-      VPackSlice keySlice(Transaction::extractKeyFromDocument(oldDoc));
+      VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(oldDoc));
       element->updateRevisionId(oldRevisionId, static_cast<uint32_t>(keySlice.begin() - oldDoc.begin()));
     }
-    _collection->updateRevision(oldRevisionId, oldDoc.begin(), 0, false);
+    physical->updateRevision(oldRevisionId, oldDoc.begin(), 0, false);
     
     // remove now obsolete new revision
     if (oldRevisionId != newRevisionId) { 
       // we need to check for the same revision id here
       try {
-        _collection->removeRevision(newRevisionId, true);
+        physical->removeRevision(newRevisionId, true);
       } catch (...) {
       }
     }
@@ -173,14 +179,14 @@ void MMFilesDocumentOperation::revert(arangodb::Transaction* trx) {
     TRI_ASSERT(_newRevision.empty());
     
     try {
-      _collection->insertRevision(_oldRevision._revisionId, _oldRevision._vpack, 0, true);
+      physical->insertRevision(_oldRevision._revisionId, _oldRevision._vpack, 0, true, true);
     } catch (...) {
     }
     
     if (status != StatusType::CREATED) { 
       try {
         // remove from indexes again
-        _collection->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
+        physical->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
       } catch (...) {
       }
     }

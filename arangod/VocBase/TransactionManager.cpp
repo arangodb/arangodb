@@ -103,7 +103,7 @@ std::unordered_set<TRI_voc_tid_t> TransactionManager::getFailedTransactions() {
   return failedTransactions;
 }
 
-void TransactionManager::iterateActiveTransactions(std::function<void(TRI_voc_tid_t, TransactionData*)> const& callback) {
+void TransactionManager::iterateActiveTransactions(std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) {
   WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
   // iterate over all active transactions 

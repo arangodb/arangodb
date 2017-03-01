@@ -44,6 +44,7 @@ struct QueryResultV8 : public QueryResult {
   QueryResultV8(int code, std::string const& details)
       : QueryResult(code, details), result() {}
 
+  QueryResultV8() : QueryResult(TRI_ERROR_NO_ERROR) {}
   explicit QueryResultV8(int code) : QueryResult(code, ""), result() {}
 
   v8::Handle<v8::Array> result;

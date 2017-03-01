@@ -285,7 +285,7 @@ void RestAdminLogHandler::setLogLevel() {
   } else if (type == rest::RequestType::PUT) { 
     // set loglevel
     bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
     if (!parseSuccess) {
       return;
     }

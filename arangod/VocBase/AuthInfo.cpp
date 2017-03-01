@@ -23,21 +23,22 @@
 
 #include "AuthInfo.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Aql/Query.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -79,7 +79,7 @@ function createErrorRoute (service, body, title) {
             <html>
               <head>
                 <meta charset="utf-8">
-                <title>${escapeHtml(title) || 'Service Unavailable'}</title>
+                <title>${escapeHtml(title || 'Service Unavailable')}</title>
                 <style>
                   body {
                     box-sizing: border-box;

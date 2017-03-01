@@ -25,7 +25,6 @@
 
 #include "Cluster/ClusterInfo.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
 
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalCollection.h"

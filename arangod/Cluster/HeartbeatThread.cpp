@@ -242,7 +242,8 @@ void HeartbeatThread::runDBServer() {
 
   bool registered = false;
   while (!registered) {
-    registered = _agencyCallbackRegistry->registerCallback(planAgencyCallback);
+    registered =
+      _agencyCallbackRegistry->registerCallback(planAgencyCallback);
     if (!registered) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Couldn't register plan change in agency!";

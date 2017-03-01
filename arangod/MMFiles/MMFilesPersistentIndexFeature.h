@@ -37,10 +37,10 @@ class OptimisticTransactionDB;
 namespace arangodb {
 class RocksDBKeyComparator;
 
-class RocksDBFeature final : public application_features::ApplicationFeature {
+class PersistentIndexFeature final : public application_features::ApplicationFeature {
  public:
-  explicit RocksDBFeature(application_features::ApplicationServer* server);
-  ~RocksDBFeature();
+  explicit PersistentIndexFeature(application_features::ApplicationServer* server);
+  ~PersistentIndexFeature();
   
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -55,7 +55,7 @@ class RocksDBFeature final : public application_features::ApplicationFeature {
   static int dropCollection(TRI_voc_tick_t, TRI_voc_cid_t);
   static int dropIndex(TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t);
 
-  static RocksDBFeature* instance();
+  static PersistentIndexFeature* instance();
 
  private:
 

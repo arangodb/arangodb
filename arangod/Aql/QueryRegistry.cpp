@@ -22,12 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryRegistry.h"
-#include "Logger/Logger.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/WriteLocker.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
+#include "Cluster/CollectionLockState.h"
+#include "Logger/Logger.h"
+#include "Transaction/Methods.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 QueryRegistry::~QueryRegistry() {
@@ -92,10 +95,10 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
     TRI_ASSERT(_queries.find(vocbase->name())->second.find(id) !=
                          _queries.find(vocbase->name())->second.end());
 
-    // If we have set _makeNolockHeaders, we need to unset it:
-    if (Transaction::_makeNolockHeaders != nullptr) {
-      if (Transaction::_makeNolockHeaders == query->engine()->lockedShards()) {
-        Transaction::_makeNolockHeaders = nullptr;
+    // If we have set _noLockHeaders, we need to unset it:
+    if (CollectionLockState::_noLockHeaders != nullptr) {
+      if (CollectionLockState::_noLockHeaders == query->engine()->lockedShards()) {
+        CollectionLockState::_noLockHeaders = nullptr;
       }
       // else {
       // We have not set it, just leave it alone. This happens in particular
@@ -129,11 +132,11 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
   }
   qi->_isOpen = true;
 
-  // If we had set _makeNolockHeaders, we need to reset it:
+  // If we had set _noLockHeaders, we need to reset it:
   if (qi->_query->engine()->lockedShards() != nullptr) {
-    if (Transaction::_makeNolockHeaders == nullptr) {
-      // std::cout << "Setting _makeNolockHeaders\n";
-      Transaction::_makeNolockHeaders = qi->_query->engine()->lockedShards();
+    if (CollectionLockState::_noLockHeaders == nullptr) {
+      // std::cout << "Setting _noLockHeaders\n";
+      CollectionLockState::_noLockHeaders = qi->_query->engine()->lockedShards();
     } else {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Found strange lockedShards in thread, not overwriting!";
     }
@@ -163,17 +166,17 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
         TRI_ERROR_INTERNAL, "query with given vocbase and id is not open");
   }
 
-  // If we have set _makeNolockHeaders, we need to unset it:
-  if (Transaction::_makeNolockHeaders != nullptr) {
-    if (Transaction::_makeNolockHeaders ==
+  // If we have set _noLockHeaders, we need to unset it:
+  if (CollectionLockState::_noLockHeaders != nullptr) {
+    if (CollectionLockState::_noLockHeaders ==
         qi->_query->engine()->lockedShards()) {
-      // std::cout << "Resetting _makeNolockHeaders to nullptr\n";
-      Transaction::_makeNolockHeaders = nullptr;
+      // std::cout << "Resetting _noLockHeaders to nullptr\n";
+      CollectionLockState::_noLockHeaders = nullptr;
     } else {
-      if (Transaction::_makeNolockHeaders != nullptr) {
-        if (Transaction::_makeNolockHeaders ==
+      if (CollectionLockState::_noLockHeaders != nullptr) {
+        if (CollectionLockState::_noLockHeaders ==
             qi->_query->engine()->lockedShards()) {
-          Transaction::_makeNolockHeaders = nullptr;
+          CollectionLockState::_noLockHeaders = nullptr;
         }
         // else {
         // We have not set it, just leave it alone. This happens in particular
@@ -208,10 +211,10 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
   // to register the transaction with the current context and adjust
   // the debugging counters for transactions:
   if (!qi->_isOpen) {
-    // If we had set _makeNolockHeaders, we need to reset it:
+    // If we had set _noLockHeaders, we need to reset it:
     if (qi->_query->engine()->lockedShards() != nullptr) {
-      if (Transaction::_makeNolockHeaders == nullptr) {
-        Transaction::_makeNolockHeaders = qi->_query->engine()->lockedShards();
+      if (CollectionLockState::_noLockHeaders == nullptr) {
+        CollectionLockState::_noLockHeaders = qi->_query->engine()->lockedShards();
       } else {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Found strange lockedShards in thread, not overwriting!";
       }

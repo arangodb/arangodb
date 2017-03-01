@@ -35,6 +35,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief create the v8 expression
@@ -59,7 +60,7 @@ V8Expression::~V8Expression() {
 
 /// @brief execute the expression
 AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
-                               arangodb::Transaction* trx,
+                               transaction::Methods* trx,
                                ExpressionContext* context,
                                bool& mustDestroy) {
   bool const hasRestrictions = !_attributeRestrictions.empty();

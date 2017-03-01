@@ -29,33 +29,53 @@ using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
 AgentCallback::AgentCallback() :
-  _agent(0), _last(0), _startTime(0.0), _toLog(0) {}
+  _agent(0), _last(0), _toLog(0), _startTime(0.0) {}
 
 AgentCallback::AgentCallback(Agent* agent, std::string const& slaveID,
                              index_t last, size_t toLog)
-    : _agent(agent), _last(last), _slaveID(slaveID),
-      _startTime(TRI_microtime())  {}
+  : _agent(agent), _last(last), _slaveID(slaveID), _toLog(toLog),
+    _startTime(TRI_microtime())  {}
 
 void AgentCallback::shutdown() { _agent = 0; }
 
 bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
+
   if (res->status == CL_COMM_SENT) {
+
     if (_agent) {
-      _agent->reportIn(_slaveID, _last, _toLog);
+
+      try { // Check success
+        if (res->result->getBodyVelocyPack()->slice().get("success").getBool()) {
+          _agent->reportIn(_slaveID, _last, _toLog);
+        }
+        LOG_TOPIC(DEBUG, Logger::CLUSTER)
+          << "success: true " << res->result->getBodyVelocyPack()->toJson();
+      } catch (...) {
+        LOG_TOPIC(INFO, Logger::CLUSTER)
+          << "success: false" << res->result->getBodyVelocyPack()->toJson();
+      }
+      
+      
     }
+
     LOG_TOPIC(DEBUG, Logger::AGENCY) 
       << "Got good callback from AppendEntriesRPC: "
       << "comm_status(" << res->status
       << "), last(" << _last << "), follower("
       << _slaveID << "), time("
       << TRI_microtime() - _startTime << ")";
+
   } else {
+
     LOG_TOPIC(DEBUG, Logger::AGENCY) 
       << "Got bad callback from AppendEntriesRPC: "
       << "comm_status(" << res->status
       << "), last(" << _last << "), follower("
       << _slaveID << "), time("
       << TRI_microtime() - _startTime << ")";
+
   }
+  
   return true;
+  
 }

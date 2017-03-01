@@ -224,14 +224,12 @@ struct ASCCMasterContext : public MasterContext {
         bool const* newMaxFound = getAggregatedValue<bool>(kFoundNewMax);
         if (*newMaxFound == false) {
           LOG_TOPIC(INFO, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_START";
-          enterNextGlobalSuperstep();
           aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_START);
         }
       } break;
 
       case SCCPhase::BACKWARD_TRAVERSAL_START:
         LOG_TOPIC(INFO, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_REST";
-        enterNextGlobalSuperstep();
         aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_REST);
         break;
 
@@ -240,7 +238,6 @@ struct ASCCMasterContext : public MasterContext {
         // continue until no more vertices are updated
         if (*converged == false) {
           LOG_TOPIC(INFO, Logger::PREGEL) << "Phase: TRANSPOSE";
-          enterNextGlobalSuperstep();
           aggregate<uint32_t>(kPhase, SCCPhase::TRANSPOSE);
         }
         break;
@@ -248,7 +245,19 @@ struct ASCCMasterContext : public MasterContext {
   };
   
   void postLocalSuperstep() override {
-    preGlobalSuperstep();
+    uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
+    if (*phase == SCCPhase::FORWARD_TRAVERSAL) {
+      bool const* newMaxFound = getAggregatedValue<bool>(kFoundNewMax);
+      if (*newMaxFound == false) {
+        enterNextGlobalSuperstep();
+      }
+    } else if (*phase == SCCPhase::BACKWARD_TRAVERSAL_REST) {
+      bool const* converged = getAggregatedValue<bool>(kConverged);
+      // continue until no more vertices are updated
+      if (*converged == false) {
+        enterNextGlobalSuperstep();
+      }
+    }
   };
 };
 

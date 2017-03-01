@@ -34,9 +34,10 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -105,7 +106,7 @@ static bool IsEqualElementEdgeByKey(void* userData, MMFilesSimpleIndexElement co
   }
 }
   
-MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx,
+MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                                      ManagedDocumentResult* mmdr,
                                      arangodb::MMFilesEdgeIndex const* index,
                                      TRI_MMFilesEdgeIndexHash_t const* indexImpl,
@@ -175,52 +176,6 @@ void MMFilesEdgeIndexIterator::reset() {
   _lastElement = MMFilesSimpleIndexElement();
 }
   
-AnyDirectionMMFilesEdgeIndexIterator::AnyDirectionMMFilesEdgeIndexIterator(LogicalCollection* collection,
-                                arangodb::Transaction* trx,
-                                ManagedDocumentResult* mmdr,
-                                arangodb::MMFilesEdgeIndex const* index,
-                                MMFilesEdgeIndexIterator* outboundIterator,
-                                MMFilesEdgeIndexIterator* inboundIterator)
-    : IndexIterator(collection, trx, mmdr, index),
-      _outbound(outboundIterator),
-      _inbound(inboundIterator),
-      _useInbound(false) {}
-
-bool AnyDirectionMMFilesEdgeIndexIterator::next(TokenCallback const& cb,
-                                                size_t limit) {
-  auto inWrapper = [&](DocumentIdentifierToken const& res) {
-    if (_seen.find(res) == _seen.end()) {
-      --limit;
-      cb(res);
-    }
-  };
-
-  auto outWrapper = [&](DocumentIdentifierToken const& res) {
-    _seen.emplace(res);
-    --limit;
-    cb(res);
-  };
-
-  while (limit > 0) {
-    if (_useInbound) {
-      return _inbound->next(inWrapper, limit);
-    } else {
-      _outbound->next(outWrapper, limit);
-      if (limit > 0) {
-        _useInbound = true;
-      }
-    }
-  }
-  return true;
-}
-
-void AnyDirectionMMFilesEdgeIndexIterator::reset() {
-  _useInbound = false;
-  _seen.clear();
-  _outbound->reset();
-  _inbound->reset();
-}
-
 MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection)
     : Index(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
@@ -438,7 +393,7 @@ void MMFilesEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   // builder.add("buckets", VPackValue(_numBuckets));
 }
 
-int MMFilesEdgeIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+int MMFilesEdgeIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                       VPackSlice const& doc, bool isRollback) {
   MMFilesSimpleIndexElement fromElement(buildFromElement(revisionId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(revisionId, doc));
@@ -458,7 +413,7 @@ int MMFilesEdgeIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionI
   return TRI_ERROR_NO_ERROR;
 }
 
-int MMFilesEdgeIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+int MMFilesEdgeIndex::remove(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                       VPackSlice const& doc, bool isRollback) {
   MMFilesSimpleIndexElement fromElement(buildFromElement(revisionId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(revisionId, doc));
@@ -478,7 +433,7 @@ int MMFilesEdgeIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionI
   }
 }
 
-void MMFilesEdgeIndex::batchInsert(arangodb::Transaction* trx,
+void MMFilesEdgeIndex::batchInsert(transaction::Methods* trx,
                            std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
     arangodb::basics::LocalTaskQueue* queue) {
   if (documents.empty()) {
@@ -508,7 +463,7 @@ void MMFilesEdgeIndex::batchInsert(arangodb::Transaction* trx,
 
   // _from
   for (auto const& it : documents) {
-    VPackSlice value(Transaction::extractFromFromDocument(it.second));
+    VPackSlice value(transaction::helpers::extractFromFromDocument(it.second));
     fromElements->emplace_back(MMFilesSimpleIndexElement(
         it.first, value,
         static_cast<uint32_t>(value.begin() - it.second.begin())));
@@ -516,7 +471,7 @@ void MMFilesEdgeIndex::batchInsert(arangodb::Transaction* trx,
 
   // _to
   for (auto const& it : documents) {
-    VPackSlice value(Transaction::extractToFromDocument(it.second));
+    VPackSlice value(transaction::helpers::extractToFromDocument(it.second));
     toElements->emplace_back(MMFilesSimpleIndexElement(
         it.first, value,
         static_cast<uint32_t>(value.begin() - it.second.begin())));
@@ -535,7 +490,7 @@ int MMFilesEdgeIndex::unload() {
 }
 
 /// @brief provides a size hint for the edge index
-int MMFilesEdgeIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
+int MMFilesEdgeIndex::sizeHint(transaction::Methods* trx, size_t size) {
   // we assume this is called when setting up the index and the index
   // is still empty
   TRI_ASSERT(_edgesFrom->size() == 0);
@@ -571,7 +526,7 @@ bool MMFilesEdgeIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
-    arangodb::Transaction* trx, 
+    transaction::Methods* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
@@ -653,78 +608,14 @@ void MMFilesEdgeIndex::expandInSearchValues(VPackSlice const slice,
   builder.close();
 }
 
-/// @brief creates an IndexIterator for the given VelocyPackSlices.
-///        The searchValue is a an Array with exactly two Entries.
-///        If the first is set it means we are searching for _from (OUTBOUND),
-///        if the second is set we are searching for _to (INBOUND).
-///        if both are set we are search for ANY direction. Result is made
-///        DISTINCT.
-///        Each defined slice that is set has to be list of keys to search for.
-///        Each key needs to have the following formats:
-///
-///        1) {"eq": <compareValue>} // The value in index is exactly this
-///
-///        Reverse is not supported, hence ignored
-///        NOTE: The iterator is only valid as long as the slice points to
-///        a valid memory region.
-IndexIterator* MMFilesEdgeIndex::iteratorForSlice(
-    arangodb::Transaction* trx, 
-    ManagedDocumentResult* mmdr,
-    arangodb::velocypack::Slice const searchValues, bool) const {
-  if (!searchValues.isArray() || searchValues.length() != 2) {
-    // Invalid searchValue
-    return nullptr;
-  }
-
-  VPackArrayIterator it(searchValues);
-  TRI_ASSERT(it.valid());
-
-  VPackSlice const from = it.value();
-
-  it.next();
-  TRI_ASSERT(it.valid());
-  VPackSlice const to = it.value();
-
-  if (!from.isNull()) {
-    TRI_ASSERT(from.isArray());
-    if (!to.isNull()) {
-      // ANY search
-      TRI_ASSERT(to.isArray());
-      TransactionBuilderLeaser fromBuilder(trx);
-      std::unique_ptr<VPackBuilder> fromKeys(fromBuilder.steal());
-      fromKeys->add(from);
-      auto left = std::make_unique<MMFilesEdgeIndexIterator>(_collection, trx, mmdr, this, _edgesFrom, fromKeys);
-
-      TransactionBuilderLeaser toBuilder(trx);
-      std::unique_ptr<VPackBuilder> toKeys(toBuilder.steal());
-      toKeys->add(to);
-      auto right = std::make_unique<MMFilesEdgeIndexIterator>(_collection, trx, mmdr, this, _edgesTo, toKeys);
-      return new AnyDirectionMMFilesEdgeIndexIterator(_collection, trx, mmdr, this, left.release(), right.release());
-    }
-    // OUTBOUND search
-    TRI_ASSERT(to.isNull());
-    TransactionBuilderLeaser builder(trx);
-    std::unique_ptr<VPackBuilder> keys(builder.steal());
-    keys->add(from);
-    return new MMFilesEdgeIndexIterator(_collection, trx, mmdr, this, _edgesFrom, keys);
-  } else {
-    // INBOUND search
-    TRI_ASSERT(to.isArray());
-    TransactionBuilderLeaser builder(trx);
-    std::unique_ptr<VPackBuilder> keys(builder.steal());
-    keys->add(to);
-    return new MMFilesEdgeIndexIterator(_collection, trx, mmdr, this, _edgesTo, keys);
-  }
-}
-
 /// @brief create the iterator
 IndexIterator* MMFilesEdgeIndex::createEqIterator(
-    arangodb::Transaction* trx, 
+    transaction::Methods* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
   keys->openArray();
 
@@ -742,12 +633,12 @@ IndexIterator* MMFilesEdgeIndex::createEqIterator(
 
 /// @brief create the iterator
 IndexIterator* MMFilesEdgeIndex::createInIterator(
-    arangodb::Transaction* trx, 
+    transaction::Methods* trx, 
     ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
-  TransactionBuilderLeaser builder(trx);
+  transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
   keys->openArray();
 
@@ -790,14 +681,14 @@ void MMFilesEdgeIndex::handleValNode(VPackBuilder* keys,
 
 MMFilesSimpleIndexElement MMFilesEdgeIndex::buildFromElement(TRI_voc_rid_t revisionId, VPackSlice const& doc) const {
   TRI_ASSERT(doc.isObject());
-  VPackSlice value(Transaction::extractFromFromDocument(doc));
+  VPackSlice value(transaction::helpers::extractFromFromDocument(doc));
   TRI_ASSERT(value.isString());
   return MMFilesSimpleIndexElement(revisionId, value, static_cast<uint32_t>(value.begin() - doc.begin()));
 }
 
 MMFilesSimpleIndexElement MMFilesEdgeIndex::buildToElement(TRI_voc_rid_t revisionId, VPackSlice const& doc) const {
   TRI_ASSERT(doc.isObject());
-  VPackSlice value(Transaction::extractToFromDocument(doc));
+  VPackSlice value(transaction::helpers::extractToFromDocument(doc));
   TRI_ASSERT(value.isString());
   return MMFilesSimpleIndexElement(revisionId, value, static_cast<uint32_t>(value.begin() - doc.begin()));
 }

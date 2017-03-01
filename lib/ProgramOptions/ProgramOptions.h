@@ -507,10 +507,17 @@ class ProgramOptions {
 
   // report an error (callback from parser)
   bool fail(std::string const& message) {
-    std::cerr << "Error while processing " << _context << ":" << std::endl;
-    std::cerr << "  " << message << std::endl << std::endl;
     _processingResult.failed(true);
+    std::cerr << "Error while processing " << _context << ":" << std::endl;
+    failNotice(message);
+    std::cerr << std::endl;
     return false;
+  }
+  
+  void failNotice(std::string const& message) {
+    // only allowed to call if we already failed
+    TRI_ASSERT(_processingResult.failed());
+    std::cerr << "  " << message << std::endl;
   }
 
   // add a positional argument (callback from parser)

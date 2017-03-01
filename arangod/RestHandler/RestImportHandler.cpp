@@ -28,9 +28,10 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "Transaction/Helpers.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
@@ -204,7 +205,7 @@ int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
 
   // add prefixes to _from and _to
   if (!_fromPrefix.empty() || !_toPrefix.empty()) {
-    TransactionBuilderLeaser tempBuilder(&trx);
+    transaction::BuilderLeaser tempBuilder(&trx);
 
     tempBuilder->openObject();
     if (!_fromPrefix.empty()) {
@@ -356,7 +357,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), collectionName,
+      transaction::StandaloneContext::Create(_vocbase), collectionName,
       AccessMode::Type::WRITE);
 
   // .............................................................................
@@ -562,7 +563,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), collectionName,
+      transaction::StandaloneContext::Create(_vocbase), collectionName,
       AccessMode::Type::WRITE);
 
   // .............................................................................
@@ -736,7 +737,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), collectionName,
+      transaction::StandaloneContext::Create(_vocbase), collectionName,
       AccessMode::Type::WRITE);
 
   // .............................................................................

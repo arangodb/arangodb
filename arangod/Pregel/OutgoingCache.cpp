@@ -29,6 +29,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ServerState.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>

@@ -25,6 +25,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
+#include "Transaction/Helpers.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -37,7 +38,7 @@ ClusterTraverser::ClusterTraverser(
     arangodb::traverser::TraverserOptions* opts,
     ManagedDocumentResult* mmdr,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-    std::string const& dbname, Transaction* trx)
+    std::string const& dbname, transaction::Methods* trx)
     : Traverser(opts, trx, mmdr), _dbname(dbname), _engines(engines) {
   _opts->linkTraverser(this);
 }
@@ -91,7 +92,7 @@ bool ClusterTraverser::getVertex(VPackSlice edge,
 }
 
 bool ClusterTraverser::getSingleVertex(VPackSlice edge, VPackSlice comp,
-                                       size_t depth, VPackSlice& result) {
+                                       uint64_t depth, VPackSlice& result) {
   bool res = _vertexGetter->getSingleVertex(edge, comp, depth, result);
   if (res) {
     if (_vertices.find(result) == _vertices.end()) {
@@ -104,7 +105,7 @@ bool ClusterTraverser::getSingleVertex(VPackSlice edge, VPackSlice comp,
 
 void ClusterTraverser::fetchVertices() {
   _readDocuments += _verticesToFetch.size();
-  TransactionBuilderLeaser lease(_trx);
+  transaction::BuilderLeaser lease(_trx);
   fetchVerticesFromEngines(_dbname, _engines, _verticesToFetch, _vertices,
                            *(lease.get()));
   _verticesToFetch.clear();

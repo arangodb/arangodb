@@ -24,17 +24,18 @@
 #include "CollectionKeys.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
+#include "MMFiles/MMFilesLogfileManager.h" //TODO -- REMOVE
+#include "MMFiles/MMFilesCollection.h"
+#include "MMFiles/MMFilesDitch.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Helpers.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
-#include "MMFiles/MMFilesDatafileHelper.h"
-#include "VocBase/Ditch.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -73,7 +74,7 @@ CollectionKeys::~CollectionKeys() {
   engine->removeCompactionBlocker(_vocbase, _blockerId);
 
   if (_ditch != nullptr) {
-    _ditch->ditches()->freeDocumentDitch(_ditch, false);
+    _ditch->ditches()->freeMMFilesDocumentDitch(_ditch, false);
   }
 }
 
@@ -88,7 +89,9 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
-    _ditch = _collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+    _ditch = arangodb::MMFilesCollection::toMMFilesCollection(_collection)
+                 ->ditches()
+                 ->createMMFilesDocumentDitch(false, __FILE__, __LINE__);
   });
 
   // now we either have a ditch or not
@@ -101,7 +104,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   // copy all datafile markers into the result under the read-lock
   {
     SingleCollectionTransaction trx(
-        StandaloneTransactionContext::Create(_collection->vocbase()), _name,
+        transaction::StandaloneContext::Create(_collection->vocbase()), _name,
         AccessMode::Type::READ);
 
     int res = trx.begin();
@@ -113,7 +116,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
     ManagedDocumentResult mmdr;
     trx.invokeOnAllElements(
         _collection->name(), [this, &trx, &maxTick, &mmdr](DocumentIdentifierToken const& token) {
-          if (_collection->readDocumentConditional(&trx, mmdr, token, maxTick, true)) {
+          if (_collection->readDocumentConditional(&trx, token, maxTick, mmdr)) {
             _vpack.emplace_back(mmdr.vpack());
           }
           return true;
@@ -125,7 +128,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   // now sort all markers without the read-lock
   std::sort(_vpack.begin(), _vpack.end(),
             [](uint8_t const* lhs, uint8_t const* rhs) -> bool {
-    return (StringRef(Transaction::extractKeyFromDocument(VPackSlice(lhs))) < StringRef(Transaction::extractKeyFromDocument(VPackSlice(rhs))));
+    return (StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(lhs))) < StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(rhs))));
   });
 }
 
@@ -154,13 +157,13 @@ std::tuple<std::string, std::string, uint64_t> CollectionKeys::hashChunk(
 
     // we can get away with the fast hash function here, as key values are 
     // restricted to strings
-    hash ^= Transaction::extractKeyFromDocument(current).hashString();
-    hash ^= Transaction::extractRevSliceFromDocument(current).hash();
+    hash ^= transaction::helpers::extractKeyFromDocument(current).hashString();
+    hash ^= transaction::helpers::extractRevSliceFromDocument(current).hash();
   }
 
   return std::make_tuple(
-    Transaction::extractKeyFromDocument(first).copyString(),
-    Transaction::extractKeyFromDocument(last).copyString(),
+    transaction::helpers::extractKeyFromDocument(first).copyString(),
+    transaction::helpers::extractKeyFromDocument(last).copyString(),
     hash);
 }
 

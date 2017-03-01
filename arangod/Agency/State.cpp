@@ -45,7 +45,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -69,6 +69,15 @@ State::State(std::string const& endpoint)
 /// Default dtor
 State::~State() {}
 
+inline static std::string timestamp() {
+  std::time_t t = std::time(nullptr);
+  char mbstr[100];
+  return
+    std::strftime(
+      mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S %Z", std::localtime(&t)) ?
+    std::string(mbstr) : std::string();
+}
+
 inline static std::string stringify(arangodb::consensus::index_t index) {
   std::ostringstream i_str;
   i_str << std::setw(20) << std::setfill('0') << index;
@@ -79,31 +88,36 @@ inline static std::string stringify(arangodb::consensus::index_t index) {
 bool State::persist(arangodb::consensus::index_t index, term_t term,
                     arangodb::velocypack::Slice const& entry,
                     std::string const& clientId) const {
+
   Builder body;
-  body.add(VPackValue(VPackValueType::Object));
-  body.add("_key", Value(stringify(index)));
-  body.add("term", Value(term));
-  body.add("request", entry);
-  body.add("clientId", Value(clientId));
-  body.close();
+  {
+    VPackObjectBuilder b(&body);
+    body.add("_key", Value(stringify(index)));
+    body.add("term", Value(term));
+    body.add("request", entry);
+    body.add("clientId", Value(clientId));
+    body.add("timestamp", Value(timestamp()));
+  }
   
   TRI_ASSERT(_vocbase != nullptr);
   auto transactionContext =
-    std::make_shared<StandaloneTransactionContext>(_vocbase);
-  SingleCollectionTransaction trx(transactionContext, "log",
-                                  AccessMode::Type::WRITE);
+    std::make_shared<transaction::StandaloneContext>(_vocbase);
+  SingleCollectionTransaction trx(
+    transactionContext, "log", AccessMode::Type::WRITE);
   
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
+  
   OperationResult result;
   try {
     result = trx.insert("log", body.slice(), _options);
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to persist log entry:"
-                                   << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "Failed to persist log entry:" << e.what();
   }
+  
   res = trx.finish(result.code);
 
   return (res == TRI_ERROR_NO_ERROR);
@@ -301,20 +315,65 @@ std::vector<log_t> State::get(arangodb::consensus::index_t start,
     return entries;
   }
 
-  if (end == (std::numeric_limits<uint64_t>::max)() || end > _log.size() - 1) {
-    end = _log.size() - 1;
+  if (end == (std::numeric_limits<uint64_t>::max)() || end > _log.back().index) {
+    end = _log.back().index;
   }
 
   if (start < _log[0].index) {
     start = _log[0].index;
   }
 
-  for (size_t i = start - _cur; i <= end; ++i) {
+  for (size_t i = start - _cur; i <= end - _cur; ++i) {
     entries.push_back(_log[i]);
   }
 
   return entries;
 }
+
+/// Get log entries from indices "start" to "end"
+/// Throws std::out_of_range exception
+log_t State::at(arangodb::consensus::index_t index) const {
+
+  MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
+
+  
+  if (_cur > index) {
+    std::string excMessage = 
+      std::string(
+        "Access before the start of the log deque: (first, requested): (") +
+      std::to_string(_cur) + ", " + std::to_string(index);
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << excMessage;
+    throw std::out_of_range(excMessage);
+  }
+  
+  auto pos = index - _cur;
+  if (pos > _log.size()) {
+    std::string excMessage = 
+      std::string(
+        "Access beyond the end of the log deque: (last, requested): (") +
+      std::to_string(_cur+_log.size()) + ", " + std::to_string(index);
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << excMessage;
+    throw std::out_of_range(excMessage);
+  }
+
+  return _log[pos];
+
+}
+
+
+/// Have log with specified index and term
+bool State::has(arangodb::consensus::index_t index, term_t term) const {
+
+  MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
+
+  try {
+    return _log.at(index-_cur).term == term;
+  } catch (...) {}
+
+  return false;
+  
+}
+
 
 /// Get vector of past transaction from 'start' to 'end'
 std::vector<VPackSlice> State::slices(arangodb::consensus::index_t start,
@@ -561,7 +620,7 @@ bool State::loadOrPersistConfiguration() {
     _agent->id(to_string(boost::uuids::random_generator()()));
 
     auto transactionContext =
-        std::make_shared<StandaloneTransactionContext>(_vocbase);
+        std::make_shared<transaction::StandaloneContext>(_vocbase);
     SingleCollectionTransaction trx(transactionContext, "configuration",
                                     AccessMode::Type::WRITE);
 
@@ -760,7 +819,7 @@ bool State::persistReadDB(arangodb::consensus::index_t cind) {
 
     TRI_ASSERT(_vocbase != nullptr);
     auto transactionContext =
-        std::make_shared<StandaloneTransactionContext>(_vocbase);
+        std::make_shared<transaction::StandaloneContext>(_vocbase);
     SingleCollectionTransaction trx(transactionContext, "compact",
                                     AccessMode::Type::WRITE);
 
@@ -890,5 +949,11 @@ std::vector<std::vector<log_t>> State::inquire(query_t const& query) const {
 
   return result;
   
+}
+
+// Index of last log entry
+arangodb::consensus::index_t State::lastIndex() const {
+  MUTEX_LOCKER(mutexLocker, _logLock); 
+  return (!_log.empty()) ? _log.back().index : 0; 
 }
 
