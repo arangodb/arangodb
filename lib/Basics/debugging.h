@@ -114,4 +114,121 @@ void TRI_ShutdownDebugging();
 void TRI_FlushDebugging();
 void TRI_FlushDebugging(char const* file, int line, char const* message);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump vector contents to an ostream
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+std::ostream& operator<<(std::ostream& stream, std::vector<T> const& data) {
+  bool first = true;
+
+  stream << "[";
+  for (auto const& it : data) {
+    if (first) {
+      stream << " ";
+      first = false;
+    } else {
+      stream << ", ";
+    }
+    stream << it;
+  }
+  stream << " ]";
+
+  return stream;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump deque contents to an ostream
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+std::ostream& operator<<(std::ostream& stream, std::deque<T> const& data) {
+  bool first = true;
+
+  stream << "[";
+  for (auto const& it : data) {
+    if (first) {
+      stream << " ";
+      first = false;
+    } else {
+      stream << ", ";
+    }
+    stream << it;
+  }
+  stream << " ]";
+
+  return stream;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump unordered_set contents to an ostream
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+std::ostream& operator<<(std::ostream& stream,
+                         std::unordered_set<T> const& data) {
+  bool first = true;
+
+  stream << "{";
+  for (auto const& it : data) {
+    if (first) {
+      stream << " ";
+      first = false;
+    } else {
+      stream << ", ";
+    }
+    stream << it;
+  }
+  stream << " }";
+
+  return stream;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump unordered_map contents to an ostream
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename K, typename V>
+std::ostream& operator<<(std::ostream& stream,
+                         std::unordered_map<K, V> const& data) {
+  bool first = true;
+
+  stream << "{";
+  for (auto const& it : data) {
+    if (first) {
+      stream << " ";
+      first = false;
+    } else {
+      stream << ", ";
+    }
+    stream << it.first << ": " << it.second;
+  }
+  stream << " }";
+
+  return stream;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump unordered_map contents to an ostream
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename K, typename V>
+std::ostream& operator<<(std::ostream& stream, std::map<K, V> const& data) {
+  bool first = true;
+
+  stream << "{";
+  for (auto const& it : data) {
+    if (first) {
+      stream << " ";
+      first = false;
+    } else {
+      stream << ", ";
+    }
+    stream << it.first << ": " << it.second;
+  }
+  stream << " }";
+
+  return stream;
+}
+
 #endif
