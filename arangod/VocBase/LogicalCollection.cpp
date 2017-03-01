@@ -853,7 +853,7 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids) c
   } else {
     result.add("replicationFactor", VPackValue(_replicationFactor));
   }
-  if (!_distributeShardsLike.empty() && !ServerState::instance()->isDBServer()) {
+  if (!_distributeShardsLike.empty() && ServerState::instance()->isCoordinator()) {
     if (translateCids) {
       CollectionNameResolver resolver(_vocbase);
       result.add("distributeShardsLike",
