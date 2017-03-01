@@ -263,6 +263,8 @@ class ImportHelper {
   size_t _rowOffset;
   size_t _rowsToSkip;
 
+  int64_t _keyColumn;
+
   std::string _onDuplicateAction;
   std::string _collectionName;
   std::string _fromCollectionPrefix;

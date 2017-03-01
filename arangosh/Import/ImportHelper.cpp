@@ -156,6 +156,7 @@ ImportHelper::ImportHelper(httpclient::SimpleHttpClient* client,
       _rowsRead(0),
       _rowOffset(0),
       _rowsToSkip(0),
+      _keyColumn(-1),
       _onDuplicateAction("error"),
       _collectionName(),
       _lineBuffer(TRI_UNKNOWN_MEM_ZONE),
@@ -481,12 +482,21 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     _lineBuffer.appendChar(',');
   }
 
+  if (_keyColumn == -1 && memcmp(field, "_key", 4) == 0) {
+    _keyColumn = column;
+  }
+
+  if (_keyColumn == static_cast<decltype(_keyColumn)>(column)) {
+    _lineBuffer.appendJsonEncoded(field, fieldLength);
+    return;
+  }
+
   if (row == 0 + _rowsToSkip || escaped) {
     // head line or escaped value
     _lineBuffer.appendJsonEncoded(field, fieldLength);
     return;
   }
-    
+
   if (!_convert) {
     _lineBuffer.appendText(field, fieldLength);
     return;
@@ -661,7 +671,7 @@ void ImportHelper::sendCsvBuffer() {
   if (!checkCreateCollection()) {
     return;
   }
-    
+
   std::unordered_map<std::string, std::string> headerFields;
   std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
                   StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
@@ -676,7 +686,7 @@ void ImportHelper::sendCsvBuffer() {
   if (_firstChunk && _overwrite) {
     url += "&overwrite=true";
   }
-  
+
   _firstChunk = false;
 
   std::unique_ptr<SimpleHttpResult> result(_client->request(
