@@ -10,6 +10,8 @@ devel
 
 * don't let read-only transactions block the WAL collector
 
+* allow passing own `graphql-sync` module instance to Foxx GraphQL router
+
 
 v3.2.alpha2 (2017-02-20)
 ------------------------
