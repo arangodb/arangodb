@@ -45,19 +45,21 @@ struct PRComputation : public VertexComputation<float, float, float> {
   PRComputation() {}
   void compute(MessageIterator<float> const& messages) override {
     float* ptr = mutableVertexData();
-    float copy = *ptr;
+    //float copy = *ptr;
 
-    if (globalSuperstep() == 0) {
-      *ptr = 1.0 / context()->vertexCount();
-    } else {
+    //if (globalSuperstep() == 0) {
+    //  *ptr = 1.0 / context()->vertexCount();
+    //} else {
+    if (globalSuperstep() > 0) {
       float sum = 0.0;
       for (const float* msg : messages) {
         sum += *msg;
       }
-      *ptr = 0.85 * sum + 0.15 / context()->vertexCount();
-    }
-    float diff = fabs(copy - *ptr);
-    aggregate<float>(kConvergence, diff);
+      *ptr = 0.85 * sum + 0.15;
+    }// / context()->vertexCount();
+    //}
+    //float diff = fabs(copy - *ptr);
+    //aggregate<float>(kConvergence, diff);
 
     RangeIterator<Edge<float>> edges = getEdges();
     float val = *ptr / edges.size();
@@ -91,8 +93,8 @@ struct PRMasterContext : public MasterContext {
   };
 
   bool postGlobalSuperstep() override {
-    float const* diff = getAggregatedValue<float>(kConvergence);
-    return globalSuperstep() < 1 || *diff > _threshold;
+    //float const* diff = getAggregatedValue<float>(kConvergence);
+    return globalSuperstep() < 20;// || *diff > _threshold;
   };
 };
 
