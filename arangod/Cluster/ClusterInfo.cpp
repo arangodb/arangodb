@@ -2074,26 +2074,30 @@ void ClusterInfo::loadServers() {
     
     if (serversRegistered.isObject()) {
       decltype(_servers) newServers;
-      decltype(_serverAliases) newAliases;
       
-      size_t i = 0;
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
+        std::string id = res.key.copyString();
         velocypack::Slice slice = res.value;
         
         if (slice.isObject() && slice.hasKey("endpoint")) {
           std::string server =
             arangodb::basics::VelocyPackHelper::getStringValue(
               slice, "endpoint", "");
+          newServers.emplace(std::make_pair(id, server));
+        }
+      }
+      decltype(_serverAliases) newAliases;
+      if (serversAliases.isObject()) {
+        for (auto const& res : VPackObjectIterator(serversAliases)) {
+          std::string id = res.key.copyString();
+          velocypack::Slice slice = res.value;
           
-          velocypack::Slice aslice;
-          try {
-            aslice = serversAliases.valueAt(i++);
-            std::string alias =
+          if (slice.isObject() && slice.hasKey("ShortName")) {
+            std::string shortName =
               arangodb::basics::VelocyPackHelper::getStringValue(
-                aslice, "ShortName", "");
-            newAliases.emplace(std::make_pair(alias, res.key.copyString()));
-          } catch (...) {}
-          newServers.emplace(std::make_pair(res.key.copyString(), server));
+                slice, "ShortName", "");
+            newAliases.emplace(std::make_pair(shortName, id));
+          }
         }
       }
       
