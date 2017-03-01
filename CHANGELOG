@@ -5,6 +5,8 @@ v3.1.13 (XXXX-XX-XX)
 
 * use exponential backoff when waiting for collection locks
 
+* repair short name server lookup in cluster in the case of a removed
+  server
 
 v3.1.12 (2017-02-28)
 --------------------
