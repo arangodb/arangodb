@@ -249,10 +249,15 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
       _errorMessage = TRI_LAST_ERROR_STR;
       return false;
     } else if (n == 0) {
+      // we have read the entire file
+      // now have the CSV parser parse an additional new line so it
+      // will definitely process the last line of the input data if
+      // it did not end with a newline
+      TRI_ParseCsvString(&parser, "\n", 1);
       break;
     }
 
-    totalRead += (int64_t)n;
+    totalRead += static_cast<int64_t>(n);
     reportProgress(totalLength, totalRead, nextProgress);
 
     TRI_ParseCsvString(&parser, buffer, n);
@@ -353,7 +358,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
       checkedFront = true;
     }
 
-    totalRead += (int64_t)n;
+    totalRead += static_cast<int64_t>(n);
     reportProgress(totalLength, totalRead, nextProgress);
 
     if (_outputBuffer.length() > _maxUploadSize) {
