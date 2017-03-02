@@ -39,6 +39,7 @@
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/HybridLogicalClock.h"
@@ -1475,8 +1476,7 @@ static void JS_QueriesCurrentAql(
     auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
 
     for (auto q : queries) {
-      auto const&& timeString = TRI_StringTimeStamp(q.started, false);
-      auto const& queryState = q.queryState.substr(8, q.queryState.size() - 9);
+      auto timeString = TRI_StringTimeStamp(q.started, false);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
       obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, q.id));
@@ -1484,7 +1484,7 @@ static void JS_QueriesCurrentAql(
       obj->Set(TRI_V8_ASCII_STRING("started"), TRI_V8_STD_STRING(timeString));
       obj->Set(TRI_V8_ASCII_STRING("runTime"),
                v8::Number::New(isolate, q.runTime));
-      obj->Set(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(queryState));
+      obj->Set(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(aql::QueryExecutionState::toString(q.state)));
       result->Set(i++, obj);
     }
 
@@ -1528,8 +1528,7 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
 
     for (auto q : queries) {
-      auto const&& timeString = TRI_StringTimeStamp(q.started, false);
-      auto const& queryState = q.queryState.substr(8, q.queryState.size() - 9);
+      auto timeString = TRI_StringTimeStamp(q.started, false);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
       obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, q.id));
@@ -1537,7 +1536,7 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       obj->Set(TRI_V8_ASCII_STRING("started"), TRI_V8_STD_STRING(timeString));
       obj->Set(TRI_V8_ASCII_STRING("runTime"),
                v8::Number::New(isolate, q.runTime));
-      obj->Set(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(queryState));
+      obj->Set(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(aql::QueryExecutionState::toString(q.state)));
       result->Set(i++, obj);
     }
 

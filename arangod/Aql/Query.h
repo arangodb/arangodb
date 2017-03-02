@@ -104,6 +104,9 @@ class Query {
 
   /// @brief return the start timestamp of the query
   double startTime () const { return _startTime; }
+  
+  /// @brief return the current runtime of the query
+  double runTime () const { return TRI_microtime() - _startTime; }
 
   /// @brief whether or not the query is killed
   inline bool killed() const { return _killed; }

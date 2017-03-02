@@ -31,14 +31,11 @@
 
 using namespace arangodb::aql;
 
-QueryEntry::QueryEntry(arangodb::aql::Query const* query, double started)
-    : query(query), started(started) {}
-
 QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id,
                                std::string const& queryString, double started,
-                               double runTime, std::string const& queryState)
+                               double runTime, QueryExecutionState::ValueType state)
     : id(id), queryString(queryString), started(started), runTime(runTime),
-      queryState(queryState) {}
+      state(state) {}
 
 double const QueryList::DefaultSlowQueryThreshold = 10.0;
 size_t const QueryList::DefaultMaxSlowQueries = 64;
@@ -62,32 +59,26 @@ QueryList::QueryList(TRI_vocbase_t*)
 QueryList::~QueryList() {
   WRITE_LOCKER(writeLocker, _lock);
 
-  for (auto& it : _current) {
-    delete it.second;
-  }
   _current.clear();
   _slow.clear();
 }
 
 /// @brief insert a query
-bool QueryList::insert(Query const* query, double stamp) {
+bool QueryList::insert(Query const* query) {
   // not enable or no query string
   if (!_enabled || query == nullptr || query->queryString() == nullptr) {
     return false;
   }
 
   try {
-    auto entry = std::make_unique<QueryEntry>(query, stamp);
-
     WRITE_LOCKER(writeLocker, _lock);
 
     TRI_IF_FAILURE("QueryList::insert") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    auto it = _current.emplace(query->id(), entry.get());
+    auto it = _current.emplace(query->id(), query);
     if (it.second) {
-      entry.release();
       return true;
     }
   } catch (...) {
@@ -97,7 +88,7 @@ bool QueryList::insert(Query const* query, double stamp) {
 }
 
 /// @brief remove a query
-void QueryList::remove(Query const* query, double now) {
+void QueryList::remove(Query const* query) {
   // we're intentionally not checking _enabled here...
 
   // note: there is the possibility that a query got inserted when the
@@ -111,78 +102,77 @@ void QueryList::remove(Query const* query, double now) {
   }
 
   size_t const maxLength = _maxQueryStringLength;
-  QueryEntry* entry = nullptr;
 
-  {
-    WRITE_LOCKER(writeLocker, _lock);
-    auto it = _current.find(query->id());
+  WRITE_LOCKER(writeLocker, _lock);
+  auto it = _current.find(query->id());
 
-    if (it != _current.end()) {
-      entry = (*it).second;
-      _current.erase(it);
+  if (it != _current.end()) {
+    Query const* query = (*it).second;
+    _current.erase(it);
 
-      TRI_ASSERT(entry != nullptr);
+    TRI_ASSERT(query != nullptr);
+    double const started = query->startTime();
+    double const now = TRI_microtime();
 
-      try {
-        // check if we need to push the query into the list of slow queries
-        if (_trackSlowQueries && _slowQueryThreshold >= 0.0 &&
-            now - entry->started >= _slowQueryThreshold) {
-          // yes.
+    try {
+      // check if we need to push the query into the list of slow queries
+      if (_trackSlowQueries && _slowQueryThreshold >= 0.0 &&
+          now - started >= _slowQueryThreshold) {
+        // yes.
 
-          char const* queryString = entry->query->queryString();
-          size_t const originalLength = entry->query->queryLength();
-          size_t length = originalLength;
+        std::string q;
+        char const* queryString = query->queryString();
+        size_t length = query->queryLength();
 
-          if (length > maxLength) {
-            length = maxLength;
-            TRI_ASSERT(length <= originalLength);
+        if (length > maxLength) {
+          // query string needs truncation
+          length = maxLength;
 
-            // do not create invalid UTF-8 sequences
-            while (length > 0) {
-              uint8_t c = queryString[length - 1];
-              if ((c & 128) == 0) {
-                // single-byte character
-                break;
-              }
-              --length;
+          // do not create invalid UTF-8 sequences
+          while (length > 0) {
+            uint8_t c = queryString[length - 1];
+            if ((c & 128) == 0) {
+              // single-byte character
+              break;
+            }
+            --length;
 
-              // start of a multi-byte sequence
-              if ((c & 192) == 192) {
-                // decrease length by one more, so we the string contains the
-                // last part of the previous (multi-byte?) sequence
-                break;
-              }
+            // start of a multi-byte sequence
+            if ((c & 192) == 192) {
+              // decrease length by one more, so we the string contains the
+              // last part of the previous (multi-byte?) sequence
+              break;
             }
           }
-
-          TRI_IF_FAILURE("QueryList::remove") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-
-          std::string q(queryString, length);
-          q.append(originalLength > maxLength ? "..." : "");
-
-          LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "', took: " << Logger::FIXED(now - entry->started);
-
-          _slow.emplace_back(QueryEntryCopy(
-              entry->query->id(),
-              std::move(q),
-              entry->started, now - entry->started,
-              std::string(" (while finished)")));
-
-          if (++_slowCount > _maxSlowQueries) {
-            // free first element
-            _slow.pop_front();
-            --_slowCount;
-          }
+          
+          q.reserve(length + 3);
+          q.append(queryString, length); 
+          q.append("...", 3);
+        } else {
+          // no truncation
+          q.append(queryString, length);
         }
-      } catch (...) {
-      }
-    }
-  }
 
-  if (entry != nullptr) {
-    delete entry;
+        TRI_IF_FAILURE("QueryList::remove") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "', took: " << Logger::FIXED(now - started);
+
+        _slow.emplace_back(QueryEntryCopy(
+            query->id(),
+            std::move(q),
+            started, now - started,
+            QueryExecutionState::ValueType::FINISHED));
+
+        if (++_slowCount > _maxSlowQueries) {
+          // free first element
+          _slow.pop_front();
+          --_slowCount;
+        }
+      }
+    } catch (...) {
+    }
   }
 }
 
@@ -199,10 +189,10 @@ int QueryList::kill(TRI_voc_tick_t id) {
       return TRI_ERROR_QUERY_NOT_FOUND;
     }
 
-    auto entry = (*it).second;
-    queryString.assign(entry->query->queryString(),
-                       entry->query->queryLength());
-    const_cast<arangodb::aql::Query*>(entry->query)->killed(true);
+    Query const* query = (*it).second;
+    queryString.assign(query->queryString(),
+                       query->queryLength());
+    const_cast<arangodb::aql::Query*>(query)->killed(true);
   }
 
   // log outside the lock
@@ -218,20 +208,19 @@ uint64_t QueryList::killAll(bool silent) {
   WRITE_LOCKER(writeLocker, _lock);
 
   for (auto& it : _current) {
-    auto entry = it.second;
-    const_cast<arangodb::aql::Query*>(entry->query)->killed(true);
+    Query const* query = it.second;
     
-    ++killed;
-      
-    std::string queryString(entry->query->queryString(),
-                            entry->query->queryLength());
+    std::string queryString(query->queryString(),
+                            query->queryLength());
   
-
     if (silent) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "killing AQL query " << entry->query->id() << " '" << queryString << "'";
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "killing AQL query " << query->id() << " '" << queryString << "'";
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << entry->query->id() << " '" << queryString << "'";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << query->id() << " '" << queryString << "'";
     }
+    
+    const_cast<arangodb::aql::Query*>(query)->killed(true);
+    ++killed;
   }
 
   return killed;
@@ -249,14 +238,14 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
     result.reserve(_current.size());
 
     for (auto const& it : _current) {
-      auto entry = it.second;
+      Query const* query = it.second;
 
-      if (entry == nullptr || entry->query->queryString() == nullptr) {
+      if (query == nullptr || query->queryString() == nullptr) {
         continue;
       }
 
-      char const* queryString = entry->query->queryString();
-      size_t const originalLength = entry->query->queryLength();
+      char const* queryString = query->queryString();
+      size_t const originalLength = query->queryLength();
       size_t length = originalLength;
 
       if (length > maxLength) {
@@ -280,13 +269,15 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
           }
         }
       }
+
+      double const started = query->startTime();
        
       result.emplace_back(
-          QueryEntryCopy(entry->query->id(),
+          QueryEntryCopy(query->id(),
                          std::string(queryString, length)
                              .append(originalLength > maxLength ? "..." : ""),
-                         entry->started, now - entry->started,
-                         QueryExecutionState::toString(entry->query->state())));
+                         started, now - started,
+                         query->state()));
     }
   }
 
