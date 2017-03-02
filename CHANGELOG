@@ -1,3 +1,37 @@
+v3.1.13 (XXXX-XX-XX)
+--------------------
+
+* changed thread handling to queue only user requests on coordinator
+
+* use exponential backoff when waiting for collection locks
+
+* repair short name server lookup in cluster in the case of a removed
+  server
+
+v3.1.12 (2017-02-28)
+--------------------
+
+* disable shell color escape sequences on Windows
+
+* fixed issue #2326
+
+* fixed issue #2320
+
+* fixed issue #2315
+
+* fixed a race condition when closing a connection
+
+* raised default hard limit on threads for very small to 64
+
+* fixed negative counting of http connection in UI
+
+* fixed a race when renaming collections
+
+* fixed a race when dropping databases
+
+* fixed a rare race in agency compaction
+
+
 v3.1.11 (2017-02-17)
 --------------------
 
@@ -106,9 +140,10 @@ shards.
 * added server startup option `--query.memory-limit`
 
 * added convenience function to create vertex-centric indexes.
-Usage: `db.collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"})`
-That will create an index that can be used on OUTBOUND with filtering on the
-edge attribute `label`.
+
+  Usage: `db.collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"})`
+  That will create an index that can be used on OUTBOUND with filtering on the
+  edge attribute `label`.
 
 * added option -D to define a configuration file environment key=value
 
@@ -120,6 +155,8 @@ edge attribute `label`.
   collapsed to a plain `b/`). Now `..` in incoming request URIs are not collapsed.
 
 * improve cluster stability in various ways
+
+* add support for Swagger tags in Foxx
 
 
 v3.1.9 (2017-01-23)
@@ -567,6 +604,8 @@ v3.1.alpha2 (2016-09-01)
 
 v3.0.13 (XXXX-XX-XX)
 --------------------
+
+* fixed issue #2315
 
 * fixed issue #2210
 

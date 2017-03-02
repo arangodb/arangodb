@@ -75,20 +75,8 @@ class LoggerStream {
   }
 
   template <typename T>
-  LoggerStream& operator<<(T obj) {
+  LoggerStream& operator<<(T const& obj) {
     _out << obj;
-    return *this;
-  }
-
-  template <typename T>
-  LoggerStream& operator<<(std::vector<T> const& v) {
-    for (auto const& i : v) _out << i << " ";
-    return *this;
-  }
-
-  template <typename T>
-  LoggerStream& operator<<(std::unordered_set<T> const& us) {
-    for (auto const& i : us) _out << i;
     return *this;
   }
 

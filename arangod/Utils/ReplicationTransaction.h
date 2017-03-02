@@ -39,7 +39,9 @@ class ReplicationTransaction : public Transaction {
   ReplicationTransaction(TRI_vocbase_t* vocbase)
       : Transaction(StandaloneTransactionContext::Create(vocbase)) {
 
-    _vocbase->use();
+    if (!_vocbase->use()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
   }
 
   /// @brief end the transaction

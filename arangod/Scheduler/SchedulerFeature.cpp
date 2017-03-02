@@ -67,11 +67,13 @@ void SchedulerFeature::collectOptions(
   options->addOption("--server.threads", "number of threads",
                      new UInt64Parameter(&_nrServerThreads));
 
-  options->addHiddenOption("--server.minimal-threads", "minimal number of threads",
-                     new Int64Parameter(&_nrMinimalThreads));
+  options->addHiddenOption("--server.minimal-threads",
+                           "minimal number of threads",
+                           new Int64Parameter(&_nrMinimalThreads));
 
-  options->addHiddenOption("--server.maximal-threads", "maximal number of threads",
-                     new Int64Parameter(&_nrMaximalThreads));
+  options->addHiddenOption("--server.maximal-threads",
+                           "maximal number of threads",
+                           new Int64Parameter(&_nrMaximalThreads));
 
   options->addOption("--server.maximal-queue-size",
                      "maximum queue length for asynchronous operations",
@@ -93,7 +95,23 @@ void SchedulerFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  if (_nrMinimalThreads != 0 && _nrMaximalThreads != 0 && _nrMinimalThreads > _nrMaximalThreads) {
+  if (_nrMinimalThreads < 2) {
+    _nrMinimalThreads = 2;
+  }
+
+  if (_nrServerThreads <= 0) {
+    _nrServerThreads = 1;
+  }
+
+  if (_nrMaximalThreads <= 0) {
+    _nrMaximalThreads = 4 * _nrServerThreads;
+  }
+
+  if (_nrMaximalThreads < 64) {
+    _nrMaximalThreads = 64;
+  }
+
+  if (_nrMinimalThreads > _nrMaximalThreads) {
     _nrMaximalThreads = _nrMinimalThreads;
   }
 }
@@ -153,7 +171,6 @@ void SchedulerFeature::stop() {
     LOG_TOPIC(TRACE, Logger::STARTUP) << "waiting for scheduler to stop";
     usleep(100000);
   }
-
 }
 
 void SchedulerFeature::unprepare() {
@@ -234,12 +251,11 @@ bool CtrlHandler(DWORD eventType) {
 
 void SchedulerFeature::buildScheduler() {
   _scheduler =
-      std::make_unique<Scheduler>(static_cast<size_t>(_nrServerThreads),
-                                  static_cast<size_t>(_queueSize));
+      std::make_unique<Scheduler>(static_cast<uint64_t>(_nrMinimalThreads),
+                                  static_cast<uint64_t>(_nrServerThreads),
+                                  static_cast<uint64_t>(_nrMaximalThreads),
+                                  static_cast<uint64_t>(_queueSize));
 
-  _scheduler->setMinimal(_nrMinimalThreads);
-  _scheduler->setRealMaximum(_nrMaximalThreads);
-  
   SCHEDULER = _scheduler.get();
 }
 
@@ -255,7 +271,8 @@ void SchedulerFeature::buildControlCHandler() {
 #else
 
   auto ioService = _scheduler->managerService();
-  _exitSignals = std::make_shared<boost::asio::signal_set>(*ioService, SIGINT, SIGTERM, SIGQUIT);
+  _exitSignals = std::make_shared<boost::asio::signal_set>(*ioService, SIGINT,
+                                                           SIGTERM, SIGQUIT);
 
   _signalHandler = [this](const boost::system::error_code& error, int number) {
     if (error) {
@@ -284,7 +301,8 @@ void SchedulerFeature::buildHangupHandler() {
 #ifndef WIN32
   auto ioService = _scheduler->managerService();
 
-  _hangupSignals = std::make_shared<boost::asio::signal_set>(*ioService, SIGHUP);
+  _hangupSignals =
+      std::make_shared<boost::asio::signal_set>(*ioService, SIGHUP);
 
   _hangupHandler = [this](const boost::system::error_code& error, int number) {
     if (error) {

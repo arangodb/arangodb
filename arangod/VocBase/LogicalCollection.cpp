@@ -1013,8 +1013,6 @@ int LogicalCollection::rename(std::string const& newName) {
   // Otherwise caching is destroyed.
   TRI_ASSERT(!ServerState::instance()->isCoordinator());  // NOT YET IMPLEMENTED
 
-  WRITE_LOCKER_EVENTUAL(locker, _lock, 1000);
-
   // Check for illeagal states.
   switch (_status) {
     case TRI_VOC_COL_STATUS_CORRUPTED:
@@ -1024,12 +1022,6 @@ int LogicalCollection::rename(std::string const& newName) {
     default:
       // Fall through intentional
       break;
-  }
-
-  // Check for duplicate name
-  auto other = _vocbase->lookupCollection(newName);
-  if (other != nullptr) {
-    return TRI_ERROR_ARANGO_DUPLICATE_NAME;
   }
 
   switch (_status) {
@@ -3151,7 +3143,8 @@ int LogicalCollection::beginReadTimed(bool useDeadlockDetector,
   // std::cout << "BeginReadTimed: " << _name << std::endl;
   int iterations = 0;
   bool wasBlocked = false;
-  double end = 0.0;
+  uint64_t waitTime = 0;  // indicate that times uninitialized
+  double startTime = 0.0;
 
   while (true) {
     TRY_READ_LOCKER(locker, _idxLock);
@@ -3207,26 +3200,33 @@ int LogicalCollection::beginReadTimed(bool useDeadlockDetector,
       }
     }
 
-    if (end == 0.0) {
+    double now = TRI_microtime();
+
+    if (waitTime == 0) {   // initialize times
       // set end time for lock waiting
       if (timeout <= 0.0) {
         timeout = 15.0 * 60.0;
       }
-      end = TRI_microtime() + timeout;
-      TRI_ASSERT(end > 0.0);
+      startTime = now;
+      waitTime = 1;
     }
 
-    std::this_thread::yield();
-
-    TRI_ASSERT(end > 0.0);
-
-    if (TRI_microtime() > end) {
+    if (now > startTime + timeout) {
       if (useDeadlockDetector) {
         _vocbase->_deadlockDetector.unsetReaderBlocked(this);
       }
       LOG(TRACE) << "timed out waiting for read-lock on collection '" << name()
                  << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
+    }
+
+    if (now - startTime < 0.001) {
+      std::this_thread::yield();
+    } else {
+      usleep(waitTime);
+      if (waitTime < 500000) {
+        waitTime *= 2;
+      }
     }
   }
 }
@@ -3249,7 +3249,8 @@ int LogicalCollection::beginWriteTimed(bool useDeadlockDetector,
   // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
   int iterations = 0;
   bool wasBlocked = false;
-  double end = 0.0;
+  uint64_t waitTime = 0;  // indicate that times uninitialized
+  double startTime = 0.0;
 
   while (true) {
     TRY_WRITE_LOCKER(locker, _idxLock);
@@ -3303,22 +3304,18 @@ int LogicalCollection::beginWriteTimed(bool useDeadlockDetector,
       }
     }
 
-    std::this_thread::yield();
+    double now = TRI_microtime();
 
-    if (end == 0.0) {
+    if (waitTime == 0) {   // initialize times
       // set end time for lock waiting
       if (timeout <= 0.0) {
         timeout = 15.0 * 60.0;
       }
-      end = TRI_microtime() + timeout;
-      TRI_ASSERT(end > 0.0);
+      startTime = now;
+      waitTime = 1;
     }
 
-    std::this_thread::yield();
-
-    TRI_ASSERT(end > 0.0);
-
-    if (TRI_microtime() > end) {
+    if (now > startTime + timeout) {
       if (useDeadlockDetector) {
         _vocbase->_deadlockDetector.unsetWriterBlocked(this);
       }
@@ -3326,6 +3323,16 @@ int LogicalCollection::beginWriteTimed(bool useDeadlockDetector,
                  << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }
+
+    if (now - startTime < 0.001) {
+      std::this_thread::yield();
+    } else {
+      usleep(waitTime);
+      if (waitTime < 500000) {
+        waitTime *= 2;
+      }
+    }
+
   }
 }
 

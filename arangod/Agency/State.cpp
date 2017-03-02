@@ -478,14 +478,6 @@ bool State::createCollection(std::string const& name) {
   return true;
 }
 
-template <class T>
-std::ostream& operator<<(std::ostream& o, std::deque<T> const& d) {
-  for (auto const& i : d) {
-    o << i;
-  }
-  return o;
-}
-
 /// Load collections
 bool State::loadCollections(TRI_vocbase_t* vocbase,
                             QueryRegistry* queryRegistry, bool waitForSync) {

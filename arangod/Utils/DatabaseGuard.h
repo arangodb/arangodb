@@ -51,6 +51,8 @@ class DatabaseGuard {
     if (_vocbase == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
+    
+    TRI_ASSERT(!_vocbase->isDangling());
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -66,6 +68,8 @@ class DatabaseGuard {
     if (_vocbase == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
+    
+    TRI_ASSERT(!_vocbase->isDangling());
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -74,6 +78,7 @@ class DatabaseGuard {
 
   ~DatabaseGuard() {
     TRI_ASSERT(_vocbase != nullptr);
+    TRI_ASSERT(!_vocbase->isDangling());
     _vocbase->release();
   }
 

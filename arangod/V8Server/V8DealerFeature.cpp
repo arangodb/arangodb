@@ -452,6 +452,11 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
   if (_stopping) {
     return nullptr;
   }
+  
+  if (!vocbase->use()) {
+    return nullptr;
+  }
+
 
   V8Context* context = nullptr;
 
@@ -506,6 +511,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
     }
 
     if (context == nullptr) {
+      vocbase->release();
       return nullptr;
     }
   }
@@ -536,6 +542,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
     // in case we are in the shutdown phase, do not enter a context!
     // the context might have been deleted by the shutdown
     if (_stopping) {
+      vocbase->release();
       return nullptr;
     }
 
@@ -550,7 +557,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
     // should not fail because we reserved enough space beforehand
     _busyContexts.emplace(context);
   }
-
+  
   // when we get here, we should have a context and an isolate
   TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->_isolate != nullptr);
@@ -579,8 +586,6 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
       v8g->_query = nullptr;
       v8g->_vocbase = vocbase;
       v8g->_allowUseDatabase = allowUseDatabase;
-
-      vocbase->use();
 
       try {
         LOG(TRACE) << "entering V8 context " << context->_id;
@@ -752,7 +757,7 @@ void V8DealerFeature::applyContextUpdates() {
           vocbase, true, static_cast<ssize_t>(i));
 
       if (context == nullptr) {
-        LOG(FATAL) << "could not updated V8 context #" << i;
+        LOG(FATAL) << "could not update V8 context #" << i;
         FATAL_ERROR_EXIT();
       }
 

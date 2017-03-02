@@ -572,14 +572,6 @@ void AgencyCommManager::failedNonLocking(
   
 }
 
-template<class T>
-inline std::ostream& operator<<(std::ostream& o, std::deque<T> const& d) {
-  for (const auto& i : d) {
-    o << i << " ";
-  }
-  return o;
-}
-
 std::string AgencyCommManager::redirect(
     std::unique_ptr<httpclient::GeneralClientConnection> connection,
     std::string const& endpoint, std::string const& location,

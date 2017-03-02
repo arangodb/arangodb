@@ -23,11 +23,10 @@
 #ifndef ARANGOD_CONSENSUS_AGENCY_COMMON_H
 #define ARANGOD_CONSENSUS_AGENCY_COMMON_H 1
 
-#include "AgencyCommon.h"
-
 #include <chrono>
 
 #include <velocypack/Buffer.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/VelocyPackHelper.h"
@@ -115,6 +114,7 @@ struct log_t {
       << " " << " " << l.clientId << " "<< l.timestamp.count();
     return o;
   }
+  
 };
 
 struct priv_rpc_ret_t {
@@ -122,7 +122,16 @@ struct priv_rpc_ret_t {
   term_t term;
   priv_rpc_ret_t(bool s, term_t t) : success(s), term(t) {}
 };
+
 }
 }
+
+inline std::ostream& operator<<(std::ostream& o, arangodb::consensus::log_t const& l) {
+  o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson()
+    << " " << " " << l.clientId << " "<< l.timestamp.count();
+  return o;
+}
+  
+
 
 #endif

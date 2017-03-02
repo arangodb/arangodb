@@ -38,6 +38,7 @@ TRI_vocbase_t* GetContextVocBase(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g->_vocbase != nullptr);
+  TRI_ASSERT(!v8g->_vocbase->isDangling());
   return static_cast<TRI_vocbase_t*>(v8g->_vocbase);
 }
 

@@ -40,10 +40,6 @@ class JobGuard {
   ~JobGuard() { release(); }
 
  public:
-  bool isIdle() {
-    return _scheduler->isIdle();
-  }
-
   void work() {
     if (0 == _isWorking) {
       _scheduler->workThread();

@@ -160,7 +160,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief creates a collection, based on the VelocyPack provided TODO: MOVE
   //////////////////////////////////////////////////////////////////////////////
 
-  int createCollection(VPackSlice const&, arangodb::LogicalCollection**, bool);
+  int createCollection(VPackSlice, arangodb::LogicalCollection**, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a restore command for a specific collection

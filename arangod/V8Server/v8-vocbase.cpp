@@ -58,7 +58,6 @@
 #include "Rest/Version.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/VocbaseContext.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -2025,7 +2024,8 @@ static void JS_IsSystemDatabase(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fake this method so the interface is similar to the client.
 ////////////////////////////////////////////////////////////////////////////////
-static void JS_fakeFlushCache(v8::FunctionCallbackInfo<v8::Value> const& args) {
+
+static void JS_FakeFlushCache(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END;
@@ -2034,6 +2034,7 @@ static void JS_fakeFlushCache(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock databaseUseDatabase
 ////////////////////////////////////////////////////////////////////////////////
+
 static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -2073,6 +2074,8 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+
+  TRI_ASSERT(!vocbase->isDangling());
 
   // switch databases
   void* orig = v8g->_vocbase;
@@ -2341,6 +2344,8 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
+  TRI_ASSERT(!vocbase->isDangling());
+
   if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
   }
@@ -2381,6 +2386,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_ASSERT(database != nullptr);
+  TRI_ASSERT(!database->isDangling());
 
   // copy users into context
   if (args.Length() >= 3 && args[2]->IsArray()) {
@@ -2395,21 +2401,35 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // switch databases
-  TRI_vocbase_t* orig = v8g->_vocbase;
-  TRI_ASSERT(orig != nullptr);
+  {
+    TRI_vocbase_t* orig = v8g->_vocbase;
+    TRI_ASSERT(orig != nullptr);
 
-  v8g->_vocbase = database;
+    v8g->_vocbase = database;
 
-  // initalize database
-  V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
-      isolate, isolate->GetCurrentContext(),
-      "server/bootstrap/local-database.js");
+    // initalize database
+    try {
+      V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
+          isolate, isolate->GetCurrentContext(),
+          "server/bootstrap/local-database.js");
+      if (v8g->_vocbase == database) {
+        // decrease the reference-counter only if we are coming back with the same database
+        database->release();
+      }
 
-  // and switch back
-  v8g->_vocbase = orig;
+      // and switch back
+      v8g->_vocbase = orig;
+    } catch (...) {
+      if (v8g->_vocbase == database) {
+        // decrease the reference-counter only if we are coming back with the same database
+        database->release();
+      }
 
-  // finally decrease the reference-counter
-  database->release();
+      // and switch back
+      v8g->_vocbase = orig;
+      throw;
+    }
+  }
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -2488,6 +2508,7 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
+  
 
   // clear collections in cache object
   TRI_ClearObjectCacheV8(isolate);
@@ -2851,9 +2872,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                        JS_Databases);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_useDatabase"),
                        JS_UseDatabase);
-
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_flushCache"),
-                       JS_fakeFlushCache, true);
+                       JS_FakeFlushCache, true);
 
   TRI_InitV8Statistics(isolate, context);
 

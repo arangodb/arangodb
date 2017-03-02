@@ -427,8 +427,15 @@ build-dist-books:
 		DISPL="$${DISPLAY}"; \
 	fi; \
 	make build-books DISPLAY="$${DISP}"; \
-	mkdir -p ${OUTPUT_DIR}; \
-	( cd books; tar -czf ${OUTPUT_DIR}/ArangoDB-${newVersionNumber}.tar.gz ${ALLBOOKS} index.html; ); \
+	mkdir -p ${OUTPUT_DIR} ; \
+	( \
+		mv books ArangoDB-${newVersionNumber} ; \
+		if test -n "${COOKBOOK_DIR}" ; then \
+			cp -a ${COOKBOOK_DIR} ArangoDB-${newVersionNumber}/cookbook ; \
+		fi ; \
+		tar -czf ${OUTPUT_DIR}/ArangoDB-${newVersionNumber}.tar.gz ArangoDB-${newVersionNumber} ; \
+		mv ArangoDB-${newVersionNumber} books ; \
+	) ; \
 	for book in $(ALLBOOKS); do \
 		make build-book-dist NAME=$${book} DISPLAY="$${DISP}" ; \
 	done; \
