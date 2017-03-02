@@ -1079,7 +1079,7 @@ std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject(
  
   if (itKeys.size() != itValues.size()) { 
     errorMsg = positionize(lineNumber) + "wrong number of JSON values (got " +
-               std::to_string(itKeys.size()) + ", expected " + std::to_string(itValues.size()) + ")";
+               std::to_string(itValues.size()) + ", expected " + std::to_string(itKeys.size()) + ")";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, errorMsg);
   }
 
