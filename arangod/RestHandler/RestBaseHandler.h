@@ -70,7 +70,7 @@ class RestBaseHandler : public rest::RestHandler {
 
  protected:
   /// @brief parses the body as VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> parseVelocyPackBody(arangodb::velocypack::Options const*, bool&);
+  std::shared_ptr<arangodb::velocypack::Builder> parseVelocyPackBody(bool& success);
 
   template <typename Payload>
   void writeResult(Payload&&, arangodb::velocypack::Options const& options);

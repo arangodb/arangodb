@@ -412,7 +412,7 @@ void RestCursorHandler::createCursor() {
   try {
     bool parseSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+        parseVelocyPackBody(parseSuccess);
 
     if (!parseSuccess) {
       return;

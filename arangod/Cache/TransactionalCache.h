@@ -76,10 +76,11 @@ class TransactionalCache final : public Cache {
  private:
   // creator -- do not use constructor explicitly
   static std::shared_ptr<Cache> create(Manager* manager, uint64_t requestedSize,
-                                       bool allowGrowth);
+                                       bool allowGrowth,
+                                       bool enableWindowedStats);
 
   TransactionalCache(Manager* manager, uint64_t requestedLimit,
-                     bool allowGrowth);
+                     bool allowGrowth, bool enableWindowedStats);
   ~TransactionalCache();
 
   // management

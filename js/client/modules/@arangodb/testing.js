@@ -205,6 +205,7 @@ const optionsDefaults = {
 const _ = require('lodash');
 const fs = require('fs');
 const yaml = require('js-yaml');
+const xmldom = require('xmldom');
 
 const base64Encode = require('internal').base64Encode;
 const download = require('internal').download;
@@ -2904,6 +2905,10 @@ testFuncs.dump = function (options) {
 testFuncs.export = function (options) {
   const cluster = options.cluster ? '-cluster' : '';
   const tmpPath = fs.getTempPath();
+  const DOMParser = new xmldom.DOMParser({locator: {}, errorHandler: {
+    warning: function(err) { xmlErrors = err; }, error: function(err) { xmlErrors = err; }, fatalError: function(err) { xmlErrors = err; }
+  }});
+  let xmlErrors = null;
 
   print(CYAN + 'export tests...' + RESET);
 
@@ -2972,13 +2977,17 @@ testFuncs.export = function (options) {
   print(CYAN + Date() + ': Export data (xgmml)' + RESET);
   args['type'] = 'xgmml';
   args['graph-name'] = 'UnitTestsExport';
-  results.exportJsonl = executeAndWait(ARANGOEXPORT_BIN, toArgv(args), options);
+  results.exportXgmml = executeAndWait(ARANGOEXPORT_BIN, toArgv(args), options);
   try {
-    const filesContent = fs.read(fs.join(tmpPath, 'UnitTestsExport.xgmml')).split('\n');
-    // validate xml need npm module for that, in progress
-    // results.parseJsonl = { status: true };
+    const filesContent = fs.read(fs.join(tmpPath, 'UnitTestsExport.xgmml'));
+    DOMParser.parseFromString(filesContent);
+    results.parseXgmml = { status: true };
+
+    if (xmlErrors !== null) {
+      results.parseXgmml = { status: false, message: xmlErrors };
+    }
   } catch(e) {
-    results.parseJsonl = {status: false, message: e };
+    results.parseXgmml = {status: false, message: e };
   }
 
   return shutdown();

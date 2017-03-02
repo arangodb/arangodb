@@ -57,9 +57,10 @@ void TransactionalCache::blackList(void const* key, uint32_t keySize) {
 
 std::shared_ptr<Cache> TransactionalCache::create(Manager* manager,
                                                   uint64_t requestedSize,
-                                                  bool allowGrowth) {
-  TransactionalCache* cache =
-      new TransactionalCache(manager, requestedSize, allowGrowth);
+                                                  bool allowGrowth,
+                                                  bool enableWindowedStats) {
+  TransactionalCache* cache = new TransactionalCache(
+      manager, requestedSize, allowGrowth, enableWindowedStats);
 
   if (cache == nullptr) {
     return std::shared_ptr<Cache>(nullptr);
@@ -74,10 +75,13 @@ std::shared_ptr<Cache> TransactionalCache::create(Manager* manager,
 
 TransactionalCache::TransactionalCache(Manager* manager,
                                        uint64_t requestedLimit,
-                                       bool allowGrowth)
-    : Cache(manager, requestedLimit, allowGrowth, [](Cache* p) -> void {
-        delete reinterpret_cast<TransactionalCache*>(p);
-      }) {
+                                       bool allowGrowth,
+                                       bool enableWindowedStats)
+    : Cache(manager, requestedLimit, allowGrowth, enableWindowedStats,
+            [](Cache* p) -> void {
+              delete reinterpret_cast<TransactionalCache*>(p);
+            },
+            sizeof(TransactionalCache)) {
   // TODO: implement this
 }
 

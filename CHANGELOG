@@ -1,7 +1,16 @@
 devel
 -----
 
-* don't let read-only transactions block the WAL collector 
+* always validate incoming JSON HTTP requests for duplicate attribute names
+  
+  Incoming JSON data with duplicate attribute names will now be rejected as
+  invalid. Previous versions of ArangoDB only validated the uniqueness of
+  attribute names inside incoming JSON for some API endpoints, but not
+  consistently for all APIs. 
+
+* don't let read-only transactions block the WAL collector
+
+* allow passing own `graphql-sync` module instance to Foxx GraphQL router
 
 
 v3.2.alpha2 (2017-02-20)
@@ -68,6 +77,8 @@ v3.2.alpha1 (2017-02-05)
 * changed index filling to make it more parallel, dispatch tasks to boost::asio
 
 * more detailed stacktraces in Foxx apps
+
+* generated Foxx services now use swagger tags
 
 
 v3.1.12 (XXXX-XX-XX)
@@ -228,6 +239,8 @@ shards.
 * module.context.dependencies is now immutable
 
 * process.stdout.isTTY now returns `true` in arangosh and when running arangod with the `--console` flag
+
+* add support for Swagger tags in Foxx
 
 
 v3.1.9 (XXXX-XX-XX)

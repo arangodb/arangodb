@@ -237,7 +237,6 @@ typedef long suseconds_t;
     TRI_LogBacktrace();                       \
     arangodb::Logger::flush();                \
     arangodb::Logger::shutdown();             \
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr); \
     std::abort();                             \
   } while (0)
 

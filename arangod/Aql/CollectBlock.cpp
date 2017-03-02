@@ -179,8 +179,7 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
     }
     _aggregateRegisters.emplace_back(
         std::make_pair((*itOut).second.registerId, reg));
-    _currentGroup.aggregators.emplace_back(
-        std::move(Aggregator::fromTypeString(_trx, p.second.second)));
+    _currentGroup.aggregators.emplace_back(Aggregator::fromTypeString(_trx, p.second.second));
   }
   TRI_ASSERT(_aggregateRegisters.size() == en->_aggregateVariables.size());
   TRI_ASSERT(_aggregateRegisters.size() == _currentGroup.aggregators.size());
@@ -711,7 +710,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           // no aggregate registers. this means we'll only count the number of
           // items
           if (en->_count) {
-            aggregateValues->emplace_back(std::move(std::make_unique<AggregatorLength>(_trx, 1)));
+            aggregateValues->emplace_back(std::make_unique<AggregatorLength>(_trx, 1));
           }
         } else {
           // we do have aggregate registers. create them as empty AqlValues
@@ -720,8 +719,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           // initialize aggregators
           size_t j = 0;
           for (auto const& r : en->_aggregateVariables) {
-            aggregateValues->emplace_back(
-                std::move(Aggregator::fromTypeString(_trx, r.second.second)));
+            aggregateValues->emplace_back(Aggregator::fromTypeString(_trx, r.second.second));
             aggregateValues->back()->reduce(
                 GetValueForRegister(cur, _pos, _aggregateRegisters[j].second));
             ++j;

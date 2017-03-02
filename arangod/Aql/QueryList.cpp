@@ -286,7 +286,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
                          std::string(queryString, length)
                              .append(originalLength > maxLength ? "..." : ""),
                          entry->started, now - entry->started,
-                         entry->query->getStateString()));
+                         QueryExecutionState::toString(entry->query->state())));
     }
   }
 

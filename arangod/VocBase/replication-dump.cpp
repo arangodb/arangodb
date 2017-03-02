@@ -618,7 +618,7 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   int res;
   {
     auto mmfiles = arangodb::MMFilesCollection::toMMFilesCollection(collection);
-    CompactionPreventer compactionPreventer(mmfiles);
+    MMFilesCompactionPreventer compactionPreventer(mmfiles);
 
     try {
       res = DumpCollection(dump, collection, collection->vocbase()->id(),

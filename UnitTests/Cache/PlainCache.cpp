@@ -225,6 +225,7 @@ BOOST_AUTO_TEST_CASE(tst_st_shrink) {
     }
   }
 
+  cache->disableGrowth();
   uint64_t target = cache->usage() / 2;
   while (!cache->resize(target)) {
   };
@@ -238,13 +239,7 @@ BOOST_AUTO_TEST_CASE(tst_st_shrink) {
     }
   }
 
-  uint64_t lastUsage = cache->usage();
-  while (true) {
-    usleep(10000);
-    if (cache->usage() == lastUsage) {
-      break;
-    }
-    lastUsage = cache->usage();
+  while (cache->isResizing()) {
   }
   BOOST_CHECK_MESSAGE(cache->usage() <= target,
                       cache->usage() << " !<= " << target);
@@ -345,6 +340,83 @@ BOOST_AUTO_TEST_CASE(tst_mt_mixed_load) {
 
   manager.destroyCache(cache);
   RandomGenerator::shutdown();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test statistics (single-threaded)
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE(tst_st_stats) {
+  uint64_t cacheLimit = 256ULL * 1024ULL;
+  Manager manager(nullptr, 4ULL * cacheLimit);
+  auto cacheMiss =
+      manager.createCache(Manager::CacheType::Plain, cacheLimit, false, true);
+  auto cacheHit =
+      manager.createCache(Manager::CacheType::Plain, cacheLimit, false, true);
+  auto cacheMixed =
+      manager.createCache(Manager::CacheType::Plain, cacheLimit, false, true);
+
+  for (uint64_t i = 0; i < 1024; i++) {
+    CachedValue* value =
+        CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+    bool success = cacheHit->insert(value);
+    BOOST_CHECK(success);
+    value = CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+    success = cacheMiss->insert(value);
+    BOOST_CHECK(success);
+    value = CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+    success = cacheMixed->insert(value);
+    BOOST_CHECK(success);
+  }
+
+  for (uint64_t i = 0; i < 1024; i++) {
+    auto f = cacheHit->find(&i, sizeof(uint64_t));
+  }
+  {
+    auto cacheStats = cacheHit->hitRates();
+    auto managerStats = manager.globalHitRates();
+    BOOST_CHECK_EQUAL(cacheStats.first, 100.0);
+    BOOST_CHECK_EQUAL(cacheStats.second, 100.0);
+    BOOST_CHECK_EQUAL(managerStats.first, 100.0);
+    BOOST_CHECK_EQUAL(managerStats.second, 100.0);
+  }
+
+  for (uint64_t i = 1024; i < 2048; i++) {
+    auto f = cacheMiss->find(&i, sizeof(uint64_t));
+  }
+  {
+    auto cacheStats = cacheMiss->hitRates();
+    auto managerStats = manager.globalHitRates();
+    BOOST_CHECK_EQUAL(cacheStats.first, 0.0);
+    BOOST_CHECK_EQUAL(cacheStats.second, 0.0);
+    BOOST_CHECK(managerStats.first > 49.0);
+    BOOST_CHECK(managerStats.first < 51.0);
+    BOOST_CHECK(managerStats.second > 49.0);
+    BOOST_CHECK(managerStats.second < 51.0);
+  }
+
+  for (uint64_t i = 0; i < 1024; i++) {
+    auto f = cacheMixed->find(&i, sizeof(uint64_t));
+  }
+  for (uint64_t i = 1024; i < 2048; i++) {
+    auto f = cacheMixed->find(&i, sizeof(uint64_t));
+  }
+  {
+    auto cacheStats = cacheMixed->hitRates();
+    auto managerStats = manager.globalHitRates();
+    BOOST_CHECK(cacheStats.first > 49.0);
+    BOOST_CHECK(cacheStats.first < 51.0);
+    BOOST_CHECK(cacheStats.second > 49.0);
+    BOOST_CHECK(cacheStats.second < 51.0);
+    BOOST_CHECK(managerStats.first > 49.0);
+    BOOST_CHECK(managerStats.first < 51.0);
+    BOOST_CHECK(managerStats.second > 49.0);
+    BOOST_CHECK(managerStats.second < 51.0);
+  }
+
+  manager.destroyCache(cacheHit);
+  manager.destroyCache(cacheMiss);
+  manager.destroyCache(cacheMixed);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

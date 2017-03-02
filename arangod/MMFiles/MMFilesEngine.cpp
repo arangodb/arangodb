@@ -533,6 +533,10 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
 
   return TRI_ERROR_NO_ERROR;
 }
+  
+void MMFilesEngine::waitForSync(TRI_voc_tick_t tick) {
+  MMFilesLogfileManager::instance()->slots()->waitForTick(tick);
+}
 
 TRI_vocbase_t* MMFilesEngine::openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) {
   VPackSlice idSlice = args.get("id");

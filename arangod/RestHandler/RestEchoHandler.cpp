@@ -39,7 +39,7 @@ RestEchoHandler::RestEchoHandler(GeneralRequest* request, GeneralResponse* respo
 RestStatus RestEchoHandler::execute() {
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
 
   if (parseSuccess) {
     VPackBuilder result;

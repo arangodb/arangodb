@@ -62,7 +62,7 @@ RestStatus RestSimpleHandler::execute() {
   if (type == rest::RequestType::PUT) {
     bool parsingSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(&VPackOptions::Defaults, parsingSuccess);
+        parseVelocyPackBody(parsingSuccess);
 
     if (!parsingSuccess) {
       return RestStatus::DONE;
