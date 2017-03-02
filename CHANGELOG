@@ -1,6 +1,11 @@
 devel
 -----
 
+* change default string truncation length from 80 characters to 256 characters for
+  `print`/`printShell` functions in ArangoShell and arangod. This will emit longer
+  prefixes of string values before truncating them with `...`, which is helpful
+  for debugging.
+
 * always validate incoming JSON HTTP requests for duplicate attribute names
   
   Incoming JSON data with duplicate attribute names will now be rejected as
