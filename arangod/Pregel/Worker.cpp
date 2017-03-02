@@ -559,12 +559,14 @@ void Worker<V, E, M>::_finishedProcessing() {
 /// in async mode checks if there are messages to process
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_continueAsync() {
-  MUTEX_LOCKER(guard, _commandMutex);
-  if (_state != WorkerState::IDLE || _writeCache->containedMessageCount() == 0) {
-    return;
+  {
+    MUTEX_LOCKER(guard, _commandMutex);
+    if (_state != WorkerState::IDLE || _writeCache->containedMessageCount() == 0) {
+      return;
+    }
+      // avoid calling this method accidentially
+    _state = WorkerState::COMPUTING;
   }
-    // avoid calling this method accidentially
-  _state = WorkerState::COMPUTING;
   
   ThreadPool *pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this]{
@@ -750,3 +752,5 @@ template class arangodb::pregel::Worker<SCCValue, int8_t,
 template class arangodb::pregel::Worker<HITSValue, int8_t, SenderMessage<double>>;
 template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
 template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;
+template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;
+

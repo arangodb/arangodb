@@ -252,12 +252,15 @@ void CombiningOutCache<M>::flushMessages() {
 // template types to create
 
 template class arangodb::pregel::OutCache<int64_t>;
+template class arangodb::pregel::OutCache<uint64_t>;
 template class arangodb::pregel::OutCache<float>;
 template class arangodb::pregel::OutCache<double>;
 template class arangodb::pregel::ArrayOutCache<int64_t>;
+template class arangodb::pregel::ArrayOutCache<uint64_t>;
 template class arangodb::pregel::ArrayOutCache<float>;
 template class arangodb::pregel::ArrayOutCache<double>;
 template class arangodb::pregel::CombiningOutCache<int64_t>;
+template class arangodb::pregel::CombiningOutCache<uint64_t>;
 template class arangodb::pregel::CombiningOutCache<float>;
 template class arangodb::pregel::CombiningOutCache<double>;
 
