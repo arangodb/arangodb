@@ -1,6 +1,8 @@
 v3.1.13 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #2214
+
 * fixed issue #2342
 
 * changed thread handling to queue only user requests on coordinator
