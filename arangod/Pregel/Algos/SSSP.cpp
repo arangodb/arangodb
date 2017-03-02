@@ -59,7 +59,7 @@ uint32_t SSSPAlgorithm::messageBatchSize(WorkerConfig const& config,
   } else {
     double msgsPerSec = stats.sendCount / stats.superstepRuntimeSecs;
     msgsPerSec /= config.parallelism();  // per thread
-    return msgsPerSec > 250.0 ? (uint32_t)msgsPerSec : 250;
+    return msgsPerSec > 100.0 ? (uint32_t)msgsPerSec : 100;
   }
 }
 

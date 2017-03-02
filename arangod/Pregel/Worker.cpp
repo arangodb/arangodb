@@ -563,8 +563,11 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::_continueAsync() {
   uint64_t cnt = _writeCache->containedMessageCount();
   if (_state == WorkerState::IDLE && cnt > 0) {
-    if (cnt < 10) {
-      usleep(10000);
+    // avoid calling this method accidentially
+    _state = WorkerState::COMPUTING;
+    
+    if (cnt < _messageBatchSize) {
+      usleep(50000);
     }
     {  // swap these pointers atomically
       MY_WRITE_LOCKER(guard, _cacheRWLock);
