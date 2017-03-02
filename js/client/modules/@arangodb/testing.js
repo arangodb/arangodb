@@ -1163,6 +1163,10 @@ function runArangoImp (options, instanceInfo, what) {
   if (what.separator !== undefined) {
     args['separator'] = what.separator;
   }
+  
+  if (what.convert !== undefined) {
+    args['convert'] = what.convert ? 'true' : 'false';
+  }
 
   return executeAndWait(ARANGOIMP_BIN, toArgv(args), options);
 }
@@ -3226,6 +3230,15 @@ const impTodos = [{
   type: 'csv',
   create: 'true',
   separator: ';',
+  backslash: true
+}, {
+  id: 'csvnoconvert',
+  data: makePathUnix('js/common/test-data/import/import-noconvert.csv'),
+  coll: 'UnitTestsImportCsvNoConvert',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: true,
   backslash: true
 }, {
   id: 'csvnoeol',

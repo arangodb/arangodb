@@ -502,12 +502,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     return;
   }
 
-  if (!_convert) {
-    _lineBuffer.appendText(field, fieldLength);
-    return;
-  }
-
-  if (*field == '\0') {
+  if (*field == '\0' || fieldLength == 0) {
     // do nothing
     _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
     return;
@@ -523,50 +518,60 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     return;
   }
 
-  if (IsInteger(field, fieldLength)) {
-    // integer value
-    // conversion might fail with out-of-range error
-    try {
-      if (fieldLength > 8) {
-        // long integer numbers might be problematic. check if we get out of
-        // range
-        (void) std::stoll(std::string(
-            field,
-            fieldLength));  // this will fail if the number cannot be converted
+  if (_convert) {
+    if (IsInteger(field, fieldLength)) {
+      // integer value
+      // conversion might fail with out-of-range error
+      try {
+        if (fieldLength > 8) {
+          // long integer numbers might be problematic. check if we get out of
+          // range
+          (void) std::stoll(std::string(
+              field,
+              fieldLength));  // this will fail if the number cannot be converted
+        }
+
+        int64_t num = StringUtils::int64(field, fieldLength);
+        _lineBuffer.appendInteger(num);
+      } catch (...) {
+        // conversion failed
+        _lineBuffer.appendJsonEncoded(field, fieldLength);
+      }
+    } else if (IsDecimal(field, fieldLength)) {
+      // double value
+      // conversion might fail with out-of-range error
+      try {
+        std::string tmp(field, fieldLength);
+        size_t pos = 0;
+        double num = std::stod(tmp, &pos);
+        if (pos == fieldLength) {
+          bool failed = (num != num || num == HUGE_VAL || num == -HUGE_VAL);
+          if (!failed) {
+            _lineBuffer.appendDecimal(num);
+            return;
+          }
+        }
+        // NaN, +inf, -inf
+        // fall-through to appending the number as a string
+      } catch (...) {
+        // conversion failed
+        // fall-through to appending the number as a string
       }
 
-      int64_t num = StringUtils::int64(field, fieldLength);
-      _lineBuffer.appendInteger(num);
-    } catch (...) {
-      // conversion failed
+      _lineBuffer.appendChar('"');
+      _lineBuffer.appendText(field, fieldLength);
+      _lineBuffer.appendChar('"');
+    } else {
       _lineBuffer.appendJsonEncoded(field, fieldLength);
     }
-  } else if (IsDecimal(field, fieldLength)) {
-    // double value
-    // conversion might fail with out-of-range error
-    try {
-      std::string tmp(field, fieldLength);
-      size_t pos = 0;
-      double num = std::stod(tmp, &pos);
-      if (pos == fieldLength) {
-        bool failed = (num != num || num == HUGE_VAL || num == -HUGE_VAL);
-        if (!failed) {
-          _lineBuffer.appendDecimal(num);
-          return;
-        }
-      }
-      // NaN, +inf, -inf
-      // fall-through to appending the number as a string
-    } catch (...) {
-      // conversion failed
-      // fall-through to appending the number as a string
-    }
-
-    _lineBuffer.appendChar('"');
-    _lineBuffer.appendText(field, fieldLength);
-    _lineBuffer.appendChar('"');
   } else {
-    _lineBuffer.appendJsonEncoded(field, fieldLength);
+    if (IsInteger(field, fieldLength) || IsDecimal(field, fieldLength)) {
+      // numeric value. don't convert
+      _lineBuffer.appendText(field, fieldLength);
+    } else {
+      // non-numeric value
+      _lineBuffer.appendJsonEncoded(field, fieldLength);
+    }
   }
 }
 
