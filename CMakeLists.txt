@@ -71,6 +71,12 @@ if (DEBUG_SYNC_REPLICATION)
   add_definitions("-DDEBUG_SYNC_REPLICATION=1")
 endif ()
 
+option(CATCH_TESTS ON "Compile catch C++ tests")
+if (CATCH_TESTS)
+  add_subdirectory(tests)
+endif()
+
+
 # ------------------------------------------------------------------------------
 # VERSION information
 # ------------------------------------------------------------------------------
