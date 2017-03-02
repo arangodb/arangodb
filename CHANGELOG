@@ -1,6 +1,8 @@
 devel
 -----
 
+* changed default value for `--server.max-packet-size` from 128 MB to 256 MB
+
 * change default string truncation length from 80 characters to 256 characters for
   `print`/`printShell` functions in ArangoShell and arangod. This will emit longer
   prefixes of string values before truncating them with `...`, which is helpful
