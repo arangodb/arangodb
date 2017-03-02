@@ -162,7 +162,7 @@ bool Conductor::_startGlobalStep() {
   }
 
   // TODO make maximum configurable
-  bool done = _globalSuperstep != 0 && _statistics.executionFinished();
+  bool done = _globalSuperstep > 0 && _statistics.noActiveVertices() && _statistics.allMessagesProcessed();
   if (!proceed || done || _globalSuperstep >= _maxSuperstep) {
     _state = ExecutionState::DONE;
     // tells workers to store / discard results

@@ -47,9 +47,8 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
         int64_t val = *edge->data() + tmp;
         sendMessage(edge, val);
       }
-    } else {
-      voteHalt();
     }
+    voteHalt();
   }
 };
 

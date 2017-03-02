@@ -121,7 +121,7 @@ struct StatsManager {
   }
 
   /// tests if active count is greater 0
-  bool executionFinished() {
+  bool noActiveVertices() {
     for (auto const& pair : _activeStats) {
       if (pair.second > 0) {
         return false;
