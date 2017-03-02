@@ -286,6 +286,21 @@ function importTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import without trailing eol
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImportNoEol : function () {
+      var expected = [ 
+        { value1: "a", value2: "b" },
+        { value1: "c", value2: "d" },
+        { value1: "e", value2: "f" }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportCsvNoEol SORT i.value1 RETURN i");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test tsv import
 ////////////////////////////////////////////////////////////////////////////////
     
