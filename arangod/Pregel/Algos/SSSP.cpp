@@ -47,17 +47,20 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
         int64_t val = *edge->data() + tmp;
         sendMessage(edge, val);
       }
+    } else {
+      voteHalt();
     }
-    voteHalt();
   }
 };
 
 uint32_t SSSPAlgorithm::messageBatchSize(WorkerConfig const& config,
                                          MessageStats const& stats) const {
-  if (config.localSuperstep() <= 2) {
-    return 1;
+  if (config.localSuperstep() <= 1) {
+    return 5;
   } else {
-    return Algorithm::messageBatchSize(config, stats);
+    double msgsPerSec = stats.sendCount / stats.superstepRuntimeSecs;
+    msgsPerSec /= config.parallelism();  // per thread
+    return msgsPerSec > 250.0 ? (uint32_t)msgsPerSec : 250;
   }
 }
 

@@ -561,7 +561,11 @@ void Worker<V, E, M>::_finishedProcessing() {
 /// in async mode checks if there are messages to process
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_continueAsync() {
-  if (_state == WorkerState::IDLE && _writeCache->containedMessageCount() > 0) {
+  uint64_t cnt = _writeCache->containedMessageCount();
+  if (_state == WorkerState::IDLE && cnt > 0) {
+    if (cnt < 10) {
+      usleep(10000);
+    }
     {  // swap these pointers atomically
       MY_WRITE_LOCKER(guard, _cacheRWLock);
       std::swap(_readCache, _writeCache);
