@@ -1,6 +1,11 @@
 devel
 -----
 
+* change default string truncation length from 80 characters to 256 characters for
+  `print`/`printShell` functions in ArangoShell and arangod. This will emit longer
+  prefixes of string values before truncating them with `...`, which is helpful
+  for debugging.
+
 * always validate incoming JSON HTTP requests for duplicate attribute names
   
   Incoming JSON data with duplicate attribute names will now be rejected as
@@ -11,6 +16,10 @@ devel
 * don't let read-only transactions block the WAL collector
 
 * allow passing own `graphql-sync` module instance to Foxx GraphQL router
+
+* arangoexport can now export to csv format
+
+* arangoimp: fixed issue #2214
 
 
 v3.2.alpha2 (2017-02-20)
@@ -81,7 +90,7 @@ v3.2.alpha1 (2017-02-05)
 * generated Foxx services now use swagger tags
 
 
-v3.1.12 (XXXX-XX-XX)
+v3.1.12 (2017-02-28)
 --------------------
 
 * disable shell color escape sequences on Windows

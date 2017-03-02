@@ -562,7 +562,11 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
     }
     switch (response->transportType()) {
       case Endpoint::TransportType::HTTP:
-        response->setContentType(contentType);
+        if (autoContent) {
+          response->setContentType(rest::ContentType::JSON);
+        } else {
+          response->setContentType(contentType);
+        }
         break;
 
       case Endpoint::TransportType::VPP:
