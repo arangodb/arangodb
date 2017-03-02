@@ -3228,6 +3228,14 @@ const impTodos = [{
   separator: ';',
   backslash: true
 }, {
+  id: 'csvnoeol',
+  data: makePathUnix('js/common/test-data/import/import-noeol.csv'),
+  coll: 'UnitTestsImportCsvNoEol',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  backslash: true
+}, {
   id: 'tsv1',
   data: makePathUnix('js/common/test-data/import/import-1.tsv'),
   coll: 'UnitTestsImportTsv1',
