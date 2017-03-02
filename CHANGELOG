@@ -3,6 +3,8 @@ devel
 
 * changed default value for `--server.max-packet-size` from 128 MB to 256 MB
 
+* fixed issue #2342
+
 * change default string truncation length from 80 characters to 256 characters for
   `print`/`printShell` functions in ArangoShell and arangod. This will emit longer
   prefixes of string values before truncating them with `...`, which is helpful
@@ -90,6 +92,19 @@ v3.2.alpha1 (2017-02-05)
 * more detailed stacktraces in Foxx apps
 
 * generated Foxx services now use swagger tags
+
+
+v3.1.13 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #2342
+
+* changed thread handling to queue only user requests on coordinator
+
+* use exponential backoff when waiting for collection locks
+
+* repair short name server lookup in cluster in the case of a removed
+  server
 
 
 v3.1.12 (2017-02-28)

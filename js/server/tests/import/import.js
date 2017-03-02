@@ -286,6 +286,49 @@ function importTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import without converting
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImportNoConvert : function () {
+      var expected = [ 
+        { value1: 1 },
+        { value1: 2, value2: false },
+        { value1: 3, value2: true },
+        { value1: 4, value2: 1 },
+        { value1: 5, value2: 2 },
+        { value1: 6, value2: 3 },
+        { value1: 7, value2: "a" },
+        { value1: 8, value2: "b" },
+        { value1: 9, value2: " a" },
+        { value1: 10, value2: -1 },
+        { value1: 11, value2: -0.5 },
+        { value1: 12, value2: 3.566 },
+        { value1: 13, value2: 0 },
+        { value1: 14 },
+        { value1: 15, value2: "       c" },
+        { value1: 16, value2: "       1" }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportCsvNoConvert SORT i.value1 RETURN i");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import without trailing eol
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImportNoEol : function () {
+      var expected = [ 
+        { value1: "a", value2: "b" },
+        { value1: "c", value2: "d" },
+        { value1: "e", value2: "f" }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportCsvNoEol SORT i.value1 RETURN i");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test tsv import
 ////////////////////////////////////////////////////////////////////////////////
     
