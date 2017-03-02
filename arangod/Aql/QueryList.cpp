@@ -25,6 +25,7 @@
 #include "Aql/Query.h"
 #include "Logger/Logger.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
@@ -32,9 +33,9 @@
 using namespace arangodb::aql;
 
 QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id,
-                               std::string const& queryString, double started,
+                               std::string&& queryString, double started,
                                double runTime, QueryExecutionState::ValueType state)
-    : id(id), queryString(queryString), started(started), runTime(runTime),
+    : id(id), queryString(std::move(queryString)), started(started), runTime(runTime),
       state(state) {}
 
 double const QueryList::DefaultSlowQueryThreshold = 10.0;
@@ -120,42 +121,11 @@ void QueryList::remove(Query const* query) {
           now - started >= _slowQueryThreshold) {
         // yes.
 
-        std::string q;
-        char const* queryString = query->queryString();
-        size_t length = query->queryLength();
-
-        if (length > maxLength) {
-          // query string needs truncation
-          length = maxLength;
-
-          // do not create invalid UTF-8 sequences
-          while (length > 0) {
-            uint8_t c = queryString[length - 1];
-            if ((c & 128) == 0) {
-              // single-byte character
-              break;
-            }
-            --length;
-
-            // start of a multi-byte sequence
-            if ((c & 192) == 192) {
-              // decrease length by one more, so we the string contains the
-              // last part of the previous (multi-byte?) sequence
-              break;
-            }
-          }
-          
-          q.reserve(length + 3);
-          q.append(queryString, length); 
-          q.append("...", 3);
-        } else {
-          // no truncation
-          q.append(queryString, length);
-        }
-
         TRI_IF_FAILURE("QueryList::remove") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
+
+        std::string q = extractQueryString(query, maxLength);
 
         LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "', took: " << Logger::FIXED(now - started);
 
@@ -178,26 +148,20 @@ void QueryList::remove(Query const* query) {
 
 /// @brief kills a query
 int QueryList::kill(TRI_voc_tick_t id) {
-  std::string queryString;
+  WRITE_LOCKER(writeLocker, _lock);
 
-  {
-    WRITE_LOCKER(writeLocker, _lock);
+  auto it = _current.find(id);
 
-    auto it = _current.find(id);
-
-    if (it == _current.end()) {
-      return TRI_ERROR_QUERY_NOT_FOUND;
-    }
-
-    Query const* query = (*it).second;
-    queryString.assign(query->queryString(),
-                       query->queryLength());
-    const_cast<arangodb::aql::Query*>(query)->killed(true);
+  if (it == _current.end()) {
+    return TRI_ERROR_QUERY_NOT_FOUND;
   }
 
-  // log outside the lock
+  Query const* query = (*it).second;
+  StringRef queryString(query->queryString(), query->queryLength());
+
   LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << id << " '" << queryString << "'";
 
+  const_cast<arangodb::aql::Query*>(query)->killed(true);
   return TRI_ERROR_NO_ERROR;
 }
   
@@ -209,9 +173,8 @@ uint64_t QueryList::killAll(bool silent) {
 
   for (auto& it : _current) {
     Query const* query = it.second;
-    
-    std::string queryString(query->queryString(),
-                            query->queryLength());
+   
+    StringRef queryString(query->queryString(), query->queryLength());
   
     if (silent) {
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "killing AQL query " << query->id() << " '" << queryString << "'";
@@ -244,38 +207,11 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
         continue;
       }
 
-      char const* queryString = query->queryString();
-      size_t const originalLength = query->queryLength();
-      size_t length = originalLength;
-
-      if (length > maxLength) {
-        length = maxLength;
-        TRI_ASSERT(length <= originalLength);
-
-        // do not create invalid UTF-8 sequences
-        while (length > 0) {
-          uint8_t c = queryString[length - 1];
-          if ((c & 128) == 0) {
-            // single-byte character
-            break;
-          }
-          --length;
-
-          // start of a multi-byte sequence
-          if ((c & 192) == 192) {
-            // decrease length by one more, so we the string contains the
-            // last part of the previous (multi-byte?) sequence
-            break;
-          }
-        }
-      }
-
       double const started = query->startTime();
        
       result.emplace_back(
           QueryEntryCopy(query->id(),
-                         std::string(queryString, length)
-                             .append(originalLength > maxLength ? "..." : ""),
+                         extractQueryString(query, maxLength),
                          started, now - started,
                          query->state()));
     }
@@ -302,4 +238,41 @@ void QueryList::clearSlow() {
   WRITE_LOCKER(writeLocker, _lock);
   _slow.clear();
   _slowCount = 0;
+}
+      
+std::string QueryList::extractQueryString(Query const* query, size_t maxLength) const {
+  char const* queryString = query->queryString();
+  size_t length = query->queryLength();
+
+  if (length > maxLength) {
+    std::string q;
+
+    // query string needs truncation
+    length = maxLength;
+
+    // do not create invalid UTF-8 sequences
+    while (length > 0) {
+      uint8_t c = queryString[length - 1];
+      if ((c & 128) == 0) {
+        // single-byte character
+        break;
+      }
+      --length;
+
+      // start of a multi-byte sequence
+      if ((c & 192) == 192) {
+        // decrease length by one more, so we the string contains the
+        // last part of the previous (multi-byte?) sequence
+        break;
+      }
+    }
+    
+    q.reserve(length + 3);
+    q.append(queryString, length); 
+    q.append("...", 3);
+    return q;
+  } 
+    
+  // no truncation
+  return std::string(queryString, length);
 }

@@ -44,7 +44,7 @@ class Query;
       
 struct QueryEntryCopy {
   QueryEntryCopy (TRI_voc_tick_t id,
-                  std::string const& queryString,
+                  std::string&& queryString,
                   double started,
                   double runTime,
                   QueryExecutionState::ValueType state);
@@ -156,6 +156,9 @@ class QueryList {
 
   /// @brief clear the list of slow queries
   void clearSlow();
+
+ private:
+  std::string extractQueryString(Query const* query, size_t maxLength) const;
 
  private:
   /// @brief r/w lock for the list
