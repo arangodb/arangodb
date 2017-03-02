@@ -67,9 +67,18 @@ if (DEBUG_SYNC_REPLICATION)
   add_definitions("-DDEBUG_SYNC_REPLICATION=1")
 endif ()
 
+option(CATCH_TESTS ON "Compile catch C++ tests")
+if (CATCH_TESTS)
+  add_subdirectory(tests)
+endif()
+
+
 ################################################################################
 ## ARANGODB
 ################################################################################
+# ------------------------------------------------------------------------------
+# VERSION information
+# ------------------------------------------------------------------------------
 
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "1")
