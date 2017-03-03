@@ -497,9 +497,10 @@ exports.revokeDatabase = function (username, database) {
   }
 
   let databases = user.databases || {};
-  databases[database] = 'none';
+  databases[database] = undefined;
+  delete databases[database];
 
-  users.update(user, { databases: databases }, false, false);
+  users.update(user, { databases: databases }, { keepNull: false, mergeObjects: false });
 
   // not exports.reload() as this is an abstract method...
   require('@arangodb/users').reload();

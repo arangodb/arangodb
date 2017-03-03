@@ -17,6 +17,8 @@ devel
 
 * changed default value for `--server.max-packet-size` from 128 MB to 256 MB
 
+* fixed issue #2350
+
 * fixed issue #2349
 
 * fixed issue #2346
