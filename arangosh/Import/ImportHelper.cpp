@@ -487,7 +487,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     _lineBuffer.appendChar(',');
   }
 
-  if (_keyColumn == -1 && memcmp(field, "_key", 4) == 0) {
+  if (_keyColumn == -1 && fieldLength == 4 && memcmp(field, "_key", 4) == 0) {
     _keyColumn = column;
   }
 
