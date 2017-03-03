@@ -66,7 +66,8 @@ Returned if a user with the same name already exists.
 @RESTHEADER{PUT /_api/user/{user}/database/{dbname}, Grant or revoke database access}
 
 @RESTBODYPARAM{grant,string,required,string}
-Use "rw" to grant access right and "none" to revoke.
+Use "rw" to grant read and write access rights, or "ro" to
+grant read-only access right. To revoke access rights, use "none".
 
 @RESTURLPARAMETERS
 
