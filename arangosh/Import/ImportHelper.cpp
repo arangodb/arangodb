@@ -487,16 +487,20 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     _lineBuffer.appendChar(',');
   }
 
-  if (_keyColumn == -1 && fieldLength == 4 && memcmp(field, "_key", 4) == 0) {
+  if (row == _rowsToSkip && fieldLength > 0) {
+    // translate field
+    auto it = _translations.find(std::string(field, fieldLength));
+    if (it != _translations.end()) {
+      field = (*it).second.c_str();
+      fieldLength = (*it).second.size();
+    }
+  }
+
+  if (_keyColumn == -1 && row == _rowsToSkip && fieldLength == 4 && memcmp(field, "_key", 4) == 0) {
     _keyColumn = column;
   }
 
-  if (_keyColumn == static_cast<decltype(_keyColumn)>(column)) {
-    _lineBuffer.appendJsonEncoded(field, fieldLength);
-    return;
-  }
-
-  if (row == 0 + _rowsToSkip || escaped) {
+  if (row == _rowsToSkip || escaped || _keyColumn == static_cast<decltype(_keyColumn)>(column)) {
     // head line or escaped value
     _lineBuffer.appendJsonEncoded(field, fieldLength);
     return;
