@@ -12,6 +12,8 @@ devel
 
   `--translate` works for CSV and TSV inputs only.
 
+* fixed issue #2350
+
 * fixed issue #2349
 
 * fixed issue #2346
