@@ -28,14 +28,25 @@
 
 #include "Basics/Common.h"
 
-#define BOOST_TEST_INCLUDED
-#include <boost/test/unit_test.hpp>
+#include "catch.hpp"
 
 #include "Basics/StringBuffer.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
 // -----------------------------------------------------------------------------
+
+#define BOOSTa_CHECK_EQUAL_COLLECTION(start, bb, tolerance) { \
+    using std::distance; \
+    using std::begin; \
+    using std::end; \
+    auto a = begin(aa), ae = end(aa); \
+    auto b = begin(bb); \
+    BOOST_REQUIRE_EQUAL(distance(a, ae), distance(b, end(bb))); \
+    for(; a != ae; ++a, ++b) { \
+        BOOST_CHECK_CLOSE(*a, *b, tolerance); \
+    } \
+}
 
 #define STRLEN(a) (strnlen((a), 1024))
 
@@ -60,35 +71,18 @@ static char const* TWNTYA = "aaaaaaaaaaaaaaaaaaaa";
 static char const* Z_2_T = "0123456789A";
 
 #define TRI_LastCharStringBuffer(s) *(TRI_EndStringBuffer(s) - 1)
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
-struct CStringBufferSetup {
-  CStringBufferSetup () {
-    BOOST_TEST_MESSAGE("setup TRI_string_buffer_t");
-  }
-
-  ~CStringBufferSetup () {
-    BOOST_TEST_MESSAGE("tear-down TRI_string_buffer_t");
-  }
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_FIXTURE_TEST_SUITE(CStringBufferTest, CStringBufferSetup)
+TEST_CASE("CStringBufferTest", "[string]") {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tst_str_append
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_str_append) {
+SECTION("tst_str_append") {
   size_t l1, l2;
 
   TRI_string_buffer_t sb;
@@ -100,28 +94,22 @@ BOOST_AUTO_TEST_CASE (tst_str_append) {
   l1 = STRLEN(STRSTR);
   l2 = STRLEN(sb._buffer);
   
-  BOOST_TEST_CHECKPOINT("basic append (len)");
-  BOOST_CHECK_EQUAL(l1, l2);
+  CHECK(l1 == l2);
 
-  BOOST_TEST_CHECKPOINT("basic append (cmp)");
-  BOOST_CHECK_EQUAL_COLLECTIONS(STRSTR, STRSTR + l1, sb._buffer, sb._buffer + l2);
+  CHECK(std::string(STRSTR, l1) == std::string(sb._buffer, l2));
   
   TRI_AppendString2StringBuffer(&sb, ABC_const, 3); // ABC_const ... Z
 
   l2 = STRLEN(sb._buffer);
-
-  BOOST_TEST_CHECKPOINT("basic append 2 (cmp)");
-  BOOST_CHECK_EQUAL_COLLECTIONS(STRSTRABC_const, STRSTRABC_const + l2, sb._buffer, sb._buffer + l2);
+  
+  CHECK(std::string(STRSTRABC_const, l2) == std::string(sb._buffer, l2));
 
   TRI_ClearStringBuffer(&sb);
   TRI_AppendStringStringBuffer(&sb, STR);
 
   l2 = STRLEN(sb._buffer);
 
-  BOOST_TEST_CHECKPOINT("basic append 3 (cmp)");
-  BOOST_CHECK_EQUAL_COLLECTIONS(STRSTR, STRSTR + l2, sb._buffer, sb._buffer + l2);
-
-  BOOST_TEST_CHECKPOINT("basic append 4 (cmp)");
+  CHECK(std::string(STRSTR, l2) == std::string(sb._buffer, l2));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -130,7 +118,7 @@ BOOST_AUTO_TEST_CASE (tst_str_append) {
 /// @brief tst_char_append
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_char_append) {
+SECTION("tst_char_append") {
   size_t l1, l2, i;
 
   TRI_string_buffer_t sb;
@@ -143,11 +131,9 @@ BOOST_AUTO_TEST_CASE (tst_char_append) {
   l1 = STRLEN(TWNTYA);
   l2 = STRLEN(sb._buffer);
   
-  BOOST_TEST_CHECKPOINT("char append (len)");
-  BOOST_CHECK_EQUAL(l1, l2);
-
-  BOOST_TEST_CHECKPOINT("char append (cmp)");
-  BOOST_CHECK_EQUAL_COLLECTIONS(TWNTYA, TWNTYA + l1, sb._buffer, sb._buffer + l2);
+  CHECK((l1) == l2);
+  
+  CHECK(std::string(TWNTYA, l1) == std::string(sb._buffer, l2));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -156,7 +142,7 @@ BOOST_AUTO_TEST_CASE (tst_char_append) {
 /// @brief tst_swp
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_swp) {
+SECTION("tst_swp") {
   size_t l1, l2, i;
 
   TRI_string_buffer_t sb1, sb2;
@@ -174,11 +160,9 @@ BOOST_AUTO_TEST_CASE (tst_swp) {
   l1 = STRLEN(TWNTYA);
   l2 = STRLEN(STR);
   
-  BOOST_TEST_CHECKPOINT("swp test 1");
-  BOOST_CHECK_EQUAL_COLLECTIONS(TWNTYA, TWNTYA + l1, sb2._buffer, sb2._buffer + l1);
+  CHECK(std::string(TWNTYA, l1) == std::string(sb2._buffer, l1));
 
-  BOOST_TEST_CHECKPOINT("swp test 2");
-  BOOST_CHECK_EQUAL_COLLECTIONS(STR, STR + l2, sb1._buffer, sb1._buffer + l2);
+  CHECK(std::string(STR, l2) == std::string(sb1._buffer, l2));
 
   TRI_DestroyStringBuffer(&sb1);
   TRI_DestroyStringBuffer(&sb2);
@@ -188,7 +172,7 @@ BOOST_AUTO_TEST_CASE (tst_swp) {
 /// @brief tst_begin_end_empty_clear
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_begin_end_empty_clear) {
+SECTION("tst_begin_end_empty_clear") {
   size_t l1;
   const char * ptr;
 
@@ -199,22 +183,18 @@ BOOST_AUTO_TEST_CASE (tst_begin_end_empty_clear) {
   
   ptr = TRI_BeginStringBuffer(&sb);
 
-  BOOST_TEST_CHECKPOINT("begin test");
-  BOOST_CHECK_EQUAL((void*) sb._buffer, (void*) ptr);
+  CHECK((void*) sb._buffer == (void*) ptr);
 
   l1 = STRLEN(STR);
   ptr = TRI_EndStringBuffer(&sb);
 
-  BOOST_TEST_CHECKPOINT("end test");
-  BOOST_CHECK_EQUAL((void*)(sb._buffer + l1), (void*) ptr);
+  CHECK((void*)(sb._buffer + l1) == (void*) ptr);
 
-  BOOST_TEST_CHECKPOINT("empty 1");
-  BOOST_CHECK(! TRI_EmptyStringBuffer(&sb));
+  CHECK(! TRI_EmptyStringBuffer(&sb));
 
   TRI_ClearStringBuffer(&sb);
 
-  BOOST_TEST_CHECKPOINT("empty 2");
-  BOOST_CHECK(TRI_EmptyStringBuffer(&sb));
+  CHECK(TRI_EmptyStringBuffer(&sb));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -223,7 +203,7 @@ BOOST_AUTO_TEST_CASE (tst_begin_end_empty_clear) {
 /// @brief tst_cpy
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_cpy) {
+SECTION("tst_cpy") {
   size_t l1, i;
 
   TRI_string_buffer_t sb1, sb2;
@@ -239,14 +219,11 @@ BOOST_AUTO_TEST_CASE (tst_cpy) {
 
   l1 = STRLEN(STR);
 
-  BOOST_TEST_CHECKPOINT("copy (len)"); 
-  BOOST_CHECK_EQUAL(l1, STRLEN(sb1._buffer));
+  CHECK((l1) == STRLEN(sb1._buffer));
 
-  BOOST_TEST_CHECKPOINT("cpy test 1");
-  BOOST_CHECK_EQUAL_COLLECTIONS(STR, STR + l1, sb2._buffer, sb2._buffer + l1);
+  CHECK(std::string(STR, l1) == std::string(sb2._buffer, l1));
 
-  BOOST_TEST_CHECKPOINT("cpy test 2");
-  BOOST_CHECK_EQUAL_COLLECTIONS(STR, STR + l1, sb1._buffer, sb1._buffer + l1);
+  CHECK(std::string(STR, l1) == std::string(sb1._buffer, l1));
 
   TRI_DestroyStringBuffer(&sb1);
   TRI_DestroyStringBuffer(&sb2);
@@ -256,7 +233,7 @@ BOOST_AUTO_TEST_CASE (tst_cpy) {
 /// @brief tst_erase_frnt
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_erase_frnt) {
+SECTION("tst_erase_frnt") {
   size_t l;
 
   TRI_string_buffer_t sb;
@@ -264,18 +241,16 @@ BOOST_AUTO_TEST_CASE (tst_erase_frnt) {
   TRI_AppendStringStringBuffer(&sb, Z_2_T);
   TRI_EraseFrontStringBuffer(&sb, 5);
   
-  BOOST_CHECK_EQUAL(strlen(Z_2_T) - 5, TRI_LengthStringBuffer(&sb));
+  CHECK(strlen(Z_2_T) - 5 == TRI_LengthStringBuffer(&sb));
 
   l = STRLEN(sb._buffer);
 
-  BOOST_TEST_CHECKPOINT("erase front");
-  BOOST_CHECK_EQUAL_COLLECTIONS(F_2_T, F_2_T + l, sb._buffer, sb._buffer + l);
+  CHECK(std::string(F_2_T, l) == std::string(sb._buffer, l));
 
   TRI_EraseFrontStringBuffer(&sb, 15);
-  BOOST_CHECK_EQUAL(0UL, TRI_LengthStringBuffer(&sb));
+  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
   
-  BOOST_TEST_CHECKPOINT("erase front2");
-  BOOST_CHECK(TRI_EmptyStringBuffer(&sb));
+  CHECK(TRI_EmptyStringBuffer(&sb));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -284,7 +259,7 @@ BOOST_AUTO_TEST_CASE (tst_erase_frnt) {
 /// @brief tst_erase_frnt
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_erase_frnt2) {
+SECTION("tst_erase_frnt2") {
   size_t l;
 
   TRI_string_buffer_t sb;
@@ -294,18 +269,18 @@ BOOST_AUTO_TEST_CASE (tst_erase_frnt2) {
 
   l = STRLEN(sb._buffer);
 
-  BOOST_CHECK_EQUAL(1UL, l);
-  BOOST_CHECK_EQUAL(1UL, TRI_LengthStringBuffer(&sb));
-  BOOST_CHECK_EQUAL("f", sb._buffer);
+  CHECK((1UL) == l);
+  CHECK((1UL) == TRI_LengthStringBuffer(&sb));
+  CHECK(std::string("f") == sb._buffer);
 
   // clang 5.1 failes without the cast
-  BOOST_CHECK_EQUAL((unsigned int) 'f', (unsigned int) sb._buffer[0]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[1]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[2]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[3]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[4]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[5]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[6]);
+  CHECK(((unsigned int) 'f') == (unsigned int) sb._buffer[0]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[1]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[2]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[3]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[4]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[5]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[6]);
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -314,7 +289,7 @@ BOOST_AUTO_TEST_CASE (tst_erase_frnt2) {
 /// @brief tst_erase_frnt
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_erase_frnt3) {
+SECTION("tst_erase_frnt3") {
   size_t l, i;
 
   TRI_string_buffer_t sb;
@@ -326,42 +301,42 @@ BOOST_AUTO_TEST_CASE (tst_erase_frnt3) {
 
   l = STRLEN(sb._buffer);
   
-  BOOST_CHECK_EQUAL(499UL, l);
-  BOOST_CHECK_EQUAL(499UL, TRI_LengthStringBuffer(&sb));
+  CHECK((499UL) == l);
+  CHECK((499UL) == TRI_LengthStringBuffer(&sb));
 
   // clang 5.1 failes without the cast
-  BOOST_CHECK_EQUAL((unsigned int) 'a', (unsigned int) sb._buffer[498]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[499]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[500]);
+  CHECK(((unsigned int) 'a') == (unsigned int) sb._buffer[498]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[499]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[500]);
   
   TRI_EraseFrontStringBuffer(&sb, 1);
 
   l = STRLEN(sb._buffer);
   
-  BOOST_CHECK_EQUAL(498UL, l);
-  BOOST_CHECK_EQUAL(498UL, TRI_LengthStringBuffer(&sb));
+  CHECK((498UL) == l);
+  CHECK((498UL) == TRI_LengthStringBuffer(&sb));
 
   // clang 5.1 failes without the cast
-  BOOST_CHECK_EQUAL((unsigned int) 'a', (unsigned int) sb._buffer[497]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[498]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[499]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[500]);
+  CHECK(((unsigned int) 'a') == (unsigned int) sb._buffer[497]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[498]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[499]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[500]);
   
   TRI_EraseFrontStringBuffer(&sb, 1000);
 
   l = STRLEN(sb._buffer);
   
-  BOOST_CHECK_EQUAL(0UL, l);
-  BOOST_CHECK_EQUAL(0UL, TRI_LengthStringBuffer(&sb));
+  CHECK((0UL) == l);
+  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
 
   // clang 5.1 failes without the cast
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[0]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[1]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[496]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[497]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[498]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[499]);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) sb._buffer[500]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[0]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[1]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[496]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[497]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[498]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[499]);
+  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[500]);
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -370,7 +345,7 @@ BOOST_AUTO_TEST_CASE (tst_erase_frnt3) {
 /// @brief tst_replace
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_replace) {
+SECTION("tst_replace") {
   size_t l;
 
   TRI_string_buffer_t sb;
@@ -383,14 +358,12 @@ BOOST_AUTO_TEST_CASE (tst_replace) {
   
   l = STRLEN(sb._buffer);
 
-  BOOST_TEST_CHECKPOINT("replace1");
-  BOOST_CHECK_EQUAL_COLLECTIONS(REP, REP + l, sb._buffer, sb._buffer + l);
+  CHECK(std::string(REP, l) == std::string(sb._buffer, l));
 
   TRI_ReplaceStringStringBuffer(&sb, ABC_const, 1);
   l = STRLEN(sb._buffer);
 
-  BOOST_TEST_CHECKPOINT("replace2");
-  BOOST_CHECK_EQUAL_COLLECTIONS(AEP, AEP + l, sb._buffer, sb._buffer + l);
+  CHECK(std::string(AEP, l) == std::string(sb._buffer, l));
 
   TRI_ClearStringBuffer(&sb);
   TRI_AppendStringStringBuffer(&sb, ABC_const);
@@ -406,7 +379,7 @@ BOOST_AUTO_TEST_CASE (tst_replace) {
 /// @brief tst_smpl_utils
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_smpl_utils) {
+SECTION("tst_smpl_utils") {
   char const* a234 = "234";
   char const* a23412 = "23412";
   char const* a2341212125 = "23412-12.125";
@@ -416,24 +389,20 @@ BOOST_AUTO_TEST_CASE (tst_smpl_utils) {
   TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
   TRI_AppendInteger3StringBuffer(&sb, 123);
 
-  BOOST_TEST_CHECKPOINT("append int3");
-  BOOST_CHECK_EQUAL_COLLECTIONS(ONETWOTHREE, ONETWOTHREE + STRLEN(ONETWOTHREE), sb._buffer, sb._buffer + STRLEN(sb._buffer));
+  CHECK(std::string(ONETWOTHREE, STRLEN(ONETWOTHREE)) == std::string(sb._buffer, STRLEN(sb._buffer)));
 
   TRI_ClearStringBuffer(&sb);
   TRI_AppendInteger3StringBuffer(&sb, 1234);
 
-  BOOST_TEST_CHECKPOINT("append int3");
-  BOOST_CHECK_EQUAL_COLLECTIONS(a234, a234 + STRLEN(a234), sb._buffer, sb._buffer + STRLEN(sb._buffer));
+  CHECK(std::string(a234, STRLEN(a234)) == std::string(sb._buffer, STRLEN(sb._buffer)));
   
   TRI_AppendDoubleStringBuffer(&sb, 12.0);
 
-  BOOST_TEST_CHECKPOINT("append int3");
-  BOOST_CHECK_EQUAL_COLLECTIONS(a23412, a23412 + STRLEN(a23412), sb._buffer, sb._buffer + STRLEN(sb._buffer));
+  CHECK(std::string(a23412, STRLEN(a23412)) == std::string(sb._buffer, STRLEN(sb._buffer)));
 
   TRI_AppendDoubleStringBuffer(&sb, -12.125);
 
-  BOOST_TEST_CHECKPOINT("append int3");
-  BOOST_CHECK_EQUAL_COLLECTIONS(a2341212125, a2341212125 + STRLEN(a2341212125), sb._buffer, sb._buffer + STRLEN(sb._buffer));
+  CHECK(std::string(a2341212125, STRLEN(a2341212125)) == std::string(sb._buffer, STRLEN(sb._buffer)));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -442,23 +411,20 @@ BOOST_AUTO_TEST_CASE (tst_smpl_utils) {
 /// @brief tst_length
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_length) {
+SECTION("tst_length") {
   TRI_string_buffer_t sb;
 
   TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
 
-  BOOST_TEST_CHECKPOINT("length empty");
-  BOOST_CHECK_EQUAL(0UL, TRI_LengthStringBuffer(&sb));
+  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
 
   TRI_AppendStringStringBuffer(&sb, ONETWOTHREE);
 
-  BOOST_TEST_CHECKPOINT("length string");
-  BOOST_CHECK_EQUAL(strlen(ONETWOTHREE), TRI_LengthStringBuffer(&sb));
+  CHECK((strlen(ONETWOTHREE)) == TRI_LengthStringBuffer(&sb));
 
   TRI_AppendInt32StringBuffer(&sb, 123);
 
-  BOOST_TEST_CHECKPOINT("length integer");
-  BOOST_CHECK_EQUAL(strlen(ONETWOTHREE) + 3, TRI_LengthStringBuffer(&sb));
+  CHECK((strlen(ONETWOTHREE) + 3) == TRI_LengthStringBuffer(&sb));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -467,25 +433,25 @@ BOOST_AUTO_TEST_CASE (tst_length) {
 /// @brief tst_clear
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_clear) {
+SECTION("tst_clear") {
   TRI_string_buffer_t sb;
 
   TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
-  BOOST_CHECK_EQUAL(0UL, TRI_LengthStringBuffer(&sb));
+  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
 
   // clear an empty buffer
   TRI_ClearStringBuffer(&sb);
-  BOOST_CHECK_EQUAL(0UL, TRI_LengthStringBuffer(&sb));
+  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
 
   TRI_AppendStringStringBuffer(&sb, "foo bar baz");
-  BOOST_CHECK_EQUAL(11UL, TRI_LengthStringBuffer(&sb));
+  CHECK((11UL) == TRI_LengthStringBuffer(&sb));
 
   const char* ptr = TRI_BeginStringBuffer(&sb);
   TRI_ClearStringBuffer(&sb);
-  BOOST_CHECK_EQUAL(0UL, TRI_LengthStringBuffer(&sb));
+  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
 
   // buffer should still point to ptr
-  BOOST_CHECK_EQUAL((void*) ptr, (void*) TRI_BeginStringBuffer(&sb));
+  CHECK(((void*) ptr) == (void*) TRI_BeginStringBuffer(&sb));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -494,7 +460,7 @@ BOOST_AUTO_TEST_CASE (tst_clear) {
 /// @brief tst_steal
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_steal) {
+SECTION("tst_steal") {
   TRI_string_buffer_t sb;
 
   TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
@@ -506,18 +472,18 @@ BOOST_AUTO_TEST_CASE (tst_steal) {
   char* stolen = TRI_StealStringBuffer(&sb);
   
   // buffer is now empty
-  BOOST_CHECK_EQUAL(0UL, TRI_LengthStringBuffer(&sb));
-  BOOST_CHECK_EQUAL((void*) 0, (void*) TRI_BeginStringBuffer(&sb));
+  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
+  CHECK(((void*) 0) == (void*) TRI_BeginStringBuffer(&sb));
 
   // stolen should still point to ptr
-  BOOST_CHECK_EQUAL((void*) stolen, (void*) ptr);
-  BOOST_CHECK_EQUAL(0, strcmp(stolen, ptr));
+  CHECK(((void*) stolen) == (void*) ptr);
+  CHECK((0) == strcmp(stolen, ptr));
 
   TRI_DestroyStringBuffer(&sb);
 
   // destroying the string buffer should not affect us
-  BOOST_CHECK_EQUAL((void*) stolen, (void*) ptr);
-  BOOST_CHECK_EQUAL(0, strcmp(stolen, ptr));
+  CHECK(((void*) stolen) == (void*) ptr);
+  CHECK((0) == strcmp(stolen, ptr));
 
   // must manually free the string
   TRI_Free(TRI_CORE_MEM_ZONE, stolen);
@@ -527,29 +493,29 @@ BOOST_AUTO_TEST_CASE (tst_steal) {
 /// @brief tst_last_char
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_last_char) {
+SECTION("tst_last_char") {
   TRI_string_buffer_t sb;
 
   TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
 
   TRI_AppendStringStringBuffer(&sb, "f");
-  BOOST_CHECK_EQUAL((unsigned int) 'f', (unsigned int) TRI_LastCharStringBuffer(&sb));
+  CHECK(((unsigned int) 'f') == (unsigned int) TRI_LastCharStringBuffer(&sb));
 
   TRI_AppendCharStringBuffer(&sb, '1');
-  BOOST_CHECK_EQUAL((unsigned int) '1', (unsigned int) TRI_LastCharStringBuffer(&sb));
+  CHECK(((unsigned int) '1') == (unsigned int) TRI_LastCharStringBuffer(&sb));
   
   TRI_AppendCharStringBuffer(&sb, '\n');
-  BOOST_CHECK_EQUAL((unsigned int) '\n', (unsigned int) TRI_LastCharStringBuffer(&sb));
+  CHECK(((unsigned int) '\n') == (unsigned int) TRI_LastCharStringBuffer(&sb));
 
   TRI_ClearStringBuffer(&sb);
-  BOOST_CHECK_EQUAL(0UL, TRI_LengthStringBuffer(&sb));
+  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
   
   for (size_t i = 0; i < 100; ++i) {
     TRI_AppendStringStringBuffer(&sb, "the quick brown fox jumped over the lazy dog");
-    BOOST_CHECK_EQUAL((unsigned int) 'g', (unsigned int) TRI_LastCharStringBuffer(&sb));
+    CHECK(((unsigned int) 'g') == (unsigned int) TRI_LastCharStringBuffer(&sb));
   }
   TRI_AppendCharStringBuffer(&sb, '.');
-  BOOST_CHECK_EQUAL((unsigned int) '.', (unsigned int) TRI_LastCharStringBuffer(&sb));
+  CHECK(((unsigned int) '.') == (unsigned int) TRI_LastCharStringBuffer(&sb));
   
   TRI_AnnihilateStringBuffer(&sb);
 
@@ -560,28 +526,28 @@ BOOST_AUTO_TEST_CASE (tst_last_char) {
 /// @brief tst_reserve
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_reserve) {
+SECTION("tst_reserve") {
   TRI_string_buffer_t sb;
 
   TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
-  BOOST_CHECK_EQUAL(0UL, TRI_LengthStringBuffer(&sb));
-  
+  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
+ 
   TRI_ReserveStringBuffer(&sb, 0);
-  BOOST_CHECK_EQUAL(0UL, TRI_LengthStringBuffer(&sb));
+  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
 
   TRI_ReserveStringBuffer(&sb, 1000);
-  BOOST_CHECK_EQUAL(0UL, TRI_LengthStringBuffer(&sb));
+  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
 
   TRI_AppendStringStringBuffer(&sb, "f");
-  BOOST_CHECK_EQUAL(1UL, TRI_LengthStringBuffer(&sb));
+  CHECK((1UL) == TRI_LengthStringBuffer(&sb));
 
   for (size_t i = 0; i < 5000; ++i) {
     TRI_AppendCharStringBuffer(&sb, '.');
   }
-  BOOST_CHECK_EQUAL(5001UL, TRI_LengthStringBuffer(&sb));
+  CHECK((5001UL) == TRI_LengthStringBuffer(&sb));
   
   TRI_ReserveStringBuffer(&sb, 1000);
-  BOOST_CHECK_EQUAL(5001UL, TRI_LengthStringBuffer(&sb));
+  CHECK((5001UL) == TRI_LengthStringBuffer(&sb));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -590,7 +556,7 @@ BOOST_AUTO_TEST_CASE (tst_reserve) {
 /// @brief tst_timing
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_timing) {
+SECTION("tst_timing") {
   char buffer[1024];
   size_t const repeats = 100;
 
@@ -611,8 +577,7 @@ BOOST_AUTO_TEST_CASE (tst_timing) {
       TRI_AppendInt32StringBuffer(&sb, 12345678);
     }
 
-    BOOST_TEST_CHECKPOINT("length integer");
-    BOOST_CHECK_EQUAL(loop1 * 8, TRI_LengthStringBuffer(&sb));
+    CHECK((loop1 * 8) == TRI_LengthStringBuffer(&sb));
 
     TRI_DestroyStringBuffer(&sb);
   }
@@ -620,7 +585,6 @@ BOOST_AUTO_TEST_CASE (tst_timing) {
   t1 = TRI_microtime() - t1;
 
   snprintf(buffer, sizeof(buffer), "time for integer append: %f msec", t1 * 1000);
-  BOOST_TEST_MESSAGE(buffer);
 
   // character
   t1 = TRI_microtime();
@@ -632,8 +596,7 @@ BOOST_AUTO_TEST_CASE (tst_timing) {
       TRI_AppendCharStringBuffer(&sb, 'A');
     }
 
-    BOOST_TEST_CHECKPOINT("length character");
-    BOOST_CHECK_EQUAL(loop2, TRI_LengthStringBuffer(&sb));
+    CHECK((loop2) == TRI_LengthStringBuffer(&sb));
 
     TRI_DestroyStringBuffer(&sb);
   }
@@ -641,7 +604,6 @@ BOOST_AUTO_TEST_CASE (tst_timing) {
   t1 = TRI_microtime() - t1;
 
   snprintf(buffer, sizeof(buffer), "time for character append: %f msec", t1 * 1000);
-  BOOST_TEST_MESSAGE(buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -649,7 +611,7 @@ BOOST_AUTO_TEST_CASE (tst_timing) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // try to turn off compiler warning for deliberate division by zero
-BOOST_AUTO_TEST_CASE (tst_doubles) {
+SECTION("tst_doubles") {
   TRI_string_buffer_t sb;
   double value;
   
@@ -658,26 +620,26 @@ BOOST_AUTO_TEST_CASE (tst_doubles) {
   // + inf
   value = HUGE_VAL;
   TRI_AppendDoubleStringBuffer(&sb, value);
-  BOOST_CHECK_EQUAL("inf", sb._buffer);
+  CHECK(std::string("inf") == sb._buffer);
 
   // - inf
   value = -HUGE_VAL;
   TRI_ClearStringBuffer(&sb);
   TRI_AppendDoubleStringBuffer(&sb, value);
-  BOOST_CHECK_EQUAL("-inf", sb._buffer);
+  CHECK(std::string("-inf") == sb._buffer);
   
   value = INFINITY;
 
   TRI_ClearStringBuffer(&sb);
   TRI_AppendDoubleStringBuffer(&sb, value);
-  BOOST_CHECK_EQUAL("inf", sb._buffer);
+  CHECK(std::string("inf") == sb._buffer);
   
 #ifdef NAN  
   // NaN
   value = NAN;
   TRI_ClearStringBuffer(&sb);
   TRI_AppendDoubleStringBuffer(&sb, value);
-  BOOST_CHECK_EQUAL("NaN", sb._buffer);
+  CHECK(std::string("NaN") == sb._buffer);
 #endif
   
   // big numbers, hopefully this is portable enough
@@ -685,21 +647,17 @@ BOOST_AUTO_TEST_CASE (tst_doubles) {
   value = n * n * n * n;
   TRI_ClearStringBuffer(&sb);
   TRI_AppendDoubleStringBuffer(&sb, value);
-  BOOST_CHECK_EQUAL("3575783498001355400000", sb._buffer);
+  CHECK(std::string("3575783498001355400000") == sb._buffer);
 
   value *= -1.0;
   TRI_ClearStringBuffer(&sb);
   TRI_AppendDoubleStringBuffer(&sb, value);
-  BOOST_CHECK_EQUAL("-3575783498001355400000", sb._buffer);
+  CHECK(std::string("-3575783498001355400000") == sb._buffer);
 
   TRI_DestroyStringBuffer(&sb);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
-////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_SUITE_END ()
+}
 
 // Local Variables:
 // mode: outline-minor

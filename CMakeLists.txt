@@ -926,9 +926,6 @@ add_subdirectory(lib)
 add_subdirectory(arangosh)
 add_subdirectory(arangod)
 
-if (USE_BOOST_UNITTESTS)
-  add_subdirectory(UnitTests)
-endif()
 add_subdirectory(Documentation)
 
 add_dependencies(arangobench   zlibstatic)

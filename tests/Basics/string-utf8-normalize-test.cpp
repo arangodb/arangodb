@@ -27,8 +27,7 @@
 
 #include "Basics/Common.h"
 
-#define BOOST_TEST_INCLUDED
-#include <boost/test/unit_test.hpp>
+#include "catch.hpp"
 
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
@@ -51,12 +50,7 @@
 
 struct CNormalizeStringTestSetup {
   CNormalizeStringTestSetup () {
-    BOOST_TEST_MESSAGE("setup utf8 string normalize test");
-    IcuInitializer::setup(boost::unit_test::framework::master_test_suite().argv[0]);
-  }
-
-  ~CNormalizeStringTestSetup () {
-    BOOST_TEST_MESSAGE("tear-down utf8 string normalize test");
+    IcuInitializer::setup("./3rdParty/V8/v8/third_party/icu/common/icudtl.dat");
   }
 };
 
@@ -68,13 +62,14 @@ struct CNormalizeStringTestSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_FIXTURE_TEST_SUITE(CNormalizeStringTest, CNormalizeStringTestSetup)
+TEST_CASE("CNormalizeStringTest", "[string]") {
+  CNormalizeStringTestSetup s;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test NFD to NFC
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_1) {
+SECTION("tst_1") {
   
   /* "Grüß Gott. Здравствуйте! x=(-b±sqrt(b²-4ac))/(2a)  日本語,中文,한글" */
   static const unsigned char composed[] =
@@ -113,8 +108,8 @@ BOOST_AUTO_TEST_CASE (tst_1) {
 */  
   size_t l1 = sizeof(composed) - 1;
   size_t l2 = strlen(result);
-  BOOST_CHECK_EQUAL(l1, l2);
-  BOOST_CHECK_EQUAL_COLLECTIONS((char*) composed, (char*) composed + l1, result, result + l2);
+  CHECK((l1) == l2);
+  CHECK(std::string((char*) composed, l1) == std::string(result, l2));
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);
 }
 
@@ -122,7 +117,7 @@ BOOST_AUTO_TEST_CASE (tst_1) {
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_2) {
+SECTION("tst_2") {
 
   /* "Grüß Gott. Здравствуйте! x=(-b±sqrt(b²-4ac))/(2a)  日本語,中文,한글" */
   static const unsigned char gruessgott1[] =
@@ -144,93 +139,92 @@ BOOST_AUTO_TEST_CASE (tst_2) {
   //printf("\nOriginal: %s\nLower: %s (%d)\n", gruessgott1, result, len);
   size_t l1 = sizeof(lower) - 1;
   size_t l2 = strlen(result);
-  BOOST_CHECK_EQUAL(l1, l2);
-  BOOST_CHECK_EQUAL_COLLECTIONS((char*) lower, (char*) lower + l1, result, result + l2);
+  CHECK((l1) == l2);
+  CHECK(std::string((char*) lower, l1) == std::string(result, l2));
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);  
 
   std::string testString((const char*) gruessgott1);
   std::string expectString((const char*) lower);
   std::string resultString = arangodb::basics::Utf8Helper::DefaultUtf8Helper.toLowerCase(testString);
-  BOOST_CHECK_EQUAL(expectString, resultString);
+  CHECK(std::string(expectString) == resultString);
   
   len = 0;
   result = TRI_tolower_utf8(TRI_CORE_MEM_ZONE, (const char*) gruessgott2, (int32_t) strlen((const char*) gruessgott2), &len);
   //printf("\nOriginal: %s\nLower: %s (%d)\n", gruessgott2, result, len);
   l2 = strlen(result);
-  BOOST_CHECK_EQUAL(l1, l2);
-  BOOST_CHECK_EQUAL_COLLECTIONS((char*) lower, (char*) lower + l1, result, result + l2);
+  CHECK((l1) == l2);
+  CHECK(std::string((char*) lower, l1) == std::string(result, l2));
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);    
 }
 
-BOOST_AUTO_TEST_CASE (tst_3) {
+SECTION("tst_3") {
   std::string testString   = "aäoöuüAÄOÖUÜ";
   std::string expectString = "aäoöuüaäoöuü";
   std::string resultString = arangodb::basics::Utf8Helper::DefaultUtf8Helper.toLowerCase(testString);
-  BOOST_CHECK_EQUAL(expectString, resultString);
+  CHECK(std::string(expectString) == resultString);
 
   testString   = "aäoöuüAÄOÖUÜ";
   expectString = "AÄOÖUÜAÄOÖUÜ";
   resultString = arangodb::basics::Utf8Helper::DefaultUtf8Helper.toUpperCase(testString);
-  BOOST_CHECK_EQUAL(expectString, resultString);
+  CHECK(std::string(expectString) == resultString);
 }
 
-BOOST_AUTO_TEST_CASE (tst_4) {
+SECTION("tst_4") {
   std::string testString   = "Der Müller geht in die Post.";
   
   std::vector<std::string> words;
   arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 3, UINT32_MAX, true);
-  BOOST_CHECK(!words.empty());
+  CHECK(!words.empty());
   
-  BOOST_CHECK_EQUAL(5UL, words.size());
-  BOOST_CHECK_EQUAL("der", words[0]);
-  BOOST_CHECK_EQUAL("müller", words[1]);
-  BOOST_CHECK_EQUAL("geht", words[2]);
-  BOOST_CHECK_EQUAL("die", words[3]);
-  BOOST_CHECK_EQUAL("post", words[4]);
+  CHECK((5UL) == words.size());
+  CHECK(std::string("der") == words[0]);
+  CHECK(std::string("müller") == words[1]);
+  CHECK(std::string("geht") == words[2]);
+  CHECK(std::string("die") == words[3]);
+  CHECK(std::string("post") == words[4]);
   
   words.clear();
   arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 4, UINT32_MAX, true);
-  BOOST_CHECK(!words.empty());
+  CHECK(!words.empty());
   
-  BOOST_CHECK_EQUAL(3UL, words.size());
-  BOOST_CHECK_EQUAL("müller", words[0]);
-  BOOST_CHECK_EQUAL("geht", words[1]);
-  BOOST_CHECK_EQUAL("post", words[2]);
+  CHECK((3UL) == words.size());
+  CHECK(std::string("müller") == words[0]);
+  CHECK(std::string("geht") == words[1]);
+  CHECK(std::string("post") == words[2]);
     
   words.clear();
   arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, "", 3, UINT32_MAX, true);
-  BOOST_CHECK(words.empty());
+  CHECK(words.empty());
 }
 
-BOOST_AUTO_TEST_CASE (tst_5) {
+SECTION("tst_5") {
   std::string testString   = "Der Müller geht in die Post.";
   
   std::vector<std::string> words;
   arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 3, UINT32_MAX, false);
-  BOOST_CHECK(!words.empty());
+  CHECK(!words.empty());
   
-  BOOST_CHECK_EQUAL(5UL, words.size());
-  BOOST_CHECK_EQUAL("Der", words[0]);
-  BOOST_CHECK_EQUAL("Müller", words[1]);
-  BOOST_CHECK_EQUAL("geht", words[2]);
-  BOOST_CHECK_EQUAL("die", words[3]);
-  BOOST_CHECK_EQUAL("Post", words[4]);
+  CHECK((5UL) == words.size());
+  CHECK(std::string("Der") == words[0]);
+  CHECK(std::string("Müller") == words[1]);
+  CHECK(std::string("geht") == words[2]);
+  CHECK(std::string("die") == words[3]);
+  CHECK(std::string("Post") == words[4]);
     
   words.clear();
   arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 4, UINT32_MAX, false);
-  BOOST_CHECK(!words.empty());
+  CHECK(!words.empty());
   
-  BOOST_CHECK_EQUAL(3UL, words.size());
-  BOOST_CHECK_EQUAL("Müller", words[0]);
-  BOOST_CHECK_EQUAL("geht", words[1]);
-  BOOST_CHECK_EQUAL("Post", words[2]);
+  CHECK((3UL) == words.size());
+  CHECK(std::string("Müller") == words[0]);
+  CHECK(std::string("geht") == words[1]);
+  CHECK(std::string("Post") == words[2]);
     
   words.clear();
   arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, "", 4, UINT32_MAX, false);
-  BOOST_CHECK(words.empty());
+  CHECK(words.empty());
 }
-
-BOOST_AUTO_TEST_SUITE_END ()
+}
 
 // Local Variables:
 // mode: outline-minor

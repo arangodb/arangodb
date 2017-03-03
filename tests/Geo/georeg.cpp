@@ -40,8 +40,7 @@
 
 #include "Basics/Common.h"
 
-#define BOOST_TEST_MODULE "C Unit Tests for Cambridge"
-#include <boost/test/included/unit_test.hpp>
+#include "catch.hpp"
 
 #include "MMFiles/geo-index.h"
 #include "Basics/StringUtils.h"
@@ -91,7 +90,7 @@ static void MyFree (GeoIdx * gi) {
     int x;
     x=GeoIndex_INDEXVALID(gi);
 
-    BOOST_CHECK_EQUAL(x, 0);
+    CHECK(x == 0);
 
     GeoIndex_free(gi);
 }
@@ -162,34 +161,30 @@ double tolerance (double a, double b, double c) {
 }
 
 #define icheck(e, a, b)                                 \
-  BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
-  BOOST_CHECK_EQUAL((long) (a), (long) (b))
+  CHECK((long) (a) == (long) (b))
 
 #define pcheck(e, a, b)                                 \
-  BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
-  BOOST_CHECK_EQUAL((a), (b))
+  CHECK((a) == (b))
+
+#define BOOST_CHECK_CLOSE(a,b,c) 
 
 #define dcheck(e, a, b, c)                              \
-  BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
-  BOOST_CHECK_CLOSE((a), (b), tolerance((a),(b),(c)))
+  CHECK(a == Approx(b).epsilon(tolerance(a,b,c)))
 
 #define gccheck(e, gc, ct, bytes)                       \
-  BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
-  BOOST_CHECK_EQUAL((long) (ct),(long) (gc)->length);   \
-  BOOST_CHECK_EQUAL(GCCHECK((gc), (ct), (bytes)), 1)
+  CHECK((long) (ct) ==(long) (gc)->length);   \
+  CHECK(GCCHECK((gc), (ct), (bytes)) == 1)
 
 #ifdef DEBUG
 #define gicheck(e, gi) \
-  BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
-  BOOST_CHECK_EQUAL(GeoIndex_INDEXVALID((gi)), 0)
+  CHECK(GeoIndex_INDEXVALID((gi)) == 0)
 #else
 #define gicheck(e, gi) /* do nothing */
 #endif
 
 #define gcmass(e, gc, ct, hash)                         \
-  BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
-  BOOST_CHECK_EQUAL((long) (ct), (long) (gc)->length);  \
-  BOOST_CHECK_EQUAL(GCMASS((gc), (ct), (hash)), 1)
+  CHECK((long) (ct) == (long) (gc)->length);  \
+  CHECK(GCMASS((gc), (ct), (hash)) == 1)
 
 void coonum(GeoCoordinate * gc, int num)
 {
@@ -249,28 +244,12 @@ void litnum(GeoCoordinate * gc, int num)
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
-struct GeoIndexSetup {
-  GeoIndexSetup () {
-    BOOST_TEST_MESSAGE("setup GeoIndex");
-  }
-
-  ~GeoIndexSetup () {
-    BOOST_TEST_MESSAGE("tear-down GeoIndex");
-  }
-};
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
-
-BOOST_FIXTURE_TEST_SUITE(GeoIndexTest, GeoIndexSetup)
 
 /*           1-9 some real world distance          */
 /*   1 is London    +51.500000 -0.166666           */
@@ -280,7 +259,7 @@ BOOST_FIXTURE_TEST_SUITE(GeoIndexTest, GeoIndexSetup)
 
 /***********************************/
 /* 1000-1100 first tests on cursor  */
-BOOST_AUTO_TEST_CASE (tst_geo1000) {
+TEST_CASE("tst_geo1000", "[geo][!hide]") {
   gi=GeoIndex_new();
   la=41.23456789;
   lo=39.87654321;
@@ -324,7 +303,7 @@ BOOST_AUTO_TEST_CASE (tst_geo1000) {
   MyFree(gi);
 }
 /***************************************/
-BOOST_AUTO_TEST_CASE (tst_geo1) {
+TEST_CASE("tst_geo1", "[geo][!hide]") {
   gcp1.latitude  =   51.5;
   gcp1.longitude =   -0.166666;
   gcp2.latitude  =   21.306111;
@@ -353,7 +332,7 @@ BOOST_AUTO_TEST_CASE (tst_geo1) {
 /* first some easily recognizable GeoStrings       */
 /* mainly for debugging rather than regression     */
 
-BOOST_AUTO_TEST_CASE (tst_geo15) {
+TEST_CASE("tst_geo15", "[geo][!hide]") {
 gi=GeoIndex_new();
 GeoIndex_hint(gi,10);  /* set it to "robust" mode */
 for(i=0;i<50;i++)
@@ -381,7 +360,7 @@ gicheck(14,gi);
 /*GeoIndex_INDEXDUMP(gi,stdout);*/
 MyFree(gi);
 }
-BOOST_AUTO_TEST_CASE (tst_geo10) {
+TEST_CASE("tst_geo10", "[geo][!hide]") {
 gi=GeoIndex_new();
 GeoIndex_hint(gi,10);  /* set it to "robust" mode */
 for(i=0;i<50;i++)
@@ -412,17 +391,17 @@ MyFree(gi);
 /*               20 - 39                           */
 /* Make sure things work with an empty index       */
 
-BOOST_AUTO_TEST_CASE (tst_geo20) {
+TEST_CASE("tst_geo20", "[geo][!hide]") {
 gi=GeoIndex_new();
 
 /* do both searches with an empty index  */
 
 list1 = GeoIndex_NearestCountPoints(gi,&gcp1,3);
 // gccheck(20,list1,0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
-BOOST_CHECK_EQUAL(nullp, list1); // no results, check against null pointer
+CHECK(nullp == list1); // no results, check against null pointer
 list1 = GeoIndex_PointsWithinRadius(gi,&gcp1,100000.0);
 // gccheck(21,list1,0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
-BOOST_CHECK_EQUAL(nullp, list1); // no results, check against null pointer
+CHECK(nullp == list1); // no results, check against null pointer
 
 /* stick in Jo'burg  */
 gcp4.data=(uint64_t) (ix + 4);
@@ -438,10 +417,10 @@ r = GeoIndex_remove(gi,&gcp4);
 icheck(25,0,r);
 list1 = GeoIndex_NearestCountPoints(gi,&gcp1,3);
 // gccheck(26,list1,  0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
-BOOST_CHECK_EQUAL(nullp, list1); // no results, check against null pointer
+CHECK(nullp == list1); // no results, check against null pointer
 list1 = GeoIndex_PointsWithinRadius(gi,&gcp1,100000.0);
 // gccheck(27,list1,0,"AAAAAAAAAAAAAAAAAAAAAAAAA"); 
-BOOST_CHECK_EQUAL(nullp, list1); // no results, check against null pointer
+CHECK(nullp == list1); // no results, check against null pointer
 
 /* try to delete from an empty index  */
 
@@ -463,7 +442,7 @@ MyFree(gi);
 /*                                                 */
 
 /* now some tests on invalid data  */
-BOOST_AUTO_TEST_CASE (tst_geo50) {
+TEST_CASE("tst_geo50", "[geo][!hide]") {
 gi=GeoIndex_new();
 
 gcp.latitude  = 91.2;
@@ -547,7 +526,7 @@ MyFree(gi);
 /* now some tests inserting and deleting in        */
 /*   in some chaotic ways                          */
 
-BOOST_AUTO_TEST_CASE (tst_geo70) {
+TEST_CASE("tst_geo70", "[geo][!hide]") {
   gi=GeoIndex_new();
 
   gcp.latitude  = 0.0;
@@ -683,7 +662,7 @@ BOOST_AUTO_TEST_CASE (tst_geo70) {
 /* then do some searches, results checked against  */
 /* the same run with full table scan               */
 
-BOOST_AUTO_TEST_CASE (tst_geo100) {
+TEST_CASE("tst_geo100", "[geo][!hide]") {
   gi=GeoIndex_new();
   la=-89.0;
   for(i=0;i<10;i++)
@@ -758,7 +737,7 @@ BOOST_AUTO_TEST_CASE (tst_geo100) {
 /* the data is a known set of points, so that the  */
 /* distances can be computed manually              */
 
-BOOST_AUTO_TEST_CASE (tst_geo200) {
+TEST_CASE("tst_geo200", "[geo][!hide]") {
   gi=GeoIndex_new();
   for(i=1;i<=10;i++)
   {
@@ -955,7 +934,7 @@ BOOST_AUTO_TEST_CASE (tst_geo200) {
 /* only by using (early versions of) this program  */
 /* so are more a way of checking it hasn't changed */
 
-BOOST_AUTO_TEST_CASE (tst_geo300) {
+TEST_CASE("tst_geo300", "[geo][!hide]") {
   gi=GeoIndex_new();
   la=1.23456789;
   lo=9.87654321;
@@ -1183,7 +1162,7 @@ BOOST_AUTO_TEST_CASE (tst_geo300) {
 /* another batch of massive tests - again used as  */
 /* comparisons - this time between 1.1 and 2.0     */
 
-BOOST_AUTO_TEST_CASE (tst_geo400) {
+TEST_CASE("tst_geo400", "[geo][!hide]") {
   gi=GeoIndex_new();
   la=41.23456789;
   lo=39.87654321;
@@ -1219,7 +1198,7 @@ BOOST_AUTO_TEST_CASE (tst_geo400) {
 /* This set of tests aims to cluster the points in */
 /* a sligtly more realistic way.       */
 
-BOOST_AUTO_TEST_CASE (tst_geo500) {
+TEST_CASE("tst_geo500", "[geo][!hide]") {
   gi=GeoIndex_new();
   for(i=1;i<135212;i++)
   {
@@ -1251,7 +1230,7 @@ BOOST_AUTO_TEST_CASE (tst_geo500) {
 /*                                                 */
 /* Test a very large database - too big for V1.2!  */
 
-BOOST_AUTO_TEST_CASE (tst_geo600) {
+TEST_CASE("tst_geo600", "[geo][!hide]") {
   gi=GeoIndex_new();
   for(i=1;i<21123212;i++)
   {
@@ -1285,7 +1264,7 @@ BOOST_AUTO_TEST_CASE (tst_geo600) {
 /* then puts in loads and deletes them again and   */
 /* looks again.  Testing deletion balancing        */
  
-BOOST_AUTO_TEST_CASE (tst_geo650) {
+TEST_CASE("tst_geo650", "[geo][!hide]") {
   gi=GeoIndex_new();
   for(i=1;i<13;i++)    /* put in points 1-12     */
   {
@@ -1331,7 +1310,7 @@ BOOST_AUTO_TEST_CASE (tst_geo650) {
 /* this went into sin(theta) to give small value, so it */
 /* found that many points were not within 30000 Km      */
 
-BOOST_AUTO_TEST_CASE (tst_geo900) {
+TEST_CASE("tst_geo900", "[geo][!hide]") {
   gi=GeoIndex_new();
   la=41.23456789;
   lo=39.87654321;
@@ -1357,7 +1336,5 @@ BOOST_AUTO_TEST_CASE (tst_geo900) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_SUITE_END ()
 
 /* end of georeg.cpp  */

@@ -27,8 +27,7 @@
 
 #include "Basics/Common.h"
 
-#define BOOST_TEST_INCLUDED
-#include <boost/test/unit_test.hpp>
+#include "catch.hpp"
 
 #include "MMFiles/MMFilesSkiplist.h"
 #include "Basics/voc-errors.h"
@@ -72,16 +71,11 @@ static void FreeElm (void* e) {
 
 struct CSkiplistSetup {
   CSkiplistSetup () {
-    BOOST_TEST_MESSAGE("setup Skiplist");
     if (!Initialized) {
       Initialized = true;
       arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
     }
 
-  }
-
-  ~CSkiplistSetup () {
-    BOOST_TEST_MESSAGE("tear-down Skiplist");
   }
 };
 
@@ -93,23 +87,23 @@ struct CSkiplistSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_FIXTURE_TEST_SUITE(CSkiplistTest, CSkiplistSetup)
-
+TEST_CASE("CSkiplistTest", "[cskiplist]") {
+  CSkiplistSetup s;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test filling in forward order
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_unique_forward) {
+SECTION("tst_unique_forward") {
   arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
   
   // check start node
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.startNode()->nextNode());
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.startNode()->prevNode());
+  CHECK((void*) 0 == skiplist.startNode()->nextNode());
+  CHECK((void*) 0 == skiplist.startNode()->prevNode());
 
   // check end node
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.endNode());
+  CHECK((void*) 0 == skiplist.endNode());
   
-  BOOST_CHECK_EQUAL(0, (int) skiplist.getNrUsed());
+  CHECK(0 == (int) skiplist.getNrUsed());
 
   // insert 100 values
   std::vector<int*> values; 
@@ -122,14 +116,14 @@ BOOST_AUTO_TEST_CASE (tst_unique_forward) {
   }
 
   // now check consistency
-  BOOST_CHECK_EQUAL(100, (int) skiplist.getNrUsed());
+  CHECK(100 == (int) skiplist.getNrUsed());
 
   // check start node
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.startNode()->prevNode());
-  BOOST_CHECK_EQUAL(values[0], skiplist.startNode()->nextNode()->document());
+  CHECK((void*) 0 == skiplist.startNode()->prevNode());
+  CHECK(values[0] == skiplist.startNode()->nextNode()->document());
 
   // check end node
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.endNode());
+  CHECK((void*) 0 == skiplist.endNode());
 
   arangodb::MMFilesSkiplistNode<void, void>* current;
 
@@ -137,14 +131,14 @@ BOOST_AUTO_TEST_CASE (tst_unique_forward) {
   current = skiplist.startNode()->nextNode();
   for (int i = 0; i < 100; ++i) {
     // compare value
-    BOOST_CHECK_EQUAL((void*) values[i], current->document());
+    CHECK((void*) values[i] == current->document());
 
     // compare prev and next node
     if (i > 0) {
-      BOOST_CHECK_EQUAL(values[i - 1], current->prevNode()->document());
+      CHECK(values[i - 1] == current->prevNode()->document());
     }
     if (i < 99) {
-      BOOST_CHECK_EQUAL(values[i + 1], current->nextNode()->document());
+      CHECK(values[i + 1] == current->nextNode()->document());
     }
     current = current->nextNode();
   }
@@ -153,20 +147,20 @@ BOOST_AUTO_TEST_CASE (tst_unique_forward) {
   current = skiplist.lookup(nullptr, values[99]);
   for (int i = 99; i >= 0; --i) {
     // compare value
-    BOOST_CHECK_EQUAL(values[i], current->document());
+    CHECK(values[i] == current->document());
 
     // compare prev and next node
     if (i > 0) {
-      BOOST_CHECK_EQUAL(values[i - 1], current->prevNode()->document());
+      CHECK(values[i - 1] == current->prevNode()->document());
     }
     if (i < 99) {
-      BOOST_CHECK_EQUAL(values[i + 1], current->nextNode()->document());
+      CHECK(values[i + 1] == current->nextNode()->document());
     }
     current = current->prevNode();
   }
 
   for (int i = 0; i < 100; ++i) {
-    BOOST_CHECK_EQUAL(values[i], skiplist.lookup(nullptr, values[i])->document());
+    CHECK(values[i] == skiplist.lookup(nullptr, values[i])->document());
   }
     
   // clean up
@@ -179,17 +173,17 @@ BOOST_AUTO_TEST_CASE (tst_unique_forward) {
 /// @brief test filling in reverse order
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_unique_reverse) {
+SECTION("tst_unique_reverse") {
   arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
   
   // check start node
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.startNode()->nextNode());
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.startNode()->prevNode());
+  CHECK((void*) 0 == skiplist.startNode()->nextNode());
+  CHECK((void*) 0 == skiplist.startNode()->prevNode());
 
   // check end node
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.endNode());
+  CHECK((void*) 0 == skiplist.endNode());
   
-  BOOST_CHECK_EQUAL(0, (int) skiplist.getNrUsed());
+  CHECK(0 == (int) skiplist.getNrUsed());
 
   std::vector<int*> values; 
   for (int i = 0; i < 100; ++i) {
@@ -202,14 +196,14 @@ BOOST_AUTO_TEST_CASE (tst_unique_reverse) {
   }
 
   // now check consistency
-  BOOST_CHECK_EQUAL(100, (int) skiplist.getNrUsed());
+  CHECK(100 == (int) skiplist.getNrUsed());
 
   // check start node
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.startNode()->prevNode());
-  BOOST_CHECK_EQUAL(values[0], skiplist.startNode()->nextNode()->document());
+  CHECK((void*) 0 == skiplist.startNode()->prevNode());
+  CHECK(values[0] == skiplist.startNode()->nextNode()->document());
 
   // check end node
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.endNode());
+  CHECK((void*) 0 == skiplist.endNode());
 
   arangodb::MMFilesSkiplistNode<void, void>* current;
 
@@ -217,14 +211,14 @@ BOOST_AUTO_TEST_CASE (tst_unique_reverse) {
   current = skiplist.startNode()->nextNode();
   for (int i = 0; i < 100; ++i) {
     // compare value
-    BOOST_CHECK_EQUAL((void*) values[i], current->document());
+    CHECK((void*) values[i] == current->document());
 
     // compare prev and next node
     if (i > 0) {
-      BOOST_CHECK_EQUAL(values[i - 1], current->prevNode()->document());
+      CHECK(values[i - 1] == current->prevNode()->document());
     }
     if (i < 99) {
-      BOOST_CHECK_EQUAL(values[i + 1], current->nextNode()->document());
+      CHECK(values[i + 1] == current->nextNode()->document());
     }
     current = current->nextNode();
   }
@@ -233,20 +227,20 @@ BOOST_AUTO_TEST_CASE (tst_unique_reverse) {
   current = skiplist.lookup(nullptr, values[99]);
   for (int i = 99; i >= 0; --i) {
     // compare value
-    BOOST_CHECK_EQUAL(values[i], current->document());
+    CHECK(values[i] == current->document());
 
     // compare prev and next node
     if (i > 0) {
-      BOOST_CHECK_EQUAL(values[i - 1], current->prevNode()->document());
+      CHECK(values[i - 1] == current->prevNode()->document());
     }
     if (i < 99) {
-      BOOST_CHECK_EQUAL(values[i + 1], current->nextNode()->document());
+      CHECK(values[i + 1] == current->nextNode()->document());
     }
     current = current->prevNode();
   }
 
   for (int i = 0; i < 100; ++i) {
-    BOOST_CHECK_EQUAL(values[i], skiplist.lookup(nullptr, values[i])->document());
+    CHECK(values[i] == skiplist.lookup(nullptr, values[i])->document());
   }
  
   // clean up
@@ -259,7 +253,7 @@ BOOST_AUTO_TEST_CASE (tst_unique_reverse) {
 /// @brief test lookup
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_unique_lookup) {
+SECTION("tst_unique_lookup") {
   arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
   
   std::vector<int*> values; 
@@ -272,25 +266,25 @@ BOOST_AUTO_TEST_CASE (tst_unique_lookup) {
   }
 
   // lookup existing values
-  BOOST_CHECK_EQUAL(values[0], skiplist.lookup(nullptr, values[0])->document());
-  BOOST_CHECK_EQUAL(values[3], skiplist.lookup(nullptr, values[3])->document());
-  BOOST_CHECK_EQUAL(values[17], skiplist.lookup(nullptr, values[17])->document());
-  BOOST_CHECK_EQUAL(values[99], skiplist.lookup(nullptr, values[99])->document());
+  CHECK(values[0] == skiplist.lookup(nullptr, values[0])->document());
+  CHECK(values[3] == skiplist.lookup(nullptr, values[3])->document());
+  CHECK(values[17] == skiplist.lookup(nullptr, values[17])->document());
+  CHECK(values[99] == skiplist.lookup(nullptr, values[99])->document());
   
   // lookup non-existing values
   int value;
 
   value = -1;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
+  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
 
   value = 100;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
+  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
   
   value = 101;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
+  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
 
   value = 1000;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
+  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
 
   // clean up
   for (auto i : values) {
@@ -302,7 +296,7 @@ BOOST_AUTO_TEST_CASE (tst_unique_lookup) {
 /// @brief test removal
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_unique_remove) {
+SECTION("tst_unique_remove") {
   arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
   
   std::vector<int*> values; 
@@ -315,87 +309,87 @@ BOOST_AUTO_TEST_CASE (tst_unique_remove) {
   }
 
   // remove some values, including start and end nodes
-  BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[7]));
-  BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[12]));
-  BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[23]));
-  BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[99]));
-  BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[98]));
-  BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[0]));
-  BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[1]));
+  CHECK(0 == skiplist.remove(nullptr, values[7]));
+  CHECK(0 == skiplist.remove(nullptr, values[12]));
+  CHECK(0 == skiplist.remove(nullptr, values[23]));
+  CHECK(0 == skiplist.remove(nullptr, values[99]));
+  CHECK(0 == skiplist.remove(nullptr, values[98]));
+  CHECK(0 == skiplist.remove(nullptr, values[0]));
+  CHECK(0 == skiplist.remove(nullptr, values[1]));
 
   // remove non-existing and already removed values
   int value;
   
   value = -1;
-  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(nullptr, &value));
+  CHECK(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
   value = 0;
-  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(nullptr, &value));
+  CHECK(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
   value = 12;
-  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(nullptr, &value));
+  CHECK(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
   value = 99;
-  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(nullptr, &value));
+  CHECK(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
   value = 101;
-  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(nullptr, &value));
+  CHECK(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
   value = 1000;
-  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(nullptr, &value));
+  CHECK(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
 
   // check start node
-  BOOST_CHECK_EQUAL(values[2], skiplist.startNode()->nextNode()->document());
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.startNode()->prevNode());
+  CHECK(values[2] == skiplist.startNode()->nextNode()->document());
+  CHECK((void*) 0 == skiplist.startNode()->prevNode());
 
   // check end node
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.endNode());
+  CHECK((void*) 0 == skiplist.endNode());
   
-  BOOST_CHECK_EQUAL(93, (int) skiplist.getNrUsed());
+  CHECK(93 == (int) skiplist.getNrUsed());
 
 
   // lookup existing values
-  BOOST_CHECK_EQUAL(values[2], skiplist.lookup(nullptr, values[2])->document());
-  BOOST_CHECK_EQUAL(skiplist.startNode(), skiplist.lookup(nullptr, values[2])->prevNode());
-  BOOST_CHECK_EQUAL(values[3], skiplist.lookup(nullptr, values[2])->nextNode()->document());
+  CHECK(values[2] == skiplist.lookup(nullptr, values[2])->document());
+  CHECK(skiplist.startNode() == skiplist.lookup(nullptr, values[2])->prevNode());
+  CHECK(values[3] == skiplist.lookup(nullptr, values[2])->nextNode()->document());
 
-  BOOST_CHECK_EQUAL(values[3], skiplist.lookup(nullptr, values[3])->document());
-  BOOST_CHECK_EQUAL(values[2], skiplist.lookup(nullptr, values[3])->prevNode()->document());
-  BOOST_CHECK_EQUAL(values[4], skiplist.lookup(nullptr, values[3])->nextNode()->document());
+  CHECK(values[3] == skiplist.lookup(nullptr, values[3])->document());
+  CHECK(values[2] == skiplist.lookup(nullptr, values[3])->prevNode()->document());
+  CHECK(values[4] == skiplist.lookup(nullptr, values[3])->nextNode()->document());
 
-  BOOST_CHECK_EQUAL(values[6], skiplist.lookup(nullptr, values[6])->document());
-  BOOST_CHECK_EQUAL(values[5], skiplist.lookup(nullptr, values[6])->prevNode()->document());
-  BOOST_CHECK_EQUAL(values[8], skiplist.lookup(nullptr, values[6])->nextNode()->document());
+  CHECK(values[6] == skiplist.lookup(nullptr, values[6])->document());
+  CHECK(values[5] == skiplist.lookup(nullptr, values[6])->prevNode()->document());
+  CHECK(values[8] == skiplist.lookup(nullptr, values[6])->nextNode()->document());
 
-  BOOST_CHECK_EQUAL(values[8], skiplist.lookup(nullptr, values[8])->document());
-  BOOST_CHECK_EQUAL(values[6], skiplist.lookup(nullptr, values[8])->prevNode()->document());
-  BOOST_CHECK_EQUAL(values[9], skiplist.lookup(nullptr, values[8])->nextNode()->document());
+  CHECK(values[8] == skiplist.lookup(nullptr, values[8])->document());
+  CHECK(values[6] == skiplist.lookup(nullptr, values[8])->prevNode()->document());
+  CHECK(values[9] == skiplist.lookup(nullptr, values[8])->nextNode()->document());
 
-  BOOST_CHECK_EQUAL(values[11], skiplist.lookup(nullptr, values[11])->document());
-  BOOST_CHECK_EQUAL(values[10], skiplist.lookup(nullptr, values[11])->prevNode()->document());
-  BOOST_CHECK_EQUAL(values[13], skiplist.lookup(nullptr, values[11])->nextNode()->document());
+  CHECK(values[11] == skiplist.lookup(nullptr, values[11])->document());
+  CHECK(values[10] == skiplist.lookup(nullptr, values[11])->prevNode()->document());
+  CHECK(values[13] == skiplist.lookup(nullptr, values[11])->nextNode()->document());
 
-  BOOST_CHECK_EQUAL(values[13], skiplist.lookup(nullptr, values[13])->document());
-  BOOST_CHECK_EQUAL(values[11], skiplist.lookup(nullptr, values[13])->prevNode()->document());
-  BOOST_CHECK_EQUAL(values[14], skiplist.lookup(nullptr, values[13])->nextNode()->document());
+  CHECK(values[13] == skiplist.lookup(nullptr, values[13])->document());
+  CHECK(values[11] == skiplist.lookup(nullptr, values[13])->prevNode()->document());
+  CHECK(values[14] == skiplist.lookup(nullptr, values[13])->nextNode()->document());
 
-  BOOST_CHECK_EQUAL(values[22], skiplist.lookup(nullptr, values[22])->document());
-  BOOST_CHECK_EQUAL(values[24], skiplist.lookup(nullptr, values[24])->document());
+  CHECK(values[22] == skiplist.lookup(nullptr, values[22])->document());
+  CHECK(values[24] == skiplist.lookup(nullptr, values[24])->document());
 
-  BOOST_CHECK_EQUAL(values[97], skiplist.lookup(nullptr, values[97])->document());
-  BOOST_CHECK_EQUAL(values[96], skiplist.lookup(nullptr, values[97])->prevNode()->document());
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, values[97])->nextNode());
+  CHECK(values[97] == skiplist.lookup(nullptr, values[97])->document());
+  CHECK(values[96] == skiplist.lookup(nullptr, values[97])->prevNode()->document());
+  CHECK((void*) 0 == skiplist.lookup(nullptr, values[97])->nextNode());
   
   // lookup non-existing values
   value = 0;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
+  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
   value = 1;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
+  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
   value = 7;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
+  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
   value = 12;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
+  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
   value = 23;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
+  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
   value = 98;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
+  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
   value = 99;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
+  CHECK((void*) 0 == skiplist.lookup(nullptr, &value));
   
   // clean up
   for (auto i : values) {
@@ -407,7 +401,7 @@ BOOST_AUTO_TEST_CASE (tst_unique_remove) {
 /// @brief test removal
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_unique_remove_all) {
+SECTION("tst_unique_remove_all") {
   arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
   
   std::vector<int*> values; 
@@ -420,39 +414,34 @@ BOOST_AUTO_TEST_CASE (tst_unique_remove_all) {
   }
   
   for (int i = 0; i < 100; ++i) {
-    BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[i]));
+    CHECK(0 == skiplist.remove(nullptr, values[i]));
   }
   
   // try removing again
   for (int i = 0; i < 100; ++i) {
-    BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(nullptr, values[i]));
+    CHECK(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, values[i]));
   }
   
   // check start node
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.startNode()->nextNode());
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.startNode()->prevNode());
+  CHECK((void*) 0 == skiplist.startNode()->nextNode());
+  CHECK((void*) 0 == skiplist.startNode()->prevNode());
 
   // check end node
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.endNode());
+  CHECK((void*) 0 == skiplist.endNode());
   
-  BOOST_CHECK_EQUAL(0, (int) skiplist.getNrUsed());
+  CHECK(0 == (int) skiplist.getNrUsed());
 
   // lookup non-existing values
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, values[0]));
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, values[12]));
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, values[99]));
+  CHECK((void*) 0 == skiplist.lookup(nullptr, values[0]));
+  CHECK((void*) 0 == skiplist.lookup(nullptr, values[12]));
+  CHECK((void*) 0 == skiplist.lookup(nullptr, values[99]));
   
   // clean up
   for (auto i : values) {
     delete i;
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
-////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_SUITE_END ()
+}
 
 // Local Variables:
 // mode: outline-minor

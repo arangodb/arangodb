@@ -27,8 +27,7 @@
 
 #include "Basics/Common.h"
 
-#define BOOST_TEST_INCLUDED
-#include <boost/test/unit_test.hpp>
+#include "catch.hpp"
 
 #include <sstream>
 
@@ -48,7 +47,7 @@
                     &CCsvSetup::ProcessCsvAdd,                        \
                     &CCsvSetup::ProcessCsvEnd,                        \
                     nullptr);                                         \
-  parser._dataAdd = this;                             
+  parser._dataAdd = &setup;                             
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tab character
@@ -74,12 +73,10 @@
 
 struct CCsvSetup {
   CCsvSetup () {
-    BOOST_TEST_MESSAGE("setup csv");
     column = 0;
   }
 
   ~CCsvSetup () {
-    BOOST_TEST_MESSAGE("tear-down csv");
   }
 
   static void ProcessCsvBegin (TRI_csv_parser_t* parser, size_t row) {
@@ -121,13 +118,15 @@ struct CCsvSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_FIXTURE_TEST_SUITE(CCsvTest, CCsvSetup)
+TEST_CASE("CCsvTest", "[CCsvTest]") {
+
+  CCsvSetup setup;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv simple
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_csv_simple) {
+SECTION("tst_csv_simple") {
   INIT_PARSER
   TRI_SetSeparatorCsvParser(&parser, ',');
   TRI_SetQuoteCsvParser(&parser, '"', true);
@@ -138,7 +137,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_simple) {
     ",,i,j,," LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  BOOST_CHECK_EQUAL("0:a,b,c,d,e,\n1:f,g,h\n2:,,i,j,,\n", out.str());
+  CHECK("0:a,b,c,d,e,\n1:f,g,h\n2:,,i,j,,\n" == setup.out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -147,7 +146,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_simple) {
 /// @brief test csv crlf
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_csv_crlf) {
+SECTION("tst_csv_crlf") {
   INIT_PARSER
   TRI_SetSeparatorCsvParser(&parser, ',');
   TRI_SetQuoteCsvParser(&parser, '"', true);
@@ -158,7 +157,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_crlf) {
     "i,j" CR LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  BOOST_CHECK_EQUAL("0:a,b,c,d,e\n1:f,g,h\n2:i,j\n", out.str());
+  CHECK("0:a,b,c,d,e\n1:f,g,h\n2:i,j\n" == setup.out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -167,7 +166,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_crlf) {
 /// @brief test csv whitespace
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_csv_whitespace) {
+SECTION("tst_csv_whitespace") {
   INIT_PARSER
   TRI_SetSeparatorCsvParser(&parser, ',');
   TRI_SetQuoteCsvParser(&parser, '"', true);
@@ -179,7 +178,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_whitespace) {
     "   x   x  " LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  BOOST_CHECK_EQUAL("0: a , \"b \" , c , d , e \n1:\n2:\n3:   x   x  \n", out.str());
+  CHECK("0: a , \"b \" , c , d , e \n1:\n2:\n3:   x   x  \n" == setup.out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -188,7 +187,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_whitespace) {
 /// @brief test csv with quotes
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_csv_quotes1) {
+SECTION("tst_csv_quotes1") {
   INIT_PARSER
   TRI_SetSeparatorCsvParser(&parser, ',');
   TRI_SetQuoteCsvParser(&parser, '"', true);
@@ -199,7 +198,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_quotes1) {
     "\"a,b\",\"c,d\"" LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  BOOST_CHECK_EQUAL("0:ESCaESC,ESCbESC\n1:a,b\n2:ESCa,bESC,ESCc,dESC\n", out.str());
+  CHECK("0:ESCaESC,ESCbESC\n1:a,b\n2:ESCa,bESC,ESCc,dESC\n" == setup.out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -208,7 +207,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_quotes1) {
 /// @brief test csv with quotes in quotes
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_csv_quotes2) {
+SECTION("tst_csv_quotes2") {
   INIT_PARSER
   TRI_SetSeparatorCsvParser(&parser, ',');
   TRI_SetQuoteCsvParser(&parser, '"', true);
@@ -218,7 +217,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_quotes2) {
     "\"\",\"\"\"ab\",\"\"\"\"\"ab\"" LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  BOOST_CHECK_EQUAL("0:ESCx\"yESC,ESCa\"ESC\n1:ESCESC,ESC\"abESC,ESC\"\"abESC\n", out.str());
+  CHECK("0:ESCx\"yESC,ESCa\"ESC\n1:ESCESC,ESC\"abESC,ESC\"\"abESC\n" == setup.out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -227,7 +226,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_quotes2) {
 /// @brief test csv quotes & whitespace
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_csv_quotes_whitespace) {
+SECTION("tst_csv_quotes_whitespace") {
   INIT_PARSER
   TRI_SetSeparatorCsvParser(&parser, ',');
   TRI_SetQuoteCsvParser(&parser, '"', true);
@@ -238,7 +237,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_quotes_whitespace) {
     " \"\" " LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  BOOST_CHECK_EQUAL("0:ESCa ESC,ESC \" b ESC,ESC\"ESC,ESC ESC\n1: \"\" ix\n2: \"\" \n", out.str());
+  CHECK("0:ESCa ESC,ESC \" b ESC,ESC\"ESC,ESC ESC\n1: \"\" ix\n2: \"\" \n" == setup.out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -247,7 +246,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_quotes_whitespace) {
 /// @brief test tsv
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_tsv_simple) {
+SECTION("tst_tsv_simple") {
   INIT_PARSER
   TRI_SetSeparatorCsvParser(&parser, '\t');
   TRI_SetQuoteCsvParser(&parser, '\0', false);
@@ -257,7 +256,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_simple) {
     "the quick" TAB "brown fox jumped" TAB "over the" TAB "lazy" TAB "dog" LF; 
 
   TRI_ParseCsvString(&parser, tsv, strlen(tsv));
-  BOOST_CHECK_EQUAL("0:a,b,c\n1:the quick,brown fox jumped,over the,lazy,dog\n", out.str());
+  CHECK("0:a,b,c\n1:the quick,brown fox jumped,over the,lazy,dog\n" == setup.out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -266,7 +265,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_simple) {
 /// @brief test tsv with whitespace
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_tsv_whitespace) {
+SECTION("tst_tsv_whitespace") {
   INIT_PARSER
   TRI_SetSeparatorCsvParser(&parser, '\t');
   TRI_SetQuoteCsvParser(&parser, '\0', false);
@@ -278,7 +277,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_whitespace) {
     "something else" LF;
 
   TRI_ParseCsvString(&parser, tsv, strlen(tsv));
-  BOOST_CHECK_EQUAL("0:a , b, c \n1:  \n2:\n3:something else\n", out.str());
+  CHECK("0:a , b, c \n1:  \n2:\n3:something else\n" == setup.out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -287,7 +286,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_whitespace) {
 /// @brief test tsv with quotes (not supported)
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_tsv_quotes) {
+SECTION("tst_tsv_quotes") {
   INIT_PARSER
   TRI_SetSeparatorCsvParser(&parser, '\t');
   TRI_SetQuoteCsvParser(&parser, '\0', false);
@@ -298,7 +297,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_quotes) {
     "\" fox " LF;
 
   TRI_ParseCsvString(&parser, tsv, strlen(tsv));
-  BOOST_CHECK_EQUAL("0:\"a\",\"b\",\"c\n1: \"\n2:\" fox \n", out.str());
+  CHECK("0:\"a\",\"b\",\"c\n1: \"\n2:\" fox \n" == setup.out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -307,7 +306,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_quotes) {
 /// @brief test tsv with separator (not supported)
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_tsv_separator) {
+SECTION("tst_tsv_separator") {
   INIT_PARSER
   TRI_SetSeparatorCsvParser(&parser, '\t');
   TRI_SetQuoteCsvParser(&parser, ',', false);
@@ -318,7 +317,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_separator) {
     ",\", fox,, " LF;
 
   TRI_ParseCsvString(&parser, tsv, strlen(tsv));
-  BOOST_CHECK_EQUAL("0:\"a,,\",\",,b\",\",c,\n1: , ,\", \n2:,\", fox,, \n", out.str());
+  CHECK("0:\"a,,\",\",,b\",\",c,\n1: , ,\", \n2:,\", fox,, \n" == setup.out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -327,7 +326,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_separator) {
 /// @brief test tsv crlf
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_tsv_crlf) {
+SECTION("tst_tsv_crlf") {
   INIT_PARSER
   TRI_SetSeparatorCsvParser(&parser, '\t');
   TRI_SetQuoteCsvParser(&parser, '\0', false);
@@ -337,7 +336,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_crlf) {
     "the quick" TAB "brown fox jumped" TAB "over the" TAB "lazy" TAB "dog" CR LF; 
 
   TRI_ParseCsvString(&parser, tsv, strlen(tsv));
-  BOOST_CHECK_EQUAL("0:a,b,c\n1:the quick,brown fox jumped,over the,lazy,dog\n", out.str());
+  CHECK("0:a,b,c\n1:the quick,brown fox jumped,over the,lazy,dog\n" == setup.out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -346,7 +345,7 @@ BOOST_AUTO_TEST_CASE (tst_tsv_crlf) {
 /// @brief test semicolon separator
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_csv_semicolon) {
+SECTION("tst_csv_semicolon") {
   INIT_PARSER
   TRI_SetSeparatorCsvParser(&parser, ';');
   TRI_SetQuoteCsvParser(&parser, '"', true);
@@ -358,7 +357,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_semicolon) {
     ";;i; ;j; ;" LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  BOOST_CHECK_EQUAL("0:a,b,c,d,e,\n1:f,g,,ESCh,;ESC\n2:,\n3:,,i, ,j, ,\n", out.str());
+  CHECK("0:a,b,c,d,e,\n1:f,g,,ESCh,;ESC\n2:,\n3:,,i, ,j, ,\n" == setup.out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -367,7 +366,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_semicolon) {
 /// @brief test semicolon separator, no quotes
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_csv_semicolon_noquote) {
+SECTION("tst_csv_semicolon_noquote") {
   INIT_PARSER
   TRI_SetSeparatorCsvParser(&parser, ';');
   TRI_SetQuoteCsvParser(&parser, '\0', false);
@@ -380,7 +379,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_semicolon_noquote) {
     "\" abc \" " CR LF;
 
   TRI_ParseCsvString(&parser, csv, strlen(csv));
-  BOOST_CHECK_EQUAL("0:a, b, c, d  ,\n1:\n2: ,\n3: \n4:\" abc \" \n", out.str());
+  CHECK("0:a, b, c, d  ,\n1:\n2: ,\n3: \n4:\" abc \" \n" == setup.out.str());
 
   TRI_DestroyCsvParser(&parser);
 }
@@ -389,7 +388,7 @@ BOOST_AUTO_TEST_CASE (tst_csv_semicolon_noquote) {
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_SUITE_END ()
+}
 
 // Local Variables:
 // mode: outline-minor

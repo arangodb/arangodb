@@ -27,8 +27,7 @@
 
 #include "Basics/Common.h"
 
-#define BOOST_TEST_INCLUDED
-#include <boost/test/unit_test.hpp>
+#include "catch.hpp"
 
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesWalMarker.h"
@@ -38,19 +37,6 @@ template<typename T, typename U> size_t offsetOf (U T::*member) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
-struct CStructureSizeSetup {
-  CStructureSizeSetup () {
-  }
-
-  ~CStructureSizeSetup () {
-  }
-};
-
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
@@ -58,98 +44,98 @@ struct CStructureSizeSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_FIXTURE_TEST_SUITE(CStructureSizeTest, CStructureSizeSetup)
+TEST_CASE("CStructureSizeTest", "[structure-size]") {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test sizeof some basic elements
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_basic_elements) {
-  BOOST_CHECK_EQUAL(4, (int) sizeof(TRI_col_type_e));
-  BOOST_CHECK_EQUAL(1, (int) sizeof(TRI_df_marker_type_t));
-  BOOST_CHECK_EQUAL(4, (int) sizeof(TRI_df_version_t));
-  BOOST_CHECK_EQUAL(8, (int) sizeof(TRI_voc_cid_t));
-  BOOST_CHECK_EQUAL(4, (int) sizeof(TRI_voc_crc_t));
-  BOOST_CHECK_EQUAL(8, (int) sizeof(TRI_voc_tid_t));
-  BOOST_CHECK_EQUAL(8, (int) sizeof(TRI_voc_rid_t));
-  BOOST_CHECK_EQUAL(4, (int) sizeof(TRI_voc_size_t));
-  BOOST_CHECK_EQUAL(8, (int) sizeof(TRI_voc_tick_t));
+SECTION("tst_basic_elements") {
+  CHECK(4 == (int) sizeof(TRI_col_type_e));
+  CHECK(1 == (int) sizeof(TRI_df_marker_type_t));
+  CHECK(4 == (int) sizeof(TRI_df_version_t));
+  CHECK(8 == (int) sizeof(TRI_voc_cid_t));
+  CHECK(4 == (int) sizeof(TRI_voc_crc_t));
+  CHECK(8 == (int) sizeof(TRI_voc_tid_t));
+  CHECK(8 == (int) sizeof(TRI_voc_rid_t));
+  CHECK(4 == (int) sizeof(TRI_voc_size_t));
+  CHECK(8 == (int) sizeof(TRI_voc_tick_t));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test sizeof TRI_df_marker_t
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_df_marker) {
+SECTION("tst_df_marker") {
   size_t s = sizeof(TRI_df_marker_t);
 
   TRI_df_marker_t m; 
-  BOOST_CHECK_EQUAL(16, (int) s);
-  BOOST_CHECK_EQUAL(true, s % 8 == 0); 
+  CHECK(16 == (int) s);
+  CHECK(s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(0, (int) m.offsetOfSize());
-  BOOST_CHECK_EQUAL(4, (int) m.offsetOfCrc());
-  BOOST_CHECK_EQUAL(8, (int) m.offsetOfTypeAndTick());
+  CHECK(0 == (int) m.offsetOfSize());
+  CHECK(4 == (int) m.offsetOfCrc());
+  CHECK(8 == (int) m.offsetOfTypeAndTick());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test sizeof TRI_df_header_marker_t
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_df_header_marker) {
+SECTION("tst_df_header_marker") {
   size_t s = sizeof(TRI_df_header_marker_t);
 
-  BOOST_CHECK_EQUAL(16 + 16, (int) s);
-  BOOST_CHECK_EQUAL(true, s % 8 == 0); 
+  CHECK(16 + 16 == (int) s);
+  CHECK(s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(16, (int) offsetOf(&TRI_df_header_marker_t::_version));
-  BOOST_CHECK_EQUAL(20, (int) offsetOf(&TRI_df_header_marker_t::_maximalSize));
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&TRI_df_header_marker_t::_fid));
+  CHECK(16 == (int) offsetOf(&TRI_df_header_marker_t::_version));
+  CHECK(20 == (int) offsetOf(&TRI_df_header_marker_t::_maximalSize));
+  CHECK(24 == (int) offsetOf(&TRI_df_header_marker_t::_fid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test sizeof TRI_df_footer_marker_t
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_df_footer_marker) {
+SECTION("tst_df_footer_marker") {
   size_t s = sizeof(TRI_df_footer_marker_t);
 
-  BOOST_CHECK_EQUAL(16, (int) s);
-  BOOST_CHECK_EQUAL(true, s % 8 == 0); 
+  CHECK(16 == (int) s);
+  CHECK(s % 8 == 0); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test sizeof TRI_col_header_marker_t
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_col_header_marker) {
+SECTION("tst_col_header_marker") {
   size_t s = sizeof(TRI_col_header_marker_t);
 
-  BOOST_CHECK_EQUAL(16 + 8, (int) s); // base + own size
-  BOOST_CHECK_EQUAL(true, s % 8 == 0); 
+  CHECK(16 + 8 == (int) s); // base + own size
+  CHECK(s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(16, (int) offsetOf(&TRI_col_header_marker_t::_cid));
+  CHECK(16 == (int) offsetOf(&TRI_col_header_marker_t::_cid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test sizeof TRI_df_prologue_marker_t
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_df_prologue_marker) {
+SECTION("tst_df_prologue_marker") {
   size_t s = sizeof(TRI_df_prologue_marker_t);
 
-  BOOST_CHECK_EQUAL(16 + 16, (int) s);
-  BOOST_CHECK_EQUAL(true, s % 8 == 0); 
+  CHECK(16 + 16 == (int) s);
+  CHECK(s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(16, (int) offsetOf(&TRI_df_prologue_marker_t::_databaseId));
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&TRI_df_prologue_marker_t::_collectionId));
+  CHECK(16 == (int) offsetOf(&TRI_df_prologue_marker_t::_databaseId));
+  CHECK(24 == (int) offsetOf(&TRI_df_prologue_marker_t::_collectionId));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_SUITE_END ()
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
