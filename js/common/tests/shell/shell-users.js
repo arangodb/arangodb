@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, fail */
+/*global assertEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the users management
@@ -291,6 +291,10 @@ function UsersSuite () {
       users.grantDatabase(username, "_system", "rw");
       // cannot really test something here as grantDatabase() does not return anything
       // but if it did not throw an exception, this is already a success!
+
+      var result = users.permission(username);
+      assertTrue(result.hasOwnProperty("_system"));
+      assertEqual("rw", result._system);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,6 +321,57 @@ function UsersSuite () {
       } catch (err) {
         assertEqual(ERRORS.ERROR_USER_NOT_FOUND.code, err.errorNum);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test grant change
+////////////////////////////////////////////////////////////////////////////////
+
+    testGrantChange : function () {
+      var username = "users-1";
+      var passwd = "passwd";
+
+      users.save(username, passwd);
+      assertEqual(username, c.firstExample({ user: username }).user);
+
+      users.grantDatabase(username, "_system", "rw");
+      // cannot really test something here as grantDatabase() does not return anything
+      // but if it did not throw an exception, this is already a success!
+
+      var result = users.permission(username);
+      assertTrue(result.hasOwnProperty("_system"));
+      assertEqual("rw", result._system);
+
+      users.grantDatabase(username, "_system", "ro");
+      result = users.permission(username);
+      
+      assertTrue(result.hasOwnProperty("_system"));
+      assertEqual("ro", result._system);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test grant/revoke
+////////////////////////////////////////////////////////////////////////////////
+
+    testGrantRevoke : function () {
+      var username = "users-1";
+      var passwd = "passwd";
+
+      users.save(username, passwd);
+      assertEqual(username, c.firstExample({ user: username }).user);
+
+      users.grantDatabase(username, "_system", "rw");
+      // cannot really test something here as grantDatabase() does not return anything
+      // but if it did not throw an exception, this is already a success!
+
+      var result = users.permission(username);
+      assertTrue(result.hasOwnProperty("_system"));
+      assertEqual("rw", result._system);
+
+      users.revokeDatabase(username, "_system");
+      result = users.permission(username);
+      assertFalse(result.hasOwnProperty("_system"));
+      assertEqual({}, result);
     }
   };
 }
