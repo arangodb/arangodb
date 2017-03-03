@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #2346
+
 * fixed issue #2342
 
 * change default string truncation length from 80 characters to 256 characters for
