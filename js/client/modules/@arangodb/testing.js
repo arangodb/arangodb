@@ -2643,12 +2643,11 @@ function locateBoostTest (name) {
 }
 
 testFuncs.boost = function (options) {
-  const args = ['--show_progress'];
-
+  let args = [];
   let results = {};
 
   if (!options.skipBoost) {
-    const run = locateBoostTest('basics_suite');
+    const run = locateBoostTest('arangodbtests');
 
     if (run !== '') {
       results.basics = executeAndWait(run, args, options, 'basics');
@@ -2661,7 +2660,8 @@ testFuncs.boost = function (options) {
   }
 
   if (!options.skipGeo) {
-    const run = locateBoostTest('geo_suite');
+    const run = locateBoostTest('arangodbtests');
+    args.push('[geo]');
 
     if (run !== '') {
       results.geo_suite = executeAndWait(run, args, options, 'geo_suite');
