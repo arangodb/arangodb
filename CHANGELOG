@@ -1,6 +1,9 @@
 devel
 -----
 
+* added input file type `auto` for arangoimp so it can automatically detect the 
+  type of the input file from the filename extension
+
 * added `--translate` option for arangoimp to translate attribute names from
   the input files to attriubte names expected by ArangoDB
 
