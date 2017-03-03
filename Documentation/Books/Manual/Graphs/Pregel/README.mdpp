@@ -33,12 +33,12 @@ You will need to ensure that edge documents contain the proper values in their s
 For a vertex document in collection "vertices"  ```{_key:"A", value:0}```
 the edge documents will have look like this:
 
-
+```
   {_from:"vertices/A", _to: "vertices/B", vertex:"A"}
   {_from:"vertices/A", _to: "vertices/C", vertex:"A"}
   {_from:"vertices/A", _to: "vertices/D", vertex:"A"}
   ...
-
+```
 
 This will ensure that during an insert of an edge document, the document will be placed in a shard
 on the proper DBServer. There is no restriction on additional attributes in your documents.
@@ -69,6 +69,7 @@ track the status of your algorithm.
 The result will give your some information on the state of the algorithm. The status might
 look something like this:
 
+```javascript
   {
     "state" : "running",
     "gss" : 12,
@@ -81,19 +82,133 @@ look something like this:
     "sendCount" : 3240364978,
     "receivedCount" : 3240364975
   }
+```
 
+## AQL integration
 
+ArangoDB supports retrieving temporary pregel results through the ArangoDB query language (AQL). 
+When our graph processing subsystem finishes executing an algorithm, the result can either be written back into the 
+database or kept in memory. In both cases the result can be queried via AQL. If the data was not written to the database
+store it is only held temporarily, until the user calls the `cancel` methodFor example a user might want to query
+only nodes with the most rank from the result set of a PageRank execution. 
 
-### Available Algorithms
+    FOR v IN PREGEL_RESULT(<handle>)
+      FILTER v.value >= 0.01
+      RETURN v._key
+
+## Available Algorithms
+
+There are a number of general parameters which apply to almost all algorithms:
+* ```store```: Is per default *true*, the pregel engine will write results back to the database.
+  if the value is *false* then you can query the results via AQLk, see AQL integration.
+* ```maxGSS```: Maximum number of global iterations for this algorithm
+* ```async```: Algorithms wich support async mode, will run without synchronized global iterations,
+  might lead to performance increases if you have load imbalances.
+* ```resultField```: Most algorithms will write the result into this field
 
 #### Page Rank
 
-var pregel = require("@arangodb/pregel");
-pregel.start("pagerank", "graphname", )
+PageRank is a well known algorithm to rank documents in a graph. The algorithm will run until
+the execution converges. Specify a custom threshold with the parameter `threshold`, to run for a fixed
+number of iterations use the `maxGSS` parameter. 
 
+```javascript
+var pregel = require("@arangodb/pregel");
+pregel.start("pagerank", "graphname", {maxGSS: 100, threshold:0.00000001})
+```
 
 #### Single-Source Shortest Path
 
+Cacluclate the distance of each vertex to a certain shortest path.
+
+```javascript
   var pregel = require("@arangodb/pregel");
   pregel.start("sssp", "graphname", {source:"vertices/1337"})
+```
 
+#### Hyperlink-Induced Topic Search (HITS)
+
+HITS is a link analysis algorithm that rates Web pages, developed by Jon Kleinberg. It is also known as hubs and authorities. 
+
+The idea behind Hubs and Authorities comes from the typical structure of the web: Certain websites known as hubs, serve as large directories that are not actually 
+authoritative on the information that they hold. These hubs are used as compilations of a broad catalog of information that leads users direct to other authoritative webpages.
+The algorithm assigns each vertex two scores: The authority-score and the hub-score. The authority score rates how many good hubs point to a particular
+vertex (or webpage), the hub score rates how good (authoritative) the vertices pointed to are. For more see https://en.wikipedia.org/wiki/HITS_algorithm
+
+Our version of the algorithm
+converges after a certain amount of time. The parameter *threshold* can be used to set a limit for the convergence (measured as maximum absolute difference of the hub and 
+authority scores between the current and last iteration)
+The algorithm can be executed like this:
+
+```javascript
+    var pregel = require("@arangodb/pregel");
+    var handle = pregel.start("hits", "yourgraph", {threshold:0.00001});
+```
+
+#### Vertex Centrality
+
+Centrality measures help identify the most important vertices in a graph. They can be used in a wide range of applications:
+For example they can be used to identify *influencers* in social networks, or *middle-men* in terrorist networks.
+There are various definitions for centrality, the simplest one being the vertex degree. 
+
+A common definitions of centrality is the \textbf{closeness centrality} (or closeness). 
+The closeness of a vertex in a graph is the inverse average length of the shortest path between the vertex 
+and all other vertices. For vertices *x*, *y* and shortest distance *d(y,x)* it is defined as
+
+![Vertex Closeness](closeness.png)
+
+##### Effective Closeness
+
+Effective Closeness approximates the closeness measure. The algorithm works by iteratively estimating the number
+of shortest paths passing through each vertex. The score will approximates the the real closeness score, since
+it is not possible to actually count all shortest paths due to the horrendous O(n^2 * d) memory requirements. 
+
+ArangoDBs implementation approximates the number of shortest path in each iteration by using a HyperLogLog counter with 64 buckets. 
+This should work well on large graphs and on smaller ones as well. The memory requirements should be **O(n * d)** where 
+*n* is the number of vertices and *d* the diameter of your graph. Each vertex will store a counter for each iteration of the
+algorithm. The algorithm can be used like this
+
+```javascript
+    var pregel = require("@arangodb/pregel");
+    var handle = pregel.start("effectivecloseness", "yourgraph");
+```
+
+Another common measure is the *betweenness* centrality: It measures the number of times a vertex is part 
+of shortest paths between any two vertices. For a vertex *v* betweenness is defined as
+
+![Vertex Betweeness](betweeness.png)
+
+Where $\sigma_{xy}$ is the number of shortest paths between $x$ and $y$, and $\sigma_{xy}(v)$ is the 
+number of paths also passing through $v$. The intuitive visualization of these metrics can be seen 
+below.
+
+![Illustration of an execution of different centrality measures (Freeman 1977)](centrality_visual.png)
+
+Unfortunately these definitions were not designed with scalability in mind. It is probably impossible to compute them
+efficiently and accurately. Fortunately there are scalable substitutions proposed by **U Kang et.al. 2011**.
+
+##### LineRank
+
+**LineRank** approximates the random walk betweenness of every vertex in a graph.
+This should be a scalable equivalent to vertex betweeness, which can be executed in ArangoDB. It essentially builds a line graph
+out of your graph (switches the vertices and edges), and then computes a PageRank like score.
+
+```javascript
+    var pregel = require("@arangodb/pregel");
+    var handle = pregel.start("linerank", "yourgraph");
+```
+
+
+#### Community Detection: Label Propagation 
+
+
+Label Propagation can be used to implement community detection,
+
+**LineRank** approximates the random walk betweenness of every vertex in a graph.
+This should be a scalable equivalent to vertex betweeness, which can be executed in ArangoDB. It essentially builds a line graph
+out of your graph (switches the vertices and edges), and then computes a PageRank like score.
+
+```javascript
+    var pregel = require("@arangodb/pregel");
+    var handle = pregel.start("linerank", "yourgraph");
+```

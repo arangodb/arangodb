@@ -34,10 +34,7 @@ var db = require("@arangodb").db;
 var graph_module = require("@arangodb/general-graph");
 var internal = require("internal");
 
-function testAlgo(algo, params) {
-  var key = db._pregelStart("demo_v", "demo_e", algo, params);
-  
-  
+function testAlgo(key) {  
   var i = 10000;
   do {
     var doc = db._pregelStatus(key);
@@ -123,15 +120,18 @@ function clientTestSuite () {
     },
     
     testSSSPNormal: function () {
-      testAlgo("sssp", {async:false, source:"K"});
+      var key = db._pregelStart("demo_v", "demo_e", "sssp", {async:false, source:"K"});
+      testAlgo(key);
     },
     
     testSSSPAsync: function () {
-      testAlgo("sssp", {async:true, source:"K"});
+      var key = db._pregelStart("demo_v", "demo_e", "sssp", {async:true, source:"K"});
+      testAlgo(key);
     },
     
     testPageRank: function () {
-      testAlgo("pagerank", {});
+      var key = db._pregelStart("demo_v", "demo_e", "pagerank");
+      testAlgo(key);
     },
   }
 };
