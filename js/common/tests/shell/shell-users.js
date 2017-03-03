@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, fail */
+/*global assertEqual, assertTrue, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the users management
@@ -253,8 +253,71 @@ function UsersSuite () {
 
     testReload : function () {
       users.reload();
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test invalid grants
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidGrants : function () {
+      var username = "users-1";
+      var passwd = "passwd";
+
+      users.save(username, passwd);
+      assertEqual(username, c.firstExample({ user: username }).user);
+      
+      [ "foo", "bar", "baz", "w", "wx", "_system" ].forEach(function(type) {
+        try {
+          users.grantDatabase(username, "_system", type);
+          fail();
+        } catch (err) {
+          assertTrue(err.errorNum === ERRORS.ERROR_BAD_PARAMETER.code ||
+                     err.errorNum === ERRORS.ERROR_HTTP_BAD_PARAMETER.code);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test grant
+////////////////////////////////////////////////////////////////////////////////
+
+    testGrantExisting : function () {
+      var username = "users-1";
+      var passwd = "passwd";
+
+      users.save(username, passwd);
+      assertEqual(username, c.firstExample({ user: username }).user);
+
+      users.grantDatabase(username, "_system", "rw");
+      // cannot really test something here as grantDatabase() does not return anything
+      // but if it did not throw an exception, this is already a success!
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test grant non-existing user
+////////////////////////////////////////////////////////////////////////////////
+
+    testGrantNonExisting1 : function () {
+      try {
+        users.grantDatabase("this user does not exist", "_system", "rw");
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_USER_NOT_FOUND.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test grant non-existing user
+////////////////////////////////////////////////////////////////////////////////
+
+    testGrantNonExisting2 : function () {
+      try {
+        users.grantDatabase("users-1", "_system", "rw");
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_USER_NOT_FOUND.code, err.errorNum);
+      }
+    }
   };
 }
 
