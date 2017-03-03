@@ -138,6 +138,10 @@ class ImportHelper {
     _createCollectionType = value;
   }
 
+  void setTranslations(std::unordered_map<std::string, std::string> const& translations) {
+    _translations = translations;
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not to overwrite existing data in the collection
   //////////////////////////////////////////////////////////////////////////////
@@ -272,6 +276,8 @@ class ImportHelper {
   arangodb::basics::StringBuffer _lineBuffer;
   arangodb::basics::StringBuffer _outputBuffer;
   std::string _firstLine;
+
+  std::unordered_map<std::string, std::string> _translations;
 
   bool _hasError;
   std::string _errorMessage;

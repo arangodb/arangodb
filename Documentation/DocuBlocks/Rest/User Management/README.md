@@ -39,6 +39,9 @@ Returned if the user can be added by the server
 If the JSON representation is malformed or mandatory data is missing
 from the request.
 
+@RESTRETURNCODE{409}
+Returned if a user with the same name already exists.
+
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestCreateUser}
@@ -81,8 +84,8 @@ REST call.
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{201}
-Returned if the user can be added by the server
+@RESTRETURNCODE{200}
+Returned if the access permissions were changed successfully.
 
 @RESTRETURNCODE{400}
 If the JSON representation is malformed or mandatory data is missing
@@ -177,9 +180,10 @@ An optional JSON object with arbitrary extra data about the user.
 @RESTDESCRIPTION
 
 Replaces the data of an existing user. The name of an existing user
-must be specified in user. You can only change the password of your
-self. You need access to the *_system* database to change the
-*active* flag.
+must be specified in *user*. When authentication is turned on in the
+server, only users that have read and write permissions for the *_system*
+database can change other users' data. Additionally, a user can change 
+his/her own data.
 
 @RESTRETURNCODES
 
@@ -237,9 +241,10 @@ An optional JSON object with arbitrary extra data about the user.
 @RESTDESCRIPTION
 
 Partially updates the data of an existing user. The name of an existing
-user must be specified in *user*.  You can only change the password of your
-self. You need access to the *_system* database to change the
-*active* flag.
+user must be specified in *user*. When authentication is turned on in the
+server, only users that have read and write permissions for the *_system*
+database can change other users' data. Additionally, a user can change 
+his/her own data.
 
 @RESTRETURNCODES
 

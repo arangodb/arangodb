@@ -1,7 +1,22 @@
 devel
 -----
 
+* added `--translate` option for arangoimp to translate attribute names from
+  the input files to attriubte names expected by ArangoDB
+
+  The `--translate` option can be specified multiple times (once per translation
+  to be executed). The following example renames the "id" column from the input
+  file to "_key", and the "from" column to "_from", and the "to" column to "_to":
+
+      arangoimp --type csv --file data.csv --translate "id=_key" --translate "from=_from" --translate "to=_to"
+
+  `--translate` works for CSV and TSV inputs only.
+
 * changed default value for `--server.max-packet-size` from 128 MB to 256 MB
+
+* fixed issue #2349
+
+* fixed issue #2346
 
 * fixed issue #2342
 
