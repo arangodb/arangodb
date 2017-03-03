@@ -39,7 +39,7 @@ QueryProfile::QueryProfile(Query* query)
   auto queryList = query->vocbase()->queryList();
 
   try {
-    tracked = queryList->insert(query, stamp);
+    tracked = queryList->insert(query);
   } catch (...) {
   }
 }
@@ -51,7 +51,7 @@ QueryProfile::~QueryProfile() {
     auto queryList = query->vocbase()->queryList();
 
     try {
-      queryList->remove(query, stamp);
+      queryList->remove(query);
      } catch (...) {
     }
   }

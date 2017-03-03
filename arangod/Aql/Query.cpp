@@ -732,7 +732,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
     // patch stats in place
     // we do this because "executionTime" should include the whole span of the execution and we have to set it at the very end
-    basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), TRI_microtime() - _startTime);
+    basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), runTime());
 
     LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                       << "Query::execute:returning"
@@ -742,22 +742,22 @@ QueryResult Query::execute(QueryRegistry* registry) {
   } catch (arangodb::basics::Exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngine(ex.code());
-    return QueryResult(ex.code(), ex.message() + QueryExecutionState::toString(_state));
+    return QueryResult(ex.code(), ex.message() + QueryExecutionState::toStringWithPrefix(_state));
   } catch (std::bad_alloc const&) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
     return QueryResult(
         TRI_ERROR_OUT_OF_MEMORY,
-        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + QueryExecutionState::toString(_state));
+        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + QueryExecutionState::toStringWithPrefix(_state));
   } catch (std::exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-    return QueryResult(TRI_ERROR_INTERNAL, ex.what() + QueryExecutionState::toString(_state));
+    return QueryResult(TRI_ERROR_INTERNAL, ex.what() + QueryExecutionState::toStringWithPrefix(_state));
   } catch (...) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL,
-                       TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toString(_state));
+                       TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toStringWithPrefix(_state));
   }
 }
 
@@ -918,7 +918,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     
     // patch executionTime stats value in place
     // we do this because "executionTime" should include the whole span of the execution and we have to set it at the very end
-    basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), TRI_microtime() - _startTime);
+    basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), runTime());
     
     LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                       << "Query::executeV8:returning"
@@ -928,22 +928,22 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
   } catch (arangodb::basics::Exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngine(ex.code());
-    return QueryResultV8(ex.code(), ex.message() + QueryExecutionState::toString(_state));
+    return QueryResultV8(ex.code(), ex.message() + QueryExecutionState::toStringWithPrefix(_state));
   } catch (std::bad_alloc const&) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
     return QueryResultV8(
         TRI_ERROR_OUT_OF_MEMORY,
-        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + QueryExecutionState::toString(_state));
+        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + QueryExecutionState::toStringWithPrefix(_state));
   } catch (std::exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-    return QueryResultV8(TRI_ERROR_INTERNAL, ex.what() + QueryExecutionState::toString(_state));
+    return QueryResultV8(TRI_ERROR_INTERNAL, ex.what() + QueryExecutionState::toStringWithPrefix(_state));
   } catch (...) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL,
-                       TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toString(_state));
+                       TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toStringWithPrefix(_state));
   }
 }
 
@@ -1056,16 +1056,16 @@ QueryResult Query::explain() {
 
     return result;
   } catch (arangodb::basics::Exception const& ex) {
-    return QueryResult(ex.code(), ex.message() + QueryExecutionState::toString(_state));
+    return QueryResult(ex.code(), ex.message() + QueryExecutionState::toStringWithPrefix(_state));
   } catch (std::bad_alloc const&) {
     return QueryResult(
         TRI_ERROR_OUT_OF_MEMORY,
-        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + QueryExecutionState::toString(_state));
+        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + QueryExecutionState::toStringWithPrefix(_state));
   } catch (std::exception const& ex) {
-    return QueryResult(TRI_ERROR_INTERNAL, ex.what() + QueryExecutionState::toString(_state));
+    return QueryResult(TRI_ERROR_INTERNAL, ex.what() + QueryExecutionState::toStringWithPrefix(_state));
   } catch (...) {
     return QueryResult(TRI_ERROR_INTERNAL,
-                       TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toString(_state));
+                       TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toStringWithPrefix(_state));
   }
 }
    

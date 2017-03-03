@@ -42,11 +42,13 @@ enum class ValueType {
   PLAN_OPTIMIZATION,
   EXECUTION,
   FINALIZATION,
+  FINISHED,
 
   INVALID_STATE
 };
 
 std::string toString(QueryExecutionState::ValueType state);
+std::string toStringWithPrefix(QueryExecutionState::ValueType state);
 
 }
 }

@@ -265,6 +265,54 @@ describe ArangoDB do
       response["error"].should eq(false)
     end
     
+    it "creates a new database with two users, using 'user' attribute" do
+      body = "{\"name\" : \"#{name}\", \"users\": [ { \"user\": \"admin\", \"password\": \"secret\", \"extra\": { \"gender\": \"m\" } }, { \"user\": \"foxx\", \"active\": false } ] }"
+      doc = ArangoDB.log_post("#{prefix}-create-users", api, :body => body)
+     
+      doc.code.should eq(201)
+      doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      response = doc.parsed_response
+      response["result"].should eq(true)
+      response["error"].should eq(false)
+
+      # list of databases should include the new database
+      doc = ArangoDB.log_get("#{prefix}-create-users", api)
+      doc.code.should eq(200)
+      result = doc.parsed_response["result"]
+
+      result.should include("_system")
+      result.should include(name)
+
+      # retrieve information about new database
+      doc = ArangoDB.log_get("#{prefix}-create-users", "/_db/#{name}" + api + "/current")
+      doc.code.should eq(200)
+      result = doc.parsed_response["result"]
+      result["name"].should eq(name)
+      result["path"].should be_kind_of(String)
+      result["isSystem"].should eq(false)
+      
+      # retrieve information about user "admin"
+      doc = ArangoDB.log_get("#{prefix}-create-users", "/_db/_system/_api/user/admin")
+      doc.code.should eq(200)
+      result = doc.parsed_response
+      result["user"].should eq("admin")
+      result["active"].should eq(true)
+      result["extra"]["gender"].should eq("m")
+      
+      # retrieve information about user "foxx"
+      doc = ArangoDB.log_get("#{prefix}-create-users", "/_db/_system/_api/user/foxx")
+      doc.code.should eq(200)
+      result = doc.parsed_response
+      result["user"].should eq("foxx")
+      result["active"].should eq(false)
+      
+      doc = ArangoDB.log_delete("#{prefix}-create-users", api + "/#{name}")
+      doc.code.should eq(200)
+      response = doc.parsed_response
+      response["result"].should eq(true)
+      response["error"].should eq(false)
+    end
+    
     it "creates a new database with an invalid user object" do
       body = "{\"name\" : \"#{name}\", \"users\": [ { } ] }"
       doc = ArangoDB.log_post("#{prefix}-create-users-missing", api, :body => body)

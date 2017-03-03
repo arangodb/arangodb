@@ -44,7 +44,7 @@ std::unordered_map<std::string, std::string> const
     SimpleHttpClient::NO_HEADERS{};
 
 /// @brief default value for max packet size
-size_t SimpleHttpClient::MaxPacketSize = 128 * 1024 * 1024;
+size_t SimpleHttpClient::MaxPacketSize = 256 * 1024 * 1024;
 
 SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
                                    double requestTimeout, bool warn)

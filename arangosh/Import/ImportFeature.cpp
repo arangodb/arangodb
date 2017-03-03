@@ -32,6 +32,8 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 
+#include <regex>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
@@ -98,6 +100,10 @@ void ImportFeature::collectOptions(
   options->addOption("--convert",
                      "convert the strings 'null', 'false', 'true' and strings containing numbers into non-string types (csv and tsv only)",
                      new BooleanParameter(&_convert));
+  
+  options->addOption("--translate",
+                     "translate an attribute name (use as --translate \"from=to\", for csv and tsv only)",
+                     new VectorParameter<StringParameter>(&_translations));
 
   std::unordered_set<std::string> types = {"document", "edge"};
   std::vector<std::string> typesVector(types.begin(), types.end());
@@ -109,12 +115,10 @@ void ImportFeature::collectOptions(
       new DiscreteValuesParameter<StringParameter>(&_createCollectionType,
                                                    types));
 
-  std::unordered_set<std::string> imports = {"csv", "tsv", "json"};
-  std::vector<std::string> importsVector(imports.begin(), imports.end());
-  std::string importsJoined = StringUtils::join(importsVector, ", ");
+  std::unordered_set<std::string> imports = {"csv", "tsv", "json", "auto"};
 
   options->addOption(
-      "--type", "type of file (" + importsJoined + ")",
+      "--type", "type of import file",
       new DiscreteValuesParameter<StringParameter>(&_typeImport, imports));
 
   options->addOption(
@@ -171,6 +175,21 @@ void ImportFeature::validateOptions(
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --batch-size value to " << MaxBatchSize;
     _chunkSize = MaxBatchSize;
   }
+
+  for (auto const& it : _translations) {
+    auto parts = StringUtils::split(it, "=");
+    if (parts.size() != 2) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
+      FATAL_ERROR_EXIT();
+    } 
+    StringUtils::trimInPlace(parts[0]);
+    StringUtils::trimInPlace(parts[1]);
+
+    if (parts[0].empty() || parts[1].empty()) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
+      FATAL_ERROR_EXIT();
+    }
+  }
 }
 
 void ImportFeature::start() {
@@ -201,7 +220,29 @@ void ImportFeature::start() {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
+  
+  if (_typeImport == "auto") {
+    std::regex re = std::regex(".*?\\.([a-zA-Z]+)", std::regex::ECMAScript);
+    std::smatch match;
+    if (!std::regex_match(_filename, match, re)) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Cannot auto-detect filetype from filename '" << _filename << "'";
+      FATAL_ERROR_EXIT();
+    }
 
+    std::string extension = match[1].str();
+    if (extension == "json") {
+      _typeImport = "json";
+    } else if (extension == "csv") {
+      _typeImport = "csv";
+    } else if (extension == "tsv") {
+      _typeImport = "tsv";
+    } else {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Unsupported file extension '" << extension << "'";
+      FATAL_ERROR_EXIT();
+    }
+  }
+
+  
   // successfully connected
   std::cout << "Connected to ArangoDB '"
             << httpClient->getEndpointSpecification() << "', version "
@@ -249,6 +290,18 @@ void ImportFeature::start() {
   ih.setRowsToSkip(static_cast<size_t>(_rowsToSkip));
   ih.setOverwrite(_overwrite);
   ih.useBackslash(_useBackslash);
+ 
+  std::unordered_map<std::string, std::string> translations; 
+  for (auto const& it : _translations) {
+    auto parts = StringUtils::split(it, "=");
+    TRI_ASSERT(parts.size() == 2); // already validated before
+    StringUtils::trimInPlace(parts[0]);
+    StringUtils::trimInPlace(parts[1]);
+
+    translations.emplace(parts[0], parts[1]);
+  }
+
+  ih.setTranslations(translations);
 
   // quote
   if (_quote.length() <= 1) {

@@ -1073,27 +1073,35 @@ std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject(
   }
 
   TRI_ASSERT(keys.isArray());
-  VPackValueLength const n = keys.length();
-  VPackValueLength const m = values.length();
-
-  if (n != m) {
+  
+  VPackArrayIterator itKeys(keys);
+  VPackArrayIterator itValues(values);
+ 
+  if (itKeys.size() != itValues.size()) { 
     errorMsg = positionize(lineNumber) + "wrong number of JSON values (got " +
-               std::to_string(m) + ", expected " + std::to_string(n) + ")";
+               std::to_string(itValues.size()) + ", expected " + std::to_string(itKeys.size()) + ")";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, errorMsg);
   }
 
   auto result = std::make_shared<VPackBuilder>();
   result->openObject();
 
-  for (size_t i = 0; i < n; ++i) {
-    VPackSlice const key = keys.at(i);
-    VPackSlice const value = values.at(i);
+  while (itKeys.valid()) {
+    TRI_ASSERT(itValues.valid());
+    
+    VPackSlice const key = itKeys.value();
+    VPackSlice const value = itValues.value();
 
     if (key.isString() && !value.isNone() && !value.isNull()) {
-      std::string tmp = key.copyString();
-      result->add(tmp, value);
+      VPackValueLength l;
+      char const* p = key.getString(l);
+      result->add(p, l, value);
     }
+
+    itKeys.next();
+    itValues.next();
   }
+
   result->close();
 
   return result;

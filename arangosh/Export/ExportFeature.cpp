@@ -398,7 +398,11 @@ void ExportFeature::writeCollectionBatch(int fd, VPackArrayIterator it, std::str
           }
 
           value = std::regex_replace(value, std::regex("\""), "\"\"");
-          value = std::regex_replace(value, std::regex(","), "\",");
+
+          if (value.find(",") != std::string::npos || value.find("\"\"") != std::string::npos) {
+            value = "\"" + value;
+            value.append("\"");
+          }
         }
         line.append(value);
       }

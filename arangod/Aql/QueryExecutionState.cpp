@@ -26,7 +26,7 @@
 using namespace arangodb::aql;
 
 /// @brief names of query phases / states
-static std::string StateNames[] = {
+static std::string const StateNames[] = {
     "initializing",        // INITIALIZATION
     "parsing",             // PARSING
     "optimizing ast",      // AST_OPTIMIZATION
@@ -35,6 +35,7 @@ static std::string StateNames[] = {
     "optimizing plan",     // PLAN_OPTIMIZATION
     "executing",           // EXECUTION
     "finalizing",          // FINALIZATION
+    "finished",            // FINISHED
 
     "invalid"  // INVALID
 };
@@ -46,6 +47,11 @@ static_assert(sizeof(StateNames) / sizeof(std::string) ==
 
 /// @brief get a description of the query's current state
 std::string QueryExecutionState::toString(QueryExecutionState::ValueType state) {
+  return StateNames[static_cast<int>(state)];
+}
+
+/// @brief get a description of the query's current state, prefixed with " (while "
+std::string QueryExecutionState::toStringWithPrefix(QueryExecutionState::ValueType state) {
   return std::string(" (while " + StateNames[static_cast<int>(state)] + ")");
 }
 
