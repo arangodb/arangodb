@@ -27,8 +27,7 @@
 
 #include "Basics/Common.h"
 
-#define BOOST_TEST_INCLUDED
-#include <boost/test/unit_test.hpp>
+#include "catch.hpp"
 
 #include "Basics/StringBuffer.h"
 
@@ -36,75 +35,53 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
-struct StringBufferSetup {
-  StringBufferSetup () {
-    BOOST_TEST_MESSAGE("setup StringBuffer");
-  }
-
-  ~StringBufferSetup () {
-    BOOST_TEST_MESSAGE("tear-down StringBuffer");
-  }
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
-
-BOOST_FIXTURE_TEST_SUITE (StringBufferTest, StringBufferSetup)
+TEST_CASE("StringBufferTest", "[string]") {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_StringBuffer1
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (test_StringBuffer1) {
+SECTION("test_StringBuffer1") {
   StringBuffer buffer(TRI_CORE_MEM_ZONE);
 
-  BOOST_CHECK_EQUAL(buffer.length(), (size_t) 0);
-  BOOST_CHECK_EQUAL(std::string(buffer.c_str()), "");
+  CHECK(buffer.length() == (size_t) 0);
+  CHECK(std::string(buffer.c_str()) == "");
 
   buffer = "";
 
-  BOOST_CHECK_EQUAL(buffer.length(), (size_t) 0);
-  BOOST_CHECK_EQUAL(std::string(buffer.c_str()), "");
+  CHECK(buffer.length() == (size_t) 0);
+  CHECK(std::string(buffer.c_str()) == "");
 
   buffer = "Hallo World!";
 
-  BOOST_CHECK_EQUAL(buffer.length(), (size_t) 12);
-  BOOST_CHECK_EQUAL(std::string(buffer.c_str()), "Hallo World!");
+  CHECK(buffer.length() == (size_t) 12);
+  CHECK(std::string(buffer.c_str()) == "Hallo World!");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_StringBuffer2
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (test_StringBuffer2) {
+SECTION("test_StringBuffer2") {
   StringBuffer buffer(TRI_CORE_MEM_ZONE);
 
-  BOOST_CHECK(buffer.length() == (size_t) 0);
-  BOOST_CHECK(std::string(buffer.c_str()) == "");
+  CHECK(buffer.length() == (size_t) 0);
+  CHECK(std::string(buffer.c_str()) == "");
   
   buffer.appendText("Hallo World");
-  BOOST_CHECK(buffer.length() == (size_t) 11);
-  BOOST_CHECK(std::string(buffer.c_str()) == "Hallo World");
+  CHECK(buffer.length() == (size_t) 11);
+  CHECK(std::string(buffer.c_str()) == "Hallo World");
   
   buffer.appendInteger4(1234);
-  BOOST_CHECK(buffer.length() == (size_t) 15);
-  BOOST_CHECK(std::string(buffer.c_str()) == "Hallo World1234");
+  CHECK(buffer.length() == (size_t) 15);
+  CHECK(std::string(buffer.c_str()) == "Hallo World1234");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_SUITE_END()
+}
 
 // Local Variables:
 // mode: outline-minor

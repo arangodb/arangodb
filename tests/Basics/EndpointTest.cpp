@@ -27,8 +27,7 @@
 
 #include "Basics/Common.h"
 
-#define BOOST_TEST_INCLUDED
-#include <boost/test/unit_test.hpp>
+#include "catch.hpp"
 
 #include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointIp.h"
@@ -39,11 +38,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace std;
-
-// sory, but boost is broken
-BOOST_TEST_DONT_PRINT_LOG_VALUE(arangodb::Endpoint::DomainType)
-BOOST_TEST_DONT_PRINT_LOG_VALUE(arangodb::Endpoint::EncryptionType)
-BOOST_TEST_DONT_PRINT_LOG_VALUE(arangodb::Endpoint::EndpointType)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            macros
@@ -57,74 +51,57 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(arangodb::Endpoint::EndpointType)
 
 #define CHECK_ENDPOINT_FEATURE(type, specification, feature, expected) \
   e = FACTORY(type, specification); \
-  BOOST_CHECK_EQUAL((expected), (e->feature())); \
-  DELETE_ENDPOINT(e);
+  CHECK((expected) == (e->feature())); \
+  delete e;
 
 #define CHECK_ENDPOINT_SERVER_FEATURE(type, specification, feature, expected) \
   e = arangodb::Endpoint::serverFactory(specification, 1, true); \
-  BOOST_CHECK_EQUAL((expected), (e->feature())); \
-  DELETE_ENDPOINT(e);
+  CHECK((expected) == (e->feature())); \
+  delete e;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
-struct EndpointSetup {
-  EndpointSetup () {
-    BOOST_TEST_MESSAGE("setup Endpoint");
-  }
-
-  ~EndpointSetup () {
-    BOOST_TEST_MESSAGE("tear-down Endpoint");
-  }
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
-
-BOOST_FIXTURE_TEST_SUITE (EndpointTest, EndpointSetup)
+TEST_CASE("EndpointTest", "[endpoints]") {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test invalid
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointInvalid) {
+SECTION("EndpointInvalid") {
   Endpoint* e = nullptr;
 
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory(""));
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("@"));
+  CHECK(e == arangodb::Endpoint::clientFactory(""));
+  CHECK(e == arangodb::Endpoint::clientFactory("@"));
 
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("http://"));
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("ssl://"));
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("unix://"));
+  CHECK(e == arangodb::Endpoint::clientFactory("http://"));
+  CHECK(e == arangodb::Endpoint::clientFactory("ssl://"));
+  CHECK(e == arangodb::Endpoint::clientFactory("unix://"));
 
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("fish://127.0.0.1:8529"));
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("http://127.0.0.1:8529"));
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("https://127.0.0.1:8529"));
+  CHECK(e == arangodb::Endpoint::clientFactory("fish://127.0.0.1:8529"));
+  CHECK(e == arangodb::Endpoint::clientFactory("http://127.0.0.1:8529"));
+  CHECK(e == arangodb::Endpoint::clientFactory("https://127.0.0.1:8529"));
   
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("tcp//127.0.0.1:8529"));
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("tcp:127.0.0.1:8529"));
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("ssl:localhost"));
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("ssl//:localhost"));
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("unix///tmp/socket"));
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("unix:tmp/socket"));
+  CHECK(e == arangodb::Endpoint::clientFactory("tcp//127.0.0.1:8529"));
+  CHECK(e == arangodb::Endpoint::clientFactory("tcp:127.0.0.1:8529"));
+  CHECK(e == arangodb::Endpoint::clientFactory("ssl:localhost"));
+  CHECK(e == arangodb::Endpoint::clientFactory("ssl//:localhost"));
+  CHECK(e == arangodb::Endpoint::clientFactory("unix///tmp/socket"));
+  CHECK(e == arangodb::Endpoint::clientFactory("unix:tmp/socket"));
   
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("fish@tcp://127.0.0.1:8529"));
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("ssl@tcp://127.0.0.1:8529"));
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("https@tcp://127.0.0.1:8529"));
-  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("https@tcp://127.0.0.1:"));
+  CHECK(e == arangodb::Endpoint::clientFactory("fish@tcp://127.0.0.1:8529"));
+  CHECK(e == arangodb::Endpoint::clientFactory("ssl@tcp://127.0.0.1:8529"));
+  CHECK(e == arangodb::Endpoint::clientFactory("https@tcp://127.0.0.1:8529"));
+  CHECK(e == arangodb::Endpoint::clientFactory("https@tcp://127.0.0.1:"));
+  
+  CHECK(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:65536"));
+  CHECK(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:65537"));
+  CHECK(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:-1"));
+  CHECK(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:6555555555"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test specification
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointSpecification) {
+SECTION("EndpointSpecification") {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", specification, "http+tcp://127.0.0.1:8529");
@@ -142,7 +119,7 @@ BOOST_AUTO_TEST_CASE (EndpointSpecification) {
 /// @brief test types
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointTypes) {
+SECTION("EndpointTypes") {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", type, arangodb::Endpoint::EndpointType::CLIENT);
@@ -166,7 +143,7 @@ BOOST_AUTO_TEST_CASE (EndpointTypes) {
 /// @brief test domains
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointDomains) {
+SECTION("EndpointDomains") {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", domain, AF_INET);
@@ -207,7 +184,7 @@ BOOST_AUTO_TEST_CASE (EndpointDomains) {
 /// @brief test domain types
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointDomainTypes) {
+SECTION("EndpointDomainTypes") {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", domainType, arangodb::Endpoint::DomainType::IPV4);
@@ -256,7 +233,7 @@ BOOST_AUTO_TEST_CASE (EndpointDomainTypes) {
 /// @brief test ports
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointPorts) {
+SECTION("EndpointPorts") {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", port, EndpointIp::_defaultPortHttp);
@@ -330,7 +307,7 @@ BOOST_AUTO_TEST_CASE (EndpointPorts) {
 /// @brief test encryption
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointEncryption) {
+SECTION("EndpointEncryption") {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", encryption, arangodb::Endpoint::EncryptionType::NONE);
@@ -376,7 +353,7 @@ BOOST_AUTO_TEST_CASE (EndpointEncryption) {
 /// @brief test host
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointHost) {
+SECTION("EndpointHost") {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", host, "127.0.0.1");
@@ -424,7 +401,7 @@ BOOST_AUTO_TEST_CASE (EndpointHost) {
 /// @brief test hoststring
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointHostString) {
+SECTION("EndpointHostString") {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", hostAndPort, "127.0.0.1:8529");
@@ -486,24 +463,24 @@ BOOST_AUTO_TEST_CASE (EndpointHostString) {
 /// @brief test isconnected
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer1) {
+SECTION("EndpointIsConnectedServer1") {
   Endpoint* e;
 
   e = arangodb::Endpoint::serverFactory("tcp://127.0.0.1", 1, true);
-  BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  CHECK(false == e->isConnected());
+  delete e;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test isconnected
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer2) {
+SECTION("EndpointIsConnectedServer2") {
   Endpoint* e;
 
   e = arangodb::Endpoint::serverFactory("ssl://127.0.0.1", 1, true);
-  BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  CHECK(false == e->isConnected());
+  delete e;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -511,12 +488,12 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer2) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _WIN32
-BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer3) {
+SECTION("EndpointIsConnectedServer3") {
   Endpoint* e;
 
   e = arangodb::Endpoint::serverFactory("unix:///tmp/socket", 1, true);
-  BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  CHECK(false == e->isConnected());
+  delete e;
 }
 #endif
 
@@ -524,24 +501,24 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer3) {
 /// @brief test isconnected
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient1) {
+SECTION("EndpointIsConnectedClient1") {
   Endpoint* e;
 
   e = arangodb::Endpoint::clientFactory("tcp://127.0.0.1");
-  BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  CHECK(false == e->isConnected());
+  delete e;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test isconnected
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient2) {
+SECTION("EndpointIsConnectedClient2") {
   Endpoint* e;
 
   e = arangodb::Endpoint::clientFactory("ssl://127.0.0.1");
-  BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  CHECK(false == e->isConnected());
+  delete e;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -549,12 +526,12 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient2) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _WIN32
-BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient3) {
+SECTION("EndpointIsConnectedClient3") {
   Endpoint* e;
 
   e = arangodb::Endpoint::clientFactory("unix:///tmp/socket");
-  BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  CHECK(false == e->isConnected());
+  delete e;
 }
 #endif
 
@@ -562,20 +539,20 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient3) {
 /// @brief test server endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointServerTcpIpv4WithPort) {
+SECTION("EndpointServerTcpIpv4WithPort") {
   Endpoint* e;
 
   e = arangodb::Endpoint::serverFactory("tcp://127.0.0.1:667", 1, true);
-  BOOST_CHECK_EQUAL("http+tcp://127.0.0.1:667", e->specification());
-  BOOST_CHECK_EQUAL(arangodb::Endpoint::EndpointType::SERVER, e->type());
-  BOOST_CHECK_EQUAL(arangodb::Endpoint::DomainType::IPV4, e->domainType());
-  BOOST_CHECK_EQUAL(arangodb::Endpoint::EncryptionType::NONE, e->encryption());
-  BOOST_CHECK_EQUAL(AF_INET, e->domain());
-  BOOST_CHECK_EQUAL("127.0.0.1", e->host());
-  BOOST_CHECK_EQUAL(667, e->port());
-  BOOST_CHECK_EQUAL("127.0.0.1:667", e->hostAndPort());
-  BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  CHECK("http+tcp://127.0.0.1:667" == e->specification());
+  CHECK(arangodb::Endpoint::EndpointType::SERVER == e->type());
+  CHECK(arangodb::Endpoint::DomainType::IPV4 == e->domainType());
+  CHECK(arangodb::Endpoint::EncryptionType::NONE == e->encryption());
+  CHECK(AF_INET == e->domain());
+  CHECK("127.0.0.1" == e->host());
+  CHECK(667 == e->port());
+  CHECK("127.0.0.1:667" == e->hostAndPort());
+  CHECK(false == e->isConnected());
+  delete e;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -583,20 +560,20 @@ BOOST_AUTO_TEST_CASE (EndpointServerTcpIpv4WithPort) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _WIN32
-BOOST_AUTO_TEST_CASE (EndpointServerUnix) {
+SECTION("EndpointServerUnix") {
   Endpoint* e;
 
   e = arangodb::Endpoint::serverFactory("unix:///path/to/arango.sock", 1, true);
-  BOOST_CHECK_EQUAL("http+unix:///path/to/arango.sock", e->specification());
-  BOOST_CHECK_EQUAL(arangodb::Endpoint::EndpointType::SERVER, e->type());
-  BOOST_CHECK_EQUAL(arangodb::Endpoint::DomainType::UNIX, e->domainType());
-  BOOST_CHECK_EQUAL(arangodb::Endpoint::EncryptionType::NONE, e->encryption());
-  BOOST_CHECK_EQUAL(AF_UNIX, e->domain());
-  BOOST_CHECK_EQUAL("localhost", e->host());
-  BOOST_CHECK_EQUAL(0, e->port());
-  BOOST_CHECK_EQUAL("localhost", e->hostAndPort());
-  BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  CHECK("http+unix:///path/to/arango.sock" == e->specification());
+  CHECK(arangodb::Endpoint::EndpointType::SERVER == e->type());
+  CHECK(arangodb::Endpoint::DomainType::UNIX == e->domainType());
+  CHECK(arangodb::Endpoint::EncryptionType::NONE == e->encryption());
+  CHECK(AF_UNIX == e->domain());
+  CHECK("localhost" == e->host());
+  CHECK(0 == e->port());
+  CHECK("localhost" == e->hostAndPort());
+  CHECK(false == e->isConnected());
+  delete e;
 }
 #endif
 
@@ -604,44 +581,42 @@ BOOST_AUTO_TEST_CASE (EndpointServerUnix) {
 /// @brief test client endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointClientSslIpV6WithPortHttp) {
+SECTION("EndpointClientSslIpV6WithPortHttp") {
   Endpoint* e;
 
   e = arangodb::Endpoint::clientFactory("http+ssl://[0001:0002:0003:0004:0005:0006:0007:0008]:43425");
-  BOOST_CHECK_EQUAL("http+ssl://[0001:0002:0003:0004:0005:0006:0007:0008]:43425", e->specification());
-  BOOST_CHECK_EQUAL(arangodb::Endpoint::EndpointType::CLIENT, e->type());
-  BOOST_CHECK_EQUAL(arangodb::Endpoint::DomainType::IPV6, e->domainType());
-  BOOST_CHECK_EQUAL(arangodb::Endpoint::EncryptionType::SSL, e->encryption());
-  BOOST_CHECK_EQUAL(AF_INET6, e->domain());
-  BOOST_CHECK_EQUAL("0001:0002:0003:0004:0005:0006:0007:0008", e->host());
-  BOOST_CHECK_EQUAL(43425, e->port());
-  BOOST_CHECK_EQUAL("[0001:0002:0003:0004:0005:0006:0007:0008]:43425", e->hostAndPort());
-  BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  CHECK("http+ssl://[0001:0002:0003:0004:0005:0006:0007:0008]:43425" == e->specification());
+  CHECK(arangodb::Endpoint::EndpointType::CLIENT == e->type());
+  CHECK(arangodb::Endpoint::DomainType::IPV6 == e->domainType());
+  CHECK(arangodb::Endpoint::EncryptionType::SSL == e->encryption());
+  CHECK(AF_INET6 == e->domain());
+  CHECK("0001:0002:0003:0004:0005:0006:0007:0008" == e->host());
+  CHECK(43425 == e->port());
+  CHECK("[0001:0002:0003:0004:0005:0006:0007:0008]:43425" == e->hostAndPort());
+  CHECK(false == e->isConnected());
+  delete e;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test client endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (EndpointClientTcpIpv6WithoutPort) {
+SECTION("EndpointClientTcpIpv6WithoutPort") {
   Endpoint* e;
 
   e = arangodb::Endpoint::clientFactory("tcp://[::]");
-  BOOST_CHECK_EQUAL("http+tcp://[::]:8529", e->specification());
-  BOOST_CHECK_EQUAL(arangodb::Endpoint::EndpointType::CLIENT, e->type());
-  BOOST_CHECK_EQUAL(arangodb::Endpoint::DomainType::IPV6, e->domainType());
-  BOOST_CHECK_EQUAL(arangodb::Endpoint::EncryptionType::NONE, e->encryption());
-  BOOST_CHECK_EQUAL(AF_INET6, e->domain());
-  BOOST_CHECK_EQUAL("::", e->host());
-  BOOST_CHECK_EQUAL(8529, e->port());
-  BOOST_CHECK_EQUAL("[::]:8529", e->hostAndPort());
-  BOOST_CHECK_EQUAL(false, e->isConnected());
-  DELETE_ENDPOINT(e);
+  CHECK("http+tcp://[::]:8529" == e->specification());
+  CHECK(arangodb::Endpoint::EndpointType::CLIENT == e->type());
+  CHECK(arangodb::Endpoint::DomainType::IPV6 == e->domainType());
+  CHECK(arangodb::Endpoint::EncryptionType::NONE == e->encryption());
+  CHECK(AF_INET6 == e->domain());
+  CHECK("::" == e->host());
+  CHECK(8529 == e->port());
+  CHECK("[::]:8529" == e->hostAndPort());
+  CHECK(false == e->isConnected());
+  delete e;
 }
-
-BOOST_AUTO_TEST_SUITE_END()
-
+}
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"

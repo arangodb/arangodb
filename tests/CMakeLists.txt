@@ -2,14 +2,33 @@ foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
 
-# also includes our main.cpp so it is actually more than just the tests
-file(GLOB_RECURSE TESTS . *.cpp)
 # linking is a dark art...workmonitordummy is somehow necessary
 add_executable(
   arangodbtests
   ../lib/Basics/WorkMonitorDummy.cpp
   ../UnitTests/Basics/icu-helper.cpp
-  ${TESTS}
+  Basics/AttributeNameParserTest.cpp
+  Basics/associative-multi-pointer-test.cpp
+  Basics/associative-multi-pointer-nohashcache-test.cpp
+  Basics/conversions-test.cpp
+  Basics/csv-test.cpp
+  Basics/files-test.cpp
+  Basics/fpconv-test.cpp
+  Basics/json-test.cpp
+  Basics/hashes-test.cpp
+  Basics/skiplist-test.cpp
+  Basics/priorityqueue-test.cpp
+  Basics/string-buffer-test.cpp
+  Basics/string-utf8-normalize-test.cpp
+  Basics/string-utf8-test.cpp
+  Basics/string-test.cpp
+  Basics/vector-test.cpp
+  Basics/structure-size-test.cpp
+  Basics/EndpointTest.cpp
+  Basics/StringBufferTest.cpp
+  Basics/StringUtilsTest.cpp
+  Geo/georeg.cpp
+  main.cpp
 )
 
 target_link_libraries(

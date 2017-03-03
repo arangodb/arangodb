@@ -27,8 +27,8 @@
 
 #include "Basics/Common.h"
 
-#define BOOST_TEST_INCLUDED
-#include <boost/test/unit_test.hpp>
+#include "catch.hpp"
+#include <string>
 
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
@@ -47,7 +47,6 @@ struct CFilesSetup {
   CFilesSetup () : _directory(TRI_UNKNOWN_MEM_ZONE) {
     long systemError;
     std::string errorMessage;
-    BOOST_TEST_MESSAGE("setup files");
     
     if (!Initialized) {
       Initialized = true;
@@ -64,8 +63,6 @@ struct CFilesSetup {
   }
 
   ~CFilesSetup () {
-    BOOST_TEST_MESSAGE("tear-down files");
-    
     // let's be sure we delete the right stuff
     assert(_directory.length() > 10);
 
@@ -89,7 +86,7 @@ struct CFilesSetup {
       fclose(fd);
     }
     else {
-      BOOST_CHECK_EQUAL(false, true);
+      CHECK(false == true);
     }
 
     return filename;
@@ -106,16 +103,83 @@ struct CFilesSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_FIXTURE_TEST_SUITE(CFilesTest, CFilesSetup)
+TEST_CASE("CFilesTest", "[files]") {
+  CFilesSetup s;
+
+SECTION("tst_createdirectory") {
+  std::ostringstream out;
+  out << s._directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
+
+  std::string filename = out.str();
+  long unused1;
+  std::string unused2;
+  int res = TRI_CreateDirectory(filename.c_str(), unused1, unused2);
+  CHECK(0 == res);
+  CHECK(true == TRI_ExistsFile(filename.c_str()));
+  CHECK(true == TRI_IsDirectory(filename.c_str()));
+
+  res = TRI_RemoveDirectory(filename.c_str());
+  CHECK(false == TRI_ExistsFile(filename.c_str()));
+  CHECK(false == TRI_IsDirectory(filename.c_str()));
+}
+
+SECTION("tst_createdirectoryrecursive") {
+  std::ostringstream out;
+  out << s._directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
+  
+  std::string filename1 = out.str();
+  out << TRI_DIR_SEPARATOR_CHAR << "abc";
+  std::string filename2 = out.str();
+
+  long unused1;
+  std::string unused2;
+  int res = TRI_CreateRecursiveDirectory(filename2.c_str(), unused1, unused2);
+  CHECK(0 == res);
+  CHECK(true == TRI_ExistsFile(filename1.c_str()));
+  CHECK(true == TRI_IsDirectory(filename1.c_str()));
+  CHECK(true == TRI_ExistsFile(filename2.c_str()));
+  CHECK(true == TRI_IsDirectory(filename2.c_str()));
+
+  res = TRI_RemoveDirectory(filename1.c_str());
+  CHECK(false == TRI_ExistsFile(filename1.c_str()));
+  CHECK(false == TRI_IsDirectory(filename1.c_str()));
+  CHECK(false == TRI_ExistsFile(filename2.c_str()));
+  CHECK(false == TRI_IsDirectory(filename2.c_str()));
+}
+
+SECTION("tst_removedirectorydeterministic") {
+  std::ostringstream out;
+  out << s._directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
+  
+  std::string filename1 = out.str();
+  out << TRI_DIR_SEPARATOR_CHAR << "abc";
+  std::string filename2 = out.str();
+
+  long unused1;
+  std::string unused2;
+  int res = TRI_CreateRecursiveDirectory(filename2.c_str(), unused1, unused2);
+  CHECK(0 == res);
+  CHECK(true == TRI_ExistsFile(filename1.c_str()));
+  CHECK(true == TRI_IsDirectory(filename1.c_str()));
+  CHECK(true == TRI_ExistsFile(filename2.c_str()));
+  CHECK(true == TRI_IsDirectory(filename2.c_str()));
+
+  res = TRI_RemoveDirectoryDeterministic(filename1.c_str());
+  CHECK(false == TRI_ExistsFile(filename1.c_str()));
+  CHECK(false == TRI_IsDirectory(filename1.c_str()));
+  CHECK(false == TRI_ExistsFile(filename2.c_str()));
+  CHECK(false == TRI_IsDirectory(filename2.c_str()));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test file exists
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_existsfile) {
-  StringBuffer* filename = writeFile("");
-  BOOST_CHECK_EQUAL(true, TRI_ExistsFile(filename->c_str()));
+SECTION("tst_existsfile") {
+  StringBuffer* filename = s.writeFile("");
+  CHECK(true == TRI_ExistsFile(filename->c_str()));
   TRI_UnlinkFile(filename->c_str());
+  CHECK(false == TRI_ExistsFile(filename->c_str()));
 
   delete filename;
 }
@@ -124,9 +188,9 @@ BOOST_AUTO_TEST_CASE (tst_existsfile) {
 /// @brief test file size empty file
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_filesize_empty) {
-  StringBuffer* filename = writeFile("");
-  BOOST_CHECK_EQUAL(0, (int) TRI_SizeFile(filename->c_str()));
+SECTION("tst_filesize_empty") {
+  StringBuffer* filename = s.writeFile("");
+  CHECK(0 == (int) TRI_SizeFile(filename->c_str()));
 
   TRI_UnlinkFile(filename->c_str());
   delete filename;
@@ -136,11 +200,11 @@ BOOST_AUTO_TEST_CASE (tst_filesize_empty) {
 /// @brief test file size
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_filesize_exists) {
+SECTION("tst_filesize_exists") {
   const char* buffer = "the quick brown fox";
   
-  StringBuffer* filename = writeFile(buffer);
-  BOOST_CHECK_EQUAL((int) strlen(buffer), (int) TRI_SizeFile(filename->c_str()));
+  StringBuffer* filename = s.writeFile(buffer);
+  CHECK((int) strlen(buffer) == (int) TRI_SizeFile(filename->c_str()));
 
   TRI_UnlinkFile(filename->c_str());
   delete filename;
@@ -150,105 +214,104 @@ BOOST_AUTO_TEST_CASE (tst_filesize_exists) {
 /// @brief test file size, non existing file
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_filesize_non) {
-  BOOST_CHECK_EQUAL((int) -1, (int) TRI_SizeFile("h5uuuuui3unn645wejhdjhikjdsf"));
-  BOOST_CHECK_EQUAL((int) -1, (int) TRI_SizeFile("dihnui8ngiu54"));
+SECTION("tst_filesize_non") {
+  CHECK((int) -1 == (int) TRI_SizeFile("h5uuuuui3unn645wejhdjhikjdsf"));
+  CHECK((int) -1 == (int) TRI_SizeFile("dihnui8ngiu54"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test absolute path
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_absolute_paths) {
+SECTION("tst_absolute_paths") {
   char* path;
 
 #ifdef _WIN32
   path = TRI_GetAbsolutePath("the-fox", "\\tmp");
 
-  BOOST_CHECK_EQUAL("\\tmp\\the-fox", path);
+  CHECK(std::string("\\tmp\\the-fox") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
 
   path = TRI_GetAbsolutePath("the-fox.lol", "\\tmp");
-  BOOST_CHECK_EQUAL("\\tmp\\the-fox.lol", path);
+  CHECK(std::string("\\tmp\\the-fox.lol") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
   
   path = TRI_GetAbsolutePath("the-fox.lol", "\\tmp\\the-fox");
-  BOOST_CHECK_EQUAL("\\tmp\\the-fox\\the-fox.lol", path);
+  CHECK(std::string("\\tmp\\the-fox\\the-fox.lol") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
   
   path = TRI_GetAbsolutePath("file", "\\");
-  BOOST_CHECK_EQUAL("\\file", path);
+  CHECK(std::string("\\file") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
   
   path = TRI_GetAbsolutePath(".\\file", "\\");
-  BOOST_CHECK_EQUAL("\\.\\file", path);
+  CHECK(std::string("\\.\\file") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
   
   path = TRI_GetAbsolutePath("\\file", "\\tmp");
-  BOOST_CHECK_EQUAL("\\tmp\\file", path);
+  CHECK(std::string("\\tmp\\file") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
   
   path = TRI_GetAbsolutePath("\\file\\to\\file", "\\tmp");
-  BOOST_CHECK_EQUAL("\\tmp\\file\\to\\file", path);
+  CHECK(std::string("\\tmp\\file\\to\\file") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
   
   path = TRI_GetAbsolutePath("file\\to\\file", "\\tmp");
-  BOOST_CHECK_EQUAL("\\tmp\\file\\to\\file", path);
+  CHECK(std::string("\\tmp\\file\\to\\file") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
   
   path = TRI_GetAbsolutePath("c:\\file\\to\\file", "abc");
-  BOOST_CHECK_EQUAL("c:\\file\\to\\file", path);
+  CHECK(std::string("c:\\file\\to\\file") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
   
   path = TRI_GetAbsolutePath("c:\\file\\to\\file", "\\tmp");
-  BOOST_CHECK_EQUAL("c:\\file\\to\\file", path);
+  CHECK(std::string("c:\\file\\to\\file") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
 
 #else
 
   path = TRI_GetAbsolutePath("the-fox", "/tmp");
-  BOOST_CHECK_EQUAL("/tmp/the-fox", path);
+  CHECK(std::string("/tmp/the-fox") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
 
   path = TRI_GetAbsolutePath("the-fox.lol", "/tmp");
-  BOOST_CHECK_EQUAL("/tmp/the-fox.lol", path);
+  CHECK(std::string("/tmp/the-fox.lol") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
   
   path = TRI_GetAbsolutePath("the-fox.lol", "/tmp/the-fox");
-  BOOST_CHECK_EQUAL("/tmp/the-fox/the-fox.lol", path);
+  CHECK(std::string("/tmp/the-fox/the-fox.lol") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
   
   path = TRI_GetAbsolutePath("file", "/");
-  BOOST_CHECK_EQUAL("/file", path);
+  CHECK(std::string("/file") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
   
   path = TRI_GetAbsolutePath("./file", "/");
-  BOOST_CHECK_EQUAL("/./file", path);
+  CHECK(std::string("/./file") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
   
   path = TRI_GetAbsolutePath("/file", "/tmp");
-  BOOST_CHECK_EQUAL("/file", path);
+  CHECK(std::string("/file") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
   
   path = TRI_GetAbsolutePath("/file/to/file", "/tmp");
-  BOOST_CHECK_EQUAL("/file/to/file", path);
+  CHECK(std::string("/file/to/file") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
   
   path = TRI_GetAbsolutePath("file/to/file", "/tmp");
-  BOOST_CHECK_EQUAL("/tmp/file/to/file", path);
+  CHECK(std::string("/tmp/file/to/file") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
   
   path = TRI_GetAbsolutePath("c:file/to/file", "/tmp");
-  BOOST_CHECK_EQUAL("c:file/to/file", path);
+  CHECK(std::string("c:file/to/file") == path);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
 #endif
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_SUITE_END ()
 
 // Local Variables:
 // mode: outline-minor

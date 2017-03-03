@@ -27,10 +27,11 @@
 
 #include "Basics/Common.h"
 
-#define BOOST_TEST_INCLUDED
-#include <boost/test/unit_test.hpp>
+#include "catch.hpp"
 
 #include "Basics/conversions.h"
+
+#include <string>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
@@ -42,8 +43,8 @@
 
 #define CHECK_CONVERSION_INT8(value, expectedValue, buffer)                    \
   actualLength = TRI_StringInt8InPlace((int8_t) value, (char*) &buffer);       \
-  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
-  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+  CHECK(actualLength == strlen(expectedValue));                      \
+  CHECK(std::string(buffer) == std::string(expectedValue)); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint8_t
@@ -51,8 +52,8 @@
 
 #define CHECK_CONVERSION_UINT8(value, expectedValue, buffer)                   \
   actualLength = TRI_StringUInt8InPlace((uint8_t) value, (char*) &buffer);     \
-  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
-  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+  CHECK(actualLength == strlen(expectedValue));                      \
+  CHECK(std::string(buffer) == std::string(expectedValue)); 
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,8 +62,8 @@
 
 #define CHECK_CONVERSION_INT16(value, expectedValue, buffer)                   \
   actualLength = TRI_StringInt16InPlace((int16_t) value, (char*) &buffer);     \
-  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
-  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+  CHECK(actualLength == strlen(expectedValue));                      \
+  CHECK(std::string(buffer) == std::string(expectedValue)); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint16_t
@@ -70,8 +71,8 @@
 
 #define CHECK_CONVERSION_UINT16(value, expectedValue, buffer)                  \
   actualLength = TRI_StringUInt16InPlace((uint16_t) value, (char*) &buffer);   \
-  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
-  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+  CHECK(actualLength == strlen(expectedValue));                      \
+  CHECK(std::string(buffer) == std::string(expectedValue)); 
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,8 +81,8 @@
 
 #define CHECK_CONVERSION_INT32(value, expectedValue, buffer)                   \
   actualLength = TRI_StringInt32InPlace((int32_t) value, (char*) &buffer);     \
-  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
-  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+  CHECK(actualLength == strlen(expectedValue));                      \
+  CHECK(std::string(buffer) == std::string(expectedValue)); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint32_t
@@ -89,8 +90,8 @@
 
 #define CHECK_CONVERSION_UINT32(value, expectedValue, buffer)                  \
   actualLength = TRI_StringUInt32InPlace((uint32_t) value, (char*) &buffer);   \
-  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
-  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+  CHECK(actualLength == strlen(expectedValue));                      \
+  CHECK(std::string(buffer) == std::string(expectedValue)); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert an int64_t
@@ -98,8 +99,8 @@
 
 #define CHECK_CONVERSION_INT64(value, expectedValue, buffer)                   \
   actualLength = TRI_StringInt64InPlace((int64_t) value, (char*) &buffer);     \
-  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
-  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+  CHECK(actualLength == strlen(expectedValue));                      \
+  CHECK(std::string(buffer) == std::string(expectedValue)); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint64_t
@@ -107,8 +108,8 @@
 
 #define CHECK_CONVERSION_UINT64(value, expectedValue, buffer)                  \
   actualLength = TRI_StringUInt64InPlace((uint64_t) value, (char*) &buffer);   \
-  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
-  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+  CHECK(actualLength == strlen(expectedValue));                      \
+  CHECK(std::string(buffer) == std::string(expectedValue)); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint32_t to hex
@@ -116,8 +117,8 @@
 
 #define CHECK_CONVERSION_UINT32_HEX(value, expectedValue, buffer)              \
   actualLength = TRI_StringUInt32HexInPlace((uint32_t) value, (char*) &buffer);\
-  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
-  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+  CHECK(actualLength == strlen(expectedValue));                      \
+  CHECK(std::string(buffer) == std::string(expectedValue)); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint64_t to hex
@@ -125,8 +126,8 @@
 
 #define CHECK_CONVERSION_UINT64_HEX(value, expectedValue, buffer)              \
   actualLength = TRI_StringUInt64HexInPlace((uint64_t) value, (char*) &buffer);\
-  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
-  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+  CHECK(actualLength == strlen(expectedValue));                      \
+  CHECK(std::string(buffer) == std::string(expectedValue)); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint32_t to octal
@@ -134,8 +135,8 @@
 
 #define CHECK_CONVERSION_UINT32_OCTAL(value, expectedValue, buffer)              \
   actualLength = TRI_StringUInt32OctalInPlace((uint32_t) value, (char*) &buffer);\
-  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                        \
-  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+  CHECK(actualLength == strlen(expectedValue));                        \
+  CHECK(std::string(buffer) == std::string(expectedValue)); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uint64_t to octal
@@ -143,22 +144,8 @@
 
 #define CHECK_CONVERSION_UINT64_OCTAL(value, expectedValue, buffer)              \
   actualLength = TRI_StringUInt64OctalInPlace((uint64_t) value, (char*) &buffer);\
-  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                        \
-  BOOST_CHECK_EQUAL(buffer, expectedValue); 
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
-struct CConversionsSetup {
-  CConversionsSetup () {
-    BOOST_TEST_MESSAGE("setup conversions");
-  }
-
-  ~CConversionsSetup () {
-    BOOST_TEST_MESSAGE("tear-down conversions");
-  }
-};
+  CHECK(actualLength == strlen(expectedValue));                        \
+  CHECK(std::string(buffer) == std::string(expectedValue)); 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -168,13 +155,13 @@ struct CConversionsSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_FIXTURE_TEST_SUITE(CConversionsTest, CConversionsSetup)
+TEST_CASE("CConversionsTest", "[conversions]") {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test int8_t conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_int8) {
+SECTION("tst_int8") {
   char buffer[128];
   size_t actualLength;
 
@@ -197,7 +184,7 @@ BOOST_AUTO_TEST_CASE (tst_int8) {
 /// @brief test uint8_t conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_uint8) {
+SECTION("tst_uint8") {
   char buffer[128];
   size_t actualLength;
 
@@ -213,7 +200,7 @@ BOOST_AUTO_TEST_CASE (tst_uint8) {
 /// @brief test int16_t conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_int16) {
+SECTION("tst_int16") {
   char buffer[128];
   size_t actualLength;
 
@@ -240,7 +227,7 @@ BOOST_AUTO_TEST_CASE (tst_int16) {
 /// @brief test uint16_t conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_uint16) {
+SECTION("tst_uint16") {
   char buffer[128];
   size_t actualLength;
 
@@ -257,7 +244,7 @@ BOOST_AUTO_TEST_CASE (tst_uint16) {
 /// @brief test int32_t conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_int32) {
+SECTION("tst_int32") {
   char buffer[128];
   size_t actualLength;
 
@@ -288,7 +275,7 @@ BOOST_AUTO_TEST_CASE (tst_int32) {
 /// @brief test uint32_t conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_uint32) {
+SECTION("tst_uint32") {
   char buffer[128];
   size_t actualLength;
 
@@ -309,7 +296,7 @@ BOOST_AUTO_TEST_CASE (tst_uint32) {
 /// @brief test int64_t conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_int64) {
+SECTION("tst_int64") {
   char buffer[128];
   size_t actualLength;
 
@@ -341,7 +328,7 @@ BOOST_AUTO_TEST_CASE (tst_int64) {
 /// @brief test uint64_t conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_uint64) {
+SECTION("tst_uint64") {
   char buffer[128];
   size_t actualLength;
 
@@ -365,7 +352,7 @@ BOOST_AUTO_TEST_CASE (tst_uint64) {
 /// @brief test uint32_t hex conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_uint32_hex) {
+SECTION("tst_uint32_hex") {
   char buffer[128];
   size_t actualLength;
 
@@ -386,7 +373,7 @@ BOOST_AUTO_TEST_CASE (tst_uint32_hex) {
 /// @brief test uint64_t hex conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_uint64_hex) {
+SECTION("tst_uint64_hex") {
   char buffer[128];
   size_t actualLength;
 
@@ -409,7 +396,7 @@ BOOST_AUTO_TEST_CASE (tst_uint64_hex) {
 /// @brief test uint32_t octal conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_uint32_octal) {
+SECTION("tst_uint32_octal") {
   char buffer[128];
   size_t actualLength;
 
@@ -433,7 +420,7 @@ BOOST_AUTO_TEST_CASE (tst_uint32_octal) {
 /// @brief test uint64_t octal conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_uint64_octal) {
+SECTION("tst_uint64_octal") {
   char buffer[128];
   size_t actualLength;
 
@@ -455,12 +442,10 @@ BOOST_AUTO_TEST_CASE (tst_uint64_octal) {
   CHECK_CONVERSION_UINT64_OCTAL(9694963243245737662ULL, "1032133333204010313276", buffer)
   CHECK_CONVERSION_UINT64_OCTAL(UINT64_MAX, "1777777777777777777777", buffer);
 }
-
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_SUITE_END ()
 
 // Local Variables:
 // mode: outline-minor

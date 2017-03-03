@@ -27,28 +27,13 @@
 
 #include "Basics/Common.h"
 
-#define BOOST_TEST_INCLUDED
-#include <boost/test/unit_test.hpp>
+#include "catch.hpp"
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
-struct AttributeNameParserSetup {
-  AttributeNameParserSetup () {
-    BOOST_TEST_MESSAGE("setup AttributeNameParser");
-  }
-
-  ~AttributeNameParserSetup () {
-    BOOST_TEST_MESSAGE("tear-down AttributeNameParser");
-  }
-};
 
 
 // -----------------------------------------------------------------------------
@@ -59,121 +44,121 @@ struct AttributeNameParserSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_FIXTURE_TEST_SUITE (AttributeNameParserTest, AttributeNameParserSetup)
+TEST_CASE("AttributeNameParserTest", "[attributenameparsertest]") {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_simpleString
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (test_simpleString) {
+SECTION("test_simpleString") {
   std::string input = "test";
   std::vector<AttributeName> result;
 
-  TRI_ParseAttributeString(input, result);
+  TRI_ParseAttributeString(input, result, false);
   
-  BOOST_CHECK_EQUAL(result.size(), static_cast<size_t>(1));
-  BOOST_CHECK_EQUAL(result[0].name, input);
-  BOOST_CHECK_EQUAL(result[0].shouldExpand, false);
+  CHECK(result.size() == static_cast<size_t>(1));
+  CHECK(result[0].name == input);
+  CHECK(result[0].shouldExpand == false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_subAttribute
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (test_subAttribute) {
+SECTION("test_subAttribute") {
   std::string input = "foo.bar";
   std::vector<AttributeName> result;
 
-  TRI_ParseAttributeString(input, result);
+  TRI_ParseAttributeString(input, result, false);
   
-  BOOST_CHECK_EQUAL(result.size(), static_cast<size_t>(2));
-  BOOST_CHECK_EQUAL(result[0].name, "foo");
-  BOOST_CHECK_EQUAL(result[0].shouldExpand, false);
-  BOOST_CHECK_EQUAL(result[1].name, "bar");
-  BOOST_CHECK_EQUAL(result[1].shouldExpand, false);
+  CHECK(result.size() == static_cast<size_t>(2));
+  CHECK(result[0].name == "foo");
+  CHECK(result[0].shouldExpand == false);
+  CHECK(result[1].name == "bar");
+  CHECK(result[1].shouldExpand == false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_subsubAttribute
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (test_subsubAttribute) {
+SECTION("test_subsubAttribute") {
   std::string input = "foo.bar.baz";
   std::vector<AttributeName> result;
 
-  TRI_ParseAttributeString(input, result);
+  TRI_ParseAttributeString(input, result, false);
   
-  BOOST_CHECK_EQUAL(result.size(), static_cast<size_t>(3));
-  BOOST_CHECK_EQUAL(result[0].name, "foo");
-  BOOST_CHECK_EQUAL(result[0].shouldExpand, false);
-  BOOST_CHECK_EQUAL(result[1].name, "bar");
-  BOOST_CHECK_EQUAL(result[1].shouldExpand, false);
-  BOOST_CHECK_EQUAL(result[2].name, "baz");
-  BOOST_CHECK_EQUAL(result[2].shouldExpand, false);
+  CHECK(result.size() == static_cast<size_t>(3));
+  CHECK(result[0].name == "foo");
+  CHECK(result[0].shouldExpand == false);
+  CHECK(result[1].name == "bar");
+  CHECK(result[1].shouldExpand == false);
+  CHECK(result[2].name == "baz");
+  CHECK(result[2].shouldExpand == false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_expandAttribute
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (test_expandAttribute) {
+SECTION("test_expandAttribute") {
   std::string input = "foo[*]";
   std::vector<AttributeName> result;
 
-  TRI_ParseAttributeString(input, result);
+  TRI_ParseAttributeString(input, result, true);
   
-  BOOST_CHECK_EQUAL(result.size(), static_cast<size_t>(1));
-  BOOST_CHECK_EQUAL(result[0].name, "foo");
-  BOOST_CHECK_EQUAL(result[0].shouldExpand, true);
+  CHECK(result.size() == static_cast<size_t>(1));
+  CHECK(result[0].name == "foo");
+  CHECK(result[0].shouldExpand == true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_expandSubAttribute
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (test_expandSubAttribute) {
+SECTION("test_expandSubAttribute") {
   std::string input = "foo.bar[*]";
   std::vector<AttributeName> result;
 
-  TRI_ParseAttributeString(input, result);
+  TRI_ParseAttributeString(input, result, true);
   
-  BOOST_CHECK_EQUAL(result.size(), static_cast<size_t>(2));
-  BOOST_CHECK_EQUAL(result[0].name, "foo");
-  BOOST_CHECK_EQUAL(result[0].shouldExpand, false);
-  BOOST_CHECK_EQUAL(result[1].name, "bar");
-  BOOST_CHECK_EQUAL(result[1].shouldExpand, true);
+  CHECK(result.size() == static_cast<size_t>(2));
+  CHECK(result[0].name == "foo");
+  CHECK(result[0].shouldExpand == false);
+  CHECK(result[1].name == "bar");
+  CHECK(result[1].shouldExpand == true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_expandedSubAttribute
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (test_expandedSubAttribute) {
+SECTION("test_expandedSubAttribute") {
   std::string input = "foo[*].bar";
   std::vector<AttributeName> result;
 
-  TRI_ParseAttributeString(input, result);
+  TRI_ParseAttributeString(input, result, true);
   
-  BOOST_CHECK_EQUAL(result.size(), static_cast<size_t>(2));
-  BOOST_CHECK_EQUAL(result[0].name, "foo");
-  BOOST_CHECK_EQUAL(result[0].shouldExpand, true);
-  BOOST_CHECK_EQUAL(result[1].name, "bar");
-  BOOST_CHECK_EQUAL(result[1].shouldExpand, false);
+  CHECK(result.size() == static_cast<size_t>(2));
+  CHECK(result[0].name == "foo");
+  CHECK(result[0].shouldExpand == true);
+  CHECK(result[1].name == "bar");
+  CHECK(result[1].shouldExpand == false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_invalidAttributeAfterExpand
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (test_invalidAttributeAfterExpand) {
+SECTION("test_invalidAttributeAfterExpand") {
   std::string input = "foo[*]bar";
   std::vector<AttributeName> result;
 
   try {
-    TRI_ParseAttributeString(input, result);
-    BOOST_FAIL("Expected the function to throw");
+    TRI_ParseAttributeString(input, result, false);
+    CHECK(false);
   } catch (Exception& e) {
-    BOOST_CHECK_EQUAL(e.code(), TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+    CHECK(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -181,15 +166,15 @@ BOOST_AUTO_TEST_CASE (test_invalidAttributeAfterExpand) {
 /// @brief test_nonClosing[
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (test_nonClosingBracket) {
+SECTION("test_nonClosingBracket") {
   std::string input = "foo[*bar";
   std::vector<AttributeName> result;
 
   try {
-    TRI_ParseAttributeString(input, result);
-    BOOST_FAIL("Expected the function to throw");
+    TRI_ParseAttributeString(input, result, false);
+    CHECK(false);
   } catch (Exception& e) {
-    BOOST_CHECK_EQUAL(e.code(), TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+    CHECK(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -197,15 +182,15 @@ BOOST_AUTO_TEST_CASE (test_nonClosingBracket) {
 /// @brief test_nonClosing[2
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (test_nonClosingBracket2) {
+SECTION("test_nonClosingBracket2") {
   std::string input = "foo[ * ].baz";
   std::vector<AttributeName> result;
 
   try {
-    TRI_ParseAttributeString(input, result);
-    BOOST_FAIL("Expected the function to throw");
+    TRI_ParseAttributeString(input, result, false);
+    CHECK(false);
   } catch (Exception& e) {
-    BOOST_CHECK_EQUAL(e.code(), TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+    CHECK(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -213,15 +198,15 @@ BOOST_AUTO_TEST_CASE (test_nonClosingBracket2) {
 /// @brief test_nonAsterisk
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (test_nonAsterisk) {
+SECTION("test_nonAsterisk") {
   std::string input = "foo[0]";
   std::vector<AttributeName> result;
 
   try {
-    TRI_ParseAttributeString(input, result);
-    BOOST_FAIL("Expected the function to throw");
+    TRI_ParseAttributeString(input, result, false);
+    CHECK(false);
   } catch (Exception& e) {
-    BOOST_CHECK_EQUAL(e.code(), TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+    CHECK(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -229,73 +214,75 @@ BOOST_AUTO_TEST_CASE (test_nonAsterisk) {
 /// @brief test_nonAsterisk
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (test_nonAsterisk2) {
+SECTION("test_nonAsterisk2") {
   std::string input = "foo[0].value";
   std::vector<AttributeName> result;
 
   try {
-    TRI_ParseAttributeString(input, result);
-    BOOST_FAIL("Expected the function to throw");
+    TRI_ParseAttributeString(input, result, false);
+    CHECK(false);
   } catch (Exception& e) {
-    BOOST_CHECK_EQUAL(e.code(), TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+    CHECK(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_reverseTransform
 ////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_CASE (test_reverseTransform) {
+/*
+SECTION("test_reverseTransform") {
   std::string input = "foo[*].bar.baz[*]";
   std::vector<AttributeName> result;
-  TRI_ParseAttributeString(input, result);
+  TRI_ParseAttributeString(input, result, true);
 
   std::string output = "";
   TRI_AttributeNamesToString(result, output);
-  BOOST_CHECK_EQUAL(output, input);
+  CHECK(output == input);
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_reverseTransformSimple
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (test_reverseTransformSimple) {
+SECTION("test_reverseTransformSimple") {
   std::string input = "i";
   std::vector<AttributeName> result;
-  TRI_ParseAttributeString(input, result);
+  TRI_ParseAttributeString(input, result, false);
 
   std::string output = "";
   TRI_AttributeNamesToString(result, output);
-  BOOST_CHECK_EQUAL(output, input);
+  CHECK(output == input);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_reverseTransformSimpleMultiAttributes
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (test_reverseTransformSimpleMultiAttributes) {
+SECTION("test_reverseTransformSimpleMultiAttributes") {
   std::string input = "a.j";
   std::vector<AttributeName> result;
-  TRI_ParseAttributeString(input, result);
+  TRI_ParseAttributeString(input, result, false);
 
   std::string output = "";
   TRI_AttributeNamesToString(result, output);
-  BOOST_CHECK_EQUAL(output, input);
+  CHECK(output == input);
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_reverseTransformToPidPath
 ////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_CASE (test_reverseTransformToPidPath) {
+/*
+SECTION("test_reverseTransformToPidPath") {
   std::string input = "foo[*].bar.baz[*]";
   std::string expected = "foo.bar.baz";
   std::vector<AttributeName> result;
-  TRI_ParseAttributeString(input, result);
+  TRI_ParseAttributeString(input, result, true);
 
   std::string output = "";
   TRI_AttributeNamesToString(result, output, true);
-  BOOST_CHECK_EQUAL(output, expected);
+  CHECK(output == expected);
 }
+*/
 
 
 
@@ -304,7 +291,7 @@ BOOST_AUTO_TEST_CASE (test_reverseTransformToPidPath) {
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_SUITE_END()
+}
 
 // Local Variables:
 // mode: outline-minor

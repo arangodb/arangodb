@@ -27,8 +27,7 @@
 
 #include "Basics/Common.h"
 
-#define BOOST_TEST_INCLUDED
-#include <boost/test/unit_test.hpp>
+#include "catch.hpp"
 
 #include "Basics/AssocMulti.h"
 #include "Basics/hashes.h"
@@ -43,7 +42,7 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 #define INIT_MULTI \
-  arangodb::basics::AssocMulti<void, void*, uint32_t, false> a1( \
+  arangodb::basics::AssocMulti<void, void*, uint32_t, true> a1( \
       HashKey, HashElement, IsEqualKeyElement, IsEqualElementElement, IsEqualElementElementByKey);
 
 #define DESTROY_MULTI ;
@@ -60,13 +59,16 @@ struct data_container_t {
   data_container_t (int key, int value) : value(value), key(key) {};
 };
 
-static uint64_t HashKey (void* userData, void const* e) {
+static uint64_t HashKey (void* userData,
+                         void const* e) {
   int const* key = (int const*) e;
 
   return fasthash64(key, sizeof(int), 0x12345678);
 }
 
-static uint64_t HashElement (void* userData, void const* e, bool byKey) {
+static uint64_t HashElement (void* userData,
+                             void const* e, 
+                             bool byKey) {
   data_container_t const* element = (data_container_t const*) e;
 
   if (byKey) {
@@ -77,21 +79,27 @@ static uint64_t HashElement (void* userData, void const* e, bool byKey) {
   }
 }
 
-static bool IsEqualKeyElement (void* userData, void const* k, void const* r) {
+static bool IsEqualKeyElement (void* userData,
+                               void const* k, 
+                               void const* r) {
   int const* key = (int const*) k;
   data_container_t const* element = (data_container_t const*) r;
 
   return *key == element->key;
 }
 
-static bool IsEqualElementElement (void* userData, void const* l, void const* r) {
+static bool IsEqualElementElement (void* userData,
+                                   void const* l, 
+                                   void const* r) {
   data_container_t const* left = (data_container_t const*) l;
   data_container_t const* right = (data_container_t const*) r;
 
   return left->value == right->value;
 }
 
-static bool IsEqualElementElementByKey (void* userData, void const* l, void const* r) {
+static bool IsEqualElementElementByKey (void* userData,
+                                        void const* l, 
+                                        void const* r) {
   data_container_t const* left = (data_container_t const*) l;
   data_container_t const* right = (data_container_t const*) r;
 
@@ -103,20 +111,6 @@ static bool IsEqualElementElementByKey (void* userData, void const* l, void cons
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
-struct CMultiPointerNoHashCacheSetup {
-  CMultiPointerNoHashCacheSetup () {
-    BOOST_TEST_MESSAGE("setup AssocMulti_t");
-  }
-
-  ~CMultiPointerNoHashCacheSetup () {
-    BOOST_TEST_MESSAGE("tear-down AssocMulti_t");
-  }
-};
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
@@ -124,16 +118,15 @@ struct CMultiPointerNoHashCacheSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_FIXTURE_TEST_SUITE(CMultiPointerNoHashCacheTest, CMultiPointerNoHashCacheSetup)
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test initialization
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_init) {
+TEST_CASE("associative multi pointer", "[associative]") {
+SECTION("tst_init") {
   INIT_MULTI
 
-  BOOST_CHECK_EQUAL((uint32_t) 0, a1.size());
+  CHECK((uint32_t) 0 == a1.size());
 
   DESTROY_MULTI
 }
@@ -142,19 +135,19 @@ BOOST_AUTO_TEST_CASE (tst_init) {
 /// @brief test unique insertion
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_insert_few) {
+SECTION("tst_insert_few") {
   INIT_MULTI
 
   void* r = 0;
 
   ELEMENT(e1, 1, 123);
-  BOOST_CHECK_EQUAL(r, a1.insert(nullptr, &e1, true, false));
-  BOOST_CHECK_EQUAL((uint32_t) 1, a1.size());
-  BOOST_CHECK_EQUAL(&e1, a1.lookup(nullptr, &e1));
+  CHECK(r == a1.insert(nullptr, &e1, true, false));
+  CHECK((uint32_t) 1 == a1.size());
+  CHECK(&e1 == a1.lookup(nullptr, &e1));
 
-  BOOST_CHECK_EQUAL(&e1, a1.remove(nullptr, &e1));
-  BOOST_CHECK_EQUAL((uint32_t) 0, a1.size());
-  BOOST_CHECK_EQUAL(r, a1.lookup(nullptr, &e1));
+  CHECK(&e1 == a1.remove(nullptr, &e1));
+  CHECK((uint32_t) 0 == a1.size());
+  CHECK(r == a1.lookup(nullptr, &e1));
 
   DESTROY_MULTI
 }
@@ -164,7 +157,7 @@ BOOST_AUTO_TEST_CASE (tst_insert_few) {
 #define NUMBER_OF_ELEMENTS 3000
 #define MODULUS 10
 
-BOOST_AUTO_TEST_CASE (tst_insert_delete_many) {
+SECTION("tst_insert_delete_many") {
   INIT_MULTI
 
   unsigned int i, j;
@@ -179,7 +172,7 @@ BOOST_AUTO_TEST_CASE (tst_insert_delete_many) {
   for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
     p = new data_container_t(i % MODULUS, i);
     v.push_back(p);
-    BOOST_CHECK_EQUAL(n, a1.insert(nullptr, p, true, false));
+    CHECK(n == a1.insert(nullptr, p, true, false));
   }
   one_more = new data_container_t(NUMBER_OF_ELEMENTS % MODULUS, 
                                   NUMBER_OF_ELEMENTS);
@@ -187,11 +180,11 @@ BOOST_AUTO_TEST_CASE (tst_insert_delete_many) {
   // Now check it is there (by element):
   for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
     p = static_cast<data_container_t*>(a1.lookup(nullptr, v[i]));
-    BOOST_CHECK_EQUAL(p, v[i]);
+    CHECK(p == v[i]);
   }
   // This should not be there:
   p = static_cast<data_container_t*>(a1.lookup(nullptr, one_more));
-  BOOST_CHECK_EQUAL(n, p);
+  CHECK(n == p);
   
   // Now check by key:
   std::vector<void*>* res = nullptr;
@@ -201,13 +194,13 @@ BOOST_AUTO_TEST_CASE (tst_insert_delete_many) {
                                     sizeof(int) * NUMBER_OF_ELEMENTS / MODULUS,
                                     true));
     res = a1.lookupByKey(nullptr, &i);
-    BOOST_CHECK_EQUAL((int) res->size(),
+    CHECK((int) res->size() ==
                       (int) (NUMBER_OF_ELEMENTS / MODULUS));
     // Now check its contents:
     for (j = 0; j < res->size(); j++) {
-      data_container_t* q = static_cast<data_container_t*>(res->at(j));
-      BOOST_CHECK_EQUAL((int) (q->value % MODULUS), (int) i);
-      BOOST_CHECK_EQUAL(space[(q->value - i) / MODULUS], 0);
+      data_container_t* q = static_cast<data_container_t*> (res->at(j));
+      CHECK((int) (q->value % MODULUS) == (int) i);
+      CHECK(space[(q->value - i) / MODULUS] == 0);
       space[(q->value - i) / MODULUS] = 1;
     }
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, space);
@@ -216,64 +209,64 @@ BOOST_AUTO_TEST_CASE (tst_insert_delete_many) {
 
   // Delete some data:
   for (i = 0;i < v.size();i += 3) {
-    BOOST_CHECK_EQUAL(v[i], a1.remove(nullptr, v[i]));
+    CHECK(v[i] == a1.remove(nullptr, v[i]));
   }
   for (i = 0;i < v.size();i += 3) {
-    BOOST_CHECK_EQUAL(n, a1.remove(nullptr, v[i]));
+    CHECK(n == a1.remove(nullptr, v[i]));
   }
 
   // Now check which are there (by element):
   for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
     p = static_cast<data_container_t*>(a1.lookup(nullptr, v[i]));
     if (i % 3 == 0) {
-      BOOST_CHECK_EQUAL(p,n);
+      CHECK(p ==n);
     }
     else {
-      BOOST_CHECK_EQUAL(p,v[i]);
+      CHECK(p ==v[i]);
     }
   }
   // This should not be there:
   p = static_cast<data_container_t*>(a1.lookup(nullptr, one_more));
-  BOOST_CHECK_EQUAL(n, p);
+  CHECK(n == p);
   
   // Delete some more:
   for (i = 1;i < v.size();i += 3) {
-    BOOST_CHECK_EQUAL(v[i], a1.remove(nullptr, v[i]));
+    CHECK(v[i] == a1.remove(nullptr, v[i]));
   }
   for (i = 1;i < v.size();i += 3) {
-    BOOST_CHECK_EQUAL(n, a1.remove(nullptr, v[i]));
+    CHECK(n == a1.remove(nullptr, v[i]));
   }
 
   // Now check which are there (by element):
   for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
     p = static_cast<data_container_t*>(a1.lookup(nullptr, v[i]));
     if (i % 3 == 2) {
-      BOOST_CHECK_EQUAL(p,v[i]);
+      CHECK(p ==v[i]);
     }
     else {
-      BOOST_CHECK_EQUAL(p,n);
+      CHECK(p ==n);
     }
   }
   // This should not be there:
   p = static_cast<data_container_t*>(a1.lookup(nullptr, one_more));
-  BOOST_CHECK_EQUAL(n, p);
+  CHECK(n == p);
   
   // Delete the rest:
   for (i = 2;i < v.size();i += 3) {
-    BOOST_CHECK_EQUAL(v[i], a1.remove(nullptr, v[i]));
+    CHECK(v[i] == a1.remove(nullptr, v[i]));
   }
   for (i = 2;i < v.size();i += 3) {
-    BOOST_CHECK_EQUAL(n, a1.remove(nullptr, v[i]));
+    CHECK(n == a1.remove(nullptr, v[i]));
   }
 
   // Now check which are there (by element):
   for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
     p = static_cast<data_container_t*>(a1.lookup(nullptr, v[i]));
-    BOOST_CHECK_EQUAL(p,n);
+    CHECK(p ==n);
   }
   // This should not be there:
   p = static_cast<data_container_t*>(a1.lookup(nullptr, one_more));
-  BOOST_CHECK_EQUAL(n, p);
+  CHECK(n == p);
   // Pull down data again:
   for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
     delete v[i];
@@ -283,12 +276,7 @@ BOOST_AUTO_TEST_CASE (tst_insert_delete_many) {
 
   DESTROY_MULTI
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
-////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_SUITE_END ()
+}
 
 // Local Variables:
 // mode: outline-minor

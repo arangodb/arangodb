@@ -27,28 +27,13 @@
 
 #include "Basics/Common.h"
 
-#define BOOST_TEST_INCLUDED
-#include <boost/test/unit_test.hpp>
+#include "catch.hpp"
 
 #include "Basics/fpconv.h"
 #include "Basics/json.h"
 #include "Basics/StringBuffer.h"
 
 using namespace arangodb::basics;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
-struct CFpconvSetup {
-  CFpconvSetup () {
-    BOOST_TEST_MESSAGE("setup fpconv");
-  }
-
-  ~CFpconvSetup () {
-    BOOST_TEST_MESSAGE("tear-down fpconv");
-  }
-};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -58,97 +43,97 @@ struct CFpconvSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_FIXTURE_TEST_SUITE(CFpconvTest, CFpconvSetup)
+TEST_CASE("CFpconvTest", "[convtest]") {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test nan
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_nan) {
+SECTION("tst_nan") {
   char out[24];
   double value;
   int length;
 
   value = NAN;
-  BOOST_CHECK_EQUAL(true, std::isnan(value));
+  CHECK(true == std::isnan(value));
   length = fpconv_dtoa(value, out);
 
 #ifdef _WIN32
-  BOOST_CHECK_EQUAL(std::string("-NaN"), std::string(out, length));
+  CHECK(std::string("-NaN") == std::string(out, length));
 #else
-  BOOST_CHECK_EQUAL(std::string("NaN"), std::string(out, length));
+  CHECK(std::string("NaN") == std::string(out, length));
 #endif
   
   StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
   buf.appendDecimal(value);
-  BOOST_CHECK_EQUAL(std::string("NaN"), std::string(buf.c_str(), buf.length()));
+  CHECK(std::string("NaN") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test infinity
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_inf) {
+SECTION("tst_inf") {
   char out[24];
   double value;
   int length;
 
   value = INFINITY;
-  BOOST_CHECK_EQUAL(false, std::isfinite(value));
+  CHECK(false == std::isfinite(value));
   length = fpconv_dtoa(value, out);
 
-  BOOST_CHECK_EQUAL(std::string("inf"), std::string(out, length));
+  CHECK(std::string("inf") == std::string(out, length));
   
   StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
   buf.appendDecimal(value);
-  BOOST_CHECK_EQUAL(std::string("inf"), std::string(buf.c_str(), buf.length()));
+  CHECK(std::string("inf") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test huge val
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_huge_val) {
+SECTION("tst_huge_val") {
   char out[24];
   double value;
   int length;
 
   value = HUGE_VAL;
-  BOOST_CHECK_EQUAL(false, std::isfinite(value));
+  CHECK(false == std::isfinite(value));
   length = fpconv_dtoa(value, out);
 
-  BOOST_CHECK_EQUAL(std::string("inf"), std::string(out, length));
+  CHECK(std::string("inf") == std::string(out, length));
   
   StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
   buf.appendDecimal(value);
-  BOOST_CHECK_EQUAL(std::string("inf"), std::string(buf.c_str(), buf.length()));
+  CHECK(std::string("inf") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test huge val
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_huge_val_neg) {
+SECTION("tst_huge_val_neg") {
   char out[24];
   double value;
   int length;
 
   value = -HUGE_VAL;
-  BOOST_CHECK_EQUAL(false, std::isfinite(value));
+  CHECK(false == std::isfinite(value));
   length = fpconv_dtoa(value, out);
 
-  BOOST_CHECK_EQUAL(std::string("-inf"), std::string(out, length));
+  CHECK(std::string("-inf") == std::string(out, length));
   
   StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
   buf.appendDecimal(value);
-  BOOST_CHECK_EQUAL(std::string("-inf"), std::string(buf.c_str(), buf.length()));
+  CHECK(std::string("-inf") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test zero
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_zero) {
+SECTION("tst_zero") {
   char out[24];
   double value;
   int length;
@@ -156,18 +141,18 @@ BOOST_AUTO_TEST_CASE (tst_zero) {
   value = 0;
   length = fpconv_dtoa(value, out);
 
-  BOOST_CHECK_EQUAL(std::string("0"), std::string(out, length));
+  CHECK(std::string("0") == std::string(out, length));
   
   StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
   buf.appendDecimal(value);
-  BOOST_CHECK_EQUAL(std::string("0"), std::string(buf.c_str(), buf.length()));
+  CHECK(std::string("0") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test zero
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_zero_neg) {
+SECTION("tst_zero_neg") {
   char out[24];
   double value;
   int length;
@@ -175,18 +160,18 @@ BOOST_AUTO_TEST_CASE (tst_zero_neg) {
   value = -0;
   length = fpconv_dtoa(value, out);
 
-  BOOST_CHECK_EQUAL(std::string("0"), std::string(out, length));
+  CHECK(std::string("0") == std::string(out, length));
   
   StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
   buf.appendDecimal(value);
-  BOOST_CHECK_EQUAL(std::string("0"), std::string(buf.c_str(), buf.length()));
+  CHECK(std::string("0") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test high
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_value_high) {
+SECTION("tst_value_high") {
   char out[24];
   double value;
   int length;
@@ -194,18 +179,18 @@ BOOST_AUTO_TEST_CASE (tst_value_high) {
   value = 4.32e261;
   length = fpconv_dtoa(value, out);
 
-  BOOST_CHECK_EQUAL(std::string("4.32e+261"), std::string(out, length));
+  CHECK(std::string("4.32e+261") == std::string(out, length));
   
   StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
   buf.appendDecimal(value);
-  BOOST_CHECK_EQUAL(std::string("4.32e+261"), std::string(buf.c_str(), buf.length()));
+  CHECK(std::string("4.32e+261") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test low
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_value_low) {
+SECTION("tst_value_low") {
   char out[24];
   double value;
   int length;
@@ -213,18 +198,18 @@ BOOST_AUTO_TEST_CASE (tst_value_low) {
   value = -4.32e261;
   length = fpconv_dtoa(value, out);
 
-  BOOST_CHECK_EQUAL(std::string("-4.32e+261"), std::string(out, length));
+  CHECK(std::string("-4.32e+261") == std::string(out, length));
   
   StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
   buf.appendDecimal(value);
-  BOOST_CHECK_EQUAL(std::string("-4.32e+261"), std::string(buf.c_str(), buf.length()));
+  CHECK(std::string("-4.32e+261") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test small
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_value_small) {
+SECTION("tst_value_small") {
   char out[24];
   double value;
   int length;
@@ -232,18 +217,18 @@ BOOST_AUTO_TEST_CASE (tst_value_small) {
   value = 4.32e-261;
   length = fpconv_dtoa(value, out);
 
-  BOOST_CHECK_EQUAL(std::string("4.32e-261"), std::string(out, length));
+  CHECK(std::string("4.32e-261") == std::string(out, length));
   
   StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
   buf.appendDecimal(value);
-  BOOST_CHECK_EQUAL(std::string("4.32e-261"), std::string(buf.c_str(), buf.length()));
+  CHECK(std::string("4.32e-261") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test mchacki's value
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_value_mchacki1) {
+SECTION("tst_value_mchacki1") {
   char out[24];
   double value;
   int length;
@@ -251,18 +236,18 @@ BOOST_AUTO_TEST_CASE (tst_value_mchacki1) {
   value = 1.374;
   length = fpconv_dtoa(value, out);
 
-  BOOST_CHECK_EQUAL(std::string("1.374"), std::string(out, length));
+  CHECK(std::string("1.374") == std::string(out, length));
   
   StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
   buf.appendDecimal(value);
-  BOOST_CHECK_EQUAL(std::string("1.374"), std::string(buf.c_str(), buf.length()));
+  CHECK(std::string("1.374") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test mchacki's value
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_value_mchacki2) {
+SECTION("tst_value_mchacki2") {
   char out[24];
   double value;
   int length;
@@ -270,18 +255,18 @@ BOOST_AUTO_TEST_CASE (tst_value_mchacki2) {
   value = 56.94837631946843;
   length = fpconv_dtoa(value, out);
 
-  BOOST_CHECK_EQUAL(std::string("56.94837631946843"), std::string(out, length));
+  CHECK(std::string("56.94837631946843") == std::string(out, length));
   
   StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
   buf.appendDecimal(value);
-  BOOST_CHECK_EQUAL(std::string("56.94837631946843"), std::string(buf.c_str(), buf.length()));
+  CHECK(std::string("56.94837631946843") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test one third roundtrip
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_value_mchacki2_roundtrip) {
+SECTION("tst_value_mchacki2_roundtrip") {
   double value;
 
   value = 56.94837631946843;
@@ -292,7 +277,7 @@ BOOST_AUTO_TEST_CASE (tst_value_mchacki2_roundtrip) {
   auto json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, value);
   TRI_StringifyJson(&buffer, json);
 
-  BOOST_CHECK_EQUAL(std::string("56.94837631946843"), std::string(buffer._buffer, buffer._current - buffer._buffer));
+  CHECK(std::string("56.94837631946843") == std::string(buffer._buffer, buffer._current - buffer._buffer));
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   TRI_DestroyStringBuffer(&buffer);
@@ -302,7 +287,7 @@ BOOST_AUTO_TEST_CASE (tst_value_mchacki2_roundtrip) {
 /// @brief test one third
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_one_third) {
+SECTION("tst_one_third") {
   char out[24];
   double value;
   int length;
@@ -310,18 +295,18 @@ BOOST_AUTO_TEST_CASE (tst_one_third) {
   value = 1.0 / 3.0;
   length = fpconv_dtoa(value, out);
 
-  BOOST_CHECK_EQUAL(std::string("0.3333333333333333"), std::string(out, length));
+  CHECK(std::string("0.3333333333333333") == std::string(out, length));
   
   StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
   buf.appendDecimal(value);
-  BOOST_CHECK_EQUAL(std::string("0.3333333333333333"), std::string(buf.c_str(), buf.length()));
+  CHECK(std::string("0.3333333333333333") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test one third roundtrip
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_one_third_roundtrip) {
+SECTION("tst_one_third_roundtrip") {
   double value;
 
   value = 1.0 / 3.0;
@@ -332,7 +317,7 @@ BOOST_AUTO_TEST_CASE (tst_one_third_roundtrip) {
   auto json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, value);
   TRI_StringifyJson(&buffer, json);
 
-  BOOST_CHECK_EQUAL(std::string("0.3333333333333333"), std::string(buffer._buffer, buffer._current - buffer._buffer));
+  CHECK(std::string("0.3333333333333333") == std::string(buffer._buffer, buffer._current - buffer._buffer));
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   TRI_DestroyStringBuffer(&buffer);
@@ -342,7 +327,7 @@ BOOST_AUTO_TEST_CASE (tst_one_third_roundtrip) {
 /// @brief test 0.4
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_04) {
+SECTION("tst_04") {
   char out[24];
   double value;
   int length;
@@ -350,18 +335,18 @@ BOOST_AUTO_TEST_CASE (tst_04) {
   value = 0.1 + 0.3;
   length = fpconv_dtoa(value, out);
 
-  BOOST_CHECK_EQUAL(std::string("0.4"), std::string(out, length));
+  CHECK(std::string("0.4") == std::string(out, length));
   
   StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
   buf.appendDecimal(value);
-  BOOST_CHECK_EQUAL(std::string("0.4"), std::string(buf.c_str(), buf.length()));
+  CHECK(std::string("0.4") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test 0.4
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_04_roundtrip) {
+SECTION("tst_04_roundtrip") {
   double value;
 
   value = 0.1 + 0.3;
@@ -372,7 +357,7 @@ BOOST_AUTO_TEST_CASE (tst_04_roundtrip) {
   auto json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, value);
   TRI_StringifyJson(&buffer, json);
 
-  BOOST_CHECK_EQUAL(std::string("0.4"), std::string(buffer._buffer, buffer._current - buffer._buffer));
+  CHECK(std::string("0.4") == std::string(buffer._buffer, buffer._current - buffer._buffer));
   
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   TRI_DestroyStringBuffer(&buffer);
@@ -382,7 +367,7 @@ BOOST_AUTO_TEST_CASE (tst_04_roundtrip) {
 /// @brief test big roundtrip
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_value_high_roundtrip) {
+SECTION("tst_value_high_roundtrip") {
   double value;
 
   value = 4.32e261;
@@ -393,7 +378,7 @@ BOOST_AUTO_TEST_CASE (tst_value_high_roundtrip) {
   auto json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, value);
   TRI_StringifyJson(&buffer, json);
 
-  BOOST_CHECK_EQUAL(std::string("4.32e+261"), std::string(buffer._buffer, buffer._current - buffer._buffer));
+  CHECK(std::string("4.32e+261") == std::string(buffer._buffer, buffer._current - buffer._buffer));
   
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   TRI_DestroyStringBuffer(&buffer);
@@ -403,7 +388,7 @@ BOOST_AUTO_TEST_CASE (tst_value_high_roundtrip) {
 /// @brief test small roundtrip
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_value_low_roundtrip) {
+SECTION("tst_value_low_roundtrip") {
   double value;
 
   value = -4.32e261;
@@ -414,17 +399,16 @@ BOOST_AUTO_TEST_CASE (tst_value_low_roundtrip) {
   auto json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, value);
   TRI_StringifyJson(&buffer, json);
 
-  BOOST_CHECK_EQUAL(std::string("-4.32e+261"), std::string(buffer._buffer, buffer._current - buffer._buffer));
+  CHECK(std::string("-4.32e+261") == std::string(buffer._buffer, buffer._current - buffer._buffer));
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   TRI_DestroyStringBuffer(&buffer);
 }
-
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_SUITE_END ()
 
 // Local Variables:
 // mode: outline-minor
