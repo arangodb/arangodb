@@ -39,6 +39,9 @@ Returned if the user can be added by the server
 If the JSON representation is malformed or mandatory data is missing
 from the request.
 
+@RESTRETURNCODE{409}
+Returned if a user with the same name already exists.
+
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestCreateUser}
@@ -79,8 +82,8 @@ REST call.
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{201}
-Returned if the user can be added by the server
+@RESTRETURNCODE{200}
+Returned if the access permissions were changed successfully.
 
 @RESTRETURNCODE{400}
 If the JSON representation is malformed or mandatory data is missing
