@@ -403,7 +403,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(RequestTypeKey);
   TRI_GET_GLOBAL_STRING(RequestBodyKey);
 
-  auto set_request_body_json_or_vpack = [&]() {
+  auto setRequestBodyJsonOrVPack = [&]() {
     if (rest::ContentType::JSON == request->contentType()) {
       auto httpreq = dynamic_cast<HttpRequest*>(request);
       if (httpreq == nullptr) {
@@ -424,36 +424,32 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 
       req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(jsonString));
       headers["content-length"] = StringUtils::itoa(jsonString.size());
+      headers["content-type"] = StaticStrings::MimeTypeJson;
     } else {
       throw std::logic_error("unhandled request type");
     }
   };
-
-  for (auto const& it : headers) {
-    headerFields->ForceSet(TRI_V8_STD_STRING(it.first),
-                           TRI_V8_STD_STRING(it.second));
-  }
 
   // copy request type
   switch (request->requestType()) {
     case rest::RequestType::POST: {
       TRI_GET_GLOBAL_STRING(PostConstant);
       req->ForceSet(RequestTypeKey, PostConstant);
-      set_request_body_json_or_vpack();
+      setRequestBodyJsonOrVPack();
       break;
     }
 
     case rest::RequestType::PUT: {
       TRI_GET_GLOBAL_STRING(PutConstant);
       req->ForceSet(RequestTypeKey, PutConstant);
-      set_request_body_json_or_vpack();
+      setRequestBodyJsonOrVPack();
       break;
     }
 
     case rest::RequestType::PATCH: {
       TRI_GET_GLOBAL_STRING(PatchConstant);
       req->ForceSet(RequestTypeKey, PatchConstant);
-      set_request_body_json_or_vpack();
+      setRequestBodyJsonOrVPack();
       break;
     }
     case rest::RequestType::OPTIONS: {
@@ -477,6 +473,11 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
         req->ForceSet(RequestTypeKey, GetConstant);
         break;
     }
+  }
+  
+  for (auto const& it : headers) {
+    headerFields->ForceSet(TRI_V8_STD_STRING(it.first),
+                           TRI_V8_STD_STRING(it.second));
   }
 
   // copy request parameter
@@ -562,7 +563,11 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
     }
     switch (response->transportType()) {
       case Endpoint::TransportType::HTTP:
-        response->setContentType(contentType);
+        if (autoContent) {
+          response->setContentType(rest::ContentType::JSON);
+        } else {
+          response->setContentType(contentType);
+        }
         break;
 
       case Endpoint::TransportType::VPP:
@@ -1111,7 +1116,13 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
         case Endpoint::TransportType::HTTP: {
           auto httpRequest = static_cast<arangodb::HttpRequest*>(e->Value());
           if (httpRequest != nullptr) {
-            std::string bodyStr = httpRequest->body();
+            std::string bodyStr;
+            if (rest::ContentType::VPACK == request->contentType()) {
+              VPackSlice slice = request->payload();
+              bodyStr = slice.toJson();
+            } else {
+              bodyStr = httpRequest->body();
+            }
             V8Buffer* buffer =
                 V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
 

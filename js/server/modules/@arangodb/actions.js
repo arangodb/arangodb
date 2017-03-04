@@ -1816,6 +1816,9 @@ function arangoErrorToHttpCode (num) {
 
     case arangodb.ERROR_ARANGO_DUPLICATE_NAME:
     case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER:
+    case arangodb.ERROR_USER_DUPLICATE:
+    case arangodb.ERROR_GRAPH_DUPLICATE:
+    case arangodb.ERROR_TASK_DUPLICATE_ID:
     case arangodb.ERROR_SERVICE_MOUNTPOINT_CONFLICT:
       return exports.HTTP_CONFLICT;
 

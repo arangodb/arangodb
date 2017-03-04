@@ -236,12 +236,12 @@ exports.permission = function (username, key) {
 
   if (key === undefined || key === null) {
     uri = '_api/user/' + encodeURIComponent(username)
-      + '/permission';
+      + '/database';
 
     requestResult = db._connection.GET(uri);
   } else {
     uri = '_api/user/' + encodeURIComponent(username)
-    + '/permission/' + encodeURIComponent(key);
+    + '/database/' + encodeURIComponent(key);
 
     requestResult = db._connection.GET(uri);
   }

@@ -1460,7 +1460,7 @@ global.DEFINE_MODULE('internal', (function () {
     output('\n');
   }
 
-  printShell.limitString = 80;
+  printShell.limitString = 256;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief flatten

@@ -56,14 +56,14 @@ class ImportFeature final : public application_features::ApplicationFeature,
   bool _createCollection;
   std::string _createCollectionType;
   std::string _typeImport;
+  std::vector<std::string> _translations;
   bool _overwrite;
   std::string _quote;
   std::string _separator;
   bool _progress;
   std::string _onDuplicateAction;
   uint64_t _rowsToSkip;
-
- private:
+  
   int* _result;
 };
 }

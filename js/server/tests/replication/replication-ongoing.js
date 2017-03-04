@@ -292,14 +292,12 @@ function ReplicationSuite() {
 
         function (state) {
           // wait for slave applier to have started and detect the mess
-          internal.wait(5, false);
-
-          // slave should have failed
-          assertFalse(replication.applier.state().state.running);
-          return true;
+          return replication.applier.state().state.running;
         },
 
         function (state) {
+          // slave should have failed
+          assertFalse(replication.applier.state().state.running);
           // data loss on slave!
           assertTrue(db._collection(cn).count() < 25);
         },

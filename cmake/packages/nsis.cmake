@@ -1,9 +1,4 @@
 set(W_INSTALL_FILES                "${PROJECT_SOURCE_DIR}/Installation/Windows/")
-if (${USE_ENTERPRISE})
-  set(CPACK_PACKAGE_NAME             "ArangoDB3e")
-else()
-  set(CPACK_PACKAGE_NAME             "ArangoDB3")
-endif()
 
 set(CPACK_NSIS_DISPLAY_NAME,       ${ARANGODB_DISPLAY_NAME})
 set(CPACK_NSIS_HELP_LINK           ${ARANGODB_HELP_LINK})
@@ -100,6 +95,9 @@ add_custom_target(package-arongodb-client-nsis
 
 
 list(APPEND PACKAGES_LIST package-arongodb-client-nsis)
+
+add_custom_target(copy_client_nsis_package
+  COMMAND ${CMAKE_COMMAND} -E copy ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.exe ${PACKAGE_TARGET_DIR})
 
 add_custom_target(copy_nsis_packages
   COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_PACKAGE_FILE_NAME}.exe ${PACKAGE_TARGET_DIR})
