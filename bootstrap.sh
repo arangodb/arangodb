@@ -114,9 +114,12 @@ bootstrap(){
     echo "initialize submodules"
     git submodule init
     git submodule update --recursive
+    cd 3rdParty/V8/v8
+    git submodule init
+    git submodule update --recursive
 
     echo "linking $current_dir/$build_dir to build"
-    ln -s "$current_dir/$build_dir" build
+    ln -s "$current_dir/$build_dir" "$current_dir/$source_dir/build"
 
     cd "$current_dir/$build_dir"
     configure_build "$current_dir/$source_dir"
