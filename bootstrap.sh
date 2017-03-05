@@ -5,13 +5,13 @@
 
 arg_git=false
 arg_asan=false
-arg_clang=false
 
 https_url="https://github.com/arangodb/arangodb.git"
 git_url="git@github.com:arangodb/arangodb.git"
 
 build_type="Release"
 build_type="RelWithDebInfo"
+compiler=gcc
 
 args=()
 for arg in "$@"; do
@@ -26,7 +26,10 @@ for arg in "$@"; do
             arg_asan=true
         ;;
         --clang)
-            arg_clang=true
+            compiler=clang
+        ;;
+        --gcc-arango)
+            compiler=gcc-arango
         ;;
         *)
             args+=( "$arg" )
@@ -37,27 +40,27 @@ done
 configure_build(){
     local source_dir="$1"
 
-    local compiler=gcc
-    if $arg_clang; then
-        compiler=clang
-    fi
-
     local asan=""
     if $arg_asan; then
         asan="-fsanitize=address -fsanitize=undefined -fno-sanitize=alignment -fno-sanitize=vptr"
     fi
 
     case "$compiler" in
-        *clang*)
+        clang)
             flags="$asan"
             cxx="/usr/bin/clang++"
             cc="/usr/bin/clang"
         ;;
-        *gcc*)
+        gcc-arango)
+            flags=" -lpthread $asan"
+            cxx="/opt/arangodb/bin/g++"
+            cc="/opt/arangodb/bin/gcc"
+        ;;
+        gcc)
             flags=" -lpthread $asan"
             cxx="/usr/bin/g++"
             cc="/usr/bin/gcc"
-            ;;
+        ;;
     esac
 
     cxx_flags="$flags -std=c++11"
