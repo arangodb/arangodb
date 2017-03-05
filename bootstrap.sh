@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# usage:
 # ./boostrap.sh [--git] [--asan] [--clang] source_destination
 # @author Jan Christoph Uhde - 2017
 
@@ -9,7 +10,6 @@ arg_asan=false
 https_url="https://github.com/arangodb/arangodb.git"
 git_url="git@github.com:arangodb/arangodb.git"
 
-build_type="Release"
 build_type="RelWithDebInfo"
 compiler=gcc
 
@@ -99,7 +99,7 @@ bootstrap(){
     current_dir="$(pwd)"
 
     if [[ -e $source_dir ]]; then
-        echo "A file/directory already exists in the choosen location!"
+        echo "A file/directory already exists in the chosen location!"
         exit 1
     fi
 
@@ -114,6 +114,8 @@ bootstrap(){
         git checkout "$branch" || { echo "can not change into $source_dir"; exit 1; }
     fi
 
+    # TODO more error handling instead of: 'set -e'
+    set -e
     echo "initialize submodules"
     git submodule init
     git submodule update --recursive
@@ -125,7 +127,13 @@ bootstrap(){
     ln -s "$current_dir/$build_dir" "$current_dir/$source_dir/build"
 
     cd "$current_dir/$build_dir"
+    set +e
+
     configure_build "$current_dir/$source_dir"
+
+    # in a better language the build command should be here but by
+    # putting it at the end of configure_build unnecessary parsing is
+    # avoided.
 }
 
 bootstrap "${args[@]}"
