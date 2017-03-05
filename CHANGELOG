@@ -1,6 +1,8 @@
 v3.1.13 (XXXX-XX-XX)
 --------------------
 
+* fixed variables parsing in GraphQL
+
 * fixed issue #2214
 
 * fixed issue #2342

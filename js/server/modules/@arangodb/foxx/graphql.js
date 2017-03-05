@@ -38,7 +38,7 @@ module.exports = function graphql (cfg) {
       return variables;
     }
     try {
-      return JSON.stringify(variables);
+      return JSON.parse(variables);
     } catch (e) {
       res.throw(400, 'Variables are invalid JSON', e);
     }
