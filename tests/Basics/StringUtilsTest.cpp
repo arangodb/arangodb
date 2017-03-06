@@ -36,7 +36,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
 
-#include "UnitTests/Basics/icu-helper.h"
+#include "icu-helper.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
