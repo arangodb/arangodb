@@ -312,7 +312,6 @@ SET(ARANGOD_SOURCES
   RestServer/UpgradeFeature.cpp
   RestServer/VocbaseContext.cpp
   RestServer/WorkMonitorFeature.cpp
-  RestServer/arangod.cpp
   Scheduler/Acceptor.cpp
   Scheduler/AcceptorTcp.cpp
   Scheduler/Job.cpp
@@ -387,13 +386,13 @@ if (NOT MSVC)
   set(ARANGOD_SOURCES ${ARANGOD_SOURCES} Scheduler/AcceptorUnixDomain.cpp Scheduler/SocketUnixDomain.cpp)
 endif()
 
-add_executable(${BIN_ARANGOD} ${ARANGOD_SOURCES})
+add_library(arangoserver STATIC ${ARANGOD_SOURCES})
 
 if (USE_SSL)
   target_compile_definitions(${BIN_ARANGOD} PUBLIC "ARANGODB_SSL_ENABLED=1")
 endif()
 
-target_link_libraries(${BIN_ARANGOD}
+target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}
   ${LIB_ARANGO_V8}
   ${LIB_ARANGO}
@@ -404,6 +403,14 @@ target_link_libraries(${BIN_ARANGOD}
   boost_boost
   boost_system
   ${SYSTEM_LIBRARIES}
+)
+
+add_executable(${BIN_ARANGOD}
+  RestServer/arangod.cpp
+)
+
+target_link_libraries(${BIN_ARANGOD}
+  arangoserver
 )
 
 install(
