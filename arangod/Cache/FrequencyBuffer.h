@@ -100,7 +100,7 @@ class FrequencyBuffer {
   /// @brief Return a list of (event, count) pairs for each recorded event in
   /// ascending order.
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<FrequencyBuffer::stats_t> getFrequencies() const {
+  std::shared_ptr<typename FrequencyBuffer::stats_t> getFrequencies() const {
     // calculate frequencies
     std::unordered_map<T, uint64_t> frequencies;
     for (size_t i = 0; i < _capacity; i++) {
