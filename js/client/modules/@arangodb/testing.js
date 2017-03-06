@@ -2627,11 +2627,10 @@ testFuncs.boost = function (options) {
   let args = [];
   let results = {};
 
+  const run = locateBoostTest('arangodbtests');
   if (!options.skipBoost) {
-    const run = locateBoostTest('arangodbtests');
-
     if (run !== '') {
-      results.basics = executeAndWait(run, args, options, 'basics');
+      results.basics = executeAndWait(run, ['[exclude:longRunning][exclude:cache]'], options, 'basics');
     } else {
       results.basics = {
         status: false,
@@ -2641,11 +2640,8 @@ testFuncs.boost = function (options) {
   }
 
   if (!options.skipGeo) {
-    const run = locateBoostTest('arangodbtests');
-    args.push('[geo]');
-
     if (run !== '') {
-      results.geo_suite = executeAndWait(run, args, options, 'geo_suite');
+      results.geo_suite = executeAndWait(run, ['[geo]'], options, 'geo_suite');
     } else {
       results.geo_suite = {
         status: false,
