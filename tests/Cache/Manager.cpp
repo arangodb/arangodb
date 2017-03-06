@@ -84,8 +84,13 @@ SECTION("tst_mixed_load") {
   size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
   for (size_t i = 0; i < cacheCount; i++) {
-    caches.emplace_back(
-        manager.createCache(Manager::CacheType::Plain, initialSize, true));
+    auto res =
+        /*manager.createCache(((i % 2 == 0) ? Manager::CacheType::Plain
+                                          : Manager::CacheType::Transactional),
+                            initialSize, true);*/
+        manager.createCache(Manager::CacheType::Plain, initialSize, true);
+    TRI_ASSERT(res);
+    caches.emplace_back(res);
   }
 
   uint64_t chunkSize = 4 * 1024 * 1024;
@@ -193,11 +198,16 @@ SECTION("tst_lifecycle_chaos") {
     std::queue<std::shared_ptr<Cache>> caches;
 
     for (uint64_t i = 0; i < operationCount; i++) {
-      uint32_t r = RandomGenerator::interval(static_cast<uint32_t>(1UL));
+      uint32_t r = RandomGenerator::interval(static_cast<uint32_t>(1));
       switch (r) {
         case 0: {
-          caches.emplace(manager.createCache(Manager::CacheType::Plain,
-                                             initialSize, true));
+          auto res = manager.createCache(
+              (i % 2 == 0) ? Manager::CacheType::Plain
+                           : Manager::CacheType::Transactional,
+              initialSize, true);
+          if (res) {
+            caches.emplace(res);
+          }
         }
         case 1:
         default: {

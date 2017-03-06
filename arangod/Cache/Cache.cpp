@@ -38,6 +38,11 @@
 
 using namespace arangodb::cache;
 
+uint64_t Cache::_evictionStatsCapacity = 1024;
+uint64_t Cache::_findStatsCapacity = 16384;
+
+Cache::ConstructionGuard::ConstructionGuard() {}
+
 Cache::Finding::Finding(CachedValue* v) : _value(v) {
   if (_value != nullptr) {
     _value->lease();
@@ -111,9 +116,30 @@ CachedValue* Cache::Finding::copy() const {
   return ((_value == nullptr) ? nullptr : _value->copy());
 }
 
-void Cache::destroy(std::shared_ptr<Cache> cache) {
-  if (cache.get() != nullptr) {
-    cache->shutdown();
+Cache::Cache(ConstructionGuard guard, Manager* manager,
+             Manager::MetadataItr metadata, bool allowGrowth,
+             bool enableWindowedStats)
+    : _state(),
+      _allowGrowth(allowGrowth),
+      _evictionStats(_evictionStatsCapacity),
+      _insertionCount(0),
+      _enableWindowedStats(enableWindowedStats),
+      _findStats(nullptr),
+      _findHits(0),
+      _findMisses(0),
+      _manager(manager),
+      _metadata(metadata),
+      _openOperations(0),
+      _migrateRequestTime(std::chrono::steady_clock::now()),
+      _resizeRequestTime(std::chrono::steady_clock::now()),
+      _lastResizeRequestStatus(true) {
+  if (_enableWindowedStats) {
+    try {
+      _findStats.reset(new StatBuffer(_findStatsCapacity));
+    } catch (std::bad_alloc) {
+      _findStats.reset(nullptr);
+      _enableWindowedStats = false;
+    }
   }
 }
 
@@ -147,8 +173,10 @@ std::pair<double, double> Cache::hitRates() {
 
   uint64_t currentMisses = _findMisses.load();
   uint64_t currentHits = _findHits.load();
-  lifetimeRate = 100 * (static_cast<double>(currentHits) /
-                        static_cast<double>(currentHits + currentMisses));
+  if (currentMisses + currentHits > 0) {
+    lifetimeRate = 100 * (static_cast<double>(currentHits) /
+                          static_cast<double>(currentHits + currentMisses));
+  }
 
   if (_enableWindowedStats && _findStats.get() != nullptr) {
     auto stats = _findStats->getFrequencies();
@@ -166,8 +194,10 @@ std::pair<double, double> Cache::hitRates() {
         currentHits = (*stats)[1].second;
         currentMisses = (*stats)[0].second;
       }
-      windowedRate = 100 * (static_cast<double>(currentHits) /
-                            static_cast<double>(currentHits + currentMisses));
+      if (currentHits + currentMisses > 0) {
+        windowedRate = 100 * (static_cast<double>(currentHits) /
+                              static_cast<double>(currentHits + currentMisses));
+      }
     }
   }
 
@@ -224,38 +254,9 @@ bool Cache::isResizing() {
   return resizing;
 }
 
-Cache::Cache(Manager* manager, uint64_t requestedLimit, bool allowGrowth,
-             bool enableWindowedStats, std::function<void(Cache*)> deleter,
-             uint64_t size)
-    : _state(),
-      _allowGrowth(allowGrowth),
-      _evictionStats(1024),
-      _insertionCount(0),
-      _enableWindowedStats(enableWindowedStats),
-      _findStats(nullptr),
-      _findHits(0),
-      _findMisses(0),
-      _manager(manager),
-      _openOperations(0),
-      _migrateRequestTime(std::chrono::steady_clock::now()),
-      _resizeRequestTime(std::chrono::steady_clock::now()) {
-  try {
-    uint64_t fullSize =
-        size + _evictionStats.memoryUsage() +
-        ((_findStats.get() == nullptr) ? 0 : _findStats->memoryUsage());
-    _metadata =
-        _manager->registerCache(this, requestedLimit, deleter, fullSize);
-  } catch (std::bad_alloc) {
-    // could not register, mark as non-operational
-    if (!_state.isSet(State::Flag::shutdown)) {
-      _state.toggleFlag(State::Flag::shutdown);
-    }
-  }
-  try {
-    _findStats.reset(new StatBuffer(16384));
-  } catch (std::bad_alloc) {
-    _findStats.reset(nullptr);
-    _enableWindowedStats = false;
+void Cache::destroy(std::shared_ptr<Cache> cache) {
+  if (cache.get() != nullptr) {
+    cache->shutdown();
   }
 }
 
@@ -283,7 +284,13 @@ bool Cache::requestResize(uint64_t requestedLimit, bool internal) {
                                        _resizeRequestTime))) {
       _metadata->lock();
       uint64_t newLimit =
-          (requestedLimit > 0) ? requestedLimit : (_metadata->hardLimit() * 2);
+          (requestedLimit > 0)
+              ? requestedLimit
+              : (_lastResizeRequestStatus
+                     ? (_metadata->hardLimit() * 2)
+                     : (static_cast<uint64_t>(
+                           static_cast<double>(_metadata->hardLimit()) *
+                           1.25)));
       _metadata->unlock();
       auto result = _manager->requestResize(_metadata, newLimit);
       _resizeRequestTime = result.second;
@@ -385,6 +392,11 @@ void Cache::beginShutdown() {
 
 void Cache::shutdown() {
   _state.lock();
+  _metadata->lock();
+  auto handle = _metadata->cache();  // hold onto self-reference to prevent
+                                     // pre-mature shared_ptr destruction
+  TRI_ASSERT(handle.get() == this);
+  _metadata->unlock();
   if (!_state.isSet(State::Flag::shutdown)) {
     if (!_state.isSet(State::Flag::shuttingDown)) {
       _state.toggleFlag(State::Flag::shuttingDown);

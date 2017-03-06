@@ -570,7 +570,7 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
         << _connectionInfo.clientAddress << "\",\""
         << HttpRequest::translateMethod(_requestType) << "\",\""
-        << HttpRequest::translateVersion(_protocolVersion) << "\"," << _fullUrl
+        << HttpRequest::translateVersion(_protocolVersion) << "\",\"" << _fullUrl
         << "\"";
 
     std::string const& body = request->body();

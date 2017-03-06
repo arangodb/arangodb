@@ -31,6 +31,7 @@
 #include "Cache/Metadata.h"
 #include "Cache/PlainCache.h"
 #include "Cache/State.h"
+#include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
 
 #include <stdint.h>
@@ -56,6 +57,17 @@ static constexpr uint64_t CACHE_RECORD_OVERHEAD = sizeof(Metadata) + 16;
 // assume at most 16 slots in each stack -- TODO: check validity
 static constexpr uint64_t TABLE_LISTS_OVERHEAD = 32 * 16 * 8;
 static constexpr int64_t TRIES_FAST = 100;
+
+bool Manager::cmp_weak_ptr::operator()(
+    std::weak_ptr<Cache> const& left, std::weak_ptr<Cache> const& right) const {
+  return !left.owner_before(right) && !right.owner_before(left);
+}
+
+size_t Manager::hash_weak_ptr::operator()(
+    const std::weak_ptr<Cache>& wp) const {
+  auto sp = wp.lock();
+  return std::hash<decltype(sp)>()(sp);
+}
 
 Manager::Manager(boost::asio::io_service* ioService, uint64_t globalLimit,
                  bool enableWindowedStats)
@@ -98,21 +110,38 @@ std::shared_ptr<Cache> Manager::createCache(Manager::CacheType type,
   std::shared_ptr<Cache> result(nullptr);
   _state.lock();
   bool allowed = isOperational();
+  MetadataItr metadata = _caches.end();
   _state.unlock();
+
+  if (allowed) {
+    uint64_t fixedSize = 0;
+    switch (type) {
+      case CacheType::Plain:
+        fixedSize = PlainCache::allocationSize(enableWindowedStats);
+        break;
+      case CacheType::Transactional:
+        fixedSize = TransactionalCache::allocationSize(enableWindowedStats);
+        break;
+      default:
+        break;
+    }
+    std::tie(allowed, metadata) = registerCache(requestedLimit, fixedSize);
+  }
 
   if (allowed) {
     switch (type) {
       case CacheType::Plain:
-        result = PlainCache::create(this, requestedLimit, allowGrowth,
+        result = PlainCache::create(this, metadata, allowGrowth,
                                     enableWindowedStats);
         break;
       case CacheType::Transactional:
-        result = TransactionalCache::create(this, requestedLimit, allowGrowth,
+        result = TransactionalCache::create(this, metadata, allowGrowth,
                                             enableWindowedStats);
         break;
       default:
         break;
     }
+    metadata->link(result);
   }
 
   return result;
@@ -200,10 +229,12 @@ std::pair<double, double> Manager::globalHitRates() {
   double lifetimeRate = std::nan("");
   double windowedRate = std::nan("");
 
-  uint64_t currentMisses = _findMisses.load();
   uint64_t currentHits = _findHits.load();
-  lifetimeRate = 100 * (static_cast<double>(currentHits) /
-                        static_cast<double>(currentHits + currentMisses));
+  uint64_t currentMisses = _findMisses.load();
+  if (currentHits + currentMisses > 0) {
+    lifetimeRate = 100 * (static_cast<double>(currentHits) /
+                          static_cast<double>(currentHits + currentMisses));
+  }
 
   if (_enableWindowedStats && _findStats.get() != nullptr) {
     auto stats = _findStats->getFrequencies();
@@ -221,22 +252,25 @@ std::pair<double, double> Manager::globalHitRates() {
         currentHits = (*stats)[1].second;
         currentMisses = (*stats)[0].second;
       }
-      windowedRate = 100 * (static_cast<double>(currentHits) /
-                            static_cast<double>(currentHits + currentMisses));
+      if (currentHits + currentMisses > 0) {
+        windowedRate = 100 * (static_cast<double>(currentHits) /
+                              static_cast<double>(currentHits + currentMisses));
+      }
     }
   }
 
   return std::pair<double, double>(lifetimeRate, windowedRate);
 }
 
-void Manager::startTransaction() { _transactions.start(); }
+Transaction* Manager::beginTransaction(bool readOnly) {
+  return _transactions.begin(readOnly);
+}
 
-void Manager::endTransaction() { _transactions.end(); }
+void Manager::endTransaction(Transaction* tx) { _transactions.end(tx); }
 
-Manager::MetadataItr Manager::registerCache(Cache* cache,
-                                            uint64_t requestedLimit,
-                                            std::function<void(Cache*)> deleter,
-                                            uint64_t fixedSize) {
+std::pair<bool, Manager::MetadataItr> Manager::registerCache(
+    uint64_t requestedLimit, uint64_t fixedSize) {
+  bool ok = true;
   uint32_t logSize = 0;
   uint32_t tableLogSize = MIN_TABLE_LOG_SIZE;
   for (; (1ULL << logSize) < requestedLimit; logSize++) {
@@ -248,39 +282,42 @@ Manager::MetadataItr Manager::registerCache(Cache* cache,
 
   _state.lock();
   if (!isOperational()) {
-    _state.unlock();
-    throw std::bad_alloc();
+    ok = false;
   }
 
-  while (logSize >= MIN_LOG_SIZE) {
-    uint64_t tableAllocation =
-        _tables[tableLogSize].empty() ? tableSize(tableLogSize) : 0;
-    if (increaseAllowed(grantedLimit + tableAllocation + CACHE_RECORD_OVERHEAD +
-                        fixedSize)) {
-      break;
+  if (ok) {
+    while (logSize >= MIN_LOG_SIZE) {
+      uint64_t tableAllocation =
+          _tables[tableLogSize].empty() ? tableSize(tableLogSize) : 0;
+      if (increaseAllowed(grantedLimit + tableAllocation +
+                          CACHE_RECORD_OVERHEAD + fixedSize)) {
+        break;
+      }
+
+      grantedLimit >>= 1U;
+      logSize--;
+      if (tableLogSize > MIN_TABLE_LOG_SIZE) {
+        tableLogSize--;
+      }
     }
 
-    grantedLimit >>= 1U;
-    logSize--;
-    if (tableLogSize > MIN_TABLE_LOG_SIZE) {
-      tableLogSize--;
+    if (logSize < MIN_LOG_SIZE) {
+      ok = false;
     }
   }
 
-  if (logSize < MIN_LOG_SIZE) {
-    _state.unlock();
-    throw std::bad_alloc();
+  MetadataItr metadata = _caches.end();
+  if (ok) {
+    _globalAllocation += (grantedLimit + CACHE_RECORD_OVERHEAD + fixedSize);
+    _caches.emplace_front(grantedLimit);
+    metadata = _caches.begin();
+    metadata->lock();
+    leaseTable(metadata, tableLogSize);
+    metadata->unlock();
   }
-
-  _globalAllocation += (grantedLimit + CACHE_RECORD_OVERHEAD + fixedSize);
-  _caches.emplace_front(std::shared_ptr<Cache>(cache, deleter), grantedLimit);
-  MetadataItr metadata = _caches.begin();
-  metadata->lock();
-  leaseTable(metadata, tableLogSize);
-  metadata->unlock();
   _state.unlock();
 
-  return metadata;
+  return std::pair<bool, MetadataItr>(ok, metadata);
 }
 
 void Manager::unregisterCache(Manager::MetadataItr& metadata) {
@@ -304,7 +341,7 @@ void Manager::unregisterCache(Manager::MetadataItr& metadata) {
 
 std::pair<bool, Manager::time_point> Manager::requestResize(
     Manager::MetadataItr& metadata, uint64_t requestedLimit) {
-  Manager::time_point nextRequest = futureTime(30);
+  Manager::time_point nextRequest = futureTime(100);
   bool allowed = false;
 
   bool ok = _state.lock(TRIES_FAST);
@@ -334,7 +371,7 @@ std::pair<bool, Manager::time_point> Manager::requestResize(
 
 std::pair<bool, Manager::time_point> Manager::requestMigrate(
     Manager::MetadataItr& metadata, uint32_t requestedLogSize) {
-  Manager::time_point nextRequest = futureTime(30);
+  Manager::time_point nextRequest = futureTime(100);
   bool allowed = false;
 
   bool ok = _state.lock(TRIES_FAST);
@@ -363,9 +400,10 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(
 }
 
 void Manager::reportAccess(std::shared_ptr<Cache> cache) {
-  if (((++_accessCounter) & 0x7FULL) == 0) {  // record 1 in 128
-    _accessStats.insertRecord(cache);
-  }
+  // if (((++_accessCounter) & static_cast<uint64_t>(7)) == 0) {  // record 1 in
+  // 8
+  _accessStats.insertRecord(cache);
+  //}
 }
 
 void Manager::recordHitStat(Manager::Stat stat) {
@@ -457,26 +495,35 @@ bool Manager::rebalance() {
 
   // allow background tasks if more than 7/8ths full
   bool allowTasks =
-      _globalAllocation > (_globalHardLimit - (_globalHardLimit >> 3));
+      _globalAllocation >
+      static_cast<uint64_t>(0.875 * static_cast<double>(_globalHardLimit));
 
   // be aggressive if more than 3/4ths full
   bool beAggressive =
-      _globalAllocation > (_globalHardLimit - (_globalHardLimit >> 2));
+      _globalAllocation >
+      static_cast<uint64_t>(0.75 * static_cast<double>(_globalHardLimit));
 
-  // aim for 1/4th with background tasks, 1/8th if no tasks but aggressive, no
+  // aim for 3/8th with background tasks, 1/4th if no tasks but aggressive, no
   // goal otherwise
-  uint64_t goal = beAggressive ? (allowTasks ? (_globalAllocation >> 2)
-                                             : (_globalAllocation >> 3))
-                               : 0;
+  uint64_t goal =
+      beAggressive
+          ? (allowTasks ? static_cast<uint64_t>(
+                              0.375 * static_cast<double>(_globalHardLimit))
+                        : static_cast<uint64_t>(
+                              0.25 * static_cast<double>(_globalHardLimit)))
+          : 0;
 
-  // get stats on cache access to prioritize freeing from less frequently used
-  // caches first, so more frequently used ones stay large
-  std::shared_ptr<PriorityList> cacheList = priorityList();
+  if (goal > 0) {
+    // get stats on cache access to prioritize freeing from less frequently used
+    // caches first, so more frequently used ones stay large
+    std::shared_ptr<PriorityList> cacheList = priorityList();
 
-  // just adjust limits
-  uint64_t reclaimed = resizeAllCaches(TaskEnvironment::rebalancing, cacheList,
-                                       allowTasks, beAggressive, goal);
-  _globalAllocation -= reclaimed;
+    // just adjust limits
+    uint64_t reclaimed =
+        resizeAllCaches(TaskEnvironment::rebalancing, cacheList, allowTasks,
+                        beAggressive, goal);
+    _globalAllocation -= reclaimed;
+  }
 
   if (_rebalancingTasks.load() == 0) {
     _state.toggleFlag(State::Flag::rebalancing);
@@ -520,8 +567,9 @@ void Manager::internalResize(uint64_t newGlobalLimit, bool firstAttempt) {
     cacheList = priorityList();
 
     // first just adjust limits down to usage
-    uint64_t reclaimed = resizeAllCaches(TaskEnvironment::resizing, cacheList, true,
-                                         true, _globalAllocation - _globalSoftLimit);
+    uint64_t reclaimed =
+        resizeAllCaches(TaskEnvironment::resizing, cacheList, true, true,
+                        _globalAllocation - _globalSoftLimit);
     _globalAllocation -= reclaimed;
     done = adjustGlobalLimitsIfAllowed(newGlobalLimit);
   }
@@ -563,11 +611,10 @@ uint64_t Manager::resizeAllCaches(Manager::TaskEnvironment environment,
     if (aggressive) {
       newLimit =
           (noTasks ? metadata->usage()
-                   : (std::min)(metadata->usage(), metadata->hardLimit() / 4));
-    } else {
-      newLimit =
-          (noTasks ? (std::max)(metadata->usage(), metadata->hardLimit() / 2)
                    : (std::min)(metadata->usage(), metadata->hardLimit() / 2));
+    } else {
+      newLimit = (std::max)(metadata->usage(),
+                            (metadata->hardLimit() + metadata->usage()) / 2);
     }
     newLimit = (std::max)(newLimit, MIN_CACHE_SIZE);
 
@@ -763,9 +810,11 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
 
   // catalog accessed caches
   auto stats = _accessStats.getFrequencies();
-  std::set<Cache*> accessed;
+  std::set<std::shared_ptr<Cache>> accessed;
   for (auto s : *stats) {
-    accessed.emplace(s.first.get());
+    if (auto cache = s.first.lock()) {
+      accessed.emplace(cache);
+    }
   }
 
   // gather all unaccessed caches at beginning of list
@@ -774,7 +823,7 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
     std::shared_ptr<Cache> cache = m->cache();
     m->unlock();
 
-    auto found = accessed.find(cache.get());
+    auto found = accessed.find(cache);
     if (found == accessed.end()) {
       list->emplace_back(cache);
     }
@@ -782,13 +831,15 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
 
   // gather all accessed caches in order
   for (auto s : *stats) {
-    list->emplace_back(s.first);
+    if (auto cache = s.first.lock()) {
+      list->emplace_back(cache);
+    }
   }
 
   return list;
 }
 
-Manager::time_point Manager::futureTime(uint64_t secondsFromNow) {
+Manager::time_point Manager::futureTime(uint64_t millisecondsFromNow) {
   return (std::chrono::steady_clock::now() +
-          std::chrono::seconds(secondsFromNow));
+          std::chrono::milliseconds(millisecondsFromNow));
 }

@@ -42,8 +42,6 @@
 namespace arangodb {
 namespace cache {
 
-class Manager;  // forward declaration
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A simple, LRU-ish cache.
 ///
@@ -53,6 +51,11 @@ class Manager;  // forward declaration
 ////////////////////////////////////////////////////////////////////////////////
 class PlainCache final : public Cache {
  public:
+  PlainCache(Cache::ConstructionGuard guard, Manager* manager,
+             Manager::MetadataItr metadata, bool allowGrowth,
+             bool enableWindowedStats);
+  ~PlainCache();
+
   PlainCache() = delete;
   PlainCache(PlainCache const&) = delete;
   PlainCache& operator=(PlainCache const&) = delete;
@@ -86,6 +89,11 @@ class PlainCache final : public Cache {
   //////////////////////////////////////////////////////////////////////////////
   bool remove(void const* key, uint32_t keySize);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Does nothing; convenience method inheritance compliance
+  //////////////////////////////////////////////////////////////////////////////
+  bool blacklist(void const* key, uint32_t keySize);
+
  private:
   // main table info
   PlainBucket* _table;
@@ -107,15 +115,11 @@ class PlainCache final : public Cache {
   friend class MigrateTask;
 
  private:
-  // creator -- do not use constructor explicitly
-  static std::shared_ptr<Cache> create(Manager* manager, uint64_t requestedSize,
+  static uint64_t allocationSize(bool enableWindowedStats);
+  static std::shared_ptr<Cache> create(Manager* manager,
+                                       Manager::MetadataItr metadata,
                                        bool allowGrowth,
                                        bool enableWindowedStats);
-
-  PlainCache(Manager* manager, uint64_t requestedLimit, bool allowGrowth,
-             bool enableWindowedStats);
-  ~PlainCache();
-
   // management
   bool freeMemory();
   bool migrate();

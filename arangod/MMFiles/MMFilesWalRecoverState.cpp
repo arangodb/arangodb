@@ -496,7 +496,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
 
               OperationOptions options;
               options.silent = true;
-              options.recoveryMarker = envelope;
+              options.recoveryData = static_cast<void*>(envelope);
               options.isRestore = true;
               options.waitForSync = false;
               options.ignoreRevs = true;
@@ -573,7 +573,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
 
               OperationOptions options;
               options.silent = true;
-              options.recoveryMarker = envelope;
+              options.recoveryData = static_cast<void*>(envelope);
               options.waitForSync = false;
               options.ignoreRevs = true;
 
@@ -733,7 +733,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         // dropped later
         bool const forceSync = state->willBeDropped(databaseId, collectionId);
         CollectionResult res = collection->updateProperties(payloadSlice, forceSync);
-        if (res.successful()) {
+        if (!res.successful()) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot change collection properties for collection "
                     << collectionId << " in database " << databaseId << ": "
                     << res.errorMessage;

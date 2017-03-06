@@ -36,7 +36,10 @@ add_executable(
   Cache/Rebalancer.cpp
   Cache/State.cpp
   Cache/TransactionalBucket.cpp
-  Cache/TransactionWindow.cpp
+  Cache/TransactionalCache.cpp
+  Cache/TransactionalStore.cpp
+  Cache/TransactionManager.cpp
+  Cache/TransactionsWithBackingStore.cpp
   Geo/georeg.cpp
   main.cpp
 )

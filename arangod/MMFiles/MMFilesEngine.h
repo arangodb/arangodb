@@ -117,6 +117,8 @@ class MMFilesEngine final : public StorageEngine {
   std::string databasePath(TRI_vocbase_t const* vocbase) const override {
     return databaseDirectory(vocbase->id());
   }
+  
+  void waitForSync(TRI_voc_tick_t tick) override;
 
   virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade, int&) override;
   Database* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) override {

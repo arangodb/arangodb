@@ -261,7 +261,7 @@ SECTION("tst_blacklist") {
                                      sizeof(uint64_t));
   }
 
-  success = bucket.lock(0, -1LL);
+  success = bucket.lock(1ULL, -1LL);
   CHECK(success);
 
   // insert three to fill

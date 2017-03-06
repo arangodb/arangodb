@@ -42,14 +42,41 @@ std::string HexDump::toHex(uint8_t value) {
   return result;
 }
 
-std::ostream& operator<<(std::ostream& stream, HexDump const* hexdump) {
+std::string HexDump::toString() const {
+  ValueLength length = slice.byteSize();
+  std::string result;
+  result.reserve(4 * (length + separator.size()) + (length / valuesPerLine) + 1); 
+
   int current = 0;
 
-  for (uint8_t it : hexdump->slice) {
+  for (uint8_t it : slice) {
     if (current != 0) {
-      stream << hexdump->separator;
+      result.append(separator);
 
-      if (hexdump->valuesPerLine > 0 && current == hexdump->valuesPerLine) {
+      if (valuesPerLine > 0 && current == valuesPerLine) {
+        result.push_back('\n');
+        current = 0;
+      }
+    }
+
+    result.append(HexDump::toHex(it));
+    ++current;
+  }
+
+  return result;
+}
+
+namespace arangodb {
+namespace velocypack {
+
+std::ostream& operator<<(std::ostream& stream, HexDump const& hexdump) {
+  int current = 0;
+
+  for (uint8_t it : hexdump.slice) {
+    if (current != 0) {
+      stream << hexdump.separator;
+
+      if (hexdump.valuesPerLine > 0 && current == hexdump.valuesPerLine) {
         stream << std::endl;
         current = 0;
       }
@@ -62,6 +89,5 @@ std::ostream& operator<<(std::ostream& stream, HexDump const* hexdump) {
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream, HexDump const& hexdump) {
-  return operator<<(stream, &hexdump);
+}
 }

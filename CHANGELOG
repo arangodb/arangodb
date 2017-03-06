@@ -1,6 +1,11 @@
 devel
 -----
 
+* added input file type `auto` for arangoimp so it can automatically detect the 
+  type of the input file from the filename extension
+
+* fixed variables parsing in GraphQL
+
 * added `--translate` option for arangoimp to translate attribute names from
   the input files to attriubte names expected by ArangoDB
 
@@ -11,6 +16,8 @@ devel
       arangoimp --type csv --file data.csv --translate "id=_key" --translate "from=_from" --translate "to=_to"
 
   `--translate` works for CSV and TSV inputs only.
+
+* changed default value for `--server.max-packet-size` from 128 MB to 256 MB
 
 * fixed issue #2350
 
@@ -26,11 +33,11 @@ devel
   for debugging.
 
 * always validate incoming JSON HTTP requests for duplicate attribute names
-  
+
   Incoming JSON data with duplicate attribute names will now be rejected as
   invalid. Previous versions of ArangoDB only validated the uniqueness of
   attribute names inside incoming JSON for some API endpoints, but not
-  consistently for all APIs. 
+  consistently for all APIs.
 
 * don't let read-only transactions block the WAL collector
 
@@ -39,7 +46,6 @@ devel
 * arangoexport can now export to csv format
 
 * arangoimp: fixed issue #2214
-
 
 v3.2.alpha2 (2017-02-20)
 ------------------------
@@ -111,6 +117,10 @@ v3.2.alpha1 (2017-02-05)
 
 v3.1.13 (XXXX-XX-XX)
 --------------------
+
+* fixed variables parsing in GraphQL
+
+* fixed issue #2214
 
 * fixed issue #2342
 

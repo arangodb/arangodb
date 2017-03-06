@@ -144,6 +144,8 @@ SET(ARANGOD_SOURCES
   Aql/OptimizerRules.cpp
   Aql/Parser.cpp
   Aql/PlanCache.cpp
+  Aql/QueryExecutionState.cpp
+  Aql/QueryProfile.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
@@ -180,9 +182,10 @@ SET(ARANGOD_SOURCES
   Cache/PlainCache.cpp
   Cache/Rebalancer.cpp
   Cache/State.cpp
+  Cache/Transaction.cpp
   Cache/TransactionalBucket.cpp
   Cache/TransactionalCache.cpp
-  Cache/TransactionWindow.cpp
+  Cache/TransactionManager.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
   Cluster/ClusterComm.cpp
@@ -397,9 +400,9 @@ target_link_libraries(arangoserver
   ${MSVC_LIBS}
   ${V8_LIBS}
   ${ROCKSDB_LIBS}
-  ${SYSTEM_LIBRARIES}
   boost_boost
   boost_system
+  ${SYSTEM_LIBRARIES}
 )
 
 add_executable(${BIN_ARANGOD}

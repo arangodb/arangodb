@@ -51,14 +51,8 @@ TEST_CASE("CCacheMetadataTest", "[cache]") {
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_constructor") {
-  uint64_t dummy;
-  std::shared_ptr<Cache> dummyCache(reinterpret_cast<Cache*>(&dummy),
-                                    [](Cache* p) -> void {});
-  uint8_t dummyTable;
-  uint32_t logSize = 1;
   uint64_t limit = 1024;
-
-  Metadata metadata(dummyCache, limit, &dummyTable, logSize);
+  Metadata metadata(limit);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,25 +63,18 @@ SECTION("tst_getters") {
   uint64_t dummy;
   std::shared_ptr<Cache> dummyCache(reinterpret_cast<Cache*>(&dummy),
                                     [](Cache* p) -> void {});
-  uint8_t dummyTable;
-  uint32_t logSize = 1;
   uint64_t limit = 1024;
 
-  Metadata metadata(dummyCache, limit, &dummyTable, logSize);
+  Metadata metadata(limit);
+  metadata.link(dummyCache);
 
   metadata.lock();
 
   CHECK(dummyCache == metadata.cache());
 
-  CHECK(logSize == metadata.logSize());
-  CHECK(0UL == metadata.auxiliaryLogSize());
-
   CHECK(limit == metadata.softLimit());
   CHECK(limit == metadata.hardLimit());
   CHECK(0UL == metadata.usage());
-
-  CHECK(&dummyTable == metadata.table());
-  CHECK(nullptr == metadata.auxiliaryTable());
 
   metadata.unlock();
 }
@@ -97,14 +84,9 @@ SECTION("tst_getters") {
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_usage_limits") {
-  uint64_t dummy;
-  std::shared_ptr<Cache> dummyCache(reinterpret_cast<Cache*>(&dummy),
-                                    [](Cache* p) -> void {});
-  uint8_t dummyTable;
-  uint32_t logSize = 1;
   bool success;
 
-  Metadata metadata(dummyCache, 1024ULL, &dummyTable, logSize);
+  Metadata metadata(1024ULL);
 
   metadata.lock();
 
@@ -148,18 +130,18 @@ SECTION("tst_usage_limits") {
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_migration") {
-  uint64_t dummy;
-  std::shared_ptr<Cache> dummyCache(reinterpret_cast<Cache*>(&dummy),
-                                    [](Cache* p) -> void {});
   uint8_t dummyTable;
   uint8_t dummyAuxiliaryTable;
   uint32_t logSize = 1;
   uint32_t auxiliaryLogSize = 2;
   uint64_t limit = 1024;
 
-  Metadata metadata(dummyCache, limit, &dummyTable, logSize);
+  Metadata metadata(limit);
 
   metadata.lock();
+
+  metadata.grantAuxiliaryTable(&dummyTable, logSize);
+  metadata.swapTables();
 
   metadata.grantAuxiliaryTable(&dummyAuxiliaryTable, auxiliaryLogSize);
   CHECK(auxiliaryLogSize == metadata.auxiliaryLogSize());

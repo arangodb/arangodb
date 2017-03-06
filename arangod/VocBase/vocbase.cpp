@@ -339,7 +339,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   // Try to create a new collection. This is not registered yet
 
   std::unique_ptr<arangodb::LogicalCollection> collection =
-      std::make_unique<arangodb::LogicalCollection>(this, parameters, true);
+      std::make_unique<arangodb::LogicalCollection>(this, parameters);
   TRI_ASSERT(collection != nullptr);
 
   WRITE_LOCKER(writeLocker, _collectionsLock);
@@ -364,6 +364,10 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
     // set collection version to 3.1, as the collection is just created
     collection->setVersion(LogicalCollection::VERSION_31);
+
+    // Let's try to persist it.
+    collection->persistPhysicalCollection();
+ 
     events::CreateCollection(name, TRI_ERROR_NO_ERROR);
     return collection.release();
   } catch (...) {

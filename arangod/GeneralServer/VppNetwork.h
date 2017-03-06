@@ -38,33 +38,6 @@
 
 namespace arangodb {
 
-inline std::size_t validateAndCount(char const* vpStart,
-                                    char const* vpEnd) {
-  VPackOptions validationOptions = VPackOptions::Defaults;
-  validationOptions.validateUtf8Strings = true;
-  VPackValidator validator(&validationOptions);
-
-  std::size_t numPayloads = 0;
-
-  try {
-    // check for slice start to the end of Chunk
-    // isSubPart allows the slice to be shorter than the checked buffer.
-    do {
-      validator.validate(vpStart, std::distance(vpStart, vpEnd),
-                         /*isSubPart =*/true);
-
-      // get offset to next
-      VPackSlice tmp(vpStart);
-      vpStart += tmp.byteSize();
-      numPayloads++;
-    } while (vpStart != vpEnd);
-    return numPayloads - 1;
-  } catch (std::exception const& e) {
-    throw std::runtime_error(
-        std::string("error during validation of incoming VPack: ") + e.what());
-  }
-}
-
 template <typename T>
 std::size_t appendToBuffer(basics::StringBuffer* buffer, T& value) {
   constexpr std::size_t len = sizeof(T);

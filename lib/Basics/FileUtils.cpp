@@ -360,7 +360,7 @@ bool copyDirectoryRecursive(std::string const& source,
   bool rc = true;
   
   auto isSubDirectory = [](std::string const& name) -> bool {
-	  return isDirectory(name);
+          return isDirectory(name);
   };
 #ifdef TRI_HAVE_WIN32_LIST_FILES
   struct _finddata_t oneItem;
@@ -557,8 +557,14 @@ std::string stripExtension(std::string const& path,
   return path;
 }
 
-bool changeDirectory(std::string const& path) {
-  return TRI_CHDIR(path.c_str()) == 0;
+FileResult changeDirectory(std::string const& path) {
+  int res = TRI_CHDIR(path.c_str());
+
+  if (res == 0) {
+    return FileResult(true);
+  } else {
+    return FileResult(false, errno);
+  }
 }
 
 std::string currentDirectory(int* errorNumber) {

@@ -31,6 +31,7 @@
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
 #include "Aql/Graphs.h"
+#include "Aql/QueryExecutionState.h"
 #include "Aql/QueryResources.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/ResourceUsage.h"
@@ -60,43 +61,11 @@ class ExecutionEngine;
 class ExecutionPlan;
 class Executor;
 class Query;
+struct QueryProfile;
 class QueryRegistry;
 
 /// @brief equery part
 enum QueryPart { PART_MAIN, PART_DEPENDENT };
-
-/// @brief execution states
-enum ExecutionState {
-  INITIALIZATION = 0,
-  PARSING,
-  AST_OPTIMIZATION,
-  LOADING_COLLECTIONS,
-  PLAN_INSTANTIATION,
-  PLAN_OPTIMIZATION,
-  EXECUTION,
-  FINALIZATION,
-
-  INVALID_STATE
-};
-
-struct Profile {
-  Profile(Profile const&) = delete;
-  Profile& operator=(Profile const&) = delete;
-
-  explicit Profile(Query*);
-
-  ~Profile();
-
-  void setDone(ExecutionState);
-
-  /// @brief convert the profile to VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack();
-
-  Query* query;
-  std::vector<std::pair<ExecutionState, double>> results;
-  double stamp;
-  bool tracked;
-};
 
 /// @brief an AQL query
 class Query {
@@ -135,6 +104,9 @@ class Query {
 
   /// @brief return the start timestamp of the query
   double startTime () const { return _startTime; }
+  
+  /// @brief return the current runtime of the query
+  double runTime () const { return TRI_microtime() - _startTime; }
 
   /// @brief whether or not the query is killed
   inline bool killed() const { return _killed; }
@@ -366,6 +338,8 @@ class Query {
 
     return value.getNumericValue<T>();
   }
+  
+  QueryExecutionState::ValueType state() const { return _state; }
 
  private:
   /// @brief read the "optimizer.inspectSimplePlans" section from the options
@@ -378,7 +352,7 @@ class Query {
   std::string buildErrorMessage(int errorCode) const;
 
   /// @brief enter a new state
-  void enterState(ExecutionState);
+  void enterState(QueryExecutionState::ValueType);
 
   /// @brief cleanup plan and engine for current query
   void cleanupPlanAndEngine(int, VPackBuilder* statsBuilder = nullptr);
@@ -434,11 +408,11 @@ class Query {
   std::unique_ptr<Ast> _ast;
 
   /// @brief query execution profile
-  std::unique_ptr<Profile> _profile;
+  std::unique_ptr<QueryProfile> _profile;
 
   /// @brief current state the query is in (used for profiling and error
   /// messages)
-  ExecutionState _state;
+  QueryExecutionState::ValueType _state;
 
   /// @brief the ExecutionPlan object, if the query is prepared
   std::shared_ptr<ExecutionPlan> _plan;

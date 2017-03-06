@@ -130,6 +130,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/ConditionVariable.cpp
   Basics/DataProtector.cpp
   Basics/Exceptions.cpp
+  Basics/FileResult.cpp
   Basics/FileUtils.cpp
   Basics/HybridLogicalClock.cpp
   Basics/LocalTaskQueue.cpp
