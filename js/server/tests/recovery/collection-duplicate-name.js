@@ -54,6 +54,7 @@ function runSetup () {
 
 function recoverySuite () {
   'use strict';
+  jsunity.jsUnity.attachAssertions();
 
   return {
     setUp: function () {},
