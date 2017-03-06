@@ -78,13 +78,7 @@ class LoggerStream {
 
   template <typename T>
   friend LoggerStream& operator<<(LoggerStream& out, T const& obj) {
-    out._out << obj;
-    return out;
-  }
-  
-  template <typename T>
-  friend LoggerStream& operator<<(LoggerStream& out, T&& obj) {
-    out._out << obj;
+    out << obj;
     return out;
   }
 
