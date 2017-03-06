@@ -27,6 +27,7 @@
 #include <limits>
 #include <stdexcept>
 
+#include <velocypack/HexDump.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <boost/optional.hpp>
@@ -51,6 +52,38 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+inline std::size_t validateAndCount(char const* vpStart,
+                                    char const* vpEnd) {
+  VPackOptions validationOptions = VPackOptions::Defaults;
+  validationOptions.validateUtf8Strings = true;
+  VPackValidator validator(&validationOptions);
+
+  std::size_t numPayloads = 0;
+
+  try {
+    // check for slice start to the end of Chunk
+    // isSubPart allows the slice to be shorter than the checked buffer.
+    do {
+      validator.validate(vpStart, std::distance(vpStart, vpEnd),
+                         /*isSubPart =*/true);
+
+      // get offset to next
+      VPackSlice tmp(vpStart);
+      vpStart += tmp.byteSize();
+      numPayloads++;
+    } while (vpStart != vpEnd);
+    return numPayloads - 1;
+  } catch (std::exception const& e) {
+    VPackSlice slice(vpStart);
+    VPackHexDump dump(slice);
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+      << "len: " << std::distance(vpStart, vpEnd) << " - " << dump ;
+    throw std::runtime_error(
+        std::string("error during validation of incoming VPack: ") + e.what());
+  }
+}
+
 
 VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
                          std::unique_ptr<Socket> socket, ConnectionInfo&& info,
