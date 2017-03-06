@@ -3428,6 +3428,7 @@ const recoveryTests = [
   'resume-recovery-other',
   'resume-recovery',
   'foxx-directories',
+  'collection-duplicate',
   'collection-rename',
   'collection-properties',
   'empty-logfiles',
