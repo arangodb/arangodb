@@ -128,11 +128,12 @@ struct alignas(64) PlainBucket {
   /// @brief Searches for the best candidate in the bucket to evict. Requires
   /// state to be locked.
   ///
-  /// Returns a pointer to least recently used freeable value. If the bucket
-  /// contains no values or all have outstanding references, then it returns
-  /// nullptr.
+  /// Usually returns a pointer to least recently used freeable value. If the
+  /// bucket contains no values or all have outstanding references, then it
+  /// returns nullptr. In the case that ignoreRefCount is set to true, then it
+  /// simply returns the least recently used value, regardless of freeability.
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* evictionCandidate() const;
+  CachedValue* evictionCandidate(bool ignoreRefCount = false) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Evicts the given value from the bucket. Requires state to be

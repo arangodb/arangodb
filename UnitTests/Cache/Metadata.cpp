@@ -61,14 +61,8 @@ BOOST_FIXTURE_TEST_SUITE(CCacheMetadataTest, CCacheMetadataSetup)
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE(tst_constructor) {
-  uint64_t dummy;
-  std::shared_ptr<Cache> dummyCache(reinterpret_cast<Cache*>(&dummy),
-                                    [](Cache* p) -> void {});
-  uint8_t dummyTable;
-  uint32_t logSize = 1;
   uint64_t limit = 1024;
-
-  Metadata metadata(dummyCache, limit, &dummyTable, logSize);
+  Metadata metadata(limit);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,25 +73,18 @@ BOOST_AUTO_TEST_CASE(tst_getters) {
   uint64_t dummy;
   std::shared_ptr<Cache> dummyCache(reinterpret_cast<Cache*>(&dummy),
                                     [](Cache* p) -> void {});
-  uint8_t dummyTable;
-  uint32_t logSize = 1;
   uint64_t limit = 1024;
 
-  Metadata metadata(dummyCache, limit, &dummyTable, logSize);
+  Metadata metadata(limit);
+  metadata.link(dummyCache);
 
   metadata.lock();
 
   BOOST_CHECK(dummyCache == metadata.cache());
 
-  BOOST_CHECK_EQUAL(logSize, metadata.logSize());
-  BOOST_CHECK_EQUAL(0UL, metadata.auxiliaryLogSize());
-
   BOOST_CHECK_EQUAL(limit, metadata.softLimit());
   BOOST_CHECK_EQUAL(limit, metadata.hardLimit());
   BOOST_CHECK_EQUAL(0UL, metadata.usage());
-
-  BOOST_CHECK(&dummyTable == metadata.table());
-  BOOST_CHECK(nullptr == metadata.auxiliaryTable());
 
   metadata.unlock();
 }
@@ -107,14 +94,9 @@ BOOST_AUTO_TEST_CASE(tst_getters) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE(tst_usage_limits) {
-  uint64_t dummy;
-  std::shared_ptr<Cache> dummyCache(reinterpret_cast<Cache*>(&dummy),
-                                    [](Cache* p) -> void {});
-  uint8_t dummyTable;
-  uint32_t logSize = 1;
   bool success;
 
-  Metadata metadata(dummyCache, 1024ULL, &dummyTable, logSize);
+  Metadata metadata(1024ULL);
 
   metadata.lock();
 
@@ -158,18 +140,18 @@ BOOST_AUTO_TEST_CASE(tst_usage_limits) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE(tst_migration) {
-  uint64_t dummy;
-  std::shared_ptr<Cache> dummyCache(reinterpret_cast<Cache*>(&dummy),
-                                    [](Cache* p) -> void {});
   uint8_t dummyTable;
   uint8_t dummyAuxiliaryTable;
   uint32_t logSize = 1;
   uint32_t auxiliaryLogSize = 2;
   uint64_t limit = 1024;
 
-  Metadata metadata(dummyCache, limit, &dummyTable, logSize);
+  Metadata metadata(limit);
 
   metadata.lock();
+
+  metadata.grantAuxiliaryTable(&dummyTable, logSize);
+  metadata.swapTables();
 
   metadata.grantAuxiliaryTable(&dummyAuxiliaryTable, auxiliaryLogSize);
   BOOST_CHECK_EQUAL(auxiliaryLogSize, metadata.auxiliaryLogSize());

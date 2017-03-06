@@ -82,12 +82,6 @@ class LoggerStream {
     return *this;
   }
   
-  template <typename T1, typename T2>
-  LoggerStream& operator<<(std::pair<T1, T2> const& obj) {
-    _out << '(' << obj.first << ", " << obj.second << ')';
-    return *this;
-  }
-
  private:
   std::stringstream _out;
   size_t _topicId;

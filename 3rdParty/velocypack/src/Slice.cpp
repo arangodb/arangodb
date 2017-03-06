@@ -390,6 +390,11 @@ Slice Slice::translateUnchecked() const {
   return Slice();
 }
 
+std::string Slice::toHex() const {
+  HexDump dump(this);
+  return dump.toString(); 
+}
+
 std::string Slice::toJson(Options const* options) const {
   std::string buffer;
   StringSink sink(&buffer);

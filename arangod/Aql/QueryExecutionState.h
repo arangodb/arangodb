@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,28 +18,42 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/TransactionWindow.h"
+#ifndef ARANGOD_AQL_QUERY_EXECUTION_STATE_H
+#define ARANGOD_AQL_QUERY_EXECUTION_STATE_H 1
 
-#include <stdint.h>
-#include <atomic>
+#include "Basics/Common.h"
 
-using namespace arangodb::cache;
+#include <iosfwd>
 
-TransactionWindow::TransactionWindow() : _open(0), _term(0) {}
+namespace arangodb {
+namespace aql {
+namespace QueryExecutionState {
 
-void TransactionWindow::start() {
-  if (++_open == 1) {
-    _term++;
-  }
+/// @brief execution states
+enum class ValueType {
+  INITIALIZATION = 0,
+  PARSING,
+  AST_OPTIMIZATION,
+  LOADING_COLLECTIONS,
+  PLAN_INSTANTIATION,
+  PLAN_OPTIMIZATION,
+  EXECUTION,
+  FINALIZATION,
+  FINISHED,
+
+  INVALID_STATE
+};
+
+std::string toString(QueryExecutionState::ValueType state);
+std::string toStringWithPrefix(QueryExecutionState::ValueType state);
+
+}
+}
 }
 
-void TransactionWindow::end() {
-  if (--_open == 0) {
-    _term++;
-  }
-}
+std::ostream& operator<<(std::ostream&, arangodb::aql::QueryExecutionState::ValueType);
 
-uint64_t TransactionWindow::term() { return _term.load(); }
+#endif

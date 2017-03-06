@@ -66,7 +66,10 @@ add_executable(${TEST_CACHE_SUITE}
   Cache/Rebalancer.cpp
   Cache/State.cpp
   Cache/TransactionalBucket.cpp
-  Cache/TransactionWindow.cpp
+  Cache/TransactionalCache.cpp
+  Cache/TransactionalStore.cpp
+  Cache/TransactionManager.cpp
+  Cache/TransactionsWithBackingStore.cpp
   ../lib/Basics/WorkMonitorDummy.cpp
   ../arangod/Cache/Cache.cpp
   ../arangod/Cache/CacheManagerFeatureThreads.cpp
@@ -78,9 +81,10 @@ add_executable(${TEST_CACHE_SUITE}
   ../arangod/Cache/PlainCache.cpp
   ../arangod/Cache/Rebalancer.cpp
   ../arangod/Cache/State.cpp
+  ../arangod/Cache/Transaction.cpp
   ../arangod/Cache/TransactionalBucket.cpp
   ../arangod/Cache/TransactionalCache.cpp
-  ../arangod/Cache/TransactionWindow.cpp
+  ../arangod/Cache/TransactionManager.cpp
 )
 
 include_directories(${TEST_CACHE_SUITE}
@@ -90,6 +94,7 @@ include_directories(${TEST_CACHE_SUITE}
 target_link_libraries(${TEST_CACHE_SUITE}
   ${LIB_ARANGO}
   ${MSVC_LIBS}
+  ${ROCKSDB_LIBS}
   boost_system
   boost_boost
   ${SYSTEM_LIBRARIES}

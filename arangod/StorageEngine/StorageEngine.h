@@ -125,6 +125,8 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   using Database = TRI_vocbase_t;
   using CollectionView = LogicalCollection;
+    
+  virtual void waitForSync(TRI_voc_tick_t tick) = 0;
 
   //// operations on databasea
 

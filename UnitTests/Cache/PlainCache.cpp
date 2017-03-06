@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::PlainBucket
+/// @brief test suite for arangodb::cache::PlainCache
 ///
 /// @file
 ///

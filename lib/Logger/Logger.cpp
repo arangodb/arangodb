@@ -315,12 +315,14 @@ void Logger::log(char const* function, char const* file, long int line,
   size_t offset = out.str().size() - message.size();
   auto msg = std::make_unique<LogMessage>(level, topicId, out.str(), offset);
 
-  bool const isDirectLogLevel = (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
-
   // now either queue or output the message
-  if (_threaded && !isDirectLogLevel) {
+  if (_threaded) {
     try {
       _loggingThread->log(msg);
+      bool const isDirectLogLevel = (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
+      if (isDirectLogLevel) {
+        _loggingThread->flush();
+      }
       return;
     } catch (...) {
       // fall-through to non-threaded logging
