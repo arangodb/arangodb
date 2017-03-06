@@ -34,7 +34,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

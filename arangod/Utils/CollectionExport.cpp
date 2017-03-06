@@ -23,16 +23,17 @@
 
 #include "CollectionExport.h"
 #include "Basics/WriteLocker.h"
-#include "MMFiles/MMFilesPrimaryIndex.h"
+#include "MMFiles/MMFilesDitch.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/Hints.h"
-#include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "MMFiles/MMFilesCollection.h" //TODO -- REMOVE
 
 using namespace arangodb;
 
@@ -54,7 +55,7 @@ CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
 
 CollectionExport::~CollectionExport() {
   if (_ditch != nullptr) {
-    _ditch->ditches()->freeDocumentDitch(_ditch, false);
+    _ditch->ditches()->freeMMFilesDocumentDitch(_ditch, false);
   }
 }
 
@@ -64,7 +65,9 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   // try to acquire the exclusive lock on the compaction
   engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
-    _ditch = _collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+    _ditch = arangodb::MMFilesCollection::toMMFilesCollection(_collection)
+                 ->ditches()
+                 ->createMMFilesDocumentDitch(false, __FILE__, __LINE__);
   });
 
   // now we either have a ditch or not
@@ -79,7 +82,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     uint64_t const maxTries = maxWaitTime / SleepTime;
 
     while (++tries < maxTries) {
-      if (_collection->isFullyCollected()) {
+      if (_collection->getPhysical()->isFullyCollected()) {
         break;
       }
       usleep(SleepTime);
@@ -88,7 +91,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
 
   {
     SingleCollectionTransaction trx(
-        StandaloneTransactionContext::Create(_collection->vocbase()), _name,
+        transaction::StandaloneContext::Create(_collection->vocbase()), _name,
         AccessMode::Type::READ);
 
     // already locked by guard above
@@ -99,7 +102,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       THROW_ARANGO_EXCEPTION(res);
     }
     
-    size_t maxDocuments = _collection->primaryIndex()->size();
+    size_t maxDocuments = _collection->numberDocuments();
     if (limit > 0 && limit < maxDocuments) {
       maxDocuments = limit;
     } else {
@@ -113,7 +116,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       if (limit == 0) {
         return false;
       }
-      if (_collection->readDocumentConditional(&trx, mmdr, token, 0, true)) {
+      if (_collection->readDocumentConditional(&trx, token, 0, mmdr)) {
         _vpack.emplace_back(mmdr.vpack());
         --limit;
       }

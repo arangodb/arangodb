@@ -28,14 +28,11 @@
 namespace arangodb {
 class GreetingsFeature final : public application_features::ApplicationFeature {
  public:
-  GreetingsFeature(application_features::ApplicationServer* server, char const* progname);
+  explicit GreetingsFeature(application_features::ApplicationServer* server);
 
  public:
   void prepare() override final;
   void unprepare() override final;
-
- private:
-  char const* _progname;
 };
 }
 

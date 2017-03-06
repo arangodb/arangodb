@@ -30,7 +30,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -96,7 +96,7 @@ bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id, std::string const& collectionName,
     TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
     std::function<void(DocumentIdentifierToken const&)> cb) {
-  trx.orderDitch(trx.cid());  // will throw when it fails
+  trx.pinData(trx.cid());  // will throw when it fails
 
   // Create a conditionBuilder that manages the AstNodes for querying
   aql::EdgeConditionBuilderContainer condBuilder;
@@ -224,7 +224,7 @@ bool RestEdgesHandler::readEdges() {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), collectionName,
+      transaction::StandaloneContext::Create(_vocbase), collectionName,
       AccessMode::Type::READ);
 
   // .............................................................................
@@ -251,7 +251,7 @@ bool RestEdgesHandler::readEdges() {
   std::unordered_set<DocumentIdentifierToken> foundTokens;
   auto cb = [&] (DocumentIdentifierToken const& token) {
     if (foundTokens.find(token) == foundTokens.end()) {
-      if (collection->readDocument(&trx, mmdr, token)) {
+      if (collection->readDocument(&trx, token, mmdr)) {
         resultBuilder.add(VPackSlice(mmdr.vpack()));
       }
       scannedIndex++;
@@ -311,7 +311,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+      parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
     generateError(rest::ResponseCode::BAD,
@@ -368,7 +368,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbase), collectionName,
+      transaction::StandaloneContext::Create(_vocbase), collectionName,
       AccessMode::Type::READ);
 
   // .............................................................................
@@ -396,7 +396,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   std::unordered_set<DocumentIdentifierToken> foundTokens;
   auto cb = [&] (DocumentIdentifierToken const& token) {
     if (foundTokens.find(token) == foundTokens.end()) {
-      if (collection->readDocument(&trx, mmdr, token)) {
+      if (collection->readDocument(&trx, token, mmdr)) {
         resultBuilder.add(VPackSlice(mmdr.vpack()));
       }
       scannedIndex++;

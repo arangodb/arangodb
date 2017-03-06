@@ -244,11 +244,36 @@ class VelocyPackHelper {
     return defaultValue;
   }
 
+  template <typename T>
+  static T readNumericValue(VPackSlice info, std::string const& name, T def) {
+    if (!info.isObject()) {
+      return def;
+    }
+    return getNumericValue<T>(info, name.c_str(), def);
+  }
+
+  template <typename T, typename BaseType>
+  static T readNumericValue(VPackSlice info, std::string const& name, T def) {
+    if (!info.isObject()) {
+      return def;
+    }
+    // nice extra conversion required for Visual Studio pickyness
+    return static_cast<T>(getNumericValue<BaseType>(info, name.c_str(), static_cast<BaseType>(def)));
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a boolean sub-element, or a default if it does not exist
   //////////////////////////////////////////////////////////////////////////////
 
   static bool getBooleanValue(VPackSlice const&, char const*, bool);
+  static bool readBooleanValue(VPackSlice info, std::string const& name,
+                               bool def) {
+    if (!info.isObject()) {
+      return def;
+    }
+    return getBooleanValue(info, name.c_str(), def);
+  }
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string sub-element, or throws if <name> does not exist
@@ -402,16 +427,20 @@ class VelocyPackHelper {
   static constexpr arangodb::velocypack::Slice IllegalValue() {
     return arangodb::velocypack::Slice::illegalSlice();
   }
+  
+  static bool hasNonClientTypes(arangodb::velocypack::Slice, bool checkExternals, bool checkCustom);
 
-  static void SanitizeExternals(arangodb::velocypack::Slice const,
-                                arangodb::velocypack::Builder&);
+  static void sanitizeNonClientTypes(arangodb::velocypack::Slice input,
+                                     arangodb::velocypack::Slice base,
+                                     arangodb::velocypack::Builder& output,
+                                     arangodb::velocypack::Options const*,
+                                     bool sanitizeExternals, bool sanitizeCustom);
 
-  static bool hasExternals(arangodb::velocypack::Slice const);
-
-  static VPackBuffer<uint8_t> sanitizeExternalsChecked(
-      arangodb::velocypack::Slice const,
+  static VPackBuffer<uint8_t> sanitizeNonClientTypesChecked(
+      arangodb::velocypack::Slice,
       VPackOptions const* options = &VPackOptions::Options::Defaults,
-      bool checkExternals = true);
+      bool sanitizeExternals = true,
+      bool sanitizeCustom = true);
 
   static uint64_t extractIdValue(VPackSlice const& slice);
 

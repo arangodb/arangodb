@@ -95,12 +95,7 @@ std::unordered_map<int, AstNodeType> const Ast::ReversedOperators{
 /// @brief create the AST
 Ast::Ast(Query* query)
     : _query(query),
-      _scopes(),
-      _variables(),
-      _bindParameters(),
       _root(nullptr),
-      _queries(),
-      _writeCollections(),
       _functionsMayAccessDocuments(false),
       _containsTraversal(false) {
   TRI_ASSERT(_query != nullptr);

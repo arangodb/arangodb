@@ -64,6 +64,8 @@ class ExportFeature final : public application_features::ApplicationFeature,
   std::string _graphName;
   std::string _xgmmlLabelAttribute;
   std::string _typeExport;
+  std::string _csvFieldOptions;
+  std::vector<std::string> _csvFields;
   bool        _xgmmlLabelOnly;
 
   std::string _outputDirectory;

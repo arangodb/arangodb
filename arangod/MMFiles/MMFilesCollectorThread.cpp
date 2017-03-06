@@ -32,9 +32,11 @@
 #include "Basics/memory-map.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollection.h"
+#include "MMFiles/MMFilesCompactionLocker.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
-#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesIndexElement.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesWalLogfile.h"
@@ -45,9 +47,8 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/Hints.h"
-#include "VocBase/CompactionLocker.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -562,6 +563,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     LogicalCollection* collection, MMFilesCollectorCache* cache,
     MMFilesCollectorOperation const& operation) {
   auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(physical != nullptr);
   auto const* walMarker = reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
   TRI_ASSERT(walMarker != nullptr);
   TRI_ASSERT(reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition));
@@ -582,7 +584,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
     bool wasAdjusted = false;
-    MMFilesSimpleIndexElement element = collection->primaryIndex()->lookupKey(&trx, keySlice);
+    MMFilesSimpleIndexElement element = physical->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (element &&
         element.revisionId() == revisionId) { 
@@ -613,7 +615,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     TRI_voc_rid_t revisionId = 0;
     transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
-    MMFilesSimpleIndexElement found = collection->primaryIndex()->lookupKey(&trx, keySlice);
+    MMFilesSimpleIndexElement found = physical->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (found && 
         found.revisionId() > revisionId) {
@@ -641,14 +643,14 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   // first try to read-lock the compactor-lock, afterwards try to write-lock the
   // collection
   // if any locking attempt fails, release and try again next time
-  TryCompactionPreventer compactionPreventer(physical);
+  MMFilesTryCompactionPreventer compactionPreventer(physical);
   
   if (!compactionPreventer.isLocked()) {
     return TRI_ERROR_LOCK_TIMEOUT;
   }
 
   arangodb::SingleCollectionTransaction trx(
-      arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
+      arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
       collection->cid(), AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);  // already locked by guard above
   trx.addHint(transaction::Hints::Hint::NO_COMPACTION_LOCK);  // already locked above
@@ -899,7 +901,8 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
   int res = TRI_ERROR_INTERNAL;
 
   try {
-    res = engine->transferMarkers(collection, cache.get(), operations);
+    auto en = static_cast<MMFilesEngine*>(engine);
+    res = en->transferMarkers(collection, cache.get(), operations);
     
     if (res == TRI_ERROR_NO_ERROR && !cache->operations->empty()) {
       queueOperations(logfile, cache);
@@ -979,7 +982,9 @@ int MMFilesCollectorThread::updateDatafileStatistics(
   // iterate over all datafile infos and update the collection's datafile stats
   for (auto it = cache->dfi.begin(); it != cache->dfi.end();
        /* no hoisting */) {
-    collection->updateStats((*it).first, (*it).second);
+    MMFilesCollection* mmfiles = static_cast<MMFilesCollection*>(collection->getPhysical());
+    TRI_ASSERT(mmfiles);
+    mmfiles->updateStats((*it).first, (*it).second);
 
     // flush the local datafile info so we don't update the statistics twice
     // with the same values
@@ -989,7 +994,7 @@ int MMFilesCollectorThread::updateDatafileStatistics(
 
   return TRI_ERROR_NO_ERROR;
 }
-      
+
 void MMFilesCollectorThread::broadcastCollectorResult(int res) { 
   CONDITION_LOCKER(guard, _collectorResultCondition);
   _collectorResult = res;

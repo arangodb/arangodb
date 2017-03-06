@@ -48,7 +48,7 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
       _isDBServer(false),
       _usesDefaultSharding(true) {
 
-  _trx->orderDitch(_collection->cid());
+  _trx->pinData(_collection->cid());
 
   auto const& registerPlan = ep->getRegisterPlan()->varInfo;
 

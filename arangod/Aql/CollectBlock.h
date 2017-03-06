@@ -37,19 +37,16 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
-;
 
 namespace aql {
 struct Aggregator;
 class AqlItemBlock;
 class ExecutionEngine;
-
-typedef std::vector<Aggregator*> AggregateValuesType;
+  
+typedef std::vector<std::unique_ptr<Aggregator>> AggregateValuesType;
 
 class SortedCollectBlock final : public ExecutionBlock {
  private:
-  typedef std::vector<Aggregator*> AggregateValuesType;
-
   struct CollectGroup {
     std::vector<AqlValue> groupValues;
 

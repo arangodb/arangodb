@@ -42,11 +42,10 @@ int AqlTransaction::processCollection(aql::Collection* collection) {
 /// @brief add a coordinator collection to the transaction
 
 int AqlTransaction::processCollectionCoordinator(aql::Collection*  collection) {
-  TRI_voc_cid_t cid =
-      this->resolver()->getCollectionId(collection->getName());
+  TRI_voc_cid_t cid = resolver()->getCollectionId(collection->getName());
 
-  return this->addCollection(cid, collection->getName().c_str(),
-                             collection->accessType);
+  return addCollection(cid, collection->getName().c_str(),
+                       collection->accessType);
 }
 
 /// @brief add a regular collection to the transaction
@@ -55,7 +54,7 @@ int AqlTransaction::processCollectionNormal(aql::Collection* collection) {
   TRI_voc_cid_t cid = 0;
 
   arangodb::LogicalCollection const* col =
-      this->resolver()->getCollectionStruct(collection->getName());
+      resolver()->getCollectionStruct(collection->getName());
   /*if (col == nullptr) {
     auto startTime = TRI_microtime();
     auto endTime = startTime + 60.0;
@@ -72,8 +71,7 @@ int AqlTransaction::processCollectionNormal(aql::Collection* collection) {
     cid = col->cid();
   }
 
-  int res =
-      this->addCollection(cid, collection->getName(), collection->accessType);
+  int res = addCollection(cid, collection->getName(), collection->accessType);
 
   if (res == TRI_ERROR_NO_ERROR && col != nullptr) {
     collection->setCollection(const_cast<arangodb::LogicalCollection*>(col));

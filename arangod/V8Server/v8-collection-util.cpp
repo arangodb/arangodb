@@ -92,7 +92,7 @@ static void WeakCollectionCallback(const v8::WeakCallbackInfo<
   v8g->decreaseActiveExternals();
 
   // decrease the reference-counter for the database
-  collection->vocbase()->release();
+  TRI_ASSERT(!collection->vocbase()->isDangling());
 
   // find the persistent handle
 #if ARANGODB_ENABLE_MAINTAINER_MODE
@@ -103,9 +103,12 @@ static void WeakCollectionCallback(const v8::WeakCallbackInfo<
   // dispose and clear the persistent handle
   v8g->JSCollections[collection].Reset();
   v8g->JSCollections.erase(collection);
-
+  
   if (!collection->isLocal()) {
+    collection->vocbase()->release();
     delete collection;
+  } else {
+    collection->vocbase()->release();
   }
 }
 
@@ -125,7 +128,6 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
   v8::Handle<v8::Object> result = VocbaseColTempl->NewInstance();
 
   if (!result.IsEmpty()) {
-
     LogicalCollection* nonconstCollection =
         const_cast<LogicalCollection*>(collection);
 
@@ -138,7 +140,8 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
 
     if (it == v8g->JSCollections.end()) {
       // increase the reference-counter for the database
-      nonconstCollection->vocbase()->use();
+      TRI_ASSERT(!nonconstCollection->vocbase()->isDangling());
+      nonconstCollection->vocbase()->forceUse();
       try {
         auto externalCollection = v8::External::New(isolate, nonconstCollection);
 

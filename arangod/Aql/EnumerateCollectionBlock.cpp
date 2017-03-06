@@ -26,6 +26,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/FollowerInfo.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
@@ -184,7 +185,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     std::function<void(DocumentIdentifierToken const& tkn)> cb;
     if (_mustStoreResult) {
       cb = [&] (DocumentIdentifierToken const& tkn) {
-        if (c->readDocument(_trx, *_mmdr, tkn)) {
+        if (c->readDocument(_trx, tkn, *_mmdr)) {
           // The result is in the first variable of this depth,
           // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
           // but can just take cur->getNrRegs() as registerId:

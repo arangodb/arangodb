@@ -79,6 +79,7 @@ const optionsDocumentation = [
   '   - `skipArangoBench`: if set to true benchmark tests are skipped',
   '   - `skipAuthentication : testing authentication and authentication_paramaters will be skipped.',
   '   - `skipBoost`: if set to true the boost unittests are skipped',
+  '   - `skipCache`: if set to true, the hash cache unittests are skipped',
   '   - `skipConfig`: omit the noisy configuration tests',
   '   - `skipFoxxQueues`: omit the test for the foxx queues',
   '   - `skipEndpoints`: if set to true endpoints tests are skipped',
@@ -178,6 +179,7 @@ const optionsDefaults = {
   'skipArangoBenchNonConnKeepAlive': true,
   'skipAuthentication': false,
   'skipBoost': false,
+  'skipCache': true,
   'skipEndpoints': false,
   'skipGeo': false,
   'skipLogAnalysis': true,
@@ -203,6 +205,7 @@ const optionsDefaults = {
 const _ = require('lodash');
 const fs = require('fs');
 const yaml = require('js-yaml');
+const xmldom = require('xmldom');
 
 const base64Encode = require('internal').base64Encode;
 const download = require('internal').download;
@@ -424,7 +427,7 @@ function readImportantLogLines (logPath) {
 // / echo 1 > /proc/sys/kernel/core_uses_pid
 // / echo /var/tmp/core-%e-%p-%t > /proc/sys/kernel/core_pattern
 // /
-// / or at system startup by altering /etc/sysctl.d/corepattern.conf : 
+// / or at system startup by altering /etc/sysctl.d/corepattern.conf :
 // / # We want core files to be located in a central location
 // / # and know the PID plus the process name for later use.
 // / kernel.core_uses_pid = 1
@@ -458,7 +461,7 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   executeExternalAndWait('/bin/bash', args);
   GDB_OUTPUT = fs.read(gdbOutputFile);
   print(GDB_OUTPUT);
-  
+
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -512,7 +515,7 @@ function analyzeServerCrash (arangod, options, checkStr) {
       print(RED + "apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis.");
       return;
     }
-    
+
     if (matchSystemdCoredump.exec(cp) == null) {
       options.coreDirectory = "/var/lib/systemd/coredump";
     }
@@ -1160,6 +1163,10 @@ function runArangoImp (options, instanceInfo, what) {
   if (what.separator !== undefined) {
     args['separator'] = what.separator;
   }
+  
+  if (what.convert !== undefined) {
+    args['convert'] = what.convert ? 'true' : 'false';
+  }
 
   return executeAndWait(ARANGOIMP_BIN, toArgv(args), options);
 }
@@ -1202,7 +1209,7 @@ function runArangoBenchmark (options, instanceInfo, cmds) {
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
-    // "server.request-timeout": 1200 // default now. 
+    // "server.request-timeout": 1200 // default now.
     'server.connection-timeout': 10 // 5s default
   };
 
@@ -1229,7 +1236,7 @@ function shutdownArangod (arangod, options) {
     arangod.exitStatus.status === 'RUNNING') {
     const requestOptions = makeAuthorizationHeaders(options);
     requestOptions.method = 'DELETE';
-    
+
     print(arangod.url + '/_admin/shutdown');
     if (options.useKillExternal) {
       killExternal(arangod.pid);
@@ -1304,7 +1311,7 @@ function shutdownInstance (instanceInfo, options) {
               fs.join(instanceInfo.rootDir, 'core.dmp')
             ];
           }
-          
+
           killExternal(arangod.pid, 11);
 
           analyzeServerCrash(arangod, options, 'instance forcefully KILLED after 60s - ' + arangod.exitStatus.signal);
@@ -1436,7 +1443,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   let args = makeArgsArangod(options, appDir, role);
   let endpoint;
   let port;
-  
+
   if (!addArgs['server.endpoint']) {
     port = findFreePort(options.minPort, options.maxPort);
     endpoint = protocol + '://127.0.0.1:' + port;
@@ -1472,7 +1479,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
     instanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(args), options).pid;
   } catch (x) {
     print('failed to run arangod - ' + JSON.stringify(x));
-    throw(x);        
+    throw(x);
   }
   instanceInfo.role = role;
 
@@ -1520,7 +1527,7 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     instanceArgs['server.endpoint'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.my-address'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.supervision-grace-period'] = '10.0';
-    instanceArgs['agency.supervision-frequency'] = '1.0'; 
+    instanceArgs['agency.supervision-frequency'] = '1.0';
 
     if (i === N - 1) {
       let l = [];
@@ -1837,7 +1844,7 @@ function findTests () {
   }
 
   testsCases.common = doOnePath('js/common/tests/shell');
-  
+
   testsCases.server_only = doOnePath('js/server/tests/shell');
 
   testsCases.client_only = doOnePath('js/client/tests/shell');
@@ -2069,7 +2076,7 @@ testFuncs.fail = function (options) {
       success: {
         status: true,
         message: "this testcase will always be successfull",
-        duration: 1       
+        duration: 1
       }
     }
   };
@@ -2081,15 +2088,15 @@ testFuncs.fail = function (options) {
 
 testFuncs.arangosh = function (options) {
   let ret = {};
-  [ 
-    'testArangoshExitCodeNoConnect', 
-    'testArangoshExitCodeFail', 
-    'testArangoshExitCodeFailButCaught', 
-    'testArangoshExitCodeEmpty', 
-    'testArangoshExitCodeSuccess', 
-    'testArangoshExitCodeStatements', 
-    'testArangoshExitCodeStatements2', 
-    'testArangoshExitCodeNewlines', 
+  [
+    'testArangoshExitCodeNoConnect',
+    'testArangoshExitCodeFail',
+    'testArangoshExitCodeFailButCaught',
+    'testArangoshExitCodeEmpty',
+    'testArangoshExitCodeSuccess',
+    'testArangoshExitCodeStatements',
+    'testArangoshExitCodeStatements2',
+    'testArangoshExitCodeNewlines',
     'testArangoshExitCodeEcho',
     'testArangoshShebang',
   ].forEach(function(what) {
@@ -2120,37 +2127,37 @@ testFuncs.arangosh = function (options) {
         "didn't get expected return code (" + expectedReturnCode + "): \n" +
         yaml.safeDump(rc);
     }
-  
+
     ++ret[section]['total'];
     ret[section]['status'] = failSuccess;
     ret[section]['duration'] = deltaTime;
     print((failSuccess ? GREEN : RED) + 'Status: ' + (failSuccess ? 'SUCCESS' : 'FAIL') + RESET);
   }
-  
+
   runTest('testArangoshExitCodeNoConnect', 'Starting arangosh with failing connect:', "db._databases();", 1, { 'server.endpoint' : 'tcp://127.0.0.1:0' });
   print();
 
   runTest('testArangoshExitCodeFail', 'Starting arangosh with exception throwing script:', "throw('foo')", 1, {});
   print();
-  
+
   runTest('testArangoshExitCodeFailButCaught', 'Starting arangosh with a caught exception:', "try { throw('foo'); } catch (err) {}", 0, {});
   print();
-  
+
   runTest('testArangoshExitCodeEmpty', 'Starting arangosh with empty script:', "", 0, {});
   print();
-  
+
   runTest('testArangoshExitCodeSuccess', 'Starting arangosh with regular terminating script:', ";", 0, {});
   print();
-  
+
   runTest('testArangoshExitCodeStatements', 'Starting arangosh with multiple statements:', "var a = 1; if (a !== 1) throw('boom!');", 0, {});
   print();
-  
+
   runTest('testArangoshExitCodeStatements2', 'Starting arangosh with multiple statements:', "var a = 1;\nif (a !== 1) throw('boom!');\nif (a === 1) print('success');", 0, {});
   print();
-  
+
   runTest('testArangoshExitCodeNewlines', 'Starting arangosh with newlines:', "q = `FOR i\nIN [1,2,3]\nRETURN i`;\nq += 'abc'\n", 0, {});
   print();
-  
+
   if (platform.substr(0, 3) !== 'win') {
     var echoSuccess = true;
     var deltaTime2 = 0;
@@ -2159,7 +2166,7 @@ testFuncs.arangosh = function (options) {
     print('\n--------------------------------------------------------------------------------');
     print('Starting arangosh via echo');
     print('--------------------------------------------------------------------------------');
-    
+
     fs.write(execFile,
       'echo "db._databases();" | ' + fs.makeAbsolute(ARANGOSH_BIN) + ' --server.endpoint tcp://127.0.0.1:0');
 
@@ -2176,7 +2183,7 @@ testFuncs.arangosh = function (options) {
         "didn't get expected return code (1): \n" +
         yaml.safeDump(rc);
     }
-    
+
     fs.remove(execFile);
 
     ++ret.testArangoshExitCodeEcho['total'];
@@ -2184,7 +2191,7 @@ testFuncs.arangosh = function (options) {
     ret.testArangoshExitCodeEcho['duration'] = deltaTime2;
     print((echoSuccess ? GREEN : RED) + 'Status: ' + (echoSuccess ? 'SUCCESS' : 'FAIL') + RESET);
   }
- 
+
   // test shebang execution with arangosh
   if (!options.skipShebang && platform.substr(0, 3) !== 'win') {
     var shebangSuccess = true;
@@ -2659,6 +2666,20 @@ testFuncs.boost = function (options) {
     }
   }
 
+  if (!options.skipCache) {
+    const run = locateBoostTest('cache_suite');
+
+    if (run !== '') {
+      results.cache_suite = executeAndWait(run, args, options,
+        'cache_suite');
+    } else {
+      results.cache_suite = {
+        status: false,
+        message: "binary 'cache_suite' not found"
+      };
+    }
+  }
+
   if (!options.skipGeo) {
     const run = locateBoostTest('arangodbtests');
     args.push('[geo]');
@@ -2888,6 +2909,10 @@ testFuncs.dump = function (options) {
 testFuncs.export = function (options) {
   const cluster = options.cluster ? '-cluster' : '';
   const tmpPath = fs.getTempPath();
+  const DOMParser = new xmldom.DOMParser({locator: {}, errorHandler: {
+    warning: function(err) { xmlErrors = err; }, error: function(err) { xmlErrors = err; }, fatalError: function(err) { xmlErrors = err; }
+  }});
+  let xmlErrors = null;
 
   print(CYAN + 'export tests...' + RESET);
 
@@ -2956,13 +2981,17 @@ testFuncs.export = function (options) {
   print(CYAN + Date() + ': Export data (xgmml)' + RESET);
   args['type'] = 'xgmml';
   args['graph-name'] = 'UnitTestsExport';
-  results.exportJsonl = executeAndWait(ARANGOEXPORT_BIN, toArgv(args), options);
+  results.exportXgmml = executeAndWait(ARANGOEXPORT_BIN, toArgv(args), options);
   try {
-    const filesContent = fs.read(fs.join(tmpPath, 'UnitTestsExport.xgmml')).split('\n');
-    // validate xml need npm module for that, in progress
-    // results.parseJsonl = { status: true };
+    const filesContent = fs.read(fs.join(tmpPath, 'UnitTestsExport.xgmml'));
+    DOMParser.parseFromString(filesContent);
+    results.parseXgmml = { status: true };
+
+    if (xmlErrors !== null) {
+      results.parseXgmml = { status: false, message: xmlErrors };
+    }
   } catch(e) {
-    results.parseJsonl = {status: false, message: e };
+    results.parseXgmml = {status: false, message: e };
   }
 
   return shutdown();
@@ -3201,6 +3230,23 @@ const impTodos = [{
   type: 'csv',
   create: 'true',
   separator: ';',
+  backslash: true
+}, {
+  id: 'csvnoconvert',
+  data: makePathUnix('js/common/test-data/import/import-noconvert.csv'),
+  coll: 'UnitTestsImportCsvNoConvert',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: true,
+  backslash: true
+}, {
+  id: 'csvnoeol',
+  data: makePathUnix('js/common/test-data/import/import-noeol.csv'),
+  coll: 'UnitTestsImportCsvNoEol',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
   backslash: true
 }, {
   id: 'tsv1',
@@ -3529,7 +3575,7 @@ testFuncs.replication_static = function (options) {
   let master = startInstance('tcp', options, {
     'server.authentication': 'true'
   }, 'master_static');
-  
+
   const mr = makeResults('replication', master);
 
   if (master === false) {
@@ -3818,7 +3864,7 @@ testFuncs.endpoints = function(options) {
         }
 
         let result = runInArangosh(options, instanceInfo, 'js/client/tests/endpoint-spec.js');
-  
+
         print(CYAN + 'Shutting down...' + RESET);
         // mop: mehhh...when launched with a socket we can't use download :S
         shutdownInstance(instanceInfo, Object.assign(options, {useKillExternal: true}));
@@ -4014,15 +4060,15 @@ testFuncs.upgrade = function (options) {
   ++result.upgrade.total;
 
   result.upgrade.second = executeAndWait(ARANGOD_BIN, argv, options, 'upgrade');
-  
+
   if (result.upgrade.second.status !== true) {
     print('not removing ' + tmpDataDir);
     return result.upgrade;
   }
 
   cleanupDirectories.push(tmpDataDir);
- 
-  result.upgrade.status = true; 
+
+  result.upgrade.status = true;
   return result;
 };
 

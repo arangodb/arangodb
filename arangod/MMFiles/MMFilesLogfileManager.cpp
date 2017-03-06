@@ -535,7 +535,7 @@ void MMFilesLogfileManager::unprepare() {
 }
 
 // registers a transaction
-int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId) {
+int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction) {
   auto lastCollectedId = _lastCollectedId.load();
   auto lastSealedId = _lastSealedId.load();
 
@@ -545,6 +545,16 @@ int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId) {
   }
     
   TRI_ASSERT(lastCollectedId <= lastSealedId);
+
+  if (isReadOnlyTransaction) {
+    // in case this is a read-only transaction, we are sure that the transaction can
+    // only see committed data (as itself it will not write anything, and write transactions
+    // run exclusively). we thus can allow the WAL collector to already seal and collect
+    // logfiles. the only thing that needs to be ensured for read-only transactions is
+    // that a logfile does not get thrown away while the read-only transaction is 
+    // ongoing
+    lastSealedId = 0;
+  }
 
   try {
     auto data = std::make_unique<MMFilesTransactionData>(lastCollectedId, lastSealedId);
@@ -1336,8 +1346,8 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
   // iterate over all active readers and find their minimum used logfile id
   MMFilesWalLogfile::IdType minId = UINT64_MAX;
 
-  auto cb = [&minId](TRI_voc_tid_t, TransactionData* data) {
-    MMFilesWalLogfile::IdType lastWrittenId = static_cast<MMFilesTransactionData*>(data)->lastSealedId;
+  auto cb = [&minId](TRI_voc_tid_t, TransactionData const* data) {
+    MMFilesWalLogfile::IdType lastWrittenId = static_cast<MMFilesTransactionData const*>(data)->lastSealedId;
 
     if (lastWrittenId < minId && lastWrittenId != 0) {
       minId = lastWrittenId;
@@ -1383,8 +1393,8 @@ MMFilesWalLogfile* MMFilesLogfileManager::getRemovableLogfile() {
   MMFilesWalLogfile::IdType minId = UINT64_MAX;
   
   // iterate over all active transactions and find their minimum used logfile id
-  auto cb = [&minId](TRI_voc_tid_t, TransactionData* data) {
-    MMFilesWalLogfile::IdType lastCollectedId = static_cast<MMFilesTransactionData*>(data)->lastCollectedId;
+  auto cb = [&minId](TRI_voc_tid_t, TransactionData const* data) {
+    MMFilesWalLogfile::IdType lastCollectedId = static_cast<MMFilesTransactionData const*>(data)->lastCollectedId;
 
     if (lastCollectedId < minId && lastCollectedId != 0) {
       minId = lastCollectedId;
@@ -1553,15 +1563,15 @@ MMFilesLogfileManager::runningTransactions() {
   MMFilesWalLogfile::IdType lastCollectedId = UINT64_MAX;
   MMFilesWalLogfile::IdType lastSealedId = UINT64_MAX;
 
-  auto cb = [&count, &lastCollectedId, &lastSealedId](TRI_voc_tid_t, TransactionData* data) {
+  auto cb = [&count, &lastCollectedId, &lastSealedId](TRI_voc_tid_t, TransactionData const* data) {
     ++count;
         
-    MMFilesWalLogfile::IdType value = static_cast<MMFilesTransactionData*>(data)->lastCollectedId;
+    MMFilesWalLogfile::IdType value = static_cast<MMFilesTransactionData const*>(data)->lastCollectedId;
     if (value < lastCollectedId && value != 0) {
       lastCollectedId = value;
     }
 
-    value = static_cast<MMFilesTransactionData*>(data)->lastSealedId;
+    value = static_cast<MMFilesTransactionData const*>(data)->lastSealedId;
     if (value < lastSealedId && value != 0) {
       lastSealedId = value;
     }

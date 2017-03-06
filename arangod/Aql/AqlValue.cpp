@@ -26,7 +26,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 
@@ -853,7 +853,9 @@ void AqlValue::toVelocyPack(transaction::Methods* trx,
     case VPACK_INLINE:
     case VPACK_MANAGED: {
       if (resolveExternals) {
-        arangodb::basics::VelocyPackHelper::SanitizeExternals(slice(), builder);
+        bool const sanitizeExternals = true;
+        bool const sanitizeCustom = true;
+        arangodb::basics::VelocyPackHelper::sanitizeNonClientTypes(slice(), VPackSlice::noneSlice(), builder, trx->transactionContextPtr()->getVPackOptions(), sanitizeExternals, sanitizeCustom);
       } else {
         builder.add(slice());
       }

@@ -29,12 +29,15 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -552,7 +555,7 @@ int Syncer::createIndex(VPackSlice const& slice) {
 
     LogicalCollection* collection = guard.collection();
 
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), guard.collection()->cid(), AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), guard.collection()->cid(), AccessMode::Type::WRITE);
 
     int res = trx.begin();
 
@@ -560,13 +563,10 @@ int Syncer::createIndex(VPackSlice const& slice) {
       return res;
     }
 
+    auto physical = collection->getPhysical();
+    TRI_ASSERT(physical != nullptr);
     std::shared_ptr<arangodb::Index> idx;
-    res = collection->restoreIndex(&trx, indexSlice, idx);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      res = collection->saveIndex(idx.get(), true);
-    }
-
+    res = physical->restoreIndex(&trx, indexSlice, idx);
     res = trx.finish(res);
 
     return res;
@@ -602,7 +602,7 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 
     LogicalCollection* collection = guard.collection();
 
-    bool result = collection->dropIndex(iid, true);
+    bool result = collection->dropIndex(iid);
 
     if (!result) {
       return TRI_ERROR_NO_ERROR;

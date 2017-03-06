@@ -28,7 +28,6 @@
 #include "Basics/Common.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Indexes/IndexFactory.h"
-#include "MMFiles/MMFilesCollectorCache.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -45,6 +44,10 @@ class LogicalCollection;
 class PhysicalCollection;
 class TransactionCollection;
 class TransactionState;
+
+namespace transaction {
+class ContextData;
+}
 
 class StorageEngine : public application_features::ApplicationFeature {
  public:
@@ -72,11 +75,12 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void start() {}
   virtual void stop() {}
 
+  virtual transaction::ContextData* createTransactionContextData() = 0;
   virtual TransactionState* createTransactionState(TRI_vocbase_t*) = 0;
   virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
 
   // create storage-engine specific collection
-  virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*) = 0;
+  virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*, VPackSlice const&) = 0;
 
 
   // status functionality
@@ -236,9 +240,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                            TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) = 0;
 
-  virtual void createIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
-                                    arangodb::velocypack::Slice const& data, bool useMarker, int&) = 0;
-
   // asks the storage engine to drop the specified index and persist the deletion
   // info. Note that physical deletion of the index must not be carried out by this call,
   // as there may still be users of the index. It is recommended that this operation
@@ -312,10 +313,6 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) = 0;
 
-  /// @brief transfer markers into a collection
-  virtual int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
-                              MMFilesOperationsType const&) = 0;
-
   // AQL functions
   // -------------
 
@@ -323,9 +320,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void addAqlFunctions() const = 0;
 
  protected:
-  arangodb::LogicalCollection* registerCollection(
-      TRI_vocbase_t* vocbase, arangodb::velocypack::Slice params) {
-    return vocbase->registerCollection(true, params);
+  void registerCollection(TRI_vocbase_t* vocbase,
+                          arangodb::LogicalCollection* collection) {
+    vocbase->registerCollection(true, collection);
   }
 
  private:

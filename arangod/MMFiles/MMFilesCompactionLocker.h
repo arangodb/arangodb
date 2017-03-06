@@ -21,35 +21,35 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_COMPACTION_LOCKER_H
-#define ARANGOD_VOCBASE_COMPACTION_LOCKER_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_COMPACTION_LOCKER_H
+#define ARANGOD_MMFILES_MMFILES_COMPACTION_LOCKER_H 1
 
 #include "Basics/Common.h"
 #include "MMFiles/MMFilesCollection.h"
 
 namespace arangodb {
 
-class CompactionPreventer {
+class MMFilesCompactionPreventer {
  public:
-  explicit CompactionPreventer(MMFilesCollection* collection) 
+  explicit MMFilesCompactionPreventer(MMFilesCollection* collection) 
       : _collection(collection) {
     _collection->preventCompaction();
   }
   
-  ~CompactionPreventer() { _collection->allowCompaction(); }
+  ~MMFilesCompactionPreventer() { _collection->allowCompaction(); }
 
  private:
   MMFilesCollection* _collection;
 };
 
-class TryCompactionPreventer {
+class MMFilesTryCompactionPreventer {
  public:
-  explicit TryCompactionPreventer(MMFilesCollection* collection) 
+  explicit MMFilesTryCompactionPreventer(MMFilesCollection* collection) 
       : _collection(collection), _isLocked(false) {
     _isLocked = _collection->tryPreventCompaction();
   }
   
-  ~TryCompactionPreventer() { 
+  ~MMFilesTryCompactionPreventer() { 
     if (_isLocked) {
       _collection->allowCompaction(); 
     }
@@ -62,14 +62,14 @@ class TryCompactionPreventer {
   bool _isLocked;
 };
 
-class CompactionLocker {
+class MMFilesCompactionLocker {
  public:
-  explicit CompactionLocker(MMFilesCollection* collection) 
+  explicit MMFilesCompactionLocker(MMFilesCollection* collection) 
       : _collection(collection) {
     _collection->lockForCompaction();
   }
   
-  ~CompactionLocker() { 
+  ~MMFilesCompactionLocker() { 
     _collection->finishCompaction();
   }
 
@@ -77,14 +77,14 @@ class CompactionLocker {
   MMFilesCollection* _collection;
 };
 
-class TryCompactionLocker {
+class MMFilesTryCompactionLocker {
  public:
-  explicit TryCompactionLocker(MMFilesCollection* collection) 
+  explicit MMFilesTryCompactionLocker(MMFilesCollection* collection) 
       : _collection(collection), _isLocked(false) {
     _isLocked = _collection->tryLockForCompaction();
   }
   
-  ~TryCompactionLocker() { 
+  ~MMFilesTryCompactionLocker() { 
     if (_isLocked) {
       _collection->finishCompaction();
     }

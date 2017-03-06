@@ -21,30 +21,33 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_V8_TRANSACTION_CONTEXT_H
-#define ARANGOD_UTILS_V8_TRANSACTION_CONTEXT_H 1
+#ifndef ARANGOD_TRANSACTION_V8_CONTEXT_H
+#define ARANGOD_TRANSACTION_V8_CONTEXT_H 1
 
+#include "Context.h"
 #include "Basics/Common.h"
-#include "Utils/TransactionContext.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 class TransactionState;
 
-class V8TransactionContext final : public TransactionContext {
+namespace transaction {
+
+class V8Context final : public Context {
 
  public:
 
   /// @brief create the context
-  V8TransactionContext(TRI_vocbase_t*, bool);
+  V8Context(TRI_vocbase_t*, bool);
 
   /// @brief destroy the context
-  ~V8TransactionContext() = default;
+  ~V8Context() = default;
   
   /// @brief order a custom type handler
-  std::shared_ptr<VPackCustomTypeHandler> orderCustomTypeHandler() override final;
-  
+  std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
+  orderCustomTypeHandler() override final;
+
   /// @brief return the resolver
   CollectionNameResolver const* getResolver() override final;
   
@@ -70,14 +73,14 @@ class V8TransactionContext final : public TransactionContext {
   static bool IsEmbedded();
   
   /// @brief create a context, returned in a shared ptr
-  static std::shared_ptr<V8TransactionContext> Create(TRI_vocbase_t*, bool);
+  static std::shared_ptr<transaction::V8Context> Create(TRI_vocbase_t*, bool);
 
  private:
 
   /// @brief the v8 thread-local "global" transaction context
-  V8TransactionContext* _sharedTransactionContext;
+  transaction::V8Context* _sharedTransactionContext;
 
-  V8TransactionContext* _mainScope;
+  transaction::V8Context* _mainScope;
 
   /// @brief the currently ongoing transaction
   TransactionState* _currentTransaction;
@@ -85,6 +88,8 @@ class V8TransactionContext final : public TransactionContext {
   /// @brief whether or not further transactions can be embedded
   bool const _embeddable;
 };
+
+}
 }
 
 #endif

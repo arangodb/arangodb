@@ -30,9 +30,10 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Meta/conversion.h"
+#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
-#include "Utils/StandaloneTransactionContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -291,7 +292,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     }
   }
 
-  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
   writeResult(builder.slice(), *(transactionContext->getVPackOptionsForDump()));
 }
 
@@ -633,7 +634,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
   if (found) {
     _nolockHeaderSet =
         new std::unordered_set<std::string>{std::string(shardId)};
-    transaction::Methods::_makeNolockHeaders = _nolockHeaderSet;
+    CollectionLockState::_noLockHeaders = _nolockHeaderSet;
   }
 }
 
@@ -643,7 +644,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
 
 void RestVocbaseBaseHandler::finalizeExecute() {
   if (_nolockHeaderSet != nullptr) {
-    transaction::Methods::_makeNolockHeaders = nullptr;
+    CollectionLockState::_noLockHeaders = nullptr;
     delete _nolockHeaderSet;
     _nolockHeaderSet = nullptr;
   }

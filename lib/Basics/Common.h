@@ -179,17 +179,11 @@ typedef long suseconds_t;
 #undef free
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper macro for calculating strlens for static strings at
 /// a compile-time (unless compiled with fno-builtin-strlen etc.)
-////////////////////////////////////////////////////////////////////////////////
-
 #define TRI_CHAR_LENGTH_PAIR(value) (value), strlen(value)
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief assert
-////////////////////////////////////////////////////////////////////////////////
-
 #ifndef TRI_ASSERT
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -211,12 +205,8 @@ typedef long suseconds_t;
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief aborts program execution, returning an error code
-///
 /// if backtraces are enabled, a backtrace will be printed before
-////////////////////////////////////////////////////////////////////////////////
-
 #define FATAL_ERROR_EXIT(...)                 \
   do {                                        \
     TRI_LogBacktrace();                       \
@@ -226,18 +216,13 @@ typedef long suseconds_t;
     exit(EXIT_FAILURE);                       \
   } while (0)
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief aborts program execution, calling std::abort
-///
 /// if backtraces are enabled, a backtrace will be printed before
-////////////////////////////////////////////////////////////////////////////////
-
 #define FATAL_ERROR_ABORT(...)                \
   do {                                        \
     TRI_LogBacktrace();                       \
     arangodb::Logger::flush();                \
     arangodb::Logger::shutdown();             \
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr); \
     std::abort();                             \
   } while (0)
 
@@ -252,7 +237,6 @@ inline void ADB_WindowsExitFunction(int exitCode, void* data) {}
 // --SECTIONS--                                               deferred execution
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
 /// Use in a function (or scope) as:
 ///   TRI_DEFER( <ONE_STATEMENT> );
 /// and the statement will be called regardless if the function throws or
@@ -263,8 +247,6 @@ inline void ADB_WindowsExitFunction(int exitCode, void* data) {}
 /// appearance.
 /// The idea to this is from
 ///   http://blog.memsql.com/c-error-handling-with-auto/
-////////////////////////////////////////////////////////////////////////////////
-
 #define TOKEN_PASTE_WRAPPED(x, y) x##y
 #define TOKEN_PASTE(x, y) TOKEN_PASTE_WRAPPED(x, y)
 

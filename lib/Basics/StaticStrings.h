@@ -84,6 +84,7 @@ class StaticStrings {
   static std::string const Code;
   static std::string const Connection;
   static std::string const ContentEncoding;
+  static std::string const ContentLength;
   static std::string const ContentTypeHeader;
   static std::string const Coordinator;
   static std::string const CorsMethods;

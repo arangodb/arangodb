@@ -156,6 +156,7 @@ ImportHelper::ImportHelper(httpclient::SimpleHttpClient* client,
       _rowsRead(0),
       _rowOffset(0),
       _rowsToSkip(0),
+      _keyColumn(-1),
       _onDuplicateAction("error"),
       _collectionName(),
       _lineBuffer(TRI_UNKNOWN_MEM_ZONE),
@@ -249,10 +250,15 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
       _errorMessage = TRI_LAST_ERROR_STR;
       return false;
     } else if (n == 0) {
+      // we have read the entire file
+      // now have the CSV parser parse an additional new line so it
+      // will definitely process the last line of the input data if
+      // it did not end with a newline
+      TRI_ParseCsvString(&parser, "\n", 1);
       break;
     }
 
-    totalRead += (int64_t)n;
+    totalRead += static_cast<int64_t>(n);
     reportProgress(totalLength, totalRead, nextProgress);
 
     TRI_ParseCsvString(&parser, buffer, n);
@@ -353,7 +359,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
       checkedFront = true;
     }
 
-    totalRead += (int64_t)n;
+    totalRead += static_cast<int64_t>(n);
     reportProgress(totalLength, totalRead, nextProgress);
 
     if (_outputBuffer.length() > _maxUploadSize) {
@@ -481,18 +487,26 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     _lineBuffer.appendChar(',');
   }
 
-  if (row == 0 + _rowsToSkip || escaped) {
+  if (row == _rowsToSkip && fieldLength > 0) {
+    // translate field
+    auto it = _translations.find(std::string(field, fieldLength));
+    if (it != _translations.end()) {
+      field = (*it).second.c_str();
+      fieldLength = (*it).second.size();
+    }
+  }
+
+  if (_keyColumn == -1 && row == _rowsToSkip && fieldLength == 4 && memcmp(field, "_key", 4) == 0) {
+    _keyColumn = column;
+  }
+
+  if (row == _rowsToSkip || escaped || _keyColumn == static_cast<decltype(_keyColumn)>(column)) {
     // head line or escaped value
     _lineBuffer.appendJsonEncoded(field, fieldLength);
     return;
   }
-    
-  if (!_convert) {
-    _lineBuffer.appendText(field, fieldLength);
-    return;
-  }
 
-  if (*field == '\0') {
+  if (*field == '\0' || fieldLength == 0) {
     // do nothing
     _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
     return;
@@ -508,50 +522,60 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     return;
   }
 
-  if (IsInteger(field, fieldLength)) {
-    // integer value
-    // conversion might fail with out-of-range error
-    try {
-      if (fieldLength > 8) {
-        // long integer numbers might be problematic. check if we get out of
-        // range
-        (void) std::stoll(std::string(
-            field,
-            fieldLength));  // this will fail if the number cannot be converted
+  if (_convert) {
+    if (IsInteger(field, fieldLength)) {
+      // integer value
+      // conversion might fail with out-of-range error
+      try {
+        if (fieldLength > 8) {
+          // long integer numbers might be problematic. check if we get out of
+          // range
+          (void) std::stoll(std::string(
+              field,
+              fieldLength));  // this will fail if the number cannot be converted
+        }
+
+        int64_t num = StringUtils::int64(field, fieldLength);
+        _lineBuffer.appendInteger(num);
+      } catch (...) {
+        // conversion failed
+        _lineBuffer.appendJsonEncoded(field, fieldLength);
+      }
+    } else if (IsDecimal(field, fieldLength)) {
+      // double value
+      // conversion might fail with out-of-range error
+      try {
+        std::string tmp(field, fieldLength);
+        size_t pos = 0;
+        double num = std::stod(tmp, &pos);
+        if (pos == fieldLength) {
+          bool failed = (num != num || num == HUGE_VAL || num == -HUGE_VAL);
+          if (!failed) {
+            _lineBuffer.appendDecimal(num);
+            return;
+          }
+        }
+        // NaN, +inf, -inf
+        // fall-through to appending the number as a string
+      } catch (...) {
+        // conversion failed
+        // fall-through to appending the number as a string
       }
 
-      int64_t num = StringUtils::int64(field, fieldLength);
-      _lineBuffer.appendInteger(num);
-    } catch (...) {
-      // conversion failed
+      _lineBuffer.appendChar('"');
+      _lineBuffer.appendText(field, fieldLength);
+      _lineBuffer.appendChar('"');
+    } else {
       _lineBuffer.appendJsonEncoded(field, fieldLength);
     }
-  } else if (IsDecimal(field, fieldLength)) {
-    // double value
-    // conversion might fail with out-of-range error
-    try {
-      std::string tmp(field, fieldLength);
-      size_t pos = 0;
-      double num = std::stod(tmp, &pos);
-      if (pos == fieldLength) {
-        bool failed = (num != num || num == HUGE_VAL || num == -HUGE_VAL);
-        if (!failed) {
-          _lineBuffer.appendDecimal(num);
-          return;
-        }
-      }
-      // NaN, +inf, -inf
-      // fall-through to appending the number as a string
-    } catch (...) {
-      // conversion failed
-      // fall-through to appending the number as a string
-    }
-
-    _lineBuffer.appendChar('"');
-    _lineBuffer.appendText(field, fieldLength);
-    _lineBuffer.appendChar('"');
   } else {
-    _lineBuffer.appendJsonEncoded(field, fieldLength);
+    if (IsInteger(field, fieldLength) || IsDecimal(field, fieldLength)) {
+      // numeric value. don't convert
+      _lineBuffer.appendText(field, fieldLength);
+    } else {
+      // non-numeric value
+      _lineBuffer.appendJsonEncoded(field, fieldLength);
+    }
   }
 }
 
@@ -661,7 +685,7 @@ void ImportHelper::sendCsvBuffer() {
   if (!checkCreateCollection()) {
     return;
   }
-    
+
   std::unordered_map<std::string, std::string> headerFields;
   std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
                   StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
@@ -676,7 +700,7 @@ void ImportHelper::sendCsvBuffer() {
   if (_firstChunk && _overwrite) {
     url += "&overwrite=true";
   }
-  
+
   _firstChunk = false;
 
   std::unique_ptr<SimpleHttpResult> result(_client->request(

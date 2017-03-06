@@ -40,14 +40,10 @@ namespace velocypack {
 class Slice;
 }
 
-namespace transaction {
-class Methods;
-}
-;
-
 namespace aql {
 
 class Query;
+class VariableGenerator;
 
 typedef std::unordered_map<Variable const*, std::unordered_set<std::string>>
     TopLevelAttributes;
@@ -58,7 +54,7 @@ class Ast {
 
  public:
   /// @brief create the AST
-  Ast(Query*);
+  explicit Ast(Query*);
 
   /// @brief destroy the AST
   ~Ast();
@@ -69,12 +65,7 @@ class Ast {
 
   /// @brief return the variable generator
   inline VariableGenerator* variables() { return &_variables; }
-
-  /// @brief return the variable generator
-  inline VariableGenerator* variables() const {
-    return const_cast<VariableGenerator*>(&_variables);
-  }
-
+  
   /// @brief return the root of the AST
   inline AstNode const* root() const { return _root; }
 

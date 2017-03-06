@@ -59,9 +59,6 @@ SortedCollectBlock::CollectGroup::~CollectGroup() {
   for (auto& it : groupBlocks) {
     delete it;
   }
-  for (auto& it : aggregators) {
-    delete it;
-  }
 }
 
 void SortedCollectBlock::CollectGroup::initialize(size_t capacity) {
@@ -79,7 +76,6 @@ void SortedCollectBlock::CollectGroup::initialize(size_t capacity) {
 
   // reset aggregators
   for (auto& it : aggregators) {
-    TRI_ASSERT(it != nullptr);
     it->reset();
   }
 }
@@ -102,7 +98,6 @@ void SortedCollectBlock::CollectGroup::reset() {
 
   // reset all aggregators
   for (auto& it : aggregators) {
-    TRI_ASSERT(it != nullptr);
     it->reset();
   }
 
@@ -184,8 +179,7 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
     }
     _aggregateRegisters.emplace_back(
         std::make_pair((*itOut).second.registerId, reg));
-    _currentGroup.aggregators.emplace_back(
-        Aggregator::fromTypeString(_trx, p.second.second));
+    _currentGroup.aggregators.emplace_back(Aggregator::fromTypeString(_trx, p.second.second));
   }
   TRI_ASSERT(_aggregateRegisters.size() == en->_aggregateVariables.size());
   TRI_ASSERT(_aggregateRegisters.size() == _currentGroup.aggregators.size());
@@ -617,14 +611,8 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
   // cleanup function for group values
   auto cleanup = [&allGroups]() -> void {
     for (auto& it : allGroups) {
-      if (it.second != nullptr) {
-        for (auto& it2 : *(it.second)) {
-          delete it2;
-        }
-        delete it.second;
-      }
+      delete it.second;
     }
-    allGroups.clear();
   };
 
   // prevent memory leaks by always cleaning up the groups
@@ -643,8 +631,8 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
     size_t row = 0;
     for (auto& it : allGroups) {
-    
       auto& keys = it.first;
+      TRI_ASSERT(it.second != nullptr);
 
       TRI_ASSERT(keys.size() == _groupRegisters.size());
       size_t i = 0;
@@ -653,7 +641,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         const_cast<AqlValue*>(&key)->erase(); // to prevent double-freeing later
       }
 
-      if (it.second != nullptr && !en->_count) {
+      if (!en->_count) {
         TRI_ASSERT(it.second->size() == _aggregateRegisters.size());
         size_t j = 0;
         for (auto const& r : *(it.second)) {
@@ -662,7 +650,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         }
       } else if (en->_count) {
         // set group count in result register
-        TRI_ASSERT(it.second != nullptr);
+        TRI_ASSERT(!it.second->empty());
         result->setValue(row, _collectRegister,
                          it.second->back()->stealValue());
       }
@@ -722,7 +710,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           // no aggregate registers. this means we'll only count the number of
           // items
           if (en->_count) {
-            aggregateValues->emplace_back(new AggregatorLength(_trx, 1));
+            aggregateValues->emplace_back(std::make_unique<AggregatorLength>(_trx, 1));
           }
         } else {
           // we do have aggregate registers. create them as empty AqlValues
@@ -731,8 +719,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           // initialize aggregators
           size_t j = 0;
           for (auto const& r : en->_aggregateVariables) {
-            aggregateValues->emplace_back(
-                Aggregator::fromTypeString(_trx, r.second.second));
+            aggregateValues->emplace_back(Aggregator::fromTypeString(_trx, r.second.second));
             aggregateValues->back()->reduce(
                 GetValueForRegister(cur, _pos, _aggregateRegisters[j].second));
             ++j;
@@ -749,10 +736,12 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         if (en->_aggregateVariables.empty()) {
           // no aggregate registers. simply increase the counter
           if (en->_count) {
+            TRI_ASSERT(!aggregateValues->empty());
             aggregateValues->back()->reduce(AqlValue());
           }
         } else {
           // apply the aggregators for the group
+          TRI_ASSERT(aggregateValues->size() == _aggregateRegisters.size());
           size_t j = 0;
           for (auto const& r : _aggregateRegisters) {
             (*aggregateValues)[j]->reduce(

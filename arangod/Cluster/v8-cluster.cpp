@@ -581,72 +581,45 @@ static void JS_GetCollectionInfoClusterInfo(
       TRI_ObjectToString(args[0]), TRI_ObjectToString(args[1]));
   TRI_ASSERT(ci != nullptr);
 
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  std::string const cid = ci->cid_as_string();
-  std::string const& name = ci->name();
-  result->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(cid));
-  result->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING(name));
-  result->Set(TRI_V8_ASCII_STRING("type"),
-              v8::Number::New(isolate, (int)ci->type()));
-  result->Set(TRI_V8_ASCII_STRING("status"),
-              v8::Number::New(isolate, (int)ci->getStatusLocked()));
+  std::unordered_set<std::string> ignoreKeys{"allowUserKeys",
+                                             "avoidServers",
+                                             "cid",
+                                             "count",
+                                             "distributeShardsLike",
+                                             "indexBuckets",
+                                             "keyOptions",
+                                             "numberOfShards",
+                                             "path",
+                                             "planId",
+                                             "version"};
+  VPackBuilder infoBuilder = ci->toVelocyPackIgnore(ignoreKeys, false);
+  VPackSlice info = infoBuilder.slice();
 
-  std::string const statusString = ci->statusString();
-  result->Set(TRI_V8_ASCII_STRING("statusString"),
-              TRI_V8_STD_STRING(statusString));
+  TRI_ASSERT(info.isObject());
+  v8::Handle<v8::Object> result = TRI_VPackToV8(isolate, info)->ToObject();
 
-  result->Set(TRI_V8_ASCII_STRING("deleted"),
-              v8::Boolean::New(isolate, ci->deleted()));
-  result->Set(TRI_V8_ASCII_STRING("doCompact"),
-              v8::Boolean::New(isolate, ci->doCompact()));
-  result->Set(TRI_V8_ASCII_STRING("isSystem"),
-              v8::Boolean::New(isolate, ci->isSystem()));
-  result->Set(TRI_V8_ASCII_STRING("isVolatile"),
-              v8::Boolean::New(isolate, ci->isVolatile()));
-  result->Set(TRI_V8_ASCII_STRING("waitForSync"),
-              v8::Boolean::New(isolate, ci->waitForSync()));
-  result->Set(TRI_V8_ASCII_STRING("journalSize"),
-              v8::Number::New(isolate, static_cast<double>(ci->journalSize())));
-  result->Set(TRI_V8_ASCII_STRING("replicationFactor"),
-              v8::Number::New(isolate, ci->replicationFactor()));
-  result->Set(TRI_V8_ASCII_STRING("isSmart"),
-              v8::Boolean::New(isolate, ci->isSmart()));
-
-  std::vector<std::string> const& sks = ci->shardKeys();
-  v8::Handle<v8::Array> shardKeys = v8::Array::New(isolate, (int)sks.size());
-  for (uint32_t i = 0, n = (uint32_t)sks.size(); i < n; ++i) {
-    shardKeys->Set(i, TRI_V8_STD_STRING(sks[i]));
-  }
-  result->Set(TRI_V8_ASCII_STRING("shardKeys"), shardKeys);
-
-  auto shardMap = ci->shardIds();
+  // Compute ShardShorts
   auto serverAliases = ClusterInfo::instance()->getServerAliases();
-  v8::Handle<v8::Object> shardIds = v8::Object::New(isolate);
+  VPackSlice shards = info.get("shards");
+  TRI_ASSERT(shards.isObject());
   v8::Handle<v8::Object> shardShorts = v8::Object::New(isolate);
-  for (auto const& p : *shardMap) {
-    v8::Handle<v8::Array> list = v8::Array::New(isolate, (int)p.second.size());
-    v8::Handle<v8::Array> shorts = v8::Array::New(isolate, (int)p.second.size());
+  for (auto const& p : VPackObjectIterator(shards)) {
+    TRI_ASSERT(p.value.isArray());
+    v8::Handle<v8::Array> shorts =
+        v8::Array::New(isolate, static_cast<int>(p.value.length()));
     uint32_t pos = 0;
-    for (auto const& s : p.second) {
-      try{
-        std::string t = s;
-        if (s.at(0) == '_') {
-          t = s.substr(1);
+    for (auto const& s : VPackArrayIterator(p.value)) {
+      try {
+        std::string t = s.copyString();
+        if (t.at(0) == '_') {
+          t = t.substr(1);
         }
-        shorts->Set(pos, TRI_V8_STD_STRING(serverAliases.at(t)));
+        shorts->Set(pos++, TRI_V8_STD_STRING(serverAliases.at(t)));
       } catch (...) {}
-      list->Set(pos++, TRI_V8_STD_STRING(s));
     }
-    shardIds->Set(TRI_V8_STD_STRING(p.first), list);
-    shardShorts->Set(TRI_V8_STD_STRING(p.first), shorts);
+    shardShorts->Set(TRI_V8_STD_STRING(p.key.copyString()), shorts);
   }
-  result->Set(TRI_V8_ASCII_STRING("shards"), shardIds);
   result->Set(TRI_V8_ASCII_STRING("shardShorts"), shardShorts);
-  VPackBuilder tmp;
-  ci->getIndexesVPack(tmp, false);
-  v8::Handle<v8::Value> indexes = TRI_VPackToV8(isolate, tmp.slice());
-  result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
-
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }

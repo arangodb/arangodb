@@ -25,8 +25,8 @@
 #define ARANGOD_MMFILES_COLLECTOR_CACHE_H 1
 
 #include "Basics/Common.h"
+#include "MMFiles/MMFilesDitch.h"
 #include "VocBase/DatafileStatisticsContainer.h"
-#include "VocBase/Ditch.h"
 #include "VocBase/voc-types.h"
 
 struct MMFilesDatafile;
@@ -76,7 +76,7 @@ struct MMFilesCollectorCache {
 
   ~MMFilesCollectorCache() {
     delete operations;
-    freeDitches();
+    freeMMFilesDitches();
   }
 
   /// @brief return a reference to an existing datafile statistics struct
@@ -99,15 +99,15 @@ struct MMFilesCollectorCache {
   }
 
   /// @brief add a ditch
-  void addDitch(arangodb::DocumentDitch* ditch) {
+  void addDitch(arangodb::MMFilesDocumentDitch* ditch) {
     TRI_ASSERT(ditch != nullptr);
     ditches.emplace_back(ditch);
   }
 
   /// @brief free all ditches
-  void freeDitches() {
+  void freeMMFilesDitches() {
     for (auto& it : ditches) {
-      it->ditches()->freeDocumentDitch(it, false);
+      it->ditches()->freeMMFilesDocumentDitch(it, false);
     }
 
     ditches.clear();
@@ -129,7 +129,7 @@ struct MMFilesCollectorCache {
   std::vector<MMFilesCollectorOperation>* operations;
 
   /// @brief ditches held by the operations
-  std::vector<arangodb::DocumentDitch*> ditches;
+  std::vector<arangodb::MMFilesDocumentDitch*> ditches;
 
   /// @brief datafile info cache, updated when the collector transfers markers
   std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer> dfi;

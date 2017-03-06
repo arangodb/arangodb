@@ -26,6 +26,7 @@
 #include "Aql/ClusterBlocks.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -38,7 +39,7 @@
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Methods.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Context.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Dumper.h>
@@ -99,7 +100,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
                                       (part == "main" ? PART_MAIN : PART_DEPENDENT));
   
   try {
-    query->prepare(_queryRegistry);
+    query->prepare(_queryRegistry, 0);
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query: " << ex.what();
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN, ex.what());
@@ -169,14 +170,12 @@ void RestAqlHandler::parseQuery() {
     return;
   }
 
-  auto query =
-      new Query(false, _vocbase, queryString.c_str(), queryString.size(),
+  auto query = std::make_unique<Query>(false, _vocbase, queryString.c_str(), queryString.size(),
                 std::shared_ptr<VPackBuilder>(), nullptr, PART_MAIN);
   QueryResult res = query->parse();
   if (res.code != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the Query: " << res.details;
     generateError(rest::ResponseCode::BAD, res.code, res.details);
-    delete query;
     return;
   }
 
@@ -315,7 +314,7 @@ void RestAqlHandler::createQueryFromString() {
                          (part == "main" ? PART_MAIN : PART_DEPENDENT));
   
   try {
-    query->prepare(_queryRegistry);
+    query->prepare(_queryRegistry, 0);
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query: " << ex.what();
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN, ex.what());
@@ -876,7 +875,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
 std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
   try {
     std::shared_ptr<VPackBuilder> body =
-        _request->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+        _request->toVelocyPackBuilderPtr();
     if (body == nullptr) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot parse json object";
       generateError(rest::ResponseCode::BAD,
@@ -903,7 +902,7 @@ std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
 // Send slice as result with the given response type.
 void RestAqlHandler::sendResponse(
     rest::ResponseCode code, VPackSlice const slice,
-    TransactionContext* transactionContext) {
+    transaction::Context* transactionContext) {
   resetResponse(code);
   writeResult(slice, *(transactionContext->getVPackOptionsForDump()));
 }

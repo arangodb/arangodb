@@ -39,7 +39,7 @@ struct ShortestPathOptions {
 
   /// @brief constructor, using default values
   ShortestPathOptions()
-      : weightAttribute(""),
+      : weightAttribute(),
         defaultWeight(1) {}
 
   void toVelocyPack(arangodb::velocypack::Builder&) const;

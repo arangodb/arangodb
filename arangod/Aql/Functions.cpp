@@ -44,7 +44,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -411,13 +411,11 @@ void Functions::Stringify(transaction::Methods* trx,
     return;
   }
    
-  if (slice.isObject() || slice.isArray()) {
-    VPackDumper dumper(&buffer, trx->transactionContextPtr()->getVPackOptions());
-    dumper.dump(slice);
-    return;
-  } 
-  
-  VPackDumper dumper(&buffer);
+  VPackOptions* options = trx->transactionContextPtr()->getVPackOptionsForDump();
+  VPackOptions adjustedOptions = *options;
+  adjustedOptions.escapeUnicode = false;
+  adjustedOptions.escapeForwardSlashes = false;
+  VPackDumper dumper(&buffer, &adjustedOptions);
   dumper.dump(slice);
 }
 
@@ -2270,7 +2268,7 @@ AqlValue Functions::Zip(arangodb::aql::Query* query,
     for (VPackValueLength i = 0; i < n; ++i) {
       buffer->reset();
       Stringify(trx, adapter, keysSlice.at(i));
-      builder->add(std::string(buffer->c_str(), buffer->length()), valuesSlice.at(i));
+      builder->add(buffer->c_str(), buffer->length(), valuesSlice.at(i));
     }
     builder->close();
     return AqlValue(builder.get());

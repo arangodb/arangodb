@@ -27,14 +27,9 @@
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesCollection.h"
-#include "MMFiles/MMFilesDatafile.h"
-#include "MMFiles/MMFilesDatafileHelper.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesWalLogfile.h"
-#include "MMFiles/MMFilesWalMarker.h"
-#include "VocBase/CompactionLocker.h"
-#include "VocBase/Ditch.h"
+#include "MMFiles/MMFilesLogfileManager.h" //TODO -- remove
+#include "MMFiles/MMFilesCompactionLocker.h"
+#include "MMFiles/MMFilesDitch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -570,7 +565,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
   };
 
   try {
-    bool hasMore = collection->applyForTickRange(dataMin, dataMax, callback);
+    bool hasMore = collection->getPhysical()->applyForTickRange(dataMin, dataMax, callback);
 
     if (lastFoundTick > 0) {
       // data available for requested range
@@ -611,8 +606,9 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   auto customTypeHandler = dump->_transactionContext->orderCustomTypeHandler();
   dump->_vpackOptions.customTypeHandler = customTypeHandler.get();
 
+  auto mmfiles = arangodb::MMFilesCollection::toMMFilesCollection(collection);
   // create a barrier so the underlying collection is not unloaded
-  auto b = collection->ditches()->createReplicationDitch(__FILE__, __LINE__);
+  auto b = mmfiles->ditches()->createMMFilesReplicationDitch(__FILE__, __LINE__);
 
   if (b == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -621,9 +617,8 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   // block compaction
   int res;
   {
-    auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
-    TRI_ASSERT(physical != nullptr);
-    CompactionPreventer compactionPreventer(physical);
+    auto mmfiles = arangodb::MMFilesCollection::toMMFilesCollection(collection);
+    MMFilesCompactionPreventer compactionPreventer(mmfiles);
 
     try {
       res = DumpCollection(dump, collection, collection->vocbase()->id(),
@@ -634,7 +629,7 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   }
 
   // always execute this
-  collection->ditches()->freeDitch(b);
+  mmfiles->ditches()->freeDitch(b);
 
   return res;
 }
@@ -722,6 +717,10 @@ int TRI_DumpLogReplication(
               dump->_collectionNames[collectionId] = name.copyString();
             }
           }
+        } else if (type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION) {
+          // invalidate collection name cache because this is a
+          // rename operation
+          dump->_collectionNames.clear();
         }
 
         ptr += MMFilesDatafileHelper::AlignedMarkerSize<size_t>(marker);

@@ -27,7 +27,6 @@
 #include "Agency/Job.h"
 
 using namespace arangodb::consensus;
-using namespace arangodb::velocypack;
 
 FailedFollower::FailedFollower(Node const& snapshot, Agent* agent,
                                std::string const& jobId,
@@ -124,6 +123,7 @@ bool FailedFollower::start() {
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
   Node const& planned = _snapshot(planPath);
+
 
   // Copy todo to pending
   Builder todo, pending;

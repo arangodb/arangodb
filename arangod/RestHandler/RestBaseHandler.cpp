@@ -33,7 +33,7 @@
 #include "Meta/conversion.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Context.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -47,11 +47,10 @@ RestBaseHandler::RestBaseHandler(GeneralRequest* request,
 /// @brief parses the body as VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> RestBaseHandler::parseVelocyPackBody(
-    VPackOptions const* options, bool& success) {
+std::shared_ptr<VPackBuilder> RestBaseHandler::parseVelocyPackBody(bool& success) {
   try {
     success = true;
-    return _request->toVelocyPackBuilderPtr(options);
+    return _request->toVelocyPackBuilderPtr();
   } catch (VPackException const& e) {
     std::string errmsg("VPackError error: ");
     errmsg.append(e.what());
@@ -95,7 +94,7 @@ void RestBaseHandler::generateResult(rest::ResponseCode code,
 template<typename Payload>
 void RestBaseHandler::generateResult(
     rest::ResponseCode code, Payload&& payload,
-    std::shared_ptr<TransactionContext> context) {
+    std::shared_ptr<transaction::Context> context) {
   resetResponse(code);
   writeResult(std::forward<Payload>(payload), *(context->getVPackOptionsForDump()));
 }
@@ -186,9 +185,9 @@ template void RestBaseHandler::generateResult<VPackBuffer<uint8_t>>(rest::Respon
 template void RestBaseHandler::generateResult<VPackSlice>(rest::ResponseCode, VPackSlice&&, VPackOptions const*);
 template void RestBaseHandler::generateResult<VPackSlice&>(rest::ResponseCode, VPackSlice&, VPackOptions const*);
 
-template void RestBaseHandler::generateResult<VPackBuffer<uint8_t>>(rest::ResponseCode, VPackBuffer<uint8_t>&&, std::shared_ptr<TransactionContext>);
-template void RestBaseHandler::generateResult<VPackSlice>(rest::ResponseCode, VPackSlice&&, std::shared_ptr<TransactionContext>);
-template void RestBaseHandler::generateResult<VPackSlice&>(rest::ResponseCode, VPackSlice&, std::shared_ptr<TransactionContext>);
+template void RestBaseHandler::generateResult<VPackBuffer<uint8_t>>(rest::ResponseCode, VPackBuffer<uint8_t>&&, std::shared_ptr<transaction::Context>);
+template void RestBaseHandler::generateResult<VPackSlice>(rest::ResponseCode, VPackSlice&&, std::shared_ptr<transaction::Context>);
+template void RestBaseHandler::generateResult<VPackSlice&>(rest::ResponseCode, VPackSlice&, std::shared_ptr<transaction::Context>);
 
 template void RestBaseHandler::writeResult<VPackBuffer<uint8_t>>(VPackBuffer<uint8_t>&& payload, VPackOptions const&);
 template void RestBaseHandler::writeResult<VPackSlice>(VPackSlice&& payload, VPackOptions const&);

@@ -71,10 +71,10 @@ rocksdb::Transaction* MMFilesTransactionState::rocksTransaction() {
 }
   
 /// @brief start a transaction
-int MMFilesTransactionState::beginTransaction(transaction::Hints hints, int nestingLevel) {
-  LOG_TRX(this, nestingLevel) << "beginning " << AccessMode::typeString(_type) << " transaction";
+int MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
+  LOG_TRX(this, _nestingLevel) << "beginning " << AccessMode::typeString(_type) << " transaction";
 
-  if (nestingLevel == 0) {
+  if (_nestingLevel == 0) {
     TRI_ASSERT(_status == transaction::Status::CREATED);
 
     auto logfileManager = MMFilesLogfileManager::instance();
@@ -104,8 +104,8 @@ int MMFilesTransactionState::beginTransaction(transaction::Hints hints, int nest
     _id = TRI_NewTickServer();
 
     // register a protector
-    int res = logfileManager->registerTransaction(_id);
-
+    int res = logfileManager->registerTransaction(_id, isReadOnlyTransaction());
+ 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -114,43 +114,43 @@ int MMFilesTransactionState::beginTransaction(transaction::Hints hints, int nest
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
 
-  int res = useCollections(nestingLevel);
+  int res = useCollections(_nestingLevel);
 
   if (res == TRI_ERROR_NO_ERROR) {
     // all valid
-    if (nestingLevel == 0) {
+    if (_nestingLevel == 0) {
       updateStatus(transaction::Status::RUNNING);
 
       // defer writing of the begin marker until necessary!
     }
   } else {
     // something is wrong
-    if (nestingLevel == 0) {
+    if (_nestingLevel == 0) {
       updateStatus(transaction::Status::ABORTED);
     }
 
     // free what we have got so far
-    unuseCollections(nestingLevel);
+    unuseCollections(_nestingLevel);
   }
 
   return res;
 }
 
 /// @brief commit a transaction
-int MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx, int nestingLevel) {
-  LOG_TRX(this, nestingLevel) << "committing " << AccessMode::typeString(_type) << " transaction";
+int MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx) {
+  LOG_TRX(this, _nestingLevel) << "committing " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
   int res = TRI_ERROR_NO_ERROR;
 
-  if (nestingLevel == 0) {
+  if (_nestingLevel == 0) {
     if (_rocksTransaction != nullptr) {
       auto status = _rocksTransaction->Commit();
 
       if (!status.ok()) {
         res = TRI_ERROR_INTERNAL;
-        abortTransaction(activeTrx, nestingLevel);
+        abortTransaction(activeTrx);
         return res;
       }
     }
@@ -159,7 +159,7 @@ int MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx, 
 
     if (res != TRI_ERROR_NO_ERROR) {
       // TODO: revert rocks transaction somehow
-      abortTransaction(activeTrx, nestingLevel);
+      abortTransaction(activeTrx);
 
       // return original error
       return res;
@@ -177,28 +177,34 @@ int MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx, 
     freeOperations(activeTrx);
   }
 
-  unuseCollections(nestingLevel);
+  unuseCollections(_nestingLevel);
 
   return res;
 }
 
 /// @brief abort and rollback a transaction
-int MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx, int nestingLevel) {
-  LOG_TRX(this, nestingLevel) << "aborting " << AccessMode::typeString(_type) << " transaction";
+int MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx) {
+  LOG_TRX(this, _nestingLevel) << "aborting " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
   int res = TRI_ERROR_NO_ERROR;
 
-  if (nestingLevel == 0) {
+  if (_nestingLevel == 0) {
     res = writeAbortMarker();
 
     updateStatus(transaction::Status::ABORTED);
 
+    if (_hasOperations) {
+      // must clean up the query cache because the transaction
+      // may have queried something via AQL that is now rolled back
+      clearQueryCache();
+    }
+
     freeOperations(activeTrx);
   }
 
-  unuseCollections(nestingLevel);
+  unuseCollections(_nestingLevel);
 
   return res;
 }
@@ -336,6 +342,9 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
     copy.release();
     operation.swapped();
     _hasOperations = true;
+    
+    arangodb::aql::QueryCache::instance()->invalidate(
+        _vocbase, collection->name());
   }
 
   physical->setRevision(revisionId, false);

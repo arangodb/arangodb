@@ -35,7 +35,7 @@
 #include "Transaction/Hints.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/V8TransactionContext.h"
+#include "Transaction/V8Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -163,7 +163,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
   READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
 
   SingleCollectionTransaction trx(
-      V8TransactionContext::Create(collection->vocbase(), true),
+      transaction::V8Context::Create(collection->vocbase(), true),
       collection->cid(), create ? AccessMode::Type::WRITE : AccessMode::Type::READ);
 
   int res = trx.begin();
@@ -454,7 +454,7 @@ static void JS_DropIndexVocbaseCol(
   READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
 
   SingleCollectionTransaction trx(
-      V8TransactionContext::Create(collection->vocbase(), true),
+      transaction::V8Context::Create(collection->vocbase(), true),
       collection->cid(), AccessMode::Type::WRITE);
 
   int res = trx.begin();
@@ -476,7 +476,7 @@ static void JS_DropIndexVocbaseCol(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  bool ok = col->dropIndex(idx->id(), true);
+  bool ok = col->dropIndex(idx->id());
 
   if (ok) {
     TRI_V8_RETURN_TRUE();
@@ -548,7 +548,7 @@ static void JS_GetIndexesVocbaseCol(
   }
 
   SingleCollectionTransaction trx(
-      V8TransactionContext::Create(collection->vocbase(), true),
+      transaction::V8Context::Create(collection->vocbase(), true),
       collection->cid(), AccessMode::Type::READ);
     
   trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);

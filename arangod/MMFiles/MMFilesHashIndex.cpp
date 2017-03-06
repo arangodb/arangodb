@@ -34,7 +34,7 @@
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>

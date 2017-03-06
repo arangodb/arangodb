@@ -81,50 +81,10 @@ class LoggerStream {
     _out << obj;
     return *this;
   }
-
-  template <typename T>
-  LoggerStream& operator<<(std::vector<T> const& obj) {
-    _out << '[';
-    size_t i = 0;
-    size_t const n = obj.size();
-    for (auto const& it : obj) {
-      _out << it;
-      if (++i < n) {
-        _out << ", ";
-      }
-    }
-    _out << ']';
-    return *this;
-  }
-
-  template <typename T>
-  LoggerStream& operator<<(std::unordered_set<T> const& obj) {
-    _out << '{';
-    size_t i = 0;
-    size_t const n = obj.size();
-    for (auto const& it : obj) {
-      _out << it;
-      if (++i < n) {
-        _out << ", ";
-      }
-    }
-    _out << '}';
-    return *this;
-  }
   
-  template <typename K, typename V>
-  LoggerStream& operator<<(std::unordered_map<K, V> const& obj) {
-    _out << '{';
-    size_t i = 0;
-    size_t n = obj.size();
-    for (auto const& it : obj) {
-      _out << it;
-      if (++i < n) {
-        _out << ", ";
-      }
-      _out << it.first << " => " << it.second;
-    }
-    _out << '}';
+  template <typename T1, typename T2>
+  LoggerStream& operator<<(std::pair<T1, T2> const& obj) {
+    _out << '(' << obj.first << ", " << obj.second << ')';
     return *this;
   }
 
@@ -132,7 +92,7 @@ class LoggerStream {
   std::stringstream _out;
   size_t _topicId;
   LogLevel _level;
-  long int _line;
+  int _line;
   char const* _file;
   char const* _function;
 };

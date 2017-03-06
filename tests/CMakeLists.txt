@@ -27,6 +27,16 @@ add_executable(
   Basics/EndpointTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
+  Cache/CachedValue.cpp
+  Cache/FrequencyBuffer.cpp
+  Cache/Manager.cpp
+  Cache/Metadata.cpp
+  Cache/MockScheduler.cpp
+  Cache/PlainBucket.cpp
+  Cache/Rebalancer.cpp
+  Cache/State.cpp
+  Cache/TransactionalBucket.cpp
+  Cache/TransactionWindow.cpp
   Geo/georeg.cpp
   main.cpp
 )

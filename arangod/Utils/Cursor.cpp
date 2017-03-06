@@ -27,8 +27,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/CollectionExport.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/StandaloneTransactionContext.h"
-#include "Utils/TransactionContext.h"
+#include "Transaction/StandaloneContext.h"
+#include "Transaction/Context.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -228,7 +228,7 @@ static bool IncludeAttribute(
 
 void ExportCursor::dump(VPackBuilder& builder) {
   auto transactionContext =
-      std::make_shared<StandaloneTransactionContext>(_vocbaseGuard.vocbase());
+      std::make_shared<transaction::StandaloneContext>(_vocbaseGuard.vocbase());
 
   VPackOptions const* oldOptions = builder.options;
 

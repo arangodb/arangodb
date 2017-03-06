@@ -28,14 +28,14 @@
 
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
-#include "Utils/V8TransactionContext.h"
+#include "Transaction/V8Context.h"
 
 namespace arangodb {
 
 class UserTransaction final : public transaction::Methods {
  public:
   /// @brief create the transaction
-  UserTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
+  UserTransaction(std::shared_ptr<transaction::V8Context> transactionContext,
                       std::vector<std::string> const& readCollections,
                       std::vector<std::string> const& writeCollections,
                       std::vector<std::string> const& exclusiveCollections,

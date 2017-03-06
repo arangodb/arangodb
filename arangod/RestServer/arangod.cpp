@@ -28,7 +28,6 @@
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
-#include "Aql/AqlFunctionFeature.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
@@ -41,7 +40,9 @@
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
+#include "Aql/AqlFunctionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -77,14 +78,14 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 
 // TODO - the following MMFiles includes should probably be removed
-#include "MMFiles/MMFilesLogfileManager.h"  
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesWalRecoveryFeature.h"
 
 // #include "StorageEngine/RocksDBEngine.h" // enable when adding Rocksdb Engine
-                                            // this include will be disabled until
-                                            // we begin to implement the RocksDB
-                                            // engine
+// this include will be disabled until
+// we begin to implement the RocksDB
+// engine
 #include "MMFiles/MMFilesEngine.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
@@ -130,7 +131,9 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new AuthenticationFeature(&server));
     server.addFeature(new AqlFeature(&server));
     server.addFeature(new BootstrapFeature(&server));
-    server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
+    server.addFeature(new CacheManagerFeature(&server));
+    server.addFeature(
+        new CheckVersionFeature(&server, &ret, nonServerFeatures));
     server.addFeature(new ClusterFeature(&server));
     server.addFeature(new ConfigFeature(&server, name));
     server.addFeature(new ConsoleFeature(&server));
@@ -143,7 +146,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new FoxxQueuesFeature(&server));
     server.addFeature(new FrontendFeature(&server));
     server.addFeature(new GeneralServerFeature(&server));
-    server.addFeature(new GreetingsFeature(&server, "arangod"));
+    server.addFeature(new GreetingsFeature(&server));
     server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
     server.addFeature(new LanguageFeature(&server));
     server.addFeature(new LockfileFeature(&server));
@@ -191,7 +194,8 @@ static int runServer(int argc, char** argv) {
     // storage engines
     server.addFeature(new MMFilesEngine(&server));
     server.addFeature(new MMFilesWalRecoveryFeature(&server));
-    //server.addFeature(new RocksDBEngine(&server)); //enable RocksDB storage here
+    // server.addFeature(new RocksDBEngine(&server)); //enable RocksDB storage
+    // here
 
     try {
       server.run(argc, argv);
@@ -200,23 +204,27 @@ static int runServer(int argc, char** argv) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangod terminated because of an unhandled exception: "
-               << ex.what();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "arangod terminated because of an unhandled exception: "
+          << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangod terminated because of an unhandled exception of "
-                  "unknown type";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "arangod terminated because of an unhandled exception of "
+             "unknown type";
       ret = EXIT_FAILURE;
     }
     Logger::flush();
 
     return context.exit(ret);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangod terminated because of an unhandled exception: "
-             << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "arangod terminated because of an unhandled exception: "
+        << ex.what();
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangod terminated because of an unhandled exception of "
-                "unknown type";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "arangod terminated because of an unhandled exception of "
+           "unknown type";
   }
   exit(EXIT_FAILURE);
 }

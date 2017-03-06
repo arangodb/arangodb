@@ -10,7 +10,7 @@ Homebrew
 --------
 
 If you are using [homebrew](http://brew.sh/),
-then you can install the ArangoDB using *brew* as follows:
+then you can install the latest released stable version of ArangoDB using *brew* as follows:
 
     brew install arangodb
 

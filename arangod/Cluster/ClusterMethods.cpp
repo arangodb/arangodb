@@ -456,7 +456,7 @@ static void collectResultsFromAllShards(
     } else {
       TRI_ASSERT(res.answer != nullptr);
       resultMap.emplace(res.shardID,
-                        res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
+                        res.answer->toVelocyPackBuilderPtr());
       extractErrorCodes(res, errorCounter, true);
       responseCode = res.answer_code;
     }
@@ -892,7 +892,7 @@ int createDocumentOnCoordinator(
 
     responseCode = res.answer_code;
     TRI_ASSERT(res.answer != nullptr);
-    auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+    auto parsedResult = res.answer->toVelocyPackBuilderPtr();
     resultBody.swap(parsedResult);
     return TRI_ERROR_NO_ERROR;
   }
@@ -1056,7 +1056,7 @@ int deleteDocumentOnCoordinator(
 
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
-      auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+      auto parsedResult = res.answer->toVelocyPackBuilderPtr();
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1108,7 +1108,7 @@ int deleteDocumentOnCoordinator(
 
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtr();
           resultBody.swap(parsedResult);
         }
       }
@@ -1139,7 +1139,7 @@ int deleteDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr());
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -1353,7 +1353,7 @@ int getDocumentOnCoordinator(
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
 
-      auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+      auto parsedResult = res.answer->toVelocyPackBuilderPtr();
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1425,7 +1425,7 @@ int getDocumentOnCoordinator(
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtr();
           resultBody.swap(parsedResult);
         }
       } else {
@@ -1460,7 +1460,7 @@ int getDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr());
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -1534,7 +1534,7 @@ int fetchEdgesFromEngines(
       return commError;
     }
     TRI_ASSERT(res.answer != nullptr);
-    auto resBody = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+    auto resBody = res.answer->toVelocyPackBuilderPtr();
     VPackSlice resSlice = resBody->slice();
     if (!resSlice.isObject()) {
       // Response has invalid format
@@ -1623,7 +1623,7 @@ void fetchVerticesFromEngines(
       THROW_ARANGO_EXCEPTION(commError);
     }
     TRI_ASSERT(res.answer != nullptr);
-    auto resBody = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+    auto resBody = res.answer->toVelocyPackBuilderPtr();
     VPackSlice resSlice = resBody->slice();
     if (!resSlice.isObject()) {
       // Response has invalid format
@@ -1733,7 +1733,7 @@ int getFilteredEdgesOnCoordinator(
       return error;
     }
     TRI_ASSERT(res.answer != nullptr);
-    std::shared_ptr<VPackBuilder> shardResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+    std::shared_ptr<VPackBuilder> shardResult = res.answer->toVelocyPackBuilderPtr();
 
     if (shardResult == nullptr) {
       return TRI_ERROR_INTERNAL;
@@ -1943,7 +1943,7 @@ int modifyDocumentOnCoordinator(
 
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
-      auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+      auto parsedResult = res.answer->toVelocyPackBuilderPtr();
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -2000,7 +2000,7 @@ int modifyDocumentOnCoordinator(
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtr();
           resultBody.swap(parsedResult);
         }
       } else {
@@ -2035,7 +2035,7 @@ int modifyDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr());
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -2242,8 +2242,12 @@ ClusterMethods::persistCollectionInAgency(LogicalCollection* col) {
   }
   col->setShardMap(shards);
 
-  VPackBuilder velocy;
-  col->toVelocyPackForAgency(velocy);
+  std::unordered_set<std::string> const ignoreKeys{
+      "allowUserKeys", "cid", /* cid really ignore?*/
+      "count",         "planId", "version",
+  };
+  col->setStatus(TRI_VOC_COL_STATUS_LOADED);
+  VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false);
 
   std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(
