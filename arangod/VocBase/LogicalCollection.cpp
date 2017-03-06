@@ -168,6 +168,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _cleanupIndexes(0),
       _persistentIndexes(0),
       _physical(other.getPhysical()->clone(this, other.getPhysical())) {
+  TRI_ASSERT(_physical != nullptr);
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
     _followers.reset(new FollowerInfo(this));
@@ -185,7 +186,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
 // The Slice contains the part of the plan that
 // is relevant for this collection.
 LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
-                                     VPackSlice const& info, bool isPhysical)
+                                     VPackSlice const& info)
     : _internalVersion(0),
       _cid(ReadCid(info)),
       _planId(ReadPlanId(info, _cid)),
@@ -215,7 +216,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _persistentIndexes(0),
       _physical(
           EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)) {
-  getPhysical()->setPath(ReadStringValue(info, "path", ""));
+  TRI_ASSERT(_physical != nullptr);
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
@@ -398,21 +399,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
   }
 #endif
 
-  if (!ServerState::instance()->isCoordinator() && isPhysical) {
-    // If we are not in the coordinator we need a path
-    // to the physical data.
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    if (getPhysical()->path().empty()) {
-      std::string path = engine->createCollection(_vocbase, _cid, this);
-      getPhysical()->setPath(path);
-    }
-  }
-
-  int64_t count = Helper::readNumericValue<int64_t>(info, "count", -1);
-  if (count != -1) {
-    _physical->updateCount(count);
-  }
-
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
     _followers.reset(new FollowerInfo(this));
@@ -420,7 +406,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
   // update server's tick value
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(_cid));
-
 }
 
 LogicalCollection::~LogicalCollection() {}
@@ -1126,6 +1111,21 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
   arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
   arangodb::aql::QueryCache::instance()->invalidate(_vocbase, name());
   return _physical->dropIndex(iid);
+}
+
+
+/// @brief Persist the connected physical collection.
+///        This should be called AFTER the collection is successfully
+///        created and only on Sinlge/DBServer
+void LogicalCollection::persistPhysicalCollection() {
+  // Coordinators are not allowed to have local collections!
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  // We have not yet persisted this collection!
+  TRI_ASSERT(getPhysical()->path().empty());
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  std::string path = engine->createCollection(_vocbase, _cid, this);
+  getPhysical()->setPath(path);
 }
 
 /// @brief creates the initial indexes for the collection
