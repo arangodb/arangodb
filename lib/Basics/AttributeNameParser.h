@@ -85,6 +85,18 @@ struct AttributeName {
 
   static bool namesMatch(std::vector<AttributeName> const&,
                          std::vector<AttributeName> const&);
+
+  friend std::ostream& operator<<(std::ostream& stream, arangodb::basics::AttributeName const* name) {
+    stream << name->name;
+    if (name->shouldExpand) {
+      stream << "[*]";
+    }
+    return stream;
+  }
+
+  friend std::ostream& operator<<(std::ostream& stream, arangodb::basics::AttributeName const& name) {
+    return operator<<(stream, &name);
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,14 +138,20 @@ void TRI_AttributeNamesJoinNested(std::vector<AttributeName> const& input,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_AttributeNamesHaveExpansion(std::vector<AttributeName> const& input);
-}
+
+static inline std::ostream& operator<<(std::ostream& stream,
+                                       std::vector<AttributeName> const& attributes) {
+  size_t const n = attributes.size();
+  for (size_t i = 0; i < n; ++i) {
+    if (i > 0) {
+      stream << ".";
+    }
+    stream << attributes[i];
+  }
+  return stream;
 }
 
-std::ostream& operator<<(std::ostream&, arangodb::basics::AttributeName const*);
-std::ostream& operator<<(std::ostream&, arangodb::basics::AttributeName const&);
-std::ostream& operator<<(std::ostream&,
-                         std::vector<arangodb::basics::AttributeName> const*);
-std::ostream& operator<<(std::ostream&,
-                         std::vector<arangodb::basics::AttributeName> const&);
+}
+}
 
 #endif

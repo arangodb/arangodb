@@ -41,6 +41,7 @@
 #include <ostream>
 
 using namespace arangodb;
+using namespace arangodb::basics;
 
 Index::Index(
     TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
