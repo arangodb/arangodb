@@ -61,7 +61,7 @@ class ExecutionEngine;
 class ExecutionPlan;
 class Executor;
 class Query;
-class QueryProfile;
+struct QueryProfile;
 class QueryRegistry;
 
 /// @brief equery part
