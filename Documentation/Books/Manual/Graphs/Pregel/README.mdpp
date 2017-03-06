@@ -61,10 +61,10 @@ The code returned uniquely identifies the algorithm execution.
 The code returned by the ```pregel.start(...)``` method can be used to
 track the status of your algorithm.
 
-
+```javascript
   var execution = pregel.start("sssp", "demograph", {source: "vertices/V"});
   var status = pregel.status(execution);
-
+```
 
 The result will give your some information on the state of the algorithm. The status might
 look something like this:
@@ -82,6 +82,17 @@ look something like this:
     "sendCount" : 3240364978,
     "receivedCount" : 3240364975
   }
+```
+
+
+#### Canceling an Execution / Discarding results
+
+
+
+
+```javascript
+  var execution = pregel.start("sssp", "demograph", {source: "vertices/V"});
+  pregel.cancel(execution);
 ```
 
 ## AQL integration
@@ -119,7 +130,8 @@ pregel.start("pagerank", "graphname", {maxGSS: 100, threshold:0.00000001})
 
 #### Single-Source Shortest Path
 
-Cacluclate the distance of each vertex to a certain shortest path.
+Calcuclates the distance of each vertex to a certain shortest path. The algorithm will run until it converges,
+the iterations are bound by the diameter (the longest shortest path) of your graph.
 
 ```javascript
   var pregel = require("@arangodb/pregel");
@@ -138,11 +150,14 @@ vertex (or webpage), the hub score rates how good (authoritative) the vertices p
 Our version of the algorithm
 converges after a certain amount of time. The parameter *threshold* can be used to set a limit for the convergence (measured as maximum absolute difference of the hub and 
 authority scores between the current and last iteration)
+When you specify the result field name, the hub score will be stored in "<result field>_hub" and the authority score in 
+"<result field>_auth".
 The algorithm can be executed like this:
+
 
 ```javascript
     var pregel = require("@arangodb/pregel");
-    var handle = pregel.start("hits", "yourgraph", {threshold:0.00001});
+    var handle = pregel.start("hits", "yourgraph", {threshold:0.00001, resultField: "score"});
 ```
 
 #### Vertex Centrality
@@ -170,7 +185,7 @@ algorithm. The algorithm can be used like this
 
 ```javascript
     var pregel = require("@arangodb/pregel");
-    var handle = pregel.start("effectivecloseness", "yourgraph");
+    var handle = pregel.start("effectivecloseness", "yourgraph", resultField: "closeness");
 ```
 
 Another common measure is the *betweenness* centrality: It measures the number of times a vertex is part 
@@ -195,20 +210,24 @@ out of your graph (switches the vertices and edges), and then computes a PageRan
 
 ```javascript
     var pregel = require("@arangodb/pregel");
-    var handle = pregel.start("linerank", "yourgraph");
+    var handle = pregel.start("linerank", "yourgraph", "resultField": "rank");
 ```
 
 
 #### Community Detection: Label Propagation 
 
 
-Label Propagation can be used to implement community detection,
+*Label Propagation* can be used to implement community detection on large graphs. The idea is that each
+vertex should be in the community that most of his neighbours are in. We iteratively detemine this by first
+assigning random Community ID's. Then each itertation, a vertex will send it's current community ID to all his neighbor vertices. 
+Then each vertex adopts the community ID he received most frequently during the iteration. 
 
-**LineRank** approximates the random walk betweenness of every vertex in a graph.
-This should be a scalable equivalent to vertex betweeness, which can be executed in ArangoDB. It essentially builds a line graph
-out of your graph (switches the vertices and edges), and then computes a PageRank like score.
+The algorithm runs until it converges,
+which likely never really happens on large graphs. Therefore you need to specify a maximum iteration bound which suits you.
+The default bound is 500 iterations, which is likely too large for your application.
+Should work best on undirected graphs, results on directed graphs might vary depending on the density of your graph.
 
 ```javascript
     var pregel = require("@arangodb/pregel");
-    var handle = pregel.start("linerank", "yourgraph");
+    var handle = pregel.start("labelpropagation", "yourgraph", {maxGSS:100, resultField: "community"});
 ```

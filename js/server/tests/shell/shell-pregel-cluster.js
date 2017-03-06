@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, printf */
+/*global assertEqual, assertTrue, JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -33,23 +33,34 @@ var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var graph_module = require("@arangodb/general-graph");
 var internal = require("internal");
+var console = require("console");
 
-function testAlgo(key) {  
-  var i = 10000;
+function testAlgo(v, e, a, p) {  
+  var key = db._pregelStart(v, e, a, p);
+
+  var i = 1000;
   do {
+    console.log("Waiting...");
+    internal.wait(100);
     var doc = db._pregelStatus(key);
-    if (doc.state == "done") {
+    if (doc.state !== "running") {
+      console.log("Finished algorithm " + a);
+      internal.wait(1);// wait for workers to store data
+
       db.demo_v.all().toArray()
       .forEach(function(d) {
-                 if (d.result != -1) {
-                  assertTrue(Math.abs(d[algo] - d.result) < 0.0001);
+                 if (d[a]!= -1) {
+                   var diff = Math.abs(d[a] - d.result);
+                   if (diff > 0.0001) {
+                     console.log("Error on " + JSON.stringify(d));
+                     assertTrue(false);
+                   }
                  }
                });
-      return;
+      console.log("Done executing " + field + " : " + key);
+      break;
     }
-    internal.wait(500);
   } while(i-- >= 0);
-  
 }
 
 function clientTestSuite () {
@@ -115,23 +126,21 @@ function clientTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
     
     tearDown : function () {
-      db.demo_v.drop();
-      db.demo_e.drop();
+      graph_module._drop("demo", true);
+      //db.demo_v.drop();
+      //db.demo_e.drop();
     },
     
     testSSSPNormal: function () {
-      var key = db._pregelStart("demo_v", "demo_e", "sssp", {async:false, source:"K"});
-      testAlgo(key);
+      testAlgo("demo_v", "demo_e", "sssp", {async:false, source:"demo_v/K"});
     },
     
     testSSSPAsync: function () {
-      var key = db._pregelStart("demo_v", "demo_e", "sssp", {async:true, source:"K"});
-      testAlgo(key);
+      testAlgo("demo_v", "demo_e", "sssp", {async:true, source:"demo_v/K"});
     },
     
     testPageRank: function () {
-      var key = db._pregelStart("demo_v", "demo_e", "pagerank");
-      testAlgo(key);
+      testAlgo("demo_v", "demo_e", "pagerank", {maxGSS:25, threshold:0.00001});
     },
   }
 };

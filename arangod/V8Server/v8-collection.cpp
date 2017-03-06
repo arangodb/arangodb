@@ -1891,7 +1891,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
       // TODO extend this for named graphs, use the Graph class
       TRI_V8_THROW_EXCEPTION_USAGE(
                                    "_pregelStart(<vertexCollections>, <edgeCollections>, <algorithm>[, "
-                                   "{steps:100, ...}]");
+                                   "{maxGSS:100, ...}]");
   }
   auto parse = [](v8::Local<v8::Value> const& value, std::vector<std::string> &out) {
     v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(value);

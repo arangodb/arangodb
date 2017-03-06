@@ -25,7 +25,7 @@ module.exports = function (gname, shards, repFac) {
     graph._addVertexCollection(vColl);
     db._createEdgeCollection(eColl, {
                              numberOfShards: shards,
-                             indexBuckets: shards,
+                             //indexBuckets: shards,
                              replicationFactor: repFac,
                              shardKeys:["vertex"],
                              distributeShardsLike:vColl});

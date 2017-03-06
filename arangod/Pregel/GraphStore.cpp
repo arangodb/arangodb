@@ -463,6 +463,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
       // bool store =
       _graphFormat->buildVertexDocument(*(b.get()), data, sizeof(V));
       b->close();
+      LOG_TOPIC(INFO, Logger::PREGEL) << "Storing" << b->toString();
 
       ++it;
       ++buffer;
