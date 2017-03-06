@@ -63,9 +63,10 @@ void FailedFollower::run() {
   }
 }
 
-bool FailedFollower::create() {
-  LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Todo: failed Follower for " + _shard + " from " + _from + " to " + _to;
+bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
+  
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: Handle follower failover for shard "
+                                  << _shard << " from " << _from << " to " + _to;
 
   // FIXME: create one big FailedFollower job for all clones rather than
   // FIXME: individual single shard jobs. This is important to be able to

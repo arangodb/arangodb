@@ -154,7 +154,7 @@ if [ ! -z "$INTERACTIVE_MODE" ] ; then
     fi
 fi
 
-SFRE=5.0
+SFRE=1.0
 COMP=2000
 KEEP=0
 AG_BASE=$(( $PORT_OFFSET + 4001 ))
@@ -199,7 +199,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --agency.size $NRAGENTS \
         --agency.supervision true \
         --agency.supervision-frequency $SFRE \
-        --agency.supervision-grace-period 15 \
+        --agency.supervision-grace-period 5.0 \
         --agency.wait-for-sync false \
         --database.directory cluster/data$port \
         --javascript.app-path ./js/apps \

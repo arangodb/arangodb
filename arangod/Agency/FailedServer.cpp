@@ -214,53 +214,63 @@ bool FailedServer::start() {
   return false;
 }
 
-bool FailedServer::create() {
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Todo: Handle failed db server " + _server;
+bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
 
-  std::string path = _agencyPrefix + toDoPrefix + _jobId;
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
+    << "Todo: Handle failover for db server " + _server;
 
-  _jb = std::make_shared<Builder>();
-  _jb->openArray();
-  _jb->openObject();
+  using namespace std::chrono;
+  bool selfCreate = (envelope == nullptr); // Do we create ourselves?
 
-  // Job entry
-  _jb->add(path, VPackValue(VPackValueType::Object));
-  _jb->add("type", VPackValue("failedServer"));
-  _jb->add("server", VPackValue(_server));
-  _jb->add("jobId", VPackValue(_jobId));
-  _jb->add("creator", VPackValue(_creator));
-  _jb->add("timeCreated",
-           VPackValue(timepointToString(std::chrono::system_clock::now())));
-  _jb->close();
+  if (selfCreate) {
+    _jb = std::make_shared<Builder>();
+  } else {
+    _jb = envelope;
+  }
+  
+  { VPackArrayBuilder a(_jb.get());
 
-  // Failed server entry
-  path = _agencyPrefix + failedServersPrefix + "/" + _server;
-  _jb->add(path, VPackValue(VPackValueType::Array));
-  _jb->close();
+    // Operations
+    { VPackObjectBuilder operations (_jb.get());
+      
+      // ToDo entry
+      _jb->add(VPackValue(_agencyPrefix + toDoPrefix + _jobId));
+      { VPackObjectBuilder todo(_jb.get());
+        _jb->add("type", VPackValue("failedServer"));
+        _jb->add("server", VPackValue(_server));
+        _jb->add("jobId", VPackValue(_jobId));
+        _jb->add("creator", VPackValue(_creator));
+        _jb->add("timeCreated", VPackValue(timepointToString(
+                                             system_clock::now()))); } 
+      // FailedServers entry []
+      _jb->add(VPackValue(_agencyPrefix + failedServersPrefix + "/" + _server));
+      { VPackArrayBuilder failedServers(_jb.get()); }} // Operations
 
-  // Raise plan version
-  path = _agencyPrefix + planVersion;
-  _jb->add(path, VPackValue(VPackValueType::Object));
-  _jb->add("op", VPackValue("increment"));
-  _jb->close();
+    //Preconditions
+    { VPackObjectBuilder health(_jb.get());
 
-  _jb->close();
-  _jb->close();
+      // Status should still be FAILED
+      _jb->add(VPackValue(_agencyPrefix + healthPrefix + _server + "/Status"));
+      { VPackObjectBuilder old(_jb.get());
+        _jb->add("old", VPackValue("BAD")); }
 
-  write_ret_t res = transact(_agent, *_jb);
-
-  // FIXME: - why is the plan version raised in this transaction?
-  // FIXME: - check that Supervision/Health/<server> is still "FAILED" as a
-  // FIXME:   precondition and do nothing if so
-  // FIXME: - add precondition that Target/FailedServers is as in snapshot
-  // FIXME:   and do nothing if so
-
-  if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    return true;
+      // Target/FailedServers is still as in the snapshot
+      _jb->add(VPackValue(_agencyPrefix + failedServersPrefix));
+      { VPackObjectBuilder old(_jb.get());
+        _jb->add("old", _snapshot(failedServersPrefix).toBuilder().slice()[0]);
+      }} // Preconditions
   }
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to insert job " + _jobId;
-  return false;
+  if (selfCreate) {
+    write_ret_t res = transact(_agent, *_jb);
+    if (!res.accepted || res.indices.size() != 1 || res.indices[0] == 0) {
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to insert job " + _jobId;
+      return false;
+    }
+  } 
+
+  return true;
+
 }
 
 JOB_STATUS FailedServer::status() {

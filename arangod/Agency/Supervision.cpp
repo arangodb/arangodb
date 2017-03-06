@@ -148,6 +148,7 @@ std::vector<check_t> Supervision::checkDBServers() {
     auto report = std::make_shared<Builder>();
     report->openArray();
     report->openArray();
+
     report->openObject();
     report->add(_agencyPrefix + healthPrefix + serverID,
                 VPackValue(VPackValueType::Object));
@@ -156,6 +157,7 @@ std::vector<check_t> Supervision::checkDBServers() {
     report->add("Role", VPackValue("DBServer"));
     report->add("ShortName", VPackValue(shortName));
     auto endpoint = serversRegistered.find(serverID);
+    std::shared_ptr<VPackBuilder> envelope;
     if (endpoint != serversRegistered.end()) {
       endpoint = endpoint->second->children().find("endpoint");
       if (endpoint != endpoint->second->children().end()) {
@@ -206,8 +208,9 @@ std::vector<check_t> Supervision::checkDBServers() {
         if (lastStatus == Supervision::HEALTH_STATUS_BAD) {
           reportPersistent = true;
           report->add("Status", VPackValue(Supervision::HEALTH_STATUS_FAILED));
+          envelope = std::make_shared<VPackBuilder>();
           FailedServer (_snapshot, _agent, std::to_string(_jobId++),
-                        "supervision", _agencyPrefix, serverID).run();
+                        "supervision", _agencyPrefix, serverID).create(envelope);
         }
       } else {
         if (lastStatus != Supervision::HEALTH_STATUS_BAD) {
@@ -218,11 +221,25 @@ std::vector<check_t> Supervision::checkDBServers() {
       
     }
 
-    report->close();
-    report->close();
-    report->close();
+    report->close(); // Supervision/Health
+
+    if (envelope != nullptr) {
+      TRI_ASSERT(envelope->slice().isArray() && envelope->slice()[0].isObject());
+      for (const auto& i : VPackObjectIterator(envelope->slice()[0])) {
+        report->add(i.key.copyString(), i.value);
+      }
+    }
+    
     report->close();
     
+    if (envelope != nullptr) {
+      TRI_ASSERT(envelope->slice().isArray() && envelope->slice()[1].isObject());
+      report->add(envelope->slice()[1]);
+    }
+    
+    report->close(); // inner array
+    report->close(); // outer array    
+
     if (!this->isStopping()) {
       _agent->transient(report);
       if (reportPersistent) {

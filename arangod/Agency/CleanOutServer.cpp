@@ -123,7 +123,8 @@ JOB_STATUS CleanOutServer::status() {
   return status;
 }
 
-bool CleanOutServer::create() {  // Only through shrink cluster
+// Only through shrink cluster
+bool CleanOutServer::create(std::shared_ptr<VPackBuilder> b) {
 
   LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Todo: Clean out server " + _server + " for shrinkage";

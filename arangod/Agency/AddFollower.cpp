@@ -70,7 +70,7 @@ void AddFollower::run() {
   }
 }
 
-bool AddFollower::create() {
+bool AddFollower::create(std::shared_ptr<VPackBuilder> b) {
   LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: AddFollower " << _newFollower
                                   << " to shard " + _shard;
 

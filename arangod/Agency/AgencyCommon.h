@@ -70,6 +70,15 @@ struct write_ret_t {
     : accepted(a), redirect(id), applied(app), indices(idx) {}
 };
 
+inline std::ostream& operator<< (std::ostream& o, write_ret_t const& w) {
+  o << "accepted: " << w.accepted << ", redirect: " << w.redirect << ", indices: [";
+  for (const auto& i : w.indices) {
+    o << i << ", ";
+  }
+  o << "]";
+  return o;
+}
+
 struct trans_ret_t {
   bool accepted;         // Query accepted (i.e. we are leader)
   std::string redirect;  // If not accepted redirect id

@@ -46,7 +46,7 @@ public:
              std::string const& agencyPrefix);
 
   /// @brief Create job
-  void create();
+  void create(std::shared_ptr<VPackBuilder> b = nullptr);
 
   /// @brief Start job
   void start();

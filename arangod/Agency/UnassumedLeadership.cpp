@@ -58,7 +58,7 @@ void UnassumedLeadership::run() {
   }
 }
 
-bool UnassumedLeadership::create() {
+bool UnassumedLeadership::create(std::shared_ptr<VPackBuilder> b) {
   LOG_TOPIC(INFO, Logger::AGENCY)
       << "Todo: Find new leader for to be created shard " << _shard;
 

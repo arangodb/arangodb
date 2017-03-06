@@ -714,6 +714,14 @@ Node::Children& Node::children() { return _children; }
 
 Node::Children const& Node::children() const { return _children; }
 
+Builder Node::toBuilder() const {
+  Builder builder;
+  builder.openArray();
+  toBuilder(builder);
+  builder.close();
+  return builder;
+}
+
 std::string Node::toJson() const {
   Builder builder;
   builder.openArray();

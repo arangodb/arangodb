@@ -60,7 +60,7 @@ void MoveShard::run() {
   }
 }
 
-bool MoveShard::create() {
+bool MoveShard::create(std::shared_ptr<VPackBuilder> b) {
 
   LOG_TOPIC(DEBUG, Logger::AGENCY)
     << "Todo: Move shard " + _shard + " from " + _from + " to " << _to;

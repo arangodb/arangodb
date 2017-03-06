@@ -376,7 +376,7 @@ function SynchronousReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run a standard check with failures:
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
     testBasicOperationsFailureFollower : function () {
       assertTrue(waitForSynchronousReplication("_system"));
       failFollower();
@@ -568,7 +568,7 @@ function SynchronousReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run a standard check with failures:
 ////////////////////////////////////////////////////////////////////////////////
-
+*/
     testBasicOperationsFailureLeader : function () {
       assertTrue(waitForSynchronousReplication("_system"));
       failLeader();

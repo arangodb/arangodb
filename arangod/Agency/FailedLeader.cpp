@@ -64,7 +64,7 @@ void FailedLeader::run() {
   }
 }
 
-bool FailedLeader::create() {
+bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   LOG_TOPIC(INFO, Logger::AGENCY)
       << "Handle failed Leader for " + _shard + " from " + _from + " to " + _to;
 

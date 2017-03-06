@@ -170,7 +170,8 @@ JOB_STATUS RemoveServer::status() {
   return status;
 }
 
-bool RemoveServer::create() {  // Only through shrink cluster
+// Only through shrink cluster
+bool RemoveServer::create(std::shared_ptr<VPackBuilder> b) {  
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: Remove server " + _server;
 

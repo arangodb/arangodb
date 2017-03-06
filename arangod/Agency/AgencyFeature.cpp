@@ -44,10 +44,10 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _maxElectionTimeout(5.0),
       _supervision(false),
       _waitForSync(true),
-      _supervisionFrequency(5.0),
+      _supervisionFrequency(1.0),
       _compactionStepSize(200000),
       _compactionKeepSize(500),
-      _supervisionGracePeriod(15.0),
+      _supervisionGracePeriod(10.0),
       _cmdLineTimings(false)
 {
   setOptional(true);

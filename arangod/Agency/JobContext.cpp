@@ -78,9 +78,9 @@ JobContext::JobContext (
 
 }
 
-void JobContext::create() {
+void JobContext::create(std::shared_ptr<VPackBuilder> b) {
   if (_job != nullptr) {
-    _job->create();
+    _job->create(b);
   } 
 }
 
