@@ -28,7 +28,7 @@
 namespace arangodb {
 class FileResult : public Result {
  public:
-  FileResult(bool state);
+  explicit FileResult(bool state);
   FileResult(bool state, int sysErrorNumber);
 
  public:

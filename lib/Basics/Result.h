@@ -29,7 +29,10 @@ namespace arangodb {
 class Result {
  public:
   Result() : _errorNumber(TRI_ERROR_NO_ERROR) {}
-  Result(int errorNumber, std::string errorMessage) {}
+  Result(int errorNumber, std::string const& errorMessage) 
+      : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
+  Result(int errorNumber, std::string&& errorMessage) 
+      : _errorNumber(errorNumber), _errorMessage(std::move(errorMessage)) {}
 
   virtual ~Result() {}
 
