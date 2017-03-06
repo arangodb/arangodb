@@ -73,12 +73,15 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   // FIXME: change the plan for all shards in a clone set in one transaction.
 
   auto const& myClones = clones(_snapshot, _database, _collection, _shard);
-  if (!myClones.empty()) {
+  if (myClones.size() == 1) {   // leader is always in there
     size_t sub = 0;
     for (auto const& clone : myClones) {
-      FailedFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                     _jobId, _agencyPrefix, _database, clone.collection,
-                     clone.shard, _from, _to);
+      if (clone.collection != _collection ||
+          clone.shard != _shard) {
+        FailedFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                       _jobId, _agencyPrefix, _database, clone.collection,
+                       clone.shard, _from, _to);
+      }
     }
   }
    

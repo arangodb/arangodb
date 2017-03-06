@@ -88,12 +88,15 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> b) {
 #endif
 
   auto const& myClones = clones(_snapshot, _database, _collection, _shard);
-  if (!myClones.empty()) {
+  if (myClones.empty() != 1) {
     size_t sub = 0;
     for (auto const& clone : myClones) {
-      AddFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                  _jobId, _agencyPrefix, _database, clone.collection,
-                  clone.shard, _newFollower);
+      if (clone.collection != _collection ||
+          clone.shard != _shard) {
+        AddFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                    _jobId, _agencyPrefix, _database, clone.collection,
+                    clone.shard, _newFollower);
+      }
     }
   }
   

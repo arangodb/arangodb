@@ -143,8 +143,23 @@ struct Job {
 
   std::shared_ptr<Builder> _jb;
   
-};
+  static void doForAllShards(Node const& snapshot,
+		std::string& database,
+		std::vector<shard_t>& shards,
+		std::function<void(Slice plan, Slice current, std::string& planPath)> worker);
 
+  // The following methods adds an operation to a transaction object or
+  // a condition to a precondition object. In all cases, the builder trx
+  // or pre must be in the state that an object has been opened, this
+  // method adds some attribute/value pairs and leaves the object open:
+  void addIncreasePlanVersion(Builder& trx);
+  void addRemoveJobFromSomewhere(Builder& trx, std::string where,
+    std::string jobId);
+  void addPutJobIntoSomewhere(Builder& trx, std::string where,
+    Slice job, std::string reason);
+  void addPreconditionCollectionStillThere(Builder& pre,
+    std::string database, std::string collection);
+};
 }
 }
 
