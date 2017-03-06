@@ -27,6 +27,7 @@ add_executable(
   Basics/EndpointTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
+  Basics/VelocyPackHelper-test.cpp
   Geo/georeg.cpp
   main.cpp
 )
