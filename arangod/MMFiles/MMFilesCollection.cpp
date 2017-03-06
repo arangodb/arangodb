@@ -443,6 +443,10 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection,
                                    "<properties>.journalSize too small");
   }
 
+  auto pathSlice = info.get("path");
+  if (pathSlice.isString()) {
+    _path = pathSlice.copyString();
+  }
   setCompactionStatus("compaction not yet started");
 }
 

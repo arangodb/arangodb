@@ -3402,6 +3402,7 @@ const recoveryTests = [
   'disk-full-logfile-data',
   'disk-full-datafile',
   'collection-drop-recreate',
+  'collection-duplicate-name',
   'create-with-temp',
   'create-with-temp-old',
   'create-collection-fail',
