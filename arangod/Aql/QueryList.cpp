@@ -23,11 +23,11 @@
 
 #include "Aql/QueryList.h"
 #include "Aql/Query.h"
-#include "Logger/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::aql;
