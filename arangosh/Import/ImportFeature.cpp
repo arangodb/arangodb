@@ -115,7 +115,7 @@ void ImportFeature::collectOptions(
       new DiscreteValuesParameter<StringParameter>(&_createCollectionType,
                                                    types));
 
-  std::unordered_set<std::string> imports = {"csv", "tsv", "json", "auto"};
+  std::unordered_set<std::string> imports = {"csv", "tsv", "json", "jsonl", "auto"};
 
   options->addOption(
       "--type", "type of import file",
@@ -230,12 +230,8 @@ void ImportFeature::start() {
     }
 
     std::string extension = match[1].str();
-    if (extension == "json") {
-      _typeImport = "json";
-    } else if (extension == "csv") {
-      _typeImport = "csv";
-    } else if (extension == "tsv") {
-      _typeImport = "tsv";
+    if (extension == "json" || extension == "jsonl" || extension == "csv" || extension == "tsv") {
+      _typeImport = extension;
     } else {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Unsupported file extension '" << extension << "'";
       FATAL_ERROR_EXIT();
@@ -386,9 +382,9 @@ void ImportFeature::start() {
                               arangodb::import::ImportHelper::TSV);
     }
 
-    else if (_typeImport == "json") {
+    else if (_typeImport == "json" || _typeImport == "jsonl") {
       std::cout << "Starting JSON import..." << std::endl;
-      ok = ih.importJson(_collectionName, _filename);
+      ok = ih.importJson(_collectionName, _filename, (_typeImport == "jsonl"));
     }
 
     else {
