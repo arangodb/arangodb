@@ -56,9 +56,8 @@ inline std::size_t validateAndCount(char const* vpStart,
   validationOptions.validateUtf8Strings = true;
   VPackValidator validator(&validationOptions);
 
-  std::size_t numPayloads = 0;
-
   try {
+    std::size_t numPayloads = 0;
     // check for slice start to the end of Chunk
     // isSubPart allows the slice to be shorter than the checked buffer.
     do {
