@@ -1,6 +1,8 @@
 devel
 -----
 
+* upgraded version of bundled zlib library from 1.2.8 to 1.2.11
+
 * added input file type `auto` for arangoimp so it can automatically detect the 
   type of the input file from the filename extension
 
