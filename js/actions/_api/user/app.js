@@ -283,8 +283,11 @@ function put_api_permission (req, res) {
 
     if (json.grant === 'rw' || json.grant === 'ro') {
       doc = users.grantDatabase(user, dbname, json.grant);
-    } else {
+    } else if (json.grant === 'none' || json.grant === '') {
       doc = users.revokeDatabase(user, dbname, json.grant);
+    } else {
+      actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER, "invalid grant type");
+      return;
     }
 
     users.reload();
