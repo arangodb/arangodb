@@ -142,12 +142,11 @@ uint64_t Cache::usage() {
 }
 
 std::pair<double, double> Cache::hitRates() {
-  double lifetimeRate = std::nan("");
   double windowedRate = std::nan("");
 
   uint64_t currentMisses = _findMisses.load();
   uint64_t currentHits = _findHits.load();
-  lifetimeRate = 100 * (static_cast<double>(currentHits) /
+  double lifetimeRate = 100 * (static_cast<double>(currentHits) /
                         static_cast<double>(currentHits + currentMisses));
 
   if (_enableWindowedStats && _findStats.get() != nullptr) {

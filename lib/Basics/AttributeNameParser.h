@@ -129,10 +129,7 @@ bool TRI_AttributeNamesHaveExpansion(std::vector<AttributeName> const& input);
 }
 }
 
-std::ostream& operator<<(std::ostream&, arangodb::basics::AttributeName const*);
 std::ostream& operator<<(std::ostream&, arangodb::basics::AttributeName const&);
-std::ostream& operator<<(std::ostream&,
-                         std::vector<arangodb::basics::AttributeName> const*);
 std::ostream& operator<<(std::ostream&,
                          std::vector<arangodb::basics::AttributeName> const&);
 

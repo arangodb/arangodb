@@ -31,6 +31,7 @@
 #include "Basics/StringUtils.h"
 #include "GeneralRequest.h"
 #include "Endpoint/Endpoint.h"
+#include "Logger/Logger.h"
 #include "Rest/CommonDefines.h"
 
 namespace arangodb {

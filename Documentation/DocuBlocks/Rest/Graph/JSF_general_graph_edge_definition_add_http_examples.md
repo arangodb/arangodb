@@ -25,7 +25,7 @@ The name of the edge collection to be used.
 One or many vertex collections that can contain source vertices.
 
 @RESTBODYPARAM{to,array,required,string}
-One or many edge collections that can contain target vertices.
+One or many vertex collections that can contain target vertices.
 
 @RESTRETURNCODES
 
