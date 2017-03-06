@@ -28,15 +28,16 @@
 namespace arangodb {
 class FileResult : public Result {
  public:
-  explicit FileResult(bool state);
-  FileResult(bool state, int sysErrorNumber);
+  FileResult() : Result(), _sysErrorNumber(0) {}
+
+  explicit FileResult(int sysErrorNumber)
+      : Result(TRI_ERROR_SYS_ERROR, strerror(sysErrorNumber)),
+        _sysErrorNumber(sysErrorNumber) {}
 
  public:
-  bool state() const { return _state; }
   int sysErrorNumber() const { return _sysErrorNumber; }
 
- private:
-  bool const _state;
+ protected:
   int const _sysErrorNumber;
 };
 }

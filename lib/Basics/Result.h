@@ -29,20 +29,26 @@ namespace arangodb {
 class Result {
  public:
   Result() : _errorNumber(TRI_ERROR_NO_ERROR) {}
-  Result(int errorNumber, std::string const& errorMessage) 
+
+  Result(int errorNumber)
+      : _errorNumber(errorNumber),
+        _errorMessage(TRI_errno_string(errorNumber)) {}
+
+  Result(int errorNumber, std::string const& errorMessage)
       : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
-  Result(int errorNumber, std::string&& errorMessage) 
+
+  Result(int errorNumber, std::string&& errorMessage)
       : _errorNumber(errorNumber), _errorMessage(std::move(errorMessage)) {}
 
   virtual ~Result() {}
 
  public:
-  // the default implementations are const, but subclasses might
-  // really do more work to compute - for example - the error
-  // string.
+  bool ok() const { return _errorNumber == TRI_ERROR_NO_ERROR; }
+  int errorNumber() const { return _errorNumber; }
 
-  virtual bool ok() { return _errorNumber == TRI_ERROR_NO_ERROR; }
-  virtual int errorNumber() { return _errorNumber; }
+  // the default implementations is const, but sub-classes might
+  // really do more work to compute.
+
   virtual std::string errorMessage() { return _errorMessage; }
 
  protected:
