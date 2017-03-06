@@ -24,8 +24,8 @@ addons:
     - ubuntu-toolchain-r-test
     - george-edison55-precise-backports
     packages:
-    - g++-4.9
-    - gcc-4.9
+    - g++-5
+    - gcc-5
     - binutils-gold
     - gdb
     - cmake-data
