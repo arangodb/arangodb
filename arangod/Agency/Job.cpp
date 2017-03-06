@@ -105,7 +105,7 @@ bool Job::finish(std::string const& type, bool success,
       << "Failed to obtain type of job " << _jobId;
   }
   
-  // Prepare peding entry, block toserver
+  // Prepare pending entry, block toserver
   finished.openArray();
   
   // --- Add finished
@@ -207,6 +207,7 @@ std::vector<Job::shard_t> Job::clones(
   std::string const& collection, std::string const& shard) {
 
   std::vector<shard_t> ret;
+  ret.emplace_back(collection, shard);  // add (collection, shard) as first item
 
   std::string databasePath = planColPrefix + database,
     planPath = databasePath + "/" + collection + "/shards";
@@ -227,14 +228,13 @@ std::vector<Job::shard_t> Job::clones(
         auto opos = othershards.begin();
         std::advance(opos, steps);
         auto const& otherShard = opos->first;
-        ret.push_back(shard_t(otherCollection, otherShard));
+        ret.emplace_back(otherCollection, otherShard);
       }
     } catch(...) {}
     
   }
   
   return ret;
-  
 }
 
 
@@ -256,7 +256,6 @@ std::string Job::id(std::string const& idOrShortName) {
   return idOrShortName;
 }
 
-
 bool Job::abortable(Node const& snapshot, std::string const& jobId) {
 
   auto const& job = snapshot(blockedServersPrefix + jobId);
@@ -273,3 +272,64 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
   TRI_ASSERT(false);
   
 }
+
+void Job::doForAllShards(Node const& snapshot,
+	std::string& database,
+	std::vector<shard_t>& shards,
+  std::function<void(Slice plan, Slice current, std::string& planPath)> worker) {
+	for (auto const& collShard : shards) {
+		std::string shard = collShard.shard;
+		std::string collection = collShard.collection;
+
+    std::string planPath =
+      planColPrefix + database + "/" + collection + "/shards/" + shard;
+    std::string curPath = curColPrefix + database + "/" + collection
+                          + "/" + shard + "/servers";
+
+		Slice plan = snapshot(planPath).slice();
+		Slice current = snapshot(curPath).slice();
+
+    worker(plan, current, planPath);
+  }
+}
+
+void Job::addIncreasePlanVersion(Builder& trx) {
+  trx.add(VPackValue(_agencyPrefix + planVersion));
+  { VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue("increment"));
+  }
+}
+
+void Job::addRemoveJobFromSomewhere(Builder& trx, std::string where,
+  std::string jobId) {
+  trx.add(VPackValue(_agencyPrefix + "/Target/" + where + "/" + _jobId));
+  { VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue("delete"));
+  }
+}
+
+void Job::addPutJobIntoSomewhere(Builder& trx, std::string where, Slice job,
+    std::string reason) {
+  trx.add(VPackValue(_agencyPrefix + "/Target/" + where + "/" + _jobId));
+  { VPackObjectBuilder guard(&trx);
+    trx.add("timeFinished",
+      VPackValue(timepointToString(std::chrono::system_clock::now())));
+    for (auto const& obj : VPackObjectIterator(job)) {
+      trx.add(obj.key.copyString(), obj.value);
+    }
+    if (!reason.empty()) {
+      trx.add("reason", VPackValue(reason));
+    }
+  }
+}
+
+void Job::addPreconditionCollectionStillThere(Builder& pre,
+    std::string database, std::string collection) {
+  std::string planPath
+      = _agencyPrefix + planColPrefix + database + "/" + collection;
+  pre.add(VPackValue(planPath));
+  { VPackObjectBuilder guard(&pre);
+    pre.add("oldEmpty", VPackValue(false));
+  }
+}
+

@@ -46,12 +46,15 @@ struct MoveShard : public Job {
   virtual bool create(std::shared_ptr<VPackBuilder> b = nullptr) override final;
   virtual bool start() override final;
   virtual void abort() override final;
+  JOB_STATUS pendingLeader();
+  JOB_STATUS pendingFollower();
 
   std::string _database;
   std::string _collection;
   std::string _shard;
   std::string _from;
   std::string _to;
+  bool        _isLeader;
 };
 }
 }
