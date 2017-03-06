@@ -127,6 +127,8 @@ target_link_libraries(${BIN_ARANGOEXPORT}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  ldap
+  lber
 )
 
 install(
@@ -272,8 +274,6 @@ target_link_libraries(${BIN_ARANGOSH}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
-  ldap
-  lber
 )
 
 install(
