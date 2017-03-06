@@ -400,9 +400,9 @@ target_link_libraries(${BIN_ARANGOD}
   ${MSVC_LIBS}
   ${V8_LIBS}
   ${ROCKSDB_LIBS}
-  ${SYSTEM_LIBRARIES}
   boost_boost
   boost_system
+  ${SYSTEM_LIBRARIES}
 )
 
 install(
