@@ -35,6 +35,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include "Basics/socket-utils.h"
+#include "Logger/Logger.h"
 #include "Ssl/ssl-helper.h"
 
 #undef TRACE_SSL_CONNECTIONS
