@@ -25,7 +25,9 @@
 #define ARANGODB_BASICS_FILE_UTILS_H 1
 
 #include "Basics/Common.h"
+
 #include "Basics/files.h"
+#include "Basics/FileResult.h"
 
 namespace arangodb {
 namespace basics {
@@ -107,7 +109,7 @@ std::string stripExtension(std::string const& path,
                            std::string const& extension);
 
 // changes into directory
-bool changeDirectory(std::string const& path);
+FileResult changeDirectory(std::string const& path);
 
 // returns the current directory
 std::string currentDirectory(int* errorNumber = 0);
