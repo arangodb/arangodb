@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::PlainCache
+/// @brief test suite for arangodb::cache::TransactionalCache
 ///
 /// @file
 ///
@@ -32,7 +32,8 @@
 #include <boost/test/unit_test.hpp>
 
 #include "Cache/Manager.h"
-#include "Cache/PlainCache.h"
+#include "Cache/Transaction.h"
+#include "Cache/TransactionalCache.h"
 
 #include "MockScheduler.h"
 
@@ -50,10 +51,14 @@ using namespace arangodb::cache;
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct CCachePlainCacheSetup {
-  CCachePlainCacheSetup() { BOOST_TEST_MESSAGE("setup PlainCache"); }
+struct CCacheTransactionalCacheSetup {
+  CCacheTransactionalCacheSetup() {
+    BOOST_TEST_MESSAGE("setup TransactionalCache");
+  }
 
-  ~CCachePlainCacheSetup() { BOOST_TEST_MESSAGE("tear-down PlainCache"); }
+  ~CCacheTransactionalCacheSetup() {
+    BOOST_TEST_MESSAGE("tear-down TransactionalCache");
+  }
 };
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -63,7 +68,8 @@ struct CCachePlainCacheSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_FIXTURE_TEST_SUITE(CCachePlainCacheTest, CCachePlainCacheSetup)
+BOOST_FIXTURE_TEST_SUITE(CCacheTransactionalCacheTest,
+                         CCacheTransactionalCacheSetup)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test construction (single-threaded)
@@ -71,10 +77,10 @@ BOOST_FIXTURE_TEST_SUITE(CCachePlainCacheTest, CCachePlainCacheSetup)
 
 BOOST_AUTO_TEST_CASE(tst_st_construction) {
   Manager manager(nullptr, 1024ULL * 1024ULL);
-  auto cache1 =
-      manager.createCache(Manager::CacheType::Plain, 256ULL * 1024ULL, false);
-  auto cache2 =
-      manager.createCache(Manager::CacheType::Plain, 512ULL * 1024ULL, false);
+  auto cache1 = manager.createCache(Manager::CacheType::Transactional,
+                                    256ULL * 1024ULL, false);
+  auto cache2 = manager.createCache(Manager::CacheType::Transactional,
+                                    512ULL * 1024ULL, false);
 
   BOOST_CHECK_EQUAL(0ULL, cache1->usage());
   BOOST_CHECK_EQUAL(256ULL * 1024ULL, cache1->limit());
@@ -93,7 +99,7 @@ BOOST_AUTO_TEST_CASE(tst_st_insertion) {
   uint64_t cacheLimit = 256ULL * 1024ULL;
   Manager manager(nullptr, 4ULL * cacheLimit);
   auto cache =
-      manager.createCache(Manager::CacheType::Plain, cacheLimit, false);
+      manager.createCache(Manager::CacheType::Transactional, cacheLimit, false);
 
   for (uint64_t i = 0; i < 1024; i++) {
     CachedValue* value =
@@ -141,7 +147,7 @@ BOOST_AUTO_TEST_CASE(tst_st_removal) {
   uint64_t cacheLimit = 256ULL * 1024ULL;
   Manager manager(nullptr, 4ULL * cacheLimit);
   auto cache =
-      manager.createCache(Manager::CacheType::Plain, cacheLimit, false);
+      manager.createCache(Manager::CacheType::Transactional, cacheLimit, false);
 
   for (uint64_t i = 0; i < 1024; i++) {
     CachedValue* value =
@@ -179,6 +185,62 @@ BOOST_AUTO_TEST_CASE(tst_st_removal) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test blacklisting (single-threaded)
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE(tst_st_blacklist) {
+  uint64_t cacheLimit = 256ULL * 1024ULL;
+  Manager manager(nullptr, 4ULL * cacheLimit);
+  auto cache =
+      manager.createCache(Manager::CacheType::Transactional, cacheLimit, false);
+
+  Transaction* tx = manager.beginTransaction(false);
+
+  for (uint64_t i = 0; i < 1024; i++) {
+    CachedValue* value =
+        CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+    bool success = cache->insert(value);
+    BOOST_CHECK(success);
+    auto f = cache->find(&i, sizeof(uint64_t));
+    BOOST_CHECK(f.found());
+    BOOST_CHECK(f.value() != nullptr);
+    BOOST_CHECK(f.value()->sameKey(&i, sizeof(uint64_t)));
+  }
+
+  for (uint64_t i = 512; i < 1024; i++) {
+    bool success = cache->blacklist(&i, sizeof(uint64_t));
+    BOOST_CHECK(success);
+    auto f = cache->find(&i, sizeof(uint64_t));
+    BOOST_CHECK(!f.found());
+  }
+
+  for (uint64_t i = 512; i < 1024; i++) {
+    CachedValue* value =
+        CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+    bool success = cache->insert(value);
+    BOOST_CHECK(!success);
+    delete value;
+    auto f = cache->find(&i, sizeof(uint64_t));
+    BOOST_CHECK(!f.found());
+  }
+
+  manager.endTransaction(tx);
+  tx = manager.beginTransaction(false);
+
+  for (uint64_t i = 512; i < 1024; i++) {
+    CachedValue* value =
+        CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+    bool success = cache->insert(value);
+    BOOST_CHECK(success);
+    auto f = cache->find(&i, sizeof(uint64_t));
+    BOOST_CHECK(f.found());
+  }
+
+  manager.endTransaction(tx);
+  manager.destroyCache(cache);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test growth behavior (single-threaded)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -188,7 +250,7 @@ BOOST_AUTO_TEST_CASE(tst_st_growth) {
   MockScheduler scheduler(4);
   Manager manager(scheduler.ioService(), 1024ULL * 1024ULL * 1024ULL);
   auto cache =
-      manager.createCache(Manager::CacheType::Plain, initialSize, true);
+      manager.createCache(Manager::CacheType::Transactional, initialSize, true);
 
   for (uint64_t i = 0; i < 4ULL * 1024ULL * 1024ULL; i++) {
     CachedValue* value =
@@ -214,7 +276,7 @@ BOOST_AUTO_TEST_CASE(tst_st_shrink) {
   MockScheduler scheduler(4);
   Manager manager(scheduler.ioService(), 1024ULL * 1024ULL * 1024ULL);
   auto cache =
-      manager.createCache(Manager::CacheType::Plain, initialSize, true);
+      manager.createCache(Manager::CacheType::Transactional, initialSize, true);
 
   for (uint64_t i = 0; i < 16ULL * 1024ULL * 1024ULL; i++) {
     CachedValue* value =
@@ -259,7 +321,7 @@ BOOST_AUTO_TEST_CASE(tst_mt_mixed_load) {
   Manager manager(scheduler.ioService(), 1024ULL * 1024ULL * 1024ULL);
   size_t threadCount = 4;
   std::shared_ptr<Cache> cache =
-      manager.createCache(Manager::CacheType::Plain, initialSize, true);
+      manager.createCache(Manager::CacheType::Transactional, initialSize, true);
 
   uint64_t chunkSize = 16 * 1024 * 1024;
   uint64_t initialInserts = 4 * 1024 * 1024;
@@ -268,6 +330,7 @@ BOOST_AUTO_TEST_CASE(tst_mt_mixed_load) {
   std::atomic<uint64_t> missCount(0);
   auto worker = [&manager, &cache, initialInserts, operationCount, &hitCount,
                  &missCount](uint64_t lower, uint64_t upper) -> void {
+    Transaction* tx = manager.beginTransaction(false);
     // fill with some initial data
     for (uint64_t i = 0; i < initialInserts; i++) {
       uint64_t item = lower + i;
@@ -282,6 +345,7 @@ BOOST_AUTO_TEST_CASE(tst_mt_mixed_load) {
     // initialize valid range for keys that *might* be in cache
     uint64_t validLower = lower;
     uint64_t validUpper = lower + initialInserts - 1;
+    uint64_t blacklistUpper = validUpper;
 
     // commence mixed workload
     for (uint64_t i = 0; i < operationCount; i++) {
@@ -295,18 +359,28 @@ BOOST_AUTO_TEST_CASE(tst_mt_mixed_load) {
         uint64_t item = validLower++;
 
         cache->remove(&item, sizeof(uint64_t));
-      } else if (r >= 95) {  // insert something
+      } else if (r >= 90) {  // insert something
         if (validUpper == upper) {
           continue;  // already maxed out range
         }
 
         uint64_t item = ++validUpper;
+        if (validUpper > blacklistUpper) {
+          blacklistUpper = validUpper;
+        }
         CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
                                                     &item, sizeof(uint64_t));
         bool ok = cache->insert(value);
         if (!ok) {
           delete value;
         }
+      } else if (r >= 80) {  // blacklist something
+        if (blacklistUpper == upper) {
+          continue;  // already maxed out range
+        }
+
+        uint64_t item = ++blacklistUpper;
+        cache->blacklist(&item, sizeof(uint64_t));
       } else {  // lookup something
         uint64_t item = RandomGenerator::interval(
             static_cast<int64_t>(validLower), static_cast<int64_t>(validUpper));
@@ -322,6 +396,7 @@ BOOST_AUTO_TEST_CASE(tst_mt_mixed_load) {
         }
       }
     }
+    manager.endTransaction(tx);
   };
 
   std::vector<std::thread*> threads;
@@ -340,83 +415,6 @@ BOOST_AUTO_TEST_CASE(tst_mt_mixed_load) {
 
   manager.destroyCache(cache);
   RandomGenerator::shutdown();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test statistics (single-threaded)
-////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_CASE(tst_st_stats) {
-  uint64_t cacheLimit = 256ULL * 1024ULL;
-  Manager manager(nullptr, 4ULL * cacheLimit);
-  auto cacheMiss =
-      manager.createCache(Manager::CacheType::Plain, cacheLimit, false, true);
-  auto cacheHit =
-      manager.createCache(Manager::CacheType::Plain, cacheLimit, false, true);
-  auto cacheMixed =
-      manager.createCache(Manager::CacheType::Plain, cacheLimit, false, true);
-
-  for (uint64_t i = 0; i < 1024; i++) {
-    CachedValue* value =
-        CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-    bool success = cacheHit->insert(value);
-    BOOST_CHECK(success);
-    value = CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-    success = cacheMiss->insert(value);
-    BOOST_CHECK(success);
-    value = CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-    success = cacheMixed->insert(value);
-    BOOST_CHECK(success);
-  }
-
-  for (uint64_t i = 0; i < 1024; i++) {
-    auto f = cacheHit->find(&i, sizeof(uint64_t));
-  }
-  {
-    auto cacheStats = cacheHit->hitRates();
-    auto managerStats = manager.globalHitRates();
-    BOOST_CHECK_EQUAL(cacheStats.first, 100.0);
-    BOOST_CHECK_EQUAL(cacheStats.second, 100.0);
-    BOOST_CHECK_EQUAL(managerStats.first, 100.0);
-    BOOST_CHECK_EQUAL(managerStats.second, 100.0);
-  }
-
-  for (uint64_t i = 1024; i < 2048; i++) {
-    auto f = cacheMiss->find(&i, sizeof(uint64_t));
-  }
-  {
-    auto cacheStats = cacheMiss->hitRates();
-    auto managerStats = manager.globalHitRates();
-    BOOST_CHECK_EQUAL(cacheStats.first, 0.0);
-    BOOST_CHECK_EQUAL(cacheStats.second, 0.0);
-    BOOST_CHECK(managerStats.first > 49.0);
-    BOOST_CHECK(managerStats.first < 51.0);
-    BOOST_CHECK(managerStats.second > 49.0);
-    BOOST_CHECK(managerStats.second < 51.0);
-  }
-
-  for (uint64_t i = 0; i < 1024; i++) {
-    auto f = cacheMixed->find(&i, sizeof(uint64_t));
-  }
-  for (uint64_t i = 1024; i < 2048; i++) {
-    auto f = cacheMixed->find(&i, sizeof(uint64_t));
-  }
-  {
-    auto cacheStats = cacheMixed->hitRates();
-    auto managerStats = manager.globalHitRates();
-    BOOST_CHECK(cacheStats.first > 49.0);
-    BOOST_CHECK(cacheStats.first < 51.0);
-    BOOST_CHECK(cacheStats.second > 49.0);
-    BOOST_CHECK(cacheStats.second < 51.0);
-    BOOST_CHECK(managerStats.first > 49.0);
-    BOOST_CHECK(managerStats.first < 51.0);
-    BOOST_CHECK(managerStats.second > 49.0);
-    BOOST_CHECK(managerStats.second < 51.0);
-  }
-
-  manager.destroyCache(cacheHit);
-  manager.destroyCache(cacheMiss);
-  manager.destroyCache(cacheMixed);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

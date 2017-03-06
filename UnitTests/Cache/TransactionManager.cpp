@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::TransactionWindow
+/// @brief test suite for arangodb::cache::TransactionManager
 ///
 /// @file
 ///
@@ -30,7 +30,8 @@
 #define BOOST_TEST_INCLUDED
 #include <boost/test/unit_test.hpp>
 
-#include "Cache/TransactionWindow.h"
+#include "Cache/Transaction.h"
+#include "Cache/TransactionManager.h"
 
 #include <stdint.h>
 #include <iostream>
@@ -41,13 +42,13 @@ using namespace arangodb::cache;
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct CCacheTransactionWindowSetup {
-  CCacheTransactionWindowSetup() {
-    BOOST_TEST_MESSAGE("setup TransactionWindow");
+struct CCacheTransactionManagerSetup {
+  CCacheTransactionManagerSetup() {
+    BOOST_TEST_MESSAGE("setup TransactionManager");
   }
 
-  ~CCacheTransactionWindowSetup() {
-    BOOST_TEST_MESSAGE("tear-down TransactionWindow");
+  ~CCacheTransactionManagerSetup() {
+    BOOST_TEST_MESSAGE("tear-down TransactionManager");
   }
 };
 // -----------------------------------------------------------------------------
@@ -58,31 +59,56 @@ struct CCacheTransactionWindowSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_FIXTURE_TEST_SUITE(CCacheTransactionWindowTest,
-                         CCacheTransactionWindowSetup)
+BOOST_FIXTURE_TEST_SUITE(CCacheTransactionManagerTest,
+                         CCacheTransactionManagerSetup)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test transaction term management
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE(tst_transaction_term) {
-  TransactionWindow transactions;
+  TransactionManager transactions;
+  Transaction* tx1;
+  Transaction* tx2;
+  Transaction* tx3;
 
   BOOST_CHECK_EQUAL(0ULL, transactions.term());
 
-  transactions.start();
+  tx1 = transactions.begin(false);
   BOOST_CHECK_EQUAL(1ULL, transactions.term());
-  transactions.end();
+  transactions.end(tx1);
   BOOST_CHECK_EQUAL(2ULL, transactions.term());
 
-  transactions.start();
+  tx1 = transactions.begin(false);
   BOOST_CHECK_EQUAL(3ULL, transactions.term());
-  transactions.start();
+  tx2 = transactions.begin(false);
   BOOST_CHECK_EQUAL(3ULL, transactions.term());
-  transactions.end();
+  transactions.end(tx1);
   BOOST_CHECK_EQUAL(3ULL, transactions.term());
-  transactions.end();
+  transactions.end(tx2);
   BOOST_CHECK_EQUAL(4ULL, transactions.term());
+
+  tx1 = transactions.begin(true);
+  BOOST_CHECK_EQUAL(4ULL, transactions.term());
+  tx2 = transactions.begin(false);
+  BOOST_CHECK_EQUAL(5ULL, transactions.term());
+  transactions.end(tx2);
+  BOOST_CHECK_EQUAL(5ULL, transactions.term());
+  transactions.end(tx1);
+  BOOST_CHECK_EQUAL(6ULL, transactions.term());
+
+  tx1 = transactions.begin(true);
+  BOOST_CHECK_EQUAL(6ULL, transactions.term());
+  tx2 = transactions.begin(false);
+  BOOST_CHECK_EQUAL(7ULL, transactions.term());
+  transactions.end(tx2);
+  BOOST_CHECK_EQUAL(7ULL, transactions.term());
+  tx3 = transactions.begin(true);
+  BOOST_CHECK_EQUAL(7ULL, transactions.term());
+  transactions.end(tx1);
+  BOOST_CHECK_EQUAL(8ULL, transactions.term());
+  transactions.end(tx3);
+  BOOST_CHECK_EQUAL(8ULL, transactions.term());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

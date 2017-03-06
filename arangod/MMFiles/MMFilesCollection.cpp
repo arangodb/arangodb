@@ -2314,7 +2314,7 @@ int MMFilesCollection::insert(transaction::Methods* trx,
   transaction::BuilderLeaser builder(trx);
   VPackSlice newSlice;
   int res = TRI_ERROR_NO_ERROR;
-  if (options.recoveryMarker == nullptr) {
+  if (options.recoveryData == nullptr) {
     TIMER_START(TRANSACTION_NEW_OBJECT_FOR_INSERT);
     res = newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
                              *builder.get(), options.isRestore);
@@ -2336,10 +2336,10 @@ int MMFilesCollection::insert(transaction::Methods* trx,
       static_cast<MMFilesTransactionState*>(trx->state())->idForMarker(), newSlice);
 
   MMFilesWalMarker const* marker;
-  if (options.recoveryMarker == nullptr) {
+  if (options.recoveryData == nullptr) {
     marker = &insertMarker;
   } else {
-    marker = options.recoveryMarker;
+    marker = static_cast<MMFilesWalMarker*>(options.recoveryData);
   }
 
   // now insert into indexes
@@ -2746,7 +2746,7 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
 
   // merge old and new values
   transaction::BuilderLeaser builder(trx);
-  if (options.recoveryMarker == nullptr) {
+  if (options.recoveryData == nullptr) {
     mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
                           TRI_RidToString(revisionId), options.mergeObjects,
                           options.keepNull, *builder.get());
@@ -2768,10 +2768,10 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
       static_cast<MMFilesTransactionState*>(trx->state())->idForMarker(), builder->slice());
 
   MMFilesWalMarker const* marker;
-  if (options.recoveryMarker == nullptr) {
+  if (options.recoveryData == nullptr) {
     marker = &updateMarker;
   } else {
-    marker = options.recoveryMarker;
+    marker = static_cast<MMFilesWalMarker*>(options.recoveryData);
   }
 
   VPackSlice const newDoc(marker->vpack());
@@ -2893,10 +2893,10 @@ int MMFilesCollection::replace(
       static_cast<MMFilesTransactionState*>(trx->state())->idForMarker(), builder->slice());
 
   MMFilesWalMarker const* marker;
-  if (options.recoveryMarker == nullptr) {
+  if (options.recoveryData == nullptr) {
     marker = &replaceMarker;
   } else {
-    marker = options.recoveryMarker;
+    marker = static_cast<MMFilesWalMarker*>(options.recoveryData);
   }
 
   VPackSlice const newDoc(marker->vpack());
@@ -2973,10 +2973,10 @@ int MMFilesCollection::remove(arangodb::transaction::Methods* trx, VPackSlice co
       builder->slice());
 
   MMFilesWalMarker const* marker;
-  if (options.recoveryMarker == nullptr) {
+  if (options.recoveryData == nullptr) {
     marker = &removeMarker;
   } else {
-    marker = options.recoveryMarker;
+    marker = static_cast<MMFilesWalMarker*>(options.recoveryData);
   }
 
   TRI_IF_FAILURE("RemoveDocumentNoLock") {

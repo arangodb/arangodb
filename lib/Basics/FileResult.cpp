@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,28 +17,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/TransactionWindow.h"
+#include "FileResult.h"
 
-#include <stdint.h>
-#include <atomic>
+namespace arangodb {
+FileResult::FileResult(bool state)
+    : Result(), _state(state), _sysErrorNumber(0) {}
 
-using namespace arangodb::cache;
-
-TransactionWindow::TransactionWindow() : _open(0), _term(0) {}
-
-void TransactionWindow::start() {
-  if (++_open == 1) {
-    _term++;
-  }
+FileResult::FileResult(bool state, int sysErrorNumber)
+    : Result(TRI_ERROR_SYS_ERROR, strerror(sysErrorNumber)),
+      _state(state), _sysErrorNumber(sysErrorNumber) {}
 }
-
-void TransactionWindow::end() {
-  if (--_open == 0) {
-    _term++;
-  }
-}
-
-uint64_t TransactionWindow::term() { return _term.load(); }

@@ -30,8 +30,6 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-class MMFilesDocumentDitch;
-
 namespace transaction {
 class Context;
 }

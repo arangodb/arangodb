@@ -182,9 +182,10 @@ SET(ARANGOD_SOURCES
   Cache/PlainCache.cpp
   Cache/Rebalancer.cpp
   Cache/State.cpp
+  Cache/Transaction.cpp
   Cache/TransactionalBucket.cpp
   Cache/TransactionalCache.cpp
-  Cache/TransactionWindow.cpp
+  Cache/TransactionManager.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
   Cluster/ClusterComm.cpp

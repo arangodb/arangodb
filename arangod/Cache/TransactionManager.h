@@ -25,6 +25,8 @@
 #define ARANGODB_CACHE_TRANSACTION_WINDOW_H
 
 #include "Basics/Common.h"
+#include "Cache/State.h"
+#include "Cache/Transaction.h"
 
 #include <stdint.h>
 #include <atomic>
@@ -33,28 +35,35 @@ namespace arangodb {
 namespace cache {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Manage windows in time when there are either no ongoing transactions
-/// or some.
+/// @brief Manage global cache transactions.
 ///
 /// Allows clients to start a transaction, end a transaction, and query an
-/// identifier for the current window.
+/// identifier for the current window. If the identifier is even, there are no
+/// ongoing sensitive transactions, and it is safe to store any values retrieved
+/// from the backing store to transactional caches. If the identifier is odd,
+/// then some values may be blacklisted by transactional caches (if they have
+/// been written to the backing store in the current window).
 ////////////////////////////////////////////////////////////////////////////////
-class TransactionWindow {
+class TransactionManager {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize state with no open transactions.
   //////////////////////////////////////////////////////////////////////////////
-  TransactionWindow();
+  TransactionManager();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Signal the beginning of a transaction.
+  /// @brief Open a new transaction.
+  ///
+  /// The transaction is considered read-only if it is guaranteed not to write
+  /// to the backing store. A read-only transaction may, however, write to the
+  /// cache.
   //////////////////////////////////////////////////////////////////////////////
-  void start();
+  Transaction* begin(bool readOnly);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Signal the end of a transaction.
+  /// @brief Signal the end of a transaction. Deletes the passed Transaction.
   //////////////////////////////////////////////////////////////////////////////
-  void end();
+  void end(Transaction* tx);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return the current window identifier.
@@ -62,7 +71,10 @@ class TransactionWindow {
   uint64_t term();
 
  private:
-  std::atomic<uint64_t> _open;
+  State _state;
+  std::atomic<uint64_t> _openReads;
+  std::atomic<uint64_t> _openSensitive;
+  std::atomic<uint64_t> _openWrites;
   std::atomic<uint64_t> _term;
 };
 

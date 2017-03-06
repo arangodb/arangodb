@@ -496,7 +496,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
 
               OperationOptions options;
               options.silent = true;
-              options.recoveryMarker = envelope;
+              options.recoveryData = static_cast<void*>(envelope);
               options.isRestore = true;
               options.waitForSync = false;
               options.ignoreRevs = true;
@@ -573,7 +573,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
 
               OperationOptions options;
               options.silent = true;
-              options.recoveryMarker = envelope;
+              options.recoveryData = static_cast<void*>(envelope);
               options.waitForSync = false;
               options.ignoreRevs = true;
 

@@ -33,6 +33,9 @@
 #include "Cache/FrequencyBuffer.h"
 
 #include <stdint.h>
+#include <memory>
+
+#include <iostream>
 
 using namespace arangodb::cache;
 
@@ -70,7 +73,9 @@ BOOST_AUTO_TEST_CASE(tst_uint8_t) {
   BOOST_CHECK(uint8_t() == zero);
 
   FrequencyBuffer<uint8_t> buffer(8);
-  BOOST_CHECK_EQUAL(buffer.memoryUsage(), sizeof(FrequencyBuffer<uint8_t>) + 8);
+  BOOST_CHECK_EQUAL(
+      buffer.memoryUsage(),
+      sizeof(FrequencyBuffer<uint8_t>) + sizeof(std::vector<uint8_t>) + 8);
 
   for (size_t i = 0; i < 4; i++) {
     buffer.insertRecord(two);
@@ -80,52 +85,73 @@ BOOST_AUTO_TEST_CASE(tst_uint8_t) {
   }
 
   auto frequencies = buffer.getFrequencies();
-  BOOST_CHECK_EQUAL(2ULL, frequencies->size());
+  BOOST_CHECK_EQUAL(static_cast<uint64_t>(2), frequencies->size());
   BOOST_CHECK_EQUAL(one, (*frequencies)[0].first);
-  BOOST_CHECK_EQUAL(2ULL, (*frequencies)[0].second);
+  BOOST_CHECK_EQUAL(static_cast<uint64_t>(2), (*frequencies)[0].second);
   BOOST_CHECK_EQUAL(two, (*frequencies)[1].first);
-  BOOST_CHECK_EQUAL(4ULL, (*frequencies)[1].second);
+  BOOST_CHECK_EQUAL(static_cast<uint64_t>(4), (*frequencies)[1].second);
 
   for (size_t i = 0; i < 8; i++) {
     buffer.insertRecord(one);
   }
 
   frequencies = buffer.getFrequencies();
-  BOOST_CHECK_EQUAL(1ULL, frequencies->size());
+  BOOST_CHECK_EQUAL(static_cast<size_t>(1), frequencies->size());
   BOOST_CHECK_EQUAL(one, (*frequencies)[0].first);
-  BOOST_CHECK_EQUAL(8ULL, (*frequencies)[0].second);
+  BOOST_CHECK_EQUAL(static_cast<uint64_t>(8), (*frequencies)[0].second);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test behavior with pointers
+/// @brief test behavior with shared_ptr
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE(tst_pointers) {
-  uint8_t* zero = nullptr;
-  uint8_t one = 1;
-  uint8_t two = 2;
+  struct cmp_weak_ptr {
+    bool operator()(std::weak_ptr<int> const& left,
+                    std::weak_ptr<int> const& right) const {
+      return !left.owner_before(right) && !right.owner_before(left);
+    }
+  };
+
+  struct hash_weak_ptr {
+    size_t operator()(std::weak_ptr<int> const& wp) const {
+      auto sp = wp.lock();
+      return std::hash<decltype(sp)>()(sp);
+    }
+  };
+
+  typedef FrequencyBuffer<std::weak_ptr<int>, cmp_weak_ptr, hash_weak_ptr>
+      BufferType;
+
+  std::shared_ptr<int> p0(nullptr);
 
   // check that default construction is as expected
-  typedef uint8_t* smallptr;
-  BOOST_CHECK(smallptr() == zero);
+  BOOST_CHECK(std::shared_ptr<int>() == p0);
 
-  FrequencyBuffer<uint8_t*> buffer(8);
+  std::shared_ptr<int> p1(new int());
+  *p1 = static_cast<int>(1);
+  std::shared_ptr<int> p2(new int());
+  *p2 = static_cast<int>(2);
+
+  BufferType buffer(8);
   BOOST_CHECK_EQUAL(buffer.memoryUsage(),
-                    sizeof(FrequencyBuffer<uint8_t*>) + (8 * sizeof(uint8_t*)));
+                    sizeof(BufferType) +
+                        sizeof(std::vector<std::weak_ptr<int>>) +
+                        (8 * sizeof(std::weak_ptr<int>)));
 
   for (size_t i = 0; i < 4; i++) {
-    buffer.insertRecord(&two);
+    buffer.insertRecord(p1);
   }
   for (size_t i = 0; i < 2; i++) {
-    buffer.insertRecord(&one);
+    buffer.insertRecord(p2);
   }
 
   auto frequencies = buffer.getFrequencies();
-  BOOST_CHECK_EQUAL(2ULL, frequencies->size());
-  BOOST_CHECK_EQUAL(&one, (*frequencies)[0].first);
-  BOOST_CHECK_EQUAL(2ULL, (*frequencies)[0].second);
-  BOOST_CHECK_EQUAL(&two, (*frequencies)[1].first);
-  BOOST_CHECK_EQUAL(4ULL, (*frequencies)[1].second);
+  BOOST_CHECK_EQUAL(static_cast<uint64_t>(2), frequencies->size());
+  BOOST_CHECK(p2 == (*frequencies)[0].first.lock());
+  BOOST_CHECK_EQUAL(static_cast<uint64_t>(2), (*frequencies)[0].second);
+  BOOST_CHECK(p1 == (*frequencies)[1].first.lock());
+  BOOST_CHECK_EQUAL(static_cast<uint64_t>(4), (*frequencies)[1].second);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -35,8 +35,6 @@ var jsunity = require('jsunity');
 
 
 function runSetup () {
-  require("console").log("Hund");
-
   db._drop('UnitTestsRecovery');
   db._create('UnitTestsRecovery');
 
@@ -44,7 +42,7 @@ function runSetup () {
     db._create('UnitTestsRecovery');
   } catch (e) {
     // This intentionally should fail!
-    if (internal.errors.ERROR_ARANGO_DUPLICATE_NAME.code == e.errorNum) {
+    if (internal.errors.ERROR_ARANGO_DUPLICATE_NAME.code === e.errorNum) {
       // Only this is a valid return code from the server
       return 0;
     }
@@ -62,9 +60,8 @@ function recoverySuite () {
     tearDown: function () {},
 
     testCollectionDuplicateName: function () {
-      require("console").log("Kartze");
       var c = db._collection('UnitTestsRecovery');
-      assertTrue(c != null && c != undefined);
+      assertTrue(c !== null && c !== undefined);
     }
   };
 };

@@ -46,7 +46,8 @@ namespace cache {
 /// which over-writes itself after it fills up (thus only maintaining a recent
 /// window on the records).
 ////////////////////////////////////////////////////////////////////////////////
-template <class T>
+template <class T, class Comparator = std::equal_to<T>,
+          class Hasher = std::hash<T>>
 class FrequencyBuffer {
  public:
   typedef std::vector<std::pair<T, uint64_t>> stats_t;
@@ -55,43 +56,54 @@ class FrequencyBuffer {
   std::atomic<uint64_t> _current;
   uint64_t _capacity;
   uint64_t _mask;
-  std::unique_ptr<T[]> _buffer;
+  std::unique_ptr<std::vector<T>> _buffer;
+  Comparator _cmp;
+  T _empty;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize with the given capacity.
   //////////////////////////////////////////////////////////////////////////////
-  FrequencyBuffer(uint64_t capacity) : _current(0) {
-    size_t i = 0;
-    for (; (1ULL << i) < capacity; i++) {
+  FrequencyBuffer(uint64_t capacity) : _current(0), _cmp(), _empty() {
+    uint64_t i = 0;
+    for (; (static_cast<uint64_t>(1) << i) < capacity; i++) {
     }
-    _capacity = (1ULL << i);
+    _capacity = (static_cast<uint64_t>(1) << i);
     _mask = _capacity - 1;
-    _buffer.reset(new T[_capacity]());
+    _buffer.reset(new std::vector<T>(_capacity));
+    TRI_ASSERT(_buffer->capacity() == _capacity);
+    TRI_ASSERT(_buffer->size() == _capacity);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Reports the hidden allocation size (not captured by sizeof).
+  //////////////////////////////////////////////////////////////////////////////
+  static uint64_t allocationSize(uint64_t capacity) {
+    return sizeof(std::vector<T>) + (capacity * sizeof(T));
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the memory usage in bytes.
   //////////////////////////////////////////////////////////////////////////////
   uint64_t memoryUsage() {
-    return ((_capacity * sizeof(T)) + sizeof(FrequencyBuffer<T>));
+    return ((_capacity * sizeof(T)) + sizeof(FrequencyBuffer<T>) +
+            sizeof(std::vector<T>));
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Insert an individual event record.
   //////////////////////////////////////////////////////////////////////////////
-  void insertRecord(T const& record) {
-    ++_current;
-    _buffer[_current & _mask] = record;
+  void insertRecord(T record) {
+    (*_buffer)[_current++ & _mask] = record;
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Remove all occurrences of the specified event record.
   //////////////////////////////////////////////////////////////////////////////
-  void purgeRecord(T const& record) {
+  void purgeRecord(T record) {
     for (size_t i = 0; i < _capacity; i++) {
-      if (_buffer[i] == record) {
-        _buffer[i] = T();
+      if (_cmp((*_buffer)[i], record)) {
+        (*_buffer)[i] = _empty;
       }
     }
   }
@@ -102,10 +114,10 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<typename FrequencyBuffer::stats_t> getFrequencies() const {
     // calculate frequencies
-    std::unordered_map<T, uint64_t> frequencies;
+    std::unordered_map<T, uint64_t, Hasher, Comparator> frequencies;
     for (size_t i = 0; i < _capacity; i++) {
-      T entry = _buffer[i];
-      if (entry != T()) {
+      T const entry = (*_buffer)[i];
+      if (!_cmp(entry, _empty)) {
         frequencies[entry]++;
       }
     }
@@ -129,7 +141,7 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   void clear() {
     for (size_t i = 0; i < _capacity; i++) {
-      _buffer[i] = T();
+      (*_buffer)[i] = T();
     }
   }
 };
