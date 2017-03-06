@@ -27,8 +27,7 @@
 
 #include "Basics/Common.h"
 
-#define BOOST_TEST_INCLUDED
-#include <boost/test/unit_test.hpp>
+#include "catch.hpp"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -43,27 +42,13 @@
 #define VPACK_CHECK(expected, func, lValue, rValue)  \
   l = VPackParser::fromJson(lValue);  \
   r = VPackParser::fromJson(rValue);  \
-  BOOST_CHECK_EQUAL(expected, func(l->slice(), r->slice(), true)); \
+  CHECK(expected == func(l->slice(), r->slice(), true)); \
 
 #define INIT_BUFFER  TRI_string_buffer_t* sb = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
 #define FREE_BUFFER  TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, sb);
 #define STRINGIFY    TRI_StringifyJson(sb, json);
 #define STRING_VALUE sb->_buffer
 #define FREE_JSON    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
-struct VPackHelperSetup {
-  VPackHelperSetup () {
-    BOOST_TEST_MESSAGE("setup VelocyPackHelper test");
-  }
-
-  ~VPackHelperSetup () {
-    BOOST_TEST_MESSAGE("tear-down VelocyPackHelper test");
-  }
-};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -73,13 +58,13 @@ struct VPackHelperSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_FIXTURE_TEST_SUITE(VPackHelperTest, VPackHelperSetup)
+TEST_CASE("VPackHelperTest", "[vpack]") {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test compare values with equal values
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_compare_values_equal) {
+SECTION("tst_compare_values_equal") {
   std::shared_ptr<VPackBuilder> l;
   std::shared_ptr<VPackBuilder> r;
 
@@ -106,7 +91,7 @@ BOOST_AUTO_TEST_CASE (tst_compare_values_equal) {
 /// @brief test compare values with unequal values
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_compare_values_unequal) {
+SECTION("tst_compare_values_unequal") {
   std::shared_ptr<VPackBuilder> l;
   std::shared_ptr<VPackBuilder> r;
   VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "false");
@@ -188,7 +173,7 @@ BOOST_AUTO_TEST_CASE (tst_compare_values_unequal) {
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_SUITE_END ()
+}
 
 // Local Variables:
 // mode: outline-minor
