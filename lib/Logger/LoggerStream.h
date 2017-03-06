@@ -77,11 +77,11 @@ class LoggerStream {
   }
 
   template <typename T>
-  friend LoggerStream& operator<<(LoggerStream& out, T const& obj) {
-    out << obj;
-    return out;
+  LoggerStream& operator<<(T const& obj) {
+    _out << obj;
+    return *this;
   }
-
+  
   template <typename T1, typename T2>
   LoggerStream& operator<<(std::pair<T1, T2> const& obj) {
     _out << '(' << obj.first << ", " << obj.second << ')';
