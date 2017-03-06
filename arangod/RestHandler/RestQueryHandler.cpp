@@ -111,6 +111,11 @@ bool RestQueryHandler::readQuery(bool slow) {
     result.add(VPackValue(VPackValueType::Object));
     result.add("id", VPackValue(StringUtils::itoa(q.id)));
     result.add("query", VPackValue(q.queryString));
+    if (q.bindParameters != nullptr) {
+      result.add("bindVars", q.bindParameters->slice());
+    } else {
+      result.add("bindVars", arangodb::basics::VelocyPackHelper::EmptyObjectValue());
+    }
     result.add("started", VPackValue(timeString));
     result.add("runTime", VPackValue(q.runTime));
     result.add("state", VPackValue(QueryExecutionState::toString(q.state)));

@@ -298,6 +298,11 @@ class Query {
   /// @brief look up a graph in the _graphs collection
   Graph const* lookupGraphByName(std::string const& name);
 
+  /// @brief return the bind parameters as passed by the user
+  std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const { 
+    return _bindParameters.builder(); 
+  }
+
  private:
   /// @brief initializes the query
   void init();

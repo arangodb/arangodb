@@ -1,6 +1,8 @@
 devel
 -----
 
+* added "bindVars" to attributes of currently running and slow queries
+
 * added input file type `auto` for arangoimp so it can automatically detect the 
   type of the input file from the filename extension
 
