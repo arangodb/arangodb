@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Zip/zip.h"
 
 #include <sstream>
