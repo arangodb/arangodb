@@ -21,25 +21,13 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/TransactionWindow.h"
+#include "Cache/Transaction.h"
 
 #include <stdint.h>
-#include <atomic>
 
 using namespace arangodb::cache;
 
-TransactionWindow::TransactionWindow() : _open(0), _term(0) {}
+Transaction::Transaction() : term(0), readOnly(true), sensitive(false) {}
 
-void TransactionWindow::start() {
-  if (++_open == 1) {
-    _term++;
-  }
-}
-
-void TransactionWindow::end() {
-  if (--_open == 0) {
-    _term++;
-  }
-}
-
-uint64_t TransactionWindow::term() { return _term.load(); }
+Transaction::Transaction(bool ro)
+    : term(0), readOnly(ro), sensitive(!readOnly) {}

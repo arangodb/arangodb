@@ -114,14 +114,14 @@ CachedValue* PlainBucket::remove(uint32_t hash, void const* key,
   return value;
 }
 
-CachedValue* PlainBucket::evictionCandidate() const {
+CachedValue* PlainBucket::evictionCandidate(bool ignoreRefCount) const {
   TRI_ASSERT(isLocked());
   for (size_t i = 0; i < SLOTS_DATA; i++) {
     size_t slot = SLOTS_DATA - (i + 1);
     if (_cachedHashes[slot] == 0) {
       continue;
     }
-    if (_cachedData[slot]->isFreeable()) {
+    if (ignoreRefCount || _cachedData[slot]->isFreeable()) {
       return _cachedData[slot];
     }
   }
@@ -166,8 +166,6 @@ void PlainBucket::moveSlot(size_t slot, bool moveToFront) {
       _cachedData[i] = _cachedData[i + 1];
     }
   }
-  if (i != slot) {
-    _cachedHashes[i] = hash;
-    _cachedData[i] = value;
-  }
+  _cachedHashes[i] = hash;
+  _cachedData[i] = value;
 }
