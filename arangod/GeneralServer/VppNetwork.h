@@ -31,6 +31,7 @@
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Validator.h>
+#include <velocypack/HexDump.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <memory>
@@ -60,6 +61,10 @@ inline std::size_t validateAndCount(char const* vpStart,
     } while (vpStart != vpEnd);
     return numPayloads - 1;
   } catch (std::exception const& e) {
+    VPackSlice slice(vpStart);
+    VPackHexDump dump(slice);
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+      << "len: " << std::distance(vpStart, vpEnd) << " - " << dump ;
     throw std::runtime_error(
         std::string("error during validation of incoming VPack: ") + e.what());
   }

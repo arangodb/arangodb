@@ -225,7 +225,7 @@ void ImportFeature::start() {
     std::regex re = std::regex(".*?\\.([a-zA-Z]+)", std::regex::ECMAScript);
     std::smatch match;
     if (!std::regex_match(_filename, match, re)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Cannot auto-detect filetype from filename '" << _filename << "'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Cannot auto-detect file type from filename '" << _filename << "'";
       FATAL_ERROR_EXIT();
     }
 
