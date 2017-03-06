@@ -35,7 +35,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/directories.h"
 
-#include "UnitTests/Basics/icu-helper.h"
+#include "icu-helper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros

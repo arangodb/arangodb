@@ -6,7 +6,7 @@ endforeach()
 add_executable(
   arangodbtests
   ../lib/Basics/WorkMonitorDummy.cpp
-  ../UnitTests/Basics/icu-helper.cpp
+  Basics/icu-helper.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/associative-multi-pointer-test.cpp
   Basics/associative-multi-pointer-nohashcache-test.cpp
