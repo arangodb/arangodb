@@ -45,13 +45,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
-option(SKIP_PACKAGING OFF)
+option(SKIP_PACKAGING "" OFF)
 
 # be verbose about flags used
-option(VERBOSE OFF)
+option(VERBOSE "be verbose about flags used" OFF)
 
 # enable timer for development
-option(USE_DEV_TIMERS OFF)
+option(USE_DEV_TIMERS "enable timer for development" OFF)
 
 if (USE_DEV_TIMERS)
   add_definitions("-DUSE_DEV_TIMERS=1")
@@ -59,7 +59,7 @@ endif ()
 
 # enable enterprise features
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
-option(USE_ENTERPRISE OFF)
+option(USE_ENTERPRISE "enable enterprise build" OFF)
 
 if (USE_ENTERPRISE)
   add_definitions("-DUSE_ENTERPRISE=1")
@@ -67,7 +67,7 @@ if (USE_ENTERPRISE)
   add_subdirectory(enterprise)
 endif ()
 
-option(DEBUG_SYNC_REPLICATION OFF "Enable debug code to enable synchronous replication debugging")
+option(DEBUG_SYNC_REPLICATION "Enable debug code to enable synchronous replication debugging" OFF)
 if (DEBUG_SYNC_REPLICATION)
   add_definitions("-DDEBUG_SYNC_REPLICATION=1")
 endif ()
