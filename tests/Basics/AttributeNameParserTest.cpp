@@ -158,6 +158,13 @@ SECTION("test_invalidAttributeAfterExpand") {
     TRI_ParseAttributeString(input, result, false);
     CHECK(false);
   } catch (Exception& e) {
+    CHECK(e.code() == TRI_ERROR_BAD_PARAMETER);
+  }
+  
+  try {
+    TRI_ParseAttributeString(input, result, true);
+    CHECK(false);
+  } catch (Exception& e) {
     CHECK(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
@@ -172,6 +179,13 @@ SECTION("test_nonClosingBracket") {
 
   try {
     TRI_ParseAttributeString(input, result, false);
+    CHECK(false);
+  } catch (Exception& e) {
+    CHECK(e.code() == TRI_ERROR_BAD_PARAMETER);
+  }
+  
+  try {
+    TRI_ParseAttributeString(input, result, true);
     CHECK(false);
   } catch (Exception& e) {
     CHECK(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
@@ -190,6 +204,13 @@ SECTION("test_nonClosingBracket2") {
     TRI_ParseAttributeString(input, result, false);
     CHECK(false);
   } catch (Exception& e) {
+    CHECK(e.code() == TRI_ERROR_BAD_PARAMETER);
+  }
+  
+  try {
+    TRI_ParseAttributeString(input, result, true);
+    CHECK(false);
+  } catch (Exception& e) {
     CHECK(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
@@ -206,6 +227,13 @@ SECTION("test_nonAsterisk") {
     TRI_ParseAttributeString(input, result, false);
     CHECK(false);
   } catch (Exception& e) {
+    CHECK(e.code() == TRI_ERROR_BAD_PARAMETER);
+  }
+  
+  try {
+    TRI_ParseAttributeString(input, result, true);
+    CHECK(false);
+  } catch (Exception& e) {
     CHECK(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
@@ -220,6 +248,13 @@ SECTION("test_nonAsterisk2") {
 
   try {
     TRI_ParseAttributeString(input, result, false);
+    CHECK(false);
+  } catch (Exception& e) {
+    CHECK(e.code() == TRI_ERROR_BAD_PARAMETER);
+  }
+  
+  try {
+    TRI_ParseAttributeString(input, result, true);
     CHECK(false);
   } catch (Exception& e) {
     CHECK(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
