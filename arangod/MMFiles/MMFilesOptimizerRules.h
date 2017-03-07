@@ -21,27 +21,21 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_MMFILES_AQL_FUNCTIONS_H
-#define ARANGOD_MMFILES_MMFILES_AQL_FUNCTIONS_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_OPTIMIZER_RULES_H
+#define ARANGOD_MMFILES_MMFILES_OPTIMIZER_RULES_H 1
 
 #include "Aql/Functions.h"
 
 namespace arangodb {
 namespace aql {
-struct Function;
+class ExecutionPlan;
+class Optimizer;
+struct OptimizerRule;
 }
 
-struct MMFilesAqlFunctions : public aql::Functions {
-  static aql::AqlValue Fulltext(arangodb::aql::Query*, transaction::Methods*,
-                                aql::VPackFunctionParameters const&);
-
-   static aql::AqlValue Near(arangodb::aql::Query*, transaction::Methods*,
-                             aql::VPackFunctionParameters const&);
-
-   static aql::AqlValue Within(arangodb::aql::Query*, transaction::Methods*,
-                               aql::VPackFunctionParameters const&);
-
-  static void RegisterFunctions();
+struct MMFilesOptimizerRules {
+  static void RegisterRules();
+  static void geoIndexRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
 };
 
 } // namespace arangodb
