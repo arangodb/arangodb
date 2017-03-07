@@ -452,11 +452,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
     transaction::BuilderLeaser b(trx.get());
     b->openArray();
     size_t buffer = 0;
-    while (it != it.end() && buffer < 1000) {
-      if (it->shard() != currentShard) {
-        break;
-      }
-
+    while (it != it.end() && it->shard() != currentShard&& buffer < 1000) {
       V* data = _vertexData.data() + it->_vertexDataOffset;
       b->openObject();
       b->add(StaticStrings::KeyString, VPackValue(it->key()));
@@ -469,6 +465,12 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
     }
     b->close();
     //LOG_TOPIC(INFO, Logger::PREGEL) << b->toString();
+    if (_destroyed) {
+      LOG_TOPIC(WARN, Logger::PREGEL) << "Storing data was canceled prematurely";
+      trx->abort();
+      trx.reset();
+      break;
+    }
 
     ShardID const& shard = globalShards[currentShard];
     OperationOptions options;

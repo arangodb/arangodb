@@ -381,7 +381,7 @@ void Conductor::startRecovery() {
   if (_state != ExecutionState::RUNNING && _state != ExecutionState::IN_ERROR) {
     return;  // maybe we are already in recovery mode
   } else if (_algorithm->supportsCompensation() == false) {
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Execution is not recoverable";
+    LOG_TOPIC(ERR, Logger::PREGEL) << "Algorithm does not support recovery";
     cancel();
     return;
   }

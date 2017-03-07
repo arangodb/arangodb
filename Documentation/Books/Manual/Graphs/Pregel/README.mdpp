@@ -11,28 +11,27 @@ These kind of tasks are better suited for AQL.
 The processing system inside ArangoDB is based on: [Pregel: A System for Large-Scale Graph Processing](http://www.dcs.bbk.ac.uk/~dell/teaching/cc/paper/sigmod10/p135-malewicz.pdf) – Malewicz et al. (Google) 2010
 This concept enables us to perform distributed graph processing, without the need for distributed global locking.
 
-### Requirements
+### Requirements (Non Smart Graph)
 
-to enable iterative graph processing for your data, you will need to ensure
+To enable iterative graph processing for your data, you will need to ensure
 that your vertex and edge collections are sharded in a specific way.
 
 The pregel computing model requires all edges to be present on the DB Server where
-the vertex document identified by the '_from' value is located.
+the vertex document identified by the `_from` value is located.
 This means the vertex collections need to be sharded by '_key' and the edge collection
 will need to be sharded after an attribute which always contains the '_key' of the vertex.
 Our implementation currently requires every edge collection to be sharded after a "vertex" attributes,
-additionally you will need to specify the key ```distributeShardsLike``` to ensure that all shards
+additionally you will need to specify the key `distributeShardsLike` to ensure that all shards
 use the same salt when consistent hashing the sharding attributes.
 
-
-* Create main vertex collection: ```db._create("vertices", {shardKeys:['_key']});```
-* Optionally create additional vertex collections ```db._create("additonal", {distributeShardsLike:"vertices"});```
-* Create (one or more) edge-collections: ```db._createEdgeCollection("edges", {shardKeys:['vertex'], distributeShardsLike:"vertices"});```
+* Create main vertex collection: `db._create("vertices", {shardKeys:['_key']});`
+* Optionally create additional vertex collections `db._create("additonal", {distributeShardsLike:"vertices"});`
+* Create (one or more) edge-collections: `db._createEdgeCollection("edges", {shardKeys:['vertex'], distributeShardsLike:"vertices"});`
 
 
 You will need to ensure that edge documents contain the proper values in their sharding attribute.
-For a vertex document in collection "vertices"  ```{_key:"A", value:0}```
-the edge documents will have look like this:
+For a vertex document in looking like this  ```{_key:"A", value:0}```
+the corresponding edge documents would have look like this:
 
 ```
   {_from:"vertices/A", _to: "vertices/B", vertex:"A"}
@@ -41,25 +40,42 @@ the edge documents will have look like this:
   ...
 ```
 
-This will ensure that during an insert of an edge document, the document will be placed in a shard
-on the proper DBServer. There is no restriction on additional attributes in your documents.
+This will ensure that ourgoing edge documents will be placed on the same DBServer as the vertex.
+Without the correct placement of the edges, the pregel graph processing system will not work correctly, because
+edges will not load correctly.
 
 ### Arangosh API
 
 #### Starting an Algorithm Execution
 
-The pregel API is accessible through the ```@arangodb/pregel``` package.
+The pregel API is accessible through the `@arangodb/pregel` package.
+To start an execution you need to specify the **algorithm** name and the vertex and edge collections.
+Alternatively you can specify a named graph. Additionally you can specify custom parameters which
+vary for each algorithm.
+The `start` method will always a unique ID which can be used to interact with the algorithm and later on.
 
+The below version of the `start` method can be used for named graphs:
+```javascript
   var pregel = require("@arangodb/pregel");
   var params = {};
-  var execution = pregel.start("<algorithm>", "<graph>", params);
+  var execution = pregel.start("<algorithm>", "<yourgraph>", params);
+```
+Params needs to be an object, the valid keys are mentioned below in the section [Algorithms]()
 
-The code returned uniquely identifies the algorithm execution.
+
+Alternatively you might want to specify the vertex and edge collections directly. The call-syntax of the `start``
+method changes in this case. The second argument must be an object with the keys `vertexCollections`and `edgeCollections`.
+```javascript
+  var pregel = require("@arangodb/pregel");
+  var params = {};
+  var execution = pregel.start("<algorithm>", {vertexCollections:["vertices"], edgeCollections:["edges"]}, {});
+```
+The last argument is still the parameter object. See below for a list of algorithms and parameters.
 
 
 #### Status of an Algorithm Execution
 
-The code returned by the ```pregel.start(...)``` method can be used to
+The code returned by the `pregel.start(...)` method can be used to
 track the status of your algorithm.
 
 ```javascript
@@ -67,8 +83,19 @@ track the status of your algorithm.
   var status = pregel.status(execution);
 ```
 
-The result will give your some information on the state of the algorithm. The status might
-look something like this:
+The result will tell you the current status of the algorithm execution. 
+It will tell you the current `state` of the execution, the current global superstep, the runtime, the global aggregator values as
+well as the number of send and received messages.
+
+Valid values for the `state` field include:
+- "running" algorithm is still running
+- "done": The execution is done, the result might not be written back into the collection yet.
+- "canceled": The execution was permanently canceled, either by the user or by an error.
+- "in error": The exeuction is in an error state. This can be caused by primary DBServers beeing not reachable or beeing non responsive.
+  The execution might recover later, or switch to "canceled" if it was not able to recover successfuly
+- "recovering": The execution is actively recovering, will switch back to "running" if the recovery was successful
+
+The object returned by the `status` method might for example look something like this:
 
 ```javascript
   {
@@ -88,11 +115,18 @@ look something like this:
 
 #### Canceling an Execution / Discarding results
 
+To cancel an execution which is still runnning, and discard any intermediare results you can use the `cancel` method.
+This will immediatly free all memory taken up by the execution, and will make you lose all intermediary data. 
 
+You might get inconsistent results if you cancel an execution while it is already in it's `done` state. The data is written
+multi-threaded into all collection shards at once, this means there are multiple transactions simultaniously. A transaction might
+already be commited when you cancel the execution job, therefore you might see the result in your collection. This does not apply
+if you configured the execution to not write data into the collection.
 
 ```javascript
-  var execution = pregel.start("sssp", "demograph", {source: "vertices/V"});
-  pregel.cancel(execution);
+// start a single source shortest path job
+var execution = pregel.start("sssp", "demograph", {source: "vertices/V"});
+pregel.cancel(execution);
 ```
 
 ## AQL integration
@@ -140,7 +174,8 @@ the iterations are bound by the diameter (the longest shortest path) of your gra
 
 #### Hyperlink-Induced Topic Search (HITS)
 
-HITS is a link analysis algorithm that rates Web pages, developed by Jon Kleinberg. It is also known as hubs and authorities. 
+HITS is a link analysis algorithm that rates Web pages, developed by Jon Kleinberg (The algorithm is also known as hubs and authorities).
+
 
 The idea behind Hubs and Authorities comes from the typical structure of the web: Certain websites known as hubs, serve as large directories that are not actually 
 authoritative on the information that they hold. These hubs are used as compilations of a broad catalog of information that leads users direct to other authoritative webpages.
@@ -166,6 +201,8 @@ Centrality measures help identify the most important vertices in a graph. They c
 For example they can be used to identify *influencers* in social networks, or *middle-men* in terrorist networks.
 There are various definitions for centrality, the simplest one being the vertex degree. 
 
+![Illustration of an execution of different centrality measures (Freeman 1977)](centrality_visual.png)
+
 A common definitions of centrality is the \textbf{closeness centrality} (or closeness). 
 The closeness of a vertex in a graph is the inverse average length of the shortest path between the vertex 
 and all other vertices. For vertices *x*, *y* and shortest distance *d(y,x)* it is defined as
@@ -177,6 +214,7 @@ and all other vertices. For vertices *x*, *y* and shortest distance *d(y,x)* it 
 Effective Closeness approximates the closeness measure. The algorithm works by iteratively estimating the number
 of shortest paths passing through each vertex. The score will approximates the the real closeness score, since
 it is not possible to actually count all shortest paths due to the horrendous O(n^2 * d) memory requirements. 
+The algorithm is from the paper *Centralities in Large Networks: Algorithms and Observations (U Kang et.al. 2011)*
 
 ArangoDBs implementation approximates the number of shortest path in each iteration by using a HyperLogLog counter with 64 buckets. 
 This should work well on large graphs and on smaller ones as well. The memory requirements should be **O(n * d)** where 
@@ -197,16 +235,16 @@ Where $\sigma_{xy}$ is the number of shortest paths between $x$ and $y$, and $\s
 number of paths also passing through $v$. The intuitive visualization of these metrics can be seen 
 below.
 
-![Illustration of an execution of different centrality measures (Freeman 1977)](centrality_visual.png)
-
 Unfortunately these definitions were not designed with scalability in mind. It is probably impossible to compute them
 efficiently and accurately. Fortunately there are scalable substitutions proposed by **U Kang et.al. 2011**.
 
 ##### LineRank
 
-**LineRank** approximates the random walk betweenness of every vertex in a graph.
-This should be a scalable equivalent to vertex betweeness, which can be executed in ArangoDB. It essentially builds a line graph
-out of your graph (switches the vertices and edges), and then computes a PageRank like score.
+**LineRank** approximates the random walk betweenness of every vertex in a graph. This is the probability that someone starting on
+an arbitary vertex, will visit this node when he randomly chooses edges to visit.
+The algoruthm essentially builds a line graph out of your graph (switches the vertices and edges), and then computes a score similar to PageRank.
+This can be considered a scalable equivalent to vertex betweeness, which can be executed distributedly in ArangoDB. 
+The algorithm is from the paper *Centralities in Large Networks: Algorithms and Observations (U Kang et.al. 2011)*
 
 ```javascript
     var pregel = require("@arangodb/pregel");
