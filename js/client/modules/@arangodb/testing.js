@@ -2627,6 +2627,8 @@ testFuncs.boost = function (options) {
   let args = [];
   let results = {};
 
+  const icuDir = UNITTESTS_DIR + '/';
+  require('internal').env.ICU_DATA = icuDir;
   const run = locateBoostTest('arangodbtests');
   if (!options.skipBoost) {
     if (run !== '') {
