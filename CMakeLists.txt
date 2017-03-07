@@ -947,6 +947,7 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangoimp     v8_build)
   add_dependencies(arangorestore v8_build)
   add_dependencies(arangosh      v8_build)
+  add_dependencies(arangodbtests v8_build)
 endif ()
 
 # This copies the compile commands to the source dir.
