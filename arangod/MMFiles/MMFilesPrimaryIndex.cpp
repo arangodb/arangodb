@@ -29,6 +29,7 @@
 #include "Basics/tri-strings.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
@@ -191,7 +192,10 @@ MMFilesPrimaryIndex::MMFilesPrimaryIndex(arangodb::LogicalCollection* collection
 
   if (collection != nullptr) {
     // collection is a nullptr in the coordinator case
-    indexBuckets = collection->indexBuckets();
+    auto physical =
+        static_cast<arangodb::MMFilesCollection*>(collection->getPhysical());
+    TRI_ASSERT(physical != nullptr);
+    indexBuckets = static_cast<size_t>(physical->indexBuckets());
   }
 
   _primaryIndex = new MMFilesPrimaryIndexImpl(

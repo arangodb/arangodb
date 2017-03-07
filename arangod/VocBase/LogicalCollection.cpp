@@ -158,7 +158,6 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _isSystem(other.isSystem()),
       _version(other._version),
       _waitForSync(other.waitForSync()),
-      _indexBuckets(other.indexBuckets()),
       _indexes(),
       _replicationFactor(other.replicationFactor()),
       _numberOfShards(other.numberOfShards()),
@@ -204,8 +203,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _version(Helper::readNumericValue<uint32_t>(info, "version",
                                                   currentVersion())),
       _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
-      _indexBuckets(Helper::readNumericValue<uint32_t>(
-          info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
       _replicationFactor(1),
       _numberOfShards(
           Helper::readNumericValue<size_t>(info, "numberOfShards", 1)),
@@ -356,10 +353,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     }
   }
 
-  if (_indexes.empty()) {
-    createInitialIndexes();
-  }
-
+  createInitialIndexes();
   auto indexesSlice = info.get("indexes");
   if (indexesSlice.isArray()) {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -615,8 +609,6 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 void LogicalCollection::setDeleted(bool newValue) { _isDeleted = newValue; }
 
 // SECTION: Indexes
-uint32_t LogicalCollection::indexBuckets() const { return _indexBuckets; }
-
 std::vector<std::shared_ptr<arangodb::Index>> const&
 LogicalCollection::getIndexes() const {
   return _indexes;
@@ -808,10 +800,6 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids) c
 
   // Physical Information
   getPhysical()->getPropertiesVPack(result);
-  // TODO
-  result.add("count", VPackValue(_physical->initialCount()));
-  result.add("indexBuckets", VPackValue(_indexBuckets)); //MMFiles
-  // ODOT
 
   // Indexes
   result.add(VPackValue("indexes"));
@@ -900,22 +888,11 @@ CollectionResult LogicalCollection::updateProperties(VPackSlice const& slice,
 
   WRITE_LOCKER(writeLocker, _infoLock);
 
-  uint32_t tmp = arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-      slice, "indexBuckets",
-      2 /*Just for validation, this default Value passes*/);
-  if (tmp == 0 || tmp > 1024) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            "indexBuckets must be a two-power between 1 and 1024"};
-  }
-
-  // The physical may first reject illegal properties.
+ // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
   getPhysical()->updateProperties(slice, doSync);
 
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
-
-  _indexBuckets =
-      Helper::getNumericValue<uint32_t>(slice, "indexBuckets", _indexBuckets); //MMFiles
 
   if (!_isLocal) {
     // We need to inform the cluster as well
@@ -924,12 +901,7 @@ CollectionResult LogicalCollection::updateProperties(VPackSlice const& slice,
     return CollectionResult{tmp};
   }
 
-  int64_t count = arangodb::basics::VelocyPackHelper::getNumericValue<int64_t>(
-      slice, "count", _physical->initialCount());
-  if (count != _physical->initialCount()) {
-    _physical->updateCount(count);
-  }
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+ StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->changeCollection(_vocbase, _cid, this, doSync);
 
   return {};

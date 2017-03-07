@@ -70,8 +70,6 @@ class PhysicalCollection {
 
   virtual void updateCount(int64_t) = 0;
 
-  virtual size_t journalSize() const = 0;
-  
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
 
@@ -105,7 +103,6 @@ class PhysicalCollection {
   virtual uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const = 0;
 
   virtual bool isFullyCollected() const = 0;
-  virtual bool doCompact() const = 0;
 
   ////////////////////////////////////
   // -- SECTION Indexes --
@@ -180,7 +177,11 @@ class PhysicalCollection {
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
 
-
+  // SECTION: Has to be moved INTO MMFiles
+  virtual bool doCompact() const = 0;
+  virtual size_t journalSize() const = 0;
+  virtual uint32_t indexBuckets() const = 0;
+  
  protected:
 
   /// @brief Inject figures that are specific to StorageEngine

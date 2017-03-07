@@ -31,6 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
@@ -435,7 +436,9 @@ MMFilesHashIndex::MMFilesHashIndex(TRI_idx_iid_t iid, LogicalCollection* collect
   uint32_t indexBuckets = 1;
 
   if (collection != nullptr) {
-    indexBuckets = collection->indexBuckets();
+    auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+    TRI_ASSERT(physical != nullptr);
+    indexBuckets = static_cast<size_t>(physical->indexBuckets());
   }
 
   auto func = std::make_unique<HashElementFunc>();

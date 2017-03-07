@@ -32,6 +32,7 @@
 #include "Basics/hashes.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
@@ -190,8 +191,10 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollectio
   TRI_ASSERT(iid != 0);
 
   if (collection != nullptr) {
-    // document is a nullptr in the coordinator case
-    _numBuckets = static_cast<size_t>(collection->indexBuckets());
+    // collection is a nullptr in the coordinator case
+    auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+    TRI_ASSERT(physical != nullptr);
+    _numBuckets = static_cast<size_t>(physical->indexBuckets());
   }
 
   auto context = [this]() -> std::string { return this->context(); };

@@ -205,8 +205,6 @@ class LogicalCollection {
 
 
   // SECTION: Indexes
-  uint32_t indexBuckets() const;
-
   std::vector<std::shared_ptr<Index>> const& getIndexes() const;
 
   void getIndexesVPack(velocypack::Builder&, bool) const;
@@ -390,10 +388,6 @@ private:
 
   uint32_t _version;
   bool _waitForSync;
-
-
-  // SECTION: Indexes
-  uint32_t _indexBuckets;
 
   std::vector<std::shared_ptr<Index>> _indexes;
 

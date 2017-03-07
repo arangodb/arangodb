@@ -250,6 +250,8 @@ class MMFilesCollection final : public PhysicalCollection {
   // -- SECTION Indexes --
   ///////////////////////////////////
 
+  uint32_t indexBuckets() const override;
+
   // WARNING: Make sure that this Collection Instance
   // is somehow protected. If it goes out of all scopes
   // or it's indexes are freed the pointer returned will get invalidated.
@@ -497,8 +499,12 @@ class MMFilesCollection final : public PhysicalCollection {
     double _lastCompactionStamp;
     std::string _path;
     TRI_voc_size_t _journalSize;
+
     bool const _isVolatile;
 
+    // SECTION: Indexes
+
+    uint32_t _indexBuckets;
     // whether or not secondary indexes should be filled
     bool _useSecondaryIndexes;
     bool _doCompact;

@@ -1394,10 +1394,11 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
         copy.add(key, entry.value);
       }
     }
+    // TODO Why is this?
     copy.add("doCompact", VPackValue(info->getPhysical()->doCompact()));
     copy.add("journalSize", VPackValue(info->getPhysical()->journalSize()));
     copy.add("waitForSync", VPackValue(info->waitForSync()));
-    copy.add("indexBuckets", VPackValue(info->indexBuckets()));
+    copy.add("indexBuckets", VPackValue(info->getPhysical()->indexBuckets()));
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }

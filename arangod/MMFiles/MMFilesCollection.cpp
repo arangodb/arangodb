@@ -115,6 +115,15 @@ static DatafileStatisticsContainer* FindDatafileStats(
 CollectionResult MMFilesCollection::updateProperties(VPackSlice const& slice,
                                                      bool doSync) {
   // validation
+  uint32_t tmp = arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+      slice, "indexBuckets",
+      2 /*Just for validation, this default Value passes*/);
+
+  if (tmp == 0 || tmp > 1024) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "indexBuckets must be a two-power between 1 and 1024"};
+  }
+ 
   if (isVolatile() &&
       arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "waitForSync", _logicalCollection->waitForSync())) {
@@ -144,6 +153,9 @@ CollectionResult MMFilesCollection::updateProperties(VPackSlice const& slice,
     }
   }
 
+  _indexBuckets =
+      Helper::getNumericValue<uint32_t>(slice, "indexBuckets", _indexBuckets); //MMFiles
+
   if (slice.hasKey("journalSize")) {
     _journalSize = Helper::getNumericValue<TRI_voc_size_t>(slice, "journalSize",
                                                            _journalSize);
@@ -153,6 +165,12 @@ CollectionResult MMFilesCollection::updateProperties(VPackSlice const& slice,
   }
   _doCompact = Helper::getBooleanValue(slice, "doCompact", _doCompact);
 
+  int64_t count = arangodb::basics::VelocyPackHelper::getNumericValue<int64_t>(
+      slice, "count", initialCount());
+  if (count != initialCount()) {
+    updateCount(count);
+  }
+ 
   return CollectionResult{TRI_ERROR_NO_ERROR};
 }
 
@@ -428,6 +446,8 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection,
                                                    TRI_JOURNAL_DEFAULT_SIZE))),
       _isVolatile(arangodb::basics::VelocyPackHelper::readBooleanValue(
           info, "isVolatile", false)),
+      _indexBuckets(Helper::readNumericValue<uint32_t>(
+          info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
       _useSecondaryIndexes(true),
       _doCompact(Helper::readBooleanValue(info, "doCompact", true)),
       _maxTick(0) {
@@ -465,6 +485,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
   _lastCompactionStatus = mmfiles._lastCompactionStatus;
   _lastCompactionStamp = mmfiles._lastCompactionStamp;
   _journalSize = mmfiles._journalSize;
+  _indexBuckets = mmfiles._indexBuckets;
   _path = mmfiles._path;
   _doCompact = mmfiles._doCompact;
   _maxTick = mmfiles._maxTick;
@@ -1071,11 +1092,11 @@ bool MMFilesCollection::closeDatafiles(std::vector<MMFilesDatafile*> const& file
 
 void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
-  result.add("path", VPackValue(_path));
-  result.add("journalSize", VPackValue(_journalSize));
+  result.add("count", VPackValue(initialCount()));
   result.add("doCompact", VPackValue(_doCompact));
+  result.add("indexBuckets", VPackValue(_indexBuckets));
   result.add("isVolatile", VPackValue(_isVolatile));
-
+  result.add("journalSize", VPackValue(_journalSize));
   result.add(VPackValue("keyOptions"));
   if (_keyGenerator != nullptr) {
     result.openObject();
@@ -1085,6 +1106,7 @@ void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
     result.openArray();
     result.close();
   }
+  result.add("path", VPackValue(_path));
 
   TRI_ASSERT(result.isOpenObject());
 }
@@ -1405,7 +1427,11 @@ void MMFilesCollection::fillIndex(
   }
 }
 
-/// @brief return the primary index
+uint32_t MMFilesCollection::indexBuckets() const {
+  return _indexBuckets;
+}
+
+// @brief return the primary index
 // WARNING: Make sure that this LogicalCollection Instance
 // is somehow protected. If it goes out of all scopes
 // or it's indexes are freed the pointer returned will get invalidated.
