@@ -49,6 +49,7 @@ struct HexDump {
       : HexDump(*slice, valuesPerLine, separator) {}
 
   static std::string toHex(uint8_t value);
+  std::string toString() const;
 
   friend std::ostream& operator<<(std::ostream&, HexDump const&);
 

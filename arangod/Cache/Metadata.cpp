@@ -30,16 +30,15 @@
 
 using namespace arangodb::cache;
 
-Metadata::Metadata(std::shared_ptr<Cache> cache, uint64_t limit, uint8_t* table,
-                   uint32_t logSize)
+Metadata::Metadata(uint64_t limit)
     : _state(),
-      _cache(cache),
+      _cache(nullptr),
       _usage(0),
       _softLimit(limit),
       _hardLimit(limit),
-      _table(table),
+      _table(nullptr),
       _auxiliaryTable(nullptr),
-      _logSize(logSize),
+      _logSize(0),
       _auxiliaryLogSize(0) {}
 
 Metadata::Metadata(Metadata const& other)
@@ -52,6 +51,12 @@ Metadata::Metadata(Metadata const& other)
       _auxiliaryTable(other._auxiliaryTable),
       _logSize(other._logSize),
       _auxiliaryLogSize(other._auxiliaryLogSize) {}
+
+void Metadata::link(std::shared_ptr<Cache> cache) {
+  lock();
+  _cache = cache;
+  unlock();
+}
 
 void Metadata::lock() { _state.lock(); }
 

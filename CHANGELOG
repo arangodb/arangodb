@@ -1,6 +1,11 @@
 devel
 -----
 
+* upgraded version of bundled zlib library from 1.2.8 to 1.2.11
+
+* added input file type `auto` for arangoimp so it can automatically detect the 
+  type of the input file from the filename extension
+
 * fixed variables parsing in GraphQL
 
 * added `--translate` option for arangoimp to translate attribute names from
@@ -13,6 +18,8 @@ devel
       arangoimp --type csv --file data.csv --translate "id=_key" --translate "from=_from" --translate "to=_to"
 
   `--translate` works for CSV and TSV inputs only.
+
+* changed default value for `--server.max-packet-size` from 128 MB to 256 MB
 
 * fixed issue #2350
 
@@ -41,7 +48,6 @@ devel
 * arangoexport can now export to csv format
 
 * arangoimp: fixed issue #2214
-
 
 v3.2.alpha2 (2017-02-20)
 ------------------------

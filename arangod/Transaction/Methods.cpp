@@ -39,7 +39,6 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesLogfileManager.h" //TODO -- remove -- waitForTick 
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -1414,7 +1413,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
  
   // wait for operation(s) to be synced to disk here 
   if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 && isSingleOperationTransaction()) {
-    MMFilesLogfileManager::instance()->slots()->waitForTick(maxTick);
+    EngineSelectorFeature::ENGINE->waitForSync(maxTick);
   }
   
   // Now see whether or not we have to do synchronous replication:
@@ -1723,7 +1722,7 @@ OperationResult transaction::Methods::modifyLocal(
   
   // wait for operation(s) to be synced to disk here 
   if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 && isSingleOperationTransaction()) {
-    MMFilesLogfileManager::instance()->slots()->waitForTick(maxTick);
+    EngineSelectorFeature::ENGINE->waitForSync(maxTick);
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -1967,7 +1966,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
  
   // wait for operation(s) to be synced to disk here 
   if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 && isSingleOperationTransaction()) {
-    MMFilesLogfileManager::instance()->slots()->waitForTick(maxTick);
+    EngineSelectorFeature::ENGINE->waitForSync(maxTick);
   }
 
   // Now see whether or not we have to do synchronous replication:

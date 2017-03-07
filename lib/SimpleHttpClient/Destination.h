@@ -32,7 +32,7 @@ class Endpoint;
 namespace communicator {
 class Destination {
  public:
-  Destination(std::string const& url) : _url(url) {}
+  explicit Destination(std::string const& url) : _url(url) {}
 
  public:
   std::string const& url() const { return _url; }

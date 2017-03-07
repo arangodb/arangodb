@@ -280,7 +280,8 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 }
 
 bool ImportHelper::importJson(std::string const& collectionName,
-                              std::string const& fileName) {
+                              std::string const& fileName,
+                              bool assumeLinewise) {
   _collectionName = collectionName;
   _firstLine = "";
   _outputBuffer.clear();
@@ -308,6 +309,11 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
   bool isObject = false;
   bool checkedFront = false;
+
+  if (assumeLinewise) {
+    checkedFront = true;
+    isObject = false;
+  }
 
   // progress display control variables
   int64_t totalRead = 0;
@@ -345,8 +351,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
     if (!checkedFront) {
       // detect the import file format (single lines with individual JSON
-      // objects
-      // or a JSON array with all documents)
+      // objects or a JSON array with all documents)
       char const* p = _outputBuffer.begin();
       char const* e = _outputBuffer.end();
 

@@ -27,9 +27,6 @@
 #include <limits>
 #include <stdexcept>
 
-#include <velocypack/HexDump.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include <boost/optional.hpp>
 
 #include "Basics/HybridLogicalClock.h"
@@ -59,9 +56,8 @@ inline std::size_t validateAndCount(char const* vpStart,
   validationOptions.validateUtf8Strings = true;
   VPackValidator validator(&validationOptions);
 
-  std::size_t numPayloads = 0;
-
   try {
+    std::size_t numPayloads = 0;
     // check for slice start to the end of Chunk
     // isSubPart allows the slice to be shorter than the checked buffer.
     do {
@@ -75,10 +71,8 @@ inline std::size_t validateAndCount(char const* vpStart,
     } while (vpStart != vpEnd);
     return numPayloads - 1;
   } catch (std::exception const& e) {
-    VPackSlice slice(vpStart);
-    VPackHexDump dump(slice);
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-      << "len: " << std::distance(vpStart, vpEnd) << " - " << dump ;
+      << "len: " << std::distance(vpStart, vpEnd) << " - " << VPackSlice(vpStart).toHex();
     throw std::runtime_error(
         std::string("error during validation of incoming VPack: ") + e.what());
   }

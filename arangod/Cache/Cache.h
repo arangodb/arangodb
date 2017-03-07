@@ -39,13 +39,27 @@
 namespace arangodb {
 namespace cache {
 
+class PlainCache;          // forward declaration
+class TransactionalCache;  // forward declaration
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief The common structure of all caches managed by Manager.
 ///
 /// Any pure virtual functions are documented in derived classes implementing
 /// them.
 ////////////////////////////////////////////////////////////////////////////////
-class Cache {
+class Cache : public std::enable_shared_from_this<Cache> {
+ protected:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief A dummy class to restrict constructor access.
+  //////////////////////////////////////////////////////////////////////////////
+  class ConstructionGuard {
+   private:
+    ConstructionGuard();
+    friend class PlainCache;
+    friend class TransactionalCache;
+  };
+
  public:
   typedef FrequencyBuffer<uint8_t> StatBuffer;
 
@@ -93,10 +107,16 @@ class Cache {
   };
 
  public:
+  Cache(ConstructionGuard guard, Manager* manager,
+        Manager::MetadataItr metadata, bool allowGrowth,
+        bool enableWindowedStats);
+  virtual ~Cache() = default;
+
   // primary functionality; documented in derived classes
   virtual Finding find(void const* key, uint32_t keySize) = 0;
   virtual bool insert(CachedValue* value) = 0;
   virtual bool remove(void const* key, uint32_t keySize) = 0;
+  virtual bool blacklist(void const* key, uint32_t keySize) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the limit on memory usage for this cache in bytes.
@@ -157,8 +177,10 @@ class Cache {
     insertEviction = 3,
     insertNoEviction = 4
   };
+  static uint64_t _evictionStatsCapacity;
   StatBuffer _evictionStats;
   std::atomic<uint64_t> _insertionCount;
+  static uint64_t _findStatsCapacity;
   bool _enableWindowedStats;
   std::unique_ptr<StatBuffer> _findStats;
   std::atomic<uint64_t> _findHits;
@@ -174,6 +196,7 @@ class Cache {
   // times to wait until requesting is allowed again
   Manager::time_point _migrateRequestTime;
   Manager::time_point _resizeRequestTime;
+  bool _lastResizeRequestStatus;
 
   // friend class manager and tasks
   friend class FreeMemoryTask;
@@ -183,12 +206,6 @@ class Cache {
  protected:
   // shutdown cache and let its memory be reclaimed
   static void destroy(std::shared_ptr<Cache> cache);
-
-  Cache(Manager* manager, uint64_t requestedLimit, bool allowGrowth,
-        bool enableWindowedStats, std::function<void(Cache*)> deleter,
-        uint64_t size);
-
-  virtual ~Cache() = default;
 
   bool isOperational() const;
   void startOperation();

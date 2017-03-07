@@ -92,8 +92,7 @@ class LogicalCollection {
   friend struct ::TRI_vocbase_t;
 
  public:
-  LogicalCollection(TRI_vocbase_t*, velocypack::Slice const&,
-                    bool isPhysical);
+  LogicalCollection(TRI_vocbase_t*, velocypack::Slice const&);
 
   virtual ~LogicalCollection();
 
@@ -318,6 +317,11 @@ class LogicalCollection {
                                DocumentIdentifierToken const& token,
                                TRI_voc_tick_t maxTick,
                                ManagedDocumentResult& result);
+
+  /// @brief Persist the connected physical collection.
+  ///        This should be called AFTER the collection is successfully
+  ///        created and only on Sinlge/DBServer
+  void persistPhysicalCollection();
 
  private:
   // SECTION: Index creation

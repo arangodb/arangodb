@@ -130,7 +130,9 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new MMFilesIndexFactory())
     , _isUpgrade(false)
     , _maxTick(0) 
-    {}
+    {
+      startsAfter("PersistentIndex");
+    }
 
 MMFilesEngine::~MMFilesEngine() {
 }
@@ -532,6 +534,10 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
   result.close();
 
   return TRI_ERROR_NO_ERROR;
+}
+  
+void MMFilesEngine::waitForSync(TRI_voc_tick_t tick) {
+  MMFilesLogfileManager::instance()->slots()->waitForTick(tick);
 }
 
 TRI_vocbase_t* MMFilesEngine::openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) {
@@ -1276,7 +1282,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
-      auto uniqCol = std::make_unique<arangodb::LogicalCollection>(vocbase.get(), it, true);
+      auto uniqCol = std::make_unique<arangodb::LogicalCollection>(vocbase.get(), it);
       auto collection = uniqCol.get();
       TRI_ASSERT(collection != nullptr);
       StorageEngine::registerCollection(vocbase.get(), uniqCol.get());

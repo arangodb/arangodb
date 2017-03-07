@@ -79,7 +79,8 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   bool importJson(std::string const& collectionName,
-                  std::string const& fileName);
+                  std::string const& fileName,
+                  bool assumeLinewise);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the action to carry out on duplicate _key
