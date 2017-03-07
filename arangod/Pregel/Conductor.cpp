@@ -85,10 +85,9 @@ void Conductor::start(std::string const& algoName, VPackSlice const& config) {
 
   _maxSuperstep =
       VelocyPackHelper::getNumericValue(config, "maxGSS", _maxSuperstep);
-  // configure the async mode as optional
+  // configure the async mode as off by default
   VPackSlice async = _userParams.slice().get("async");
-  _asyncMode = _algorithm->supportsAsyncMode();
-  _asyncMode = _asyncMode && (async.isNone() || async.getBoolean());
+  _asyncMode = _algorithm->supportsAsyncMode() && async.isBool() && async.getBoolean();
   if (_asyncMode) {
     LOG_TOPIC(INFO, Logger::PREGEL) << "Running in async mode";
   }

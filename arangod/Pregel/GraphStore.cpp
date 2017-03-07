@@ -460,15 +460,15 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
       V* data = _vertexData.data() + it->_vertexDataOffset;
       b->openObject();
       b->add(StaticStrings::KeyString, VPackValue(it->key()));
-      // bool store =
+      ///bool store =
       _graphFormat->buildVertexDocument(*(b.get()), data, sizeof(V));
       b->close();
-      LOG_TOPIC(INFO, Logger::PREGEL) << "Storing" << b->toString();
 
       ++it;
       ++buffer;
     }
     b->close();
+    //LOG_TOPIC(INFO, Logger::PREGEL) << b->toString();
 
     ShardID const& shard = globalShards[currentShard];
     OperationOptions options;

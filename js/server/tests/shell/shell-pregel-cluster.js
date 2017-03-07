@@ -35,6 +35,8 @@ var graph_module = require("@arangodb/general-graph");
 var internal = require("internal");
 var console = require("console");
 
+var EPS = 0.0001;
+
 function testAlgo(v, e, a, p) {  
   var key = db._pregelStart(v, e, a, p);
 
@@ -51,13 +53,13 @@ function testAlgo(v, e, a, p) {
       .forEach(function(d) {
                  if (d[a]!= -1) {
                    var diff = Math.abs(d[a] - d.result);
-                   if (diff > 0.0001) {
+                   if (diff > EPS) {
                      console.log("Error on " + JSON.stringify(d));
-                     assertTrue(false);
+                     assertTrue(false);// peng
                    }
                  }
                });
-      console.log("Done executing " + field + " : " + key);
+      console.log("Done executing " + a + " : " + key);
       break;
     }
   } while(i-- >= 0);
@@ -103,6 +105,7 @@ function clientTestSuite () {
       db.demo_v.insert({_key:'J', sssp:-1, pagerank:0.01363636});
       db.demo_v.insert({_key:'K', sssp:0, pagerank:0.013636363});
 
+      db.demo_e.insert({_from:'demo_v/B', _to:'demo_v/C', vertex:'B'})
       db.demo_e.insert({_from:'demo_v/C', _to:'demo_v/B', vertex:'C'})
       db.demo_e.insert({_from:'demo_v/D', _to:'demo_v/A', vertex:'D'})
       db.demo_e.insert({_from:'demo_v/D', _to:'demo_v/B', vertex:'D'})
@@ -140,7 +143,8 @@ function clientTestSuite () {
     },
     
     testPageRank: function () {
-      testAlgo("demo_v", "demo_e", "pagerank", {maxGSS:25, threshold:0.00001});
+      // should test correct convergence behaviour, might fail if EPS is too low
+      testAlgo("demo_v", "demo_e", "pagerank", {threshold:EPS / 10});
     },
   }
 };
