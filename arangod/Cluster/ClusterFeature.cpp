@@ -89,8 +89,8 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "agency endpoint to connect to",
                      new VectorParameter<StringParameter>(&_agencyEndpoints));
 
-  options->addOption("--cluster.agency-prefix", "agency prefix",
-                     new StringParameter(&_agencyPrefix));
+  options->addHiddenOption("--cluster.agency-prefix", "agency prefix",
+                           new StringParameter(&_agencyPrefix));
 
   options->addOption("--cluster.my-local-info", "this server's local info",
                      new StringParameter(&_myLocalInfo));

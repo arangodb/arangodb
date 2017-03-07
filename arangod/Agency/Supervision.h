@@ -114,6 +114,14 @@ class Supervision : public arangodb::Thread {
   static constexpr char const* HEALTH_STATUS_BAD = "BAD";
   static constexpr char const* HEALTH_STATUS_FAILED = "FAILED";
 
+  static std::string agencyPrefix() {
+    return _agencyPrefix;
+  }
+
+  static void setAgencyPrefix(std::string prefix) {
+    _agencyPrefix = prefix;
+  }
+
  private:
 
   /// @brief Check for inconsistencies in distributeShardsLike
@@ -121,9 +129,6 @@ class Supervision : public arangodb::Thread {
 
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
-
-  /// @brief Update agency prefix from agency itself
-  bool updateAgencyPrefix(size_t nTries = 10, double intervalSec = 1.0);
 
   /// @brief Move shard from one db server to other db server
   bool moveShard(std::string const& from, std::string const& to);
@@ -182,7 +187,7 @@ class Supervision : public arangodb::Thread {
 
   std::string serverHealth(std::string const&);
 
-  static std::string _agencyPrefix;
+  static std::string _agencyPrefix;  // initialized in AgencyFeature
 
 };
 

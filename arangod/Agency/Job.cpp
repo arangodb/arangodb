@@ -50,15 +50,18 @@ bool arangodb::consensus::compareServerLists(Slice plan, Slice current) {
 }
 
 Job::Job(Node const& snapshot, Agent* agent, std::string const& jobId,
-         std::string const& creator, std::string const& agencyPrefix) :
-  _snapshot(snapshot),
-  _agent(agent),
-  _jobId(jobId),
-  _creator(creator),
-  _agencyPrefix(agencyPrefix),
-  _jb(nullptr) {}
+         std::string const& creator)
+  : _snapshot(snapshot),
+    _agent(agent),
+    _jobId(jobId),
+    _creator(creator),
+    _jb(nullptr) {
+}
 
 Job::~Job() {}
+
+// this will be initialized in the AgencyFeature
+std::string Job::agencyPrefix = "/arango";
 
 JOB_STATUS Job::exists() const {
 
@@ -111,7 +114,7 @@ bool Job::finish(std::string const& type, bool success,
   // --- Add finished
   finished.openObject();
   finished.add(
-    _agencyPrefix + (success ? finishedPrefix : failedPrefix) + _jobId,
+    agencyPrefix + (success ? finishedPrefix : failedPrefix) + _jobId,
     VPackValue(VPackValueType::Object));
   finished.add(
     "timeFinished",
@@ -125,13 +128,13 @@ bool Job::finish(std::string const& type, bool success,
   finished.close();
 
   // --- Delete pending
-  finished.add(_agencyPrefix + pendingPrefix + _jobId,
+  finished.add(agencyPrefix + pendingPrefix + _jobId,
                VPackValue(VPackValueType::Object));
   finished.add("op", VPackValue("delete"));
   finished.close();
 
   // --- Delete todo
-  finished.add(_agencyPrefix + toDoPrefix + _jobId,
+  finished.add(agencyPrefix + toDoPrefix + _jobId,
                VPackValue(VPackValueType::Object));
   finished.add("op", VPackValue("delete"));
   finished.close();
@@ -140,13 +143,13 @@ bool Job::finish(std::string const& type, bool success,
   if (jobType == "moveShard") {
     for (auto const& shard :
            VPackArrayIterator(pending.slice()[0].get("shards"))) {
-      finished.add(_agencyPrefix + "/Supervision/Shards/" + shard.copyString(),
+      finished.add(agencyPrefix + "/Supervision/Shards/" + shard.copyString(),
                    VPackValue(VPackValueType::Object));
       finished.add("op", VPackValue("delete"));
       finished.close();
     }
   } else if (type != "") {
-    finished.add(_agencyPrefix + "/Supervision/" + type,
+    finished.add(agencyPrefix + "/Supervision/" + type,
                  VPackValue(VPackValueType::Object));
     finished.add("op", VPackValue("delete"));
     finished.close();
@@ -275,7 +278,7 @@ void Job::doForAllShards(Node const& snapshot,
 }
 
 void Job::addIncreasePlanVersion(Builder& trx) {
-  trx.add(VPackValue(_agencyPrefix + planVersion));
+  trx.add(VPackValue(agencyPrefix + planVersion));
   { VPackObjectBuilder guard(&trx);
     trx.add("op", VPackValue("increment"));
   }
@@ -283,7 +286,7 @@ void Job::addIncreasePlanVersion(Builder& trx) {
 
 void Job::addRemoveJobFromSomewhere(Builder& trx, std::string where,
   std::string jobId) {
-  trx.add(VPackValue(_agencyPrefix + "/Target/" + where + "/" + _jobId));
+  trx.add(VPackValue(agencyPrefix + "/Target/" + where + "/" + jobId));
   { VPackObjectBuilder guard(&trx);
     trx.add("op", VPackValue("delete"));
   }
@@ -291,7 +294,10 @@ void Job::addRemoveJobFromSomewhere(Builder& trx, std::string where,
 
 void Job::addPutJobIntoSomewhere(Builder& trx, std::string where, Slice job,
     std::string reason) {
-  trx.add(VPackValue(_agencyPrefix + "/Target/" + where + "/" + _jobId));
+  Slice jobIdSlice = job.get("id");
+  TRI_ASSERT(jobIdSlice.isString());
+  std::string jobId = jobIdSlice.copyString();
+  trx.add(VPackValue(agencyPrefix + "/Target/" + where + "/" + jobId));
   { VPackObjectBuilder guard(&trx);
     trx.add("timeFinished",
       VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -307,7 +313,7 @@ void Job::addPutJobIntoSomewhere(Builder& trx, std::string where, Slice job,
 void Job::addPreconditionCollectionStillThere(Builder& pre,
     std::string database, std::string collection) {
   std::string planPath
-      = _agencyPrefix + planColPrefix + database + "/" + collection;
+      = agencyPrefix + planColPrefix + database + "/" + collection;
   pre.add(VPackValue(planPath));
   { VPackObjectBuilder guard(&pre);
     pre.add("oldEmpty", VPackValue(false));

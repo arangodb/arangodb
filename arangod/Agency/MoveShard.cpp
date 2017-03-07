@@ -30,10 +30,10 @@ using namespace arangodb::consensus;
 
 MoveShard::MoveShard(Node const& snapshot, Agent* agent,
                      std::string const& jobId, std::string const& creator,
-                     std::string const& prefix, std::string const& database,
+                     std::string const& database,
                      std::string const& collection, std::string const& shard,
                      std::string const& from, std::string const& to)
-    : Job(snapshot, agent, jobId, creator, prefix),
+    : Job(snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
@@ -83,13 +83,13 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> b) {
   { VPackArrayBuilder guard(_jb.get());
     { VPackObjectBuilder guard2(_jb.get());
       if (_from == _to) {
-        path = _agencyPrefix + failedPrefix + _jobId;
+        path = agencyPrefix + failedPrefix + _jobId;
         _jb->add("timeFinished", VPackValue(now));
         _jb->add(
             "result",
             VPackValue("Source and destination of moveShard must be different"));
       } else {
-        path = _agencyPrefix + toDoPrefix + _jobId;
+        path = agencyPrefix + toDoPrefix + _jobId;
       }
       _jb->add("creator", VPackValue(_creator));
       _jb->add("type", VPackValue("moveShard"));
@@ -255,7 +255,7 @@ bool MoveShard::start() {
       }
     } else {
       try {
-        todo.add(_jb->slice()[0].get(_agencyPrefix + toDoPrefix + _jobId));
+        todo.add(_jb->slice()[0].get(agencyPrefix + toDoPrefix + _jobId));
       } catch (std::exception const& e) {
         // Just in case, this is never going to happen, since when _jb is
         // set, then the current job is stored under ToDo.
@@ -271,7 +271,7 @@ bool MoveShard::start() {
     { VPackObjectBuilder objectForMutation(&pending);
 
       // --- Add pending
-      pending.add(VPackValue(_agencyPrefix + pendingPrefix + _jobId));
+      pending.add(VPackValue(agencyPrefix + pendingPrefix + _jobId));
       { VPackObjectBuilder jobObjectInPending(&pending);
         pending.add("timeStarted",
                     VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -282,14 +282,14 @@ bool MoveShard::start() {
       }   // job object complete
 
       // --- Delete todo
-      pending.add(VPackValue(_agencyPrefix + toDoPrefix + _jobId));
+      pending.add(VPackValue(agencyPrefix + toDoPrefix + _jobId));
       { VPackObjectBuilder action(&pending);
         pending.add("op", VPackValue("delete"));
       }
 
       // --- Block shards
       for (auto const& pair : shardsLikeMe) {
-        pending.add(VPackValue(_agencyPrefix + blockedShardsPrefix + pair.shard));
+        pending.add(VPackValue(agencyPrefix + blockedShardsPrefix + pair.shard));
         { VPackObjectBuilder guard(&pending);
           pending.add("jobId", VPackValue(_jobId));
         }
@@ -302,7 +302,7 @@ bool MoveShard::start() {
           + "/shards/" + pair.shard;
         planned = _snapshot(planPath).slice();
       
-        pending.add(VPackValue(_agencyPrefix + planPath));
+        pending.add(VPackValue(agencyPrefix + planPath));
         { VPackArrayBuilder serverList(&pending);
           if (_isLeader) {  // Leader
             pending.add(planned[0]);
@@ -322,7 +322,7 @@ bool MoveShard::start() {
       }
 
       // --- Increment Plan/Version
-      pending.add(VPackValue(_agencyPrefix + planVersion));
+      pending.add(VPackValue(agencyPrefix + planVersion));
       { VPackObjectBuilder guard(&pending);
         pending.add("op", VPackValue("increment"));
       }
@@ -334,32 +334,32 @@ bool MoveShard::start() {
 
       // --- Check that Planned servers are still as we expect
       { VPackObjectBuilder planCheck(&pending);
-        pending.add(VPackValue(_agencyPrefix + planPath));
+        pending.add(VPackValue(agencyPrefix + planPath));
         { VPackObjectBuilder old(&pending);
           pending.add("old", planned);
         }
       }
 
       // --- Check that shard is not blocked
-      pending.add(VPackValue(_agencyPrefix + blockedShardsPrefix + _shard));
+      pending.add(VPackValue(agencyPrefix + blockedShardsPrefix + _shard));
       { VPackObjectBuilder shardLockEmpty(&pending);
         pending.add("oldEmpty", VPackValue(true));
       }
 
       // --- Check that toServer is not blocked
-      pending.add(VPackValue(_agencyPrefix + blockedServersPrefix + _to));
+      pending.add(VPackValue(agencyPrefix + blockedServersPrefix + _to));
       { VPackObjectBuilder shardLockEmpty(&pending);
         pending.add("oldEmpty", VPackValue(true));
       }
 
       // --- Check that FailedServers is still as before
-      pending.add(VPackValue(_agencyPrefix + failedServersPrefix));
+      pending.add(VPackValue(agencyPrefix + failedServersPrefix));
       { VPackObjectBuilder failedServersCheck(&pending);
         pending.add("old", failedServers);
       }
 
       // --- Check that CleanedServers is still as before
-      pending.add(VPackValue(_agencyPrefix + cleanedPrefix));
+      pending.add(VPackValue(agencyPrefix + cleanedPrefix));
       { VPackObjectBuilder cleanedServersCheck(&pending);
         pending.add("old", cleanedServers);
       }
@@ -462,13 +462,13 @@ JOB_STATUS MoveShard::pendingLeader() {
         remove.openArray();
         remove.openObject();
         // --- Plan changes
-        remove.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
+        remove.add(agencyPrefix + planPath, VPackValue(VPackValueType::Array));
         for (size_t i = 1; i < plan.length(); ++i) {
           remove.add(plan[i]);
         }
         remove.close();
         // --- Plan version
-        remove.add(_agencyPrefix + planVersion,
+        remove.add(agencyPrefix + planVersion,
                    VPackValue(VPackValueType::Object));
         remove.add("op", VPackValue("increment"));
         remove.close();
@@ -495,7 +495,7 @@ JOB_STATUS MoveShard::pendingLeader() {
             underscore.openArray();
             underscore.openObject();
             // --- Plan changes
-            underscore.add(_agencyPrefix + planPath,
+            underscore.add(agencyPrefix + planPath,
                            VPackValue(VPackValueType::Array));
             underscore.add(VPackValue(std::string("_") + plan[0].copyString()));
             for (size_t i = 1; i < plan.length(); ++i) {
@@ -504,7 +504,7 @@ JOB_STATUS MoveShard::pendingLeader() {
             underscore.close();
             
             // --- Plan version
-            underscore.add(_agencyPrefix + planVersion,
+            underscore.add(agencyPrefix + planVersion,
                            VPackValue(VPackValueType::Object));
             underscore.add("op", VPackValue("increment"));
             underscore.close();
@@ -517,7 +517,7 @@ JOB_STATUS MoveShard::pendingLeader() {
             remove.openArray();
             remove.openObject();
             // --- Plan changes
-            remove.add(_agencyPrefix + planPath,
+            remove.add(agencyPrefix + planPath,
                        VPackValue(VPackValueType::Array));
             for (auto const& srv : VPackArrayIterator(plan)) {
               if (srv.copyString() != _from) {
@@ -526,7 +526,7 @@ JOB_STATUS MoveShard::pendingLeader() {
             }
             remove.close();
             // --- Plan version
-            remove.add(_agencyPrefix + planVersion,
+            remove.add(agencyPrefix + planVersion,
                        VPackValue(VPackValueType::Object));
             remove.add("op", VPackValue("increment"));
             remove.close();
@@ -605,7 +605,7 @@ JOB_STATUS MoveShard::pendingFollower() {
         [this, &trx, &precondition](Slice plan, Slice current,
                                     std::string& planPath) {
           // Remove fromServer from Plan:
-          trx.add(VPackValue(_agencyPrefix + planPath));
+          trx.add(VPackValue(agencyPrefix + planPath));
           { VPackArrayBuilder guard(&trx);
             for (auto const& srv : VPackArrayIterator(plan)) {
               if (srv.copyString() != _from) {
@@ -614,7 +614,7 @@ JOB_STATUS MoveShard::pendingFollower() {
             }
           }
           // Precondition: Plan still as it was
-          precondition.add(VPackValue(_agencyPrefix + planPath));
+          precondition.add(VPackValue(agencyPrefix + planPath));
           { VPackObjectBuilder guard(&precondition);
             precondition.add(VPackValue("old"));
             precondition.add(plan);

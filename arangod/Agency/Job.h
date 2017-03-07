@@ -107,7 +107,7 @@ struct Job {
   };
   
   Job(Node const& snapshot, Agent* agent, std::string const& jobId,
-      std::string const& creator, std::string const& agencyPrefix);
+      std::string const& creator);
 
   virtual ~Job();
 
@@ -139,7 +139,7 @@ struct Job {
   Agent* _agent;
   std::string _jobId;
   std::string _creator;
-  std::string _agencyPrefix;
+  static std::string agencyPrefix;  // will be initialized in AgencyFeature
 
   std::shared_ptr<Builder> _jb;
   
@@ -152,12 +152,12 @@ struct Job {
   // a condition to a precondition object. In all cases, the builder trx
   // or pre must be in the state that an object has been opened, this
   // method adds some attribute/value pairs and leaves the object open:
-  void addIncreasePlanVersion(Builder& trx);
-  void addRemoveJobFromSomewhere(Builder& trx, std::string where,
+  static void addIncreasePlanVersion(Builder& trx);
+  static void addRemoveJobFromSomewhere(Builder& trx, std::string where,
     std::string jobId);
-  void addPutJobIntoSomewhere(Builder& trx, std::string where,
+  static void addPutJobIntoSomewhere(Builder& trx, std::string where,
     Slice job, std::string reason);
-  void addPreconditionCollectionStillThere(Builder& pre,
+  static void addPreconditionCollectionStillThere(Builder& pre,
     std::string database, std::string collection);
 };
 }

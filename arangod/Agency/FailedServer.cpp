@@ -33,9 +33,8 @@ using namespace arangodb::consensus;
 
 FailedServer::FailedServer(Node const& snapshot, Agent* agent,
                            std::string const& jobId, std::string const& creator,
-                           std::string const& agencyPrefix,
                            std::string const& server)
-    : Job(snapshot, agent, jobId, creator, agencyPrefix), _server(server) {}
+    : Job(snapshot, agent, jobId, creator), _server(server) {}
 
 FailedServer::~FailedServer() {}
 
@@ -73,7 +72,7 @@ bool FailedServer::start() {
       return false;
     }
   } else {
-    todo.add(_jb->slice()[0].get(_agencyPrefix + toDoPrefix + _jobId));
+    todo.add(_jb->slice()[0].get(agencyPrefix + toDoPrefix + _jobId));
   }
   todo.close();
 
@@ -86,7 +85,7 @@ bool FailedServer::start() {
 
   // --- Add pending
   pending.openObject();
-  pending.add(_agencyPrefix + pendingPrefix + _jobId,
+  pending.add(agencyPrefix + pendingPrefix + _jobId,
               VPackValue(VPackValueType::Object));
   pending.add("timeStarted",
               VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -96,13 +95,13 @@ bool FailedServer::start() {
   pending.close();
 
   // --- Delete todo
-  pending.add(_agencyPrefix + toDoPrefix + _jobId,
+  pending.add(agencyPrefix + toDoPrefix + _jobId,
               VPackValue(VPackValueType::Object));
   pending.add("op", VPackValue("delete"));
   pending.close();
 
   // --- Block toServer
-  pending.add(_agencyPrefix + blockedServersPrefix + _server,
+  pending.add(agencyPrefix + blockedServersPrefix + _server,
               VPackValue(VPackValueType::Object));
   pending.add("jobId", VPackValue(_jobId));
   pending.close();
@@ -112,7 +111,7 @@ bool FailedServer::start() {
   // Preconditions
   // --- Check that toServer not blocked
   pending.openObject();
-  pending.add(_agencyPrefix + blockedServersPrefix + _server,
+  pending.add(agencyPrefix + blockedServersPrefix + _server,
               VPackValue(VPackValueType::Object));
   pending.add("oldEmpty", VPackValue(true));
   pending.close();
@@ -173,7 +172,7 @@ bool FailedServer::start() {
                   if (pos == 0) {
                     FailedLeader(
                       _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                      _jobId, _agencyPrefix, database.first, collptr.first,
+                      _jobId, database.first, collptr.first,
                       shard.first, _server,
                       shard.second->slice()[1].copyString()).run();
                     continue;
@@ -190,7 +189,7 @@ bool FailedServer::start() {
                 std::advance(randIt, std::rand() % available.size());
                 FailedFollower(
                   _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                  _jobId, _agencyPrefix, database.first, collptr.first,
+                  _jobId, database.first, collptr.first,
                   shard.first, _server, *randIt).run();
               }
             }
@@ -199,7 +198,7 @@ bool FailedServer::start() {
           for (auto const& shard : collection("shards").children()) {
             UnassumedLeadership(
               _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
-              _agencyPrefix, database.first, collptr.first, shard.first, _server).run();
+              database.first, collptr.first, shard.first, _server).run();
           }
         }
       }
@@ -234,7 +233,7 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
     { VPackObjectBuilder operations (_jb.get());
       
       // ToDo entry
-      _jb->add(VPackValue(_agencyPrefix + toDoPrefix + _jobId));
+      _jb->add(VPackValue(agencyPrefix + toDoPrefix + _jobId));
       { VPackObjectBuilder todo(_jb.get());
         _jb->add("type", VPackValue("failedServer"));
         _jb->add("server", VPackValue(_server));
@@ -243,19 +242,19 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
         _jb->add("timeCreated", VPackValue(timepointToString(
                                              system_clock::now()))); } 
       // FailedServers entry []
-      _jb->add(VPackValue(_agencyPrefix + failedServersPrefix + "/" + _server));
+      _jb->add(VPackValue(agencyPrefix + failedServersPrefix + "/" + _server));
       { VPackArrayBuilder failedServers(_jb.get()); }} // Operations
 
     //Preconditions
     { VPackObjectBuilder health(_jb.get());
 
       // Status should still be FAILED
-      _jb->add(VPackValue(_agencyPrefix + healthPrefix + _server + "/Status"));
+      _jb->add(VPackValue(agencyPrefix + healthPrefix + _server + "/Status"));
       { VPackObjectBuilder old(_jb.get());
         _jb->add("old", VPackValue("BAD")); }
 
       // Target/FailedServers is still as in the snapshot
-      _jb->add(VPackValue(_agencyPrefix + failedServersPrefix));
+      _jb->add(VPackValue(agencyPrefix + failedServersPrefix));
       { VPackObjectBuilder old(_jb.get());
         _jb->add("old", _snapshot(failedServersPrefix).toBuilder().slice()[0]);
       }} // Preconditions
@@ -311,7 +310,7 @@ JOB_STATUS FailedServer::status() {
             deleteTodos->openObject();
           }
           deleteTodos->add(
-            _agencyPrefix + toDoPrefix + subJob.first,
+            agencyPrefix + toDoPrefix + subJob.first,
             VPackValue(VPackValueType::Object));
           deleteTodos->add("op", VPackValue("delete"));
           deleteTodos->close();

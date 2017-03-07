@@ -31,13 +31,12 @@ using namespace arangodb::consensus;
 FailedFollower::FailedFollower(Node const& snapshot, Agent* agent,
                                std::string const& jobId,
                                std::string const& creator,
-                               std::string const& agencyPrefix,
                                std::string const& database,
                                std::string const& collection,
                                std::string const& shard,
                                std::string const& from,
                                std::string const& to)
-    : Job(snapshot, agent, jobId, creator, agencyPrefix),
+    : Job(snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
@@ -79,7 +78,7 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
       if (clone.collection != _collection ||
           clone.shard != _shard) {
         FailedFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                       _jobId, _agencyPrefix, _database, clone.collection,
+                       _jobId, _database, clone.collection,
                        clone.shard, _from, _to);
       }
     }
@@ -90,7 +89,7 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   _jb->openObject();
 
   // Todo entry
-  std::string path = _agencyPrefix + toDoPrefix + _jobId;
+  std::string path = agencyPrefix + toDoPrefix + _jobId;
 
   _jb->add(path, VPackValue(VPackValueType::Object));
   _jb->add("creator", VPackValue(_creator));
@@ -107,7 +106,7 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   _jb->close();
 
   // Add shard to /arango/Target/FailedServers/<server> array
-  path = _agencyPrefix + failedServersPrefix + "/" + _from;
+  path = agencyPrefix + failedServersPrefix + "/" + _from;
   _jb->add(path, VPackValue(VPackValueType::Object));
   _jb->add("op", VPackValue("push"));
   _jb->add("new", VPackValue(_shard));
@@ -148,7 +147,7 @@ bool FailedFollower::start() {
       return false;
     }
   } else {
-    todo.add(_jb->slice().get(_agencyPrefix + toDoPrefix + _jobId).valueAt(0));
+    todo.add(_jb->slice().get(agencyPrefix + toDoPrefix + _jobId).valueAt(0));
   }
   todo.close();
 
@@ -162,7 +161,7 @@ bool FailedFollower::start() {
   // Apply
   // --- Add pending entry
   pending.openObject();
-  pending.add(_agencyPrefix + pendingPrefix + _jobId,
+  pending.add(agencyPrefix + pendingPrefix + _jobId,
               VPackValue(VPackValueType::Object));
   pending.add("timeStarted",
               VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -172,13 +171,13 @@ bool FailedFollower::start() {
   pending.close();
 
   // --- Remove todo entry
-  pending.add(_agencyPrefix + toDoPrefix + _jobId,
+  pending.add(agencyPrefix + toDoPrefix + _jobId,
               VPackValue(VPackValueType::Object));
   pending.add("op", VPackValue("delete"));
   pending.close();
 
   // --- Add new server to the list
-  pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
+  pending.add(agencyPrefix + planPath, VPackValue(VPackValueType::Array));
   for(const auto& i : VPackArrayIterator(planned.slice())) {
     if (i.copyString() != _from) {
       pending.add(i);
@@ -190,13 +189,13 @@ bool FailedFollower::start() {
   pending.close();
 
   // --- Block shard
-  pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
+  pending.add(agencyPrefix + blockedShardsPrefix + _shard,
               VPackValue(VPackValueType::Object));
   pending.add("jobId", VPackValue(_jobId));
   pending.close();
 
   // --- Increment Plan/Version
-  pending.add(_agencyPrefix + planVersion, VPackValue(VPackValueType::Object));
+  pending.add(agencyPrefix + planVersion, VPackValue(VPackValueType::Object));
   pending.add("op", VPackValue("increment"));
   pending.close();
 
@@ -206,7 +205,7 @@ bool FailedFollower::start() {
   pending.openObject();
   
   // --- Check if shard is not blocked by other job
-  pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
+  pending.add(agencyPrefix + blockedShardsPrefix + _shard,
               VPackValue(VPackValueType::Object));
   pending.add("oldEmpty", VPackValue(true));
   pending.close();
@@ -277,7 +276,7 @@ JOB_STATUS FailedFollower::status() {
       Builder del;
       del.openArray();
       del.openObject();
-      std::string path = _agencyPrefix + failedServersPrefix + "/" + _from;
+      std::string path = agencyPrefix + failedServersPrefix + "/" + _from;
       del.add(path, VPackValue(VPackValueType::Object));
       del.add("op", VPackValue("erase"));
       del.add("val", VPackValue(_shard));

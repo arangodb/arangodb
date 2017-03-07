@@ -30,8 +30,8 @@ using namespace arangodb::consensus;
 
 RemoveServer::RemoveServer(Node const& snapshot, Agent* agent,
                            std::string const& jobId, std::string const& creator,
-                           std::string const& prefix, std::string const& server)
-    : Job(snapshot, agent, jobId, creator, prefix), _server(server) {}
+                           std::string const& server)
+    : Job(snapshot, agent, jobId, creator), _server(server) {}
 
 RemoveServer::~RemoveServer() {}
 
@@ -126,7 +126,7 @@ JOB_STATUS RemoveServer::status() {
             continue;
           }
 
-          std::string const& key(_agencyPrefix + "/Plan/Collections/" +
+          std::string const& key(agencyPrefix + "/Plan/Collections/" +
                                  database.first + "/" + collptr.first +
                                  "/shards/" + shard.first);
 
@@ -140,12 +140,12 @@ JOB_STATUS RemoveServer::status() {
     }
     preconditions.close();
 
-    trx.add(VPackValue(_agencyPrefix + "/Target/CleanedServers"));
+    trx.add(VPackValue(agencyPrefix + "/Target/CleanedServers"));
     trx.openObject();
     trx.add("op", VPackValue("push"));
     trx.add("new", VPackValue(_server));
     trx.close();
-    trx.add(VPackValue(_agencyPrefix + planVersion));
+    trx.add(VPackValue(agencyPrefix + planVersion));
     trx.openObject();
     trx.add("op", VPackValue("increment"));
     trx.close();
@@ -175,7 +175,7 @@ bool RemoveServer::create(std::shared_ptr<VPackBuilder> b) {
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: Remove server " + _server;
 
-  std::string path = _agencyPrefix + toDoPrefix + _jobId;
+  std::string path = agencyPrefix + toDoPrefix + _jobId;
 
   _jb = std::make_shared<Builder>();
   _jb->openArray();
@@ -216,7 +216,7 @@ bool RemoveServer::start() {
       return false;
     }
   } else {
-    todo.add(_jb->slice()[0].get(_agencyPrefix + toDoPrefix + _jobId));
+    todo.add(_jb->slice()[0].get(agencyPrefix + toDoPrefix + _jobId));
   }
   todo.close();
 
@@ -225,7 +225,7 @@ bool RemoveServer::start() {
 
   // --- Add pending
   pending.openObject();
-  pending.add(_agencyPrefix + pendingPrefix + _jobId,
+  pending.add(agencyPrefix + pendingPrefix + _jobId,
               VPackValue(VPackValueType::Object));
   pending.add("timeStarted",
               VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -235,13 +235,13 @@ bool RemoveServer::start() {
   pending.close();
 
   // --- Delete todo
-  pending.add(_agencyPrefix + toDoPrefix + _jobId,
+  pending.add(agencyPrefix + toDoPrefix + _jobId,
               VPackValue(VPackValueType::Object));
   pending.add("op", VPackValue("delete"));
   pending.close();
 
   // --- Block _server
-  pending.add(_agencyPrefix + blockedServersPrefix + _server,
+  pending.add(agencyPrefix + blockedServersPrefix + _server,
               VPackValue(VPackValueType::Object));
   pending.add("jobId", VPackValue(_jobId));
   pending.close();
@@ -251,7 +251,7 @@ bool RemoveServer::start() {
   // Preconditions
   // --- Check that toServer not blocked
   pending.openObject();
-  pending.add(_agencyPrefix + blockedServersPrefix + _server,
+  pending.add(agencyPrefix + blockedServersPrefix + _server,
               VPackValue(VPackValueType::Object));
   pending.add("oldEmpty", VPackValue(true));
   pending.close();
@@ -357,7 +357,7 @@ bool RemoveServer::scheduleAddFollowers() {
         newServer = servers.at(rand() % servers.size());
 
         AddFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                    _jobId, _agencyPrefix, database.first, collptr.first,
+                    _jobId, database.first, collptr.first,
                     shard.first, {newServer});
       }
     }

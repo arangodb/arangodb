@@ -24,6 +24,9 @@
 #include "AgencyFeature.h"
 
 #include "Agency/Agent.h"
+#include "Agency/Job.h"
+#include "Agency/Supervision.h"
+#include "Cluster/ClusterFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -204,6 +207,11 @@ void AgencyFeature::start() {
   if (!isEnabled()) {
     return;
   }
+
+  // Find the agency prefix:
+  auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  arangodb::consensus::Supervision::setAgencyPrefix(feature->agencyPrefix());
+  arangodb::consensus::Job::agencyPrefix = feature->agencyPrefix();
 
   // TODO: Port this to new options handling
   std::string endpoint;

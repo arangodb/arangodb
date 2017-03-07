@@ -42,6 +42,7 @@ using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace arangodb::application_features;
 
+// This is initialized in AgencyFeature:
 std::string Supervision::_agencyPrefix = "/arango";
 
 Supervision::Supervision()
@@ -210,7 +211,7 @@ std::vector<check_t> Supervision::checkDBServers() {
           report->add("Status", VPackValue(Supervision::HEALTH_STATUS_FAILED));
           envelope = std::make_shared<VPackBuilder>();
           FailedServer (_snapshot, _agent, std::to_string(_jobId++),
-                        "supervision", _agencyPrefix, serverID).create(envelope);
+                        "supervision", serverID).create(envelope);
         }
       } else {
         if (lastStatus != Supervision::HEALTH_STATUS_BAD) {
@@ -454,25 +455,6 @@ void Supervision::run() {
     CONDITION_LOCKER(guard, _cv);
     TRI_ASSERT(_agent != nullptr);
 
-    // Get agency prefix after cluster init
-    uint64_t jobId = 0;
-    {
-      MUTEX_LOCKER(locker, _lock);
-      jobId = _jobId;
-    }
-    
-    if (jobId == 0) {
-      // We need the agency prefix to work, but it is only initialized by
-      // some other server in the cluster. Since the supervision does not
-      // make sense at all without other ArangoDB servers, we wait pretty
-      // long here before giving up:
-      if (!updateAgencyPrefix(1000)) {
-        LOG_TOPIC(DEBUG, Logger::AGENCY)
-            << "Cannot get prefix from Agency. Stopping supervision for good.";
-        return;
-      }
-    }
-
     while (!this->isStopping()) {
 
       // Get bunch of job IDs from agency for future jobs
@@ -600,14 +582,14 @@ void Supervision::workJobs() {
     auto const& job = *todoEnt.second;
     JobContext(
       job("type").getString(), _snapshot, _agent, job("jobId").getString(),
-      job("creator").getString(), _agencyPrefix).run();
+      job("creator").getString()).run();
   }
 
   for (auto const& pendEnt : pends) {
     auto const& job = *pendEnt.second;
     JobContext(
       job("type").getString(), _snapshot, _agent, job("jobId").getString(),
-      job("creator").getString(), _agencyPrefix).run();
+      job("creator").getString()).run();
   }
   
 }
@@ -686,7 +668,7 @@ void Supervision::enforceReplication() {
 
             AddFollower(
               _snapshot, _agent, std::to_string(_jobId++), "supervision",
-              _agencyPrefix, db_.first, col_.first, shard_.first,
+              db_.first, col_.first, shard_.first,
               newFollowers).run();
 
           }
@@ -804,7 +786,7 @@ void Supervision::shrinkCluster() {
       // Schedule last server for cleanout
 
       RemoveServer(_snapshot, _agent, std::to_string(_jobId++), "supervision",
-                   _agencyPrefix, uselessFailedServers.back()).run();
+                   uselessFailedServers.back()).run();
       return;
     }
     // mop: do not account any failedservers in this calculation..the ones
@@ -821,7 +803,7 @@ void Supervision::shrinkCluster() {
 
         // Schedule last server for cleanout
         CleanOutServer(_snapshot, _agent, std::to_string(_jobId++),
-                       "supervision", _agencyPrefix, availServers.back()).run();
+                       "supervision", availServers.back()).run();
       }
     }
   }
@@ -839,25 +821,6 @@ bool Supervision::start(Agent* agent) {
   _frequency = _agent->config().supervisionFrequency();
   _gracePeriod = _agent->config().supervisionGracePeriod();
   return start();
-}
-
-// Get agency prefix fron agency
-bool Supervision::updateAgencyPrefix(size_t nTries, double intervalSec) {
-  // Try nTries to get agency's prefix in intervals
-  while (!this->isStopping()) {
-    MUTEX_LOCKER(locker, _lock);
-    _snapshot = _agent->readDB().get("/");
-    if (_snapshot.children().size() > 0) {
-      _agencyPrefix =
-          "/arango";  // std::string("/") + _snapshot.children().begin()->first;
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agency prefix is " << _agencyPrefix;
-      return true;
-    }
-    std::this_thread::sleep_for(std::chrono::duration<double>(intervalSec));
-  }
-
-  // Stand-alone agency
-  return false;
 }
 
 static std::string const syncLatest = "/Sync/LatestID";

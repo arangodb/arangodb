@@ -33,12 +33,11 @@ using namespace arangodb::consensus;
 
 FailedLeader::FailedLeader(Node const& snapshot, Agent* agent,
                            std::string const& jobId, std::string const& creator,
-                           std::string const& agencyPrefix,
                            std::string const& database,
                            std::string const& collection,
                            std::string const& shard, std::string const& from,
                            std::string const& to)
-    : Job(snapshot, agent, jobId, creator, agencyPrefix),
+    : Job(snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
@@ -68,7 +67,7 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   LOG_TOPIC(INFO, Logger::AGENCY)
       << "Handle failed Leader for " + _shard + " from " + _from + " to " + _to;
 
-  std::string path = _agencyPrefix + toDoPrefix + _jobId;
+  std::string path = agencyPrefix + toDoPrefix + _jobId;
 
   _jb = std::make_shared<Builder>();
   _jb->openArray();
@@ -95,7 +94,7 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   // FIXME: is this FailedServers array containing shards still needed?
 
   // Add shard to /arango/Target/FailedServers/<server> array
-  path = _agencyPrefix + failedServersPrefix + "/" + _from;
+  path = agencyPrefix + failedServersPrefix + "/" + _from;
   _jb->add(path, VPackValue(VPackValueType::Object));
   _jb->add("op", VPackValue("push"));
   _jb->add("new", VPackValue(_shard));
@@ -150,7 +149,7 @@ bool FailedLeader::start() {
       return false;
     }
   } else {
-    todo.add(_jb->slice().get(_agencyPrefix + toDoPrefix + _jobId).valueAt(0));
+    todo.add(_jb->slice().get(agencyPrefix + toDoPrefix + _jobId).valueAt(0));
   }
   todo.close();
   
@@ -160,7 +159,7 @@ bool FailedLeader::start() {
   // Apply
   // --- Add pending entry
   pending.openObject();
-  pending.add(_agencyPrefix + pendingPrefix + _jobId,
+  pending.add(agencyPrefix + pendingPrefix + _jobId,
               VPackValue(VPackValueType::Object));
   pending.add("timeStarted",
               VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -170,7 +169,7 @@ bool FailedLeader::start() {
   pending.close();
 
   // --- Remove todo entry
-  pending.add(_agencyPrefix + toDoPrefix + _jobId,
+  pending.add(agencyPrefix + toDoPrefix + _jobId,
               VPackValue(VPackValueType::Object));
   pending.add("op", VPackValue("delete"));
   pending.close();
@@ -190,7 +189,7 @@ bool FailedLeader::start() {
     }
   }
 
-  pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
+  pending.add(agencyPrefix + planPath, VPackValue(VPackValueType::Array));
 
   // FIXME: this is slightly different from design since the plan change
   // FIXME: is done right away, the actual plan change is also slightly
@@ -213,13 +212,13 @@ bool FailedLeader::start() {
   pending.close();
 
   // --- Block shard
-  pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
+  pending.add(agencyPrefix + blockedShardsPrefix + _shard,
               VPackValue(VPackValueType::Object));
   pending.add("jobId", VPackValue(_jobId));
   pending.close();
 
   // --- Increment Plan/Version
-  pending.add(_agencyPrefix + planVersion, VPackValue(VPackValueType::Object));
+  pending.add(agencyPrefix + planVersion, VPackValue(VPackValueType::Object));
   pending.add("op", VPackValue("increment"));
   pending.close();
 
@@ -235,17 +234,17 @@ bool FailedLeader::start() {
   // FIXME: specified
 
   // --- Check that Current servers are as we expect
-  pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
+  pending.add(agencyPrefix + curPath, VPackValue(VPackValueType::Object));
   pending.add("old", current);
   pending.close();
 
   // --- Check that Current servers are as we expect
-  pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Object));
+  pending.add(agencyPrefix + planPath, VPackValue(VPackValueType::Object));
   pending.add("old", planned);
   pending.close();
 
   // --- Check if shard is not blocked
-  pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
+  pending.add(agencyPrefix + blockedShardsPrefix + _shard,
               VPackValue(VPackValueType::Object));
   pending.add("oldEmpty", VPackValue(true));
   pending.close();
@@ -313,7 +312,7 @@ JOB_STATUS FailedLeader::status() {
       Builder del;
       del.openArray();
       del.openObject();
-      std::string path = _agencyPrefix + failedServersPrefix + "/" + _from;
+      std::string path = agencyPrefix + failedServersPrefix + "/" + _from;
       del.add(path, VPackValue(VPackValueType::Object));
       del.add("op", VPackValue("erase"));
       del.add("val", VPackValue(_shard));
