@@ -52,12 +52,12 @@ class RecoveryManager {
   void _renewPrimaryServer(ShardID const& shard);
 
  public:
-  RecoveryManager();  // AgencyCallbackRegistry* registry
+  RecoveryManager();
   ~RecoveryManager();
 
-  void monitorCollections(
-      std::vector<std::shared_ptr<LogicalCollection>> const& collections,
-      Conductor*);
+  void monitorCollections(DatabaseID const& database,
+                          std::vector<CollectionID> const& collections,
+                          Conductor *listener);
   void stopMonitoring(Conductor*);
   int filterGoodServers(std::vector<ServerID> const& servers,
                         std::vector<ServerID>& goodServers);

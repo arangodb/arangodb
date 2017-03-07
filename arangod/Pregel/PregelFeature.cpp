@@ -33,9 +33,13 @@
 using namespace arangodb::pregel;
 
 static PregelFeature* Instance = nullptr;
-
+static uint64_t _uniqueId = 0;
 uint64_t PregelFeature::createExecutionNumber() {
-  return ClusterInfo::instance()->uniqid();
+  if (ClusterInfo::instance() != nullptr) {
+    return ++_uniqueId;
+  } else {
+    return ClusterInfo::instance()->uniqid();
+  }
 }
 
 PregelFeature::PregelFeature(application_features::ApplicationServer* server)

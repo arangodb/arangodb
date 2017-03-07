@@ -20,17 +20,35 @@ The pregel computing model requires all edges to be present on the DB Server whe
 the vertex document identified by the `_from` value is located.
 This means the vertex collections need to be sharded by '_key' and the edge collection
 will need to be sharded after an attribute which always contains the '_key' of the vertex.
+
 Our implementation currently requires every edge collection to be sharded after a "vertex" attributes,
-additionally you will need to specify the key `distributeShardsLike` to ensure that all shards
-use the same salt when consistent hashing the sharding attributes.
+additionally you will need to specify the key `distributeShardsLike` and an **equal** number of shards on every collection.
+Only if these requirements are met can ArangoDB place the edges and vertices correctly.
 
-* Create main vertex collection: `db._create("vertices", {shardKeys:['_key']});`
-* Optionally create additional vertex collections `db._create("additonal", {distributeShardsLike:"vertices"});`
-* Create (one or more) edge-collections: `db._createEdgeCollection("edges", {shardKeys:['vertex'], distributeShardsLike:"vertices"});`
+For example you might create your collections like this:
+```javascript
+// Create main vertex collection: 
+db._create("vertices", {
+    shardKeys:['_key'],
+    numberOfShards: 8
+  });
 
+// Optionally create arbitrary additional vertex collections 
+db._create("additonal", {
+    distributeShardsLike:"vertices", 
+    numberOfShards:8
+  });
+
+// Create (one or more) edge-collections: 
+db._createEdgeCollection("edges", {
+    shardKeys:['vertex'],
+    distributeShardsLike:"vertices",
+    numberOfShards:8
+  });
+```
 
 You will need to ensure that edge documents contain the proper values in their sharding attribute.
-For a vertex document in looking like this  ```{_key:"A", value:0}```
+For a vertex document with the following content ```{_key:"A", value:0}```
 the corresponding edge documents would have look like this:
 
 ```
@@ -40,7 +58,7 @@ the corresponding edge documents would have look like this:
   ...
 ```
 
-This will ensure that ourgoing edge documents will be placed on the same DBServer as the vertex.
+This will ensure that outgoing edge documents will be placed on the same DBServer as the vertex.
 Without the correct placement of the edges, the pregel graph processing system will not work correctly, because
 edges will not load correctly.
 

@@ -36,7 +36,6 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"

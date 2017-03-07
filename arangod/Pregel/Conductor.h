@@ -60,8 +60,8 @@ class Conductor {
   VPackBuilder _userParams;
   Mutex _callbackMutex;  // prevents concurrent calls to finishedGlobalStep
 
-  std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections;
-  std::vector<std::shared_ptr<LogicalCollection>> _edgeCollections;
+  std::vector<CollectionID> _vertexCollections;
+  std::vector<CollectionID> _edgeCollections;
   std::vector<ServerID> _dbServers;
   std::vector<ShardID> _allShards;  // persistent shard list
 
@@ -102,10 +102,10 @@ class Conductor {
   void finishedRecoveryStep(VPackSlice const& data);
 
  public:
-  Conductor(
-      uint64_t executionNumber, TRI_vocbase_t* vocbase,
-      std::vector<std::shared_ptr<LogicalCollection>> const& vertexCollections,
-      std::vector<std::shared_ptr<LogicalCollection>> const& edgeCollections);
+    Conductor(
+              uint64_t executionNumber, TRI_vocbase_t* vocbase,
+              std::vector<CollectionID> const& vertexCollections,
+              std::vector<CollectionID> const& edgeCollections);
   ~Conductor();
 
   void start(std::string const& algoName, VPackSlice const& userConfig);

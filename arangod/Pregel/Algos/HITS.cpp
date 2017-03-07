@@ -21,8 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HITS.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/GraphStore.h"

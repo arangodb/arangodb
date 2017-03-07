@@ -25,7 +25,6 @@
 #include <algorithm>
 #include "Basics/Common.h"
 #include "Basics/MutexLocker.h"
-#include "Cluster/ClusterInfo.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/ThreadPool.h"

@@ -1934,25 +1934,37 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
   }
   
-  if (ServerState::instance()->isCoordinator()) {
-    
-    TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-    std::vector<std::shared_ptr<LogicalCollection>> vColls, eColls;
-    try {
-      for (std::string const& name : vertices) {
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+  for (std::string const& name : vertices) {
+    if (ServerState::instance()->isCoordinator()) {
+      try {
         auto coll =
         ClusterInfo::instance()->getCollection(vocbase->name(), name);
         if (coll->isSystem()) {
-            TRI_V8_THROW_EXCEPTION_USAGE(
-                                         "Cannot use pregel on system collection");
+          TRI_V8_THROW_EXCEPTION_USAGE(
+                                       "Cannot use pregel on system collection");
         }
         if (!coll->usesDefaultShardKeys()) {
-            TRI_V8_THROW_EXCEPTION_USAGE(
-                                         "Vertex collection needs to be shared after '_key'");
+          TRI_V8_THROW_EXCEPTION_USAGE(
+                                       "Vertex collection needs to be shared after '_key'");
         }
-        vColls.push_back(coll);
+        if (coll->deleted()) {
+          TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+        }
+      } catch (...) {
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
       }
-      for (std::string const& name : edges) {
+    } else {
+      LogicalCollection *coll = vocbase->lookupCollection(name);
+      if (coll == nullptr || coll->deleted()) {
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+      }
+    }
+  }
+  // load edge collection
+  for (std::string const& name : edges) {
+    if (ServerState::instance()->isCoordinator()) {
+      try {
         auto coll =
         ClusterInfo::instance()->getCollection(vocbase->name(), name);
         if (coll->isSystem()) {
@@ -1965,25 +1977,26 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        "Edge collection needs to be sharded after 'vertex', or use "
                                        "smart graphs");
         }
-        eColls.push_back(coll);
+        if (coll->deleted()) {
+          TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+        }
+      } catch (...) {
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
       }
-    } catch (...) {
-        TRI_V8_THROW_EXCEPTION_USAGE("Collections do not exist");
+    } else {
+      LogicalCollection *coll = vocbase->lookupCollection(name);
+      if (coll == nullptr || coll->deleted()) {
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+      }
     }
-    
-    uint64_t en = pregel::PregelFeature::instance()->createExecutionNumber();
-    pregel::Conductor* c = new pregel::Conductor(en,
-                                                 vocbase,
-                                                 vColls,
-                                                 eColls);
-    pregel::PregelFeature::instance()->addExecution(c, en);
-    c->start(algorithm, paramBuilder.slice());
-    
-    TRI_V8_RETURN(v8::Number::New(isolate, en));
-  } else {
-      TRI_V8_THROW_EXCEPTION_USAGE("Only call on a coordinator in cluster");
   }
-
+  
+  uint64_t en = pregel::PregelFeature::instance()->createExecutionNumber();
+  pregel::Conductor* c = new pregel::Conductor(en, vocbase, vertices, edges);
+  pregel::PregelFeature::instance()->addExecution(c, en);
+  c->start(algorithm, paramBuilder.slice());
+  
+  TRI_V8_RETURN(v8::Number::New(isolate, en));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2031,6 +2044,7 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
   }
   c->cancel();
+  pregel::PregelFeature::instance()->cleanup(executionNum);
   
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END

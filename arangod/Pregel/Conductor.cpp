@@ -52,14 +52,13 @@ const char* arangodb::pregel::ExecutionStateNames[6] = {
 
 Conductor::Conductor(
     uint64_t executionNumber, TRI_vocbase_t* vocbase,
-    std::vector<std::shared_ptr<LogicalCollection>> const& vertexCollections,
-    std::vector<std::shared_ptr<LogicalCollection>> const& edgeCollections)
+    std::vector<CollectionID> const& vertexCollections,
+    std::vector<CollectionID> const& edgeCollections)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _vertexCollections(vertexCollections),
       _edgeCollections(edgeCollections) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Constructed conductor";
 }
 
 Conductor::~Conductor() { this->cancel(); }
@@ -236,7 +235,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
     // listens for changing primary DBServers on each collection shard
     RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
     if (mngr) {
-      mngr->monitorCollections(_vertexCollections, this);
+      mngr->monitorCollections(_vocbaseGuard.vocbase()->name(), _vertexCollections, this);
     }
   }
 }
@@ -447,6 +446,7 @@ void Conductor::startRecovery() {
   });
 }
 
+// resolvees into an ordered list of shards for each collection on each server
 static void resolveShards(
     LogicalCollection const* collection,
     std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>>& serverMap,
@@ -474,18 +474,53 @@ int Conductor::_initializeWorkers(std::string const& suffix,
   std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
       edgeMap;
   std::vector<ShardID> shardList;
-
+  
+  ClusterInfo *ci = ClusterInfo::instance();
   // resolve plan id's and shards on the servers
-  for (auto& collection : _vertexCollections) {
-    collectionPlanIdMap.emplace(collection->name(),
-                                collection->planId_as_string());
-    resolveShards(collection.get(), vertexMap, shardList);
+  for (CollectionID const& collectionID : _vertexCollections) {
+    if (ServerState::instance()->isCoordinator() && ci != nullptr) {
+      auto coll = ci->getCollection(_vocbaseGuard.vocbase()->name(), collectionID);
+      if (coll->deleted()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, collectionID);
+      }
+      // store plan id
+      collectionPlanIdMap.emplace(collectionID,
+                                  coll->planId_as_string());
+      resolveShards(coll.get(), vertexMap, shardList); // store or
+    } else if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
+      LogicalCollection *lc = _vocbaseGuard.vocbase()->lookupCollection(collectionID);
+      if (lc == nullptr || lc->deleted()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, collectionID);
+      }
+      collectionPlanIdMap.emplace(collectionID,
+                                  lc->planId_as_string());
+      vertexMap[ServerState::instance()->getId()][collectionID].push_back(collectionID);
+    } else {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
   }
-  for (auto& collection : _edgeCollections) {
-    collectionPlanIdMap.emplace(collection->name(),
-                                collection->planId_as_string());
-    resolveShards(collection.get(), edgeMap, shardList);
+  for (CollectionID const& collectionID : _edgeCollections) {
+    if (ServerState::instance()->isCoordinator() && ci != nullptr) {
+      auto coll = ci->getCollection(_vocbaseGuard.vocbase()->name(), collectionID);
+      if (coll->deleted()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, collectionID);
+      }
+      collectionPlanIdMap.emplace(collectionID,
+                                  coll->planId_as_string());
+      resolveShards(coll.get(), edgeMap, shardList);
+    } else if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
+      LogicalCollection *lc = _vocbaseGuard.vocbase()->lookupCollection(collectionID);
+      if (lc == nullptr || lc->deleted()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, collectionID);
+      }
+      collectionPlanIdMap.emplace(collectionID,
+                                  lc->planId_as_string());
+      edgeMap[ServerState::instance()->getId()][collectionID].push_back(collectionID);
+    } else {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
   }
+  
   _dbServers.clear();
   for (auto const& pair : vertexMap) {
     _dbServers.push_back(pair.first);
