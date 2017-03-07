@@ -74,7 +74,7 @@ bool FailedServer::start() {
     if (!abortable(_snapshot, jp)) {
       return false;
     } else {
-      JobContext(jp, _snapshot, _agent, _agencyPrefix).abort();
+      JobContext(jp, _snapshot, _agent).abort();
     }
   } catch (...) {}
     
