@@ -344,3 +344,33 @@ void Job::addPreconditionCollectionStillThere(Builder& pre,
   }
 }
 
+void Job::addPreconditionServerNotBlocked(Builder& pre, std::string server) {
+	pre.add(VPackValue(agencyPrefix + blockedServersPrefix + server));
+	{ VPackObjectBuilder shardLockEmpty(&pre);
+		pre.add("oldEmpty", VPackValue(true));
+	}
+}
+
+void Job::addPreconditionShardNotBlocked(Builder& pre, std::string shard) {
+	pre.add(VPackValue(agencyPrefix + blockedShardsPrefix + shard));
+	{ VPackObjectBuilder shardLockEmpty(&pre);
+		pre.add("oldEmpty", VPackValue(true));
+	}
+}
+
+void Job::addPreconditionUnchanged(Builder& pre,
+    std::string key, Slice value) {
+  pre.add(VPackValue(agencyPrefix + key));
+  { VPackObjectBuilder guard(&pre);
+    pre.add("old", value);
+  }
+}
+
+void Job::addBlockServer(Builder& trx, std::string server, std::string jobId) {
+  trx.add(agencyPrefix + blockedServersPrefix + server, VPackValue(jobId));
+}
+
+void Job::addBlockShard(Builder& trx, std::string shard, std::string jobId) {
+  trx.add(agencyPrefix + blockedShardsPrefix + shard, VPackValue(jobId));
+}
+

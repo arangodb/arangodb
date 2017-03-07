@@ -264,99 +264,45 @@ bool MoveShard::start() {
 
     { VPackObjectBuilder objectForMutation(&pending);
 
-      // --- Add pending
-      pending.add(VPackValue(agencyPrefix + pendingPrefix + _jobId));
-      { VPackObjectBuilder jobObjectInPending(&pending);
-        pending.add("timeStarted",
-                    VPackValue(timepointToString(std::chrono::system_clock::now())));
-        for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
-          pending.add(obj.key);
-          pending.add(obj.value);
-        }
-      }   // job object complete
+      addPutJobIntoSomewhere(pending, "Pending", todo.slice()[0]);
+      addRemoveJobFromSomewhere(pending, "ToDo", _jobId);
 
-      // --- Delete todo
-      pending.add(VPackValue(agencyPrefix + toDoPrefix + _jobId));
-      { VPackObjectBuilder action(&pending);
-        pending.add("op", VPackValue("delete"));
-      }
-
-      // --- Block shards
-      for (auto const& pair : shardsLikeMe) {
-        pending.add(VPackValue(agencyPrefix + blockedShardsPrefix + pair.shard));
-        { VPackObjectBuilder guard(&pending);
-          pending.add("jobId", VPackValue(_jobId));
-        }
-      }
+      addBlockShard(pending, _shard, _jobId);
     
       // --- Plan changes
-      for (auto const& pair : shardsLikeMe) {
-        
-        planPath = planColPrefix + _database + "/" + pair.collection
-          + "/shards/" + pair.shard;
-        planned = _snapshot(planPath).slice();
-      
-        pending.add(VPackValue(agencyPrefix + planPath));
-        { VPackArrayBuilder serverList(&pending);
-          if (_isLeader) {  // Leader
-            pending.add(planned[0]);
-            pending.add(VPackValue(_to));
-            for (size_t i = 1; i < planned.length(); ++i) {
-              pending.add(planned[i]);
-              TRI_ASSERT(planned[i].copyString() != _to);
+      doForAllShards(_snapshot, _database, shardsLikeMe,
+        [this, &pending](Slice plan, Slice current, std::string& planPath) {
+          pending.add(VPackValue(agencyPrefix + planPath));
+          { VPackArrayBuilder serverList(&pending);
+            if (_isLeader) {
+              pending.add(plan[0]);
+              pending.add(VPackValue(_to));
+              for (size_t i = 1; i < plan.length(); ++i) {
+                pending.add(plan[i]);
+                TRI_ASSERT(plan[i].copyString() != _to);
+              }
+            } else {
+              for (auto const& srv : VPackArrayIterator(plan)) {
+                pending.add(srv);
+                TRI_ASSERT(srv.copyString() != _to);
+              }
+              pending.add(VPackValue(_to));
             }
-          } else {  // Follower
-            for (auto const& srv : VPackArrayIterator(planned)) {
-              pending.add(srv);
-              TRI_ASSERT(srv.copyString() != _to);
-            }
-            pending.add(VPackValue(_to));
           }
-        }
-      }
+        });
 
-      // --- Increment Plan/Version
-      pending.add(VPackValue(agencyPrefix + planVersion));
-      { VPackObjectBuilder guard(&pending);
-        pending.add("op", VPackValue("increment"));
-      }
-
+      addIncreasePlanVersion(pending);
     }  // mutation part of transaction done
 
     // Preconditions
     { VPackObjectBuilder precondition(&pending);
 
       // --- Check that Planned servers are still as we expect
-      { VPackObjectBuilder planCheck(&pending);
-        pending.add(VPackValue(agencyPrefix + planPath));
-        { VPackObjectBuilder old(&pending);
-          pending.add("old", planned);
-        }
-      }
-
-      // --- Check that shard is not blocked
-      pending.add(VPackValue(agencyPrefix + blockedShardsPrefix + _shard));
-      { VPackObjectBuilder shardLockEmpty(&pending);
-        pending.add("oldEmpty", VPackValue(true));
-      }
-
-      // --- Check that toServer is not blocked
-      pending.add(VPackValue(agencyPrefix + blockedServersPrefix + _to));
-      { VPackObjectBuilder shardLockEmpty(&pending);
-        pending.add("oldEmpty", VPackValue(true));
-      }
-
-      // --- Check that FailedServers is still as before
-      pending.add(VPackValue(agencyPrefix + failedServersPrefix));
-      { VPackObjectBuilder failedServersCheck(&pending);
-        pending.add("old", failedServers);
-      }
-
-      // --- Check that CleanedServers is still as before
-      pending.add(VPackValue(agencyPrefix + cleanedPrefix));
-      { VPackObjectBuilder cleanedServersCheck(&pending);
-        pending.add("old", cleanedServers);
-      }
+      addPreconditionUnchanged(pending, planPath, planned);
+      addPreconditionShardNotBlocked(pending, _shard);
+      addPreconditionServerNotBlocked(pending, _to);
+      addPreconditionUnchanged(pending, failedServersPrefix, failedServers);
+      addPreconditionUnchanged(pending, cleanedPrefix, cleanedServers);
     }   // precondition done
 
   }  // array for transaction done

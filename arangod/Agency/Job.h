@@ -158,9 +158,16 @@ struct Job {
   static void addRemoveJobFromSomewhere(Builder& trx, std::string where,
     std::string jobId);
   static void addPutJobIntoSomewhere(Builder& trx, std::string where,
-    Slice job, std::string reason);
+    Slice job, std::string reason = "");
   static void addPreconditionCollectionStillThere(Builder& pre,
     std::string database, std::string collection);
+  static void addBlockServer(Builder& trx, std::string server,
+                             std::string jobId);
+  static void addBlockShard(Builder& trx, std::string shard, std::string jobId);
+  static void addPreconditionServerNotBlocked(Builder& pre, std::string server);
+  static void addPreconditionShardNotBlocked(Builder& pre, std::string shard);
+  static void addPreconditionUnchanged(Builder& pre,
+    std::string key, Slice value);
 };
 }
 }
