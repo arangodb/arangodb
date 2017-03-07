@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FailedServer.h"
+#include "JobContext.h"
 
 #include "Agency/Agent.h"
 #include "Agency/FailedLeader.h"
@@ -55,9 +56,28 @@ void FailedServer::run() {
 }
 
 bool FailedServer::start() {
-  LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Start FailedServer job " + _jobId + " for server " + _server;
 
+  // Fail job, if Health back to not FAILED
+  if (_snapshot(healthPrefix + _server + "/Status").getString() != "FAILED") {
+    std::stringstream reason;
+    reason
+      << "Server " << _server
+      << " is no longer failed. Not starting FailedServer job";
+    LOG_TOPIC(INFO, Logger::AGENCY) << reason.str();
+    finish("DBServers/" + _server, false, reason.str());
+    return false;
+  }
+
+  // Abort job blocking server if abortable
+  try {
+    std::string jp = _snapshot(blockedServersPrefix + _server).getString();
+    if (!abortable(_snapshot, jp)) {
+      return false;
+    } else {
+      JobContext(jp, _snapshot, _agent, _agencyPrefix).abort();
+    }
+  } catch (...) {}
+    
   // Copy todo to pending
   Builder todo, pending;
   
@@ -75,10 +95,6 @@ bool FailedServer::start() {
     todo.add(_jb->slice()[0].get(agencyPrefix + toDoPrefix + _jobId));
   }
   todo.close();
-
-  // FIXME:  - check again that Supervision/Health/<server> is still "FAILED" 
-  // FIXME:    in snapshot
-  // FIXME:  - abort job that holds a lock on the server if there is one
 
   // Prepare peding entry, block toserver
   pending.openArray();

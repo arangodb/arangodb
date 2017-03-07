@@ -78,6 +78,54 @@ JobContext::JobContext (
 
 }
 
+JobContext::JobContext (
+  std::string const& path, Node const& snapshot,
+  Agent* agent, std::string const& prefix) : _job(nullptr) {
+
+  auto const& job     = snapshot(path);
+  auto const& type    = job("type").getString();
+  auto const& id      = job("id").getString();
+  auto const& creator = job("creator").getString();
+  
+  if        (type == "failedLeader") {
+    _job =
+      std::unique_ptr<FailedLeader>(
+        new FailedLeader(snapshot, agent, id, creator, prefix));
+  } else if (type == "failedFollower") {
+    _job =
+      std::unique_ptr<FailedFollower>(
+        new FailedFollower(snapshot, agent, id, creator, prefix));
+  } else if (type == "failedServer") {
+    _job =
+      std::unique_ptr<FailedServer>(
+        new FailedServer(snapshot, agent, id, creator, prefix));
+  } else if (type == "cleanOutServer") {
+    _job =
+      std::unique_ptr<CleanOutServer>(
+        new CleanOutServer(snapshot, agent, id, creator, prefix));
+  } else if (type == "removeServer") {
+    _job =
+      std::unique_ptr<RemoveServer>(
+        new RemoveServer(snapshot, agent, id, creator, prefix));
+  } else if (type == "moveShard") {
+    _job =
+      std::unique_ptr<MoveShard>(
+        new MoveShard(snapshot, agent, id, creator, prefix));
+  } else if (type == "addFollower") {
+    _job =
+      std::unique_ptr<AddFollower>(
+        new AddFollower(snapshot, agent, id, creator, prefix));
+  } else if (type == "unassumedLeadership") {
+    _job =
+      std::unique_ptr<UnassumedLeadership>(
+        new UnassumedLeadership( snapshot, agent, id, creator, prefix));
+  } else {
+    LOG_TOPIC(ERR, Logger::AGENCY) <<
+      "Failed to run supervision job " << type << " with id " << id;
+  }
+
+}
+
 void JobContext::create(std::shared_ptr<VPackBuilder> b) {
   if (_job != nullptr) {
     _job->create(b);

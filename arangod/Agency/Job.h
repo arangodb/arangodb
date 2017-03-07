@@ -125,6 +125,8 @@ struct Job {
 
   virtual bool start() = 0;
 
+  static bool abortable(Node const& snapshot, std::string const& jobId);
+
   std::string id(std::string const& idOrShortName);
   std::string uuidLookup(std::string const& shortID);
 

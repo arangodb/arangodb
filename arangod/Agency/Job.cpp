@@ -240,6 +240,7 @@ std::vector<Job::shard_t> Job::clones(
   return ret;
 }
 
+
 std::string Job::uuidLookup (std::string const& shortID) {
   for (auto const& uuid : _snapshot(mapUniqueToShortID).children()) {
     if ((*uuid.second)("ShortName").getString() == shortID) {
@@ -249,12 +250,30 @@ std::string Job::uuidLookup (std::string const& shortID) {
   return std::string();
 }
 
+
 std::string Job::id(std::string const& idOrShortName) {
   std::string id = uuidLookup(idOrShortName);
   if (!id.empty()) {
     return id;
   }
   return idOrShortName;
+}
+
+bool Job::abortable(Node const& snapshot, std::string const& jobId) {
+
+  auto const& job = snapshot(blockedServersPrefix + jobId);
+  auto const& type = job("type").getString();
+
+  if (type == "failedServer" || type == "failedLeader") {
+    return false;
+  } else if (type == "addFollower" || type == "moveShard" ||
+             type == "cleanOutServer") {
+    return true;
+  }
+
+  // We should never get here
+  TRI_ASSERT(false);
+  
 }
 
 void Job::doForAllShards(Node const& snapshot,
