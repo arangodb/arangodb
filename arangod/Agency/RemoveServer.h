@@ -32,7 +32,7 @@ namespace consensus {
 struct RemoveServer : public Job {
   
   RemoveServer(Node const& snapshot, Agent* agent, std::string const& jobId,
-                 std::string const& creator,
+                 std::string const& creator = std::string(),
                  std::string const& server = std::string());
   
   virtual ~RemoveServer();

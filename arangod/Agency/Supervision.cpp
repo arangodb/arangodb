@@ -46,15 +46,15 @@ using namespace arangodb::application_features;
 std::string Supervision::_agencyPrefix = "/arango";
 
 Supervision::Supervision()
-    : arangodb::Thread("Supervision"),
-      _agent(nullptr),
-      _snapshot("Supervision"),
-      _transient("Transient"),
-      _frequency(1.),
-      _gracePeriod(5.),
-      _jobId(0),
-      _jobIdMax(0),
-      _selfShutdown(false) {}
+  : arangodb::Thread("Supervision"),
+  _agent(nullptr),
+  _snapshot("Supervision"),
+  _transient("Transient"),
+  _frequency(1.),
+  _gracePeriod(5.),
+  _jobId(0),
+  _jobIdMax(0),
+  _selfShutdown(false) {}
 
 Supervision::~Supervision() { shutdown(); };
 
@@ -64,7 +64,7 @@ static std::string const planDBServersPrefix = "/Plan/DBServers";
 static std::string const planCoordinatorsPrefix = "/Plan/Coordinators";
 static std::string const targetShortID = "/Target/MapUniqueToShortID/";
 static std::string const currentServersRegisteredPrefix =
-    "/Current/ServersRegistered";
+  "/Current/ServersRegistered";
 static std::string const foxxmaster = "/Current/Foxxmaster";
 
 // Upgrade agency, guarded by wakeUp
@@ -210,8 +210,10 @@ std::vector<check_t> Supervision::checkDBServers() {
           reportPersistent = true;
           report->add("Status", VPackValue(Supervision::HEALTH_STATUS_FAILED));
           envelope = std::make_shared<VPackBuilder>();
-          FailedServer (_snapshot, _agent, std::to_string(_jobId++),
-                        "supervision", serverID).create(envelope);
+          LOG_TOPIC(WARN,Logger::SUPERVISION) << __FILE__ << __LINE__;
+          FailedServer(_snapshot, _agent, std::to_string(_jobId++),
+                       "supervision", serverID).create(envelope);
+          LOG_TOPIC(WARN,Logger::SUPERVISION) << __FILE__ << __LINE__;
         }
       } else {
         if (lastStatus != Supervision::HEALTH_STATUS_BAD) {
@@ -580,16 +582,14 @@ void Supervision::workJobs() {
 
   for (auto const& todoEnt : todos) {
     auto const& job = *todoEnt.second;
-    JobContext(
-      job("type").getString(), _snapshot, _agent, job("jobId").getString(),
-      job("creator").getString()).run();
+    JobContext(job("type").getString(), _snapshot, _agent,
+               job("jobId").getString()).run();
   }
 
   for (auto const& pendEnt : pends) {
     auto const& job = *pendEnt.second;
-    JobContext(
-      job("type").getString(), _snapshot, _agent, job("jobId").getString(),
-      job("creator").getString()).run();
+    JobContext(job("type").getString(), _snapshot, _agent,
+               job("jobId").getString()).run();
   }
   
 }
@@ -826,14 +826,14 @@ bool Supervision::start(Agent* agent) {
 static std::string const syncLatest = "/Sync/LatestID";
 // Get bunch of cluster's unique ids from agency, guarded above
 void Supervision::getUniqueIds() {
-  uint64_t latestId;
+  uint64_t latestId = 0;
   // Run forever, supervision does not make sense before the agency data
   // is initialized by some other server...
   while (!this->isStopping()) {
     try {
       MUTEX_LOCKER(locker, _lock);
       latestId = std::stoul(
-        _agent->readDB().get(_agencyPrefix + "/Sync/LatestID").slice().toJson());
+        _agent->readDB().get(_agencyPrefix + "/Sync/LatestID").getString());
     } catch (...) {
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;

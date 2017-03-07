@@ -32,7 +32,7 @@ namespace consensus {
 
 struct FailedServer : public Job {
   FailedServer(Node const& snapshot, Agent* agent, std::string const& jobId,
-               std::string const& creator,
+               std::string const& creator = std::string(),
                std::string const& failed = std::string());
 
   virtual ~FailedServer();

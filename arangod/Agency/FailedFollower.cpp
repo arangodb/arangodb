@@ -62,68 +62,56 @@ void FailedFollower::run() {
   }
 }
 
+
 bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
+
+  using namespace std::chrono;
   
   LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: Handle follower failover for shard "
                                   << _shard << " from " << _from << " to " + _to;
-
-  // FIXME: create one big FailedFollower job for all clones rather than
-  // FIXME: individual single shard jobs. This is important to be able to
-  // FIXME: change the plan for all shards in a clone set in one transaction.
 
   auto const& myClones = clones(_snapshot, _database, _collection, _shard);
   if (myClones.size() == 1) {   // leader is always in there
     size_t sub = 0;
     for (auto const& clone : myClones) {
-      if (clone.collection != _collection ||
-          clone.shard != _shard) {
-        FailedFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                       _jobId, _database, clone.collection,
-                       clone.shard, _from, _to);
+      if (clone.collection != _collection || clone.shard != _shard) {
+        FailedFollower(
+          _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
+          _database, clone.collection, clone.shard, _from, _to);
       }
     }
   }
    
   _jb = std::make_shared<Builder>();
-  _jb->openArray();
-  _jb->openObject();
-
-  // Todo entry
-  std::string path = agencyPrefix + toDoPrefix + _jobId;
-
-  _jb->add(path, VPackValue(VPackValueType::Object));
-  _jb->add("creator", VPackValue(_creator));
-  _jb->add("type", VPackValue("failedFollower"));
-  _jb->add("database", VPackValue(_database));
-  _jb->add("collection", VPackValue(_collection));
-  _jb->add("shard", VPackValue(_shard));
-  _jb->add("fromServer", VPackValue(_from));
-  _jb->add("toServer", VPackValue(_to));
-  _jb->add("isLeader", VPackValue(false));
-  _jb->add("jobId", VPackValue(_jobId));
-  _jb->add("timeCreated",
-           VPackValue(timepointToString(std::chrono::system_clock::now())));
-  _jb->close();
-
-  // Add shard to /arango/Target/FailedServers/<server> array
-  path = agencyPrefix + failedServersPrefix + "/" + _from;
-  _jb->add(path, VPackValue(VPackValueType::Object));
-  _jb->add("op", VPackValue("push"));
-  _jb->add("new", VPackValue(_shard));
-  _jb->close();
-  
-  _jb->close();
-  _jb->close();
+  { VPackArrayBuilder a(_jb.get());
+    // Operation -------------------------------------------------------
+    { VPackObjectBuilder oper(_jb.get());
+      // Todo entry
+      _jb->add(VPackValue(agencyPrefix + toDoPrefix + _jobId));
+      { VPackObjectBuilder td(_jb.get());
+        _jb->add("creator", VPackValue(_creator));
+        _jb->add("type", VPackValue("failedFollower"));
+        _jb->add("database", VPackValue(_database));
+        _jb->add("collection", VPackValue(_collection));
+        _jb->add("shard", VPackValue(_shard));
+        _jb->add("fromServer", VPackValue(_from));
+        _jb->add("toServer", VPackValue(_to));
+        _jb->add("isLeader", VPackValue(false));
+        _jb->add("jobId", VPackValue(_jobId));
+        _jb->add("timeCreated",
+                 VPackValue(timepointToString(system_clock::now()))); }
+      // Add shard to /arango/Target/FailedServers/<server> array
+      _jb->add(VPackValue(agencyPrefix + failedServersPrefix + "/" + _from));
+      { VPackObjectBuilder (_jb.get());
+        _jb->add("op", VPackValue("push"));
+        _jb->add("new", VPackValue(_shard)); }}} // Operations ---------
 
   write_ret_t res = transact(_agent, *_jb);
 
-  if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    return true;
-  }
+  return (res.accepted && res.indices.size() == 1 && res.indices[0]);
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to insert job " + _jobId;
-  return false;
 }
+
 
 bool FailedFollower::start() {
 
@@ -134,28 +122,25 @@ bool FailedFollower::start() {
   Node const& planned = _snapshot(planPath);
 
   // Copy todo to pending
-  Builder todo, pending;
-
-  // Get todo entry
-  todo.openArray();
-  if (_jb == nullptr) {
-    try {
-      _snapshot(toDoPrefix + _jobId).toBuilder(todo);
-    } catch (std::exception const&) {
-      LOG_TOPIC(INFO, Logger::AGENCY)
-        << "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
-      return false;
-    }
-  } else {
+  Builder todo;
+  { VPackArrayBuilder a(&todo);
+    if (_jb == nullptr) {
+      try {
+        _snapshot(toDoPrefix + _jobId).toBuilder(todo);
+      } catch (std::exception const&) {
+        LOG_TOPIC(INFO, Logger::AGENCY)
+          << "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
+        return false;
+      }
+    } else {
     todo.add(_jb->slice().get(agencyPrefix + toDoPrefix + _jobId).valueAt(0));
-  }
-  todo.close();
-
+    }}
   
   // FIXME: move to finished right away
   // FIXME: also handle multiple collections and shards at the same time
 
   // Transaction
+  Builder pending;
   pending.openArray();
 
   // Apply

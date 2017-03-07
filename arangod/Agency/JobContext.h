@@ -42,7 +42,7 @@ public:
 
   /// @brief Contextualize arbitrary Job
   JobContext(std::string const& name, Node const& snapshot, Agent* agent,
-             std::string const& jobId, std::string const& creator);
+             std::string const& jobId);
 
   /// @brief Contextualize arbitrary Job
   JobContext(std::string const& path, Node const& snapshot, Agent* agent);

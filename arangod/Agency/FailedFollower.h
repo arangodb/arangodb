@@ -32,7 +32,7 @@ namespace consensus {
 
 struct FailedFollower : public Job {
   FailedFollower(Node const& snapshot, Agent* agent, std::string const& jobId,
-               std::string const& creator,
+                 std::string const& creator = std::string(),
                std::string const& database = std::string(),
                std::string const& collection = std::string(),
                std::string const& shard = std::string(),

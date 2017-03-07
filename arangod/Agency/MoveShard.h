@@ -32,12 +32,13 @@ namespace consensus {
 
 struct MoveShard : public Job {
   MoveShard(Node const& snapshot, Agent* agent, std::string const& jobId,
-            std::string const& creator,
+            std::string const& creator = std::string(),
             std::string const& database = std::string(),
             std::string const& collection = std::string(),
             std::string const& shard = std::string(),
             std::string const& from = std::string(),
-            std::string const& to = std::string());
+            std::string const& to = std::string(),
+            bool isLeader = false);
 
   virtual ~MoveShard();
 

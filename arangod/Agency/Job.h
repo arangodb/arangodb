@@ -107,7 +107,7 @@ struct Job {
   };
   
   Job(Node const& snapshot, Agent* agent, std::string const& jobId,
-      std::string const& creator);
+      std::string const& creator = std::string());
 
   virtual ~Job();
 

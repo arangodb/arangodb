@@ -56,7 +56,9 @@ void FailedServer::run() {
 }
 
 bool FailedServer::start() {
-
+  
+  using namespace std::chrono;
+  
   // Fail job, if Health back to not FAILED
   if (_snapshot(healthPrefix + _server + "/Status").getString() != "FAILED") {
     std::stringstream reason;
@@ -67,10 +69,10 @@ bool FailedServer::start() {
     finish("DBServers/" + _server, false, reason.str());
     return false;
   }
-
+  
   // Abort job blocking server if abortable
   try {
-    std::string jp = _snapshot(blockedServersPrefix + _server).getString();
+     std::string jp = _snapshot(blockedServersPrefix + _server).getString();
     if (!abortable(_snapshot, jp)) {
       return false;
     } else {
@@ -78,63 +80,56 @@ bool FailedServer::start() {
     }
   } catch (...) {}
     
-  // Copy todo to pending
-  Builder todo, pending;
+  // Todo entry
+  Builder todo;
+  { VPackArrayBuilder t(&todo);
+    if (_jb == nullptr) {
+      try {
+        _snapshot(toDoPrefix + _jobId).toBuilder(todo);
+      } catch (std::exception const&) {
+        LOG_TOPIC(INFO, Logger::AGENCY)
+          << "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
+        return false;
+      }
+    } else {
+      todo.add(_jb->slice()[0].get(agencyPrefix + toDoPrefix + _jobId));
+    }} // Todo entry
   
-  // Get todo entry
-  todo.openArray();
-  if (_jb == nullptr) {
-    try {
-      _snapshot(toDoPrefix + _jobId).toBuilder(todo);
-    } catch (std::exception const&) {
-      LOG_TOPIC(INFO, Logger::AGENCY)
-        << "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
-      return false;
-    }
-  } else {
-    todo.add(_jb->slice()[0].get(agencyPrefix + toDoPrefix + _jobId));
+  // Pending entry
+  Builder pending;
+  { VPackArrayBuilder a(&pending);
+    
+    // Operations -------------->
+    { VPackObjectBuilder oper(&pending); 
+      // Add pending
+      pending.add(VPackValue(agencyPrefix + pendingPrefix + _jobId));
+      { VPackObjectBuilder ts(&pending);
+        pending.add("timeStarted",
+                    VPackValue(timepointToString(system_clock::now())));
+        for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
+          pending.add(obj.key.copyString(), obj.value);
+        }
+      }
+      // Delete todo
+      pending.add(VPackValue(agencyPrefix + toDoPrefix + _jobId));
+      { VPackObjectBuilder del(&pending);
+        pending.add("op", VPackValue("delete")); }
+      // Block toServer
+      pending.add(VPackValue(agencyPrefix + blockedServersPrefix + _server));
+      { VPackObjectBuilder block(&pending);
+        pending.add("jobId", VPackValue(_jobId));
+      }
+    } // <------------ Operations
+    
+    // Preconditions ----------->
+    { VPackObjectBuilder prec(&pending);
+      // Check that toServer not blocked
+      pending.add(VPackValue(agencyPrefix + blockedServersPrefix + _server));
+      { VPackObjectBuilder block(&pending);
+        pending.add("oldEmpty", VPackValue(true));
+      }
+    } // <--------- Preconditions
   }
-  todo.close();
-
-  // Prepare peding entry, block toserver
-  pending.openArray();
-
-  // --- Add pending
-  pending.openObject();
-  pending.add(agencyPrefix + pendingPrefix + _jobId,
-              VPackValue(VPackValueType::Object));
-  pending.add("timeStarted",
-              VPackValue(timepointToString(std::chrono::system_clock::now())));
-  for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
-    pending.add(obj.key.copyString(), obj.value);
-  }
-  pending.close();
-
-  // --- Delete todo
-  pending.add(agencyPrefix + toDoPrefix + _jobId,
-              VPackValue(VPackValueType::Object));
-  pending.add("op", VPackValue("delete"));
-  pending.close();
-
-  // --- Block toServer
-  pending.add(agencyPrefix + blockedServersPrefix + _server,
-              VPackValue(VPackValueType::Object));
-  pending.add("jobId", VPackValue(_jobId));
-  pending.close();
-
-  pending.close();
-
-  // Preconditions
-  // --- Check that toServer not blocked
-  pending.openObject();
-  pending.add(agencyPrefix + blockedServersPrefix + _server,
-              VPackValue(VPackValueType::Object));
-  pending.add("oldEmpty", VPackValue(true));
-  pending.close();
-
-  // FIXME: Add precondition that Supervision/Health/<server> is still "FAILED"
-  pending.close();
-  pending.close();
 
   // Transact to agency
   write_ret_t res = transact(_agent, pending);
@@ -242,6 +237,8 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
   } else {
     _jb = envelope;
   }
+
+  LOG_TOPIC(INFO, Logger::SUPERVISION) << __FILE__ << __LINE__;
   
   { VPackArrayBuilder a(_jb.get());
 
@@ -276,6 +273,7 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
       }} // Preconditions
   }
 
+  LOG_TOPIC(INFO, Logger::SUPERVISION) << __FILE__ << __LINE__;
   if (selfCreate) {
     write_ret_t res = transact(_agent, *_jb);
     if (!res.accepted || res.indices.size() != 1 || res.indices[0] == 0) {
@@ -284,6 +282,7 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
     }
   } 
 
+  LOG_TOPIC(INFO, Logger::SUPERVISION) << __FILE__ << __LINE__;
   return true;
 
 }

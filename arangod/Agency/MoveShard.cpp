@@ -32,14 +32,15 @@ MoveShard::MoveShard(Node const& snapshot, Agent* agent,
                      std::string const& jobId, std::string const& creator,
                      std::string const& database,
                      std::string const& collection, std::string const& shard,
-                     std::string const& from, std::string const& to)
+                     std::string const& from, std::string const& to,
+                     bool isLeader)
     : Job(snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
       _from(id(from)),
       _to(id(to)),
-      _isLeader(false)   // will be initialized properly when information known
+      _isLeader(isLeader) // will be initialized properly when information known
 { }
 
 MoveShard::~MoveShard() {}
