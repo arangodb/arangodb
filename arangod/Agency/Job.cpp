@@ -212,29 +212,34 @@ std::vector<Job::shard_t> Job::clones(
   std::vector<shard_t> ret;
   ret.emplace_back(collection, shard);  // add (collection, shard) as first item
 
-  std::string databasePath = planColPrefix + database,
-    planPath = databasePath + "/" + collection + "/shards";
+  try {
+    std::string databasePath = planColPrefix + database,
+      planPath = databasePath + "/" + collection + "/shards";
 
-  auto myshards = snapshot(planPath).children();
-  auto steps = std::distance(myshards.begin(), myshards.find(shard));
+    auto myshards = snapshot(planPath).children();
+    auto steps = std::distance(myshards.begin(), myshards.find(shard));
 
-  for (const auto& colptr : snapshot(databasePath).children()) { // collections
+    for (const auto& colptr : snapshot(databasePath).children()) { // collections
 
-    auto const col = *colptr.second;
-    auto const otherCollection = colptr.first;
+      auto const col = *colptr.second;
+      auto const otherCollection = colptr.first;
 
-    try {
-      std::string const& prototype =
-        col("distributeShardsLike").slice().copyString();
-      if (otherCollection != collection && prototype == collection) {
-        auto othershards = col("shards").children();
-        auto opos = othershards.begin();
-        std::advance(opos, steps);
-        auto const& otherShard = opos->first;
-        ret.emplace_back(otherCollection, otherShard);
-      }
-    } catch(...) {}
-    
+      try {
+        std::string const& prototype =
+          col("distributeShardsLike").slice().copyString();
+        if (otherCollection != collection && prototype == collection) {
+          auto othershards = col("shards").children();
+          auto opos = othershards.begin();
+          std::advance(opos, steps);
+          auto const& otherShard = opos->first;
+          ret.emplace_back(otherCollection, otherShard);
+        }
+      } catch(...) {}
+      
+    }
+  } catch (...) {
+    ret.clear();
+    ret.emplace_back(collection, shard);
   }
   
   return ret;

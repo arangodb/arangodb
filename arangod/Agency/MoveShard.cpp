@@ -226,14 +226,8 @@ bool MoveShard::start() {
   }
 
   // Compute group to move shards together:
-  std::vector<Job::shard_t> shardsLikeMe;
-  try {
-    shardsLikeMe = clones(_snapshot, _database, _collection, _shard);
-  }
-  catch (...) {
-    shardsLikeMe.clear();
-    shardsLikeMe.emplace_back(_collection, _shard);
-  }
+  std::vector<Job::shard_t> shardsLikeMe
+      = clones(_snapshot, _database, _collection, _shard);
     
   // Copy todo to pending
   Builder todo, pending;
@@ -430,14 +424,8 @@ JOB_STATUS MoveShard::status() {
 
 JOB_STATUS MoveShard::pendingLeader() {
   // Find the other shards in the same distributeShardsLike group:
-  std::vector<Job::shard_t> shardsLikeMe;
-  try {
-    shardsLikeMe = clones(_snapshot, _database, _collection, _shard);
-  }
-  catch (...) {
-    shardsLikeMe.clear();
-    shardsLikeMe.emplace_back(_collection, _shard);
-  }
+  std::vector<Job::shard_t> shardsLikeMe
+    = clones(_snapshot, _database, _collection, _shard);
 
   size_t done = 0;   // count the number of shards done
   for (auto const& collShard : shardsLikeMe) {
@@ -559,14 +547,8 @@ JOB_STATUS MoveShard::pendingLeader() {
 
 JOB_STATUS MoveShard::pendingFollower() {
   // Find the other shards in the same distributeShardsLike group:
-  std::vector<Job::shard_t> shardsLikeMe;
-  try {
-    shardsLikeMe = clones(_snapshot, _database, _collection, _shard);
-  }
-  catch (...) {
-    shardsLikeMe.clear();
-    shardsLikeMe.emplace_back(_collection, _shard);
-  }
+  std::vector<Job::shard_t> shardsLikeMe
+    = clones(_snapshot, _database, _collection, _shard);
 
   size_t done = 0;   // count the number of shards done
   for (auto const& collShard : shardsLikeMe) {
