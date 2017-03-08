@@ -175,7 +175,13 @@ public:
   void changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                         arangodb::LogicalCollection const* parameters,
                         bool doSync) override;
-  
+
+  // asks the storage engine to persist renaming of a collection
+  // This will write a renameMarker if not in recovery
+  arangodb::Result renameCollection(
+      TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection,
+      std::string const& oldName) override;
+
   // asks the storage engine to create an index as specified in the VPack
   // Slice object and persist the creation info. The database id, collection id 
   // and index data are passed in the Slice object. Note that this function

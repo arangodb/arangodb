@@ -676,7 +676,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           vocbase->dropCollection(other, true, false);
         }
 
-        int res = vocbase->renameCollection(collection, name, true, false);
+        int res = vocbase->renameCollection(collection, name, true);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot rename collection " << collectionId
