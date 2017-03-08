@@ -219,6 +219,8 @@ class LogicalCollection {
   virtual bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
   std::shared_ptr<ShardMap> shardIds() const;
+  // return a filtered list of the collection's shards
+  std::shared_ptr<ShardMap> shardIds(std::unordered_set<std::string> const& includedShards) const;
   void setShardMap(std::shared_ptr<ShardMap>& map);
 
   /// @brief a method to skip certain documents in AQL write operations,

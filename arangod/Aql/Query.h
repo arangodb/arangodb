@@ -259,14 +259,16 @@ class Query {
   /// @brief fetch a boolean value from the options
   bool getBooleanOption(char const*, bool) const;
 
+  std::unordered_set<std::string> includedShards() const;
+
   /// @brief add the list of warnings to VelocyPack.
   ///        Will add a new entry { ..., warnings: <warnings>, } if there are
   ///        warnings. If there are none it will not modify the builder
-   void addWarningsToVelocyPackObject(arangodb::velocypack::Builder&) const;
+  void addWarningsToVelocyPackObject(arangodb::velocypack::Builder&) const;
 
   /// @brief transform the list of warnings to VelocyPack.
   ///        NOTE: returns nullptr if there are no warnings.
-   std::shared_ptr<arangodb::velocypack::Builder> warningsToVelocyPack() const;
+  std::shared_ptr<arangodb::velocypack::Builder> warningsToVelocyPack() const;
   
   /// @brief fetch the query memory limit
   static uint64_t MemoryLimit() { return MemoryLimitValue; }

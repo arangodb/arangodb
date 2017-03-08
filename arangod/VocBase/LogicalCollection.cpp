@@ -597,6 +597,25 @@ std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
   return _shardIds;
 }
 
+// return a filtered list of the collection's shards
+std::shared_ptr<ShardMap> LogicalCollection::shardIds(std::unordered_set<std::string> const& includedShards) const {
+  if (includedShards.empty()) {
+    return _shardIds;
+  }
+
+  std::shared_ptr<ShardMap> copy = _shardIds;
+  auto result = std::make_shared<ShardMap>();
+  
+  for (auto const& it : *copy) {
+    if (includedShards.find(it.first) == includedShards.end()) {
+      // a shard we are not interested in
+      continue;
+    }
+    result->emplace(it.first, it.second);
+  } 
+  return result;
+}
+
 void LogicalCollection::setShardMap(std::shared_ptr<ShardMap>& map) {
   _shardIds = map;
 }
