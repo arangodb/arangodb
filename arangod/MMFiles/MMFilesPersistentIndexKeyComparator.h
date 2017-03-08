@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_ROCKS_DB_KEY_COMPARATOR_H
-#define ARANGOD_INDEXES_ROCKS_DB_KEY_COMPARATOR_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_PERSISTENT_INDEX_KEY_COMPARATOR_H
+#define ARANGOD_MMFILES_MMFILES_PERSISTENT_INDEX_KEY_COMPARATOR_H 1
 
 #include "Basics/Common.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
@@ -34,13 +34,13 @@
 
 namespace arangodb {
 
-class RocksDBKeyComparator : public rocksdb::Comparator {
+class MMFilesPersistentIndexKeyComparator final : public rocksdb::Comparator {
  public:
-  RocksDBKeyComparator() = default;
-  ~RocksDBKeyComparator() = default;
+  MMFilesPersistentIndexKeyComparator() = default;
+  ~MMFilesPersistentIndexKeyComparator() = default;
 
   static inline arangodb::velocypack::Slice extractKeySlice(rocksdb::Slice const& slice) {
-    return arangodb::velocypack::Slice(slice.data() + PersistentIndex::keyPrefixSize());
+    return arangodb::velocypack::Slice(slice.data() + MMFilesPersistentIndex::keyPrefixSize());
   }
   
   int Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const;

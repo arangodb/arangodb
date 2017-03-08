@@ -152,16 +152,15 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
     server.addFeature(new LanguageFeature(&server));
     server.addFeature(new LockfileFeature(&server));
-    server.addFeature(new MMFilesLogfileManager(&server));
     server.addFeature(new LoggerBufferFeature(&server));
     server.addFeature(new LoggerFeature(&server, true));
+    server.addFeature(new MMFilesLogfileManager(&server));
+    server.addFeature(new MMFilesPersistentIndexFeature(&server));
     server.addFeature(new NonceFeature(&server));
     server.addFeature(new PageSizeFeature(&server));
     server.addFeature(new PrivilegeFeature(&server));
-    server.addFeature(new QueryRegistryFeature(&server));
-    server.addFeature(new TraverserEngineRegistryFeature(&server));
     server.addFeature(new RandomFeature(&server));
-    server.addFeature(new PersistentIndexFeature(&server));
+    server.addFeature(new QueryRegistryFeature(&server));
     server.addFeature(new SchedulerFeature(&server));
     server.addFeature(new ScriptFeature(&server, &ret));
     server.addFeature(new ServerFeature(&server, &ret));
@@ -171,6 +170,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new StatisticsFeature(&server));
     server.addFeature(new TempFeature(&server, name));
     server.addFeature(new TransactionManagerFeature(&server));
+    server.addFeature(new TraverserEngineRegistryFeature(&server));
     server.addFeature(new UnitTestsFeature(&server, &ret));
     server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
     server.addFeature(new V8DealerFeature(&server));

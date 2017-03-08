@@ -32,12 +32,12 @@
 
 using namespace arangodb;
 
-int RocksDBKeyComparator::Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const {
+int MMFilesPersistentIndexKeyComparator::Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const {
   TRI_ASSERT(lhs.size() > 8);
   TRI_ASSERT(rhs.size() > 8);
 
   // compare by index id first
-  int res = memcmp(lhs.data(), rhs.data(), PersistentIndex::keyPrefixSize());
+  int res = memcmp(lhs.data(), rhs.data(), MMFilesPersistentIndex::keyPrefixSize());
 
   if (res != 0) {
     return res;

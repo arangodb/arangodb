@@ -50,28 +50,27 @@ struct Variable;
 
 class LogicalCollection;
 class MMFilesPrimaryIndex;
-class PersistentIndex;
+class MMFilesPersistentIndex;
 namespace transaction {
 class Methods;
 }
-;
 
 /// @brief Iterator structure for RocksDB. We require a start and stop node
-class PersistentIndexIterator final : public IndexIterator {
+class MMFilesPersistentIndexIterator final : public IndexIterator {
  private:
-  friend class PersistentIndex;
+  friend class MMFilesPersistentIndex;
 
  public:
-  PersistentIndexIterator(LogicalCollection* collection, transaction::Methods* trx, 
+  MMFilesPersistentIndexIterator(LogicalCollection* collection, transaction::Methods* trx, 
                   ManagedDocumentResult* mmdr,
-                  arangodb::PersistentIndex const* index,
+                  arangodb::MMFilesPersistentIndex const* index,
                   arangodb::MMFilesPrimaryIndex* primaryIndex,
                   rocksdb::OptimisticTransactionDB* db,
                   bool reverse, 
                   arangodb::velocypack::Slice const& left,
                   arangodb::velocypack::Slice const& right);
 
-  ~PersistentIndexIterator() = default;
+  ~MMFilesPersistentIndexIterator() = default;
 
  public:
   
@@ -93,16 +92,16 @@ class PersistentIndexIterator final : public IndexIterator {
   bool _probe;
 };
 
-class PersistentIndex final : public MMFilesPathBasedIndex {
-  friend class PersistentIndexIterator;
+class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
+  friend class MMFilesPersistentIndexIterator;
 
  public:
-  PersistentIndex() = delete;
+  MMFilesPersistentIndex() = delete;
 
-  PersistentIndex(TRI_idx_iid_t, LogicalCollection*,
+  MMFilesPersistentIndex(TRI_idx_iid_t, LogicalCollection*,
                arangodb::velocypack::Slice const&);
 
-  ~PersistentIndex();
+  ~MMFilesPersistentIndex();
 
  public:
   IndexType type() const override {
@@ -164,8 +163,8 @@ class PersistentIndex final : public MMFilesPathBasedIndex {
   /// @brief attempts to locate an entry in the index
   ///
   /// Warning: who ever calls this function is responsible for destroying
-  /// the velocypack::Slice and the PersistentIndexIterator* results
-  PersistentIndexIterator* lookup(transaction::Methods*, 
+  /// the velocypack::Slice and the MMFilesPersistentIndexIterator* results
+  MMFilesPersistentIndexIterator* lookup(transaction::Methods*, 
                           ManagedDocumentResult* mmdr,
                           arangodb::velocypack::Slice const,
                           bool reverse) const;

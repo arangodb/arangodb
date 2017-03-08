@@ -50,11 +50,11 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-static PersistentIndexFeature* Instance = nullptr;
+static MMFilesPersistentIndexFeature* Instance = nullptr;
 
-PersistentIndexFeature::PersistentIndexFeature(
+MMFilesPersistentIndexFeature::MMFilesPersistentIndexFeature(
     application_features::ApplicationServer* server)
-    : application_features::ApplicationFeature(server, "PersistentIndex"),
+    : application_features::ApplicationFeature(server, "MMFilesPersistentIndex"),
       _db(nullptr), _comparator(nullptr), _path(), _active(true),
       _writeBufferSize(0), _maxWriteBufferNumber(2), 
       _delayedWriteRate(2 * 1024 * 1024), _minWriteBufferNumberToMerge(1),
@@ -69,7 +69,7 @@ PersistentIndexFeature::PersistentIndexFeature(
   startsAfter("DatabasePath");
 }
 
-PersistentIndexFeature::~PersistentIndexFeature() {
+MMFilesPersistentIndexFeature::~MMFilesPersistentIndexFeature() {
   try {
     delete _db;
   } catch (...) {
@@ -80,7 +80,7 @@ PersistentIndexFeature::~PersistentIndexFeature() {
   }
 }
 
-void PersistentIndexFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void MMFilesPersistentIndexFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("rocksdb", "Configure the RocksDB engine");
 
   options->addOption(
@@ -175,7 +175,7 @@ void PersistentIndexFeature::collectOptions(std::shared_ptr<ProgramOptions> opti
       new UInt64Parameter(&_compactionReadaheadSize));
 }
 
-void PersistentIndexFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void MMFilesPersistentIndexFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_active) {
     forceDisable();
   } else {
@@ -201,7 +201,7 @@ void PersistentIndexFeature::validateOptions(std::shared_ptr<ProgramOptions> opt
   }
 }
 
-void PersistentIndexFeature::start() {
+void MMFilesPersistentIndexFeature::start() {
   Instance = this;
 
   if (!isEnabled()) {
@@ -214,7 +214,7 @@ void PersistentIndexFeature::start() {
   
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "initializing rocksdb, path: " << _path;
   
-  _comparator = new RocksDBKeyComparator();
+  _comparator = new MMFilesPersistentIndexKeyComparator();
   
   rocksdb::BlockBasedTableOptions tableOptions;
   tableOptions.cache_index_and_filter_blocks = true;
@@ -222,7 +222,7 @@ void PersistentIndexFeature::start() {
   
   // TODO: using the prefix extractor will lead to the comparator being
   // called with just the key prefix (which the comparator currently cannot handle)
-  // _options.prefix_extractor.reset(rocksdb::NewFixedPrefixTransform(PersistentIndex::minimalPrefixSize()));
+  // _options.prefix_extractor.reset(rocksdb::NewFixedPrefixTransform(MMFilesPersistentIndex::minimalPrefixSize()));
   // _options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(tableOptions));
   
   _options.create_if_missing = true;
@@ -264,7 +264,7 @@ void PersistentIndexFeature::start() {
   }
 }
 
-void PersistentIndexFeature::unprepare() {
+void MMFilesPersistentIndexFeature::unprepare() {
   if (!isEnabled()) {
     return;
   }
@@ -283,11 +283,11 @@ void PersistentIndexFeature::unprepare() {
   syncWal();
 }
   
-PersistentIndexFeature* PersistentIndexFeature::instance() {
+MMFilesPersistentIndexFeature* MMFilesPersistentIndexFeature::instance() {
   return Instance;
 }
 
-int PersistentIndexFeature::syncWal() {
+int MMFilesPersistentIndexFeature::syncWal() {
 #ifndef _WIN32
   // SyncWAL() always reports a "not implemented" error on Windows
   if (Instance == nullptr || !Instance->isEnabled()) {
@@ -306,31 +306,31 @@ int PersistentIndexFeature::syncWal() {
   return TRI_ERROR_NO_ERROR;
 }
 
-int PersistentIndexFeature::dropDatabase(TRI_voc_tick_t databaseId) {
+int MMFilesPersistentIndexFeature::dropDatabase(TRI_voc_tick_t databaseId) {
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
   // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dropping RocksDB database: " << databaseId;
-  return Instance->dropPrefix(PersistentIndex::buildPrefix(databaseId));
+  return Instance->dropPrefix(MMFilesPersistentIndex::buildPrefix(databaseId));
 }
 
-int PersistentIndexFeature::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
+int MMFilesPersistentIndexFeature::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
   // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dropping RocksDB database: " << databaseId << ", collection: " << collectionId;
-  return Instance->dropPrefix(PersistentIndex::buildPrefix(databaseId, collectionId));
+  return Instance->dropPrefix(MMFilesPersistentIndex::buildPrefix(databaseId, collectionId));
 }
 
-int PersistentIndexFeature::dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId) {
+int MMFilesPersistentIndexFeature::dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId) {
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
   // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dropping RocksDB database: " << databaseId << ", collection: " << collectionId << ", index: " << indexId;
-  return Instance->dropPrefix(PersistentIndex::buildPrefix(databaseId, collectionId, indexId));
+  return Instance->dropPrefix(MMFilesPersistentIndex::buildPrefix(databaseId, collectionId, indexId));
 }
 
-int PersistentIndexFeature::dropPrefix(std::string const& prefix) {
+int MMFilesPersistentIndexFeature::dropPrefix(std::string const& prefix) {
   if (!isEnabled()) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -349,7 +349,7 @@ int PersistentIndexFeature::dropPrefix(std::string const& prefix) {
     l.reserve(prefix.size() + builder.slice().byteSize());
     l.append(prefix);
     // extend the prefix to at least 24 bytes
-    while (l.size() < PersistentIndex::keyPrefixSize()) {
+    while (l.size() < MMFilesPersistentIndex::keyPrefixSize()) {
       uint64_t value = 0;
       l.append(reinterpret_cast<char const*>(&value), sizeof(uint64_t));
     }
@@ -364,7 +364,7 @@ int PersistentIndexFeature::dropPrefix(std::string const& prefix) {
     u.reserve(prefix.size() + builder.slice().byteSize());
     u.append(prefix);
     // extend the prefix to at least 24 bytes
-    while (u.size() < PersistentIndex::keyPrefixSize()) {
+    while (u.size() < MMFilesPersistentIndex::keyPrefixSize()) {
       uint64_t value = UINT64_MAX;
       u.append(reinterpret_cast<char const*>(&value), sizeof(uint64_t));
     }
@@ -381,7 +381,7 @@ int PersistentIndexFeature::dropPrefix(std::string const& prefix) {
       }
     }
     
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dropping RocksDB range: " << VPackSlice(l.c_str() + PersistentIndex::keyPrefixSize()).toJson() << " - " << VPackSlice(u.c_str() + PersistentIndex::keyPrefixSize()).toJson();
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dropping RocksDB range: " << VPackSlice(l.c_str() + MMFilesPersistentIndex::keyPrefixSize()).toJson() << " - " << VPackSlice(u.c_str() + MMFilesPersistentIndex::keyPrefixSize()).toJson();
 #endif
 
     // delete files in range lower..upper
@@ -401,7 +401,7 @@ int PersistentIndexFeature::dropPrefix(std::string const& prefix) {
     // go on and delete the remaining keys (delete files in range does not necessarily
     // find them all, just complete files)
     
-    auto comparator = PersistentIndexFeature::instance()->comparator();
+    auto comparator = MMFilesPersistentIndexFeature::instance()->comparator();
     rocksdb::DB* db = _db->GetBaseDB();
 
     rocksdb::WriteBatch batch;
