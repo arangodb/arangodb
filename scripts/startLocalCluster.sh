@@ -141,19 +141,6 @@ if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
     exit 1
 fi
 
-if [ ! -z "$INTERACTIVE_MODE" ] ; then
-    if [ "$INTERACTIVE_MODE" == "C" ] ; then
-        COORDINATORCONSOLE=1
-        echo "Starting one coordinator in terminal with --console"
-    elif [ "$INTERACTIVE_MODE" == "D" ] ; then
-        CLUSTERDEBUGGER=1
-        echo Running cluster in debugger.
-    elif [ "$INTERACTIVE_MODE" == "R" ] ; then
-        RRDEBUGGER=1
-        echo Running cluster in rr with --console.
-    fi
-fi
-
 SFRE=1.0
 COMP=2000
 KEEP=0
@@ -184,11 +171,26 @@ else
   CURL="curl -s -f $CURL_AUTHENTICATION -X GET http:"
 fi
 
+if [ ! -z "$INTERACTIVE_MODE" ] ; then
+    if [ "$INTERACTIVE_MODE" == "C" ] ; then
+        ARANGOD="${BUILD}/bin/arangod "
+        CO_ARANGOD="$XTERM $XTERMOPTIONS -e ${BUILD}/bin/arangod --console "
+        echo "Starting one coordinator in terminal with --console"
+    elif [ "$INTERACTIVE_MODE" == "R" ] ; then
+        ARANGOD="$XTERM $XTERMOPTIONS -e rr ${BUILD}/bin/arangod --console "
+        CO_ARANGOD=$ARANGOD
+        echo Running cluster in rr with --console.
+    fi
+else
+    ARANGOD="${BUILD}/bin/arangod "
+    CO_ARANGOD=$ARANGOD
+fi
+
 echo Starting agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     port=$(( $AG_BASE + $aid ))
     AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://localhost:$port "
-    ${BUILD}/bin/arangod \
+    $ARANGOD \
         -c none \
         --agency.activate true \
         --agency.compaction-step-size $COMP \
@@ -214,52 +216,28 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --log.level agency=$LOG_LEVEL_AGENCY \
         $AUTHENTICATION \
         $SSLKEYFILE \
-        > cluster/$port.stdout 2>&1 &
+        | tee cluster/$PORT.stdout 2>&1 &
 done
 
 start() {
+    
     if [ "$1" == "dbserver" ]; then
         ROLE="PRIMARY"
     elif [ "$1" == "coordinator" ]; then
         ROLE="COORDINATOR"
     fi
-    TYPE=$1
-    PORT=$2
-    mkdir cluster/data$PORT
-    echo Starting $TYPE on port $PORT
-    mkdir -p cluster/apps$PORT 
-    ${BUILD}/bin/arangod \
-       -c none \
-       --database.directory cluster/data$PORT \
-       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
-       --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-       --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
-       --cluster.my-role $ROLE \
-       --log.file cluster/$PORT.log \
-       --log.level $LOG_LEVEL \
-       --server.statistics true \
-       --server.threads 5 \
-       --javascript.startup-directory ./js \
-       --javascript.module-directory ./enterprise/js \
-       --javascript.app-path cluster/apps$PORT \
-       --log.force-direct true \
-       --log.level cluster=$LOG_LEVEL_CLUSTER \
-        $AUTHENTICATION \
-        $SSLKEYFILE \
-       > cluster/$PORT.stdout 2>&1 &
-}
 
-startTerminal() {
-    if [ "$1" == "dbserver" ]; then
-      ROLE="PRIMARY"
-    elif [ "$1" == "coordinator" ]; then
-      ROLE="COORDINATOR"
+    if [ "$1" == "coordinator" ]; then
+        CMD=$CO_ARANGOD
+    else
+        CMD=$ARANGOD
     fi
+
     TYPE=$1
     PORT=$2
-    mkdir cluster/data$PORT
+    mkdir cluster/data$PORT cluster/apps$PORT 
     echo Starting $TYPE on port $PORT
-    $XTERM $XTERMOPTIONS -e "${BUILD}/bin/arangod \
+    $CMD \
         -c none \
         --database.directory cluster/data$PORT \
         --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
@@ -272,99 +250,23 @@ startTerminal() {
         --server.threads 5 \
         --javascript.startup-directory ./js \
         --javascript.module-directory ./enterprise/js \
-        --javascript.app-path ./js/apps \
+        --javascript.app-path cluster/apps$PORT \
+        --log.force-direct true \
+        --log.level cluster=$LOG_LEVEL_CLUSTER \
         $AUTHENTICATION \
         $SSLKEYFILE \
-        --console" &
-}
-
-startDebugger() {
-    if [ "$1" == "dbserver" ]; then
-        ROLE="PRIMARY"
-    elif [ "$1" == "coordinator" ]; then
-        ROLE="COORDINATOR"
-    fi
-    TYPE=$1
-    PORT=$2
-    mkdir cluster/data$PORT
-    echo Starting $TYPE on port $PORT with debugger
-    ${BUILD}/bin/arangod \
-      -c none \
-      --database.directory cluster/data$PORT \
-      --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
-      --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-      --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
-      --cluster.my-role $ROLE \
-      --log.file cluster/$PORT.log \
-      --log.level $LOG_LEVEL \
-      --server.statistics false \
-      --server.threads 5 \
-      --javascript.startup-directory ./js \
-      --javascript.module-directory ./enterprise/js \
-      --javascript.app-path ./js/apps \
-      $SSLKEYFILE \
-      $AUTHENTICATION &
-      $XTERM $XTERMOPTIONS -e "gdb ${BUILD}/bin/arangod -p $!" &
-}
-
-startRR() {
-    if [ "$1" == "dbserver" ]; then
-        ROLE="PRIMARY"
-    elif [ "$1" == "coordinator" ]; then
-        ROLE="COORDINATOR"
-    fi
-    TYPE=$1
-    PORT=$2
-    mkdir cluster/data$PORT
-    echo Starting $TYPE on port $PORT with rr tracer
-    $XTERM $XTERMOPTIONS -e "rr ${BUILD}/bin/arangod \
-        -c none \
-        --database.directory cluster/data$PORT \
-        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
-        --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-        --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
-        --cluster.my-role $ROLE \
-        --log.file cluster/$PORT.log \
-        --log.level $LOG_LEVEL \
-        --server.statistics true \
-        --server.threads 5 \
-        --javascript.startup-directory ./js \
-        --javascript.module-directory ./enterprise/js \
-        --javascript.app-path ./js/apps \
-        $AUTHENTICATION \
-        $SSLKEYFILE \
-        --console" &
+        | tee cluster/$PORT.stdout 2>&1 &
 }
 
 PORTTOPDB=`expr $DB_BASE + $NRDBSERVERS - 1`
 for p in `seq $DB_BASE $PORTTOPDB` ; do
-    if [ "$CLUSTERDEBUGGER" == "1" ] ; then
-        startDebugger dbserver $p
-    elif [ "$RRDEBUGGER" == "1" ] ; then
-        startRR dbserver $p
-    else
-        start dbserver $p
-    fi
+    start dbserver $p
 done
+
 PORTTOPCO=`expr $CO_BASE + $NRCOORDINATORS - 1`
 for p in `seq $CO_BASE $PORTTOPCO` ; do
-    if [ "$CLUSTERDEBUGGER" == "1" ] ; then
-        startDebugger coordinator $p
-    elif [ $p == "$CO_BASE" -a ! -z "$COORDINATORCONSOLE" ] ; then
-        startTerminal coordinator $p
-    elif [ "$RRDEBUGGER" == "1" ] ; then
-        startRR coordinator $p
-    else
-        start coordinator $p
-    fi
+    start coordinator $p
 done
-
-if [ "$CLUSTERDEBUGGER" == "1" ] ; then
-    echo Waiting for you to setup debugger windows, hit RETURN to continue!
-    read
-fi
-
-echo Waiting for cluster to come up...
 
 testServer() {
     PORT=$1
