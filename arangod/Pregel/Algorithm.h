@@ -32,9 +32,9 @@
 #include "Pregel/GraphFormat.h"
 #include "Pregel/MessageCombiner.h"
 #include "Pregel/MessageFormat.h"
-#include "Pregel/WorkerContext.h"
-#include "Pregel/WorkerConfig.h"
 #include "Pregel/Statistics.h"
+#include "Pregel/WorkerConfig.h"
+#include "Pregel/WorkerContext.h"
 
 namespace arangodb {
 namespace pregel {

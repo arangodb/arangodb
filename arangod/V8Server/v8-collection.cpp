@@ -1884,6 +1884,10 @@ static void JS_UpdateVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  ServerState *ss = ServerState::instance();
+  if (ss->isRunningInCluster() && !ss->isCoordinator()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("Only call on coordinator or in single server mode");
+  }
   
   // check the arguments
   uint32_t const argLength = args.Length();
@@ -1936,7 +1940,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
   for (std::string const& name : vertices) {
-    if (ServerState::instance()->isCoordinator()) {
+    if (ss->isCoordinator()) {
       try {
         auto coll =
         ClusterInfo::instance()->getCollection(vocbase->name(), name);
@@ -1954,16 +1958,18 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
       } catch (...) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
       }
-    } else {
+    } else  if (ss->getRole() == ServerState::ROLE_SINGLE) {
       LogicalCollection *coll = vocbase->lookupCollection(name);
       if (coll == nullptr || coll->deleted()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
       }
+    } else {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
   }
   // load edge collection
   for (std::string const& name : edges) {
-    if (ServerState::instance()->isCoordinator()) {
+    if (ss->isCoordinator()) {
       try {
         auto coll =
         ClusterInfo::instance()->getCollection(vocbase->name(), name);
@@ -1983,18 +1989,22 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
       } catch (...) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
       }
-    } else {
+    } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
       LogicalCollection *coll = vocbase->lookupCollection(name);
       if (coll == nullptr || coll->deleted()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
       }
+    } else {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
   }
   
   uint64_t en = pregel::PregelFeature::instance()->createExecutionNumber();
-  pregel::Conductor* c = new pregel::Conductor(en, vocbase, vertices, edges);
-  pregel::PregelFeature::instance()->addExecution(c, en);
-  c->start(algorithm, paramBuilder.slice());
+  auto c = std::make_unique<pregel::Conductor>(en, vocbase, vertices, edges,
+                                               algorithm, paramBuilder.slice());
+  pregel::PregelFeature::instance()->addExecution(c.get(), en);
+  c->start();
+  c.release();
   
   TRI_V8_RETURN(v8::Number::New(isolate, en));
   TRI_V8_TRY_CATCH_END

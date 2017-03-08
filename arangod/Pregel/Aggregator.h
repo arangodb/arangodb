@@ -47,12 +47,13 @@ class IAggregator {
   virtual void aggregate(void const* valuePtr) = 0;
   /// @brief Used when updating aggregator value from remote
   virtual void parseAggregate(VPackSlice const& slice) = 0;
-  
+
   virtual void const* getAggregatedValue() const = 0;
   /// @brief Value from superstep S-1 supplied by the conductor
   virtual void setAggregatedValue(VPackSlice const& slice) = 0;
-  
-  virtual void serialize(std::string const& key, VPackBuilder &builder) const = 0;
+
+  virtual void serialize(std::string const& key,
+                         VPackBuilder& builder) const = 0;
 
   virtual void reset() = 0;
   virtual bool isConverging() const = 0;
@@ -63,20 +64,23 @@ struct NumberAggregator : public IAggregator {
   static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
 
   NumberAggregator(T neutral, bool perm = false, bool conv = false)
-      : _value(neutral), _neutral(neutral), _permanent(perm), _converging(conv) {}
-  
+      : _value(neutral),
+        _neutral(neutral),
+        _permanent(perm),
+        _converging(conv) {}
+
   void parseAggregate(VPackSlice const& slice) override {
     T f = slice.getNumber<T>();
     aggregate((void const*)(&f));
   };
-  
+
   void const* getAggregatedValue() const override { return &_value; };
-  
+
   void setAggregatedValue(VPackSlice const& slice) override {
     _value = slice.getNumber<T>();
   }
-  
-  void serialize(std::string const& key, VPackBuilder &builder) const override {
+
+  void serialize(std::string const& key, VPackBuilder& builder) const override {
     builder.add(key, VPackValue(_value));
   };
 
@@ -126,9 +130,12 @@ struct SumAggregator : public NumberAggregator<T> {
   }
 };
 
-/// Aggregator that stores a value that is overwritten once another value is aggregated.
-/// This aggregator is useful for one-to-many communication from master.compute() or from a special vertex.
-/// In case multiple vertices write to this aggregator, its behavior is non-deterministic.
+/// Aggregator that stores a value that is overwritten once another value is
+/// aggregated.
+/// This aggregator is useful for one-to-many communication from
+/// master.compute() or from a special vertex.
+/// In case multiple vertices write to this aggregator, its behavior is
+/// non-deterministic.
 template <typename T>
 struct OverwriteAggregator : public NumberAggregator<T> {
   OverwriteAggregator(T val, bool perm = false)
@@ -137,25 +144,29 @@ struct OverwriteAggregator : public NumberAggregator<T> {
   void aggregate(void const* valuePtr) override {
     this->_value = *((T*)valuePtr);
   };
-  void parseAggregate(VPackSlice const& slice) override { this->_value = slice.getNumber<T>(); }
+  void parseAggregate(VPackSlice const& slice) override {
+    this->_value = slice.getNumber<T>();
+  }
 };
 
 /// always initializes to true.
 struct BoolOrAggregator : public IAggregator {
   BoolOrAggregator(bool perm = false) : _permanent(perm) {}
-  
+
   void aggregate(void const* valuePtr) override {
     _value = _value || *((bool*)valuePtr);
   };
-  
-  void parseAggregate(VPackSlice const& slice) override { _value = _value || slice.getBool(); }
-  
+
+  void parseAggregate(VPackSlice const& slice) override {
+    _value = _value || slice.getBool();
+  }
+
   void const* getAggregatedValue() const override { return &_value; };
   void setAggregatedValue(VPackSlice const& slice) override {
     _value = slice.getBool();
   }
-  
-  void serialize(std::string const& key, VPackBuilder &builder) const override {
+
+  void serialize(std::string const& key, VPackBuilder& builder) const override {
     builder.add(key, VPackValue(_value));
   };
 

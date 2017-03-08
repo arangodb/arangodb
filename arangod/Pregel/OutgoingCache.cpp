@@ -41,7 +41,7 @@ using namespace arangodb::pregel;
 template <typename M>
 OutCache<M>::OutCache(WorkerConfig* state, MessageFormat<M> const* format)
     : _config(state), _format(format) {
-  _baseUrl = Utils::baseUrl(_config->database());
+  _baseUrl = Utils::baseUrl(_config->database(), Utils::workerPrefix);
 }
 
 // ================= ArrayOutCache ==================
@@ -81,7 +81,7 @@ void ArrayOutCache<M>::flushMessages() {
   if (this->_containedMessages == 0) {
     return;
   }
-  
+
   // LOG_TOPIC(INFO, Logger::PREGEL) << "Beginning to send messages to other
   // machines";
   uint64_t gss = this->_config->globalSuperstep();
@@ -193,7 +193,7 @@ void CombiningOutCache<M>::flushMessages() {
   if (this->_containedMessages == 0) {
     return;
   }
-  
+
   // LOG_TOPIC(INFO, Logger::PREGEL) << "Beginning to send messages to other
   // machines";
   uint64_t gss = this->_config->globalSuperstep();

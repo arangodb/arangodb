@@ -45,10 +45,8 @@ LineRank::LineRank(arangodb::velocypack::Slice params)
 
 struct LRWorkerContext : WorkerContext {
   float startAtNodeProb = 0;
-  
-  void preApplication() override {
-    startAtNodeProb = 1.0f / edgeCount();
-  };
+
+  void preApplication() override { startAtNodeProb = 1.0f / edgeCount(); };
 };
 
 WorkerContext* LineRank::workerContext(VPackSlice params) const {
@@ -59,8 +57,8 @@ WorkerContext* LineRank::workerContext(VPackSlice params) const {
 struct LRComputation : public VertexComputation<float, float, float> {
   LRComputation() {}
   void compute(MessageIterator<float> const& messages) override {
-    LRWorkerContext *ctx = (LRWorkerContext *)context();
-    
+    LRWorkerContext* ctx = (LRWorkerContext*)context();
+
     float* vertexValue = mutableVertexData();
     RangeIterator<Edge<float>> edges = getEdges();
 
@@ -82,8 +80,8 @@ struct LRComputation : public VertexComputation<float, float, float> {
           newScore = 0;
         } else {
           newScore /= edges.size();
-          newScore =
-              ctx->startAtNodeProb * RESTART_PROB + newScore * (1.0 - RESTART_PROB);
+          newScore = ctx->startAtNodeProb * RESTART_PROB +
+                     newScore * (1.0 - RESTART_PROB);
         }
 
         float diff = fabsf(newScore - *vertexValue);
@@ -97,8 +95,6 @@ struct LRComputation : public VertexComputation<float, float, float> {
     sendMessageToAllEdges(*vertexValue);
   }
 };
-
-
 
 VertexComputation<float, float, float>* LineRank::createComputation(
     WorkerConfig const* config) const {

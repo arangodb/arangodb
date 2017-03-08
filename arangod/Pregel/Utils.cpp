@@ -24,17 +24,19 @@
 #include "Basics/StringUtils.h"
 
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "Utils/SingleCollectionTransaction.h"
 
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 
 std::string const Utils::apiPrefix = "/_api/pregel/";
+std::string const Utils::conductorPrefix = "conductor";
+std::string const Utils::workerPrefix = "worker";
+
 std::string const Utils::startExecutionPath = "startExecution";
 std::string const Utils::finishedStartupPath = "finishedStartup";
 std::string const Utils::prepareGSSPath = "prepareGSS";
@@ -79,8 +81,8 @@ std::string const Utils::enterNextGSSKey = "nextGSS";
 std::string const Utils::compensate = "compensate";
 std::string const Utils::rollback = "rollback";
 
-std::string Utils::baseUrl(std::string dbName) {
-  return "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix;
+std::string Utils::baseUrl(std::string const& dbName, std::string const& prefix) {
+  return "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix + prefix + "/";
 }
 
 void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
@@ -95,26 +97,29 @@ void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
   }
 }
 
-std::shared_ptr<LogicalCollection> Utils::resolveCollection(
-    std::string const& database, std::string const& collectionName,
-    std::map<std::string, std::string> const& collectionPlanIdMap) {
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto const& it = collectionPlanIdMap.find(collectionName);
-  if (it != collectionPlanIdMap.end()) {
-    return ci->getCollection(database, it->second);
+int Utils::resolveShard(WorkerConfig const* config,
+                            std::string const& collectionName,
+                            std::string const& shardKey,
+                            std::string const& vertexKey,
+                            std::string &responsibleShard) {
+  
+  if (ServerState::instance()->isRunningInCluster() == false) {
+    responsibleShard = collectionName;
+    return TRI_ERROR_NO_ERROR;
   }
-  LOG_TOPIC(ERR, Logger::PREGEL)
-      << "The collection could not be translated to a planID";
-  // THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-  //                               "The collection could not be translated to a
-  //                               planID");
-  return std::shared_ptr<LogicalCollection>();
-}
-
-void Utils::resolveShard(LogicalCollection* info, std::string const& shardKey,
-                         std::string const& vertexKey,
-                         std::string& responsibleShard) {
+  
+  auto const& planIDMap = config->collectionPlanIdMap();
   ClusterInfo* ci = ClusterInfo::instance();
+  std::shared_ptr<LogicalCollection> info;
+  auto const& it = planIDMap.find(collectionName);
+  if (it != planIDMap.end()) {
+    info = ci->getCollection(config->database(), it->second); // might throw
+  } else {
+    LOG_TOPIC(ERR, Logger::PREGEL)
+    << "The collection could not be translated to a planID";
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  
   bool usesDefaultShardingAttributes;
   VPackBuilder partial;
   partial.openObject();
@@ -122,11 +127,9 @@ void Utils::resolveShard(LogicalCollection* info, std::string const& shardKey,
   partial.close();
   //  LOG_TOPIC(INFO, Logger::PREGEL) << "Partial doc: " << partial.toJson();
   int res =
-      ci->getResponsibleShard(info, partial.slice(), true, responsibleShard,
+      ci->getResponsibleShard(info.get(), partial.slice(), true, responsibleShard,
                               usesDefaultShardingAttributes);
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res,
-                                   "could not resolve the responsible shard");
-  }
   TRI_ASSERT(usesDefaultShardingAttributes);  // should be true anyway
+  
+  return res;
 }

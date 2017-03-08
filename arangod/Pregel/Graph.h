@@ -24,8 +24,8 @@
 #define ARANGODB_PREGEL_GRAPH_STRUCTURE_H 1
 
 #include <cstdint>
-#include <string>
 #include <functional>
+#include <string>
 
 namespace arangodb {
 namespace pregel {
@@ -42,11 +42,11 @@ struct PregelID {
   inline bool operator==(const PregelID& rhs) const {
     return shard == rhs.shard && key == rhs.key;
   }
-  
+
   inline bool operator<(const PregelID& rhs) const {
     return shard < rhs.shard || (shard == rhs.shard && key < rhs.key);
   }
-  
+
   bool inline isValid() const {
     return shard != invalid_prgl_shard && !key.empty();
   }
@@ -61,7 +61,7 @@ class Edge {
   template <typename V, typename E2>
   friend class GraphStore;
 
-  //prgl_shard_t _sourceShard;
+  // prgl_shard_t _sourceShard;
   prgl_shard_t _targetShard;
   std::string _toKey;
   E _data;
@@ -78,7 +78,7 @@ class Edge {
   inline E* data() {
     return &_data;  // static_cast<E>(this + sizeof(EdgeEntry) + _vertexIDSize);
   }
-  //inline prgl_shard_t sourceShard() const { return _sourceShard; }
+  // inline prgl_shard_t sourceShard() const { return _sourceShard; }
   inline prgl_shard_t targetShard() const { return _targetShard; }
 };
 
@@ -172,21 +172,21 @@ class VertexEntry {
 }
 
 namespace std {
-  template <>
-  struct hash<arangodb::pregel::PregelID> {
-    std::size_t operator()(const arangodb::pregel::PregelID& k) const {
-      using std::size_t;
-      using std::hash;
-      using std::string;
-      
-      // Compute individual hash values for first,
-      // second and third and combine them using XOR
-      // and bit shifting:
-      std::size_t h1 = std::hash<string>()(k.key);
-      std::size_t h2 = std::hash<int32_t>()(k.shard);
-      return h1 ^ (h2 << 1);
-    }
-  };
+template <>
+struct hash<arangodb::pregel::PregelID> {
+  std::size_t operator()(const arangodb::pregel::PregelID& k) const {
+    using std::size_t;
+    using std::hash;
+    using std::string;
+
+    // Compute individual hash values for first,
+    // second and third and combine them using XOR
+    // and bit shifting:
+    std::size_t h1 = std::hash<string>()(k.key);
+    std::size_t h2 = std::hash<int32_t>()(k.shard);
+    return h1 ^ (h2 << 1);
+  }
+};
 }
 
 #endif

@@ -63,18 +63,19 @@ void RecoveryManager::stopMonitoring(Conductor* listener) {
   }
 }
 
-void RecoveryManager::monitorCollections(DatabaseID const& database,
-                                         std::vector<CollectionID> const& collections,
-                                         Conductor *listener) {
+void RecoveryManager::monitorCollections(
+    DatabaseID const& database, std::vector<CollectionID> const& collections,
+    Conductor* listener) {
   MUTEX_LOCKER(guard, _lock);
   if (ServerState::instance()->isCoordinator() == false) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
   }
-  ClusterInfo *ci = ClusterInfo::instance();
+  ClusterInfo* ci = ClusterInfo::instance();
 
   for (CollectionID const& collname : collections) {
-    std::shared_ptr<LogicalCollection> coll = ci->getCollection(database, collname);
-    
+    std::shared_ptr<LogicalCollection> coll =
+        ci->getCollection(database, collname);
+
     CollectionID cid = coll->cid_as_string();
     std::shared_ptr<std::vector<ShardID>> shards =
         ClusterInfo::instance()->getShardList(cid);

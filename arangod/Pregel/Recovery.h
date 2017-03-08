@@ -57,14 +57,14 @@ class RecoveryManager {
 
   void monitorCollections(DatabaseID const& database,
                           std::vector<CollectionID> const& collections,
-                          Conductor *listener);
+                          Conductor* listener);
   void stopMonitoring(Conductor*);
   int filterGoodServers(std::vector<ServerID> const& servers,
                         std::vector<ServerID>& goodServers);
   void updatedFailedServers();
   // bool allServersAvailable(std::vector<ServerID> const& dbServers);
 };
-  
+
 /*
 template
 class CheckpointingManager {
@@ -77,10 +77,10 @@ class CheckpointingManager {
 
  public:
   template <typename V, typename E>
-  void replicateGraphData(uint64_t exn, uint64_t gss, 
+  void replicateGraphData(uint64_t exn, uint64_t gss,
  GraphStore<V, E> const* graphStore);
-  
-  void restoreGraphData(uint64_t exn, uint64_t gss, 
+
+  void restoreGraphData(uint64_t exn, uint64_t gss,
     GraphStore<V, E> const* graphStore);
 
   void reloadPlanData() { _secondaries.clear(); }

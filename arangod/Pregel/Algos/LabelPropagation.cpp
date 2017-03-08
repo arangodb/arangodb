@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LabelPropagation.h"
+#include <cmath>
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
@@ -29,7 +30,6 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
-#include <cmath>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -37,12 +37,11 @@ using namespace arangodb::pregel::algos;
 
 static const uint64_t STABILISATION_ROUNDS = 20;
 
-struct LPComputation
-    : public VertexComputation<LPValue, int8_t, uint64_t> {
+struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
   LPComputation() {}
 
   void compute(MessageIterator<uint64_t> const& messages) override {
-    LPValue *value = mutableVertexData();
+    LPValue* value = mutableVertexData();
     if (globalSuperstep() == 0) {
       sendMessageToAllEdges(value->currentCommunity);
     } else {
@@ -85,13 +84,13 @@ struct LPComputation
       if (value->lastCommunity == newCommunity) {
         value->stabilizationRounds++;
       }
-      
+
       bool isUnstable = value->stabilizationRounds <= STABILISATION_ROUNDS;
       bool mayChange = value->currentCommunity != newCommunity;
       if (mayChange && isUnstable) {
         value->lastCommunity = value->currentCommunity;
         value->currentCommunity = newCommunity;
-        value->stabilizationRounds = 0;// reset stabilization counter
+        value->stabilizationRounds = 0;  // reset stabilization counter
         sendMessageToAllEdges(value->currentCommunity);
       }
     }
@@ -108,12 +107,11 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   std::string _resultField;
   uint64_t vertexIdRange = 0;
 
-  LPGraphFormat(std::string const& result)
-  : _resultField(result) {}
-  
+  LPGraphFormat(std::string const& result) : _resultField(result) {}
+
   size_t estimatedVertexSize() const override { return sizeof(LPValue); };
   size_t estimatedEdgeSize() const override { return 0; };
-  
+
   void willLoadVertices(uint64_t count) override {
     // if we aren't running in a cluster it doesn't matter
     if (arangodb::ServerState::instance()->isRunningInCluster()) {
@@ -125,23 +123,23 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   }
 
   size_t copyVertexData(std::string const& documentId,
-                        arangodb::velocypack::Slice document,
-                        LPValue* value, size_t maxSize) override {
+                        arangodb::velocypack::Slice document, LPValue* value,
+                        size_t maxSize) override {
     value->currentCommunity = vertexIdRange++;
     return sizeof(LPValue);
   }
-  
+
   size_t copyEdgeData(arangodb::velocypack::Slice document, int8_t* targetPtr,
                       size_t maxSize) override {
     return 0;
   }
-  
+
   bool buildVertexDocument(arangodb::velocypack::Builder& b, const LPValue* ptr,
                            size_t size) const override {
     b.add(_resultField, VPackValue(ptr->currentCommunity));
     return true;
   }
-  
+
   bool buildEdgeDocument(arangodb::velocypack::Builder& b, const int8_t* ptr,
                          size_t size) const override {
     return false;
@@ -151,4 +149,3 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
 GraphFormat<LPValue, int8_t>* LabelPropagation::inputFormat() const {
   return new LPGraphFormat(_resultField);
 }
-

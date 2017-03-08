@@ -29,6 +29,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Graph.h"
 
+struct TRI_vocbase_t;
 namespace arangodb {
 class SingleCollectionTransaction;
 namespace pregel {
@@ -44,7 +45,8 @@ class WorkerConfig {
   friend class Worker;
 
  public:
-  WorkerConfig(DatabaseID dbname, VPackSlice params);
+  WorkerConfig(TRI_vocbase_t *vocbase, VPackSlice params);
+  void updateConfig(VPackSlice updated);
 
   inline uint64_t executionNumber() const { return _executionNumber; }
 
@@ -55,12 +57,13 @@ class WorkerConfig {
   inline bool asynchronousMode() const { return _asynchronousMode; }
 
   inline bool lazyLoading() const { return _lazyLoading; }
-  
+
   inline uint32_t parallelism() const { return _parallelism; }
 
   inline std::string const& coordinatorId() const { return _coordinatorId; }
 
-  inline std::string const& database() const { return _database; }
+  inline TRI_vocbase_t* const& vocbase() const { return _vocbase; }
+  inline std::string const& database() const { return _vocbase->name(); }
 
   // collection shards on this worker
   inline std::map<CollectionID, std::vector<ShardID>> const&
@@ -124,11 +127,11 @@ class WorkerConfig {
   bool _asynchronousMode = false;
   /// load vertices on a lazy basis
   bool _lazyLoading = false;
-  
+
   uint32_t _parallelism = 1;
 
   std::string _coordinatorId;
-  std::string _database;
+  TRI_vocbase_t *_vocbase;
 
   std::vector<ShardID> _globalShardIDs;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;

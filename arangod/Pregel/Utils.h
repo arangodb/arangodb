@@ -26,6 +26,7 @@
 #include <cstdint>
 #include "Basics/Common.h"
 #include "Cluster/ClusterComm.h"
+#include "Pregel/WorkerConfig.h"
 
 struct TRI_vocbase_t;
 
@@ -38,9 +39,11 @@ class Utils {
 
  public:
   // constants
+  static std::string const apiPrefix;
+  static std::string const conductorPrefix;
+  static std::string const workerPrefix;
 
   static std::string const edgeShardingKey;
-  static std::string const apiPrefix;
   static std::string const startExecutionPath;
   static std::string const finishedStartupPath;
   static std::string const prepareGSSPath;
@@ -70,43 +73,43 @@ class Utils {
 
   /// Current global superstep
   static std::string const globalSuperstepKey;
-  
+
   /// Communicate number of loaded vertices to conductor
   static std::string const vertexCountKey;
-  
+
   /// Communicate number of loaded edges to conductor
   static std::string const edgeCountKey;
-  
+
   /// Shard id, part of message header
   static std::string const shardIdKey;
-  
+
   /// holds messages
   static std::string const messagesKey;
-  
+
   /// sender cluster id
   static std::string const senderKey;
-  
+
   /// Recovery method name
   static std::string const recoveryMethodKey;
-  
+
   /// Tells workers to store the result into the collections
   /// otherwise dicard results
   static std::string const storeResultsKey;
-  
+
   /// Holds aggregated values
   static std::string const aggregatorValuesKey;
-  
+
   /// Communicates the # of active vertices to the conductor
   static std::string const activeCountKey;
-  
+
   /// Used to track number of messages received during the last
   /// superstep, by the worker (bookkeeping)
   static std::string const receivedCountKey;
-  
+
   /// Used to track number of messages send during the last
   /// superstep (bookkeeping)
   static std::string const sendCountKey;
-  
+
   /// Used to communicate to enter the next phase
   /// only send by the conductor
   static std::string const enterNextGSSKey;
@@ -114,17 +117,18 @@ class Utils {
   static std::string const compensate;
   static std::string const rollback;
 
-  static std::string baseUrl(std::string dbName);
+  // pass the db name and either "worker" or "conductor" as target.
+  static std::string baseUrl(std::string const& dbName, std::string const& target);
   static void printResponses(std::vector<ClusterCommRequest> const& requests);
 
   static int64_t countDocuments(TRI_vocbase_t* vocbase,
                                 std::string const& collection);
-  static std::shared_ptr<LogicalCollection> resolveCollection(
-      std::string const& database, std::string const& collectionName,
-      std::map<std::string, std::string> const& collectionPlanIdMap);
-  static void resolveShard(LogicalCollection* info, std::string const& shardKey,
-                           std::string const& vertexKey,
-                           std::string& responsibleShard);
+    
+  static int resolveShard(WorkerConfig const* config,
+                        std::string const& collectionName,
+                        std::string const& shardKey,
+                        std::string const& vertexKey,
+                          std::string &responsibleShard);
 };
 }
 }

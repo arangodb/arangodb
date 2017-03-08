@@ -33,7 +33,6 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
-class RestPregelHandler;
 namespace pregel {
 
 enum ExecutionState {
@@ -46,18 +45,19 @@ enum ExecutionState {
 };
 extern const char* ExecutionStateNames[6];
 
+class PregelFeature;
 class MasterContext;
 class AggregatorHandler;
 struct IAlgorithm;
 
 class Conductor {
-  friend class arangodb::RestPregelHandler;
+  friend class PregelFeature;
 
   ExecutionState _state = ExecutionState::DEFAULT;
   const VocbaseGuard _vocbaseGuard;
   const uint64_t _executionNumber;
-  std::unique_ptr<IAlgorithm> _algorithm;
   VPackBuilder _userParams;
+  std::unique_ptr<IAlgorithm> _algorithm;
   Mutex _callbackMutex;  // prevents concurrent calls to finishedGlobalStep
 
   std::vector<CollectionID> _vertexCollections;
@@ -89,11 +89,11 @@ class Conductor {
   double _startTimeSecs = 0, _computationStartTimeSecs, _endTimeSecs = 0;
 
   bool _startGlobalStep();
-  int _initializeWorkers(std::string const& suffix, VPackSlice additional);
+  int _initializeWorkers(std::string const& path, VPackSlice additional);
   int _finalizeWorkers();
-  int _sendToAllDBServers(std::string const& suffix, VPackSlice const& message);
-  int _sendToAllDBServers(std::string const& suffix, VPackSlice const& message,
-                          std::vector<ClusterCommRequest>& requests);
+  int _sendToAllDBServers(std::string const& path, VPackBuilder const& message);
+  int _sendToAllDBServers(std::string const& path, VPackBuilder const& message,
+                          std::function<void(VPackSlice)> handle);
   void _ensureUniqueResponse(VPackSlice body);
 
   // === REST callbacks ===
@@ -102,13 +102,15 @@ class Conductor {
   void finishedRecoveryStep(VPackSlice const& data);
 
  public:
-    Conductor(
-              uint64_t executionNumber, TRI_vocbase_t* vocbase,
-              std::vector<CollectionID> const& vertexCollections,
-              std::vector<CollectionID> const& edgeCollections);
+  Conductor(uint64_t executionNumber, TRI_vocbase_t* vocbase,
+            std::vector<CollectionID> const& vertexCollections,
+            std::vector<CollectionID> const& edgeCollections,
+            std::string const& algoName,
+            VPackSlice const& userConfig);
+    
   ~Conductor();
 
-  void start(std::string const& algoName, VPackSlice const& userConfig);
+  void start();
   void cancel();
   void startRecovery();
   AggregatorHandler const* aggregators() const { return _aggregators.get(); }
@@ -116,7 +118,7 @@ class Conductor {
   ExecutionState getState() const { return _state; }
   StatsManager workerStats() const { return _statistics; }
   uint64_t globalSuperstep() const { return _globalSuperstep; }
-  
+
   VPackBuilder collectAQLResults();
   double totalRuntimeSecs() {
     return _endTimeSecs == 0 ? TRI_microtime() - _startTimeSecs

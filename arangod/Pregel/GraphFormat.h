@@ -108,7 +108,7 @@ class NumberGraphFormat : public GraphFormat<V, E> {
   }
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b, const V* ptr,
-                           size_t size) const override{
+                           size_t size) const override {
     b.add(_resultField, VPackValue(*ptr));
     return true;
   }

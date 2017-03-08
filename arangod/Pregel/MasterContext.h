@@ -62,7 +62,7 @@ class MasterContext {
   inline const T* getAggregatedValue(std::string const& name) {
     return (const T*)_aggregators->getAggregatedValue(name);
   }
-  
+
   inline IAggregator* getAggregator(std::string const& name) {
     return _aggregators->getAggregator(name);
   }

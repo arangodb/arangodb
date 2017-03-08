@@ -44,8 +44,7 @@ namespace algos {
 /// color as you.
 ///    All nodes visited belongs to the SCC identified by the root color.
 
-struct SCC
-    : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
+struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
  public:
   SCC(VPackSlice userParams)
       : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>(

@@ -243,7 +243,7 @@ struct ASCCMasterContext : public MasterContext {
         break;
     }
   };
-  
+
   void postLocalSuperstep() override {
     uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
     if (*phase == SCCPhase::FORWARD_TRAVERSAL) {

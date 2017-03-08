@@ -47,16 +47,18 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::pregel;
 
-#define MY_READ_LOCKER(obj, lock) \
-  ReadLocker<ReadWriteLock> obj(&lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
+#define MY_READ_LOCKER(obj, lock)                                              \
+  ReadLocker<ReadWriteLock> obj(&lock, arangodb::basics::LockerType::BLOCKING, \
+                                true, __FILE__, __LINE__)
 
 #define MY_WRITE_LOCKER(obj, lock) \
-  WriteLocker<ReadWriteLock> obj(&lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
+  WriteLocker<ReadWriteLock> obj(  \
+      &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
 template <typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
                         VPackSlice initConfig)
-    : _config(vocbase->name(), initConfig), _algorithm(algo) {
+    : _config(vocbase, initConfig), _algorithm(algo) {
   MUTEX_LOCKER(guard, _commandMutex);
 
   VPackSlice userParams = initConfig.get(Utils::userParametersKey);
@@ -85,7 +87,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
                 VPackValue(_graphStore->localVertexCount()));
     package.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
     package.close();
-    _callConductor(Utils::finishedStartupPath, package.slice());
+    _callConductor(Utils::finishedStartupPath, package);
   };
 
   if (_config.lazyLoading()) {
@@ -155,7 +157,8 @@ void Worker<V, E, M>::_initializeMessageCaches() {
       _writeCacheNextGSS = new ArrayInCache<M>(&_config, _messageFormat.get());
     }
     for (size_t i = 0; i < p; i++) {
-      auto incoming = std::make_unique<ArrayInCache<M>>(nullptr, _messageFormat.get());
+      auto incoming =
+          std::make_unique<ArrayInCache<M>>(nullptr, _messageFormat.get());
       _inCaches.push_back(incoming.get());
       _outCaches.push_back(
           new ArrayOutCache<M>(&_config, _messageFormat.get()));
@@ -341,7 +344,7 @@ void Worker<V, E, M>::_startProcessing() {
     }
     i++;
   } while (start != total);
-  //TRI_ASSERT(_runningThreads == i);
+  // TRI_ASSERT(_runningThreads == i);
   LOG_TOPIC(INFO, Logger::PREGEL) << "Using " << i << " Threads";
 }
 
@@ -371,7 +374,7 @@ bool Worker<V, E, M>::_processVertices(
     TRI_ASSERT(outCache->sendCountNextGSS() == 0);
   }
   TRI_ASSERT(outCache->sendCount() == 0);
-  
+
   AggregatorHandler workerAggregator(_algorithm.get());
   // TODO look if we can avoid instantiating this
   std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
@@ -428,9 +431,9 @@ bool Worker<V, E, M>::_processVertices(
     MUTEX_LOCKER(guard, _threadMutex);
     if (t > 0.005) {
       LOG_TOPIC(INFO, Logger::PREGEL) << "Total " << stats.superstepRuntimeSecs
-      << " s merge took " << t << " s";
+                                      << " s merge took " << t << " s";
     }
-    
+
     // merge the thread local stats and aggregators
     _workerAggregators->aggregateValues(workerAggregator);
     _messageStats.accumulate(stats);
@@ -528,28 +531,24 @@ void Worker<V, E, M>::_finishedProcessing() {
   }
 
   if (_config.asynchronousMode()) {
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Finished Iter: " << package.toString();
-    
-    bool proceed = false;
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Finished LSS: " << package.toJson();
+
     // if the conductor is unreachable or has send data (try to) proceed
-    std::unique_ptr<ClusterCommResult> result = _callConductorWithResponse(
-        Utils::finishedWorkerStepPath, package.slice());
-    if (result->status == CL_COMM_SENT || result->status == CL_COMM_RECEIVED) {
-      VPackSlice data = result->answer->payload();
-      if (data.isObject()) {
-        proceed = true;
-        _conductorAggregators->aggregateValues(data);  // only aggregate values
-        VPackSlice nextGSS = data.get(Utils::enterNextGSSKey);
-        if (nextGSS.isBool()) {
-          _requestedNextGSS = nextGSS.getBool();
-        }
-      }
-    }
-    if (proceed) {
-      _continueAsync();
-    }
+    _callConductorWithResponse(
+        Utils::finishedWorkerStepPath, package, [this](VPackSlice response) {
+          if (response.isObject()) {
+            _conductorAggregators->aggregateValues(
+                response);  // only aggregate values
+            VPackSlice nextGSS = response.get(Utils::enterNextGSSKey);
+            if (nextGSS.isBool()) {
+              _requestedNextGSS = _requestedNextGSS || nextGSS.getBool();
+            }
+            _continueAsync();
+          }
+        });
+
   } else {  // no answer expected
-    _callConductor(Utils::finishedWorkerStepPath, package.slice());
+    _callConductor(Utils::finishedWorkerStepPath, package);
     LOG_TOPIC(INFO, Logger::PREGEL) << "Finished GSS: " << package.toJson();
   }
 }
@@ -560,15 +559,16 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::_continueAsync() {
   {
     MUTEX_LOCKER(guard, _commandMutex);
-    if (_state != WorkerState::IDLE || _writeCache->containedMessageCount() == 0) {
+    if (_state != WorkerState::IDLE ||
+        _writeCache->containedMessageCount() == 0) {
       return;
     }
-      // avoid calling this method accidentially
+    // avoid calling this method accidentially
     _state = WorkerState::COMPUTING;
   }
-  
-  ThreadPool *pool = PregelFeature::instance()->threadPool();
-  pool->enqueue([this]{
+
+  ThreadPool* pool = PregelFeature::instance()->threadPool();
+  pool->enqueue([this] {
     if (_writeCache->containedMessageCount() < _messageBatchSize) {
       usleep(50000);
     }
@@ -647,7 +647,8 @@ void Worker<V, E, M>::startRecovery(VPackSlice const& data) {
   VPackBuilder copy(data);
   // hack to determine newly added vertices
   _preRecoveryTotal = _graphStore->localVertexCount();
-  WorkerConfig nextState(_config.database(), data);
+  WorkerConfig nextState(_config);
+  nextState.updateConfig(data);
   _graphStore->loadShards(&nextState, [this, nextState, copy] {
     _config = nextState;
     compensateStep(copy.slice());
@@ -693,7 +694,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
                 VPackValue(_config.globalSuperstep()));
     _workerAggregators->serializeValues(package);
     package.close();
-    _callConductor(Utils::finishedRecoveryPath, package.slice());
+    _callConductor(Utils::finishedRecoveryPath, package);
   });
 }
 
@@ -713,32 +714,53 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string const& path,
-                                     VPackSlice const& message) {
-  std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
-  std::string baseUrl = Utils::baseUrl(_config.database());
-  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-  auto headers =
-      std::make_unique<std::unordered_map<std::string, std::string>>();
-  auto body = std::make_shared<std::string const>(message.toJson());
-  cc->asyncRequest("", coordinatorTransactionID,
-                   "server:" + _config.coordinatorId(), rest::RequestType::POST,
-                   baseUrl + path, body, headers, nullptr,
-                   120.0,  // timeout
-                   true);  // single request, no answer expected
+                                     VPackBuilder const& message) {
+  if (ServerState::instance()->isRunningInCluster() == false) {
+    ThreadPool* pool = PregelFeature::instance()->threadPool();
+    pool->enqueue([path, message] {
+      VPackBuilder response;
+      PregelFeature::handleConductorRequest(path, message.slice(), response);
+    });
+  } else {
+    std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
+    std::string baseUrl = Utils::baseUrl(_config.database(), Utils::conductorPrefix);
+    CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+    auto headers =
+        std::make_unique<std::unordered_map<std::string, std::string>>();
+    auto body = std::make_shared<std::string const>(message.toJson());
+    cc->asyncRequest(
+        "", coordinatorTransactionID, "server:" + _config.coordinatorId(),
+        rest::RequestType::POST, baseUrl + path, body, headers, nullptr,
+        120.0,  // timeout
+        true);  // single request, no answer expected
+  }
 }
 
 template <typename V, typename E, typename M>
-std::unique_ptr<ClusterCommResult> Worker<V, E, M>::_callConductorWithResponse(
-    std::string const& path, VPackSlice const& message) {
+void Worker<V, E, M>::_callConductorWithResponse(
+    std::string const& path, VPackBuilder const& message,
+    std::function<void(VPackSlice slice)> handle) {
   LOG_TOPIC(INFO, Logger::PREGEL) << "Calling the conductor";
-  std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
-  std::string baseUrl = Utils::baseUrl(_config.database());
-  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-  std::unordered_map<std::string, std::string> headers;
-  return cc->syncRequest("", coordinatorTransactionID,
-                         "server:" + _config.coordinatorId(),
-                         rest::RequestType::POST, baseUrl + path,
-                         message.toJson(), headers, 120.0);
+  if (ServerState::instance()->isRunningInCluster() == false) {
+    VPackBuilder response;
+    PregelFeature::handleConductorRequest(path, message.slice(), response);
+    handle(response.slice());
+  } else {
+    std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
+    std::string baseUrl = Utils::baseUrl(_config.database(), Utils::conductorPrefix);
+    CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+    std::unordered_map<std::string, std::string> headers;
+
+    std::unique_ptr<ClusterCommResult> result = cc->syncRequest(
+        "", coordinatorTransactionID, "server:" + _config.coordinatorId(),
+        rest::RequestType::POST, baseUrl + path, message.toJson(), headers,
+        120.0);
+    if (result->status == CL_COMM_SENT || result->status == CL_COMM_RECEIVED) {
+      handle(result->answer->payload());
+    } else {
+      handle(VPackSlice::noneSlice());
+    }
+  }
 }
 
 // template types to create
@@ -748,8 +770,8 @@ template class arangodb::pregel::Worker<double, float, double>;
 // custom algorihm types
 template class arangodb::pregel::Worker<SCCValue, int8_t,
                                         SenderMessage<uint64_t>>;
-template class arangodb::pregel::Worker<HITSValue, int8_t, SenderMessage<double>>;
+template class arangodb::pregel::Worker<HITSValue, int8_t,
+                                        SenderMessage<double>>;
 template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
 template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;
 template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;
-

@@ -31,24 +31,26 @@ namespace pregel {
 namespace algos {
 
 /// Finds communities in a network
-/// Tries to assign every vertex to the community in which most of it's neighbours are.
-/// Each vertex sends the community ID to all neighbours. Stores the ID he received
-/// most frequently. Tries to avoid osscilation, usually won't converge so specify a 
+/// Tries to assign every vertex to the community in which most of it's
+/// neighbours are.
+/// Each vertex sends the community ID to all neighbours. Stores the ID he
+/// received
+/// most frequently. Tries to avoid osscilation, usually won't converge so
+/// specify a
 /// maximum superstep number.
-struct LabelPropagation
-    : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
+struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
  public:
   LabelPropagation(VPackSlice userParams)
-      : SimpleAlgorithm<LPValue, int8_t, uint64_t>(
-            "LabelPropagation", userParams) {}
+      : SimpleAlgorithm<LPValue, int8_t, uint64_t>("LabelPropagation",
+                                                   userParams) {}
 
   GraphFormat<LPValue, int8_t>* inputFormat() const override;
   MessageFormat<uint64_t>* messageFormat() const override {
     return new NumberMessageFormat<uint64_t>();
   }
 
-  VertexComputation<LPValue, int8_t, uint64_t>*
-  createComputation(WorkerConfig const*) const override;
+  VertexComputation<LPValue, int8_t, uint64_t>* createComputation(
+      WorkerConfig const*) const override;
 };
 }
 }

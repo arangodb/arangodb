@@ -44,34 +44,32 @@ struct LPValue {
   uint64_t stabilizationRounds = 0;
 };
 
-/// Value for Hyperlink-Induced Topic Search (HITS; also known as hubs and authorities)
-/// algorithm based on https://en.wikipedia.org/wiki/HITS_algorithm#Pseudocode
-/// also refer to 
+/// Value for Hyperlink-Induced Topic Search (HITS; also known as
+/// hubs and authorities)
 struct HITSValue {
   float authorityScore;
   float hubScore;
 };
-  
+
 struct DMIDValue {
   constexpr static float INVALID_DEGREE = -1;
   float weightedInDegree = INVALID_DEGREE;
   std::map<PregelID, float> membershipDegree;
   std::map<PregelID, float> disCol;
 };
-  
+
 struct DMIDMessage {
   DMIDMessage() {}
   DMIDMessage(PregelID const& pid, float const& val)
-  : senderId(pid), weight(val) {}
-  
+      : senderId(pid), weight(val) {}
+
   DMIDMessage(PregelID const& sender, PregelID const& leader)
-  : senderId(sender), leaderId(leader) {}
-  
+      : senderId(sender), leaderId(leader) {}
+
   PregelID senderId;
   PregelID leaderId;
   float weight;
 };
-
 
 /// A counter for counting unique vertex IDs using a HyperLogLog sketch.
 /// @author Aljoscha Krettek, Robert Metzger, Robert Waury
@@ -81,16 +79,15 @@ struct HLLCounter {
   friend struct HLLCounterFormat;
   constexpr static int32_t NUM_BUCKETS = 64;
   constexpr static double ALPHA = 0.709;
-  
+
   uint32_t getCount();
   void addNode(PregelID const& pregelId);
   void merge(HLLCounter const& counter);
-  
-private:
+
+ private:
   uint8_t _buckets[NUM_BUCKETS] = {0};
-  
 };
-  
+
 /// Effective closeness value
 struct ECValue {
   HLLCounter counter;

@@ -59,7 +59,7 @@ class GraphStore;
 
 template <typename M>
 class InCache;
-  
+
 template <typename M>
 class OutCache;
 
@@ -127,7 +127,7 @@ class Worker : public IWorker {
   std::atomic<uint64_t> _nextGSSSendMessageCount;
   /// if the worker has started sendng messages to the next GSS
   std::atomic<bool> _requestedNextGSS;
-  
+
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   void _startProcessing();
@@ -135,9 +135,10 @@ class Worker : public IWorker {
                         RangeIterator<VertexEntry>& vertexIterator);
   void _finishedProcessing();
   void _continueAsync();
-  void _callConductor(std::string const& path, VPackSlice const& message);
-  std::unique_ptr<ClusterCommResult> _callConductorWithResponse(
-      std::string const& path, VPackSlice const& message);
+  void _callConductor(std::string const& path, VPackBuilder const& message);
+  void _callConductorWithResponse(std::string const& path,
+                                  VPackBuilder const& message,
+                                  std::function<void(VPackSlice slice)> handle);
 
  public:
   Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algorithm,
@@ -153,7 +154,7 @@ class Worker : public IWorker {
   void startRecovery(VPackSlice const& data) override;
   void compensateStep(VPackSlice const& data) override;
   void finalizeRecovery(VPackSlice const& data) override;
-  
+
   void aqlResult(VPackBuilder*) const override;
 };
 }

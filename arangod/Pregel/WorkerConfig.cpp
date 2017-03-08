@@ -29,8 +29,12 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::pregel;
 
-WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
-    : _database(dbname) {
+WorkerConfig::WorkerConfig(TRI_vocbase_t *vocbase, VPackSlice params)
+    : _vocbase(vocbase) {
+  updateConfig(params);
+}
+
+void WorkerConfig::updateConfig(VPackSlice params) {
   VPackSlice coordID = params.get(Utils::coordinatorIdKey);
   VPackSlice vertexShardMap = params.get(Utils::vertexShardsKey);
   VPackSlice edgeShardMap = params.get(Utils::edgeShardsKey);
@@ -38,7 +42,7 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
   VPackSlice collectionPlanIdMap = params.get(Utils::collectionPlanIdMapKey);
   VPackSlice globalShards = params.get(Utils::globalShardListKey);
   VPackSlice async = params.get(Utils::asyncModeKey);
-
+  
   if (!coordID.isString() || !edgeShardMap.isObject() ||
       !vertexShardMap.isObject() || !execNum.isInteger() ||
       !collectionPlanIdMap.isObject() || !globalShards.isArray()) {
@@ -49,14 +53,14 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
   _coordinatorId = coordID.copyString();
   _asynchronousMode = async.getBool();
   _lazyLoading = params.get(Utils::lazyLoadingKey).getBool();
-
+  
   VPackSlice userParams = params.get(Utils::userParametersKey);
   VPackSlice parallel = userParams.get(Utils::parallelismKey);
   _parallelism = PregelFeature::availableParallelism();
   if (parallel.isInteger()) {
     _parallelism = std::min((uint64_t)1, parallel.getUInt());
   }
-
+  
   // list of all shards, equal on all workers. Used to avoid storing strings of
   // shard names
   // Instead we have an index identifying a shard name in this vector
@@ -66,12 +70,12 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
     _globalShardIDs.push_back(s);
     _pregelShardIDs.emplace(s, i++);  // Cache these ids
   }
-
+  
   // To access information based on a user defined collection name we need the
   for (auto const& it : VPackObjectIterator(collectionPlanIdMap)) {
     _collectionPlanIdMap.emplace(it.key.copyString(), it.value.copyString());
   }
-
+  
   // Ordered list of shards for each vertex collection on the CURRENT db server
   // Order matters because the for example the third vertex shard, will only
   // every have
@@ -86,7 +90,7 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
     }
     _vertexCollectionShards.emplace(pair.key.copyString(), shards);
   }
-
+  
   // Ordered list of edge shards for each collection
   for (auto const& pair : VPackObjectIterator(edgeShardMap)) {
     std::vector<ShardID> shards;
@@ -108,11 +112,8 @@ PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
   CollectionID coll = documentID.substr(0, pos);
   std::string _key = documentID.substr(pos + 1);
 
-  auto collInfo =
-      Utils::resolveCollection(_database, coll, _collectionPlanIdMap);
   ShardID responsibleShard;
-  Utils::resolveShard(collInfo.get(), StaticStrings::KeyString, _key,
-                      responsibleShard);
+  Utils::resolveShard(this, coll, StaticStrings::KeyString, _key, responsibleShard);
 
   prgl_shard_t source = this->shardId(responsibleShard);
   return PregelID(source, _key);

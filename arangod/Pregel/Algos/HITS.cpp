@@ -21,13 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HITS.h"
+#include <cmath>
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
-#include <cmath>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -38,10 +38,10 @@ static std::string const kHubNorm = "hub";
 
 struct HITSWorkerContext : public WorkerContext {
   HITSWorkerContext() {}
-  
+
   double authNormRoot;
   double hubNormRoot;
-  
+
   void preGlobalSuperstep(uint64_t gss) override {
     double const* authNorm = getAggregatedValue<double>(kAuthNorm);
     double const* hubNorm = getAggregatedValue<double>(kHubNorm);
@@ -56,7 +56,6 @@ struct HITSComputation
 
   void compute(
       MessageIterator<SenderMessage<double>> const& messages) override {
-    
     double auth = 0.0f;
     double hub = 0.0f;
     // we don't know our incoming neighbours in step 0, therfore we need step 0
@@ -65,16 +64,17 @@ struct HITSComputation
       auth = 1.0f;
       hub = 1.0f;
     } else {
-      HITSWorkerContext const* ctx = (HITSWorkerContext*) context();
+      HITSWorkerContext const* ctx = (HITSWorkerContext*)context();
       for (SenderMessage<double> const* message : messages) {
-        // we don't put a valid shard id into the messages FROM our outgoing messages
+        // we don't put a valid shard id into the messages FROM our outgoing
+        // messages
         if (message->senderId.isValid()) {
-          auth += message->value;// hub from incoming Neighbors
+          auth += message->value;  // hub from incoming Neighbors
         } else {
-          hub += message->value;// auth from our outgoing Neighbors
+          hub += message->value;  // auth from our outgoing Neighbors
         }
       }
-      
+
       auth /= ctx->authNormRoot;
       hub /= ctx->hubNormRoot;
       mutableVertexData()->authorityScore = auth;
@@ -82,12 +82,12 @@ struct HITSComputation
     }
     aggregate<double>(kAuthNorm, hub * hub);
     aggregate<double>(kHubNorm, auth * auth);
-    
+
     // no sender required, the senders have an outgoing edge to us
     SenderMessage<double> authData(PregelID(invalid_prgl_shard, ""), auth);
     for (SenderMessage<double> const* message : messages) {
-      if (message->senderId.isValid()) {// send to incoming Neighbors
-       sendMessage(message->senderId, authData);
+      if (message->senderId.isValid()) {  // send to incoming Neighbors
+        sendMessage(message->senderId, authData);
       }
     }
     SenderMessage<double> hubData(this->pregelId(), hub);
@@ -120,8 +120,8 @@ struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            const HITSValue* value, size_t size) const override {
-    b.add(_resultField+"_auth", VPackValue(value->authorityScore));
-    b.add(_resultField+"_hub", VPackValue(value->hubScore));
+    b.add(_resultField + "_auth", VPackValue(value->authorityScore));
+    b.add(_resultField + "_hub", VPackValue(value->hubScore));
     return true;
   }
 
@@ -141,10 +141,10 @@ WorkerContext* HITS::workerContext(VPackSlice userParams) const {
 
 struct HITSMasterContext : public MasterContext {
   HITSMasterContext() {}
-  
+
   double authNorm;
   double hubNorm;
-  
+
   bool postGlobalSuperstep() override {
     double const* an = getAggregatedValue<double>(kAuthNorm);
     double const* hn = getAggregatedValue<double>(kHubNorm);
@@ -152,7 +152,7 @@ struct HITSMasterContext : public MasterContext {
     bool converged = globalSuperstep() > 2 && (diff < 0.00001);
     authNorm = *an;
     hubNorm = *hn;
-    // will fail on small sparse graphs
+    // might fail on small very sparse / disconnected graphs
     return authNorm != 0 && hubNorm != 0 && !converged;
   }
 };
@@ -163,7 +163,7 @@ MasterContext* HITS::masterContext(VPackSlice userParams) const {
 
 IAggregator* HITS::aggregator(std::string const& name) const {
   if (name == kHubNorm || name == kAuthNorm) {
-    return new SumAggregator<double>(false);// non perm
+    return new SumAggregator<double>(false);  // non perm
   }
   return nullptr;
 }

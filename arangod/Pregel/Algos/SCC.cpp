@@ -91,7 +91,8 @@ struct SCCComputation
       }
 
       /// Traverse the graph through outgoing edges and keep the maximum vertex
-      /// value. If a new maximum value is found, propagate it until convergence.
+      /// value. If a new maximum value is found, propagate it until
+      /// convergence.
       case SCCPhase::FORWARD_TRAVERSAL: {
         uint64_t old = vertexState->color;
         for (SenderMessage<uint64_t> const* msg : messages) {

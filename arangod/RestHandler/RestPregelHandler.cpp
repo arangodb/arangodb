@@ -29,9 +29,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Pregel/PregelFeature.h"
-#include "Pregel/AlgoRegistry.h"
-#include "Pregel/Conductor.h"
-#include "Pregel/Worker.h"
 #include "Pregel/Utils.h"
 
 using namespace arangodb;
@@ -61,110 +58,22 @@ RestStatus RestPregelHandler::execute() {
       return RestStatus::DONE;
 
     }
-  
     std::vector<std::string> const& suffix = _request->suffixes();
-    VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
-    if (!sExecutionNum.isInteger()) {
-      LOG_TOPIC(ERR, Logger::PREGEL) << "Invalid execution number";
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-      return RestStatus::DONE;
+    if (suffix.size() != 2) {
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_NOT_IMPLEMENTED, "you are missing a prefix");
+    } else if (suffix[0] == Utils::conductorPrefix) {
+      VPackBuilder response;
+      PregelFeature::handleConductorRequest(suffix[1], body, response);
+      generateResult(rest::ResponseCode::OK, response.slice());
+    } else if (suffix[0] == Utils::workerPrefix) {
+      VPackBuilder response;
+      PregelFeature::handleWorkerRequest(_vocbase, suffix[1], body, response);
+      generateResult(rest::ResponseCode::OK, response.slice());
+    } else {
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_NOT_IMPLEMENTED, "the prefix is incorrect");
     }
-    
-    VPackBuilder response;
-    uint64_t executionNumber = sExecutionNum.getUInt();
-    if (suffix.size() != 1) {
-      LOG_TOPIC(ERR, Logger::PREGEL) << "Invalid suffix";
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_HTTP_NOT_FOUND);
-      return RestStatus::DONE;
-    } else if (suffix[0] == Utils::startExecutionPath) {
-      IWorker *w = PregelFeature::instance()->worker(executionNumber);
-      if (w) {
-        LOG_TOPIC(ERR, Logger::PREGEL) << "Worker with this execution number already exists.";
-        generateError(rest::ResponseCode::BAD,
-                      TRI_ERROR_HTTP_FORBIDDEN);
-        return RestStatus::DONE;
-      }
-      w = AlgoRegistry::createWorker(_vocbase, body);
-      PregelFeature::instance()->addWorker(w, executionNumber);
-    } else if (suffix[0] == Utils::finishedStartupPath) {
-      Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
-      if (exe) {
-        exe->finishedWorkerStartup(body);
-      } else {
-        LOG_TOPIC(ERR, Logger::PREGEL) << "Conductor not found: " << executionNumber;
-      }
-    } else if (suffix[0] == Utils::prepareGSSPath) {
-      IWorker *w = PregelFeature::instance()->worker(executionNumber);
-      if (w) {
-        response = w->prepareGlobalStep(body);
-      } else {
-        LOG_TOPIC(ERR, Logger::PREGEL) << "Invalid execution number, worker does not exist.";
-        generateError(rest::ResponseCode::NOT_FOUND,
-                      TRI_ERROR_HTTP_NOT_FOUND);
-        return RestStatus::DONE;
-      }
-    } else if (suffix[0] == Utils::startGSSPath) {
-      IWorker *w = PregelFeature::instance()->worker(executionNumber);
-      if (w) {
-        w->startGlobalStep(body);
-      } else {
-        LOG_TOPIC(ERR, Logger::PREGEL) << "Invalid execution number, worker does not exist.";
-        generateError(rest::ResponseCode::NOT_FOUND,
-                      TRI_ERROR_HTTP_NOT_FOUND);
-        return RestStatus::DONE;
-      }
-    } else if (suffix[0] == Utils::messagesPath) {
-      IWorker *exe = PregelFeature::instance()->worker(executionNumber);
-      if (exe) {
-        exe->receivedMessages(body);
-      }
-    } else if (suffix[0] == Utils::finishedWorkerStepPath) {
-      Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
-      if (exe) {
-        response = exe->finishedWorkerStep(body);
-      }
-    } else if (suffix[0] == Utils::cancelGSSPath) {
-      IWorker *exe = PregelFeature::instance()->worker(executionNumber);
-      if (exe) {
-        exe->cancelGlobalStep(body);
-      }
-    } else if (suffix[0] == Utils::finalizeExecutionPath) {
-      IWorker *exe = PregelFeature::instance()->worker(executionNumber);
-      if (exe) {
-        exe->finalizeExecution(body);
-        PregelFeature::instance()->cleanup(executionNumber);
-      }
-    } else if (suffix[0] == Utils::startRecoveryPath) {
-      IWorker *w = PregelFeature::instance()->worker(executionNumber);
-      if (!w) {// we will need to create a worker in these cicumstances
-        w = AlgoRegistry::createWorker(_vocbase, body);
-      }
-      w->startRecovery(body);
-    } else if (suffix[0] == Utils::continueRecoveryPath) {
-      IWorker *w = PregelFeature::instance()->worker(executionNumber);
-      if (w) {// we will need to create a worker in these cicumstances
-        w->compensateStep(body);
-      }
-    } else if (suffix[0] == Utils::finalizeRecoveryPath) {
-      IWorker *w = PregelFeature::instance()->worker(executionNumber);
-      if (w) {// we will need to create a worker in these cicumstances
-        w->finalizeRecovery(body);
-      }
-    } else if (suffix[0] == Utils::aqlResultsPath) {
-      IWorker *w = PregelFeature::instance()->worker(executionNumber);
-      if (w) {// we will need to create a worker in these cicumstances
-        w->aqlResult(&response);
-      }
-    } else if (suffix[0] == Utils::finishedRecoveryPath) {
-      Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
-      if (exe) {
-        exe->finishedRecoveryStep(body);
-      }
-    }
-    
-    generateResult(rest::ResponseCode::OK, response.slice());
-    
   } catch (std::exception const &e) {
     LOG_TOPIC(ERR, Logger::PREGEL) << e.what();
   } catch(...) {

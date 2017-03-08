@@ -28,6 +28,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "Logger/Logger.h"
 
 #include <deque>
 

@@ -44,12 +44,11 @@ namespace algos {
 /// color as you.
 ///    All nodes visited belongs to the SCC identified by the root color.
 
-struct HITS
-    : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
+struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
  public:
   HITS(VPackSlice userParams)
-      : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>(
-            "HITS", userParams) {}
+      : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>("HITS",
+                                                                  userParams) {}
 
   GraphFormat<HITSValue, int8_t>* inputFormat() const override;
   MessageFormat<SenderMessage<double>>* messageFormat() const override {

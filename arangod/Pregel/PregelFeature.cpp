@@ -25,9 +25,11 @@
 #include "Basics/MutexLocker.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/Recovery.h"
 #include "Pregel/ThreadPool.h"
+#include "Pregel/Utils.h"
 #include "Pregel/Worker.h"
 
 using namespace arangodb::pregel;
@@ -35,7 +37,7 @@ using namespace arangodb::pregel;
 static PregelFeature* Instance = nullptr;
 static uint64_t _uniqueId = 0;
 uint64_t PregelFeature::createExecutionNumber() {
-  if (ClusterInfo::instance() != nullptr) {
+  if (ClusterInfo::instance() == nullptr) {
     return ++_uniqueId;
   } else {
     return ClusterInfo::instance()->uniqid();
@@ -65,10 +67,7 @@ PregelFeature* PregelFeature::instance() { return Instance; }
 
 size_t PregelFeature::availableParallelism() {
   const size_t procNum = TRI_numberProcessors();
-  if (procNum <= 1)
-    return 1;
-  else
-    return procNum;  // use full performance on cluster
+  return procNum < 1 ? 1 : procNum;
 }
 
 void PregelFeature::start() {
@@ -148,4 +147,79 @@ void PregelFeature::cleanupAll() {
     delete (it.second);
   }
   _workers.clear();
+}
+
+void PregelFeature::handleConductorRequest(std::string const& path,
+                                           VPackSlice const& body,
+                                           VPackBuilder& outBuilder) {
+  VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
+  if (!sExecutionNum.isInteger()) {
+    LOG_TOPIC(ERR, Logger::PREGEL) << "Invalid execution number";
+  }
+  uint64_t executionNumber = sExecutionNum.getUInt();
+  Conductor* co = Instance->conductor(executionNumber);
+  if (!co) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "Conductor not found, invalid execution number");
+  }
+
+  if (path == Utils::finishedStartupPath) {
+    co->finishedWorkerStartup(body);
+  } else if (path == Utils::finishedWorkerStepPath) {
+    outBuilder = co->finishedWorkerStep(body);
+  } else if (path == Utils::finishedRecoveryPath) {
+    co->finishedRecoveryStep(body);
+  }
+}
+
+void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
+                                        std::string const& path,
+                                        VPackSlice const& body,
+                                        VPackBuilder& outBuilder) {
+  VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
+  if (!sExecutionNum.isInteger()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "Worker not found, invalid execution number");
+  }
+  uint64_t executionNumber = sExecutionNum.getUInt();
+  IWorker* w = PregelFeature::instance()->worker(executionNumber);
+
+  // create a new worker instance if necessary
+  if (path == Utils::startExecutionPath || path == Utils::startRecoveryPath) {
+    if (w == nullptr) {
+      w = AlgoRegistry::createWorker(vocbase, body);
+      Instance->addWorker(w, executionNumber);
+    } else if (path == Utils::startExecutionPath) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "Worker with this execution number already exists.");
+    }
+    if (path == Utils::startRecoveryPath) {
+      w->startRecovery(body);
+    }
+  }
+  if (w == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Worker with this execution number already exists.");
+  }
+
+  if (path == Utils::prepareGSSPath) {
+    outBuilder = w->prepareGlobalStep(body);
+  } else if (path == Utils::startGSSPath) {
+    w->startGlobalStep(body);
+  } else if (path == Utils::messagesPath) {
+    w->receivedMessages(body);
+  } else if (path == Utils::cancelGSSPath) {
+    w->cancelGlobalStep(body);
+  } else if (path == Utils::finalizeExecutionPath) {
+    w->finalizeExecution(body);
+    Instance->cleanup(executionNumber);
+  } else if (path == Utils::continueRecoveryPath) {
+    w->compensateStep(body);
+  } else if (path == Utils::finalizeRecoveryPath) {
+    w->finalizeRecovery(body);
+  } else if (path == Utils::aqlResultsPath) {
+    w->aqlResult(&outBuilder);
+  }
 }
