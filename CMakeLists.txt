@@ -4,7 +4,7 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.2)
 
 if (POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
@@ -31,7 +31,7 @@ if (NOT (CMAKE_BUILD_TYPE STREQUAL "Debug"
   message(FATAL_ERROR "expecting CMAKE_BUILD_TYPE: None Debug Release RelWithDebInfo MinSizeRel, got ${CMAKE_BUILD_TYPE}.")
 endif ()
 
-if (CMAKE_OSX_DEPLOYMENT_TARGET STREQUAL "")
+if (NOT CMAKE_OSX_DEPLOYMENT_TARGET)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
 endif ()
 
