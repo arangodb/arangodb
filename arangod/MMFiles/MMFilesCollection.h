@@ -263,11 +263,18 @@ class MMFilesCollection final : public PhysicalCollection {
 
   int fillAllIndexes(transaction::Methods*);
 
-  int saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx) override;
-  
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) override;
+  void prepareIndexes(arangodb::velocypack::Slice indexesSlice) override;
+
+  /// @brief Find index by definition
+  std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const override;
+
+ std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr)  override;
   void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback) override;
+
+  std::shared_ptr<Index> createIndex(transaction::Methods* trx,
+                                     arangodb::velocypack::Slice const& info,
+                                     bool& created) override;
 
   /// @brief Restores an index from VelocyPack.
   int restoreIndex(transaction::Methods*, velocypack::Slice const&,
@@ -359,6 +366,9 @@ class MMFilesCollection final : public PhysicalCollection {
 
  private:
 
+  /// @brief creates the initial indexes for the collection
+  void createInitialIndexes();
+
   bool openIndex(VPackSlice const& description, transaction::Methods* trx);
 
   /// @brief initializes an index with all existing documents
@@ -435,15 +445,25 @@ class MMFilesCollection final : public PhysicalCollection {
 
    private:
 
+    void addIndex(std::shared_ptr<arangodb::Index> idx);
+
+    void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx,
+                             bool distribute);
+
+    bool removeIndex(TRI_idx_iid_t iid);
+
     /// @brief return engine-specific figures
     void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
   
     // SECTION: Index storage
 
+    int saveIndex(transaction::Methods* trx,
+                  std::shared_ptr<arangodb::Index> idx);
+
     /// @brief Detect all indexes form file
     int detectIndexes(transaction::Methods* trx);
 
-    int insertIndexes(transaction::Methods * trx, TRI_voc_rid_t revisionId,
+    int insertIndexes(transaction::Methods* trx, TRI_voc_rid_t revisionId,
                       velocypack::Slice const& doc);
 
     int insertPrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
@@ -504,9 +524,13 @@ class MMFilesCollection final : public PhysicalCollection {
 
     // SECTION: Indexes
 
+    size_t _cleanupIndexes;
+    size_t _persistentIndexes;
     uint32_t _indexBuckets;
+
     // whether or not secondary indexes should be filled
     bool _useSecondaryIndexes;
+
     bool _doCompact;
     TRI_voc_tick_t _maxTick;
 };

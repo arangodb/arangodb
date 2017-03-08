@@ -273,11 +273,6 @@ class LogicalCollection {
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
 
-  // SECTION: Indexes (local only)
-
-  /// @brief Exposes a pointer to index list
-  std::vector<std::shared_ptr<Index>> const* indexList() const;
-
   bool dropIndex(TRI_idx_iid_t iid);
 
   // SECTION: Index access (local only)
@@ -323,23 +318,12 @@ class LogicalCollection {
  private:
   // SECTION: Index creation
 
-  /// @brief creates the initial indexes for the collection
-  void createInitialIndexes();
-
- public:
-  // TODO Fix Visibility
-  bool removeIndex(TRI_idx_iid_t iid);
-
-  void addIndex(std::shared_ptr<Index>);
  private:
-  void addIndexCoordinator(std::shared_ptr<Index>, bool);
 
   // SECTION: Indexes (local only)
-
   // @brief create index with the given definition.
   bool openIndex(velocypack::Slice const&, transaction::Methods*);
 
-private:
   void increaseInternalVersion();
 
  protected:
@@ -389,8 +373,6 @@ private:
   uint32_t _version;
   bool _waitForSync;
 
-  std::vector<std::shared_ptr<Index>> _indexes;
-
   // SECTION: Replication
   size_t _replicationFactor;
 
@@ -408,8 +390,6 @@ private:
   // SECTION: Local Only has to be moved to PhysicalCollection
  public:
   // TODO MOVE ME
-  size_t _cleanupIndexes;
-  size_t _persistentIndexes;
  protected:
 
   std::unique_ptr<PhysicalCollection> _physical;
