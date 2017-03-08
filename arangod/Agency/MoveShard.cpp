@@ -118,6 +118,8 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> b) {
     return true;
   }
 
+  _status = TODO;
+
   LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to insert job " + _jobId;
   return false;
 }
@@ -281,6 +283,7 @@ bool MoveShard::start() {
           pending.add(VPackValue(agencyPrefix + planPath));
           { VPackArrayBuilder serverList(&pending);
             if (_isLeader) {
+              TRI_ASSERT(plan[0].copyString() != _to);
               pending.add(plan[0]);
               pending.add(VPackValue(_to));
               for (size_t i = 1; i < plan.length(); ++i) {
@@ -352,125 +355,190 @@ JOB_STATUS MoveShard::status() {
 }
 
 JOB_STATUS MoveShard::pendingLeader() {
+  auto considerTimeout = [&]() -> bool {
+    // Not yet all in sync, consider timeout:
+    std::string timeCreatedString
+      = _snapshot(pendingPrefix + _jobId + "/timeCreated").getString();
+    Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
+    Supervision::TimePoint now(std::chrono::system_clock::now());
+    if (now - timeCreated > std::chrono::duration<double>(3600.0)) {
+      abort();
+      return true;
+    }
+    return false;
+  };
+
   // Find the other shards in the same distributeShardsLike group:
   std::vector<Job::shard_t> shardsLikeMe
     = clones(_snapshot, _database, _collection, _shard);
 
-  size_t done = 0;   // count the number of shards done
-  for (auto const& collShard : shardsLikeMe) {
-    std::string shard = collShard.shard;
-    std::string collection = collShard.collection;
+  // Consider next step, depending on who is currently the leader
+  // in the Plan:
+  std::string planPath =
+    planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
+  Slice plan = _snapshot(planPath).slice();
+  Builder trx;
+  Builder pre;  // precondition
+  bool finishedAfterTransaction = false;
 
-    std::string planPath =
-      planColPrefix + _database + "/" + collection + "/shards/" + shard;
-    std::string curPath = curColPrefix + _database + "/" + collection + "/" +
-                        shard + "/servers";
-
-    Slice current = _snapshot(curPath).slice();
-    Slice plan = _snapshot(planPath).slice();
-
-    if (compareServerLists(plan, current)) {
-      // The case that current and plan are equivalent:
-
-      if (current[0].copyString() == std::string("_") + _from) {
-        // Retired leader
-        
-        Builder remove;  // remove
-        remove.openArray();
-        remove.openObject();
-        // --- Plan changes
-        remove.add(agencyPrefix + planPath, VPackValue(VPackValueType::Array));
-        for (size_t i = 1; i < plan.length(); ++i) {
-          remove.add(plan[i]);
-        }
-        remove.close();
-        // --- Plan version
-        remove.add(agencyPrefix + planVersion,
-                   VPackValue(VPackValueType::Object));
-        remove.add("op", VPackValue("increment"));
-        remove.close();
-        remove.close();
-        remove.close();
-        transact(_agent, remove);
-        
-      } else {
-        bool foundFrom = false, foundTo = false;
-        for (auto const& srv : VPackArrayIterator(current)) {
-          std::string srv_str = srv.copyString();
-          if (srv_str == _from) {
-            foundFrom = true;
-          }
-          if (srv_str == _to) {
-            foundTo = true;
+  if (plan[0].copyString() == _from) {
+    // Still the old leader, let's check that the toServer is insync:
+    size_t done = 0;   // count the number of shards for which _to is in sync:
+    doForAllShards(_snapshot, _database, shardsLikeMe,
+      [this, &done](Slice plan, Slice current, std::string& planPath) {
+        for (auto const& s : VPackArrayIterator(current)) {
+          if (s.copyString() == _to) {
+            ++done;
+            return;
           }
         }
-        
-        if (foundFrom && foundTo) {
-          if (plan[0].copyString() == _from) {  // Leader
-            
-            Builder underscore;  // serverId -> _serverId
-            underscore.openArray();
-            underscore.openObject();
-            // --- Plan changes
-            underscore.add(agencyPrefix + planPath,
-                           VPackValue(VPackValueType::Array));
-            underscore.add(VPackValue(std::string("_") + plan[0].copyString()));
-            for (size_t i = 1; i < plan.length(); ++i) {
-              underscore.add(plan[i]);
-            }
-            underscore.close();
-            
-            // --- Plan version
-            underscore.add(agencyPrefix + planVersion,
-                           VPackValue(VPackValueType::Object));
-            underscore.add("op", VPackValue("increment"));
-            underscore.close();
-            underscore.close();
-            underscore.close();
-            transact(_agent, underscore);
-            
-          } else {
-            Builder remove;
-            remove.openArray();
-            remove.openObject();
-            // --- Plan changes
-            remove.add(agencyPrefix + planPath,
-                       VPackValue(VPackValueType::Array));
-            for (auto const& srv : VPackArrayIterator(plan)) {
-              if (srv.copyString() != _from) {
-                remove.add(srv);
+      });
+
+    // Consider timeout:
+    if (done < shardsLikeMe.size()) {
+      if (considerTimeout()) {
+        return FAILED;
+      }
+      return PENDING;  // do not act
+    }
+
+    // We need to ask the old leader to retire:
+    { VPackArrayBuilder trxArray(&trx);
+      { VPackObjectBuilder trxObject(&trx);
+        VPackObjectBuilder preObject(&pre);
+        doForAllShards(_snapshot, _database, shardsLikeMe,
+          [this, &trx, &pre](Slice plan, Slice current, std::string& planPath) {
+            // Replace _from by "_" + _from
+            trx.add(VPackValue(agencyPrefix + planPath));
+            { VPackArrayBuilder guard(&trx);
+              for (auto const& srv : VPackArrayIterator(plan)) {
+                if (srv.copyString() == _from) {
+                  trx.add(VPackValue("/" + srv.copyString()));
+                } else {
+                  trx.add(srv);
+                }
               }
             }
-            remove.close();
-            // --- Plan version
-            remove.add(agencyPrefix + planVersion,
-                       VPackValue(VPackValueType::Object));
-            remove.add("op", VPackValue("increment"));
-            remove.close();
-            remove.close();
-            remove.close();
-            transact(_agent, remove);
-          }
-          
-        } else if (foundTo && !foundFrom) {
-          done++;
-        }
+            // Precondition: Plan still as it was
+            pre.add(VPackValue(agencyPrefix + planPath));
+            { VPackObjectBuilder guard(&pre);
+              pre.add(VPackValue("old"));
+              pre.add(plan);
+            }
+          });
+        addPreconditionCollectionStillThere(pre, _database, _collection);
+        addIncreasePlanVersion(trx);
       }
-    } else {
-
+      // Add precondition to transaction:
+      trx.add(pre.slice());
     }
-    // FIXME: handle timeout if new server does not get in sync
-    // FIXME: check again in detail that this implements the two different
-    // FIXME: moveShard jobs in the design document, too many ifs here
-    // FIXME: handle timeout if old leader does not retire
+  } else if (plan[0].copyString() == "_" + _from) {
+    // Retired old leader, let's check that the fromServer has retired:
+    size_t done = 0;  // count the number of shards for which leader has retired
+    doForAllShards(_snapshot, _database, shardsLikeMe,
+      [this, &done](Slice plan, Slice current, std::string& planPath) {
+        if (current.length() > 0 && current[0].copyString() == "_" + _from) {
+          ++done;
+        }
+      });
+
+    // Consider timeout:
+    if (done < shardsLikeMe.size()) {
+      if (considerTimeout()) {
+        return FAILED;
+      }
+      return PENDING;   // do not act!
+    }
+
+    // We need to switch leaders:
+    { VPackArrayBuilder trxArray(&trx);
+      { VPackObjectBuilder trxObject(&trx);
+        VPackObjectBuilder preObject(&pre);
+        doForAllShards(_snapshot, _database, shardsLikeMe,
+          [this, &trx, &pre](Slice plan, Slice current, std::string& planPath) {
+            // Replace "_" + _from by _to and leave _from out:
+            trx.add(VPackValue(agencyPrefix + planPath));
+            { VPackArrayBuilder guard(&trx);
+              for (auto const& srv : VPackArrayIterator(plan)) {
+                if (srv.copyString() == "_" + _from) {
+                  trx.add(VPackValue(_to));
+                } else if (srv.copyString() != _to) {
+                  trx.add(srv);
+                }
+              }
+            }
+            // Precondition: Plan still as it was
+            pre.add(VPackValue(agencyPrefix + planPath));
+            { VPackObjectBuilder guard(&pre);
+              pre.add(VPackValue("old"));
+              pre.add(plan);
+            }
+          });
+        addPreconditionCollectionStillThere(pre, _database, _collection);
+        addIncreasePlanVersion(trx);
+      }
+      // Add precondition to transaction:
+      trx.add(pre.slice());
+    }
+  } else if (plan[0].copyString() == _to) {
+    // New leader in Plan, let's check that it has assumed leadership:
+    size_t done = 0;  // count the number of shards for which leader has retired
+    doForAllShards(_snapshot, _database, shardsLikeMe,
+      [this, &done](Slice plan, Slice current, std::string& planPath) {
+        if (current.length() > 0 && current[0].copyString() == _to) {
+          ++done;
+        }
+      });
+
+    // Consider timeout:
+    if (done < shardsLikeMe.size()) {
+      if (considerTimeout()) {
+        return FAILED;
+      }
+      return PENDING;   // do not act!
+    }
+
+    // We need to end the job, Plan remains unchanged:
+    { VPackArrayBuilder trxArray(&trx);
+      { VPackObjectBuilder trxObject(&trx);
+        VPackObjectBuilder preObject(&pre);
+        doForAllShards(_snapshot, _database, shardsLikeMe,
+          [this, &pre](Slice plan, Slice current, std::string& planPath) {
+            // Precondition: Plan still as it was
+            pre.add(VPackValue(agencyPrefix + planPath));
+            { VPackObjectBuilder guard(&pre);
+              pre.add(VPackValue("old"));
+              pre.add(plan);
+            }
+          });
+        addPreconditionCollectionStillThere(pre, _database, _collection);
+        addRemoveJobFromSomewhere(trx, "Pending", _jobId);
+        Builder job;
+        _snapshot(pendingPrefix + _jobId).toBuilder(job);
+        addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
+        addReleaseShard(trx, _shard);
+      }
+      // Add precondition to transaction:
+      trx.add(pre.slice());
+    }
+    finishedAfterTransaction = true;
+  } else {
+    // something seriously wrong here, fail job:
+    finish("Shards/" + _shard, false, "something seriously wrong");
+    return FAILED;
   }
 
-  if (done == shardsLikeMe.size()) {
-    if (finish("Shards/" + _shard)) {
-      return FINISHED;
-    }
+  // Transact to agency:
+  write_ret_t res = transact(_agent, trx);
+
+  if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
+    return (finishedAfterTransaction ? FINISHED : PENDING);
   }
- 
+
+  LOG_TOPIC(INFO, Logger::AGENCY)
+    << "Precondition failed for MoveShard job " + _jobId;
   return PENDING;
 }
 
@@ -572,12 +640,39 @@ void MoveShard::abort() {
 
   // Now look after a PENDING job:
   if (_isLeader) {
-    // TODO
+    { VPackArrayBuilder arrayForTransactionPair(&trx);
+      { VPackObjectBuilder transactionObj(&trx);
+
+        // All changes to Plan for all shards:
+        doForAllShards(_snapshot, _database, shardsLikeMe,
+          [this, &trx](Slice plan, Slice current, std::string& planPath) {
+            // Restore leader to be _from:
+            trx.add(VPackValue(agencyPrefix + planPath));
+            { VPackArrayBuilder guard(&trx);
+              trx.add(VPackValue(_from));
+              VPackArrayIterator iter(plan);
+              ++iter;  // skip the first
+              while (iter.valid()) {
+                trx.add(iter.value());
+                ++iter;
+              }
+            }
+          }
+        );
+
+        addRemoveJobFromSomewhere(trx, "Pending", _jobId);
+        Builder job;
+        _snapshot(pendingPrefix + _jobId).toBuilder(job);
+        addPutJobIntoSomewhere(trx, "Failed", job.slice(), "job aborted");
+        addReleaseShard(trx, _shard);
+        addIncreasePlanVersion(trx);
+      }
+    }
   } else {
     { VPackArrayBuilder arrayForTransactionPair(&trx);
       { VPackObjectBuilder transactionObj(&trx);
 
-        // All changes to Plan for all shards, with precondition:
+        // All changes to Plan for all shards:
         doForAllShards(_snapshot, _database, shardsLikeMe,
           [this, &trx](Slice plan, Slice current, std::string& planPath) {
             // Remove toServer from Plan:
@@ -595,7 +690,7 @@ void MoveShard::abort() {
         addRemoveJobFromSomewhere(trx, "Pending", _jobId);
         Builder job;
         _snapshot(pendingPrefix + _jobId).toBuilder(job);
-        addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
+        addPutJobIntoSomewhere(trx, "Failed", job.slice(), "job aborted");
         addReleaseShard(trx, _shard);
         addIncreasePlanVersion(trx);
       }
