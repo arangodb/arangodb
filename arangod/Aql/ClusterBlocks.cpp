@@ -60,6 +60,7 @@ GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en),
       _sortRegisters(),
       _isSimple(en->getElements().empty()) {
+
   if (!_isSimple) {
     for (auto const& p : en->getElements()) {
       // We know that planRegisters has been run, so
@@ -156,7 +157,11 @@ int GatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     }
   }
 
-  _done = false;
+  if (_dependencies.empty()) {
+    _done = true;
+  } else {
+    _done = false;
+  }
   return TRI_ERROR_NO_ERROR;
 
   // cppcheck-suppress style
@@ -201,7 +206,7 @@ int64_t GatherBlock::remaining() {
 /// otherwise.
 bool GatherBlock::hasMore() {
   DEBUG_BEGIN_BLOCK();
-  if (_done) {
+  if (_done || _dependencies.empty()) {
     return false;
   }
 
@@ -232,6 +237,11 @@ bool GatherBlock::hasMore() {
 AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin();
+     
+  if (_dependencies.empty()) {
+    _done = true;
+  }
+
   if (_done) {
     traceGetSomeEnd(nullptr);
     return nullptr;
@@ -256,6 +266,9 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   size_t index = 0;      // an index of a non-empty buffer
 
   // pull more blocks from dependencies . . .
+  TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
+  TRI_ASSERT(_gatherBlockBuffer.size() == _gatherBlockPos.size());
+ 
   for (size_t i = 0; i < _dependencies.size(); i++) {
     if (_gatherBlockBuffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
@@ -266,7 +279,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
       index = i;
     }
 
-    auto cur = _gatherBlockBuffer.at(i);
+    auto const& cur = _gatherBlockBuffer.at(i);
     if (!cur.empty()) {
       available += cur.at(0)->size() - _gatherBlockPos.at(i).second;
       for (size_t j = 1; j < cur.size(); j++) {
@@ -428,14 +441,11 @@ bool GatherBlock::getBlock(size_t i, size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(i < _dependencies.size());
   TRI_ASSERT(!_isSimple);
-  AqlItemBlock* docs = _dependencies.at(i)->getSome(atLeast, atMost);
+
+  std::unique_ptr<AqlItemBlock> docs(_dependencies.at(i)->getSome(atLeast, atMost));
   if (docs != nullptr) {
-    try {
-      _gatherBlockBuffer.at(i).emplace_back(docs);
-    } catch (...) {
-      delete docs;
-      throw;
-    }
+    _gatherBlockBuffer.at(i).emplace_back(docs.get());
+    docs.release();
     return true;
   }
 
@@ -449,10 +459,10 @@ bool GatherBlock::getBlock(size_t i, size_t atLeast, size_t atMost) {
 bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
                                           std::pair<size_t, size_t> const& b) {
   // nothing in the buffer is maximum!
-  if (_gatherBlockBuffer.at(a.first).empty()) {
+  if (_gatherBlockBuffer[a.first].empty()) {
     return false;
   }
-  if (_gatherBlockBuffer.at(b.first).empty()) {
+  if (_gatherBlockBuffer[b.first].empty()) {
     return true;
   }
 
@@ -463,14 +473,14 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
     if (reg.attributePath.empty()) {
       cmp = AqlValue::Compare(
           _trx,
-          _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.reg),
-          _gatherBlockBuffer.at(b.first).front()->getValue(b.second, reg.reg),
+          _gatherBlockBuffer[a.first].front()->getValue(a.second, reg.reg),
+          _gatherBlockBuffer[b.first].front()->getValue(b.second, reg.reg),
           true);
     } else {
       // Take attributePath into consideration:
-      AqlValue topA = _gatherBlockBuffer.at(a.first).front()->getValue(a.second,
+      AqlValue topA = _gatherBlockBuffer[a.first].front()->getValue(a.second,
                                                                        reg.reg);
-      AqlValue topB = _gatherBlockBuffer.at(b.first).front()->getValue(b.second,
+      AqlValue topB = _gatherBlockBuffer[b.first].front()->getValue(b.second,
                                                                        reg.reg);
       bool mustDestroyA;
       AqlValue aa = topA.get(_trx, reg.attributePath, mustDestroyA, false);
@@ -658,6 +668,9 @@ int ScatterBlock::shutdown(int errorCode) {
 /// @brief hasMoreForShard: any more for shard <shardId>?
 bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
+  
+  TRI_ASSERT(_nrClients != 0);
+
   size_t clientId = getClientId(shardId);
 
   if (_doneForClient.at(clientId)) {
@@ -684,6 +697,7 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
 /// in the buffer and _dependencies[0]->remaining()
 int64_t ScatterBlock::remainingForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
+  
   size_t clientId = getClientId(shardId);
   if (_doneForClient.at(clientId)) {
     return 0;

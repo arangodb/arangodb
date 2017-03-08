@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global ArangoClusterComm, require, exports, module */
+/*global ArangoClusterInfo, ArangoClusterComm, require, exports, module */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoCollection
@@ -103,6 +103,11 @@ require('@arangodb/arango-collection-common');
 var simple = require('@arangodb/simple-query');
 var ArangoError = require('@arangodb').ArangoError;
 var ArangoDatabase = require('@arangodb/arango-database').ArangoDatabase;
+
+      
+ArangoCollection.prototype.shards = function () {
+  return Object.keys(ArangoClusterInfo.getCollectionInfo(require('internal').db._name(), this.name()).shardShorts);
+};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock collectionToArray

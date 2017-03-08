@@ -1,4 +1,5 @@
 /* jshint strict: false */
+/*global ArangoClusterInfo */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief querying and managing collections
@@ -414,10 +415,17 @@ function get_api_collection (req, res) {
       result = collectionRepresentation(collection, false, false, false);
       result.revision = collection.revision();
       actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    
+    else if (sub === 'shards') {
+      result = collectionRepresentation(collection, false, false, false);
+      result.shards = Object.keys(ArangoClusterInfo.getCollectionInfo(arangodb.db._name(), collection.name()).shardShorts);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+
     } else {
       actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND,
-        "expecting one of the resources 'count',"
-        + " 'figures', 'properties', 'parameter'");
+        "expecting one of the resources 'checksum', 'count',"
+        + " 'figures', 'properties', 'revision', 'shards'");
     }
   } else {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,

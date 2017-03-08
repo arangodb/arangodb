@@ -57,7 +57,8 @@ using namespace arangodb::aql;
 /// @brief helper function to create a block
 static ExecutionBlock* CreateBlock(
     ExecutionEngine* engine, ExecutionNode const* en,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) {
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache,
+    std::unordered_set<std::string> const& includedShards) {
   switch (en->getType()) {
     case ExecutionNode::SINGLETON: {
       return new SingletonBlock(engine, static_cast<SingletonNode const*>(en));
@@ -142,13 +143,13 @@ static ExecutionBlock* CreateBlock(
     }
     case ExecutionNode::SCATTER: {
       auto shardIds =
-          static_cast<ScatterNode const*>(en)->collection()->shardIds();
+          static_cast<ScatterNode const*>(en)->collection()->shardIds(includedShards);
       return new ScatterBlock(engine, static_cast<ScatterNode const*>(en),
                               *shardIds);
     }
     case ExecutionNode::DISTRIBUTE: {
       auto shardIds =
-          static_cast<DistributeNode const*>(en)->collection()->shardIds();
+          static_cast<DistributeNode const*>(en)->collection()->shardIds(includedShards);
       return new DistributeBlock(
           engine, static_cast<DistributeNode const*>(en), *shardIds,
           static_cast<DistributeNode const*>(en)->collection());
@@ -210,7 +211,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
         // We have to prepare the options before we build the block
         static_cast<TraversalNode*>(en)->prepareOptions();
       }
-      std::unique_ptr<ExecutionBlock> eb(CreateBlock(engine, en, cache));
+      std::unique_ptr<ExecutionBlock> eb(CreateBlock(engine, en, cache, std::unordered_set<std::string>()));
 
       if (eb == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
@@ -348,8 +349,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           idOfRemoteNode(idOfRemoteNode),
           collection(nullptr),
           auxiliaryCollections(),
-          populated(false) {
-    }
+          populated(false) {}
 
     void populate() {
       // mop: compiler should inline that I suppose :S
@@ -419,6 +419,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     bool populated;
     // in the original plan that needs this engine
   };
+    
+  void includedShards(std::unordered_set<std::string> const& allowed) {
+    _includedShards = allowed;
+  }
+
 
   Query* query;
   QueryRegistry* queryRegistry;
@@ -429,6 +434,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   std::vector<size_t> engineStack;  // stack of engine ids, used for
                                     // RemoteNodes
   std::unordered_set<std::string> collNamesSeenOnDBServer;
+  std::unordered_set<std::string> _includedShards;
   // names of sharded collections that we have already seen on a DBserver
   // this is relevant to decide whether or not the engine there is a main
   // query or a dependent one.
@@ -603,7 +609,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                          arangodb::CoordTransactionID& coordTransactionID,
                          Collection* collection) {
     // pick up the remote query ids
-    auto shardIds = collection->shardIds();
+    auto shardIds = collection->shardIds(_includedShards);
 
     std::string error;
     int count = 0;
@@ -648,10 +654,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
       }
     }
-
+     
+    size_t numShards = shardIds->size();   
     //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
 
-    if (nrok != (int)shardIds->size()) {
+    if (nrok != static_cast<int>(numShards)) {
       if (errorCode == TRI_ERROR_NO_ERROR) {
         errorCode = TRI_ERROR_INTERNAL; // must have an error
       }
@@ -677,7 +684,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       // nullptr only happens on controlled shutdown
       // iterate over all shards of the collection
       size_t nr = 0;
-      auto shardIds = collection->shardIds();
+      auto shardIds = collection->shardIds(_includedShards);
       for (auto const& shardId : *shardIds) {
         // inject the current shard id into the collection
         VPackBuilder b;
@@ -727,7 +734,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
 
         // for all node types but REMOTEs, we create blocks
-        ExecutionBlock* eb = CreateBlock(engine.get(), (*en), cache);
+        ExecutionBlock* eb = CreateBlock(engine.get(), (*en), cache, _includedShards);
 
         if (eb == nullptr) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -763,7 +770,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           auto gatherNode = static_cast<GatherNode const*>(*en);
           Collection const* collection = gatherNode->collection();
 
-          auto shardIds = collection->shardIds();
+          auto shardIds = collection->shardIds(_includedShards);
           for (auto const& shardId : *shardIds) {
             std::string theId =
                 arangodb::basics::StringUtils::itoa(remoteNode->id()) + ":" +
@@ -854,7 +861,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       info.first.resize(length);
     }
     for (size_t i = 0; i < length; ++i) {
-      auto shardIds = edges[i]->shardIds();
+      auto shardIds = edges[i]->shardIds(_includedShards);
       for (auto const& shard : *shardIds) {
         auto serverList = clusterInfo->getResponsibleServer(shard);
         TRI_ASSERT(!serverList->empty());
@@ -881,7 +888,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         if (knownEdges.find(collection.second->getName()) == knownEdges.end()) {
           // This collection is not one of the edge collections used in this
           // graph.
-          auto shardIds = collection.second->shardIds();
+          auto shardIds = collection.second->shardIds(_includedShards);
           for (auto const& shard : *shardIds) {
             auto serverList = clusterInfo->getResponsibleServer(shard);
             TRI_ASSERT(!serverList->empty());
@@ -897,7 +904,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           entry.second.second.emplace(it->getName(),
                                       std::vector<ShardID>());
         }
-        auto shardIds = it->shardIds();
+        auto shardIds = it->shardIds(_includedShards);
         for (auto const& shard : *shardIds) {
           auto serverList = clusterInfo->getResponsibleServer(shard);
           TRI_ASSERT(!serverList->empty());
@@ -1185,6 +1192,9 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
       // instantiate the engine on the coordinator
       auto inst =
           std::make_unique<CoordinatorInstanciator>(query, queryRegistry);
+      // optionally restrict query to certain shards
+      inst->includedShards(query->includedShards());
+
       plan->root()->walk(inst.get());
 
       try {

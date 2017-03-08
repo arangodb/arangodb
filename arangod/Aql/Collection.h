@@ -74,6 +74,9 @@ struct Collection {
   /// @brief returns the shard ids of a collection
   std::shared_ptr<std::vector<std::string>> shardIds() const;
 
+  /// @brief returns the filtered list of shard ids of a collection
+  std::shared_ptr<std::vector<std::string>> shardIds(std::unordered_set<std::string> const& includedShards) const;
+
   /// @brief returns the shard keys of a collection
   std::vector<std::string> shardKeys() const;
   
