@@ -37,30 +37,38 @@ FailedLeader::FailedLeader(Node const& snapshot, Agent* agent,
                            std::string const& collection,
                            std::string const& shard, std::string const& from,
                            std::string const& to)
-    : Job(snapshot, agent, jobId, creator),
+    : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
       _from(from),
       _to(to) {}
 
+FailedLeader::FailedLeader(Node const& snapshot, Agent* agent,
+                           JOB_STATUS status, std::string const& jobId)
+    : Job(status, snapshot, agent, jobId) {
+  // Get job details from agency:
+  try {
+    std::string path = pos[status] + _jobId + "/";
+    _database = _snapshot(path + "database").getString();
+    _collection = _snapshot(path + "collection").getString();
+    _from = _snapshot(path + "fromServer").getString();
+    _to = _snapshot(path + "toServer").getString();
+    _shard = _snapshot(path + "shard").getString();
+    _creator = _snapshot(path + "creator").getString();
+  } catch (std::exception const& e) {
+    std::stringstream err;
+    err << "Failed to find job " << _jobId << " in agency: " << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
+    finish("Shards/" + _shard, false, err.str());
+    _status = FAILED;
+  }
+}
+
 FailedLeader::~FailedLeader() {}
 
 void FailedLeader::run() {
-  try {
-    JOB_STATUS js = status();
-
-    if (js == TODO) {
-      start();
-    } else if (js == NOTFOUND) {
-      if (create()) {
-        start();
-      }
-    }
-  } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
-    finish("Shards/" + _shard, false, e.what());
-  }
+  runHelper("Shards/" + _shard);
 }
 
 bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
@@ -214,62 +222,42 @@ bool FailedLeader::start() {
 }
 
 JOB_STATUS FailedLeader::status() {
+  if (_status != PENDING) {
+    return _status;
+  }
 
-  auto status = exists();
+  Node const& job = _snapshot(pendingPrefix + _jobId);
+  std::string database = job("database").toJson(),
+              collection = job("collection").toJson(),
+              shard = job("shard").toJson();
 
-  if (status != NOTFOUND) {  // Get job details from agency
+  std::string planPath = planColPrefix + database + "/" + collection +
+                         "/shards/" + shard,
+              curPath = curColPrefix + database + "/" + collection + "/" +
+                        shard + "/servers";
+  auto const& planned = _snapshot(planPath);
+  auto const& current = _snapshot(curPath);
 
-    try {
-      _database = _snapshot(pos[status] + _jobId + "/database").getString();
-      _collection = _snapshot(pos[status] + _jobId + "/collection").getString();
-      _from = _snapshot(pos[status] + _jobId + "/fromServer").getString();
-      _to = _snapshot(pos[status] + _jobId + "/toServer").getString();
-      _shard = _snapshot(pos[status] + _jobId + "/shard").getString();
-    } catch (std::exception const& e) {
-      std::stringstream err;
-      err << "Failed to find job " << _jobId << " in agency: " << e.what();
-      LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
-      finish("Shards/" + _shard, false, err.str());
-      return FAILED;
+  if (planned.slice()[0] == current.slice()[0]) {
+
+    // Remove shard to /arango/Target/FailedServers/<server> array
+    Builder del;
+    { VPackArrayBuilder a(&del);
+      { VPackObjectBuilder o(&del);
+        del.add(VPackValue(agencyPrefix + failedServersPrefix + "/" + _from));
+        { VPackObjectBuilder erase(&del);
+          del.add("op", VPackValue("erase"));
+          del.add("val", VPackValue(_shard));
+        }}}
+
+    write_ret_t res = transact(_agent, del);
+    
+    if (finish("Shards/" + shard)) {
+      return FINISHED;
     }
   }
 
-  if (status == PENDING) {
-    Node const& job = _snapshot(pendingPrefix + _jobId);
-    std::string database = job("database").toJson(),
-                collection = job("collection").toJson(),
-                shard = job("shard").toJson();
-
-    std::string planPath = planColPrefix + database + "/" + collection +
-                           "/shards/" + shard,
-                curPath = curColPrefix + database + "/" + collection + "/" +
-                          shard + "/servers";
-    auto const& planned = _snapshot(planPath);
-    auto const& current = _snapshot(curPath);
-
-    if (planned.slice()[0] == current.slice()[0]) {
-
-      // Remove shard to /arango/Target/FailedServers/<server> array
-      Builder del;
-      { VPackArrayBuilder a(&del);
-        { VPackObjectBuilder o(&del);
-          del.add(VPackValue(agencyPrefix + failedServersPrefix + "/" + _from));
-          { VPackObjectBuilder erase(&del);
-            del.add("op", VPackValue("erase"));
-            del.add("val", VPackValue(_shard));
-          }}}
-
-      write_ret_t res = transact(_agent, del);
-      
-      if (finish("Shards/" + shard)) {
-        return FINISHED;
-      }
-    }
-
-  }
-
-  return status;
-  
+  return _status;
 }
 
 void FailedLeader::abort() {

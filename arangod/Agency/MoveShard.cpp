@@ -34,7 +34,7 @@ MoveShard::MoveShard(Node const& snapshot, Agent* agent,
                      std::string const& collection, std::string const& shard,
                      std::string const& from, std::string const& to,
                      bool isLeader)
-    : Job(snapshot, agent, jobId, creator),
+    : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
@@ -43,23 +43,32 @@ MoveShard::MoveShard(Node const& snapshot, Agent* agent,
       _isLeader(isLeader) // will be initialized properly when information known
 { }
 
+MoveShard::MoveShard(Node const& snapshot, Agent* agent,
+                     JOB_STATUS status, std::string const& jobId)
+    : Job(status, snapshot, agent, jobId) {
+  // Get job details from agency:
+  try {
+    std::string path = pos[status] + _jobId + "/";
+    _database = _snapshot(path + "database").getString();
+    _collection = _snapshot(path + "collection").getString();
+    _from = _snapshot(path + "fromServer").getString();
+    _to = _snapshot(path + "toServer").getString();
+    _shard = _snapshot(path + "shard").getString();
+    _isLeader = _snapshot(path + "isLeader").slice().isTrue();
+    _creator = _snapshot(path + "creator").getString();
+  } catch (std::exception const& e) {
+    std::string err = 
+      std::string("Failed to find job ") + _jobId + " in agency: " + e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY) << err;
+    finish("Shards/" + _shard, false, err);
+    _status = FAILED;
+  }
+}
+
 MoveShard::~MoveShard() {}
 
 void MoveShard::run() {
-  try {
-    JOB_STATUS js = status();
-
-    if (js == TODO) {
-      start();
-    } else if (js == NOTFOUND) {
-      if (create()) {
-        start();
-      }
-    }
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << ": " << __FILE__ << ":" << __LINE__;
-    finish("Shards/" + _shard, false, e.what());
-  }
+  runHelper("Shards/" + _shard);
 }
 
 bool MoveShard::create(std::shared_ptr<VPackBuilder> b) {
@@ -77,8 +86,6 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> b) {
   Slice plan = _snapshot(planPath).slice();
   TRI_ASSERT(plan.isArray());
   TRI_ASSERT(plan[0].isString());
-
-  _isLeader = plan[0].copyString() == _from;
 
   _jb = std::make_shared<Builder>();
   { VPackArrayBuilder guard(_jb.get());
@@ -215,8 +222,6 @@ bool MoveShard::start() {
   TRI_ASSERT(current.isArray());
   TRI_ASSERT(planned.isArray());
   
-  _isLeader = planned[0].copyString() == _from;
-
   for (auto const& srv : VPackArrayIterator(planned)) {
     TRI_ASSERT(srv.isString());
     if (srv.copyString() == _to) {
@@ -323,31 +328,8 @@ bool MoveShard::start() {
 }
 
 JOB_STATUS MoveShard::status() {
-  auto status = exists();
-
-  if (status == NOTFOUND) {
-    return status;
-  }
-
-  // Get job details from agency
-  try {
-    _database = _snapshot(pos[status] + _jobId + "/database").getString();
-    _collection =
-      _snapshot(pos[status] + _jobId + "/collection").slice().copyString();
-    _from = _snapshot(pos[status] + _jobId + "/fromServer").getString();
-    _to = _snapshot(pos[status] + _jobId + "/toServer").getString();
-    _shard = _snapshot(pos[status] + _jobId + "/shard").slice().copyString();
-    _isLeader = _snapshot(pos[status] + _jobId + "/isLeader").slice().isTrue();
-  } catch (std::exception const& e) {
-    std::string err = 
-      std::string("Failed to find job ") + _jobId + " in agency: " + e.what();
-    LOG_TOPIC(ERR, Logger::AGENCY) << err;
-    finish("Shards/" + _shard, false, err);
-    return FAILED;
-  }
-
-  if (status != PENDING) {
-    return status;
+  if (_status != PENDING) {
+    return _status;
   }
 
   // check that shard still there, otherwise finish job
@@ -498,26 +480,23 @@ JOB_STATUS MoveShard::pendingFollower() {
     = clones(_snapshot, _database, _collection, _shard);
 
   size_t done = 0;   // count the number of shards done
-  for (auto const& collShard : shardsLikeMe) {
-    std::string shard = collShard.shard;
-    std::string collection = collShard.collection;
-
-    std::string planPath =
-      planColPrefix + _database + "/" + collection + "/shards/" + shard;
-    std::string curPath = curColPrefix + _database + "/" + collection + "/" +
-                        shard + "/servers";
-
-    Slice current = _snapshot(curPath).slice();
-    Slice plan = _snapshot(planPath).slice();
-
-    if (compareServerLists(plan, current)) {
-      ++done;
-    }
-  }
+  doForAllShards(_snapshot, _database, shardsLikeMe,
+    [this, &done](Slice plan, Slice current, std::string& planPath) {
+      if (compareServerLists(plan, current)) {
+        ++done;
+      }
+    });
 
   if (done < shardsLikeMe.size()) {
     // Not yet all in sync, consider timeout:
-    // TODO: ...
+    std::string timeCreatedString
+      = _snapshot(pendingPrefix + _jobId + "/timeCreated").getString();
+    Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
+    Supervision::TimePoint now(std::chrono::system_clock::now());
+    if (now - timeCreated > std::chrono::duration<double>(3600.0)) {
+      abort();
+      return FAILED;
+    }
   }
 
   // All in sync, so move on and remove the fromServer, for all shards,
@@ -556,6 +535,7 @@ JOB_STATUS MoveShard::pendingFollower() {
       _snapshot(pendingPrefix + _jobId).toBuilder(job);
       addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
       addPreconditionCollectionStillThere(precondition, _database, _collection);
+      addReleaseShard(trx, _shard);
 
       addIncreasePlanVersion(trx);
     }
@@ -573,6 +553,61 @@ JOB_STATUS MoveShard::pendingFollower() {
 }
 
 void MoveShard::abort() {
-  // TO BE IMPLEMENTED
+  // We can assume that the job is either in ToDo or in Pending.
+  auto status = exists();
+
+  if (status == NOTFOUND || status == FINISHED || status == FAILED) {
+    return;
+  }
+  // Can now only be TODO or PENDING
+  if (status == TODO) {
+    finish("Shards/" + _shard, false, "job aborted");
+    return;
+  }
+
+  // Find the other shards in the same distributeShardsLike group:
+  std::vector<Job::shard_t> shardsLikeMe
+    = clones(_snapshot, _database, _collection, _shard);
+  Builder trx;  // to build the transaction
+
+  // Now look after a PENDING job:
+  if (_isLeader) {
+    // TODO
+  } else {
+    { VPackArrayBuilder arrayForTransactionPair(&trx);
+      { VPackObjectBuilder transactionObj(&trx);
+
+        // All changes to Plan for all shards, with precondition:
+        doForAllShards(_snapshot, _database, shardsLikeMe,
+          [this, &trx](Slice plan, Slice current, std::string& planPath) {
+            // Remove toServer from Plan:
+            trx.add(VPackValue(agencyPrefix + planPath));
+            { VPackArrayBuilder guard(&trx);
+              for (auto const& srv : VPackArrayIterator(plan)) {
+                if (srv.copyString() != _to) {
+                  trx.add(srv);
+                }
+              }
+            }
+          }
+        );
+
+        addRemoveJobFromSomewhere(trx, "Pending", _jobId);
+        Builder job;
+        _snapshot(pendingPrefix + _jobId).toBuilder(job);
+        addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
+        addReleaseShard(trx, _shard);
+        addIncreasePlanVersion(trx);
+      }
+    }
+  }
+
+  write_ret_t res = transact(_agent, trx);
+
+  if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
+    return;
+  }
+
+  LOG_TOPIC(ERR, Logger::SUPERVISION) << "Failed to abort job " << _jobId;
 }
 

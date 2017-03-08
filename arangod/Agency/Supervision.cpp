@@ -582,14 +582,12 @@ void Supervision::workJobs() {
 
   for (auto const& todoEnt : todos) {
     auto const& job = *todoEnt.second;
-    JobContext(job("type").getString(), _snapshot, _agent,
-               job("jobId").getString()).run();
+    JobContext(TODO, job("jobId").getString(), _snapshot, _agent).run();
   }
 
   for (auto const& pendEnt : pends) {
     auto const& job = *pendEnt.second;
-    JobContext(job("type").getString(), _snapshot, _agent,
-               job("jobId").getString()).run();
+    JobContext(PENDING, job("jobId").getString(), _snapshot, _agent).run();
   }
   
 }

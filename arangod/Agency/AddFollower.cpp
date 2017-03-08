@@ -33,7 +33,7 @@ AddFollower::AddFollower(Node const& snapshot, Agent* agent,
                          std::string const& collection,
                          std::string const& shard,
                          std::initializer_list<std::string> const& newFollower)
-    : Job(snapshot, agent, jobId, creator),
+    : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
@@ -45,29 +45,41 @@ AddFollower::AddFollower(Node const& snapshot, Agent* agent,
                          std::string const& collection,
                          std::string const& shard,
                          std::vector<std::string> const& newFollower)
-    : Job(snapshot, agent, jobId, creator),
+    : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
       _newFollower(newFollower) {}
 
+AddFollower::AddFollower(Node const& snapshot, Agent* agent,
+                         JOB_STATUS status, std::string const& jobId)
+    : Job(status, snapshot, agent, jobId) {
+  // Get job details from agency:
+  try {
+    std::string path = pos[status] + _jobId + "/";
+    _database = _snapshot(path + "database").getString();
+    _collection = _snapshot(path + "collection").getString();
+    for (auto const& i :
+           VPackArrayIterator(
+             _snapshot(path + "newFollower").getArray())) {
+      _newFollower.push_back(i.copyString());
+    }
+    _snapshot(path + "newFollower").getArray();
+    _shard = _snapshot(path + "shard").getString();
+    _creator = _snapshot(path + "creator").getString();
+  } catch (std::exception const& e) {
+    std::stringstream err;
+    err << "Failed to find job " << _jobId << " in agency: " << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
+    finish("Shards/" + _shard, false, err.str());
+    _status = FAILED;
+  }
+}
+
 AddFollower::~AddFollower() {}
 
 void AddFollower::run() {
-  try {
-    JOB_STATUS js = status();
-
-    if (js == TODO) {
-      start();
-    } else if (js == NOTFOUND) {
-      if (create()) {
-        start();
-      }
-    }
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << __FILE__ << __LINE__;
-    finish("Shards/" + _shard, false, e.what());
-  }
+  runHelper("Shards/" + _shard);
 }
 
 bool AddFollower::create(std::shared_ptr<VPackBuilder> b) {
@@ -270,46 +282,25 @@ bool AddFollower::start() {
 }
 
 JOB_STATUS AddFollower::status() {
-  auto status = exists();
-
-  if (status != NOTFOUND) {  // Get job details from agency
-
-    try {
-      _database = _snapshot(pos[status] + _jobId + "/database").getString();
-      _collection = _snapshot(pos[status] + _jobId + "/collection").getString();
-      for (auto const& i :
-             VPackArrayIterator(
-               _snapshot(pos[status] + _jobId + "/newFollower").getArray())) {
-        _newFollower.push_back(i.copyString());
-      }
-      _snapshot(pos[status] + _jobId + "/newFollower").getArray();
-      _shard = _snapshot(pos[status] + _jobId + "/shard").getString();
-    } catch (std::exception const& e) {
-      std::stringstream err;
-      err << "Failed to find job " << _jobId << " in agency: " << e.what();
-      LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
-      finish("Shards/" + _shard, false, err.str());
-      return FAILED;
-    }
+  if (_status != PENDING) {
+    return _status;
   }
 
-  if (status == PENDING) {
-    // FIXME: delete this check, case PENDING does no longer happen in new spec
-   
-    std::string curPath = curColPrefix + _database + "/" + _collection + "/" +
-                          _shard + "/servers";
+  // FIXME: delete this check, case PENDING does no longer happen in new spec
+ 
+  std::string curPath = curColPrefix + _database + "/" + _collection + "/" +
+                        _shard + "/servers";
 
-    Slice current = _snapshot(curPath).slice();
-    for (auto const& srv : VPackArrayIterator(current)) {
-      if (srv.copyString() == _newFollower.front()) {
-        if (finish("Shards/" + _shard)) {
-          return FINISHED;
-        }
+  Slice current = _snapshot(curPath).slice();
+  for (auto const& srv : VPackArrayIterator(current)) {
+    if (srv.copyString() == _newFollower.front()) {
+      if (finish("Shards/" + _shard)) {
+        return FINISHED;
       }
     }
   }
 
-  return status;
+  return _status;
 }
 
 void AddFollower::abort() {

@@ -31,143 +31,135 @@ using namespace arangodb::consensus;
 RemoveServer::RemoveServer(Node const& snapshot, Agent* agent,
                            std::string const& jobId, std::string const& creator,
                            std::string const& server)
-    : Job(snapshot, agent, jobId, creator), _server(server) {}
+    : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(server) {}
+
+RemoveServer::RemoveServer(Node const& snapshot, Agent* agent,
+                           JOB_STATUS status, std::string const& jobId)
+    : Job(status, snapshot, agent, jobId) {
+  // Get job details from agency:
+  try {
+    std::string path = pos[status] + _jobId + "/";
+    _server = _snapshot(path + "server").getString();
+    _creator = _snapshot(path + "creator").getString();
+  } catch (std::exception const& e) {
+    std::stringstream err;
+    err << "Failed to find job " << _jobId << " in agency: " << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
+    finish("DBServers/" + _server, false, err.str());
+    _status = FAILED;
+  }
+}
 
 RemoveServer::~RemoveServer() {}
 
 void RemoveServer::run() {
-  try {
-    JOB_STATUS js = status();
-    if (js == TODO) {
-      start();
-    } else if (js == NOTFOUND) {
-      if (create()) {
-        start();
-      }
-    }
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
-    finish("DBServers/" + _server, false, e.what());
-  }
+  runHelper("DBServers/" + _server);
 }
 
 JOB_STATUS RemoveServer::status() {
-  auto status = exists();
+  if (_status != PENDING) {
+    return _status;
+  }
 
-  if (status != NOTFOUND) {  // Get job details from agency
+  Node::Children const todos = _snapshot(toDoPrefix).children();
+  Node::Children const pends = _snapshot(pendingPrefix).children();
 
-    try {
-      _server = _snapshot(pos[status] + _jobId + "/server").getString();
-    } catch (std::exception const& e) {
-      std::stringstream err;
-      err << "Failed to find job " << _jobId << " in agency: " << e.what();
-      LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
-      finish("DBServers/" + _server, false, err.str());
-      return FAILED;
+  size_t found = 0;
+  for (auto const& subJob : todos) {
+    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
+      found++;
+    }
+  }
+  for (auto const& subJob : pends) {
+    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
+      found++;
     }
   }
 
-  if (status == PENDING) {
-    Node::Children const todos = _snapshot(toDoPrefix).children();
-    Node::Children const pends = _snapshot(pendingPrefix).children();
+  if (found > 0) {
+    // mop: TODO check if the server has reappeared and abort shard moving if
+    // server has reappeared
+    return _status;
+  }
 
-    size_t found = 0;
-    for (auto const& subJob : todos) {
-      if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
-        found++;
-      }
-    }
-    for (auto const& subJob : pends) {
-      if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
-        found++;
-      }
-    }
+  // mop: all addfollower jobs have been finished. Forcefully remove the
+  // server from everything
+  Node::Children const& planDatabases =
+      _snapshot("/Plan/Collections").children();
 
-    if (found > 0) {
-      // mop: TODO check if the server has reappeared and abort shard moving if
-      // server has reappeared
-      return status;
-    }
+  Builder desiredPlanState;
+  Builder preconditions;
 
-    // mop: all addfollower jobs have been finished. Forcefully remove the
-    // server from everything
-    Node::Children const& planDatabases =
-        _snapshot("/Plan/Collections").children();
+  desiredPlanState.openObject();
+  preconditions.openObject();
 
-    Builder desiredPlanState;
-    Builder preconditions;
+  Builder trx;
+  trx.openArray();
+  trx.openObject();
+  for (auto const& database : planDatabases) {
+    for (auto const& collptr : database.second->children()) {
+      Node const& collection = *(collptr.second);
+      for (auto const& shard : collection("shards").children()) {
+        VPackArrayIterator dbsit(shard.second->slice());
 
-    desiredPlanState.openObject();
-    preconditions.openObject();
-
-    Builder trx;
-    trx.openArray();
-    trx.openObject();
-    for (auto const& database : planDatabases) {
-      for (auto const& collptr : database.second->children()) {
-        Node const& collection = *(collptr.second);
-        for (auto const& shard : collection("shards").children()) {
-          VPackArrayIterator dbsit(shard.second->slice());
-
-          bool found = false;
-          Builder desiredServers;
-          desiredServers.openArray();
-          // Only shards, which are affected
-          for (auto const& dbserver : dbsit) {
-            std::string server = dbserver.copyString();
-            if (server != _server) {
-              desiredServers.add(VPackValue(server));
-            } else {
-              found = true;
-            }
+        bool found = false;
+        Builder desiredServers;
+        desiredServers.openArray();
+        // Only shards, which are affected
+        for (auto const& dbserver : dbsit) {
+          std::string server = dbserver.copyString();
+          if (server != _server) {
+            desiredServers.add(VPackValue(server));
+          } else {
+            found = true;
           }
-          desiredServers.close();
-          if (found == false) {
-            continue;
-          }
-
-          std::string const& key(agencyPrefix + "/Plan/Collections/" +
-                                 database.first + "/" + collptr.first +
-                                 "/shards/" + shard.first);
-
-          trx.add(key, desiredServers.slice());
-          preconditions.add(VPackValue(key));
-          preconditions.openObject();
-          preconditions.add("old", shard.second->slice());
-          preconditions.close();
         }
+        desiredServers.close();
+        if (found == false) {
+          continue;
+        }
+
+        std::string const& key(agencyPrefix + "/Plan/Collections/" +
+                               database.first + "/" + collptr.first +
+                               "/shards/" + shard.first);
+
+        trx.add(key, desiredServers.slice());
+        preconditions.add(VPackValue(key));
+        preconditions.openObject();
+        preconditions.add("old", shard.second->slice());
+        preconditions.close();
       }
-    }
-    preconditions.close();
-
-    trx.add(VPackValue(agencyPrefix + "/Target/CleanedServers"));
-    trx.openObject();
-    trx.add("op", VPackValue("push"));
-    trx.add("new", VPackValue(_server));
-    trx.close();
-    trx.add(VPackValue(agencyPrefix + planVersion));
-    trx.openObject();
-    trx.add("op", VPackValue("increment"));
-    trx.close();
-
-    trx.close();
-    trx.add(preconditions.slice());
-    trx.close();
-
-    // Transact to agency
-    write_ret_t res = transact(_agent, trx);
-
-    if (res.accepted && res.indices.size() == 1 && res.indices[0] != 0) {
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Have reported " << _server
-                                      << " in /Target/CleanedServers";
-      if (finish("DBServers/" + _server)) {
-        return FINISHED;
-      }
-      return status;
     }
   }
+  preconditions.close();
 
-  return status;
+  trx.add(VPackValue(agencyPrefix + "/Target/CleanedServers"));
+  trx.openObject();
+  trx.add("op", VPackValue("push"));
+  trx.add("new", VPackValue(_server));
+  trx.close();
+  trx.add(VPackValue(agencyPrefix + planVersion));
+  trx.openObject();
+  trx.add("op", VPackValue("increment"));
+  trx.close();
+
+  trx.close();
+  trx.add(preconditions.slice());
+  trx.close();
+
+  // Transact to agency
+  write_ret_t res = transact(_agent, trx);
+
+  if (res.accepted && res.indices.size() == 1 && res.indices[0] != 0) {
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Have reported " << _server
+                                    << " in /Target/CleanedServers";
+    if (finish("DBServers/" + _server)) {
+      return FINISHED;
+    }
+    return _status;
+  }
+
+  return _status;
 }
 
 // Only through shrink cluster

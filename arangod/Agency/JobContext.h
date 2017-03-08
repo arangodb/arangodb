@@ -41,11 +41,8 @@ class JobContext {
 public:
 
   /// @brief Contextualize arbitrary Job
-  JobContext(std::string const& name, Node const& snapshot, Agent* agent,
-             std::string const& jobId);
-
-  /// @brief Contextualize arbitrary Job
-  JobContext(std::string const& path, Node const& snapshot, Agent* agent);
+  JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
+             Agent* agent);
 
   /// @brief Create job
   void create(std::shared_ptr<VPackBuilder> b = nullptr);
