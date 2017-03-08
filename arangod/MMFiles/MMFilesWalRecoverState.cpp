@@ -962,7 +962,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         if (vocbase != nullptr) {
           // remove already existing database
           // TODO: how to signal a dropDatabase failure here?
-          state->databaseFeature->dropDatabase(databaseId, false, true, false);
+          state->databaseFeature->dropDatabase(databaseId, true, false);
         }
 
         VPackSlice const nameSlice = payloadSlice.get("name");
@@ -984,7 +984,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
 
           state->releaseDatabase(otherId);
           // TODO: how to signal a dropDatabase failure here?
-          state->databaseFeature->dropDatabase(nameString, false, true, false);
+          state->databaseFeature->dropDatabase(nameString, true, false);
         }
 
         PersistentIndexFeature::dropDatabase(databaseId);
@@ -995,7 +995,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
                         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
         */
         int res = state->databaseFeature->createDatabase(databaseId, nameString,
-                                                         false, vocbase);
+                                                         vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create database " << databaseId << ": "
@@ -1111,7 +1111,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
 
         if (vocbase != nullptr) {
           // ignore any potential error returned by this call
-          state->databaseFeature->dropDatabase(databaseId, false, true, false);
+          state->databaseFeature->dropDatabase(databaseId, true, false);
         }
 
         PersistentIndexFeature::dropDatabase(databaseId);
