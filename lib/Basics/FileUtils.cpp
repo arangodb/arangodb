@@ -571,21 +571,18 @@ FileResult changeDirectory(std::string const& path) {
 
 FileResultString currentDirectory() {
   size_t len = 1000;
-  char* current = new char[len];
+  std::unique_ptr<char[]> current(new char[len]);
 
-  while (TRI_GETCWD(current, (int)len) == nullptr) {
+  while (TRI_GETCWD(current.get(), (int)len) == nullptr) {
     if (errno == ERANGE) {
       len += 1000;
-      delete[] current;
-      current = new char[len];
+      current.reset(new char[len]);
     } else {
-      delete[] current;
-
       return FileResultString(errno, ".");
     }
   }
 
-  std::string result = current;
+  std::string result = current.get();
 
   return FileResultString(result);
 }
