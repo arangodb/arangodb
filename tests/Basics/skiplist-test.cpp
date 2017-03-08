@@ -69,17 +69,13 @@ static void FreeElm (void* e) {
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct CSkiplistSetup {
-  CSkiplistSetup () {
+struct CSkipListSetup {
+  CSkipListSetup () {
     if (!Initialized) {
       Initialized = true;
       arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
     }
 
-  }
-
-  ~CSkipListSetup () {
-    BOOST_TEST_MESSAGE("tear-down SkipList");
   }
 };
 
@@ -91,14 +87,14 @@ struct CSkiplistSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_CASE("CSkiplistTest", "[cskiplist]") {
-  CSkiplistSetup s;
+TEST_CASE("CSkipListTest", "[indexes]") {
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test filling in forward order
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_unique_forward") {
-  arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
+  arangodb::basics::SkipList<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
   
   // check start node
   CHECK((void*) 0 == skiplist.startNode()->nextNode());
@@ -178,7 +174,7 @@ SECTION("tst_unique_forward") {
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_unique_reverse") {
-  arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
+  arangodb::basics::SkipList<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
   
   // check start node
   CHECK((void*) 0 == skiplist.startNode()->nextNode());
@@ -258,7 +254,7 @@ SECTION("tst_unique_reverse") {
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_unique_lookup") {
-  arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
+  arangodb::basics::SkipList<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
   
   std::vector<int*> values; 
   for (int i = 0; i < 100; ++i) {
@@ -301,7 +297,7 @@ SECTION("tst_unique_lookup") {
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_unique_remove") {
-  arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
+  arangodb::basics::SkipList<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
   
   std::vector<int*> values; 
   for (int i = 0; i < 100; ++i) {
@@ -406,7 +402,7 @@ SECTION("tst_unique_remove") {
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_unique_remove_all") {
-  arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
+  arangodb::basics::SkipList<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
   
   std::vector<int*> values; 
   for (int i = 0; i < 100; ++i) {
@@ -445,6 +441,11 @@ SECTION("tst_unique_remove_all") {
     delete i;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate tests
+////////////////////////////////////////////////////////////////////////////////
+
 }
 
 // Local Variables:

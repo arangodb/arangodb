@@ -38,6 +38,7 @@
 using namespace arangodb::basics;
 
 static bool Initialized = false;
+static uint64_t counter = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -163,12 +164,6 @@ SECTION("tst_removedirectorydeterministic") {
   CHECK(true == TRI_IsDirectory(filename1.c_str()));
   CHECK(true == TRI_ExistsFile(filename2.c_str()));
   CHECK(true == TRI_IsDirectory(filename2.c_str()));
-
-  res = TRI_RemoveDirectoryDeterministic(filename1.c_str());
-  CHECK(false == TRI_ExistsFile(filename1.c_str()));
-  CHECK(false == TRI_IsDirectory(filename1.c_str()));
-  CHECK(false == TRI_ExistsFile(filename2.c_str()));
-  CHECK(false == TRI_IsDirectory(filename2.c_str()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

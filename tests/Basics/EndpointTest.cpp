@@ -90,11 +90,6 @@ SECTION("EndpointInvalid") {
   CHECK(e == arangodb::Endpoint::clientFactory("ssl@tcp://127.0.0.1:8529"));
   CHECK(e == arangodb::Endpoint::clientFactory("https@tcp://127.0.0.1:8529"));
   CHECK(e == arangodb::Endpoint::clientFactory("https@tcp://127.0.0.1:"));
-  
-  CHECK(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:65536"));
-  CHECK(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:65537"));
-  CHECK(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:-1"));
-  CHECK(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:6555555555"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
