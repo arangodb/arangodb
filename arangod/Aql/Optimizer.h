@@ -33,7 +33,7 @@
 
 namespace arangodb {
 namespace aql {
-class OptimizerRule;
+struct OptimizerRule;
 class OptimizerRulesFeature;
 
 class Optimizer {

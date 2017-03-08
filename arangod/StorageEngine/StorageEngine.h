@@ -42,6 +42,7 @@ namespace arangodb {
 
 class LogicalCollection;
 class PhysicalCollection;
+class Result;
 class TransactionCollection;
 class TransactionState;
 
@@ -229,6 +230,11 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                 arangodb::LogicalCollection const* parameters,
                                 bool doSync) = 0;
+
+  // asks the storage engine to persist renaming of a collection
+  virtual arangodb::Result renameCollection(
+      TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection,
+      std::string const& oldName) = 0;
 
   // asks the storage engine to create an index as specified in the VPack
   // Slice object and persist the creation info. The database id, collection id

@@ -2409,7 +2409,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
           "Database");
   TRI_vocbase_t* database = nullptr;
-  int res = databaseFeature->createDatabase(id, name, true, database);
+  int res = databaseFeature->createDatabase(id, name, database);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2554,7 +2554,7 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   DatabaseFeature* databaseFeature =
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
           "Database");
-  int res = databaseFeature->dropDatabase(name, true, false, true);
+  int res = databaseFeature->dropDatabase(name, false, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);

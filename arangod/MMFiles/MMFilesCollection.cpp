@@ -537,7 +537,7 @@ bool MMFilesCollection::isVolatile() const { return _isVolatile; }
 
 /// @brief closes an open collection
 int MMFilesCollection::close() {
-  if (!_logicalCollection->_isDeleted && !_logicalCollection->vocbase()->isDropped()) {
+  if (!_logicalCollection->deleted() && !_logicalCollection->vocbase()->isDropped()) {
     auto primIdx = primaryIndex();
     auto idxSize = primIdx->size();
 

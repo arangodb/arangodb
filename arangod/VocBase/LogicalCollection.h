@@ -32,12 +32,7 @@
 
 #include <velocypack/Buffer.h>
 
-struct TRI_df_marker_t;
-
 namespace arangodb {
-namespace basics {
-class LocalTaskQueue;
-}
 
 namespace velocypack {
 class Slice;
@@ -49,7 +44,6 @@ typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
-struct DatafileStatisticsContainer;
 struct DocumentIdentifierToken;
 class FollowerInfo;
 class Index;
@@ -178,7 +172,6 @@ class LogicalCollection {
   /// TRI_VOC_COL_STATUS_CORRUPTED
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
   std::string statusString() const;
-
 
   uint64_t numberDocuments() const;
 
@@ -318,9 +311,6 @@ class LogicalCollection {
   void persistPhysicalCollection();
 
  private:
-  // SECTION: Index creation
-
- private:
 
   // SECTION: Indexes (local only)
   // @brief create index with the given definition.
@@ -329,7 +319,10 @@ class LogicalCollection {
   void increaseInternalVersion();
 
  protected:
+
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
+
+ protected:
 
   // SECTION: Meta Information
   //
@@ -367,9 +360,9 @@ class LogicalCollection {
 
   // SECTION: Properties
   bool _isLocal;
- public:
+
   bool _isDeleted;
- protected:
+
   bool const _isSystem;
 
   uint32_t _version;
@@ -388,11 +381,6 @@ class LogicalCollection {
   std::shared_ptr<ShardMap> _shardIds;
 
   TRI_vocbase_t* _vocbase;
-
-  // SECTION: Local Only has to be moved to PhysicalCollection
- public:
-  // TODO MOVE ME
- protected:
 
   std::unique_ptr<PhysicalCollection> _physical;
 
