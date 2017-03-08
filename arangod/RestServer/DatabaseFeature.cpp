@@ -525,7 +525,7 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id,
 
 /// @brief create a new database
 int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
-                                    bool writeMarker, TRI_vocbase_t*& result) {
+                                    TRI_vocbase_t*& result) {
   result = nullptr;
 
   if (!TRI_vocbase_t::IsAllowedName(false, name)) {
@@ -635,7 +635,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
   // write marker into log
   int res = TRI_ERROR_NO_ERROR;
 
-  if (writeMarker) {
+  if (!engine->inRecovery()) {
     res = engine->writeCreateMarker(id, builder.slice());
   }
 
@@ -690,8 +690,7 @@ int DatabaseFeature::dropDatabaseCoordinator(TRI_voc_tick_t id, bool force) {
 }
 
 /// @brief drop database
-int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker,
-                                  bool waitForDeletion,
+int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
                                   bool removeAppsDirectory) {
   if (name == TRI_VOC_SYSTEM_DATABASE) {
     // prevent deletion of system database
@@ -747,7 +746,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker,
     arangodb::aql::PlanCache::instance()->invalidate(vocbase);
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
 
-    engine->prepareDropDatabase(vocbase, writeMarker, res);
+    engine->prepareDropDatabase(vocbase, !engine->inRecovery(), res);
   }
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
@@ -761,8 +760,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker,
 }
 
 /// @brief drops an existing database
-int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool writeMarker,
-                                  bool waitForDeletion,
+int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool waitForDeletion,
                                   bool removeAppsDirectory) {
   std::string name;
 
@@ -782,7 +780,7 @@ int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool writeMarker,
   }
 
   // and call the regular drop function
-  return dropDatabase(name, writeMarker, waitForDeletion, removeAppsDirectory);
+  return dropDatabase(name, waitForDeletion, removeAppsDirectory);
 }
 
 std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIdsCoordinator(

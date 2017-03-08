@@ -34,26 +34,28 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace aql {
 
 class Query;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 struct QueryEntry
-// -----------------------------------------------------------------------------
-      
 struct QueryEntryCopy {
   QueryEntryCopy (TRI_voc_tick_t id,
                   std::string&& queryString,
+                  std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
                   double started,
                   double runTime,
                   QueryExecutionState::ValueType state);
 
-  TRI_voc_tick_t  id;
-  std::string     queryString;
-  double          started;
-  double          runTime;
-  QueryExecutionState::ValueType state;
+  TRI_voc_tick_t const id;
+  std::string const queryString;
+  std::shared_ptr<arangodb::velocypack::Builder> const bindParameters;
+  double const started;
+  double const runTime;
+  QueryExecutionState::ValueType const state;
 };
 
 class QueryList {
@@ -62,7 +64,7 @@ class QueryList {
   explicit QueryList(TRI_vocbase_t*);
 
   /// @brief destroy a query list
-  ~QueryList();
+  ~QueryList() = default;
 
  public:
   /// @brief whether or not queries are tracked

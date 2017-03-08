@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesCollection.h"
+#include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
@@ -115,6 +116,15 @@ static DatafileStatisticsContainer* FindDatafileStats(
 CollectionResult MMFilesCollection::updateProperties(VPackSlice const& slice,
                                                      bool doSync) {
   // validation
+  uint32_t tmp = arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+      slice, "indexBuckets",
+      2 /*Just for validation, this default Value passes*/);
+
+  if (tmp == 0 || tmp > 1024) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "indexBuckets must be a two-power between 1 and 1024"};
+  }
+ 
   if (isVolatile() &&
       arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "waitForSync", _logicalCollection->waitForSync())) {
@@ -144,6 +154,9 @@ CollectionResult MMFilesCollection::updateProperties(VPackSlice const& slice,
     }
   }
 
+  _indexBuckets =
+      Helper::getNumericValue<uint32_t>(slice, "indexBuckets", _indexBuckets); //MMFiles
+
   if (slice.hasKey("journalSize")) {
     _journalSize = Helper::getNumericValue<TRI_voc_size_t>(slice, "journalSize",
                                                            _journalSize);
@@ -153,6 +166,12 @@ CollectionResult MMFilesCollection::updateProperties(VPackSlice const& slice,
   }
   _doCompact = Helper::getBooleanValue(slice, "doCompact", _doCompact);
 
+  int64_t count = arangodb::basics::VelocyPackHelper::getNumericValue<int64_t>(
+      slice, "count", initialCount());
+  if (count != initialCount()) {
+    updateCount(count);
+  }
+ 
   return CollectionResult{TRI_ERROR_NO_ERROR};
 }
 
@@ -428,6 +447,10 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection,
                                                    TRI_JOURNAL_DEFAULT_SIZE))),
       _isVolatile(arangodb::basics::VelocyPackHelper::readBooleanValue(
           info, "isVolatile", false)),
+      _cleanupIndexes(0),
+      _persistentIndexes(0),
+      _indexBuckets(Helper::readNumericValue<uint32_t>(
+          info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
       _useSecondaryIndexes(true),
       _doCompact(Helper::readBooleanValue(info, "doCompact", true)),
       _maxTick(0) {
@@ -465,11 +488,18 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
   _lastCompactionStatus = mmfiles._lastCompactionStatus;
   _lastCompactionStamp = mmfiles._lastCompactionStamp;
   _journalSize = mmfiles._journalSize;
+  _indexBuckets = mmfiles._indexBuckets;
   _path = mmfiles._path;
   _doCompact = mmfiles._doCompact;
   _maxTick = mmfiles._maxTick;
-  setCompactionStatus("compaction not yet started");
 
+  // Copy over index definitions
+  _indexes.reserve(mmfiles._indexes.size());
+  for (auto const& idx : mmfiles._indexes) {
+    _indexes.emplace_back(idx);
+  }
+
+  setCompactionStatus("compaction not yet started");
   //  not copied
   //  _datafiles;   // all datafiles
   //  _journals;    // all journals
@@ -477,7 +507,6 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
   //  _uncollectedLogfileEntries = mmfiles.uncollectedLogfileEntries; //TODO FIXME
   //  _datafileStatistics;
   //  _revisionsCache;
-
 }
 
 MMFilesCollection::~MMFilesCollection() { 
@@ -508,7 +537,7 @@ bool MMFilesCollection::isVolatile() const { return _isVolatile; }
 
 /// @brief closes an open collection
 int MMFilesCollection::close() {
-  if (!_logicalCollection->_isDeleted && !_logicalCollection->vocbase()->isDropped()) {
+  if (!_logicalCollection->deleted() && !_logicalCollection->vocbase()->isDropped()) {
     auto primIdx = primaryIndex();
     auto idxSize = primIdx->size();
 
@@ -528,7 +557,7 @@ int MMFilesCollection::close() {
   }
 
   // We also have to unload the indexes.
-  for (auto& idx : *(_logicalCollection->indexList())) {
+  for (auto& idx : _indexes) {
     idx->unload();
   }
 
@@ -1071,11 +1100,11 @@ bool MMFilesCollection::closeDatafiles(std::vector<MMFilesDatafile*> const& file
 
 void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
-  result.add("path", VPackValue(_path));
-  result.add("journalSize", VPackValue(_journalSize));
+  result.add("count", VPackValue(initialCount()));
   result.add("doCompact", VPackValue(_doCompact));
+  result.add("indexBuckets", VPackValue(_indexBuckets));
   result.add("isVolatile", VPackValue(_isVolatile));
-
+  result.add("journalSize", VPackValue(_journalSize));
   result.add(VPackValue("keyOptions"));
   if (_keyGenerator != nullptr) {
     result.openObject();
@@ -1085,6 +1114,7 @@ void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
     result.openArray();
     result.close();
   }
+  result.add("path", VPackValue(_path));
 
   TRI_ASSERT(result.isOpenObject());
 }
@@ -1405,7 +1435,11 @@ void MMFilesCollection::fillIndex(
   }
 }
 
-/// @brief return the primary index
+uint32_t MMFilesCollection::indexBuckets() const {
+  return _indexBuckets;
+}
+
+// @brief return the primary index
 // WARNING: Make sure that this LogicalCollection Instance
 // is somehow protected. If it goes out of all scopes
 // or it's indexes are freed the pointer returned will get invalidated.
@@ -1419,7 +1453,7 @@ arangodb::MMFilesPrimaryIndex* MMFilesCollection::primaryIndex() const {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "got invalid indexes for collection '" << _logicalCollection->name()
         << "'";
-    for (auto const& it : *(_logicalCollection->indexList())) {
+    for (auto const& it : _indexes) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
     }
   }
@@ -1430,7 +1464,7 @@ arangodb::MMFilesPrimaryIndex* MMFilesCollection::primaryIndex() const {
 }
 
 int MMFilesCollection::fillAllIndexes(transaction::Methods* trx) {
-  return fillIndexes(trx, *(_logicalCollection->indexList()));
+  return fillIndexes(trx, _indexes);
 }
 
 /// @brief Fill the given list of Indexes
@@ -1682,7 +1716,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
 
   if (!engine->inRecovery()) {
     // build the index structures, and fill the indexes
-    fillIndexes(&trx, *(_logicalCollection->indexList()));
+    fillIndexes(&trx, _indexes);
   }
 
   // successfully opened collection. now adjust version number
@@ -1803,6 +1837,146 @@ bool MMFilesCollection::readDocumentConditional(
   return false;
 }
 
+void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
+  createInitialIndexes();
+  if (indexesSlice.isArray()) {
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    IndexFactory const* idxFactory = engine->indexFactory();
+    TRI_ASSERT(idxFactory != nullptr);
+    for (auto const& v : VPackArrayIterator(indexesSlice)) {
+      if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
+                                                              false)) {
+        // We have an error here.
+        // Do not add index.
+        // TODO Handle Properly
+        continue;
+      }
+
+      auto idx =
+          idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
+
+      if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
+          idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        continue;
+      }
+
+      if (ServerState::instance()->isRunningInCluster()) {
+        addIndexCoordinator(idx, false);
+      } else {
+        addIndex(idx);
+      }
+    }
+  }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got invalid indexes for collection '" << _logicalCollection->name() << "'";
+    for (auto const& it : _indexes) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
+    }
+  }
+#endif
+}
+
+std::shared_ptr<Index> MMFilesCollection::lookupIndex(
+    VPackSlice const& info) const {
+  TRI_ASSERT(info.isObject());
+
+  // extract type
+  VPackSlice value = info.get("type");
+
+  if (!value.isString()) {
+    // Compatibility with old v8-vocindex.
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  std::string tmp = value.copyString();
+  arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
+
+  for (auto const& idx : _indexes) {
+    if (idx->type() == type) {
+      // Only check relevant indices
+      if (idx->matchesDefinition(info)) {
+        // We found an index for this definition.
+        return idx;
+      }
+    }
+  }
+  return nullptr;
+}
+
+/// @brief creates the initial indexes for the collection
+void MMFilesCollection::createInitialIndexes() {
+  if (!_indexes.empty()) {
+    return;
+  }
+
+  std::vector<std::shared_ptr<arangodb::Index>> systemIndexes;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  IndexFactory const* idxFactory = engine->indexFactory(); 
+  TRI_ASSERT(idxFactory != nullptr);
+
+  idxFactory->fillSystemIndexes(_logicalCollection, systemIndexes);
+  for (auto const& it : systemIndexes) {
+    addIndex(it);
+  }
+}
+
+std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
+                                                      VPackSlice const& info,
+                                                      bool& created) {
+  // TODO Get LOCK for the vocbase
+  auto idx = lookupIndex(info);
+  if (idx != nullptr) {
+    created = false;
+    // We already have this index.
+    return idx;
+  }
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  IndexFactory const* idxFactory = engine->indexFactory(); 
+  TRI_ASSERT(idxFactory != nullptr);
+
+  // We are sure that we do not have an index of this type.
+  // We also hold the lock.
+  // Create it
+
+  idx =
+      idxFactory->prepareIndexFromSlice(info, true, _logicalCollection, false);
+  TRI_ASSERT(idx != nullptr);
+  if (ServerState::instance()->isCoordinator()) {
+    // In the coordinator case we do not fill the index
+    // We only inform the others.
+    addIndexCoordinator(idx, true);
+    created = true;
+    return idx;
+  }
+
+  int res = saveIndex(trx, idx);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  arangodb::aql::PlanCache::instance()->invalidate(_logicalCollection->vocbase());
+  // Until here no harm is done if sth fails. The shared ptr will clean up. if
+  // left before
+
+  addIndex(idx);
+  {
+    bool const doSync =
+        application_features::ApplicationServer::getFeature<DatabaseFeature>(
+            "Database")
+            ->forceSyncProperties();
+    VPackBuilder builder = _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
+    _logicalCollection->updateProperties(builder.slice(), doSync);
+  }
+  created = true;
+  return idx;
+}
+
+
+
 /// @brief Persist an index information to file
 int MMFilesCollection::saveIndex(transaction::Methods* trx, std::shared_ptr<arangodb::Index> idx) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -1855,6 +2029,48 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx, std::shared_ptr<aran
   return res;
 }
 
+void MMFilesCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
+  // primary index must be added at position 0
+  TRI_ASSERT(idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
+             _indexes.empty());
+
+  auto const id = idx->id();
+  for (auto const& it : _indexes) {
+    if (it->id() == id) {
+      // already have this particular index. do not add it again
+      return;
+    }
+  }
+
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
+
+  _indexes.emplace_back(idx);
+
+  // update statistics
+  if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+    ++_cleanupIndexes;
+  }
+  if (idx->isPersistent()) {
+    ++_persistentIndexes;
+  }
+}
+
+void MMFilesCollection::addIndexCoordinator(
+    std::shared_ptr<arangodb::Index> idx, bool distribute) {
+  auto const id = idx->id();
+  for (auto const& it : _indexes) {
+    if (it->id() == id) {
+      // already have this particular index. do not add it again
+      return;
+    }
+  }
+
+  _indexes.emplace_back(idx);
+  if (distribute) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+}
+
 int MMFilesCollection::restoreIndex(transaction::Methods* trx,
                                     VPackSlice const& info,
                                     std::shared_ptr<arangodb::Index>& idx) {
@@ -1894,7 +2110,7 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
     return res;
   }
 
-  _logicalCollection->addIndex(newIdx);
+  addIndex(newIdx);
   idx = newIdx;
   return TRI_ERROR_NO_ERROR;
 }
@@ -1907,7 +2123,7 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
   }
   auto vocbase = _logicalCollection->vocbase();
 
-  if (!_logicalCollection->removeIndex(iid)) {
+  if (!removeIndex(iid)) {
     // We tried to remove an index that does not exist
     events::DropIndex("", std::to_string(iid),
                       TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
@@ -1949,6 +2165,40 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
   return true;
 }
 
+/// @brief removes an index by id
+bool MMFilesCollection::removeIndex(TRI_idx_iid_t iid) {
+  size_t const n = _indexes.size();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto idx = _indexes[i];
+
+    if (!idx->canBeDropped()) {
+      continue;
+    }
+
+    if (idx->id() == iid) {
+      // found!
+      idx->drop();
+
+      _indexes.erase(_indexes.begin() + i);
+
+      // update statistics
+      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+        --_cleanupIndexes;
+      }
+      if (idx->isPersistent()) {
+        --_persistentIndexes;
+      }
+
+      return true;
+    }
+  }
+
+  // not found
+  return false;
+}
+
+
 
 /// @brief garbage-collect a collection's indexes
 int MMFilesCollection::cleanupIndexes() {
@@ -1956,11 +2206,9 @@ int MMFilesCollection::cleanupIndexes() {
 
   // cleaning indexes is expensive, so only do it if the flag is set for the
   // collection
-  // TODO FIXME
-  if (_logicalCollection->_cleanupIndexes > 0) {
+  if (_cleanupIndexes > 0) {
     WRITE_LOCKER(writeLocker, _idxLock);
-    auto indexes = _logicalCollection->getIndexes();
-    for (auto& idx : indexes) {
+    for (auto& idx : _indexes) {
       if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
         res = idx->cleanup();
 
@@ -1970,7 +2218,6 @@ int MMFilesCollection::cleanupIndexes() {
       }
     }
   }
-
   return res;
 }
 
@@ -2539,14 +2786,13 @@ int MMFilesCollection::insertSecondaryIndexes(arangodb::transaction::Methods* tr
   TRI_IF_FAILURE("InsertSecondaryIndexes") { return TRI_ERROR_DEBUG; }
 
   bool const useSecondary = useSecondaryIndexes();
-  if (!useSecondary && _logicalCollection->_persistentIndexes == 0) {
+  if (!useSecondary && _persistentIndexes == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 
   int result = TRI_ERROR_NO_ERROR;
 
-  // TODO FIXME
-  auto indexes = _logicalCollection->getIndexes();
+  auto indexes = _indexes;
   size_t const n = indexes.size();
 
   for (size_t i = 1; i < n; ++i) {
@@ -2584,7 +2830,7 @@ int MMFilesCollection::deleteSecondaryIndexes(arangodb::transaction::Methods* tr
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   bool const useSecondary = useSecondaryIndexes();
-  if (!useSecondary && _logicalCollection->_persistentIndexes == 0) {
+  if (!useSecondary && _persistentIndexes == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 

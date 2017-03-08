@@ -2,7 +2,7 @@
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,45 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_THREAD_H
-#define ARANGODB_LOGGER_LOG_THREAD_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_OPTIMIZER_RULES_H
+#define ARANGOD_MMFILES_MMFILES_OPTIMIZER_RULES_H 1
 
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
-
-#include <boost/lockfree/queue.hpp>
+#include "Aql/Functions.h"
 
 namespace arangodb {
-namespace basics {
-class ConditionVariable;
+namespace aql {
+class ExecutionPlan;
+class Optimizer;
+struct OptimizerRule;
 }
 
-struct LogMessage;
-
-class LogThread final : public Thread {
- public:
-  static void log(std::unique_ptr<LogMessage>&);
-  static void flush();
-
- public:
-  explicit LogThread(std::string const& name);
-  ~LogThread();
-
- public:
-  bool isSystem() override { return true; }
-  bool isSilent() override { return true; }
-  void run() override;
-
- private:
-  static arangodb::basics::ConditionVariable* CONDITION;
-  static boost::lockfree::queue<LogMessage*>* MESSAGES;
-
-  arangodb::basics::ConditionVariable _condition;
-  boost::lockfree::queue<LogMessage*> _messages;
+struct MMFilesOptimizerRules {
+  static void RegisterRules();
+  static void geoIndexRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
 };
-}
+
+} // namespace arangodb
 
 #endif

@@ -257,8 +257,8 @@ struct TRI_vocbase_t {
     bool, std::function<bool(arangodb::LogicalCollection*, arangodb::LogicalCollection*)>);
 
   /// @brief renames a collection
-  int renameCollection(arangodb::LogicalCollection* collection, std::string const& newName,
-                       bool doOverride, bool writeMarker);
+  int renameCollection(arangodb::LogicalCollection* collection,
+                       std::string const& newName, bool doOverride);
 
   /// @brief creates a new collection from parameter set
   /// collection id (cid) is normally passed with a value of 0

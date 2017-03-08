@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Aql/ExecutionPlan.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/RollingVector.h"
 
 #include <velocypack/Builder.h>
@@ -34,6 +33,8 @@
 
 namespace arangodb {
 namespace aql {
+struct OptimizerRule;
+class OptimizerRulesFeature;
 
 class Optimizer {
  public:
@@ -55,189 +56,7 @@ class Optimizer {
     }
   };
 
-  /// @brief optimizer rules
-  enum RuleLevel : int {
-    // List all the rules in the system here:
-    // lower level values mean earlier rule execution
-
-    // note that levels must be unique
-    initial = 100,
-
-    // "Pass 1": moving nodes "up" (potentially outside loops):
-    // ========================================================
-
-    // determine the "right" type of CollectNode and
-    // add a sort node for each COLLECT (may be removed later)
-    specializeCollectRule_pass1,
-
-    inlineSubqueriesRule_pass1,
-
-    // split and-combined filters into multiple smaller filters
-    splitFiltersRule_pass1,
-
-    // move calculations up the dependency chain (to pull them out of
-    // inner loops etc.)
-    moveCalculationsUpRule_pass1,
-
-    // move filters up the dependency chain (to make result sets as small
-    // as possible as early as possible)
-    moveFiltersUpRule_pass1,
-
-    // remove calculations that are repeatedly used in a query
-    removeRedundantCalculationsRule_pass1,
-
-    // "Pass 2": try to remove redundant or unnecessary nodes
-    // ======================================================
-    
-    // remove filters from the query that are not necessary at all
-    // filters that are always true will be removed entirely
-    // filters that are always false will be replaced with a NoResults node
-    removeUnnecessaryFiltersRule_pass2,
-
-    // remove calculations that are never necessary
-    removeUnnecessaryCalculationsRule_pass2,
-
-    // remove redundant sort blocks
-    removeRedundantSortsRule_pass2,
-
-    // "Pass 3": interchange EnumerateCollection nodes in all possible ways
-    //           this is level 500, please never let new plans from higher
-    //           levels go back to this or lower levels!
-    // ======================================================
-    
-    interchangeAdjacentEnumerationsRule_pass3,
-
-    // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
-    // ======================================================
-    
-    // move calculations up the dependency chain (to pull them out of
-    // inner loops etc.)
-    moveCalculationsUpRule_pass4,
-
-    // move filters up the dependency chain (to make result sets as small
-    // as possible as early as possible)
-    moveFiltersUpRule_pass4,
-
-    /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
-    // remove filters from the query that are not necessary at all
-    // filters that are always true will be removed entirely
-    // filters that are always false will be replaced with a NoResults node
-    // ======================================================
-
-    // remove redundant sort blocks
-    removeRedundantSortsRule_pass5,
-
-    // remove SORT RAND() if appropriate
-    removeSortRandRule_pass5,
-
-    // remove INTO for COLLECT if appropriate
-    removeCollectVariablesRule_pass5,
-
-    // propagate constant attributes in FILTERs
-    propagateConstantAttributesRule_pass5,
-
-    // remove unused out variables for data-modification queries
-    removeDataModificationOutVariablesRule_pass5,
-
-    /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
-    // ======================================================
-
-    // replace simple OR conditions with IN
-    replaceOrWithInRule_pass6,
-
-    // remove redundant OR conditions
-    removeRedundantOrRule_pass6,
-
-    applyMMFilesGeoIndexRule,
-
-    useIndexesRule_pass6,
-
-    // try to remove filters covered by index ranges
-    removeFiltersCoveredByIndexRule_pass6,
-
-    removeUnnecessaryFiltersRule_pass6,
-
-    // try to find sort blocks which are superseeded by indexes
-    useIndexForSortRule_pass6,
-
-    // sort values used in IN comparisons of remaining filters
-    sortInValuesRule_pass6,
-
-    // remove calculations that are never necessary
-    removeUnnecessaryCalculationsRule_pass6,
-
-    // merge filters into graph traversals
-    optimizeTraversalsRule_pass6,
-    prepareTraversalsRule_pass6,
-
-    /// Pass 9: push down calculations beyond FILTERs and LIMITs
-    moveCalculationsDownRule_pass9,
-
-    /// Pass 9: patch update statements
-    patchUpdateStatementsRule_pass9,
-
-    /// "Pass 10": final transformations for the cluster
-    // make operations on sharded collections use distribute
-    distributeInClusterRule_pass10,
-
-    // make operations on sharded collections use scatter / gather / remote
-    scatterInClusterRule_pass10,
-
-    // move FilterNodes & Calculation nodes in between
-    // scatter(remote) <-> gather(remote) so they're
-    // distributed to the cluster nodes.
-    distributeFilternCalcToClusterRule_pass10,
-
-    // move SortNodes into the distribution.
-    // adjust gathernode to also contain the sort criteria.
-    distributeSortToClusterRule_pass10,
-
-    // try to get rid of a RemoteNode->ScatterNode combination which has
-    // only a SingletonNode and possibly some CalculationNodes as dependencies
-    removeUnnecessaryRemoteScatterRule_pass10,
-
-    // remove any superflous satellite collection joins...
-    // put it after Scatter rule because we would do
-    // the work twice otherwise
-    removeSatelliteJoinsRule_pass10,
-
-    // recognize that a RemoveNode can be moved to the shards
-    undistributeRemoveAfterEnumCollRule_pass10
-  };
-
  public:
-  struct Rule;
-
-  /// @brief type of an optimizer rule function, the function gets an
-  /// optimizer, an ExecutionPlan, and the current rule. it has
-  /// to append one or more plans to the resulting deque. This must
-  /// include the original plan if it ought to be kept. The rule has to
-  /// set the level of the appended plan to the largest level of rule
-  /// that ought to be considered as done to indicate which rule is to be
-  /// applied next.
-  typedef std::function<void(Optimizer*, std::unique_ptr<ExecutionPlan>, Rule const*)>
-      RuleFunction;
-
-  /// @brief type of an optimizer rule
-  struct Rule {
-    std::string name;
-    RuleFunction func;
-    RuleLevel const level;
-    bool const canCreateAdditionalPlans;
-    bool const canBeDisabled;
-    bool const isHidden;
-
-    Rule() = delete;
-
-    Rule(std::string const& name, RuleFunction const& func, RuleLevel level,
-         bool canCreateAdditionalPlans, bool canBeDisabled, bool isHidden)
-        : name(name),
-          func(func),
-          level(level),
-          canCreateAdditionalPlans(canCreateAdditionalPlans),
-          canBeDisabled(canBeDisabled),
-          isHidden(isHidden) {}
-  };
 
   /// @brief the following struct keeps a list (deque) of ExecutionPlan*
   /// and has some automatic convenience functions.
@@ -351,7 +170,7 @@ class Optimizer {
   size_t hasEnoughPlans(size_t extraPlans) const;
 
   /// @brief add a plan to the optimizer
-  void addPlan(std::unique_ptr<ExecutionPlan>, Rule const*, bool, int newLevel = 0);
+  void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const*, bool, int newLevel = 0);
 
   /// @brief getBest, ownership of the plan remains with the optimizer
   ExecutionPlan* getBest() {
@@ -393,25 +212,6 @@ class Optimizer {
     return res;
   }
 
-  /// @brief translate a list of rule ids into rule name
-  static std::vector<std::string> translateRules(std::vector<int> const&);
-
-  /// @brief translate a single rule
-  static char const* translateRule(int);
-
-  /// @brief returns the previous rule (sorted by rule levels)
-  static RuleLevel previousRule(RuleLevel level) {
-    auto it = _rules.find(level);
-
-    if (it == _rules.begin()) {
-      // already at start
-      return level;
-    }
-
-    --it;
-    return (*it).second.level;
-  }
-
  private:
   /// @brief estimatePlans
   void estimatePlans();
@@ -419,53 +219,11 @@ class Optimizer {
   /// @brief sortPlans
   void sortPlans();
 
-  /// @brief look up the ids of all disabled rules
-  std::unordered_set<int> getDisabledRuleIds(
-      std::vector<std::string> const&) const;
-
-  /// @brief register a rule
-  static void registerRule(std::string const& name, RuleFunction func,
-                           RuleLevel level, bool canCreateAdditionalPlans,
-                           bool canBeDisabled, bool isHidden = false) {
-    if (_ruleLookup.find(name) != _ruleLookup.end()) {
-      // duplicate rule names are not allowed
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "duplicate optimizer rule name");
-    }
-
-    _ruleLookup.emplace(name, level);
-
-    if (_rules.find(level) != _rules.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "duplicate optimizer rule level");
-    }
-
-    _rules.emplace(level, Rule(name, func, level, canCreateAdditionalPlans, canBeDisabled, isHidden));
-  }
-
-  /// @brief register a hidden rule
-  static void registerHiddenRule(std::string const& name, RuleFunction const& func,
-                                 RuleLevel level, bool canCreateAdditionalPlans, bool canBeDisabled) {
-    registerRule(name, func, level, canCreateAdditionalPlans, canBeDisabled, true);
-  }
-
-  /// @brief set up the optimizer rules once and forever
-  static void setupRules();
-
  public:
   /// @brief optimizer statistics
   Stats _stats;
 
  private:
-  /// @brief the rules database
-  static std::map<int, Rule> _rules;
-
-  /// @brief map to look up rule id by name
-  static std::unordered_map<std::string, int> _ruleLookup;
-
-  /// @brief mutex to protect rule setup
-  static arangodb::Mutex SetupLock;
-
   /// @brief the current set of plans to be optimized
   PlanList _plans;
 

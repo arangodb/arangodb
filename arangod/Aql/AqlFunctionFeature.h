@@ -24,8 +24,6 @@
 #define ARANGOD_AQL_AQL_FUNCTION_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-
-#include "Basics/Common.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 

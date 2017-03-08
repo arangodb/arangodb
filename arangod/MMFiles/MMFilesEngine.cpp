@@ -38,6 +38,7 @@
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesIndexFactory.h"
+#include "MMFiles/MMFilesOptimizerRules.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesTransactionCollection.h"
@@ -827,6 +828,47 @@ void MMFilesEngine::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                      arangodb::LogicalCollection const* parameters,
                                      bool doSync) {
   saveCollectionInfo(vocbase, id, parameters, doSync);
+}
+
+// asks the storage engine to persist renaming of a collection
+// This will write a renameMarker if not in recovery
+Result MMFilesEngine::renameCollection(
+    TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection,
+    std::string const& oldName) {
+  if (inRecovery()) {
+    // Nothing todo. Marker already there
+    return {};
+  }
+  int res = TRI_ERROR_NO_ERROR;
+  try {
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("id", VPackValue(collection->cid_as_string()));
+    builder.add("oldName", VPackValue(oldName));
+    builder.add("name", VPackValue(collection->name()));
+    builder.close();
+
+    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_RENAME_COLLECTION, vocbase->id(), collection->cid(), builder.slice());
+
+    MMFilesWalSlotInfoCopy slotInfo =
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+
+    res = TRI_ERROR_NO_ERROR;
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save collection rename marker in log: "
+              << TRI_errno_string(res);
+  }
+  return {res, TRI_errno_string(res)};
 }
 
 // asks the storage engine to create an index as specified in the VPack
@@ -2127,9 +2169,14 @@ int MMFilesEngine::transferMarkers(LogicalCollection* collection,
   return res;
 }
 
-/// @brief Add engine specific AQL functions.
+/// @brief Add engine-specific AQL functions.
 void MMFilesEngine::addAqlFunctions() const {
-  aql::MMFilesAqlFunctions::RegisterFunctions();
+  MMFilesAqlFunctions::RegisterFunctions();
+}
+
+/// @brief Add engine-specific optimizer rules
+void MMFilesEngine::addOptimizerRules() const {
+  MMFilesOptimizerRules::RegisterRules();
 }
 
 /// @brief transfer markers into a collection, actual work
