@@ -59,6 +59,10 @@ while [[ ${1} ]]; do
     -a|--agency-size)
       NRAGENTS=${2}
       shift;;
+    -i|--interactive)
+      INTERACTIVE_MODE=${2}
+      shift
+      ;;
     -p|--pool-size)
       POOLSZ=${2}
       shift;;
@@ -148,6 +152,19 @@ if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
   exit 1
 fi
 
+if [ ! -z "$INTERACTIVE_MODE" ] ; then
+    if [ "$INTERACTIVE_MODE" == "C" ] ; then
+        COORDINATORCONSOLE=1
+        echo "Starting one coordinator in terminal with --console"
+    elif [ "$INTERACTIVE_MODE" == "D" ] ; then
+        CLUSTERDEBUGGER=1
+        echo Running cluster in debugger.
+    elif [ "$INTERACTIVE_MODE" == "R" ] ; then
+        RRDEBUGGER=1
+        echo Running cluster in rr with --console.
+    fi
+fi
+
 MINP=0.5
 MAXP=2.0
 SFRE=2.5
@@ -166,6 +183,19 @@ aaid=(`seq 0 $(( $POOLSZ - 1 ))`)
 #shuffle
 
 count=1
+
+XTERM="xterm"
+XTERMOPTIONS=""
+BUILD="build"
+
+RRDEBUGGER=1
+if [ "$RRDEBUGGER" == "1" ] ; then
+    ARANGOD="$XTERM $XTERMOPTIONS -e ${BUILD}/bin/arangod --console "
+    OUTPUT="&"    
+else
+    ARANGOD="${BUILD}/bin/arangod"
+    OUTPUT=" | tee cluster/$PORT.stdout 2>&1"
+fi
 
 for aid in "${aaid[@]}"; do
 
@@ -187,7 +217,7 @@ for aid in "${aaid[@]}"; do
   fi
   
   printf "    starting agent %s " "$aid"
-  build/bin/arangod \
+  $ARANGOD \
     -c none \
     --agency.activate true \
     $GOSSIP_PEERS \
@@ -210,7 +240,7 @@ for aid in "${aaid[@]}"; do
     --server.endpoint $TRANSPORT://0.0.0.0:$port \
     --server.statistics false \
     $SSLKEYFILE \
-    > agency/$port.stdout 2>&1 &
+    | tee cluster/$PORT.stdout 2>&1 &
   PIDS+=$!
   PIDS+=" "
   if [ "$GOSSIP_MODE" == "1" ]; then
