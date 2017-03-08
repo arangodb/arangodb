@@ -29,6 +29,7 @@
 #include "Basics/tri-strings.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
@@ -127,7 +128,7 @@ bool MMFilesPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
 void MMFilesPrimaryIndexIterator::reset() { _iterator.reset(); }
   
-AllIndexIterator::AllIndexIterator(LogicalCollection* collection,
+MMFilesAllIndexIterator::MMFilesAllIndexIterator(LogicalCollection* collection,
                    transaction::Methods* trx, 
                    ManagedDocumentResult* mmdr,
                    MMFilesPrimaryIndex const* index,
@@ -135,7 +136,7 @@ AllIndexIterator::AllIndexIterator(LogicalCollection* collection,
                    bool reverse)
     : IndexIterator(collection, trx, mmdr, index), _index(indexImpl), _reverse(reverse), _total(0) {}
 
-bool AllIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     MMFilesSimpleIndexElement element;
     if (_reverse) {
@@ -153,15 +154,15 @@ bool AllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   return true;
 }
 
-void AllIndexIterator::reset() { _position.reset(); }
+void MMFilesAllIndexIterator::reset() { _position.reset(); }
   
-AnyIndexIterator::AnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, 
+MMFilesAnyIndexIterator::MMFilesAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, 
                                    ManagedDocumentResult* mmdr,
                                    MMFilesPrimaryIndex const* index,
                                    MMFilesPrimaryIndexImpl const* indexImpl)
     : IndexIterator(collection, trx, mmdr, index), _index(indexImpl), _step(0), _total(0) {}
 
-bool AnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     MMFilesSimpleIndexElement element =
         _index->findRandom(&_context, _initial, _position, _step, _total);
@@ -175,7 +176,7 @@ bool AnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
   return true;
 }
 
-void AnyIndexIterator::reset() {
+void MMFilesAnyIndexIterator::reset() {
   _step = 0;
   _total = 0;
   _position = _initial;
@@ -191,7 +192,10 @@ MMFilesPrimaryIndex::MMFilesPrimaryIndex(arangodb::LogicalCollection* collection
 
   if (collection != nullptr) {
     // collection is a nullptr in the coordinator case
-    indexBuckets = collection->indexBuckets();
+    auto physical =
+        static_cast<arangodb::MMFilesCollection*>(collection->getPhysical());
+    TRI_ASSERT(physical != nullptr);
+    indexBuckets = static_cast<size_t>(physical->indexBuckets());
   }
 
   _primaryIndex = new MMFilesPrimaryIndexImpl(
@@ -309,7 +313,7 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequential(
 IndexIterator* MMFilesPrimaryIndex::allIterator(transaction::Methods* trx,
                                          ManagedDocumentResult* mmdr,
                                          bool reverse) const {
-  return new AllIndexIterator(_collection, trx, mmdr, this, _primaryIndex, reverse);
+  return new MMFilesAllIndexIterator(_collection, trx, mmdr, this, _primaryIndex, reverse);
 }
 
 /// @brief request an iterator over all elements in the index in
@@ -317,7 +321,7 @@ IndexIterator* MMFilesPrimaryIndex::allIterator(transaction::Methods* trx,
 ///        exactly once unless the collection is modified.
 IndexIterator* MMFilesPrimaryIndex::anyIterator(transaction::Methods* trx,
                                          ManagedDocumentResult* mmdr) const {
-  return new AnyIndexIterator(_collection, trx, mmdr, this, _primaryIndex);
+  return new MMFilesAnyIndexIterator(_collection, trx, mmdr, this, _primaryIndex);
 }
 
 /// @brief a method to iterate over all elements in the index in

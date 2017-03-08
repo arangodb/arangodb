@@ -31,6 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
@@ -42,7 +43,7 @@
 
 using namespace arangodb;
 
-LookupBuilder::LookupBuilder(
+MMFilesHashIndexLookupBuilder::MMFilesHashIndexLookupBuilder(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields)
@@ -137,9 +138,9 @@ LookupBuilder::LookupBuilder(
   buildNextSearchValue();
 }
 
-VPackSlice LookupBuilder::lookup() { return _builder->slice(); }
+VPackSlice MMFilesHashIndexLookupBuilder::lookup() { return _builder->slice(); }
 
-bool LookupBuilder::hasAndGetNext() {
+bool MMFilesHashIndexLookupBuilder::hasAndGetNext() {
   _builder->clear();
   if (!_usesIn || _isEmpty) {
     return false;
@@ -151,7 +152,7 @@ bool LookupBuilder::hasAndGetNext() {
   return true;
 }
 
-void LookupBuilder::reset() {
+void MMFilesHashIndexLookupBuilder::reset() {
   if (_isEmpty) {
     return;
   }
@@ -163,7 +164,7 @@ void LookupBuilder::reset() {
   buildNextSearchValue();
 }
 
-bool LookupBuilder::incrementInPosition() {
+bool MMFilesHashIndexLookupBuilder::incrementInPosition() {
   size_t i = _coveredFields - 1;
   while (true) {
     auto it = _inPosition.find(i);
@@ -184,7 +185,7 @@ bool LookupBuilder::incrementInPosition() {
   }
 }
 
-void LookupBuilder::buildNextSearchValue() {
+void MMFilesHashIndexLookupBuilder::buildNextSearchValue() {
   if (_isEmpty) {
     return;
   }
@@ -435,7 +436,9 @@ MMFilesHashIndex::MMFilesHashIndex(TRI_idx_iid_t iid, LogicalCollection* collect
   uint32_t indexBuckets = 1;
 
   if (collection != nullptr) {
-    indexBuckets = collection->indexBuckets();
+    auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+    TRI_ASSERT(physical != nullptr);
+    indexBuckets = static_cast<size_t>(physical->indexBuckets());
   }
 
   auto func = std::make_unique<HashElementFunc>();

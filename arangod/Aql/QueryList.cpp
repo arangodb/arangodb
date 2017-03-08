@@ -33,10 +33,12 @@
 using namespace arangodb::aql;
 
 QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id,
-                               std::string&& queryString, double started,
+                               std::string&& queryString, 
+                               std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+                               double started,
                                double runTime, QueryExecutionState::ValueType state)
-    : id(id), queryString(std::move(queryString)), started(started), runTime(runTime),
-      state(state) {}
+    : id(id), queryString(std::move(queryString)), bindParameters(bindParameters), 
+      started(started), runTime(runTime), state(state) {}
 
 double const QueryList::DefaultSlowQueryThreshold = 10.0;
 size_t const QueryList::DefaultMaxSlowQueries = 64;
@@ -54,14 +56,6 @@ QueryList::QueryList(TRI_vocbase_t*)
       _maxSlowQueries(QueryList::DefaultMaxSlowQueries),
       _maxQueryStringLength(QueryList::DefaultMaxQueryStringLength) {
   _current.reserve(64);
-}
-
-/// @brief destroy a query list
-QueryList::~QueryList() {
-  WRITE_LOCKER(writeLocker, _lock);
-
-  _current.clear();
-  _slow.clear();
 }
 
 /// @brief insert a query
@@ -132,6 +126,7 @@ void QueryList::remove(Query const* query) {
         _slow.emplace_back(QueryEntryCopy(
             query->id(),
             std::move(q),
+            query->bindParameters(),
             started, now - started,
             QueryExecutionState::ValueType::FINISHED));
 
@@ -212,6 +207,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
       result.emplace_back(
           QueryEntryCopy(query->id(),
                          extractQueryString(query, maxLength),
+                         query->bindParameters(),
                          started, now - started,
                          query->state()));
     }
@@ -227,7 +223,9 @@ std::vector<QueryEntryCopy> QueryList::listSlow() {
   {
     READ_LOCKER(readLocker, _lock);
     result.reserve(_slow.size());
-    result.assign(_slow.begin(), _slow.end());
+    for (auto const& it : _slow) {
+      result.emplace_back(it);
+    }
   }
 
   return result;

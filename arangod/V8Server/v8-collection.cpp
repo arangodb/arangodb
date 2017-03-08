@@ -1460,7 +1460,8 @@ static void JS_RenameVocbaseCol(
 
   std::string const oldName(collection->name());
 
-  int res = collection->vocbase()->renameCollection(collection, name, doOverride, true);
+  int res =
+      collection->vocbase()->renameCollection(collection, name, doOverride);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot rename collection");

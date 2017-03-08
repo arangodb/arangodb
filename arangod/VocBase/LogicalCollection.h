@@ -32,12 +32,7 @@
 
 #include <velocypack/Buffer.h>
 
-struct TRI_df_marker_t;
-
 namespace arangodb {
-namespace basics {
-class LocalTaskQueue;
-}
 
 namespace velocypack {
 class Slice;
@@ -49,7 +44,6 @@ typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
-struct DatafileStatisticsContainer;
 struct DocumentIdentifierToken;
 class FollowerInfo;
 class Index;
@@ -180,7 +174,6 @@ class LogicalCollection {
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
   std::string statusString() const;
 
-
   uint64_t numberDocuments() const;
 
   // SECTION: Properties
@@ -206,8 +199,6 @@ class LogicalCollection {
 
 
   // SECTION: Indexes
-  uint32_t indexBuckets() const;
-
   std::vector<std::shared_ptr<Index>> const& getIndexes() const;
 
   void getIndexesVPack(velocypack::Builder&, bool) const;
@@ -222,6 +213,8 @@ class LogicalCollection {
   virtual bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
   std::shared_ptr<ShardMap> shardIds() const;
+  // return a filtered list of the collection's shards
+  std::shared_ptr<ShardMap> shardIds(std::unordered_set<std::string> const& includedShards) const;
   void setShardMap(std::shared_ptr<ShardMap>& map);
 
   /// @brief a method to skip certain documents in AQL write operations,
@@ -276,11 +269,6 @@ class LogicalCollection {
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
 
-  // SECTION: Indexes (local only)
-
-  /// @brief Exposes a pointer to index list
-  std::vector<std::shared_ptr<Index>> const* indexList() const;
-
   bool dropIndex(TRI_idx_iid_t iid);
 
   // SECTION: Index access (local only)
@@ -324,29 +312,18 @@ class LogicalCollection {
   void persistPhysicalCollection();
 
  private:
-  // SECTION: Index creation
-
-  /// @brief creates the initial indexes for the collection
-  void createInitialIndexes();
-
- public:
-  // TODO Fix Visibility
-  bool removeIndex(TRI_idx_iid_t iid);
-
-  void addIndex(std::shared_ptr<Index>);
- private:
-  void addIndexCoordinator(std::shared_ptr<Index>, bool);
 
   // SECTION: Indexes (local only)
-
   // @brief create index with the given definition.
   bool openIndex(velocypack::Slice const&, transaction::Methods*);
 
-private:
   void increaseInternalVersion();
 
  protected:
+
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
+
+ protected:
 
   // SECTION: Meta Information
   //
@@ -384,19 +361,13 @@ private:
 
   // SECTION: Properties
   bool _isLocal;
- public:
+
   bool _isDeleted;
- protected:
+
   bool const _isSystem;
 
   uint32_t _version;
   bool _waitForSync;
-
-
-  // SECTION: Indexes
-  uint32_t _indexBuckets;
-
-  std::vector<std::shared_ptr<Index>> _indexes;
 
   // SECTION: Replication
   size_t _replicationFactor;
@@ -411,13 +382,6 @@ private:
   std::shared_ptr<ShardMap> _shardIds;
 
   TRI_vocbase_t* _vocbase;
-
-  // SECTION: Local Only has to be moved to PhysicalCollection
- public:
-  // TODO MOVE ME
-  size_t _cleanupIndexes;
-  size_t _persistentIndexes;
- protected:
 
   std::unique_ptr<PhysicalCollection> _physical;
 

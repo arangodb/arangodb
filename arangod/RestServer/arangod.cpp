@@ -42,6 +42,7 @@
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
@@ -129,6 +130,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new ActionFeature(&server));
     server.addFeature(new AgencyFeature(&server));
     server.addFeature(new aql::AqlFunctionFeature(&server));
+    server.addFeature(new aql::OptimizerRulesFeature(&server));
     server.addFeature(new AuthenticationFeature(&server));
     server.addFeature(new AqlFeature(&server));
     server.addFeature(new BootstrapFeature(&server));
@@ -151,17 +153,16 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
     server.addFeature(new LanguageFeature(&server));
     server.addFeature(new LockfileFeature(&server));
-    server.addFeature(new MMFilesLogfileManager(&server));
     server.addFeature(new LoggerBufferFeature(&server));
     server.addFeature(new LoggerFeature(&server, true));
+    server.addFeature(new MMFilesLogfileManager(&server));
+    server.addFeature(new MMFilesPersistentIndexFeature(&server));
     server.addFeature(new NonceFeature(&server));
     server.addFeature(new PageSizeFeature(&server));
     server.addFeature(new pregel::PregelFeature(&server));
     server.addFeature(new PrivilegeFeature(&server));
-    server.addFeature(new QueryRegistryFeature(&server));
-    server.addFeature(new TraverserEngineRegistryFeature(&server));
     server.addFeature(new RandomFeature(&server));
-    server.addFeature(new PersistentIndexFeature(&server));
+    server.addFeature(new QueryRegistryFeature(&server));
     server.addFeature(new SchedulerFeature(&server));
     server.addFeature(new ScriptFeature(&server, &ret));
     server.addFeature(new ServerFeature(&server, &ret));
@@ -171,6 +172,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new StatisticsFeature(&server));
     server.addFeature(new TempFeature(&server, name));
     server.addFeature(new TransactionManagerFeature(&server));
+    server.addFeature(new TraverserEngineRegistryFeature(&server));
     server.addFeature(new UnitTestsFeature(&server, &ret));
     server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
     server.addFeature(new V8DealerFeature(&server));

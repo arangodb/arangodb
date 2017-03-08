@@ -52,6 +52,11 @@ target_link_libraries(
 
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
+)
+
+# add these includes as system includes because otherwise
+# the compiler will emit warnings for fakeit.hpp
+target_include_directories(arangodbtests SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/catch
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit
 )

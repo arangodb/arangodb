@@ -50,7 +50,7 @@ class LocalTaskQueue;
 class MMFilesHashIndex;
 
 /// @brief Class to build Slice lookups out of AST Conditions
-class LookupBuilder {
+class MMFilesHashIndexLookupBuilder {
  private:
   transaction::BuilderLeaser _builder;
   bool _usesIn;
@@ -64,7 +64,7 @@ class LookupBuilder {
   transaction::BuilderLeaser _inStorage;
 
  public:
-  LookupBuilder(
+  MMFilesHashIndexLookupBuilder(
       transaction::Methods*, arangodb::aql::AstNode const*,
       arangodb::aql::Variable const*,
       std::vector<std::vector<arangodb::basics::AttributeName>> const&);
@@ -100,7 +100,7 @@ class MMFilesHashIndexIterator final : public IndexIterator {
 
  private:
   MMFilesHashIndex const* _index;
-  LookupBuilder _lookups;
+  MMFilesHashIndexLookupBuilder _lookups;
   std::vector<MMFilesHashIndexElement*> _buffer;
   size_t _posInBuffer;
 };

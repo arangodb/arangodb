@@ -158,28 +158,17 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _isSystem(other.isSystem()),
       _version(other._version),
       _waitForSync(other.waitForSync()),
-      _indexBuckets(other.indexBuckets()),
-      _indexes(),
       _replicationFactor(other.replicationFactor()),
       _numberOfShards(other.numberOfShards()),
       _allowUserKeys(other.allowUserKeys()),
       _shardIds(new ShardMap()),  // Not needed
       _vocbase(other.vocbase()),
-      _cleanupIndexes(0),
-      _persistentIndexes(0),
       _physical(other.getPhysical()->clone(this, other.getPhysical())) {
   TRI_ASSERT(_physical != nullptr);
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
     _followers.reset(new FollowerInfo(this));
   }
-
-  // Copy over index definitions
-  _indexes.reserve(other._indexes.size());
-  for (auto const& idx : other._indexes) {
-    _indexes.emplace_back(idx);
-  }
-
 }
 
 // @brief Constructor used in coordinator case.
@@ -204,22 +193,21 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _version(Helper::readNumericValue<uint32_t>(info, "version",
                                                   currentVersion())),
       _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
-      _indexBuckets(Helper::readNumericValue<uint32_t>(
-          info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
       _replicationFactor(1),
       _numberOfShards(
           Helper::readNumericValue<size_t>(info, "numberOfShards", 1)),
       _allowUserKeys(Helper::readBooleanValue(info, "allowUserKeys", true)),
       _shardIds(new ShardMap()),
       _vocbase(vocbase),
-      _cleanupIndexes(0),
-      _persistentIndexes(0),
       _physical(
           EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)) {
   TRI_ASSERT(_physical != nullptr);
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
+
+  // This has to be called AFTER _phyiscal and _logical are properly linked together.
+  _physical->prepareIndexes(info.get("indexes"));
 
   if (_version < minimumVersion()) {
     // collection is too "old"
@@ -355,49 +343,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       }
     }
   }
-
-  if (_indexes.empty()) {
-    createInitialIndexes();
-  }
-
-  auto indexesSlice = info.get("indexes");
-  if (indexesSlice.isArray()) {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    IndexFactory const* idxFactory = engine->indexFactory(); 
-    TRI_ASSERT(idxFactory != nullptr);
-    for (auto const& v : VPackArrayIterator(indexesSlice)) {
-      if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
-                                                              false)) {
-        // We have an error here.
-        // Do not add index.
-        // TODO Handle Properly
-        continue;
-      }
-
-      auto idx = idxFactory->prepareIndexFromSlice(v, false, this, true);
-
-      // TODO Move IndexTypeCheck out
-      if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-          idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
-        continue;
-      }
-
-      if (isCluster) {
-        addIndexCoordinator(idx, false);
-      } else {
-        addIndex(idx);
-      }
-    }
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got invalid indexes for collection '" << _name << "'";
-    for (auto const& it : _indexes) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
-    }
-  }
-#endif
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
@@ -619,22 +564,14 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 void LogicalCollection::setDeleted(bool newValue) { _isDeleted = newValue; }
 
 // SECTION: Indexes
-uint32_t LogicalCollection::indexBuckets() const { return _indexBuckets; }
-
 std::vector<std::shared_ptr<arangodb::Index>> const&
 LogicalCollection::getIndexes() const {
-  return _indexes;
+  return getPhysical()->getIndexes();
 }
 
 void LogicalCollection::getIndexesVPack(VPackBuilder& result,
                                         bool withFigures) const {
-  result.openArray();
-  for (auto const& idx : _indexes) {
-    result.openObject();
-    idx->toVelocyPack(result, withFigures);
-    result.close();
-  }
-  result.close();
+  getPhysical()->getIndexesVPack(result, withFigures);
 }
 
 // SECTION: Replication
@@ -662,6 +599,25 @@ std::vector<std::string> const& LogicalCollection::shardKeys() const {
 std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
   // TODO make threadsafe update on the cache.
   return _shardIds;
+}
+
+// return a filtered list of the collection's shards
+std::shared_ptr<ShardMap> LogicalCollection::shardIds(std::unordered_set<std::string> const& includedShards) const {
+  if (includedShards.empty()) {
+    return _shardIds;
+  }
+
+  std::shared_ptr<ShardMap> copy = _shardIds;
+  auto result = std::make_shared<ShardMap>();
+  
+  for (auto const& it : *copy) {
+    if (includedShards.find(it.first) == includedShards.end()) {
+      // a shard we are not interested in
+      continue;
+    }
+    result->emplace(it.first, it.second);
+  } 
+  return result;
 }
 
 void LogicalCollection::setShardMap(std::shared_ptr<ShardMap>& map) {
@@ -752,14 +708,7 @@ void LogicalCollection::drop() {
   engine->dropCollection(_vocbase, this);
   _isDeleted = true;
 
-  // save some memory by freeing the indexes
-  _indexes.clear();
-  try {
-    // close collection. this will also invalidate the revisions cache
-    _physical->close();
-  } catch (...) {
-    // don't throw from here... dropping should succeed
-  }
+  _physical->drop();
 }
 
 void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
@@ -812,10 +761,6 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids) c
 
   // Physical Information
   getPhysical()->getPropertiesVPack(result);
-  // TODO
-  result.add("count", VPackValue(_physical->initialCount()));
-  result.add("indexBuckets", VPackValue(_indexBuckets)); //MMFiles
-  // ODOT
 
   // Indexes
   result.add(VPackValue("indexes"));
@@ -904,22 +849,11 @@ CollectionResult LogicalCollection::updateProperties(VPackSlice const& slice,
 
   WRITE_LOCKER(writeLocker, _infoLock);
 
-  uint32_t tmp = arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-      slice, "indexBuckets",
-      2 /*Just for validation, this default Value passes*/);
-  if (tmp == 0 || tmp > 1024) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            "indexBuckets must be a two-power between 1 and 1024"};
-  }
-
-  // The physical may first reject illegal properties.
+ // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
   getPhysical()->updateProperties(slice, doSync);
 
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
-
-  _indexBuckets =
-      Helper::getNumericValue<uint32_t>(slice, "indexBuckets", _indexBuckets); //MMFiles
 
   if (!_isLocal) {
     // We need to inform the cluster as well
@@ -928,12 +862,7 @@ CollectionResult LogicalCollection::updateProperties(VPackSlice const& slice,
     return CollectionResult{tmp};
   }
 
-  int64_t count = arangodb::basics::VelocyPackHelper::getNumericValue<int64_t>(
-      slice, "count", _physical->initialCount());
-  if (count != _physical->initialCount()) {
-    _physical->updateCount(count);
-  }
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+ StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->changeCollection(_vocbase, _cid, this, doSync);
 
   return {};
@@ -941,9 +870,8 @@ CollectionResult LogicalCollection::updateProperties(VPackSlice const& slice,
 
 /// @brief return the figures for a collection
 std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
-  auto builder = std::make_shared<VPackBuilder>();
-
   if (ServerState::instance()->isCoordinator()) {
+    auto builder = std::make_shared<VPackBuilder>();
     builder->openObject();
     builder->close();
     int res = figuresOnCoordinator(dbName(), cid_as_string(), builder);
@@ -951,28 +879,9 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
-  } else {
-    builder->openObject();
-
-    // add index information
-    size_t sizeIndexes = getPhysical()->memory();
-    size_t numIndexes = 0;
-    for (auto const& idx : _indexes) {
-      sizeIndexes += static_cast<size_t>(idx->memory());
-      ++numIndexes;
-    }
-
-    builder->add("indexes", VPackValue(VPackValueType::Object));
-    builder->add("count", VPackValue(numIndexes));
-    builder->add("size", VPackValue(sizeIndexes));
-    builder->close();  // indexes
-
-    // add engine-specific figures
-    getPhysical()->figures(builder);
-    builder->close();
+    return builder;
   }
-
-  return builder;
+  return getPhysical()->figures();
 }
 
 /// @brief opens an existing collection
@@ -985,12 +894,7 @@ void LogicalCollection::open(bool ignoreErrors) {
 
 std::shared_ptr<Index> LogicalCollection::lookupIndex(
     TRI_idx_iid_t idxId) const {
-  for (auto const& idx : _indexes) {
-    if (idx->id() == idxId) {
-      return idx;
-    }
-  }
-  return nullptr;
+  return getPhysical()->lookupIndex(idxId);
 }
 
 std::shared_ptr<Index> LogicalCollection::lookupIndex(
@@ -999,114 +903,13 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(
     // Compatibility with old v8-vocindex.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-
-  // extract type
-  VPackSlice value = info.get("type");
-
-  if (!value.isString()) {
-    // Compatibility with old v8-vocindex.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  std::string tmp = value.copyString();
-  arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
-
-  for (auto const& idx : _indexes) {
-    if (idx->type() == type) {
-      // Only check relevant indices
-      if (idx->matchesDefinition(info)) {
-        // We found an index for this definition.
-        return idx;
-      }
-    }
-  }
-  return nullptr;
+  return getPhysical()->lookupIndex(info);
 }
 
 std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
                                                       VPackSlice const& info,
                                                       bool& created) {
-  // TODO Get LOCK for the vocbase
-  auto idx = lookupIndex(info);
-  if (idx != nullptr) {
-    created = false;
-    // We already have this index.
-    // Should we throw instead?
-    return idx;
-  }
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory(); 
-  TRI_ASSERT(idxFactory != nullptr);
-
-  // We are sure that we do not have an index of this type.
-  // We also hold the lock.
-  // Create it
-
-  idx = idxFactory->prepareIndexFromSlice(info, true, this, false);
-  TRI_ASSERT(idx != nullptr);
-  if (ServerState::instance()->isCoordinator()) {
-    // In the coordinator case we do not fill the index
-    // We only inform the others.
-    addIndexCoordinator(idx, true);
-    created = true;
-    return idx;
-  }
-
-  int res = getPhysical()->saveIndex(trx, idx);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
-  // Until here no harm is done if sth fails. The shared ptr will clean up. if
-  // left before
-
-  addIndex(idx);
-  {
-    bool const doSync =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database")
-            ->forceSyncProperties();
-    VPackBuilder builder = toVelocyPackIgnore({"path", "statusString"}, true);
-    updateProperties(builder.slice(), doSync);
-  }
-  created = true;
-  return idx;
-}
-
-/// @brief removes an index by id
-bool LogicalCollection::removeIndex(TRI_idx_iid_t iid) {
-  size_t const n = _indexes.size();
-
-  for (size_t i = 0; i < n; ++i) {
-    auto idx = _indexes[i];
-
-    if (!idx->canBeDropped()) {
-      continue;
-    }
-
-    if (idx->id() == iid) {
-      // found!
-      idx->drop();
-
-      _indexes.erase(_indexes.begin() + i);
-
-      // update statistics
-      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-        --_cleanupIndexes;
-      }
-      if (idx->isPersistent()) {
-        --_persistentIndexes;
-      }
-
-      return true;
-    }
-  }
-
-  // not found
-  return false;
+  return _physical->createIndex(trx, info, created);
 }
 
 /// @brief drops an index, including index file removal and replication
@@ -1130,70 +933,6 @@ void LogicalCollection::persistPhysicalCollection() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   std::string path = engine->createCollection(_vocbase, _cid, this);
   getPhysical()->setPath(path);
-}
-
-/// @brief creates the initial indexes for the collection
-void LogicalCollection::createInitialIndexes() {
-  if (!_indexes.empty()) {
-    return;
-  }
-
-  std::vector<std::shared_ptr<arangodb::Index>> systemIndexes;
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory(); 
-  TRI_ASSERT(idxFactory != nullptr);
-
-  idxFactory->fillSystemIndexes(this, systemIndexes);
-  for (auto const& it : systemIndexes) {
-    addIndex(it);
-  }
-}
-
-std::vector<std::shared_ptr<arangodb::Index>> const*
-LogicalCollection::indexList() const {
-  return &_indexes;
-}
-
-void LogicalCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
-  // primary index must be added at position 0
-  TRI_ASSERT(idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-             _indexes.empty());
-
-  auto const id = idx->id();
-  for (auto const& it : _indexes) {
-    if (it->id() == id) {
-      // already have this particular index. do not add it again
-      return;
-    }
-  }
-
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
-
-  _indexes.emplace_back(idx);
-
-  // update statistics
-  if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-    ++_cleanupIndexes;
-  }
-  if (idx->isPersistent()) {
-    ++_persistentIndexes;
-  }
-}
-
-void LogicalCollection::addIndexCoordinator(
-    std::shared_ptr<arangodb::Index> idx, bool distribute) {
-  auto const id = idx->id();
-  for (auto const& it : _indexes) {
-    if (it->id() == id) {
-      // already have this particular index. do not add it again
-      return;
-    }
-  }
-
-  _indexes.emplace_back(idx);
-  if (distribute) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
 }
 
 /// @brief reads an element from the document collection

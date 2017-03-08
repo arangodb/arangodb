@@ -18,6 +18,8 @@ describe ArangoDB do
     @fastQueryBody = JSON.dump({query: @fastQuery})
     @longQuery = "FOR x IN 1..1 LET y = SLEEP(0.2) LET a = y LET b = a LET c = b LET d = c LET e = d LET f = e  RETURN x"
     @longQueryBody = JSON.dump({query: @longQuery})
+    @queryWithBind = "FOR x IN 1..5 LET y = SLEEP(@value) RETURN x"
+    @queryWithBindBody = JSON.dump({query: @queryWithBind, bindVars: {value: 2}})
     @queryEndpoint ="/_api/cursor"
     @queryPrefix = "api-cursor"
   end
@@ -33,20 +35,24 @@ describe ArangoDB do
       ArangoDB.log_post(@queryPrefix, @queryEndpoint, :body => @fastQueryBody, :headers => {"X-Arango-Async" => async })
     end
   end
-
+  
+  def send_queries_with_bind (count = 1, async = "true") 
+    count.times do
+      ArangoDB.log_post(@queryPrefix, @queryEndpoint, :body => @queryWithBindBody, :headers => {"X-Arango-Async" => async })
+    end
+  end
 
   def contains_query (body, testq = @query)
-      found = false
       res = JSON.parse body
       res.each do |q|
         if q["query"] === testq
-          found = true
+          return q
         end
       end
-      return found
+      return false
   end
 
-  it "should activate Tracking" do
+  it "should activate tracking" do
     doc = ArangoDB.log_put("#{@prefix}-properties", @properties, :body => JSON.dump({enable: true}))
     doc.code.should eq(200)
   end
@@ -79,7 +85,37 @@ describe ArangoDB do
       doc = ArangoDB.log_get("#{@prefix}-current", @current)
       doc.code.should eq(200)
       found = contains_query doc.body, @query
-      found.should eq(true)
+      found.should_not eq(false)
+      found.should have_key("id")
+      found["id"].should match(/^\d+$/)
+      found.should have_key("query")
+      found["query"].should eq(@query)
+      found.should have_key("bindVars")
+      found["bindVars"].should eq({})
+      found.should have_key("runTime")
+      found["runTime"].should be_kind_of(Numeric)
+      found.should have_key("started")
+      found.should have_key("state")
+      found["state"].should be_kind_of(String)
+    end
+    
+    it "should track running queries, with bind parameters" do
+      send_queries_with_bind
+      doc = ArangoDB.log_get("#{@prefix}-current-bind", @current)
+      doc.code.should eq(200)
+      found = contains_query doc.body, @queryWithBind
+      found.should_not eq(false)
+      found.should have_key("id")
+      found["id"].should match(/^\d+$/)
+      found.should have_key("query")
+      found["query"].should eq(@queryWithBind)
+      found.should have_key("bindVars")
+      found["bindVars"].should eq({"value" => 2})
+      found.should have_key("runTime")
+      found["runTime"].should be_kind_of(Numeric)
+      found.should have_key("started")
+      found.should have_key("state")
+      found["state"].should be_kind_of(String)
     end
 
     it "should track slow queries by threshold" do
@@ -99,7 +135,14 @@ describe ArangoDB do
       doc = ArangoDB.log_get("#{@prefix}-slow", @slow)
       doc.code.should eq(200)
       found = contains_query doc.body, @fastQuery
-      found.should eq(true)
+      found.should_not eq(false)
+      found.should have_key("query")
+      found["query"].should eq(@fastQuery)
+      found["bindVars"].should eq({})
+      found.should have_key("runTime")
+      found["runTime"].should be_kind_of(Numeric)
+      found.should have_key("started")
+      found["state"].should eq("finished")
     end
 
     it "should track at most n slow queries" do 
@@ -143,9 +186,12 @@ describe ArangoDB do
       res = JSON.parse doc.body
       res.length.should eq(1)
       # This string is exactly 64 bytes long
-      shortend = "FOR x IN 1..1 LET y = SLEEP(0.2) LET a = y LET b = a LET c = b L"
-      found = contains_query doc.body, shortend + "..."
-      found.should eq(true)
+      shortened = "FOR x IN 1..1 LET y = SLEEP(0.2) LET a = y LET b = a LET c = b L"
+      found = contains_query doc.body, shortened + "..."
+      found.should_not eq(false)
+      found.should have_key("query")
+      found["query"].should eq(shortened + "...")
+      found["bindVars"].should eq({})
     end
 
     it "should properly truncate UTF8 symbols" do
@@ -156,9 +202,12 @@ describe ArangoDB do
       res = JSON.parse doc.body
       res.length.should eq(1)
       # This string is exactly 64 bytes long
-      shortend = "FOR x IN 1..1 LET y = SLEEP(0.2) LET a= y LET b= a LET c= \"öö"
-      found = contains_query doc.body, shortend + "..."
-      found.should eq(true)
+      shortened = "FOR x IN 1..1 LET y = SLEEP(0.2) LET a= y LET b= a LET c= \"öö"
+      found = contains_query doc.body, shortened + "..."
+      found.should_not eq(false)
+      found.should have_key("query")
+      found["query"].should eq(shortened + "...")
+      found["bindVars"].should eq({})
     end
 
     it "should be able to kill a running query" do

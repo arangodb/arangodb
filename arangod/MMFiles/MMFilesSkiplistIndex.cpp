@@ -104,25 +104,25 @@ static int CompareElementElement(void* userData,
   return arangodb::basics::VelocyPackHelper::compare(l, r, true);
 }
 
-bool BaseSkiplistLookupBuilder::isEquality() const { return _isEquality; }
+bool MMFilesBaseSkiplistLookupBuilder::isEquality() const { return _isEquality; }
 
-VPackSlice const* BaseSkiplistLookupBuilder::getLowerLookup() const {
+VPackSlice const* MMFilesBaseSkiplistLookupBuilder::getLowerLookup() const {
   return &_lowerSlice;
 }
 
-bool BaseSkiplistLookupBuilder::includeLower() const { return _includeLower; }
+bool MMFilesBaseSkiplistLookupBuilder::includeLower() const { return _includeLower; }
 
-VPackSlice const* BaseSkiplistLookupBuilder::getUpperLookup() const {
+VPackSlice const* MMFilesBaseSkiplistLookupBuilder::getUpperLookup() const {
   return &_upperSlice;
 }
 
-bool BaseSkiplistLookupBuilder::includeUpper() const { return _includeUpper; }
+bool MMFilesBaseSkiplistLookupBuilder::includeUpper() const { return _includeUpper; }
 
-SkiplistLookupBuilder::SkiplistLookupBuilder(
+MMFilesSkiplistLookupBuilder::MMFilesSkiplistLookupBuilder(
     transaction::Methods* trx,
     std::vector<std::vector<arangodb::aql::AstNode const*>>& ops,
     arangodb::aql::Variable const* var, bool reverse)
-    : BaseSkiplistLookupBuilder(trx) {
+    : MMFilesBaseSkiplistLookupBuilder(trx) {
   _lowerBuilder->openArray();
   if (ops.empty()) {
     // We only use this skiplist to sort. use empty array for lookup
@@ -249,17 +249,17 @@ SkiplistLookupBuilder::SkiplistLookupBuilder(
   }
 }
 
-bool SkiplistLookupBuilder::next() {
+bool MMFilesSkiplistLookupBuilder::next() {
   // The first search value is created during creation.
   // So next is always false.
   return false;
 }
 
-SkiplistInLookupBuilder::SkiplistInLookupBuilder(
+MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
     transaction::Methods* trx,
     std::vector<std::vector<arangodb::aql::AstNode const*>>& ops,
     arangodb::aql::Variable const* var, bool reverse)
-    : BaseSkiplistLookupBuilder(trx), _dataBuilder(trx), _done(false) {
+    : MMFilesBaseSkiplistLookupBuilder(trx), _dataBuilder(trx), _done(false) {
   TRI_ASSERT(!ops.empty());  // We certainly do not need IN here
   transaction::BuilderLeaser tmp(trx);
   std::set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackSorted<true>>
@@ -422,7 +422,7 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
   buildSearchValues();
 }
 
-bool SkiplistInLookupBuilder::next() {
+bool MMFilesSkiplistInLookupBuilder::next() {
   if (_done || !forwardInPosition()) {
     return false;
   }
@@ -430,7 +430,7 @@ bool SkiplistInLookupBuilder::next() {
   return true;
 }
 
-bool SkiplistInLookupBuilder::forwardInPosition() {
+bool MMFilesSkiplistInLookupBuilder::forwardInPosition() {
   std::list<PosStruct>::reverse_iterator it = _inPositions.rbegin();
   while (it != _inPositions.rend()) {
     it->current++;
@@ -448,7 +448,7 @@ bool SkiplistInLookupBuilder::forwardInPosition() {
   return false;
 }
 
-void SkiplistInLookupBuilder::buildSearchValues() {
+void MMFilesSkiplistInLookupBuilder::buildSearchValues() {
   auto inPos = _inPositions.begin();
   _lowerBuilder->clear();
   _lowerBuilder->openArray();
@@ -507,7 +507,7 @@ MMFilesSkiplistIterator::MMFilesSkiplistIterator(LogicalCollection* collection, 
     TRI_Skiplist const* skiplist, size_t numPaths,
     std::function<int(void*, MMFilesSkiplistIndexElement const*, MMFilesSkiplistIndexElement const*,
                       MMFilesSkiplistCmpType)> const& CmpElmElm,
-    bool reverse, BaseSkiplistLookupBuilder* builder)
+    bool reverse, MMFilesBaseSkiplistLookupBuilder* builder)
     : IndexIterator(collection, trx, mmdr, index),
       _skiplistIndex(skiplist),
       _numPaths(numPaths),
@@ -1235,14 +1235,14 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
   }
 
   if (usesIn) {
-    auto builder = std::make_unique<SkiplistInLookupBuilder>(
+    auto builder = std::make_unique<MMFilesSkiplistInLookupBuilder>(
         trx, mapping, reference, reverse);
     return new MMFilesSkiplistIterator(_collection, trx, mmdr, this,
                                        _skiplistIndex, numPaths(), CmpElmElm,
                                        reverse, builder.release());
   }
   auto builder =
-      std::make_unique<SkiplistLookupBuilder>(trx, mapping, reference, reverse);
+      std::make_unique<MMFilesSkiplistLookupBuilder>(trx, mapping, reference, reverse);
   return new MMFilesSkiplistIterator(_collection, trx, mmdr, this,
                                      _skiplistIndex, numPaths(), CmpElmElm,
                                      reverse, builder.release());

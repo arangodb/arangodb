@@ -1160,6 +1160,36 @@ bool Query::getBooleanOption(char const* option, bool defaultValue) const {
   return value.getBool();
 }
 
+/// @brief return the included shards from the options
+std::unordered_set<std::string> Query::includedShards() const {
+  std::unordered_set<std::string> result;
+
+  if (_options == nullptr) {
+    return result;
+  }
+
+  VPackSlice options = _options->slice();
+  if (!options.isObject()) {
+    return result;
+  }
+
+  VPackSlice value = options.get("shardIds");
+  if (!value.isArray()) {
+    return result;
+  }
+
+  VPackArrayIterator it(value);
+  while (it.valid()) {
+    VPackSlice value = it.value();
+    if (value.isString()) {
+      result.emplace(value.copyString());
+    }
+    it.next();
+  }
+
+  return result;
+}
+
 /// @brief convert the list of warnings to VelocyPack.
 ///        Will add a new entry { ..., warnings: <warnings>, } if there are
 ///        warnings. If there are none it will not modify the builder

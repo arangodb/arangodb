@@ -41,7 +41,7 @@ MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(ApplicationServer* server)
   requiresElevatedPrivileges(false);
   startsAfter("Database"); 
   startsAfter("MMFilesLogfileManager");
-  startsAfter("PersistentIndex");
+  startsAfter("MMFilesPersistentIndex");
 }
 
 /// @brief run the recovery procedure
