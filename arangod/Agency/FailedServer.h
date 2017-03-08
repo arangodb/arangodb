@@ -35,6 +35,9 @@ struct FailedServer : public Job {
                std::string const& creator = std::string(),
                std::string const& failed = std::string());
 
+  FailedServer(Node const& snapshot, Agent* agent,
+               JOB_STATUS status, std::string const& jobId);
+
   virtual ~FailedServer();
 
   virtual bool start() override final;

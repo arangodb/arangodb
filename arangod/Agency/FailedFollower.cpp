@@ -36,32 +36,40 @@ FailedFollower::FailedFollower(Node const& snapshot, Agent* agent,
                                std::string const& shard,
                                std::string const& from,
                                std::string const& to)
-    : Job(snapshot, agent, jobId, creator),
+    : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
       _from(from),
       _to(to) {}
 
-FailedFollower::~FailedFollower() {}
+FailedFollower::FailedFollower(Node const& snapshot, Agent* agent,
+                               JOB_STATUS status, std::string const& jobId)
+    : Job(status, snapshot, agent, jobId) {
 
-void FailedFollower::run() {
+  // Get job details from agency:
   try {
-    JOB_STATUS js = status();
-
-    if (js == TODO) {
-      start();
-    } else if (js == NOTFOUND) {
-      if (create()) {
-        start();
-      }
-    }
+    std::string path = pos[status] + _jobId;
+    _database = _snapshot(path + "database").getString();
+    _collection = _snapshot(path + "collection").getString();
+    _from = _snapshot(path + "fromServer").getString();
+    _to = _snapshot(path + "toServer").getString();
+    _shard = _snapshot(path + "shard").getString();
+    _creator = _snapshot(path + "creator").slice().copyString();
   } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
-    finish("Shards/" + _shard, false, e.what());
+    std::stringstream err;
+    err << "Failed to find job " << _jobId << " in agency: " << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
+    finish("Shards/" + _shard, false, err.str());
+    _status = FAILED;
   }
 }
 
+FailedFollower::~FailedFollower() {}
+
+void FailedFollower::run() {
+  runHelper("Shards/" + _shard);
+}
 
 bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
 
@@ -217,66 +225,47 @@ bool FailedFollower::start() {
 }
 
 JOB_STATUS FailedFollower::status() {
-  auto status = exists();
+  if (_status != PENDING) {
+    return _status;
+  }
+  // FIXME: this is no more needed because all was done in start()
+  // FIXME: do not wait for in sync any more, so status == PENDING
+  // FIXME: has nothing to do any more
+  // FIXME: do we need a list of shards in FailedServers???
 
-  if (status != NOTFOUND) {  // Get job details from agency
+  Node const& job = _snapshot(pendingPrefix + _jobId);
+  std::string database = job("database").toJson(),
+              collection = job("collection").toJson(),
+              shard = job("shard").toJson();
 
-    try {
-      _database = _snapshot(pos[status] + _jobId + "/database").getString();
-      _collection = _snapshot(pos[status] + _jobId + "/collection").getString();
-      _from = _snapshot(pos[status] + _jobId + "/fromServer").getString();
-      _to = _snapshot(pos[status] + _jobId + "/toServer").getString();
-      _shard = _snapshot(pos[status] + _jobId + "/shard").getString();
-    } catch (std::exception const& e) {
-      std::stringstream err;
-      err << "Failed to find job " << _jobId << " in agency: " << e.what();
-      LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
-      finish("Shards/" + _shard, false, err.str());
-      return FAILED;
+  std::string planPath = planColPrefix + database + "/" + collection +
+                         "/shards/" + shard,
+              curPath = curColPrefix + database + "/" + collection + "/" +
+                        shard + "/servers";
+
+  Node const& planned = _snapshot(planPath);
+  Node const& current = _snapshot(curPath);
+
+  if (compareServerLists(planned.slice(), current.slice())) {
+    // Remove shard from /arango/Target/FailedServers/<server> array
+    Builder del;
+    del.openArray();
+    del.openObject();
+    std::string path = agencyPrefix + failedServersPrefix + "/" + _from;
+    del.add(path, VPackValue(VPackValueType::Object));
+    del.add("op", VPackValue("erase"));
+    del.add("val", VPackValue(_shard));
+    del.close();
+    del.close();
+    del.close();
+    write_ret_t res = transact(_agent, del);
+
+    if (finish("Shards/" + shard)) {
+      return FINISHED;
     }
   }
 
-  if (status == PENDING) {
-
-    // FIXME: this is no more needed because all was done in start()
-    // FIXME: do not wait for in sync any more, so status == PENDING
-    // FIXME: has nothing to do any more
-    // FIXME: do we need a list of shards in FailedServers???
-
-    Node const& job = _snapshot(pendingPrefix + _jobId);
-    std::string database = job("database").toJson(),
-                collection = job("collection").toJson(),
-                shard = job("shard").toJson();
-
-    std::string planPath = planColPrefix + database + "/" + collection +
-                           "/shards/" + shard,
-                curPath = curColPrefix + database + "/" + collection + "/" +
-                          shard + "/servers";
-
-    Node const& planned = _snapshot(planPath);
-    Node const& current = _snapshot(curPath);
-
-    if (compareServerLists(planned.slice(), current.slice())) {
-      // Remove shard from /arango/Target/FailedServers/<server> array
-      Builder del;
-      del.openArray();
-      del.openObject();
-      std::string path = agencyPrefix + failedServersPrefix + "/" + _from;
-      del.add(path, VPackValue(VPackValueType::Object));
-      del.add("op", VPackValue("erase"));
-      del.add("val", VPackValue(_shard));
-      del.close();
-      del.close();
-      del.close();
-      write_ret_t res = transact(_agent, del);
-  
-      if (finish("Shards/" + shard)) {
-        return FINISHED;
-      }
-    }
-  }
-
-  return status;
+  return _status;
 }
 
 void FailedFollower::abort() {

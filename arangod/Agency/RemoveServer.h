@@ -35,6 +35,9 @@ struct RemoveServer : public Job {
                  std::string const& creator = std::string(),
                  std::string const& server = std::string());
   
+  RemoveServer(Node const& snapshot, Agent* agent,
+               JOB_STATUS status, std::string const& jobId);
+
   virtual ~RemoveServer();
   
   virtual JOB_STATUS status() override final;

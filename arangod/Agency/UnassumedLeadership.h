@@ -39,6 +39,9 @@ struct UnassumedLeadership : public Job {
                       std::string const& shard = std::string(),
                       std::string const& server = std::string());
 
+  UnassumedLeadership(Node const& snapshot, Agent* agent,
+                      JOB_STATUS status, std::string const& jobId);
+
   virtual ~UnassumedLeadership();
 
   bool reassignShard();

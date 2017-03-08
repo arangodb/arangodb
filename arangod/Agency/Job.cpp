@@ -49,9 +49,10 @@ bool arangodb::consensus::compareServerLists(Slice plan, Slice current) {
   return equalLeader && currv == planv;
 }
 
-Job::Job(Node const& snapshot, Agent* agent, std::string const& jobId,
-         std::string const& creator)
-  : _snapshot(snapshot),
+Job::Job(JOB_STATUS status, Node const& snapshot, Agent* agent,
+         std::string const& jobId, std::string const& creator)
+  : _status(status),
+    _snapshot(snapshot),
     _agent(agent),
     _jobId(jobId),
     _creator(creator),
@@ -78,12 +79,10 @@ JOB_STATUS Job::exists() const {
   }
   
   return NOTFOUND;
-  
 }
 
-
 bool Job::finish(std::string const& type, bool success,
-                 std::string const& reason) const {
+                 std::string const& reason) {
   
   Builder pending, finished;
   
@@ -140,15 +139,7 @@ bool Job::finish(std::string const& type, bool success,
   finished.close();
 
   // --- Remove block if specified
-  if (jobType == "moveShard") {
-    for (auto const& shard :
-           VPackArrayIterator(pending.slice()[0].get("shards"))) {
-      finished.add(agencyPrefix + "/Supervision/Shards/" + shard.copyString(),
-                   VPackValue(VPackValueType::Object));
-      finished.add("op", VPackValue("delete"));
-      finished.close();
-    }
-  } else if (type != "") {
+  if (type != "") {
     finished.add(agencyPrefix + "/Supervision/" + type,
                  VPackValue(VPackValueType::Object));
     finished.add("op", VPackValue("delete"));
@@ -163,6 +154,7 @@ bool Job::finish(std::string const& type, bool success,
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Successfully finished job " << type << "(" << _jobId << ")";
+    _status = (success ? FINISHED : FAILED);
     return true;
   }
 
@@ -372,5 +364,19 @@ void Job::addBlockServer(Builder& trx, std::string server, std::string jobId) {
 
 void Job::addBlockShard(Builder& trx, std::string shard, std::string jobId) {
   trx.add(agencyPrefix + blockedShardsPrefix + shard, VPackValue(jobId));
+}
+
+void Job::addReleaseServer(Builder& trx, std::string server) {
+  trx.add(VPackValue(agencyPrefix + blockedServersPrefix + server));
+  { VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue("delete"));
+  }
+}
+
+void Job::addReleaseShard(Builder& trx, std::string shard) {
+  trx.add(VPackValue(agencyPrefix + blockedShardsPrefix + shard));
+  { VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue("delete"));
+  }
 }
 

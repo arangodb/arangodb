@@ -51,6 +51,8 @@ struct AddFollower : public Job {
                std::string const& shard = std::string(),
                std::vector<std::string> const& newFollowers = {});
 
+  AddFollower (Node const& snapshot, Agent* agent,
+               JOB_STATUS status, std::string const& jobId);
   
   virtual ~AddFollower ();
   

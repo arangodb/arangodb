@@ -106,19 +106,35 @@ struct Job {
       collection(c), shard(s) {}
   };
   
-  Job(Node const& snapshot, Agent* agent, std::string const& jobId,
-      std::string const& creator = std::string());
+  Job(JOB_STATUS status, Node const& snapshot, Agent* agent,
+      std::string const& jobId, std::string const& creator = std::string());
 
   virtual ~Job();
 
   virtual void run() = 0;
+
+  void runHelper(std::string const& removePlace) {
+		try {
+			if (_status == TODO) {
+				start();
+			} else if (_status == NOTFOUND) {
+				if (create(nullptr)) {
+					start();
+				}
+			}
+		} catch (std::exception const& e) {
+			LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << ": " << __FILE__
+        << ":" << __LINE__;
+			finish(removePlace, false, e.what());
+		}
+  }
 
   virtual void abort() = 0;
 
   virtual JOB_STATUS exists() const;
 
   virtual bool finish(std::string const& type, bool success = true,
-                      std::string const& reason = std::string()) const;
+                      std::string const& reason = std::string());
   virtual JOB_STATUS status() = 0;
 
   virtual bool create(std::shared_ptr<VPackBuilder> b) = 0;
@@ -137,6 +153,7 @@ struct Job {
     Node const& snap, std::string const& db, std::string const& col,
     std::string const& shrd);
 
+  JOB_STATUS _status;
   Node const _snapshot;
   Agent* _agent;
   std::string _jobId;
@@ -164,12 +181,14 @@ struct Job {
   static void addBlockServer(Builder& trx, std::string server,
                              std::string jobId);
   static void addBlockShard(Builder& trx, std::string shard, std::string jobId);
+  static void addReleaseServer(Builder& trx, std::string server);
+  static void addReleaseShard(Builder& trx, std::string shard);
   static void addPreconditionServerNotBlocked(Builder& pre, std::string server);
   static void addPreconditionShardNotBlocked(Builder& pre, std::string shard);
   static void addPreconditionUnchanged(Builder& pre,
     std::string key, Slice value);
 };
-}
-}
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

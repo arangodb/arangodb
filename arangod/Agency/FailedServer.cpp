@@ -35,24 +35,29 @@ using namespace arangodb::consensus;
 FailedServer::FailedServer(Node const& snapshot, Agent* agent,
                            std::string const& jobId, std::string const& creator,
                            std::string const& server)
-    : Job(snapshot, agent, jobId, creator), _server(server) {}
+    : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(server) {}
+
+FailedServer::FailedServer(Node const& snapshot, Agent* agent,
+                           JOB_STATUS status, std::string const& jobId)
+    : Job(status, snapshot, agent, jobId) {
+  // Get job details from jobId:
+  try {
+    std::string path = pos[status] + _jobId + "/";
+    _server = _snapshot(path + "server").getString();
+    _creator = _snapshot(path + "creator").getString();
+  } catch (std::exception const& e) {
+    std::stringstream err;
+    err << "Failed to find job " << _jobId << " in agency: " << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
+    finish("DBServers/" + _server, false, err.str());
+    _status = FAILED;
+  }
+}
 
 FailedServer::~FailedServer() {}
 
 void FailedServer::run() {
-  try {
-    JOB_STATUS js = status();
-    if (js == TODO) {
-      start();
-    } else if (js == NOTFOUND) {
-      if (create()) {
-        start();
-      }
-    }
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
-    finish("DBServers/" + _server, false, e.what());
-  }
+  runHelper("DBServers/" + _server);
 }
 
 bool FailedServer::start() {
@@ -72,11 +77,11 @@ bool FailedServer::start() {
   
   // Abort job blocking server if abortable
   try {
-     std::string jp = _snapshot(blockedServersPrefix + _server).getString();
-    if (!abortable(_snapshot, jp)) {
+     std::string jobId = _snapshot(blockedServersPrefix + _server).getString();
+    if (!abortable(_snapshot, jobId)) {
       return false;
     } else {
-      JobContext(jp, _snapshot, _agent).abort();
+      JobContext(PENDING, jobId, _snapshot, _agent).abort();
     }
   } catch (...) {}
     
@@ -288,87 +293,74 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
 }
 
 JOB_STATUS FailedServer::status() {
-  auto status = exists();
-
-  if (status != NOTFOUND) {  // Get job details from agency
-
-    try {
-      _server = _snapshot(pos[status] + _jobId + "/server").getString();
-    } catch (std::exception const& e) {
-      std::stringstream err;
-      err << "Failed to find job " << _jobId << " in agency: " << e.what();
-      LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
-      finish("DBServers/" + _server, false, err.str());
-      return FAILED;
-    }
+  if (_status != PENDING) {
+    return _status;
   }
 
-  if (status == PENDING) {
-    auto const& serverHealth =
-      _snapshot(healthPrefix + _server + "/Status").getString();
+  auto const& serverHealth =
+    _snapshot(healthPrefix + _server + "/Status").getString();
 
-    // mop: ohhh...server is healthy again!
-    bool serverHealthy = serverHealth == Supervision::HEALTH_STATUS_GOOD;
+  // mop: ohhh...server is healthy again!
+  bool serverHealthy = serverHealth == Supervision::HEALTH_STATUS_GOOD;
 
-    std::shared_ptr<Builder> deleteTodos;
+  std::shared_ptr<Builder> deleteTodos;
 
-    Node::Children const todos = _snapshot(toDoPrefix).children();
-    Node::Children const pends = _snapshot(pendingPrefix).children();
-    bool hasOpenChildTasks = false;
+  Node::Children const todos = _snapshot(toDoPrefix).children();
+  Node::Children const pends = _snapshot(pendingPrefix).children();
+  bool hasOpenChildTasks = false;
 
-    for (auto const& subJob : todos) {
-      if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
-        if (serverHealthy) {
-          if (!deleteTodos) {
-            deleteTodos.reset(new Builder());
-            deleteTodos->openArray();
-            deleteTodos->openObject();
-          }
-          deleteTodos->add(
-            agencyPrefix + toDoPrefix + subJob.first,
-            VPackValue(VPackValueType::Object));
-          deleteTodos->add("op", VPackValue("delete"));
-          deleteTodos->close();
-        } else {
-          hasOpenChildTasks = true;
+  for (auto const& subJob : todos) {
+    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
+      if (serverHealthy) {
+        if (!deleteTodos) {
+          deleteTodos.reset(new Builder());
+          deleteTodos->openArray();
+          deleteTodos->openObject();
         }
-      }
-    }
-
-    for (auto const& subJob : pends) {
-      if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
+        deleteTodos->add(
+          agencyPrefix + toDoPrefix + subJob.first,
+          VPackValue(VPackValueType::Object));
+        deleteTodos->add("op", VPackValue("delete"));
+        deleteTodos->close();
+      } else {
         hasOpenChildTasks = true;
       }
     }
+  }
 
-    // FIXME: sub-jobs should terminate themselves if server "GOOD" again
-    // FIXME: thus the deleteTodos here is unnecessary
- 
-    if (deleteTodos) {
-      LOG_TOPIC(INFO, Logger::AGENCY)
-        << "Server " << _server << " is healthy again. Will try to delete"
-        "any jobs which have not yet started!";
-      deleteTodos->close();
-      deleteTodos->close();
-      // Transact to agency
-      write_ret_t res = transact(_agent, *deleteTodos);
-
-      if (!res.accepted || res.indices.size() != 1 || !res.indices[0]) {
-        LOG_TOPIC(WARN, Logger::AGENCY)
-          << "Server was healthy. Tried deleting subjobs but failed :(";
-        return status;
-      }
-    }
-
-    // FIXME: what if some subjobs have failed, we should fail then
-    if (!hasOpenChildTasks) {
-      if (finish("DBServers/" + _server)) {
-        return FINISHED;
-      }
+  for (auto const& subJob : pends) {
+    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
+      hasOpenChildTasks = true;
     }
   }
 
-  return status;
+  // FIXME: sub-jobs should terminate themselves if server "GOOD" again
+  // FIXME: thus the deleteTodos here is unnecessary
+
+  if (deleteTodos) {
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Server " << _server << " is healthy again. Will try to delete"
+      "any jobs which have not yet started!";
+    deleteTodos->close();
+    deleteTodos->close();
+    // Transact to agency
+    write_ret_t res = transact(_agent, *deleteTodos);
+
+    if (!res.accepted || res.indices.size() != 1 || !res.indices[0]) {
+      LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Server was healthy. Tried deleting subjobs but failed :(";
+      return _status;
+    }
+  }
+
+  // FIXME: what if some subjobs have failed, we should fail then
+  if (!hasOpenChildTasks) {
+    if (finish("DBServers/" + _server)) {
+      return FINISHED;
+    }
+  }
+
+  return _status;
 }
 
 void FailedServer::abort() {

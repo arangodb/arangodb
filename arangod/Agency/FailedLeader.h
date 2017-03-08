@@ -39,6 +39,9 @@ struct FailedLeader : public Job {
                std::string const& from = std::string(),
                std::string const& to = std::string());
 
+  FailedLeader(Node const& snapshot, Agent* agent,
+               JOB_STATUS status, std::string const& jobId);
+
   virtual ~FailedLeader();
 
   virtual bool create(std::shared_ptr<VPackBuilder> b = nullptr) override final;

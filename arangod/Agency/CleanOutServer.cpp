@@ -33,93 +33,85 @@ CleanOutServer::CleanOutServer(Node const& snapshot, Agent* agent,
                                std::string const& jobId,
                                std::string const& creator,
                                std::string const& server)
-    : Job(snapshot, agent, jobId, creator), _server(id(server)) {}
+    : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(id(server)) {}
+
+CleanOutServer::CleanOutServer(Node const& snapshot, Agent* agent,
+                               JOB_STATUS status, std::string const& jobId)
+    : Job(status, snapshot, agent, jobId) {
+  // Get job details from agency:
+  try {
+    std::string path = pos[status] + _jobId + "/";
+    _server = _snapshot(path + "server").getString();
+    _creator = _snapshot(path + "creator").getString();
+  } catch (std::exception const& e) {
+    std::stringstream err;
+    err << "Failed to find job " << _jobId << " in agency: " << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
+    finish("DBServers/" + _server, false, err.str());
+    _status = FAILED;
+  }
+}
 
 CleanOutServer::~CleanOutServer() {}
 
 void CleanOutServer::run() {
-  try {
-    JOB_STATUS js = status();
-    if (js == TODO) {
-      start();
-    } else if (js == NOTFOUND) {
-      if (create()) {
-        start();
-      }
-    }
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
-    finish("DBServers/" + _server, false, e.what());
-  }
+  runHelper("DBServers/" + _server);
 }
 
 JOB_STATUS CleanOutServer::status() {
-  auto status = exists();
+  if (_status != PENDING) {
+    return _status;
+  }
 
-  if (status != NOTFOUND) {  // Get job details from agency
+  Node::Children const todos = _snapshot(toDoPrefix).children();
+  Node::Children const pends = _snapshot(pendingPrefix).children();
+  size_t found = 0;
 
-    try {
-      _server = _snapshot(pos[status] + _jobId + "/server").getString();
-    } catch (std::exception const& e) {
-      std::stringstream err;
-      err << "Failed to find job " << _jobId << " in agency: " << e.what();
-      LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
-      finish("DBServers/" + _server, false, err.str());
-      return FAILED;
+  for (auto const& subJob : todos) {
+    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
+      found++;
+    }
+  }
+  for (auto const& subJob : pends) {
+    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
+      found++;
     }
   }
 
-  if (status == PENDING) {
-    Node::Children const todos = _snapshot(toDoPrefix).children();
-    Node::Children const pends = _snapshot(pendingPrefix).children();
-    size_t found = 0;
+  // FIXME: implement timeout here?
 
-    for (auto const& subJob : todos) {
-      if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
-        found++;
-      }
-    }
-    for (auto const& subJob : pends) {
-      if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
-        found++;
-      }
-    }
-
-    // FIXME: implement timeout here?
-
-    if (found == 0) {
-      // Put server in /Target/CleanedServers:
-      Builder reportTrx;
+  if (found == 0) {
+    // Put server in /Target/CleanedServers:
+    Builder reportTrx;
+    {
+      VPackArrayBuilder guard(&reportTrx);
       {
-        VPackArrayBuilder guard(&reportTrx);
+        VPackObjectBuilder guard3(&reportTrx);
+        reportTrx.add(VPackValue(agencyPrefix + "/Target/CleanedServers"));
         {
-          VPackObjectBuilder guard3(&reportTrx);
-          reportTrx.add(VPackValue(agencyPrefix + "/Target/CleanedServers"));
-          {
-            VPackObjectBuilder guard4(&reportTrx);
-            reportTrx.add("op", VPackValue("push"));
-            reportTrx.add("new", VPackValue(_server));
-          }
+          VPackObjectBuilder guard4(&reportTrx);
+          reportTrx.add("op", VPackValue("push"));
+          reportTrx.add("new", VPackValue(_server));
         }
       }
-      // Transact to agency
-      write_ret_t res = transact(_agent, reportTrx);
+    }
+    // Transact to agency
+    write_ret_t res = transact(_agent, reportTrx);
 
-      if (res.accepted && res.indices.size() == 1 && res.indices[0] != 0) {
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Have reported " << _server
-                                        << " in /Target/CleanedServers";
-      } else {
-        LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to report " << _server
-                                       << " in /Target/CleanedServers";
-      }
+    if (res.accepted && res.indices.size() == 1 && res.indices[0] != 0) {
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Have reported " << _server
+                                      << " in /Target/CleanedServers";
+    } else {
+      LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to report " << _server
+                                     << " in /Target/CleanedServers";
+    }
 
-      if (finish("DBServers/" + _server)) {
-        return FINISHED;
-      }
+    if (finish("DBServers/" + _server)) {
+      return FINISHED;
     }
   }
 
-  return status;
+  return _status;
 }
 
 // Only through shrink cluster
@@ -274,17 +266,19 @@ bool CleanOutServer::scheduleMoveShards() {
 
       for (auto const& shard : collection("shards").children()) {
         
-        bool found = false;
+        int found = -1;
         VPackArrayIterator dbsit(shard.second->slice());
 
         // Only shards, which are affected
+        int count = 0;
         for (auto const& dbserver : dbsit) {
           if (dbserver.copyString() == _server) {
-            found = true;
+            found = count;
             break;
           }
+          count++;
         }
-        if (!found) {
+        if (found == -1) {
           continue;
         }
 
@@ -323,7 +317,7 @@ bool CleanOutServer::scheduleMoveShards() {
         // Schedule move
         MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                   _jobId, database.first, collptr.first,
-                  shard.first, _server, toServer).run();
+                  shard.first, _server, toServer, found == 0).run();
         
       }
     }

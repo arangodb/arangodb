@@ -35,6 +35,9 @@ struct CleanOutServer : public Job {
                  std::string const& creator = std::string(),
                  std::string const& server = std::string());
 
+  CleanOutServer(Node const& snapshot, Agent* agent,
+                 JOB_STATUS status, std::string const& jobId);
+
   virtual ~CleanOutServer();
 
   virtual JOB_STATUS status() override final;
