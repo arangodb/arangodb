@@ -11,7 +11,7 @@ endif()
 
 # Global macros ----------------------------------------------------------------
 macro (generate_root_config name)
-  message(INFO "reading configuration file ${PROJECT_SOURCE_DIR}/etc/arangodb3/${name}.conf.in")
+  message(STATUS "reading configuration file ${PROJECT_SOURCE_DIR}/etc/arangodb3/${name}.conf.in")
   FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb3/${name}.conf.in FileContent)
   
   STRING(REPLACE "@PKGDATADIR@" "@ROOTDIR@/${CMAKE_INSTALL_DATAROOTDIR_ARANGO}"

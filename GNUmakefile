@@ -16,7 +16,7 @@ warning:
 	@echo "  cmake .. -DCMAKE_BUILD_TYPE=Release"
 	@echo "  make"
 	@echo ""
-	@if test `uname` == 'Darwin'; then make warning-mac; fi
+	@if test "`uname`" = 'Darwin'; then make warning-mac; fi
 	@echo "Use 'make help' to see more options."
 
 warning-mac:
