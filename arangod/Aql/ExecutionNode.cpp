@@ -1208,7 +1208,9 @@ double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
   nrItems = incoming * count;
   // We do a full collection scan for each incoming item.
   // random iteration is slightly more expensive than linear iteration
-  return depCost + nrItems * (_random ? 1.005 : 1.0);
+  // we also penalize each EnumerateCollectionNode slightly (and do not
+  // do the same for IndexNodes) so IndexNodes will be preferred
+  return depCost + nrItems * (_random ? 1.005 : 1.0) + 1.0;
 }
 
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
