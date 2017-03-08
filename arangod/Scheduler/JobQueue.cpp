@@ -30,10 +30,10 @@
 
 using namespace arangodb;
 
-namespace {
+namespace arangodb {
 class JobQueueThread final
-    : public std::enable_shared_from_this<JobQueueThread>,
-      public Thread {
+    : public Thread,
+      public std::enable_shared_from_this<JobQueueThread> {
  public:
   JobQueueThread(JobQueue* server, rest::Scheduler* scheduler)
       : Thread("JobQueueThread"), _jobQueue(server), _scheduler(scheduler) {}

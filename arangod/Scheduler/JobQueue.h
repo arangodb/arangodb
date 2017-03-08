@@ -37,6 +37,8 @@ namespace rest {
 class Scheduler;
 }
 
+class JobQueueThread;
+
 class JobQueue {
  public:
   // ordered by priority (highst prio first)
@@ -88,7 +90,7 @@ class JobQueue {
 
   basics::ConditionVariable _queueCondition;
 
-  std::shared_ptr<Thread> _queueThread;
+  std::shared_ptr<JobQueueThread> _queueThread;
 };
 }
 
