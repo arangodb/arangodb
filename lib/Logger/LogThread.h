@@ -24,11 +24,16 @@
 #ifndef ARANGODB_LOGGER_LOG_THREAD_H
 #define ARANGODB_LOGGER_LOG_THREAD_H 1
 
+#include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 
 #include <boost/lockfree/queue.hpp>
 
 namespace arangodb {
+namespace basics {
+class ConditionVariable;
+}
+
 struct LogMessage;
 
 class LogThread final : public Thread {
@@ -46,7 +51,10 @@ class LogThread final : public Thread {
   void run() override;
 
  private:
+  static arangodb::basics::ConditionVariable* CONDITION;
   static boost::lockfree::queue<LogMessage*>* MESSAGES;
+
+  arangodb::basics::ConditionVariable _condition;
   boost::lockfree::queue<LogMessage*> _messages;
 };
 }

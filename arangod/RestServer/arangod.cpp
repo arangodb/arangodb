@@ -41,6 +41,7 @@
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
@@ -128,6 +129,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new ActionFeature(&server));
     server.addFeature(new AgencyFeature(&server));
     server.addFeature(new aql::AqlFunctionFeature(&server));
+    server.addFeature(new aql::OptimizerRulesFeature(&server));
     server.addFeature(new AuthenticationFeature(&server));
     server.addFeature(new AqlFeature(&server));
     server.addFeature(new BootstrapFeature(&server));

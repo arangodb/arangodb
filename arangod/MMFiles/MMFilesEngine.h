@@ -259,9 +259,11 @@ public:
   int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
                       MMFilesOperationsType const&);
 
-  /// @brief Add engine specific AQL functions.
-
+  /// @brief Add engine-specific AQL functions.
   void addAqlFunctions() const override;
+  
+  /// @brief Add engine-specific optimizer rules
+  void addOptimizerRules() const override;
   
  private:
   /// @brief: check the initial markers in a datafile

@@ -22,16 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogThread.h"
-
+#include "Basics/ConditionLocker.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
 
+arangodb::basics::ConditionVariable* LogThread::CONDITION = nullptr;
 boost::lockfree::queue<LogMessage*>* LogThread::MESSAGES = nullptr;
 
 LogThread::LogThread(std::string const& name) : Thread(name), _messages(0) {
   MESSAGES = &_messages;
+  CONDITION = &_condition;
 }
 
 LogThread::~LogThread() {
@@ -54,8 +56,9 @@ void LogThread::flush() {
     if (MESSAGES->empty()) {
       break;
     }
-
-    usleep(10 * 1000);
+  
+    CONDITION_LOCKER(guard, *CONDITION);
+    guard.signal();
   }
 }
 
@@ -72,7 +75,8 @@ void LogThread::run() {
       delete msg;
     }
 
-    usleep(100 * 1000);
+    CONDITION_LOCKER(guard, *CONDITION);
+    guard.wait(10 * 1000);
   }
 
   while (_messages.pop(msg)) {

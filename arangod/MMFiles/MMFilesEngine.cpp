@@ -38,6 +38,7 @@
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesIndexFactory.h"
+#include "MMFiles/MMFilesOptimizerRules.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesTransactionCollection.h"
@@ -2127,9 +2128,14 @@ int MMFilesEngine::transferMarkers(LogicalCollection* collection,
   return res;
 }
 
-/// @brief Add engine specific AQL functions.
+/// @brief Add engine-specific AQL functions.
 void MMFilesEngine::addAqlFunctions() const {
-  aql::MMFilesAqlFunctions::RegisterFunctions();
+  MMFilesAqlFunctions::RegisterFunctions();
+}
+
+/// @brief Add engine-specific optimizer rules
+void MMFilesEngine::addOptimizerRules() const {
+  MMFilesOptimizerRules::RegisterRules();
 }
 
 /// @brief transfer markers into a collection, actual work

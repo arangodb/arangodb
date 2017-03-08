@@ -2653,10 +2653,12 @@ testFuncs.boost = function (options) {
   let args = [];
   let results = {};
 
+  const icuDir = UNITTESTS_DIR + '/';
+  require('internal').env.ICU_DATA = icuDir;
   const run = locateBoostTest('arangodbtests');
   if (!options.skipBoost) {
     if (run !== '') {
-      results.basics = executeAndWait(run, ['[exclude:longRunning][exclude:cache]'], options, 'basics');
+      results.basics = executeAndWait(run, ['[exclude:longRunning][exclude:cache]', '-r', 'junit', '-o', fs.join('out', 'catch-standard.xml')], options);
     } else {
       results.basics = {
         status: false,
@@ -2667,7 +2669,7 @@ testFuncs.boost = function (options) {
 
   if (!options.skipCache) {
     if (run !== '') {
-      results.cache_suite = executeAndWait(run, ['[cache]'], options,
+      results.cache_suite = executeAndWait(run, ['[cache]', '-r', 'junit', '-o', fs.join('out', 'catch-cache.xml')], options,
         'cache_suite');
     } else {
       results.cache_suite = {
@@ -2679,7 +2681,7 @@ testFuncs.boost = function (options) {
 
   if (!options.skipGeo) {
     if (run !== '') {
-      results.geo_suite = executeAndWait(run, ['[geo]'], options, 'geo_suite');
+      results.geo_suite = executeAndWait(run, ['[geo]', '-r', 'junit', '-o', fs.join('out', 'catch-geo.xml')], options, 'geo_suite');
     } else {
       results.geo_suite = {
         status: false,

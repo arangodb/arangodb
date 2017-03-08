@@ -32,7 +32,7 @@
 #include "Aql/Function.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
-#include "Aql/Optimizer.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/ShortestPathOptions.h"
@@ -331,7 +331,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
   // set up rules
   builder.add(VPackValue("rules"));
   builder.openArray();
-  for (auto const& r : Optimizer::translateRules(_appliedRules)) {
+  for (auto const& r : OptimizerRulesFeature::translateRules(_appliedRules)) {
     builder.add(VPackValue(r));
   }
   builder.close();
@@ -362,7 +362,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
 
 /// @brief get a list of all applied rules
 std::vector<std::string> ExecutionPlan::getAppliedRules() const {
-  return Optimizer::translateRules(_appliedRules);
+  return OptimizerRulesFeature::translateRules(_appliedRules);
 }
 
 /// @brief get a node by its id
