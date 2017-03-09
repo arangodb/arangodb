@@ -43,6 +43,7 @@ class MasterContext {
 
  public:
   MasterContext(){};
+  virtual ~MasterContext(){}
 
   inline uint64_t globalSuperstep() const { return _globalSuperstep; }
 

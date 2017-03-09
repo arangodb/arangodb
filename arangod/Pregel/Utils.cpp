@@ -127,9 +127,9 @@ int Utils::resolveShard(WorkerConfig const* config,
   partial.close();
   //  LOG_TOPIC(INFO, Logger::PREGEL) << "Partial doc: " << partial.toJson();
   int res =
-      ci->getResponsibleShard(info.get(), partial.slice(), true, responsibleShard,
+      ci->getResponsibleShard(info.get(), partial.slice(), false, responsibleShard,
                               usesDefaultShardingAttributes);
-  TRI_ASSERT(usesDefaultShardingAttributes);  // should be true anyway
+  //TRI_ASSERT(usesDefaultShardingAttributes);  // should be true anyway
   
   return res;
 }

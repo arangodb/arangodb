@@ -122,8 +122,8 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       if (_loadedShards.find(vertexShards[i]) != _loadedShards.end()) {
         continue;
       }
-      ShardID const& vertexShard(vertexShards[i]);
-
+      
+      ShardID const& vertexShard = vertexShards[i];
       uint64_t nextEdgeOffset = edgeOffset;
       std::vector<ShardID> edgeLookups;
       // distributeshardslike should cause the edges for a vertex to be
@@ -326,8 +326,8 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
         _graphFormat->copyVertexData(documentId, document, ptr, sizeof(V));
       }
       // load edges
-      for (ShardID const& it : edgeShards) {
-        _loadEdges(trx.get(), it, ventry, documentId);
+      for (ShardID const& edgeShard : edgeShards) {
+        _loadEdges(trx.get(), edgeShard, ventry, documentId);
       }
       vertexOffset++;
       edgeOffset += ventry._edgeCount;
@@ -403,9 +403,12 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods* trx,
         _graphFormat->copyEdgeData(document, edge.data(), sizeof(E));
         if (sourceShard == (prgl_shard_t)-1 ||
             edge._targetShard == (prgl_shard_t)-1) {
+          LOG_TOPIC(ERR, Logger::PREGEL) << "Could not resolve target shard of edge";
           return;
         }
         offset++;
+      } else {
+        LOG_TOPIC(ERR, Logger::PREGEL) << "Could not resolve target shard of edge";
       }
     }
   };
