@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #2367
+
 * added "bindVars" to attributes of currently running and slow queries
 
 * added "jsonl" as input file type for arangoimp

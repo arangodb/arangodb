@@ -576,7 +576,9 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
   } else {
     if (IsInteger(field, fieldLength) || IsDecimal(field, fieldLength)) {
       // numeric value. don't convert
+      _lineBuffer.appendChar('"');
       _lineBuffer.appendText(field, fieldLength);
+      _lineBuffer.appendChar('"');
     } else {
       // non-numeric value
       _lineBuffer.appendJsonEncoded(field, fieldLength);
