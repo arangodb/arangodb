@@ -1252,7 +1252,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   VPackBuilder builder = VPackCollection::merge(slice, patch.slice(), false);
   slice = builder.slice();
 
-  col = _vocbase->createCollection(slice, cid, true);
+  col = _vocbase->createCollection(slice, cid);
 
   if (col == nullptr) {
     return TRI_ERROR_INTERNAL;
@@ -1483,7 +1483,7 @@ int RestReplicationHandler::processRestoreCollection(
   // drop an existing collection if it exists
   if (col != nullptr) {
     if (dropExisting) {
-      int res = _vocbase->dropCollection(col, true, true);
+      int res = _vocbase->dropCollection(col, true);
 
       if (res == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped

@@ -673,7 +673,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         if (other != nullptr) {
           TRI_voc_cid_t otherCid = other->cid();
           state->releaseCollection(otherCid);
-          vocbase->dropCollection(other, true, false);
+          vocbase->dropCollection(other, true);
         }
 
         int res = vocbase->renameCollection(collection, name, true);
@@ -865,7 +865,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
 
         if (collection != nullptr) {
           // drop an existing collection
-          vocbase->dropCollection(collection, true, false);
+          vocbase->dropCollection(collection, true);
         }
 
         PersistentIndexFeature::dropCollection(databaseId, collectionId);
@@ -884,7 +884,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
             TRI_voc_cid_t otherCid = collection->cid();
 
             state->releaseCollection(otherCid);
-            vocbase->dropCollection(collection, true, false);
+            vocbase->dropCollection(collection, true);
           }
         } else {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "empty name attribute in create collection marker for "
@@ -916,12 +916,12 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
             bool oldSync = state->databaseFeature->forceSyncProperties();
             state->databaseFeature->forceSyncProperties(false);
             collection =
-                vocbase->createCollection(b2.slice(), collectionId, false);
+                vocbase->createCollection(b2.slice(), collectionId);
             state->databaseFeature->forceSyncProperties(oldSync);
           } else {
             // collection will be kept
             collection =
-                vocbase->createCollection(b2.slice(), collectionId, false);
+                vocbase->createCollection(b2.slice(), collectionId);
           }
           TRI_ASSERT(collection != nullptr);
         } catch (basics::Exception const& ex) {
@@ -1092,7 +1092,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         }
 
         if (collection != nullptr) {
-          vocbase->dropCollection(collection, true, false);
+          vocbase->dropCollection(collection, true);
         }
         PersistentIndexFeature::dropCollection(databaseId, collectionId);
         break;

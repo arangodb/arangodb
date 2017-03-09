@@ -716,21 +716,97 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
 
   return dirname;
 }
- 
+
+// asks the storage engine to persist the collection.
+// After this call the collection is persisted over recovery.
+// This call will write wal markers.
+arangodb::Result MMFilesEngine::persistCollection(
+    TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection) {
+  TRI_ASSERT(collection != nullptr);
+  TRI_ASSERT(vocbase != nullptr);
+  if (inRecovery()) {
+    // Nothing to do. In recovery we do not write markers.
+    return {};
+  }
+  VPackBuilder builder = collection->toVelocyPackIgnore({"path", "statusString"}, true);
+  VPackSlice const slice = builder.slice();
+
+  auto cid = collection->cid();
+  TRI_ASSERT(cid != 0);
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_COLLECTION,
+                                   vocbase->id(), cid, slice);
+
+    MMFilesWalSlotInfoCopy slotInfo =
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+
+    return {};
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save collection create marker in log: "
+            << TRI_errno_string(res);
+
+  return {res, TRI_errno_string(res)};
+}
+
 // asks the storage engine to drop the specified collection and persist the 
 // deletion info. Note that physical deletion of the collection data must not 
-// be carried out by this call, as there may still be readers of the collection's 
-// data. It is recommended that this operation
-// only sets a deletion flag for the collection but let's an async task perform
-// the actual deletion.
-// the WAL entry for collection deletion will be written *after* the call
-// to "dropCollection" returns
-void MMFilesEngine::prepareDropCollection(TRI_vocbase_t*, arangodb::LogicalCollection*) {
-  // nothing to do here
+// be carried out by this call, as there may
+// still be readers of the collection's data.
+// This call will write the WAL entry for collection deletion
+arangodb::Result MMFilesEngine::dropCollection(
+    TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
+  if (inRecovery()) {
+    // nothing to do here
+    return {};
+  }
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("id", VPackValue(collection->cid_as_string()));
+    builder.add("name", VPackValue(collection->name()));
+    builder.close();
+
+    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_COLLECTION, vocbase->id(), collection->cid(), builder.slice());
+
+    MMFilesWalSlotInfoCopy slotInfo =
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save collection drop marker in log: "
+              << TRI_errno_string(res);
+  }
+
+  return {res, TRI_errno_string(res)};
 }
 
 // perform a physical deletion of the collection
-void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
+// After this call data of this collection is corrupted, only perform if
+// assured that no one is using the collection anymore
+void MMFilesEngine::destroyCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
   std::string const name(collection->name());
   auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   TRI_ASSERT(physical != nullptr);

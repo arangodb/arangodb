@@ -469,7 +469,7 @@ bool State::createCollection(std::string const& name) {
 
   TRI_voc_cid_t cid = 0;
   arangodb::LogicalCollection const* collection =
-      _vocbase->createCollection(body.slice(), cid, true);
+      _vocbase->createCollection(body.slice(), cid);
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");

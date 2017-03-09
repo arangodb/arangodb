@@ -682,7 +682,7 @@ void LogicalCollection::drop() {
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->dropCollection(_vocbase, this);
+  engine->destroyCollection(_vocbase, this);
   _isDeleted = true;
 
   _physical->drop();
