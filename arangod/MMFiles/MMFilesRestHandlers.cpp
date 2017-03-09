@@ -21,30 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_MMFILES_AQL_FUNCTIONS_H
-#define ARANGOD_MMFILES_MMFILES_AQL_FUNCTIONS_H 1
+#include "MMFilesRestHandlers.h"
 
-#include "Basics/Common.h"
-#include "Aql/Functions.h"
+using namespace arangodb;
 
-namespace arangodb {
-namespace aql {
-struct Function;
+void MMFilesRestHandlers::registerResources() {
 }
-
-struct MMFilesAqlFunctions : public aql::Functions {
-  static aql::AqlValue Fulltext(arangodb::aql::Query*, transaction::Methods*,
-                                aql::VPackFunctionParameters const&);
-
-  static aql::AqlValue Near(arangodb::aql::Query*, transaction::Methods*,
-                            aql::VPackFunctionParameters const&);
-
-  static aql::AqlValue Within(arangodb::aql::Query*, transaction::Methods*,
-                              aql::VPackFunctionParameters const&);
-
-  static void registerResources();
-};
-
-} // namespace arangodb
-
-#endif

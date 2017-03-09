@@ -41,6 +41,7 @@
 #include "MMFiles/MMFilesOptimizerRules.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
+#include "MMFiles/MMFilesRestHandlers.h"
 #include "MMFiles/MMFilesTransactionCollection.h"
 #include "MMFiles/MMFilesTransactionContextData.h"
 #include "MMFiles/MMFilesTransactionState.h"
@@ -2256,6 +2257,11 @@ void MMFilesEngine::addOptimizerRules() {
 /// @brief Add engine-specific V8 functions
 void MMFilesEngine::addV8Functions() {
   MMFilesV8Functions::registerResources();
+}
+
+/// @brief Add engine-specific REST handlers
+void MMFilesEngine::addRestHandlers() {
+  MMFilesRestHandlers::registerResources();
 }
 
 /// @brief transfer markers into a collection, actual work

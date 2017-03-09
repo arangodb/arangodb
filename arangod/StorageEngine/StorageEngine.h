@@ -340,6 +340,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   
   /// @brief Add engine-specific V8 functions
   virtual void addV8Functions() = 0;
+  
+  /// @brief Add engine-specific REST handlers
+  virtual void addRestHandlers() = 0;
 
  protected:
   void registerCollection(TRI_vocbase_t* vocbase,

@@ -24,7 +24,7 @@
 #ifndef ARANGOD_MMFILES_MMFILES_OPTIMIZER_RULES_H
 #define ARANGOD_MMFILES_MMFILES_OPTIMIZER_RULES_H 1
 
-#include "Aql/Functions.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {

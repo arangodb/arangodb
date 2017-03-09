@@ -276,6 +276,9 @@ public:
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
   
+  /// @brief Add engine-specific REST handlers
+  void addRestHandlers() override;
+  
   /// @brief transfer markers into a collection
   int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
                       MMFilesOperationsType const&);
