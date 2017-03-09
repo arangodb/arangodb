@@ -481,6 +481,9 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
   _keyOptions = VPackBuilder::clone(physical->keyOptions()).steal();
   MMFilesCollection& mmfiles = *static_cast<MMFilesCollection*>(physical);
   _keyGenerator.reset(KeyGenerator::factory(mmfiles.keyOptions()));
+  _cleanupIndexes = mmfiles._cleanupIndexes;
+  _persistentIndexes = mmfiles._persistentIndexes;
+  _useSecondaryIndexes = mmfiles._useSecondaryIndexes;
   _initialCount = mmfiles._initialCount;
   _revisionError = mmfiles._revisionError;
   _lastRevision = mmfiles._lastRevision;
