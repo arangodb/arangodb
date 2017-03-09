@@ -208,6 +208,12 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual std::string createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                        arangodb::LogicalCollection const* parameters) = 0;
 
+  // asks the storage engine to persist the collection.
+  // After this call the collection is persisted over recovery.
+  virtual arangodb::Result persistCollection(
+      TRI_vocbase_t* vocbase,
+      arangodb::LogicalCollection const* collection) = 0;
+
   // asks the storage engine to drop the specified collection and persist the
   // deletion info. Note that physical deletion of the collection data must not
   // be carried out by this call, as there may
@@ -216,10 +222,12 @@ class StorageEngine : public application_features::ApplicationFeature {
   // the actual deletion.
   // the WAL entry for collection deletion will be written *after* the call
   // to "dropCollection" returns
-  virtual void prepareDropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) = 0;
+  virtual arangodb::Result dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) = 0;
 
   // perform a physical deletion of the collection
-  virtual void dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) = 0;
+  // After this call data of this collection is corrupted, only perform if
+  // assured that no one is using the collection anymore
+  virtual void destroyCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) = 0;
 
   // asks the storage engine to change properties of the collection as specified in
   // the VPack Slice object and persist them. If this operation fails

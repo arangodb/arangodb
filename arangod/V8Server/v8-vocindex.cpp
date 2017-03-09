@@ -726,7 +726,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   try {
     TRI_voc_cid_t cid = 0;
     arangodb::LogicalCollection const* collection =
-        vocbase->createCollection(infoSlice, cid, true);
+        vocbase->createCollection(infoSlice, cid);
 
     TRI_ASSERT(collection != nullptr);
 

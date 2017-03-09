@@ -194,40 +194,6 @@ void TRI_vocbase_t::registerCollection(
   }
 }
 
-/// @brief write a drop collection marker into the log
-int TRI_vocbase_t::writeDropCollectionMarker(TRI_voc_cid_t collectionId,
-                                             std::string const& name) {
-  int res = TRI_ERROR_NO_ERROR;
-
-  try {
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add("id", VPackValue(std::to_string(collectionId)));
-    builder.add("name", VPackValue(name));
-    builder.close();
-
-    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_COLLECTION, _id, collectionId, builder.slice());
-
-    MMFilesWalSlotInfoCopy slotInfo =
-        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
-
-    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
-    }
-  } catch (arangodb::basics::Exception const& ex) {
-    res = ex.code();
-  } catch (...) {
-    res = TRI_ERROR_INTERNAL;
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save collection drop marker in log: "
-              << TRI_errno_string(res);
-  }
-
-  return res;
-}
-
 /// @brief removes a collection name from the global list of collections
 /// This function is called when a collection is dropped.
 /// NOTE: You need a writelock on _collectionsLock
@@ -537,7 +503,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
 
 /// @brief drops a collection, worker function
 int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
-                                        bool writeMarker, DropState& state) {
+                                        DropState& state) {
   state = DROP_EXIT;
   std::string const colName(collection->name());
     
@@ -576,97 +542,94 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   arangodb::aql::PlanCache::instance()->invalidate(this);
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
-  // collection already deleted
-  if (collection->status() == TRI_VOC_COL_STATUS_DELETED) {
-    // mark collection as deleted
-    unregisterCollection(collection);
-    events::DropCollection(colName, TRI_ERROR_NO_ERROR);
-    return TRI_ERROR_NO_ERROR;
-  }
+  switch (collection->status()) {
+    case TRI_VOC_COL_STATUS_DELETED: {
+      // collection already deleted
+      // mark collection as deleted
+      unregisterCollection(collection);
+      break;
+    }
+    case TRI_VOC_COL_STATUS_LOADING: {
+      // collection is loading
+      // loop until status changes
+      // try again later
+      state = DROP_AGAIN;
+      break;
+    }
+    case TRI_VOC_COL_STATUS_UNLOADED: {
+      // collection is unloaded
+      bool doSync =
+          application_features::ApplicationServer::getFeature<DatabaseFeature>(
+              "Database")
+              ->forceSyncProperties();
+      doSync = (doSync && !MMFilesLogfileManager::instance()->isInRecovery());
 
-  // collection is unloaded
-  if (collection->status() == TRI_VOC_COL_STATUS_UNLOADED) {
-    bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-    doSync = (doSync && !MMFilesLogfileManager::instance()->isInRecovery());
-    
-    if (!collection->deleted()) {
-      collection->setDeleted(true);
- 
-      try { 
-        StorageEngine* engine = EngineSelectorFeature::ENGINE;
-        engine->changeCollection(this, collection->cid(), collection, doSync);
-      } catch (arangodb::basics::Exception const& ex) {
-        collection->setDeleted(false);
-        events::DropCollection(colName, ex.code());
-        return ex.code();
-      } catch (std::exception const&) {
-        collection->setDeleted(false);
-        events::DropCollection(colName, TRI_ERROR_INTERNAL);
-        return TRI_ERROR_INTERNAL;
+      if (!collection->deleted()) {
+        collection->setDeleted(true);
+   
+        try { 
+          StorageEngine* engine = EngineSelectorFeature::ENGINE;
+          engine->changeCollection(this, collection->cid(), collection, doSync);
+        } catch (arangodb::basics::Exception const& ex) {
+          collection->setDeleted(false);
+          events::DropCollection(colName, ex.code());
+          return ex.code();
+        } catch (std::exception const&) {
+          collection->setDeleted(false);
+          events::DropCollection(colName, TRI_ERROR_INTERNAL);
+          return TRI_ERROR_INTERNAL;
+        }
       }
+
+      collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
+      unregisterCollection(collection);
+
+      locker.unlock();
+
+      writeLocker.unlock();
+
+      StorageEngine* engine = EngineSelectorFeature::ENGINE;
+      TRI_ASSERT(engine != nullptr);
+      engine->dropCollection(this, collection);
+    
+      DropCollectionCallback(collection);
+      break;
     }
+    case TRI_VOC_COL_STATUS_LOADED:
+    case TRI_VOC_COL_STATUS_UNLOADING: {
+      // collection is loaded
+      collection->setDeleted(true);
 
-    collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
-    unregisterCollection(collection);
+      bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+      doSync = (doSync && !MMFilesLogfileManager::instance()->isInRecovery());
 
-    locker.unlock();
+      VPackBuilder builder;
+      StorageEngine* engine = EngineSelectorFeature::ENGINE;
+      engine->getCollectionInfo(this, collection->cid(), builder, false, 0);
+      CollectionResult res = collection->updateProperties(builder.slice().get("parameters"), doSync);
 
-    writeLocker.unlock();
+      if (!res.successful()) {
+        return res.code;
+      }
 
-    if (writeMarker) {
-      writeDropCollectionMarker(collection->cid(), collection->name());
+      collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
+      unregisterCollection(collection);
+
+      locker.unlock();
+      writeLocker.unlock();
+
+      engine->dropCollection(this, collection);
+      state = DROP_PERFORM;
+      break;
     }
-  
-    DropCollectionCallback(collection);
-
-    events::DropCollection(colName, TRI_ERROR_NO_ERROR);
-    return TRI_ERROR_NO_ERROR;
+    default: {
+      // unknown status
+      events::DropCollection(colName, TRI_ERROR_INTERNAL);
+      return TRI_ERROR_INTERNAL;
+    }
   }
-
-  // collection is loading
-  if (collection->status() == TRI_VOC_COL_STATUS_LOADING) {
-    // loop until status changes
-    // try again later
-    state = DROP_AGAIN;
-    events::DropCollection(colName, TRI_ERROR_NO_ERROR);
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // collection is loaded
-  if (collection->status() == TRI_VOC_COL_STATUS_LOADED ||
-      collection->status() == TRI_VOC_COL_STATUS_UNLOADING) {
-    collection->setDeleted(true);
-
-    bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-    doSync = (doSync && !MMFilesLogfileManager::instance()->isInRecovery());
-
-    VPackBuilder builder;
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    engine->getCollectionInfo(this, collection->cid(), builder, false, 0);
-    CollectionResult res = collection->updateProperties(builder.slice().get("parameters"), doSync);
-
-    if (!res.successful()) {
-      return res.code;
-    }
-
-    collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
-    unregisterCollection(collection);
-
-    locker.unlock();
-    writeLocker.unlock();
-
-    if (writeMarker) {
-      writeDropCollectionMarker(collection->cid(), collection->name());
-    }
-
-    state = DROP_PERFORM;
-    events::DropCollection(colName, TRI_ERROR_NO_ERROR);
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // unknown status
-  events::DropCollection(colName, TRI_ERROR_INTERNAL);
-  return TRI_ERROR_INTERNAL;
+  events::DropCollection(colName, TRI_ERROR_NO_ERROR);
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief closes a database and all collections
@@ -889,7 +852,7 @@ LogicalCollection* TRI_vocbase_t::lookupCollection(TRI_voc_cid_t id) {
 /// but the functionality is not advertised
 arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     VPackSlice parameters,
-    TRI_voc_cid_t cid, bool writeMarker) {
+    TRI_voc_cid_t cid) {
   // check that the name does not contain any strange characters
   if (!LogicalCollection::IsAllowedName(parameters)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -901,44 +864,17 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   // note: cid may be modified by this function call
   arangodb::LogicalCollection* collection = createCollectionWorker(parameters, cid);
   
-  if (!writeMarker) {
-    return collection;
-  }
-
   if (collection == nullptr) {
     // something went wrong... must not continue
     return nullptr;
   }
 
-  VPackBuilder builder = collection->toVelocyPackIgnore({"path", "statusString"}, true);
-  VPackSlice const slice = builder.slice();
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  // TODO Review
+  arangodb::Result res2 = engine->persistCollection(this, collection);
+  // API compatibility, we always return the collection, even if creation failed.
 
-  TRI_ASSERT(cid != 0);
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
-
-  int res = TRI_ERROR_NO_ERROR;
-
-  try {
-    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_COLLECTION, _id, cid, slice);
-
-    MMFilesWalSlotInfoCopy slotInfo =
-        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
-
-    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
-    }
-
-    return collection;
-  } catch (arangodb::basics::Exception const& ex) {
-    res = ex.code();
-  } catch (...) {
-    res = TRI_ERROR_INTERNAL;
-  }
-
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save collection create marker in log: "
-            << TRI_errno_string(res);
-
-  // TODO: what to do here?
   return collection;
 }
 
@@ -1017,7 +953,7 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, boo
 }
 
 /// @brief drops a collection
-int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool allowDropSystem, bool writeMarker) {
+int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool allowDropSystem) {
   TRI_ASSERT(collection != nullptr);
 
   if (!allowDropSystem && 
@@ -1033,7 +969,7 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool 
     {
       READ_LOCKER(readLocker, _inventoryLock);
 
-      res = dropCollectionWorker(collection, writeMarker, state);
+      res = dropCollectionWorker(collection, state);
     }
 
     if (state == DROP_PERFORM) {

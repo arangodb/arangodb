@@ -701,7 +701,7 @@ void LogicalCollection::drop() {
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->dropCollection(_vocbase, this);
+  engine->destroyCollection(_vocbase, this);
   _isDeleted = true;
 
   _physical->drop();
@@ -1069,7 +1069,6 @@ int LogicalCollection::remove(transaction::Methods* trx,
                               ManagedDocumentResult& previous) {
   resultMarkerTick = 0;
 
-  // create remove marker
   TRI_voc_rid_t revisionId = 0;
   if (options.isRestore) {
     VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(slice);
