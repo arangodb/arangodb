@@ -125,10 +125,6 @@ is returned if the import would trigger a unique key violation and
 is returned if the server cannot auto-generate a document key (out of keys
 error) for a document with no user-defined key.
 
-@RESTRETURNCODE{501}
-The server will respond with *HTTP 501* if this API is called on a cluster
-coordinator.
-
 @EXAMPLES
 
 Importing documents with heterogenous attributes from a JSON array
