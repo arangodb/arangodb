@@ -34,7 +34,7 @@ struct OptimizerRule;
 }
 
 struct MMFilesOptimizerRules {
-  static void RegisterRules();
+  static void registerResources();
   static void geoIndexRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
 };
 

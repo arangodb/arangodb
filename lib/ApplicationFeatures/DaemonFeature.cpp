@@ -77,8 +77,7 @@ void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   logger->setBackgrounded(true);
 
   // make the pid filename absolute
-  int err = 0;
-  std::string currentDir = FileUtils::currentDirectory(&err);
+  std::string currentDir = FileUtils::currentDirectory().result();
 
   char* absoluteFile =
       TRI_GetAbsolutePath(_pidFile.c_str(), currentDir.c_str());
@@ -235,13 +234,15 @@ int DaemonFeature::forkProcess() {
   }
 
   // store current working directory
-  int err = 0;
-  _current = FileUtils::currentDirectory(&err);
+  FileResultString cwd = FileUtils::currentDirectory();
 
-  if (err != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot get current directory";
+  if (!cwd.ok()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "cannot get current directory: " << cwd.errorMessage();
     FATAL_ERROR_EXIT();
   }
+
+  _current = cwd.result();
 
   // change the current working directory
   if (!_workingDirectory.empty()) {

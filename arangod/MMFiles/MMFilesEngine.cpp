@@ -44,6 +44,7 @@
 #include "MMFiles/MMFilesTransactionCollection.h"
 #include "MMFiles/MMFilesTransactionContextData.h"
 #include "MMFiles/MMFilesTransactionState.h"
+#include "MMFiles/MMFilesV8Functions.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -130,19 +131,16 @@ std::string const MMFilesEngine::FeatureName("MMFilesEngine");
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new MMFilesIndexFactory())
     , _isUpgrade(false)
-    , _maxTick(0) 
-    {
-      startsAfter("PersistentIndex");
-    }
-
-MMFilesEngine::~MMFilesEngine() {
+    , _maxTick(0) { 
+      startsAfter("MMFilesPersistentIndex");
 }
 
+MMFilesEngine::~MMFilesEngine() {}
 
 // perform a physical deletion of the database
 void MMFilesEngine::dropDatabase(Database* database, int& status) {
   // delete persistent indexes for this database
-  PersistentIndexFeature::dropDatabase(database->id());
+  MMFilesPersistentIndexFeature::dropDatabase(database->id());
 
   // To shutdown the database (which destroys all LogicalCollection
   // objects of all collections) we need to make sure that the
@@ -382,7 +380,7 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
       // delete persistent indexes for this database
       TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(
           basics::StringUtils::uint64(idSlice.copyString()));
-      PersistentIndexFeature::dropDatabase(id);
+      MMFilesPersistentIndexFeature::dropDatabase(id);
 
       dropDatabaseDirectory(directory);
       continue;
@@ -813,7 +811,7 @@ void MMFilesEngine::destroyCollection(TRI_vocbase_t* vocbase, arangodb::LogicalC
   unregisterCollectionPath(vocbase->id(), collection->cid());
   
   // delete persistent indexes    
-  PersistentIndexFeature::dropCollection(vocbase->id(), collection->cid());
+  MMFilesPersistentIndexFeature::dropCollection(vocbase->id(), collection->cid());
 
   // rename collection directory
   if (physical->path().empty()) {
@@ -2246,13 +2244,18 @@ int MMFilesEngine::transferMarkers(LogicalCollection* collection,
 }
 
 /// @brief Add engine-specific AQL functions.
-void MMFilesEngine::addAqlFunctions() const {
-  MMFilesAqlFunctions::RegisterFunctions();
+void MMFilesEngine::addAqlFunctions() {
+  MMFilesAqlFunctions::registerResources();
 }
 
 /// @brief Add engine-specific optimizer rules
-void MMFilesEngine::addOptimizerRules() const {
-  MMFilesOptimizerRules::RegisterRules();
+void MMFilesEngine::addOptimizerRules() {
+  MMFilesOptimizerRules::registerResources();
+}
+
+/// @brief Add engine-specific V8 functions
+void MMFilesEngine::addV8Functions() {
+  MMFilesV8Functions::registerResources();
 }
 
 /// @brief transfer markers into a collection, actual work

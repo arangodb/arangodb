@@ -95,7 +95,8 @@ describe ArangoDB do
       found.should have_key("runTime")
       found["runTime"].should be_kind_of(Numeric)
       found.should have_key("started")
-      found["state"].should eq("executing");
+      found.should have_key("state")
+      found["state"].should be_kind_of(String)
     end
     
     it "should track running queries, with bind parameters" do
@@ -113,7 +114,8 @@ describe ArangoDB do
       found.should have_key("runTime")
       found["runTime"].should be_kind_of(Numeric)
       found.should have_key("started")
-      found["state"].should eq("executing")
+      found.should have_key("state")
+      found["state"].should be_kind_of(String)
     end
 
     it "should track slow queries by threshold" do

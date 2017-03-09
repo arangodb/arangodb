@@ -421,7 +421,7 @@ std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX: {
-      newIdx.reset(new arangodb::PersistentIndex(iid, col, info));
+      newIdx.reset(new arangodb::MMFilesPersistentIndex(iid, col, info));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {

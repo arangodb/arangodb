@@ -37,8 +37,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ClusterMethods.h"
-#include "MMFiles/MMFilesDatafile.h"
-#include "MMFiles/MMFilesEngine.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -2343,88 +2341,6 @@ static void JS_TruncateVocbaseCol(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief truncates a datafile
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_TruncateDatafileVocbaseCol(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (collection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-  }
-
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
-
-  if (args.Length() != 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("truncateDatafile(<datafile>, <size>)");
-  }
-
-  std::string path = TRI_ObjectToString(args[0]);
-  size_t size = (size_t)TRI_ObjectToInt64(args[1]);
-
-  TRI_vocbase_col_status_e status = collection->getStatusLocked();
-
-  if (status != TRI_VOC_COL_STATUS_UNLOADED &&
-      status != TRI_VOC_COL_STATUS_CORRUPTED) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
-  }
-
-  int res = MMFilesDatafile::truncate(path, static_cast<TRI_voc_size_t>(size));
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot truncate datafile");
-  }
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief truncates a datafile
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_TryRepairDatafileVocbaseCol(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (collection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-  }
-
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("tryRepairDatafile(<datafile>)");
-  }
-
-  std::string path = TRI_ObjectToString(args[0]);
-
-  TRI_vocbase_col_status_e status = collection->getStatusLocked();
-  if (status != TRI_VOC_COL_STATUS_UNLOADED &&
-      status != TRI_VOC_COL_STATUS_CORRUPTED) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
-  }
-
-  bool result = MMFilesDatafile::tryRepair(path);
-
-  if (result) {
-    TRI_V8_RETURN_TRUE();
-  }
-
-  TRI_V8_RETURN_FALSE();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionType
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2844,171 +2760,6 @@ static void JS_CountVocbaseCol(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information about the datafiles
-/// `collection.datafiles()`
-///
-/// Returns information about the datafiles. The collection must be unloaded.
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_DatafilesVocbaseCol(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (collection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-  }
-
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
-
-  // TODO: move this into engine
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  if (std::string(engine->typeName()) != MMFilesEngine::EngineName) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "operation only supported in MMFiles engine");
-  }
-   
-  TRI_vocbase_col_status_e status = collection->getStatusLocked();
-  if (status != TRI_VOC_COL_STATUS_UNLOADED &&
-      status != TRI_VOC_COL_STATUS_CORRUPTED) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
-  }
-
-  MMFilesEngineCollectionFiles structure = dynamic_cast<MMFilesEngine*>(engine)->scanCollectionDirectory(collection->getPhysical()->path());
-
-  // build result
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-
-  // journals
-  v8::Handle<v8::Array> journals = v8::Array::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("journals"), journals);
-
-  uint32_t i = 0;
-  for (auto& it : structure.journals) {
-    journals->Set(i++, TRI_V8_STD_STRING(it));
-  }
-
-  // compactors
-  v8::Handle<v8::Array> compactors = v8::Array::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("compactors"), compactors);
-
-  i = 0;
-  for (auto& it : structure.compactors) {
-    compactors->Set(i++, TRI_V8_STD_STRING(it));
-  }
-
-  // datafiles
-  v8::Handle<v8::Array> datafiles = v8::Array::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("datafiles"), datafiles);
-
-  i = 0;
-  for (auto& it : structure.datafiles) {
-    datafiles->Set(i++, TRI_V8_STD_STRING(it));
-  }
-
-  TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information about the datafiles
-///
-/// @FUN{@FA{collection}.datafileScan(@FA{path})}
-///
-/// Returns information about the datafiles. The collection must be unloaded.
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_DatafileScanVocbaseCol(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (collection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-  }
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("datafileScan(<path>)");
-  }
-
-  std::string path = TRI_ObjectToString(args[0]);
-
-  v8::Handle<v8::Object> result;
-  {
-    // TODO Check with JAN Okay to just remove the lock?
-    // READ_LOCKER(readLocker, collection->_lock);
-
-    TRI_vocbase_col_status_e status = collection->getStatusLocked();
-    if (status != TRI_VOC_COL_STATUS_UNLOADED &&
-        status != TRI_VOC_COL_STATUS_CORRUPTED) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
-    }
-
-    DatafileScan scan = MMFilesDatafile::scan(path);
-
-    // build result
-    result = v8::Object::New(isolate);
-
-    result->Set(TRI_V8_ASCII_STRING("currentSize"),
-                v8::Number::New(isolate, scan.currentSize));
-    result->Set(TRI_V8_ASCII_STRING("maximalSize"),
-                v8::Number::New(isolate, scan.maximalSize));
-    result->Set(TRI_V8_ASCII_STRING("endPosition"),
-                v8::Number::New(isolate, scan.endPosition));
-    result->Set(TRI_V8_ASCII_STRING("numberMarkers"),
-                v8::Number::New(isolate, scan.numberMarkers));
-    result->Set(TRI_V8_ASCII_STRING("status"),
-                v8::Number::New(isolate, scan.status));
-    result->Set(TRI_V8_ASCII_STRING("isSealed"),
-                v8::Boolean::New(isolate, scan.isSealed));
-
-    v8::Handle<v8::Array> entries = v8::Array::New(isolate);
-    result->Set(TRI_V8_ASCII_STRING("entries"), entries);
-
-    uint32_t i = 0;
-    for (auto const& entry : scan.entries) {
-      v8::Handle<v8::Object> o = v8::Object::New(isolate);
-
-      o->Set(TRI_V8_ASCII_STRING("position"),
-             v8::Number::New(isolate, entry.position));
-      o->Set(TRI_V8_ASCII_STRING("size"),
-             v8::Number::New(isolate, entry.size));
-      o->Set(TRI_V8_ASCII_STRING("realSize"),
-             v8::Number::New(isolate, entry.realSize));
-      o->Set(TRI_V8_ASCII_STRING("tick"), V8TickId(isolate, entry.tick));
-      o->Set(TRI_V8_ASCII_STRING("type"),
-             v8::Number::New(isolate, static_cast<int>(entry.type)));
-      o->Set(TRI_V8_ASCII_STRING("status"),
-             v8::Number::New(isolate, static_cast<int>(entry.status)));
-
-      if (!entry.key.empty()) {
-        o->Set(TRI_V8_ASCII_STRING("key"), TRI_V8_STD_STRING(entry.key));
-      }
-
-      if (entry.typeName != nullptr) {
-        o->Set(TRI_V8_ASCII_STRING("typeName"),
-               TRI_V8_ASCII_STRING(entry.typeName));
-      }
-
-      if (!entry.diagnosis.empty()) {
-        o->Set(TRI_V8_ASCII_STRING("diagnosis"),
-               TRI_V8_STD_STRING(entry.diagnosis));
-      }
-
-      entries->Set(i++, o);
-    }
-  }
-
-  TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END
-}
-
 // .............................................................................
 // generate the arangodb::LogicalCollection template
 // .............................................................................
@@ -3052,10 +2803,6 @@ void TRI_InitV8Collection(v8::Handle<v8::Context> context,
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("count"),
                        JS_CountVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("datafiles"),
-                       JS_DatafilesVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("datafileScan"),
-                       JS_DatafileScanVocbaseCol, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("document"),
                        JS_DocumentVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("drop"),
@@ -3101,10 +2848,6 @@ void TRI_InitV8Collection(v8::Handle<v8::Context> context,
                        JS_StatusVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("TRUNCATE"),
                        JS_TruncateVocbaseCol, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("truncateDatafile"),
-                       JS_TruncateDatafileVocbaseCol, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("tryRepairDatafile"),
-                       JS_TryRepairDatafileVocbaseCol, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("type"),
                        JS_TypeVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("unload"),
@@ -3114,10 +2857,10 @@ void TRI_InitV8Collection(v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("version"),
                        JS_VersionVocbaseCol);
 
-  TRI_InitV8indexCollection(isolate, rt);
+  TRI_InitV8IndexCollection(isolate, rt);
 
   v8g->VocbaseColTempl.Reset(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("ArangoCollection"),
                                ft->GetFunction());
 }

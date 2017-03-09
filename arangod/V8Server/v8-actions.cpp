@@ -1353,23 +1353,23 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   // create the global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_DEFINE_ACTION"),
                                JS_DefineAction);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context,
+      isolate,
       TRI_V8_ASCII_STRING("SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION"),
       JS_ExecuteGlobalContextFunction);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_GET_CURRENT_REQUEST"),
                                JS_GetCurrentRequest);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("SYS_GET_CURRENT_RESPONSE"),
                                JS_GetCurrentResponse);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_RAW_REQUEST_BODY"),
                                JS_RawRequestBody, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_REQUEST_PARTS"),
                                JS_RequestParts, true);
 }
@@ -1586,17 +1586,17 @@ void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           std::string const& startupPath,
                           std::string const& modules) {
   // debugging functions
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_CLEAR_FAILAT"),
                                JS_DebugClearFailAt);
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("SYS_DEBUG_SEGFAULT"),
                                JS_DebugSegfault);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_SET_FAILAT"),
                                JS_DebugSetFailAt);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_REMOVE_FAILAT"),
                                JS_DebugRemoveFailAt);
 #endif

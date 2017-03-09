@@ -777,7 +777,7 @@ static void JS_CreateEdgeCollectionVocbase(
   TRI_V8_TRY_CATCH_END
 }
 
-void TRI_InitV8indexArangoDB(v8::Isolate* isolate,
+void TRI_InitV8IndexArangoDB(v8::Isolate* isolate,
                              v8::Handle<v8::ObjectTemplate> rt) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_create"),
                        JS_CreateVocbase, true);
@@ -789,7 +789,7 @@ void TRI_InitV8indexArangoDB(v8::Isolate* isolate,
                        JS_CreateDocumentCollectionVocbase);
 }
 
-void TRI_InitV8indexCollection(v8::Isolate* isolate,
+void TRI_InitV8IndexCollection(v8::Isolate* isolate,
                                v8::Handle<v8::ObjectTemplate> rt) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("dropIndex"),
                        JS_DropIndexVocbaseCol);

@@ -34,8 +34,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
-#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 
 #if defined(_WIN32) && defined(_MSC_VER)
 
@@ -91,7 +91,8 @@ std::string buildFilename(char const* path, char const* name) {
   }
 
   if (!result.empty() && *name == TRI_DIR_SEPARATOR_CHAR) {
-    // skip initial forward slash in name to avoid having two forward slashes in result
+    // skip initial forward slash in name to avoid having two forward slashes in
+    // result
     result.append(name + 1);
   } else {
     result.append(name);
@@ -109,7 +110,8 @@ std::string buildFilename(std::string const& path, std::string const& name) {
   }
 
   if (!result.empty() && !name.empty() && name[0] == TRI_DIR_SEPARATOR_CHAR) {
-    // skip initial forward slash in name to avoid having two forward slashes in result
+    // skip initial forward slash in name to avoid having two forward slashes in
+    // result
     result.append(name.c_str() + 1, name.size() - 1);
   } else {
     result.append(name);
@@ -119,7 +121,7 @@ std::string buildFilename(std::string const& path, std::string const& name) {
   return result;
 }
 
-void throwFileReadError(int fd, std::string const& filename) {
+static void throwFileReadError(int fd, std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
   int res = TRI_errno();
 
@@ -128,21 +130,6 @@ void throwFileReadError(int fd, std::string const& filename) {
   }
 
   std::string message("read failed for file '" + filename + "': " +
-                      strerror(res));
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "" << message;
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
-}
-
-void throwFileWriteError(int fd, std::string const& filename) {
-  TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  int res = TRI_errno();
-
-  if (fd >= 0) {
-    TRI_CLOSE(fd);
-  }
-
-  std::string message("write failed for file '" + filename + "': " +
                       strerror(res));
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "" << message;
 
@@ -210,6 +197,21 @@ void slurp(std::string const& filename, StringBuffer& result) {
   }
 
   TRI_CLOSE(fd);
+}
+
+static void throwFileWriteError(int fd, std::string const& filename) {
+  TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  int res = TRI_errno();
+
+  if (fd >= 0) {
+    TRI_CLOSE(fd);
+  }
+
+  std::string message("write failed for file '" + filename + "': " +
+                      strerror(res));
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "" << message;
+
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }
 
 void spit(std::string const& filename, char const* ptr, size_t len) {
@@ -356,11 +358,10 @@ bool copyRecursive(std::string const& source, std::string const& target,
 
 bool copyDirectoryRecursive(std::string const& source,
                             std::string const& target, std::string& error) {
-
   bool rc = true;
-  
+
   auto isSubDirectory = [](std::string const& name) -> bool {
-          return isDirectory(name);
+    return isDirectory(name);
   };
 #ifdef TRI_HAVE_WIN32_LIST_FILES
   struct _finddata_t oneItem;
@@ -386,7 +387,8 @@ bool copyDirectoryRecursive(std::string const& source,
   struct dirent* oneItem = nullptr;
 
   // do not use readdir_r() here anymore as it is not safe and deprecated
-  // in newer versions of libc: http://man7.org/linux/man-pages/man3/readdir_r.3.html
+  // in newer versions of libc:
+  // http://man7.org/linux/man-pages/man3/readdir_r.3.html
   // the man page recommends to use plain readdir() because it can be expected
   // to be thread-safe in reality, and newer versions of POSIX may require its
   // thread-safety formally, and in addition obsolete readdir_r() altogether
@@ -561,41 +563,28 @@ FileResult changeDirectory(std::string const& path) {
   int res = TRI_CHDIR(path.c_str());
 
   if (res == 0) {
-    return FileResult(true);
+    return FileResult();
   } else {
-    return FileResult(false, errno);
+    return FileResult(errno);
   }
 }
 
-std::string currentDirectory(int* errorNumber) {
-  if (errorNumber != 0) {
-    *errorNumber = 0;
-  }
-
+FileResultString currentDirectory() {
   size_t len = 1000;
-  char* current = new char[len];
+  std::unique_ptr<char[]> current(new char[len]);
 
-  while (TRI_GETCWD(current, (int)len) == nullptr) {
+  while (TRI_GETCWD(current.get(), (int)len) == nullptr) {
     if (errno == ERANGE) {
       len += 1000;
-      delete[] current;
-      current = new char[len];
+      current.reset(new char[len]);
     } else {
-      delete[] current;
-
-      if (errorNumber != 0) {
-        *errorNumber = errno;
-      }
-
-      return ".";
+      return FileResultString(errno, ".");
     }
   }
 
-  std::string result = current;
+  std::string result = current.get();
 
-  delete[] current;
-
-  return result;
+  return FileResultString(result);
 }
 
 std::string homeDirectory() {
@@ -610,7 +599,7 @@ std::string configDirectory(char const* binaryPath) {
   char* dir = TRI_LocateConfigDirectory(binaryPath);
 
   if (dir == nullptr) {
-    return currentDirectory();
+    return currentDirectory().result();
   }
 
   std::string result = dir;
@@ -631,15 +620,12 @@ std::string dirname(std::string const& name) {
   return base;
 }
 
-void makePathAbsolute(std::string &path) {
-  int err = 0;
-
-  std::string cwd = FileUtils::currentDirectory(&err);
-  char * p = TRI_GetAbsolutePath(path.c_str(), cwd.c_str());
+void makePathAbsolute(std::string& path) {
+  std::string cwd = FileUtils::currentDirectory().result();
+  char* p = TRI_GetAbsolutePath(path.c_str(), cwd.c_str());
   path = p;
   TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 }
-
 }
 }
 }

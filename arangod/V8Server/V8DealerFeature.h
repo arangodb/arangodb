@@ -75,8 +75,6 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void setNumberContexts(size_t nr) { _forceNrContexts = nr; }
   void increaseContexts() { ++_nrAdditionalContexts; }
 
-  void shutdownContexts();
-
   void defineBoolean(std::string const& name, bool value) {
     _definedBooleans[name] = value;
   }
@@ -90,6 +88,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void loadJavascriptFiles(TRI_vocbase_t*, std::string const&, size_t);
 
  private:
+  void shutdownContexts();
   V8Context* pickFreeContextForGc();
   void initializeContext(size_t);
   void shutdownV8Instance(V8Context*);

@@ -790,7 +790,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
 
         auto physical = static_cast<MMFilesCollection*>(col->getPhysical());
         TRI_ASSERT(physical != nullptr);
-        PersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
+        MMFilesPersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
 
         std::string const indexName("index-" + std::to_string(indexId) +
                                     ".json");
@@ -868,7 +868,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           vocbase->dropCollection(collection, true);
         }
 
-        PersistentIndexFeature::dropCollection(databaseId, collectionId);
+        MMFilesPersistentIndexFeature::dropCollection(databaseId, collectionId);
 
         // check if there is another collection with the same name as the one
         // that
@@ -987,7 +987,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           state->databaseFeature->dropDatabase(nameString, true, false);
         }
 
-        PersistentIndexFeature::dropDatabase(databaseId);
+        MMFilesPersistentIndexFeature::dropDatabase(databaseId);
 
         vocbase = nullptr;
         /* TODO: check what TRI_ERROR_ARANGO_DATABASE_NOT_FOUND means here
@@ -1052,7 +1052,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         TRI_ASSERT(physical != nullptr);
         col->dropIndex(indexId);
 
-        PersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
+        MMFilesPersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
 
         // additionally remove the index file
         std::string const indexName("index-" + std::to_string(indexId) +
@@ -1094,7 +1094,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         if (collection != nullptr) {
           vocbase->dropCollection(collection, true);
         }
-        PersistentIndexFeature::dropCollection(databaseId, collectionId);
+        MMFilesPersistentIndexFeature::dropCollection(databaseId, collectionId);
         break;
       }
 
@@ -1114,7 +1114,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           state->databaseFeature->dropDatabase(databaseId, true, false);
         }
 
-        PersistentIndexFeature::dropDatabase(databaseId);
+        MMFilesPersistentIndexFeature::dropDatabase(databaseId);
         break;
       }
 

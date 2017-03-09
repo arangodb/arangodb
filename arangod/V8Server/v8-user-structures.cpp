@@ -2618,63 +2618,63 @@ void TRI_InitV8UserStructures(v8::Isolate* isolate,
 
   // NOTE: the following functions are all experimental and might
   // change without further notice
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("KEYSPACE_CREATE"),
                                JS_KeyspaceCreate, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("KEYSPACE_DROP"),
                                JS_KeyspaceDrop, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("KEYSPACE_COUNT"),
                                JS_KeyspaceCount, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("KEYSPACE_EXISTS"),
                                JS_KeyspaceExists, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("KEYSPACE_KEYS"),
                                JS_KeyspaceKeys, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("KEYSPACE_REMOVE"),
                                JS_KeyspaceRemove, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("KEYSPACE_GET"),
                                JS_KeyspaceGet, true);
 
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_SET"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("KEY_SET"),
                                JS_KeySet, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("KEY_SET_CAS"), JS_KeySetCas, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_GET"),
+      isolate, TRI_V8_ASCII_STRING("KEY_SET_CAS"), JS_KeySetCas, true);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("KEY_GET"),
                                JS_KeyGet, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("KEY_REMOVE"), JS_KeyRemove, true);
+      isolate, TRI_V8_ASCII_STRING("KEY_REMOVE"), JS_KeyRemove, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("KEY_EXISTS"), JS_KeyExists, true);
+      isolate, TRI_V8_ASCII_STRING("KEY_EXISTS"), JS_KeyExists, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("KEY_TYPE"), JS_KeyType, true);
+      isolate, TRI_V8_ASCII_STRING("KEY_TYPE"), JS_KeyType, true);
 
   // numeric functions
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("KEY_INCR"), JS_KeyIncr, true);
+      isolate, TRI_V8_ASCII_STRING("KEY_INCR"), JS_KeyIncr, true);
 
   // list / array functions
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("KEY_UPDATE"), JS_KeyUpdate, true);
+      isolate, TRI_V8_ASCII_STRING("KEY_UPDATE"), JS_KeyUpdate, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("KEY_KEYS"), JS_KeyKeys, true);
+      isolate, TRI_V8_ASCII_STRING("KEY_KEYS"), JS_KeyKeys, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("KEY_VALUES"), JS_KeyValues, true);
+      isolate, TRI_V8_ASCII_STRING("KEY_VALUES"), JS_KeyValues, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("KEY_COUNT"), JS_KeyCount, true);
+      isolate, TRI_V8_ASCII_STRING("KEY_COUNT"), JS_KeyCount, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("KEY_PUSH"), JS_KeyPush, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_POP"),
+      isolate, TRI_V8_ASCII_STRING("KEY_PUSH"), JS_KeyPush, true);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("KEY_POP"),
                                JS_KeyPop, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("KEY_TRANSFER"),
                                JS_KeyTransfer, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("KEY_GET_AT"), JS_KeyGetAt, true);
+      isolate, TRI_V8_ASCII_STRING("KEY_GET_AT"), JS_KeyGetAt, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("KEY_SET_AT"), JS_KeySetAt, true);
+      isolate, TRI_V8_ASCII_STRING("KEY_SET_AT"), JS_KeySetAt, true);
 }

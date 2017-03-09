@@ -215,6 +215,6 @@ void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   rt->SetNamedPropertyHandler(EnvGetter, EnvSetter, EnvQuery, EnvDeleter,
                               EnvEnumerator, v8::Object::New(isolate));
   v8g->EnvTempl.Reset(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("ENV"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("ENV"),
                                ft->GetFunction());
 }

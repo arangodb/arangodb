@@ -71,9 +71,9 @@ using Helper = arangodb::basics::VelocyPackHelper;
 namespace {
 
 /// @brief helper class for filling indexes
-class IndexFillerTask : public basics::LocalTask {
+class MMFilesIndexFillerTask : public basics::LocalTask {
  public:
-  IndexFillerTask(
+  MMFilesIndexFillerTask(
       basics::LocalTaskQueue* queue, transaction::Methods* trx,
       Index* idx,
       std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents)
@@ -1436,8 +1436,8 @@ void MMFilesCollection::fillIndex(
 
   try {
     // move task into thread pool
-    std::shared_ptr<::IndexFillerTask> worker;
-    worker.reset(new ::IndexFillerTask(queue, trx, idx, documents));
+    std::shared_ptr<::MMFilesIndexFillerTask> worker;
+    worker.reset(new ::MMFilesIndexFillerTask(queue, trx, idx, documents));
     queue->enqueue(worker);
   } catch (...) {
     // set error code

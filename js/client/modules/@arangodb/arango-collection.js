@@ -214,6 +214,14 @@ ArangoCollection.prototype._edgesQuery = function (vertex, direction) {
   return requestResult.edges;
 };
 
+ArangoCollection.prototype.shards = function () {
+  var requestResult = this._database._connection.GET(this._baseurl('shards'), '');
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.shards;
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief converts into an array
 // //////////////////////////////////////////////////////////////////////////////

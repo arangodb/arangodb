@@ -61,6 +61,32 @@ function ClusterCollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test create, single shard
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateSingleShard : function () {
+      var c = db._create("UnitTestsClusterCrud");
+      assertEqual("UnitTestsClusterCrud", c.name());
+      assertEqual(2, c.type());
+      assertEqual(1, c.shards().length);
+      assertTrue(typeof c.shards()[0] === 'string');
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test create, multiple shards
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateMultipleShards : function () {
+      var c = db._create("UnitTestsClusterCrud", { numberOfShards: 8 });
+      assertEqual("UnitTestsClusterCrud", c.name());
+      assertEqual(2, c.type());
+      assertEqual(8, c.shards().length);
+      for (var i = 0; i < 8; ++i) {
+        assertTrue(typeof c.shards()[i] === 'string');
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test create
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -84,6 +110,21 @@ function ClusterCollectionSuite () {
       assertEqual(3, c.type());
       assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
+
+      assertEqual(c.name(), db._collection("UnitTestsClusterCrud").name());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test create
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateEdgeMultipleShards : function () {
+      var c = db._createEdgeCollection("UnitTestsClusterCrud", { numberOfShards: 8 });
+      assertEqual("UnitTestsClusterCrud", c.name());
+      assertEqual(3, c.type());
+      assertEqual(3, c.status());
+      assertTrue(c.hasOwnProperty("_id"));
+      assertEqual(8, c.shards().length);
 
       assertEqual(c.name(), db._collection("UnitTestsClusterCrud").name());
     },

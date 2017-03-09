@@ -4,7 +4,7 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.2)
 
 if (POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
@@ -31,7 +31,9 @@ if (NOT (CMAKE_BUILD_TYPE STREQUAL "Debug"
   message(FATAL_ERROR "expecting CMAKE_BUILD_TYPE: None Debug Release RelWithDebInfo MinSizeRel, got ${CMAKE_BUILD_TYPE}.")
 endif ()
 
-set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
+if (NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
+endif ()
 
 if (WIN32)
   project(arangodb3 CXX C)
@@ -630,7 +632,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
   set(CMAKE_C_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C release flags")
   set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C release with debug info flags")
 
-  set(CMAKE_CXX_FLAGS                "-g"                             CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS                "-g -Wnon-virtual-dtor"          CACHE INTERNAL "default C++ compiler flags")
   set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C++ release flags")
@@ -649,7 +651,7 @@ elseif (CMAKE_COMPILER_IS_CLANG)
   set(CMAKE_C_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C release flags")
   set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C release with debug info flags")
 
-  set(CMAKE_CXX_FLAGS                "-g"                             CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS                "-g -Wnon-virtual-dtor"          CACHE INTERNAL "default C++ compiler flags")
   set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C++ release flags")

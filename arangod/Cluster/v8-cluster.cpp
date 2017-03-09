@@ -2025,14 +2025,14 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   v8g->AgencyTempl.Reset(isolate, rt);
   ft->SetClassName(TRI_V8_ASCII_STRING("ArangoAgencyCtor"));
 
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("ArangoAgencyCtor"),
                                ft->GetFunction(), true);
 
   // register the global object
   v8::Handle<v8::Object> aa = rt->NewInstance();
   if (!aa.IsEmpty()) {
-    TRI_AddGlobalVariableVocbase(isolate, context,
+    TRI_AddGlobalVariableVocbase(isolate, 
                                  TRI_V8_ASCII_STRING("ArangoAgency"), aa);
   }
 
@@ -2075,14 +2075,14 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_UniqidClusterInfo);
 
   v8g->ClusterInfoTempl.Reset(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("ArangoClusterInfoCtor"),
                                ft->GetFunction(), true);
 
   // register the global object
   v8::Handle<v8::Object> ci = rt->NewInstance();
   if (!ci.IsEmpty()) {
-    TRI_AddGlobalVariableVocbase(isolate, context,
+    TRI_AddGlobalVariableVocbase(isolate,
                                  TRI_V8_ASCII_STRING("ArangoClusterInfo"), ci);
   }
 
@@ -2146,14 +2146,14 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_StatusServerState);
 
   v8g->ServerStateTempl.Reset(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("ArangoServerStateCtor"),
                                ft->GetFunction(), true);
 
   // register the global object
   v8::Handle<v8::Object> ss = rt->NewInstance();
   if (!ss.IsEmpty()) {
-    TRI_AddGlobalVariableVocbase(isolate, context,
+    TRI_AddGlobalVariableVocbase(isolate,
                                  TRI_V8_ASCII_STRING("ArangoServerState"), ss);
   }
 
@@ -2177,17 +2177,17 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getId"), JS_GetId);
 
   v8g->ClusterCommTempl.Reset(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("ArangoClusterCommCtor"),
                                ft->GetFunction(), true);
 
   // register the global object
   ss = rt->NewInstance();
   if (!ss.IsEmpty()) {
-    TRI_AddGlobalVariableVocbase(isolate, context,
+    TRI_AddGlobalVariableVocbase(isolate,
                                  TRI_V8_ASCII_STRING("ArangoClusterComm"), ss);
   }
   TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("SYS_CLUSTER_DOWNLOAD"),
+      isolate, TRI_V8_ASCII_STRING("SYS_CLUSTER_DOWNLOAD"),
       JS_ClusterDownload);
 }

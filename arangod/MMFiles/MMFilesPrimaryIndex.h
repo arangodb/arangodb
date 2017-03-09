@@ -68,16 +68,16 @@ class MMFilesPrimaryIndexIterator final : public IndexIterator {
   arangodb::velocypack::ArrayIterator _iterator;
 };
 
-class AllIndexIterator final : public IndexIterator {
+class MMFilesAllIndexIterator final : public IndexIterator {
  public:
-  AllIndexIterator(LogicalCollection* collection,
+  MMFilesAllIndexIterator(LogicalCollection* collection,
                    transaction::Methods* trx, 
                    ManagedDocumentResult* mmdr,
                    MMFilesPrimaryIndex const* index,
                    MMFilesPrimaryIndexImpl const* indexImpl,
                    bool reverse);
 
-  ~AllIndexIterator() {}
+  ~MMFilesAllIndexIterator() {}
     
   char const* typeName() const override { return "all-index-iterator"; }
 
@@ -92,14 +92,14 @@ class AllIndexIterator final : public IndexIterator {
   uint64_t _total;
 };
 
-class AnyIndexIterator final : public IndexIterator {
+class MMFilesAnyIndexIterator final : public IndexIterator {
  public:
-  AnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, 
+  MMFilesAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, 
                    ManagedDocumentResult* mmdr,
                    MMFilesPrimaryIndex const* index,
                    MMFilesPrimaryIndexImpl const* indexImpl);
 
-  ~AnyIndexIterator() {}
+  ~MMFilesAnyIndexIterator() {}
   
   char const* typeName() const override { return "any-index-iterator"; }
 

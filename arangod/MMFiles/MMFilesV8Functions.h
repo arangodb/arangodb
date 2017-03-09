@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,29 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_FILE_RESULT_H
-#define ARANGODB_BASICS_FILE_RESULT_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_V8_FUNCTIONS_H
+#define ARANGOD_MMFILES_MMFILES_V8_FUNCTIONS_H 1
 
-#include "Basics/Result.h"
+#include "Aql/Functions.h"
 
 namespace arangodb {
-class FileResult : public Result {
- public:
-  FileResult() : Result(), _sysErrorNumber(0) {}
 
-  explicit FileResult(int sysErrorNumber)
-      : Result(TRI_ERROR_SYS_ERROR, strerror(sysErrorNumber)),
-        _sysErrorNumber(sysErrorNumber) {}
-
- public:
-  int sysErrorNumber() const { return _sysErrorNumber; }
-
- protected:
-  int const _sysErrorNumber;
+struct MMFilesV8Functions {
+  static void registerResources();
 };
-}
+
+} // namespace arangodb
 
 #endif

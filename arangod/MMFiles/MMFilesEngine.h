@@ -267,16 +267,19 @@ public:
   
   int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) override;
   
+  /// @brief Add engine-specific AQL functions.
+  void addAqlFunctions() override;
+  
+  /// @brief Add engine-specific optimizer rules
+  void addOptimizerRules() override;
+  
+  /// @brief Add engine-specific V8 functions
+  void addV8Functions() override;
+  
   /// @brief transfer markers into a collection
   int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
                       MMFilesOperationsType const&);
 
-  /// @brief Add engine-specific AQL functions.
-  void addAqlFunctions() const override;
-  
-  /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules() const override;
-  
  private:
   /// @brief: check the initial markers in a datafile
   bool checkDatafileHeader(MMFilesDatafile* datafile, std::string const& filename) const;

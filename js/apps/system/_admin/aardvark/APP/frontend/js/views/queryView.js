@@ -2320,7 +2320,7 @@
 
       var callback = function (error) {
         if (error) {
-          arangoHelper.arangoError('Query', 'Could not reload Queries');
+          arangoHelper.arangoError('Query', 'Could not reload queries');
         } else {
           self.updateLocalQueries();
           self.updateQueryTable();
@@ -2379,21 +2379,31 @@
       };
 
       var first = true;
-      var part = [];
-      // self.tableDescription.rows.push(;
+      var headers = {}; // quick lookup cache
+      var pos = 0;
       _.each(data.original, function (obj) {
         if (first === true) {
           tableDescription.titles = Object.keys(obj);
+          tableDescription.titles.forEach(function (t) {
+            headers[String(t)] = pos++;
+          });
           first = false;
         }
-        _.each(obj, function (val) {
+        var part = Array(pos);
+        _.each(obj, function (val, key) {
+          if (!headers.hasOwnProperty(key)) {
+            // different attribute
+            return;
+          }
+
           if (typeof val === 'object') {
             val = JSON.stringify(val);
           }
-          part.push(val);
+
+          part[headers[key]] = val;
         });
+
         tableDescription.rows.push(part);
-        part = [];
       });
 
       $('#outputTable' + counter).append(this.table.render({content: tableDescription}));

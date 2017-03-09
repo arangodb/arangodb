@@ -43,7 +43,7 @@
 
 using namespace arangodb;
 
-LookupBuilder::LookupBuilder(
+MMFilesHashIndexLookupBuilder::MMFilesHashIndexLookupBuilder(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields)
@@ -138,9 +138,9 @@ LookupBuilder::LookupBuilder(
   buildNextSearchValue();
 }
 
-VPackSlice LookupBuilder::lookup() { return _builder->slice(); }
+VPackSlice MMFilesHashIndexLookupBuilder::lookup() { return _builder->slice(); }
 
-bool LookupBuilder::hasAndGetNext() {
+bool MMFilesHashIndexLookupBuilder::hasAndGetNext() {
   _builder->clear();
   if (!_usesIn || _isEmpty) {
     return false;
@@ -152,7 +152,7 @@ bool LookupBuilder::hasAndGetNext() {
   return true;
 }
 
-void LookupBuilder::reset() {
+void MMFilesHashIndexLookupBuilder::reset() {
   if (_isEmpty) {
     return;
   }
@@ -164,7 +164,7 @@ void LookupBuilder::reset() {
   buildNextSearchValue();
 }
 
-bool LookupBuilder::incrementInPosition() {
+bool MMFilesHashIndexLookupBuilder::incrementInPosition() {
   size_t i = _coveredFields - 1;
   while (true) {
     auto it = _inPosition.find(i);
@@ -185,7 +185,7 @@ bool LookupBuilder::incrementInPosition() {
   }
 }
 
-void LookupBuilder::buildNextSearchValue() {
+void MMFilesHashIndexLookupBuilder::buildNextSearchValue() {
   if (_isEmpty) {
     return;
   }
