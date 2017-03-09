@@ -26,6 +26,7 @@
 #include "Aql/Query.h"
 #include "Basics/conversions.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -1345,15 +1346,12 @@ static void JS_PropertiesVocbaseCol(
         TRI_V8_THROW_EXCEPTION_MESSAGE(updateRes.code, updateRes.errorMessage);
       }
 
-      auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+      auto physical = collection->getPhysical();
       TRI_ASSERT(physical != nullptr);
-      res = physical->persistProperties();
+      arangodb::Result res2 = physical->persistProperties();
+      // TODO Review
+      // TODO API compatibility, for now we ignore if persisting fails...
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        // TODO: what to do here
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save collection change marker in log: "
-                  << TRI_errno_string(res);
-      }
     }
   }
 

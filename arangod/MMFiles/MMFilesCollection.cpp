@@ -175,19 +175,29 @@ CollectionResult MMFilesCollection::updateProperties(VPackSlice const& slice,
   return CollectionResult{TRI_ERROR_NO_ERROR};
 }
 
-int MMFilesCollection::persistProperties() noexcept {
+arangodb::Result MMFilesCollection::persistProperties() noexcept {
+  int res = TRI_ERROR_NO_ERROR;
   try {
     VPackBuilder infoBuilder =
         _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
     MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, _logicalCollection->vocbase()->id(), _logicalCollection->cid(), infoBuilder.slice());
     MMFilesWalSlotInfoCopy slotInfo =
         MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
-    return slotInfo.errorCode;
+    res = slotInfo.errorCode;
   } catch (arangodb::basics::Exception const& ex) {
-    return ex.code();
+    res = ex.code();
   } catch (...) {
-    return TRI_ERROR_INTERNAL;
+    res = TRI_ERROR_INTERNAL;
   }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // TODO: what to do here
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save collection change marker in log: "
+              << TRI_errno_string(res);
+    return {res, TRI_errno_string(res)};
+  }
+  return {};
+
 }
 
 PhysicalCollection* MMFilesCollection::clone(LogicalCollection* logical,PhysicalCollection* physical){
