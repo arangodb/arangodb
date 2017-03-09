@@ -1351,7 +1351,6 @@ static void JS_PropertiesVocbaseCol(
       arangodb::Result res2 = physical->persistProperties();
       // TODO Review
       // TODO API compatibility, for now we ignore if persisting fails...
-
     }
   }
 
