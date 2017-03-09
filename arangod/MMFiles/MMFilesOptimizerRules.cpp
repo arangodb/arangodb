@@ -43,7 +43,7 @@ using EN = arangodb::aql::ExecutionNode;
 void MMFilesOptimizerRules::registerResources() {
   // patch update statements
   OptimizerRulesFeature::registerRule("geo-index-optimizer", geoIndexRule,
-               OptimizerRule::applyMMFilesGeoIndexRule, false, true);
+               OptimizerRule::applyGeoIndexRule, false, true);
 }
 
 struct MMFilesGeoIndexInfo {

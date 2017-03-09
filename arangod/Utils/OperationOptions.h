@@ -34,7 +34,7 @@ struct OperationOptions {
         mergeObjects(true), silent(false), ignoreRevs(true),
         returnOld(false), returnNew(false), isRestore(false) {}
 
-  // original marker, set by the MMFiles recovery procedure only!
+  // original marker, set by an engine's recovery procedure only!
   void* recoveryData;
 
   // wait until the operation has been synced
