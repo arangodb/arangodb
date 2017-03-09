@@ -1,6 +1,8 @@
 v3.0.13 (XXXX-XX-XX)
 --------------------
 
+* fix TLSv12 for arangodump and arangorestore
+
 * fixed issue #2315
 
 * fixed issue #2210
