@@ -31,6 +31,9 @@
 
 namespace arangodb {
 
+/// @brief Iterator for an enum class type
+/// will work only when the enum values are contiguous and are
+/// sorted in order
 template <typename T, T beginValue, T endValue>
 class EnumIterator {
   typedef typename std::underlying_type<T>::type ValueType;
