@@ -34,17 +34,15 @@ namespace pregel {
 class MemoryMapped {
  protected:
   /// open file, mappedBytes = 0 maps the whole file
-  MemoryMapped(std::string const& filename, int fd, void* mmHandle,
-               TRI_voc_size_t maximalSize, TRI_voc_size_t currentsize,
-               TRI_voc_fid_t fid, char* data);
+  MemoryMapped(const std::string& filename, size_t mappedBytes,
+                CacheHint hint);
 
  public:
   /// close file (see close() )
   ~MemoryMapped();
 
   /// open file, mappedBytes = 0 maps the whole file
-  static TRI_datafile_t* openHelper(std::string const& filename,
-                                    bool ignoreErrors);
+  static MemoryMapped* openHelper(std::string const& filename, bool ignoreErrors);
 
   /// @brief return whether the datafile is a physical file (true) or an
   /// anonymous mapped region (false)
@@ -73,11 +71,6 @@ class MemoryMapped {
   /// of the page size
   bool remap(uint64_t offset, size_t mappedBytes);
 
-  TRI_voc_size_t initSize() const { return _initSize; }
-  TRI_voc_size_t maximalSize() const { return _maximalSize; }
-  TRI_voc_size_t currentSize() const { return _currentSize; }
-  TRI_voc_size_t footerSize() const { return _footerSize; }
-
  private:
   /// don't copy object
   MemoryMapped(const MemoryMapped&);
@@ -88,19 +81,12 @@ class MemoryMapped {
   static int getpagesize();
 
   std::string _filename;     // underlying filename
-  TRI_voc_fid_t const _fid;  // datafile identifier
-  TRI_df_state_e _state;     // state of the datafile (READ or WRITE)
   int _fd;                   // underlying file descriptor
-
 #ifdef _MSC_VER
   void* _mmHandle;  // underlying memory map object handle (windows only)
 #endif
 
-  TRI_voc_size_t _initSize;     // initial size of the datafile (constant)
-  TRI_voc_size_t _maximalSize;  // maximal size of the datafile (adjusted
-  // (=reduced) at runtime)
-  TRI_voc_size_t _currentSize;  // current size of the datafile
-
+  
   char* _data;  // start of the data array
   char* _next;  // end of the current data
 };

@@ -77,7 +77,7 @@ class WorkerConfig {
     return _edgeCollectionShards;
   }
 
-  inline std::map<CollectionID, std::string> const& collectionPlanIdMap()
+  inline std::unordered_map<CollectionID, std::string> const& collectionPlanIdMap()
       const {
     return _collectionPlanIdMap;
   };
@@ -136,13 +136,13 @@ class WorkerConfig {
   std::vector<ShardID> _globalShardIDs;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
 
-  // Map from edge collection to their shards
+  std::unordered_map<std::string, std::string> _collectionPlanIdMap;
+  // Map from edge collection to their shards, only iterated over keep sorted
   std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards,
       _edgeCollectionShards;
-  std::map<std::string, std::string> _collectionPlanIdMap;
-
-  /// cache these ids as much as possible, since
-  std::map<std::string, prgl_shard_t> _pregelShardIDs;
+  
+  /// cache these ids as much as possible, since we access them often
+  std::unordered_map<std::string, prgl_shard_t> _pregelShardIDs;
   std::set<prgl_shard_t> _localPregelShardIDs;
 };
 }

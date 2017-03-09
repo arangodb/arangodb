@@ -398,11 +398,10 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods* trx,
                                     StaticStrings::KeyString, edge._toKey, responsibleShard);
       
       if (res == TRI_ERROR_NO_ERROR) {
-        prgl_shard_t sourceShard = (prgl_shard_t)_config->shardId(edgeShard);
+        //prgl_shard_t sourceShard = (prgl_shard_t)_config->shardId(edgeShard);
         edge._targetShard = (prgl_shard_t)_config->shardId(responsibleShard);
         _graphFormat->copyEdgeData(document, edge.data(), sizeof(E));
-        if (sourceShard == (prgl_shard_t)-1 ||
-            edge._targetShard == (prgl_shard_t)-1) {
+        if (edge._targetShard == (prgl_shard_t)-1) {
           LOG_TOPIC(ERR, Logger::PREGEL) << "Could not resolve target shard of edge";
           return;
         }
