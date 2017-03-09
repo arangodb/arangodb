@@ -3234,7 +3234,7 @@ const impTodos = [{
   type: 'csv',
   create: 'true',
   separator: ',',
-  convert: true,
+  convert: false,
   backslash: true
 }, {
   id: 'csvnoeol',
