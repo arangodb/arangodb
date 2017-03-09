@@ -211,10 +211,10 @@ void TRI_InitV8cursor(v8::Handle<v8::Context> context, TRI_v8_global_t* v8g) {
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
 
   // cursor functions. not intended to be used by end users
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("CREATE_CURSOR"),
                                JS_CreateCursor, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("JSON_CURSOR"),
                                JS_JsonCursor, true);
 }

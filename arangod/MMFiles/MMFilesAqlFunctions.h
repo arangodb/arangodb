@@ -35,13 +35,13 @@ struct MMFilesAqlFunctions : public aql::Functions {
   static aql::AqlValue Fulltext(arangodb::aql::Query*, transaction::Methods*,
                                 aql::VPackFunctionParameters const&);
 
-   static aql::AqlValue Near(arangodb::aql::Query*, transaction::Methods*,
-                             aql::VPackFunctionParameters const&);
+  static aql::AqlValue Near(arangodb::aql::Query*, transaction::Methods*,
+                            aql::VPackFunctionParameters const&);
 
-   static aql::AqlValue Within(arangodb::aql::Query*, transaction::Methods*,
-                               aql::VPackFunctionParameters const&);
+  static aql::AqlValue Within(arangodb::aql::Query*, transaction::Methods*,
+                              aql::VPackFunctionParameters const&);
 
-  static void RegisterFunctions();
+  static void registerResources();
 };
 
 } // namespace arangodb

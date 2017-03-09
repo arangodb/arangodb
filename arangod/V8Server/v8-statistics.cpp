@@ -254,30 +254,30 @@ void TRI_InitV8Statistics(v8::Isolate* isolate,
   // create the global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_ENABLED_STATISTICS"),
                                JS_EnabledStatistics);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_CLIENT_STATISTICS"),
                                JS_ClientStatistics);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_HTTP_STATISTICS"),
                                JS_HttpStatistics);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_SERVER_STATISTICS"),
                                JS_ServerStatistics);
 
   TRI_AddGlobalVariableVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("CONNECTION_TIME_DISTRIBUTION"),
+      isolate, TRI_V8_ASCII_STRING("CONNECTION_TIME_DISTRIBUTION"),
       DistributionList(isolate,
                        TRI_ConnectionTimeDistributionVectorStatistics));
   TRI_AddGlobalVariableVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("REQUEST_TIME_DISTRIBUTION"),
+      isolate, TRI_V8_ASCII_STRING("REQUEST_TIME_DISTRIBUTION"),
       DistributionList(isolate, TRI_RequestTimeDistributionVectorStatistics));
   TRI_AddGlobalVariableVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("BYTES_SENT_DISTRIBUTION"),
+      isolate, TRI_V8_ASCII_STRING("BYTES_SENT_DISTRIBUTION"),
       DistributionList(isolate, TRI_BytesSentDistributionVectorStatistics));
   TRI_AddGlobalVariableVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("BYTES_RECEIVED_DISTRIBUTION"),
+      isolate, TRI_V8_ASCII_STRING("BYTES_RECEIVED_DISTRIBUTION"),
       DistributionList(isolate, TRI_BytesReceivedDistributionVectorStatistics));
 }

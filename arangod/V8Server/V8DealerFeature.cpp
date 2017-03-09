@@ -1003,7 +1003,7 @@ void V8DealerFeature::initializeContext(size_t i) {
       {
         v8::HandleScope scope(isolate);
 
-        TRI_AddGlobalVariableVocbase(isolate, localContext,
+        TRI_AddGlobalVariableVocbase(isolate,
                                      TRI_V8_ASCII_STRING("APP_PATH"),
                                      TRI_V8_STD_STRING(_appPath));
 

@@ -44,6 +44,7 @@
 #include "MMFiles/MMFilesTransactionCollection.h"
 #include "MMFiles/MMFilesTransactionContextData.h"
 #include "MMFiles/MMFilesTransactionState.h"
+#include "MMFiles/MMFilesV8Functions.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -2167,13 +2168,18 @@ int MMFilesEngine::transferMarkers(LogicalCollection* collection,
 }
 
 /// @brief Add engine-specific AQL functions.
-void MMFilesEngine::addAqlFunctions() const {
-  MMFilesAqlFunctions::RegisterFunctions();
+void MMFilesEngine::addAqlFunctions() {
+  MMFilesAqlFunctions::registerResources();
 }
 
 /// @brief Add engine-specific optimizer rules
-void MMFilesEngine::addOptimizerRules() const {
-  MMFilesOptimizerRules::RegisterRules();
+void MMFilesEngine::addOptimizerRules() {
+  MMFilesOptimizerRules::registerResources();
+}
+
+/// @brief Add engine-specific V8 functions
+void MMFilesEngine::addV8Functions() {
+  MMFilesV8Functions::registerResources();
 }
 
 /// @brief transfer markers into a collection, actual work

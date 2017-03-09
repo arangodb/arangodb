@@ -659,7 +659,7 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
     ++i;
   }
 
-  TRI_AddGlobalVariableVocbase(_isolate, context,
+  TRI_AddGlobalVariableVocbase(_isolate,
                                TRI_V8_ASCII_STRING2(_isolate, "SYS_UNIT_TESTS"),
                                sysTestFiles);
 
@@ -838,30 +838,30 @@ void V8ShellFeature::initGlobals() {
 
   // set pretty print default
   TRI_AddGlobalVariableVocbase(
-      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "PRETTY_PRINT"),
+      _isolate, TRI_V8_ASCII_STRING2(_isolate, "PRETTY_PRINT"),
       v8::Boolean::New(_isolate, _console->prettyPrint()));
 
   // add colors for print.js
-  TRI_AddGlobalVariableVocbase(_isolate, context,
+  TRI_AddGlobalVariableVocbase(_isolate,
                                TRI_V8_ASCII_STRING2(_isolate, "COLOR_OUTPUT"),
                                v8::Boolean::New(_isolate, _console->colors()));
 
   // string functions
   TRI_AddGlobalVariableVocbase(
-      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "NORMALIZE_STRING"),
+      _isolate, TRI_V8_ASCII_STRING2(_isolate, "NORMALIZE_STRING"),
       v8::FunctionTemplate::New(_isolate, JS_NormalizeString)->GetFunction());
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "COMPARE_STRING"),
+      _isolate, TRI_V8_ASCII_STRING2(_isolate, "COMPARE_STRING"),
       v8::FunctionTemplate::New(_isolate, JS_CompareString)->GetFunction());
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, context,
+      _isolate, 
       TRI_V8_ASCII_STRING2(_isolate, "ARANGODB_CLIENT_VERSION"),
       v8::FunctionTemplate::New(_isolate, JS_VersionClient)->GetFunction());
 
   // is quite
-  TRI_AddGlobalVariableVocbase(_isolate, context,
+  TRI_AddGlobalVariableVocbase(_isolate, 
                                TRI_V8_ASCII_STRING2(_isolate, "ARANGO_QUIET"),
                                v8::Boolean::New(_isolate, _console->quiet()));
 
@@ -908,25 +908,23 @@ void V8ShellFeature::initGlobals() {
   v8::Local<v8::Value> console = v8::External::New(_isolate, _console);
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "SYS_OUTPUT"),
+      _isolate, TRI_V8_ASCII_STRING2(_isolate, "SYS_OUTPUT"),
       v8::FunctionTemplate::New(_isolate, JS_PagerOutput, console)
           ->GetFunction());
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "SYS_START_PAGER"),
+      _isolate, TRI_V8_ASCII_STRING2(_isolate, "SYS_START_PAGER"),
       v8::FunctionTemplate::New(_isolate, JS_StartOutputPager, console)
           ->GetFunction());
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "SYS_STOP_PAGER"),
+      _isolate, TRI_V8_ASCII_STRING2(_isolate, "SYS_STOP_PAGER"),
       v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, console)
           ->GetFunction());
 }
 
 void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
                               std::vector<std::string> const& positionals) {
-  auto context = _isolate->GetCurrentContext();
-
   // add positional arguments
   v8::Handle<v8::Array> p = v8::Array::New(_isolate, (int)positionals.size());
 
@@ -934,31 +932,31 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
     p->Set(i, TRI_V8_STD_STRING2(_isolate, positionals[i]));
   }
 
-  TRI_AddGlobalVariableVocbase(_isolate, context,
+  TRI_AddGlobalVariableVocbase(_isolate,
                                TRI_V8_ASCII_STRING2(_isolate, "ARGUMENTS"), p);
 
   // set mode flags
   TRI_AddGlobalVariableVocbase(
-      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_EXECUTE_SCRIPT"),
+      _isolate, TRI_V8_ASCII_STRING2(_isolate, "IS_EXECUTE_SCRIPT"),
       v8::Boolean::New(_isolate,
                        runMode == ShellFeature::RunMode::EXECUTE_SCRIPT));
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_EXECUTE_STRING"),
+      _isolate, TRI_V8_ASCII_STRING2(_isolate, "IS_EXECUTE_STRING"),
       v8::Boolean::New(_isolate,
                        runMode == ShellFeature::RunMode::EXECUTE_STRING));
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_CHECK_SCRIPT"),
+      _isolate, TRI_V8_ASCII_STRING2(_isolate, "IS_CHECK_SCRIPT"),
       v8::Boolean::New(_isolate,
                        runMode == ShellFeature::RunMode::CHECK_SYNTAX));
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_UNIT_TESTS"),
+      _isolate, TRI_V8_ASCII_STRING2(_isolate, "IS_UNIT_TESTS"),
       v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::UNIT_TESTS));
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_JS_LINT"),
+      _isolate, TRI_V8_ASCII_STRING2(_isolate, "IS_JS_LINT"),
       v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::JSLINT));
 }
 

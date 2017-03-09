@@ -325,10 +325,13 @@ class StorageEngine : public application_features::ApplicationFeature {
   // -------------
 
   /// @brief Add engine-specific AQL functions.
-  virtual void addAqlFunctions() const = 0;
+  virtual void addAqlFunctions() = 0;
   
   /// @brief Add engine-specific optimizer rules
-  virtual void addOptimizerRules() const = 0;
+  virtual void addOptimizerRules() = 0;
+  
+  /// @brief Add engine-specific V8 functions
+  virtual void addV8Functions() = 0;
 
  protected:
   void registerCollection(TRI_vocbase_t* vocbase,
