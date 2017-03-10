@@ -118,8 +118,8 @@ class V8Context {
   size_t const _id;
 
   v8::Persistent<v8::Context> _context;
-  v8::Isolate* _isolate = nullptr;
-  v8::Locker* _locker = nullptr;
+  v8::Isolate* _isolate;
+  v8::Locker* _locker;
   size_t _numExecutions;
   double const _creationStamp;
   double _lastGcStamp;

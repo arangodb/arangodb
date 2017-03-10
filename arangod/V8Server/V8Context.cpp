@@ -48,7 +48,9 @@ std::string const GlobalContextMethods::CodeWarmupExports =
     "require(\"@arangodb/actions\").warmupExports()";
   
 V8Context::V8Context(size_t id)
-    : _id(id), _creationStamp(TRI_microtime()) {}
+    : _id(id), _isolate(nullptr), _locker(nullptr), 
+      _numExecutions(0), _creationStamp(TRI_microtime()), 
+      _lastGcStamp(0.0), _hasActiveExternals(0) {}
 
 double V8Context::age() const {
   return TRI_microtime() - _creationStamp;
