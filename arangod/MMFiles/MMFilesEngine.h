@@ -40,6 +40,10 @@ class MMFilesCompactorThread;
 class TransactionCollection;
 class TransactionState;
 
+namespace rest {
+class RestHandlerFactory;
+}
+
 namespace transaction {
 class ContextData;
 }
@@ -277,7 +281,7 @@ public:
   void addV8Functions() override;
   
   /// @brief Add engine-specific REST handlers
-  void addRestHandlers() override;
+  void addRestHandlers(rest::RestHandlerFactory*) override;
   
   /// @brief transfer markers into a collection
   int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,

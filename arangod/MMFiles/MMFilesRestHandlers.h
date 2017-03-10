@@ -27,9 +27,12 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
+namespace rest {
+class RestHandlerFactory;
+}
 
 struct MMFilesRestHandlers {
-  static void registerResources();
+  static void registerResources(rest::RestHandlerFactory*);
 };
 
 } // namespace arangodb

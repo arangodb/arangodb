@@ -22,8 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesRestHandlers.h"
+#include "GeneralServer/RestHandlerFactory.h"
+#include "MMFiles/MMFilesRestWalHandler.h"
+#include "RestHandler/RestHandlerCreator.h"
 
 using namespace arangodb;
 
-void MMFilesRestHandlers::registerResources() {
+void MMFilesRestHandlers::registerResources(rest::RestHandlerFactory* handlerFactory) {
+  handlerFactory->addPrefixHandler(
+      "/_admin/wal", RestHandlerCreator<MMFilesRestWalHandler>::createNoData);
 }

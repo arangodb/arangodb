@@ -2260,8 +2260,8 @@ void MMFilesEngine::addV8Functions() {
 }
 
 /// @brief Add engine-specific REST handlers
-void MMFilesEngine::addRestHandlers() {
-  MMFilesRestHandlers::registerResources();
+void MMFilesEngine::addRestHandlers(rest::RestHandlerFactory* handlerFactory) {
+  MMFilesRestHandlers::registerResources(handlerFactory);
 }
 
 /// @brief transfer markers into a collection, actual work
