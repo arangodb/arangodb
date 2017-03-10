@@ -58,7 +58,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   VPackSlice parallel = userParams.get(Utils::parallelismKey);
   _parallelism = PregelFeature::availableParallelism();
   if (parallel.isInteger()) {
-    _parallelism = std::min((uint64_t)1, parallel.getUInt());
+    _parallelism = std::min(std::max((uint64_t)1, parallel.getUInt()), _parallelism);
   }
   
   // list of all shards, equal on all workers. Used to avoid storing strings of

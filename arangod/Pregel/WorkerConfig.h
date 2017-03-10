@@ -128,7 +128,7 @@ class WorkerConfig {
   /// load vertices on a lazy basis
   bool _lazyLoading = false;
 
-  uint32_t _parallelism = 1;
+  uint64_t _parallelism = 1;
 
   std::string _coordinatorId;
   TRI_vocbase_t *_vocbase;
