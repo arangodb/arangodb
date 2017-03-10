@@ -46,6 +46,13 @@ std::string const GlobalContextMethods::CodeBootstrapCoordinator =
 
 std::string const GlobalContextMethods::CodeWarmupExports =
     "require(\"@arangodb/actions\").warmupExports()";
+  
+V8Context::V8Context(size_t id)
+    : _id(id), _creationStamp(TRI_microtime()) {}
+
+double V8Context::age() const {
+  return TRI_microtime() - _creationStamp;
+}
 
 bool V8Context::addGlobalContextMethod(
     std::string const& method) {
