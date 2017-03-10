@@ -122,6 +122,14 @@ set(SKIP_INSTALL_ALL ON)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/rocksdb)
 
+list(APPEND LINK_DIRECTORIES "${CMAKE_CURRENT_BIN_DIR}/rocksdb/rocksdb")
+set(ROCKSDB_LIBS
+  "rocksdb"
+  CACHE INTERNAL
+  "${PROJECT_NAME}: Libraries"
+  )
+
+
 ################################################################################
 ## LINK_DIRECTORIES
 ################################################################################
