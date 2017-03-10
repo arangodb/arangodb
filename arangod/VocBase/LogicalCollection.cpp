@@ -29,6 +29,7 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/PerformanceLogScope.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Timers.h"
@@ -831,7 +832,7 @@ void LogicalCollection::includeVelocyPackEnterprise(VPackBuilder&) const {
 
 void LogicalCollection::increaseInternalVersion() { ++_internalVersion; }
 
-CollectionResult LogicalCollection::updateProperties(VPackSlice const& slice,
+arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
                                                      bool doSync) {
   // the following collection properties are intentionally not updated as
   // updating
@@ -855,7 +856,10 @@ CollectionResult LogicalCollection::updateProperties(VPackSlice const& slice,
     // We need to inform the cluster as well
     int tmp = ClusterInfo::instance()->setCollectionPropertiesCoordinator(
         _vocbase->name(), cid_as_string(), this);
-    return CollectionResult{tmp};
+    if (tmp == TRI_ERROR_NO_ERROR) {
+      return {};
+    }
+    return {tmp, TRI_errno_string(tmp)};
   }
 
  StorageEngine* engine = EngineSelectorFeature::ENGINE;

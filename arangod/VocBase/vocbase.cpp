@@ -606,10 +606,10 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       VPackBuilder builder;
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
       engine->getCollectionInfo(this, collection->cid(), builder, false, 0);
-      CollectionResult res = collection->updateProperties(builder.slice().get("parameters"), doSync);
+      arangodb::Result res = collection->updateProperties(builder.slice().get("parameters"), doSync);
 
-      if (!res.successful()) {
-        return res.code;
+      if (!res.ok()) {
+        return res.errorNumber();
       }
 
       collection->setStatus(TRI_VOC_COL_STATUS_DELETED);

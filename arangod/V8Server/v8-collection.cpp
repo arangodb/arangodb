@@ -1281,10 +1281,10 @@ static void JS_PropertiesVocbaseCol(
 
         VPackSlice const slice = builder.slice();
 
-        CollectionResult res = info->updateProperties(slice, false);
+        arangodb::Result res = info->updateProperties(slice, false);
 
-        if (!res.successful()) {
-          TRI_V8_THROW_EXCEPTION_MESSAGE(res.code, res.errorMessage);
+        if (!res.ok()) {
+          TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
         }
       }
 
@@ -1337,10 +1337,10 @@ static void JS_PropertiesVocbaseCol(
 
       // try to write new parameter to file
       bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-      CollectionResult updateRes = collection->updateProperties(slice, doSync);
+      arangodb::Result updateRes = collection->updateProperties(slice, doSync);
 
-      if (!updateRes.successful()) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(updateRes.code, updateRes.errorMessage);
+      if (!updateRes.ok()) {
+        TRI_V8_THROW_EXCEPTION_MESSAGE(updateRes.errorNumber(), updateRes.errorMessage());
       }
 
       auto physical = collection->getPhysical();
