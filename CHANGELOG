@@ -1,4 +1,12 @@
-v3.1.13 (2016-03-06)
+v3.1.14 (2017-03-13)
+--------------------
+
+* fixed compile error on Mac Yosemite
+
+* minor UI fixes
+
+
+v3.1.13 (2017-03-06)
 --------------------
 
 * fixed issue #2350
