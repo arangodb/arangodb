@@ -477,14 +477,14 @@ router.get("/coordshort", function(req, res) {
           _.each(http, function(value) {
             counter2 = 0;
             _.each(stat[value], function(x) {
-              merged.http[value][counter] = merged.http[value][counter] + x;
+              merged.http[value][counter2] = merged.http[value][counter2] + x;
               counter2++;
             });
           });
           _.each(arrays, function(value) {
             counter2 = 0;
             _.each(stat[value], function(x) {
-              merged[value][counter] = merged[value][counter] + x;
+              merged[value][counter2] = merged[value][counter2] + x;
               counter2++;
             });
           });
