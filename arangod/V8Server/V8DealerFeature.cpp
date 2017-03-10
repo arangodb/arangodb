@@ -144,7 +144,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new UInt64Parameter(&_nrMaxContexts));
   
   options->addHiddenOption(
-      "--javascript.v8-contexts",
+      "--javascript.v8-contexts-spare",
       "minimum number of V8 contexts that keep available for executing JavaScript actions",
       new UInt64Parameter(&_nrMinContexts));
 }
@@ -640,7 +640,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
     CONDITION_LOCKER(guard, _contextCondition);
 
     while (_freeContexts.empty() && !_stopping) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "waiting for unused V8 context";
+      LOG_TOPIC(TRACE, arangodb::Logger::V8) << "waiting for unused V8 context";
 
       if (!_dirtyContexts.empty()) {
         // we'll use a dirty context in this case
@@ -963,7 +963,7 @@ void V8DealerFeature::shutdownContexts() {
 
   // stop GC thread
   if (_gcThread != nullptr) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "Waiting for GC Thread to finish action";
+    LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "waiting for GC Thread to finish action";
     _gcThread->beginShutdown();
 
     // wait until garbage collector thread is done
