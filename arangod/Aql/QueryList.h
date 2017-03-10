@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_QUERY_LIST_H 1
 
 #include "Basics/Common.h"
+#include "Aql/QueryExecutionState.h"
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
 
@@ -33,33 +34,28 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace aql {
 
 class Query;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 struct QueryEntry
-// -----------------------------------------------------------------------------
-      
-struct QueryEntry {
-  QueryEntry(arangodb::aql::Query const*, double);
-
-  arangodb::aql::Query const* query;
-  double const started;
-};
-
 struct QueryEntryCopy {
-  QueryEntryCopy (TRI_voc_tick_t,
-                  std::string const&,
-                  double,
-                  double,
-                  std::string const&);
+  QueryEntryCopy (TRI_voc_tick_t id,
+                  std::string&& queryString,
+                  std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+                  double started,
+                  double runTime,
+                  QueryExecutionState::ValueType state);
 
-  TRI_voc_tick_t  id;
-  std::string     queryString;
-  double          started;
-  double          runTime;
-  std::string     queryState;
+  TRI_voc_tick_t const id;
+  std::string const queryString;
+  std::shared_ptr<arangodb::velocypack::Builder> const bindParameters;
+  double const started;
+  double const runTime;
+  QueryExecutionState::ValueType const state;
 };
 
 class QueryList {
@@ -68,7 +64,7 @@ class QueryList {
   explicit QueryList(TRI_vocbase_t*);
 
   /// @brief destroy a query list
-  ~QueryList();
+  ~QueryList() = default;
 
  public:
   /// @brief whether or not queries are tracked
@@ -143,10 +139,10 @@ class QueryList {
   }
 
   /// @brief enter a query
-  bool insert(Query const*, double);
+  bool insert(Query const*);
 
   /// @brief remove a query
-  void remove(Query const*, double);
+  void remove(Query const*);
 
   /// @brief kills a query
   int kill(TRI_voc_tick_t);
@@ -164,11 +160,14 @@ class QueryList {
   void clearSlow();
 
  private:
+  std::string extractQueryString(Query const* query, size_t maxLength) const;
+
+ private:
   /// @brief r/w lock for the list
   arangodb::basics::ReadWriteLock _lock;
 
   /// @brief list of current queries
-  std::unordered_map<TRI_voc_tick_t, QueryEntry*> _current;
+  std::unordered_map<TRI_voc_tick_t, Query const*> _current;
 
   /// @brief list of slow queries
   std::list<QueryEntryCopy> _slow;

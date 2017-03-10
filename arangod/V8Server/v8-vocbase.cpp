@@ -39,6 +39,7 @@
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/HybridLogicalClock.h"
@@ -1098,12 +1099,12 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args.Length() < 1 || args.Length() > 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "AQL_EXPLAIN(<querystring>, <bindvalues>, <options>)");
+        "AQL_EXPLAIN(<queryString>, <bindVars>, <options>)");
   }
 
   // get the query string
   if (!args[0]->IsString()) {
-    TRI_V8_THROW_TYPE_ERROR("expecting string for <querystring>");
+    TRI_V8_THROW_TYPE_ERROR("expecting string for <queryString>");
   }
 
   std::string const queryString(TRI_ObjectToString(args[0]));
@@ -1113,7 +1114,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args.Length() > 1) {
     if (!args[1]->IsUndefined() && !args[1]->IsNull() && !args[1]->IsObject()) {
-      TRI_V8_THROW_TYPE_ERROR("expecting object for <bindvalues>");
+      TRI_V8_THROW_TYPE_ERROR("expecting object for <bindVars>");
     }
     if (args[1]->IsObject()) {
       bindVars.reset(new VPackBuilder);
@@ -1284,12 +1285,12 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args.Length() < 1 || args.Length() > 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "AQL_EXECUTE(<querystring>, <bindvalues>, <options>)");
+        "AQL_EXECUTE(<queryString>, <bindVars>, <options>)");
   }
 
   // get the query string
   if (!args[0]->IsString()) {
-    TRI_V8_THROW_TYPE_ERROR("expecting string for <querystring>");
+    TRI_V8_THROW_TYPE_ERROR("expecting string for <queryString>");
   }
 
   std::string const queryString(TRI_ObjectToString(args[0]));
@@ -1302,7 +1303,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args.Length() > 1) {
     if (!args[1]->IsUndefined() && !args[1]->IsNull() && !args[1]->IsObject()) {
-      TRI_V8_THROW_TYPE_ERROR("expecting object for <bindvalues>");
+      TRI_V8_THROW_TYPE_ERROR("expecting object for <bindVars>");
     }
     if (args[1]->IsObject()) {
       bindVars.reset(new VPackBuilder);
@@ -1475,16 +1476,20 @@ static void JS_QueriesCurrentAql(
     auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
 
     for (auto q : queries) {
-      auto const&& timeString = TRI_StringTimeStamp(q.started, false);
-      auto const& queryState = q.queryState.substr(8, q.queryState.size() - 9);
+      auto timeString = TRI_StringTimeStamp(q.started, false);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
       obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, q.id));
       obj->Set(TRI_V8_ASCII_STRING("query"), TRI_V8_STD_STRING(q.queryString));
+      if (q.bindParameters != nullptr) {
+        obj->Set(TRI_V8_ASCII_STRING("bindVars"), TRI_VPackToV8(isolate, q.bindParameters->slice()));
+      } else {
+        obj->Set(TRI_V8_ASCII_STRING("started"), v8::Object::New(isolate));
+      }
       obj->Set(TRI_V8_ASCII_STRING("started"), TRI_V8_STD_STRING(timeString));
       obj->Set(TRI_V8_ASCII_STRING("runTime"),
                v8::Number::New(isolate, q.runTime));
-      obj->Set(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(queryState));
+      obj->Set(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(aql::QueryExecutionState::toString(q.state)));
       result->Set(i++, obj);
     }
 
@@ -1528,16 +1533,16 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
 
     for (auto q : queries) {
-      auto const&& timeString = TRI_StringTimeStamp(q.started, false);
-      auto const& queryState = q.queryState.substr(8, q.queryState.size() - 9);
+      auto timeString = TRI_StringTimeStamp(q.started, false);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
       obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, q.id));
       obj->Set(TRI_V8_ASCII_STRING("query"), TRI_V8_STD_STRING(q.queryString));
+      obj->Set(TRI_V8_ASCII_STRING("bindVars"), TRI_VPackToV8(isolate, q.bindParameters->slice()));
       obj->Set(TRI_V8_ASCII_STRING("started"), TRI_V8_STD_STRING(timeString));
       obj->Set(TRI_V8_ASCII_STRING("runTime"),
                v8::Number::New(isolate, q.runTime));
-      obj->Set(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(queryState));
+      obj->Set(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(aql::QueryExecutionState::toString(q.state)));
       result->Set(i++, obj);
     }
 
@@ -2404,7 +2409,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
           "Database");
   TRI_vocbase_t* database = nullptr;
-  int res = databaseFeature->createDatabase(id, name, true, database);
+  int res = databaseFeature->createDatabase(id, name, database);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2549,7 +2554,7 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   DatabaseFeature* databaseFeature =
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
           "Database");
-  int res = databaseFeature->dropDatabase(name, true, false, true);
+  int res = databaseFeature->dropDatabase(name, false, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);

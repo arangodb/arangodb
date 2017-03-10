@@ -38,6 +38,7 @@
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesIndexFactory.h"
+#include "MMFiles/MMFilesOptimizerRules.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesTransactionCollection.h"
@@ -129,17 +130,16 @@ std::string const MMFilesEngine::FeatureName("MMFilesEngine");
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new MMFilesIndexFactory())
     , _isUpgrade(false)
-    , _maxTick(0) 
-    {}
-
-MMFilesEngine::~MMFilesEngine() {
+    , _maxTick(0) { 
+      startsAfter("MMFilesPersistentIndex");
 }
 
+MMFilesEngine::~MMFilesEngine() {}
 
 // perform a physical deletion of the database
 void MMFilesEngine::dropDatabase(Database* database, int& status) {
   // delete persistent indexes for this database
-  PersistentIndexFeature::dropDatabase(database->id());
+  MMFilesPersistentIndexFeature::dropDatabase(database->id());
 
   // To shutdown the database (which destroys all LogicalCollection
   // objects of all collections) we need to make sure that the
@@ -379,7 +379,7 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
       // delete persistent indexes for this database
       TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(
           basics::StringUtils::uint64(idSlice.copyString()));
-      PersistentIndexFeature::dropDatabase(id);
+      MMFilesPersistentIndexFeature::dropDatabase(id);
 
       dropDatabaseDirectory(directory);
       continue;
@@ -532,6 +532,10 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
   result.close();
 
   return TRI_ERROR_NO_ERROR;
+}
+  
+void MMFilesEngine::waitForSync(TRI_voc_tick_t tick) {
+  MMFilesLogfileManager::instance()->slots()->waitForTick(tick);
 }
 
 TRI_vocbase_t* MMFilesEngine::openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) {
@@ -730,7 +734,7 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalColl
   unregisterCollectionPath(vocbase->id(), collection->cid());
   
   // delete persistent indexes    
-  PersistentIndexFeature::dropCollection(vocbase->id(), collection->cid());
+  MMFilesPersistentIndexFeature::dropCollection(vocbase->id(), collection->cid());
 
   // rename collection directory
   if (physical->path().empty()) {
@@ -821,6 +825,47 @@ void MMFilesEngine::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                      arangodb::LogicalCollection const* parameters,
                                      bool doSync) {
   saveCollectionInfo(vocbase, id, parameters, doSync);
+}
+
+// asks the storage engine to persist renaming of a collection
+// This will write a renameMarker if not in recovery
+Result MMFilesEngine::renameCollection(
+    TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection,
+    std::string const& oldName) {
+  if (inRecovery()) {
+    // Nothing todo. Marker already there
+    return {};
+  }
+  int res = TRI_ERROR_NO_ERROR;
+  try {
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("id", VPackValue(collection->cid_as_string()));
+    builder.add("oldName", VPackValue(oldName));
+    builder.add("name", VPackValue(collection->name()));
+    builder.close();
+
+    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_RENAME_COLLECTION, vocbase->id(), collection->cid(), builder.slice());
+
+    MMFilesWalSlotInfoCopy slotInfo =
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+
+    res = TRI_ERROR_NO_ERROR;
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save collection rename marker in log: "
+              << TRI_errno_string(res);
+  }
+  return {res, TRI_errno_string(res)};
 }
 
 // asks the storage engine to create an index as specified in the VPack
@@ -1276,7 +1321,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
-      auto uniqCol = std::make_unique<arangodb::LogicalCollection>(vocbase.get(), it, true);
+      auto uniqCol = std::make_unique<arangodb::LogicalCollection>(vocbase.get(), it);
       auto collection = uniqCol.get();
       TRI_ASSERT(collection != nullptr);
       StorageEngine::registerCollection(vocbase.get(), uniqCol.get());
@@ -2121,9 +2166,14 @@ int MMFilesEngine::transferMarkers(LogicalCollection* collection,
   return res;
 }
 
-/// @brief Add engine specific AQL functions.
+/// @brief Add engine-specific AQL functions.
 void MMFilesEngine::addAqlFunctions() const {
-  aql::MMFilesAqlFunctions::RegisterFunctions();
+  MMFilesAqlFunctions::RegisterFunctions();
+}
+
+/// @brief Add engine-specific optimizer rules
+void MMFilesEngine::addOptimizerRules() const {
+  MMFilesOptimizerRules::RegisterRules();
 }
 
 /// @brief transfer markers into a collection, actual work

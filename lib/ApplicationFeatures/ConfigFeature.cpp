@@ -148,9 +148,9 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     locations.emplace_back(location);
   }
 
-  locations.emplace_back(FileUtils::currentDirectory());
-  locations.emplace_back(FileUtils::buildFilename(FileUtils::currentDirectory(),
-                                                  "etc", "relative"));
+  std::string current = FileUtils::currentDirectory().result();
+  locations.emplace_back(current);
+  locations.emplace_back(FileUtils::buildFilename(current, "etc", "relative"));
   locations.emplace_back(
       FileUtils::buildFilename(FileUtils::homeDirectory(), ".arangodb"));
   locations.emplace_back(FileUtils::configDirectory(binaryPath));

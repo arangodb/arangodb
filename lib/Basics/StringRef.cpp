@@ -26,7 +26,7 @@
 #include <iostream>
 
 std::ostream& operator<<(std::ostream& stream, arangodb::StringRef const& ref) {
-  stream << std::string(ref.data(), ref.length());
+  stream.write(ref.data(), ref.length());
   return stream;
 }
 

@@ -42,6 +42,30 @@ std::string HexDump::toHex(uint8_t value) {
   return result;
 }
 
+std::string HexDump::toString() const {
+  ValueLength length = slice.byteSize();
+  std::string result;
+  result.reserve(4 * (length + separator.size()) + (length / valuesPerLine) + 1); 
+
+  int current = 0;
+
+  for (uint8_t it : slice) {
+    if (current != 0) {
+      result.append(separator);
+
+      if (valuesPerLine > 0 && current == valuesPerLine) {
+        result.push_back('\n');
+        current = 0;
+      }
+    }
+
+    result.append(HexDump::toHex(it));
+    ++current;
+  }
+
+  return result;
+}
+
 namespace arangodb {
 namespace velocypack {
 

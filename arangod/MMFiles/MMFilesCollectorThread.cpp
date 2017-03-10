@@ -398,7 +398,7 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
       // reset collector status
       broadcastCollectorResult(res);
 
-      PersistentIndexFeature::syncWal();
+      MMFilesPersistentIndexFeature::syncWal();
 
       _logfileManager->setCollectionDone(logfile);
     } else {

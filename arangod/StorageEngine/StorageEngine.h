@@ -42,6 +42,7 @@ namespace arangodb {
 
 class LogicalCollection;
 class PhysicalCollection;
+class Result;
 class TransactionCollection;
 class TransactionState;
 
@@ -125,6 +126,8 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   using Database = TRI_vocbase_t;
   using CollectionView = LogicalCollection;
+    
+  virtual void waitForSync(TRI_voc_tick_t tick) = 0;
 
   //// operations on databasea
 
@@ -228,6 +231,11 @@ class StorageEngine : public application_features::ApplicationFeature {
                                 arangodb::LogicalCollection const* parameters,
                                 bool doSync) = 0;
 
+  // asks the storage engine to persist renaming of a collection
+  virtual arangodb::Result renameCollection(
+      TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection,
+      std::string const& oldName) = 0;
+
   // asks the storage engine to create an index as specified in the VPack
   // Slice object and persist the creation info. The database id, collection id
   // and index data are passed in the Slice object. Note that this function
@@ -316,8 +324,11 @@ class StorageEngine : public application_features::ApplicationFeature {
   // AQL functions
   // -------------
 
-  /// @brief Add engine specific AQL functions.
+  /// @brief Add engine-specific AQL functions.
   virtual void addAqlFunctions() const = 0;
+  
+  /// @brief Add engine-specific optimizer rules
+  virtual void addOptimizerRules() const = 0;
 
  protected:
   void registerCollection(TRI_vocbase_t* vocbase,

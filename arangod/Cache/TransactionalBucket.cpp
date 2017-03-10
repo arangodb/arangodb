@@ -35,12 +35,14 @@ size_t TransactionalBucket::SLOTS_DATA = 3;
 size_t TransactionalBucket::SLOTS_BLACKLIST = 4;
 
 TransactionalBucket::TransactionalBucket() {
-  memset(this, 0, sizeof(TransactionalBucket));
+  _state.lock();
+  clear();
 }
 
 bool TransactionalBucket::lock(uint64_t transactionTerm, int64_t maxTries) {
-  return _state.lock(maxTries,
-                     [&]() -> void { updateBlacklistTerm(transactionTerm); });
+  return _state.lock(maxTries, [this, transactionTerm]() -> void {
+    updateBlacklistTerm(transactionTerm);
+  });
 }
 
 void TransactionalBucket::unlock() {
@@ -52,12 +54,12 @@ bool TransactionalBucket::isLocked() const { return _state.isLocked(); }
 
 bool TransactionalBucket::isMigrated() const {
   TRI_ASSERT(isLocked());
-  return _state.isSet(State::Flag::blacklisted);
+  return _state.isSet(State::Flag::migrated);
 }
 
 bool TransactionalBucket::isFullyBlacklisted() const {
   TRI_ASSERT(isLocked());
-  return _state.isSet(State::Flag::blacklisted);
+  return (haveOpenTransaction() && _state.isSet(State::Flag::blacklisted));
 }
 
 bool TransactionalBucket::isFull() const {
@@ -125,30 +127,39 @@ CachedValue* TransactionalBucket::remove(uint32_t hash, void const* key,
   return value;
 }
 
-void TransactionalBucket::blacklist(uint32_t hash, void const* key,
-                                    uint32_t keySize) {
+CachedValue* TransactionalBucket::blacklist(uint32_t hash, void const* key,
+                                            uint32_t keySize) {
   TRI_ASSERT(isLocked());
-  // remove key if it's here
-  remove(hash, key, keySize);
+  if (!haveOpenTransaction()) {
+    return nullptr;
+  }
 
-  if (isFullyBlacklisted()) {
-    return;
+  // remove key if it's here
+  CachedValue* value = (keySize == 0) ? nullptr : remove(hash, key, keySize);
+
+  if (isBlacklisted(hash)) {
+    return value;
   }
 
   for (size_t i = 0; i < SLOTS_BLACKLIST; i++) {
     if (_blacklistHashes[i] == 0) {
       // found an empty slot
       _blacklistHashes[i] = hash;
-      return;
+      return value;
     }
   }
 
   // no empty slot found, fully blacklist
   _state.toggleFlag(State::Flag::blacklisted);
+  return value;
 }
 
 bool TransactionalBucket::isBlacklisted(uint32_t hash) const {
   TRI_ASSERT(isLocked());
+  if (!haveOpenTransaction()) {
+    return false;
+  }
+
   if (isFullyBlacklisted()) {
     return true;
   }
@@ -164,14 +175,14 @@ bool TransactionalBucket::isBlacklisted(uint32_t hash) const {
   return blacklisted;
 }
 
-CachedValue* TransactionalBucket::evictionCandidate() const {
+CachedValue* TransactionalBucket::evictionCandidate(bool ignoreRefCount) const {
   TRI_ASSERT(isLocked());
   for (size_t i = 0; i < SLOTS_DATA; i++) {
     size_t slot = SLOTS_DATA - (i + 1);
     if (_cachedHashes[slot] == 0) {
       continue;
     }
-    if (_cachedData[slot]->isFreeable()) {
+    if (ignoreRefCount || _cachedData[slot]->isFreeable()) {
       return _cachedData[slot];
     }
   }
@@ -193,6 +204,11 @@ void TransactionalBucket::evict(CachedValue* value, bool optimizeForInsertion) {
   }
 }
 
+void TransactionalBucket::clear() {
+  TRI_ASSERT(isLocked());
+  memset(this, 0, sizeof(TransactionalBucket));
+}
+
 void TransactionalBucket::updateBlacklistTerm(uint64_t term) {
   if (term > _blacklistTerm) {
     _blacklistTerm = term;
@@ -206,6 +222,7 @@ void TransactionalBucket::updateBlacklistTerm(uint64_t term) {
 }
 
 void TransactionalBucket::moveSlot(size_t slot, bool moveToFront) {
+  TRI_ASSERT(isLocked());
   uint32_t hash = _cachedHashes[slot];
   CachedValue* value = _cachedData[slot];
   size_t i = slot;
@@ -222,8 +239,12 @@ void TransactionalBucket::moveSlot(size_t slot, bool moveToFront) {
       _cachedData[i] = _cachedData[i + 1];
     }
   }
-  if (i != slot) {
-    _cachedHashes[i] = hash;
-    _cachedData[i] = value;
-  }
+  _cachedHashes[i] = hash;
+  _cachedData[i] = value;
+}
+
+bool TransactionalBucket::haveOpenTransaction() const {
+  TRI_ASSERT(isLocked());
+  // only have open transactions if term is odd
+  return ((_blacklistTerm & 1ULL) > 0);
 }

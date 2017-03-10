@@ -47,12 +47,9 @@ class MMFilesSkiplistIndex;
 namespace transaction {
 class Methods;
 }
-;
-
 
 /// @brief Abstract Builder for lookup values in skiplist index
-
-class BaseSkiplistLookupBuilder {
+class MMFilesBaseSkiplistLookupBuilder {
  protected:
   bool _isEquality;
   bool _includeLower;
@@ -65,9 +62,8 @@ class BaseSkiplistLookupBuilder {
   arangodb::velocypack::Slice _upperSlice;
 
  public:
-  explicit BaseSkiplistLookupBuilder(transaction::Methods* trx) :
-    _lowerBuilder(trx), _upperBuilder(trx)
-  {
+  explicit MMFilesBaseSkiplistLookupBuilder(transaction::Methods* trx) :
+    _lowerBuilder(trx), _upperBuilder(trx) {
     _isEquality = true;
     _includeUpper = true;
     _includeLower = true;
@@ -76,7 +72,7 @@ class BaseSkiplistLookupBuilder {
     _upperBuilder->clear();
   }
 
-  virtual ~BaseSkiplistLookupBuilder() {};
+  virtual ~MMFilesBaseSkiplistLookupBuilder() {}
 
   /// @brief Compute the next lookup values
   ///        If returns false there is no further lookup
@@ -109,15 +105,15 @@ class BaseSkiplistLookupBuilder {
 ///        returned in the correct ordering. And no
 ///        lookup is returned twice.
 
-class SkiplistLookupBuilder : public BaseSkiplistLookupBuilder {
+class MMFilesSkiplistLookupBuilder final : public MMFilesBaseSkiplistLookupBuilder {
 
   public:
-   SkiplistLookupBuilder(
+   MMFilesSkiplistLookupBuilder(
        transaction::Methods* trx,
        std::vector<std::vector<arangodb::aql::AstNode const*>>&,
        arangodb::aql::Variable const*, bool);
 
-    ~SkiplistLookupBuilder() {}
+   ~MMFilesSkiplistLookupBuilder() {}
 
 /// @brief Compute the next lookup values
 ///        If returns false there is no further lookup
@@ -125,7 +121,7 @@ class SkiplistLookupBuilder : public BaseSkiplistLookupBuilder {
 
 };
 
-class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
+class MMFilesSkiplistInLookupBuilder final : public MMFilesBaseSkiplistLookupBuilder {
 
   private:
 
@@ -145,12 +141,12 @@ class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
     bool _done;
 
   public:
-   SkiplistInLookupBuilder(
+   MMFilesSkiplistInLookupBuilder(
        transaction::Methods* trx,
        std::vector<std::vector<arangodb::aql::AstNode const*>>&,
        arangodb::aql::Variable const*, bool);
 
-    ~SkiplistInLookupBuilder() {}
+    ~MMFilesSkiplistInLookupBuilder() {}
 
     /// @brief Compute the next lookup values
     /// If returns false there is no further lookup
@@ -190,7 +186,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
   std::vector<std::pair<Node*, Node*>> _intervals;
   size_t _currentInterval;
 
-  BaseSkiplistLookupBuilder* _builder;
+  MMFilesBaseSkiplistLookupBuilder* _builder;
 
   std::function<int(void*, MMFilesSkiplistIndexElement const*, MMFilesSkiplistIndexElement const*,
                     MMFilesSkiplistCmpType)> _CmpElmElm;
@@ -202,7 +198,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
       TRI_Skiplist const* skiplist, size_t numPaths,
       std::function<int(void*, MMFilesSkiplistIndexElement const*, MMFilesSkiplistIndexElement const*,
                         MMFilesSkiplistCmpType)> const& CmpElmElm,
-      bool reverse, BaseSkiplistLookupBuilder* builder);
+      bool reverse, MMFilesBaseSkiplistLookupBuilder* builder);
 
   ~MMFilesSkiplistIterator() {
     delete _builder;

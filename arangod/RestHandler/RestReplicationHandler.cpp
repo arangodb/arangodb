@@ -1272,10 +1272,6 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
               "Database")
               ->waitForSync()));
   TRI_ASSERT(col->isSystem() == (name[0] == '_'));
-  TRI_ASSERT(
-      col->indexBuckets() ==
-      arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-          slice, "indexBuckets", DatabaseFeature::defaultIndexBuckets()));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_voc_cid_t planId = 0;
   VPackSlice const planIdSlice = slice.get("planId");

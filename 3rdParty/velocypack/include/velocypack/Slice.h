@@ -855,6 +855,7 @@ class Slice {
     return Slice(left).equals(Slice(right));
   }
 
+  std::string toHex() const;
   std::string toJson(Options const* options = &Options::Defaults) const;
   std::string toString(Options const* options = &Options::Defaults) const;
   std::string hexType() const;

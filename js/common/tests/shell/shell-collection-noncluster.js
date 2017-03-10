@@ -43,6 +43,20 @@ var ERRORS = arangodb.errors;
 function CollectionSuite () {
   'use strict';
   return {
+    
+    testShards : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c = db._create(cn);
+      try {
+        c.shards();
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_INTERNAL.code, err.errorNum);
+      }
+      db._drop(cn);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate

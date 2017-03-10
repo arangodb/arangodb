@@ -339,7 +339,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   // Try to create a new collection. This is not registered yet
 
   std::unique_ptr<arangodb::LogicalCollection> collection =
-      std::make_unique<arangodb::LogicalCollection>(this, parameters, true);
+      std::make_unique<arangodb::LogicalCollection>(this, parameters);
   TRI_ASSERT(collection != nullptr);
 
   WRITE_LOCKER(writeLocker, _collectionsLock);
@@ -364,6 +364,10 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
     // set collection version to 3.1, as the collection is just created
     collection->setVersion(LogicalCollection::VERSION_31);
+
+    // Let's try to persist it.
+    collection->persistPhysicalCollection();
+ 
     events::CreateCollection(name, TRI_ERROR_NO_ERROR);
     return collection.release();
   } catch (...) {
@@ -1060,8 +1064,7 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool 
 
 /// @brief renames a collection
 int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
-                                    std::string const& newName, bool doOverride,
-                                    bool writeMarker) {
+                                    std::string const& newName, bool doOverride) {
   if (collection->isSystem()) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
@@ -1162,39 +1165,12 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
   arangodb::aql::QueryCache::instance()->invalidate(
       this, std::vector<std::string>{oldName, newName});
 
-  if (writeMarker) {
-    // now log the operation
-    try {
-      VPackBuilder builder;
-      builder.openObject();
-      builder.add("id", VPackValue(collection->cid_as_string()));
-      builder.add("oldName", VPackValue(oldName));
-      builder.add("name", VPackValue(newName));
-      builder.close();
+  // Tell the engine.
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  arangodb::Result res2 = engine->renameCollection(this, collection, oldName);
 
-      MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_RENAME_COLLECTION, _id, collection->cid(), builder.slice());
-
-      MMFilesWalSlotInfoCopy slotInfo =
-          MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
-
-      if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
-      }
-
-      return TRI_ERROR_NO_ERROR;
-    } catch (arangodb::basics::Exception const& ex) {
-      res = ex.code();
-    } catch (...) {
-      res = TRI_ERROR_INTERNAL;
-    }
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save collection rename marker in log: "
-                << TRI_errno_string(res);
-    }
-  }
-
-  return res;
+  return res2.errorNumber();
 }
 
 /// @brief locks a collection for usage, loading or manifesting it

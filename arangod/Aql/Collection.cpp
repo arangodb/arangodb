@@ -108,8 +108,33 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     }
     return res;
   }
+
   return clusterInfo->getShardList(
       arangodb::basics::StringUtils::itoa(getPlanId()));
+}
+
+/// @brief returns the filtered list of shard ids of a collection
+std::shared_ptr<std::vector<std::string>> Collection::shardIds(std::unordered_set<std::string> const& includedShards) const {
+  // use the simple method first
+  auto copy = shardIds();
+
+  if (includedShards.empty()) {
+    // no shards given => return them all!
+    return copy;
+  }
+
+  // copy first as we will modify the result
+  auto result = std::make_shared<std::vector<std::string>>();
+
+  // post-filter the result
+  for (auto const& it : *copy) {
+    if (includedShards.find(it) == includedShards.end()) {
+      continue;
+    }
+    result->emplace_back(it);
+  }
+
+  return result;
 }
 
 /// @brief returns the shard keys of a collection

@@ -26,6 +26,7 @@
 #include "Basics/encoding.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Indexes/Index.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/KeyGenerator.h"
@@ -43,7 +44,10 @@ using namespace arangodb;
 
 PhysicalCollection::PhysicalCollection(LogicalCollection* collection,
                                        VPackSlice const& info)
-    : _logicalCollection(collection), _keyOptions(nullptr), _keyGenerator() {
+    : _logicalCollection(collection),
+      _keyOptions(nullptr),
+      _indexes(),
+      _keyGenerator() {
   TRI_ASSERT(info.isObject());
   auto keyOpts = info.get("keyOptions");
 
@@ -56,6 +60,26 @@ PhysicalCollection::PhysicalCollection(LogicalCollection* collection,
 void PhysicalCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder){
     this->figuresSpecific(builder);
 };
+
+void PhysicalCollection::drop() {
+  _indexes.clear();
+  try {
+    // close collection. this will also invalidate the revisions cache
+    close();
+  } catch (...) {
+    // don't throw from here... dropping should succeed
+  }
+}
+
+std::shared_ptr<Index> PhysicalCollection::lookupIndex(
+    TRI_idx_iid_t idxId) const {
+  for (auto const& idx : _indexes) {
+    if (idx->id() == idxId) {
+      return idx;
+    }
+  }
+  return nullptr;
+}
 
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
@@ -342,6 +366,48 @@ int PhysicalCollection::checkRevision(transaction::Methods* trx,
   }
   return TRI_ERROR_NO_ERROR;
 }
+
+/// @brief hands out a list of indexes
+std::vector<std::shared_ptr<arangodb::Index>> const&
+PhysicalCollection::getIndexes() const {
+  return _indexes;
+}
+
+void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
+                                         bool withFigures) const {
+  result.openArray();
+  for (auto const& idx : _indexes) {
+    result.openObject();
+    idx->toVelocyPack(result, withFigures);
+    result.close();
+  }
+  result.close();
+}
+
+/// @brief return the figures for a collection
+std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
+  auto builder = std::make_shared<VPackBuilder>();
+  builder->openObject();
+
+  // add index information
+  size_t sizeIndexes = memory();
+  size_t numIndexes = 0;
+  for (auto const& idx : _indexes) {
+    sizeIndexes += static_cast<size_t>(idx->memory());
+    ++numIndexes;
+  }
+
+  builder->add("indexes", VPackValue(VPackValueType::Object));
+  builder->add("count", VPackValue(numIndexes));
+  builder->add("size", VPackValue(sizeIndexes));
+  builder->close();  // indexes
+
+  // add engine-specific figures
+  figures(builder);
+  builder->close();
+  return builder;
+}
+
 
 // SECTION: Key Options
 VPackSlice PhysicalCollection::keyOptions() const {

@@ -57,6 +57,9 @@ class BindParameters {
     return _parameters;
   }
 
+  /// @brief return the bind parameters as passed by the user
+  std::shared_ptr<arangodb::velocypack::Builder> builder() const { return _builder; }
+
   /// @brief create a hash value for the bind parameters
   uint64_t hash() const;
 

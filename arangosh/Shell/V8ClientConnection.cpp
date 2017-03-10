@@ -1024,7 +1024,7 @@ static void ClientConnection_importJson(
   std::string fileName = TRI_ObjectToString(isolate, args[0]);
   std::string collectionName = TRI_ObjectToString(isolate, args[1]);
 
-  if (ih.importJson(collectionName, fileName)) {
+  if (ih.importJson(collectionName, fileName, false)) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
     result->Set(TRI_V8_ASCII_STRING("lines"),

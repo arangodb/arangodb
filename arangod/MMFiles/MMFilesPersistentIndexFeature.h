@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_ROCKS_DB_FEATURE_H
-#define ARANGOD_INDEXES_ROCKS_DB_FEATURE_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_PERSISTENT_INDEX_FEATURE_H
+#define ARANGOD_MMFILES_MMFILES_PERSISTENT_INDEX_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
@@ -35,12 +35,12 @@ class OptimisticTransactionDB;
 }
 
 namespace arangodb {
-class RocksDBKeyComparator;
+class MMFilesPersistentIndexKeyComparator;
 
-class PersistentIndexFeature final : public application_features::ApplicationFeature {
+class MMFilesPersistentIndexFeature final : public application_features::ApplicationFeature {
  public:
-  explicit PersistentIndexFeature(application_features::ApplicationServer* server);
-  ~PersistentIndexFeature();
+  explicit MMFilesPersistentIndexFeature(application_features::ApplicationServer* server);
+  ~MMFilesPersistentIndexFeature();
   
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -48,14 +48,14 @@ class PersistentIndexFeature final : public application_features::ApplicationFea
   void unprepare() override final;
 
   inline rocksdb::OptimisticTransactionDB* db() const { return _db; }
-  inline RocksDBKeyComparator* comparator() const { return _comparator; }
+  inline MMFilesPersistentIndexKeyComparator* comparator() const { return _comparator; }
 
   static int syncWal();
   static int dropDatabase(TRI_voc_tick_t);
   static int dropCollection(TRI_voc_tick_t, TRI_voc_cid_t);
   static int dropIndex(TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t);
 
-  static PersistentIndexFeature* instance();
+  static MMFilesPersistentIndexFeature* instance();
 
  private:
 
@@ -65,7 +65,7 @@ class PersistentIndexFeature final : public application_features::ApplicationFea
 
   rocksdb::OptimisticTransactionDB* _db;
   rocksdb::Options _options;
-  RocksDBKeyComparator* _comparator;
+  MMFilesPersistentIndexKeyComparator* _comparator;
   std::string _path;
   bool _active;
   uint64_t _writeBufferSize;

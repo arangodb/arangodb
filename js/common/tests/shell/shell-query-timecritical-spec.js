@@ -125,6 +125,19 @@ describe('AQL query analyzer', function () {
       sendQuery(1, true);
       expect(testee.current().filter(filterQueries).length).to.equal(1);
     });
+    
+    it('should have proper running query descriptions', function () {
+      sendQuery(1, true);
+      let queries = testee.current().filter(filterQueries);
+      expect(queries.length).to.equal(1);
+      expect(queries[0]).to.have.property('id');
+      expect(queries[0]).to.have.property('query', query);
+      expect(queries[0]).to.have.property('bindVars');
+      expect(queries[0].bindVars).to.eql({});
+      expect(queries[0]).to.have.property('started');
+      expect(queries[0]).to.have.property('runTime');
+      expect(queries[0]).to.have.property('state', 'executing');
+    });
 
     it('should not track queries if turned off', function () {
       testee.properties({
@@ -165,7 +178,15 @@ describe('AQL query analyzer', function () {
 
       sendQuery(1, false);
       expect(testee.current().filter(filterQueries).length).to.equal(0);
-      expect(testee.slow().filter(filterQueries).length).to.equal(1);
+      let queries = testee.slow().filter(filterQueries);
+      expect(queries.length).to.equal(1);
+      expect(queries[0]).to.have.property('id');
+      expect(queries[0]).to.have.property('query', query);
+      expect(queries[0]).to.have.property('bindVars');
+      expect(queries[0].bindVars).to.eql({});
+      expect(queries[0]).to.have.property('started');
+      expect(queries[0]).to.have.property('runTime');
+      expect(queries[0]).to.have.property('state', 'finished');
     });
 
     it('should be able to clear the list of slow queries', function () {

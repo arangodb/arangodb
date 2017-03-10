@@ -30,7 +30,8 @@
 #include "Cache/FrequencyBuffer.h"
 #include "Cache/Metadata.h"
 #include "Cache/State.h"
-#include "Cache/TransactionWindow.h"
+#include "Cache/Transaction.h"
+#include "Cache/TransactionManager.h"
 
 #include <stdint.h>
 #include <atomic>
@@ -67,9 +68,19 @@ class Rebalancer;      // forward declaration
 /// need a different instance.
 ////////////////////////////////////////////////////////////////////////////////
 class Manager {
+ protected:
+  struct cmp_weak_ptr {
+    bool operator()(std::weak_ptr<Cache> const& left,
+                    std::weak_ptr<Cache> const& right) const;
+  };
+  struct hash_weak_ptr {
+    size_t operator()(const std::weak_ptr<Cache>& wp) const;
+  };
+
  public:
   static uint64_t MINIMUM_SIZE;
-  typedef FrequencyBuffer<std::shared_ptr<Cache>> AccessStatBuffer;
+  typedef FrequencyBuffer<std::weak_ptr<Cache>, cmp_weak_ptr, hash_weak_ptr>
+      AccessStatBuffer;
   typedef FrequencyBuffer<uint8_t> FindStatBuffer;
   typedef std::vector<std::shared_ptr<Cache>> PriorityList;
   typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
@@ -144,14 +155,18 @@ class Manager {
   std::pair<double, double> globalHitRates();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Signal the beginning of a transaction.
+  /// @brief Open a new transaction.
+  ///
+  /// The transaction is considered read-only if it is guaranteed not to write
+  /// to the backing store. A read-only transaction may, however, write to the
+  /// cache.
   //////////////////////////////////////////////////////////////////////////////
-  void startTransaction();
+  Transaction* beginTransaction(bool readOnly);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Signal the end of a transaction.
+  /// @brief Signal the end of a transaction. Deletes the passed Transaction.
   //////////////////////////////////////////////////////////////////////////////
-  void endTransaction();
+  void endTransaction(Transaction* tx);
 
  private:
   // simple state variable for locking and other purposes
@@ -180,7 +195,7 @@ class Manager {
   uint64_t _globalAllocation;
 
   // transaction management
-  TransactionWindow _transactions;
+  TransactionManager _transactions;
 
   // task management
   enum TaskEnvironment { none, rebalancing, resizing };
@@ -200,9 +215,8 @@ class Manager {
 
  private:  // used by caches
   // register and unregister individual caches
-  Manager::MetadataItr registerCache(Cache* cache, uint64_t requestedLimit,
-                                     std::function<void(Cache*)> deleter,
-                                     uint64_t fixedSize);
+  std::pair<bool, Manager::MetadataItr> registerCache(uint64_t requestedLimit,
+                                                      uint64_t fixedSize);
   void unregisterCache(Manager::MetadataItr& metadata);
 
   // allow individual caches to request changes to their allocations
@@ -259,7 +273,7 @@ class Manager {
   std::shared_ptr<PriorityList> priorityList();
 
   // helper for wait times
-  Manager::time_point futureTime(uint64_t secondsFromNow);
+  Manager::time_point futureTime(uint64_t millisecondsFromNow);
 };
 
 };  // end namespace cache

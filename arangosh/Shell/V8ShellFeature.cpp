@@ -894,7 +894,7 @@ void V8ShellFeature::initGlobals() {
   }
 
   if (_currentModuleDirectory) {
-    modules += sep + FileUtils::currentDirectory();
+    modules += sep + FileUtils::currentDirectory().result();
   }
 
   // we take the last entry in _startupDirectory as global path;

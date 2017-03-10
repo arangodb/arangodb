@@ -496,7 +496,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
 
               OperationOptions options;
               options.silent = true;
-              options.recoveryMarker = envelope;
+              options.recoveryData = static_cast<void*>(envelope);
               options.isRestore = true;
               options.waitForSync = false;
               options.ignoreRevs = true;
@@ -573,7 +573,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
 
               OperationOptions options;
               options.silent = true;
-              options.recoveryMarker = envelope;
+              options.recoveryData = static_cast<void*>(envelope);
               options.waitForSync = false;
               options.ignoreRevs = true;
 
@@ -676,7 +676,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           vocbase->dropCollection(other, true, false);
         }
 
-        int res = vocbase->renameCollection(collection, name, true, false);
+        int res = vocbase->renameCollection(collection, name, true);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot rename collection " << collectionId
@@ -733,7 +733,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         // dropped later
         bool const forceSync = state->willBeDropped(databaseId, collectionId);
         CollectionResult res = collection->updateProperties(payloadSlice, forceSync);
-        if (res.successful()) {
+        if (!res.successful()) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot change collection properties for collection "
                     << collectionId << " in database " << databaseId << ": "
                     << res.errorMessage;
@@ -790,7 +790,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
 
         auto physical = static_cast<MMFilesCollection*>(col->getPhysical());
         TRI_ASSERT(physical != nullptr);
-        PersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
+        MMFilesPersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
 
         std::string const indexName("index-" + std::to_string(indexId) +
                                     ".json");
@@ -868,7 +868,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           vocbase->dropCollection(collection, true, false);
         }
 
-        PersistentIndexFeature::dropCollection(databaseId, collectionId);
+        MMFilesPersistentIndexFeature::dropCollection(databaseId, collectionId);
 
         // check if there is another collection with the same name as the one
         // that
@@ -962,7 +962,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         if (vocbase != nullptr) {
           // remove already existing database
           // TODO: how to signal a dropDatabase failure here?
-          state->databaseFeature->dropDatabase(databaseId, false, true, false);
+          state->databaseFeature->dropDatabase(databaseId, true, false);
         }
 
         VPackSlice const nameSlice = payloadSlice.get("name");
@@ -984,10 +984,10 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
 
           state->releaseDatabase(otherId);
           // TODO: how to signal a dropDatabase failure here?
-          state->databaseFeature->dropDatabase(nameString, false, true, false);
+          state->databaseFeature->dropDatabase(nameString, true, false);
         }
 
-        PersistentIndexFeature::dropDatabase(databaseId);
+        MMFilesPersistentIndexFeature::dropDatabase(databaseId);
 
         vocbase = nullptr;
         /* TODO: check what TRI_ERROR_ARANGO_DATABASE_NOT_FOUND means here
@@ -995,7 +995,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
                         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
         */
         int res = state->databaseFeature->createDatabase(databaseId, nameString,
-                                                         false, vocbase);
+                                                         vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create database " << databaseId << ": "
@@ -1052,7 +1052,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         TRI_ASSERT(physical != nullptr);
         col->dropIndex(indexId);
 
-        PersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
+        MMFilesPersistentIndexFeature::dropIndex(databaseId, collectionId, indexId);
 
         // additionally remove the index file
         std::string const indexName("index-" + std::to_string(indexId) +
@@ -1094,7 +1094,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         if (collection != nullptr) {
           vocbase->dropCollection(collection, true, false);
         }
-        PersistentIndexFeature::dropCollection(databaseId, collectionId);
+        MMFilesPersistentIndexFeature::dropCollection(databaseId, collectionId);
         break;
       }
 
@@ -1111,10 +1111,10 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
 
         if (vocbase != nullptr) {
           // ignore any potential error returned by this call
-          state->databaseFeature->dropDatabase(databaseId, false, true, false);
+          state->databaseFeature->dropDatabase(databaseId, true, false);
         }
 
-        PersistentIndexFeature::dropDatabase(databaseId);
+        MMFilesPersistentIndexFeature::dropDatabase(databaseId);
         break;
       }
 

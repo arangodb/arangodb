@@ -68,14 +68,14 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       _defaultNumberOfShards(1),
       _defaultReplicationFactor(1),
       _result(result),
-      _stats{ 0, 0, 0 } {
+      _stats{0, 0, 0} {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("Client");
   startsAfter("Logger");
 
   _inputDirectory =
-      FileUtils::buildFilename(FileUtils::currentDirectory(), "dump");
+      FileUtils::buildFilename(FileUtils::currentDirectory().result(), "dump");
 }
 
 void RestoreFeature::collectOptions(
@@ -112,8 +112,7 @@ void RestoreFeature::collectOptions(
   options->addOption("--overwrite", "overwrite collections if they exist",
                      new BooleanParameter(&_overwrite));
 
-  options->addOption("--recycle-ids",
-                     "recycle collection ids from dump",
+  options->addOption("--recycle-ids", "recycle collection ids from dump",
                      new BooleanParameter(&_recycleIds));
 
   options->addOption("--default-number-of-shards",
@@ -137,8 +136,9 @@ void RestoreFeature::validateOptions(
   if (1 == n) {
     _inputDirectory = positionals[0];
   } else if (1 < n) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "expecting at most one directory, got " +
-                      StringUtils::join(positionals, ", ");
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "expecting at most one directory, got " +
+               StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
   }
 
@@ -162,7 +162,8 @@ void RestoreFeature::prepare() {
   // .............................................................................
 
   if (_inputDirectory == "" || !TRI_IsDirectory(_inputDirectory.c_str())) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "input directory '" << _inputDirectory << "' does not exist";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "input directory '" << _inputDirectory << "' does not exist";
     FATAL_ERROR_EXIT();
   }
 
@@ -188,9 +189,8 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
 
   std::string const body = builder.slice().toJson();
 
-  std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(rest::RequestType::POST, "/_api/database",
-                           body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
+      rest::RequestType::POST, "/_api/database", body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     return TRI_ERROR_INTERNAL;
@@ -202,7 +202,7 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
       returnCode == static_cast<int>(rest::ResponseCode::CREATED)) {
     // all ok
     return TRI_ERROR_NO_ERROR;
-  } 
+  }
   if (returnCode == static_cast<int>(rest::ResponseCode::UNAUTHORIZED) ||
       returnCode == static_cast<int>(rest::ResponseCode::FORBIDDEN)) {
     // invalid authorization
@@ -238,14 +238,14 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
                 << _defaultNumberOfShards << std::endl;
       url += "&numberOfShards=" + std::to_string(_defaultNumberOfShards);
     }
-    if (!slice.hasKey(std::vector<std::string>({"parameters", "replicationFactor"}))) {
+    if (!slice.hasKey(
+            std::vector<std::string>({"parameters", "replicationFactor"}))) {
       // No replication factor given, so take the default:
       std::cerr << "# no replication information specified for collection '"
                 << name << "', using default replication factor "
                 << _defaultReplicationFactor << std::endl;
       url += "&replicationFactor=" + std::to_string(_defaultReplicationFactor);
     }
-
   }
 
   std::string const body = slice.toJson();
@@ -312,8 +312,8 @@ int RestoreFeature::sendRestoreData(std::string const& cname,
                           (_recycleIds ? "true" : "false") + "&force=" +
                           (_force ? "true" : "false");
 
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      rest::RequestType::PUT, url, buffer, bufferSize));
+  std::unique_ptr<SimpleHttpResult> response(
+      _httpClient->request(rest::RequestType::PUT, url, buffer, bufferSize));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
@@ -344,7 +344,7 @@ static bool SortCollections(VPackSlice const& l, VPackSlice const& r) {
   // We first have to create collections defining the distribution.
   VPackSlice leftDist = left.get("distributeShardsLike");
   VPackSlice rightDist = right.get("distributeShardsLike");
-  
+
   if (leftDist.isNone() && !rightDist.isNone()) {
     return true;
   }
@@ -471,7 +471,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
     }
 
     std::sort(collections.begin(), collections.end(), SortCollections);
-    
+
     StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
 
     // step2: run the actual import
@@ -654,7 +654,9 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 }
 
 void RestoreFeature::start() {
-  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>("Client");
+  ClientFeature* client =
+      application_features::ApplicationServer::getFeature<ClientFeature>(
+          "Client");
 
   int ret = EXIT_SUCCESS;
   *_result = ret;
@@ -662,13 +664,15 @@ void RestoreFeature::start() {
   try {
     _httpClient = client->createHttpClient();
   } catch (...) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot create server connection, giving up!";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
 
   std::string dbName = client->databaseName();
 
-  _httpClient->setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
+  _httpClient->setLocationRewriter(static_cast<void*>(client),
+                                   &rewriteLocation);
   _httpClient->setUserNamePassword("/", client->username(), client->password());
 
   int err = TRI_ERROR_NO_ERROR;
@@ -683,8 +687,10 @@ void RestoreFeature::start() {
     int res = tryCreateDatabase(client, dbName);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not create database '" << dbName << "'";
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not create database '"
+                                              << dbName << "'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << _httpClient->getErrorMessage() << "'";
       FATAL_ERROR_EXIT();
     }
 
@@ -696,9 +702,11 @@ void RestoreFeature::start() {
   }
 
   if (!_httpClient->isConnected()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not connect to endpoint "
-             << _httpClient->getEndpointSpecification();
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Could not connect to endpoint "
+        << _httpClient->getEndpointSpecification();
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage()
+                                              << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -710,7 +718,8 @@ void RestoreFeature::start() {
 
   if (version.first < 3) {
     // we can connect to 3.x
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got incompatible server version '" << versionString << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "got incompatible server version '" << versionString << "'";
 
     if (!_force) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "giving up!";
@@ -735,7 +744,8 @@ void RestoreFeature::start() {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Error: caught unknown exception";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Error: caught unknown exception";
     res = TRI_ERROR_INTERNAL;
   }
 
@@ -759,6 +769,6 @@ void RestoreFeature::start() {
                 << std::endl;
     }
   }
-  
+
   *_result = ret;
 }
