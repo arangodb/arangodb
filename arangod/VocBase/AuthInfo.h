@@ -139,7 +139,6 @@ class AuthInfo {
  
  private:
   void reload();
-  void clear();
   void insertInitial();
   bool populate(velocypack::Slice const& slice);
 

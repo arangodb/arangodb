@@ -33,8 +33,6 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Ssl/SslInterface.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "Transaction/StandaloneContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -151,11 +149,6 @@ std::string AuthInfo::jwtSecret() {
   return _jwtSecret;
 }
 
-void AuthInfo::clear() {
-  _authInfo.clear();
-  _authBasicCache.clear();
-}
-
 void AuthInfo::insertInitial() {
   if (!_authInfo.empty()) {
     return;
@@ -206,8 +199,8 @@ bool AuthInfo::populate(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
 
   WRITE_LOCKER(writeLocker, _authInfoLock);
-
-  clear();
+  _authInfo.clear();
+  _authBasicCache.clear();
 
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
     AuthEntry auth = CreateAuthEntry(authSlice.resolveExternal());
@@ -242,16 +235,11 @@ void AuthInfo::reload() {
   if (!_outdated) {
     return;
   }
-  std::string queryStr("FOR user IN _users RETURN user");
-  auto nullBuilder = std::make_shared<VPackBuilder>();
-  VPackBuilder options;
-  {
-    VPackObjectBuilder b(&options);
-  }
-  auto objectBuilder = std::make_shared<VPackBuilder>(options);
+  std::string const queryStr("FOR user IN _users RETURN user");
+  auto emptyBuilder = std::make_shared<VPackBuilder>();
   
   arangodb::aql::Query query(false, vocbase, queryStr.c_str(),
-                             queryStr.length(), nullBuilder, objectBuilder,
+                             queryStr.size(), emptyBuilder, emptyBuilder,
                              arangodb::aql::PART_MAIN);
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "starting to load authentication and authorization information";
