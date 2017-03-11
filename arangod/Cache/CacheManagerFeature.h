@@ -50,6 +50,8 @@ class CacheManagerFeature final
   void unprepare() override final;
 
  private:
+  static const uint64_t minRebalancingInterval;
+
   std::unique_ptr<cache::Manager> _manager;
   std::unique_ptr<CacheRebalancerThread> _rebalancer;
   uint64_t _cacheSize;

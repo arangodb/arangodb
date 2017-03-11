@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Cache/CachedValue.h"
+#include "Cache/Common.h"
 #include "Cache/State.h"
 
 #include <stdint.h>
@@ -43,13 +44,13 @@ namespace cache {
 /// synchronization. Data entries are carefully laid out to ensure the structure
 /// fits in a single cacheline.
 ////////////////////////////////////////////////////////////////////////////////
-struct alignas(64) PlainBucket {
+struct alignas(BUCKET_SIZE) PlainBucket {
   State _state;
 
   // actual cached entries
-  uint32_t _cachedHashes[5];
-  CachedValue* _cachedData[5];
-  static size_t SLOTS_DATA;
+  static constexpr size_t slotsData = 5;
+  uint32_t _cachedHashes[slotsData];
+  CachedValue* _cachedData[slotsData];
 
 // padding, if necessary?
 #ifdef TRI_PADDING_32
@@ -154,6 +155,10 @@ struct alignas(64) PlainBucket {
  private:
   void moveSlot(size_t slot, bool moveToFront);
 };
+
+// ensure that PlainBucket is exactly BUCKET_SIZE
+static_assert(sizeof(PlainBucket) == BUCKET_SIZE,
+              "Expected sizeof(PlainBucket) == BUCKET_SIZE.");
 
 };  // end namespace cache
 };  // end namespace arangodb
