@@ -125,7 +125,7 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
 
   // build authentication entry
   return AuthEntry(userSlice.copyString(), methodSlice.copyString(),
-                   saltSlice.copyString(), hashSlice.copyString(), databases,
+                   saltSlice.copyString(), hashSlice.copyString(), std::move(databases),
                    allDatabases, active, mustChange);
 }
 
@@ -149,6 +149,7 @@ std::string AuthInfo::jwtSecret() {
   return _jwtSecret;
 }
 
+// private
 void AuthInfo::insertInitial() {
   if (!_authInfo.empty()) {
     return;
@@ -195,6 +196,7 @@ void AuthInfo::insertInitial() {
   }
 }
 
+// private
 bool AuthInfo::populate(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
 
@@ -213,6 +215,7 @@ bool AuthInfo::populate(VPackSlice const& slice) {
   return true;
 }
 
+// private
 void AuthInfo::reload() {
   auto role = ServerState::instance()->getRole();
 
@@ -274,6 +277,7 @@ void AuthInfo::reload() {
   _outdated = false;
 }
 
+// public
 AuthResult AuthInfo::checkPassword(std::string const& username,
                                    std::string const& password) {
   if (_outdated) {
@@ -353,6 +357,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   return result;
 }
 
+// public
 AuthLevel AuthInfo::canUseDatabase(std::string const& username,
                                    std::string const& dbname) {
   if (_outdated) {
@@ -370,6 +375,7 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
   return entry.canUseDatabase(dbname);
 }
 
+// public
 AuthResult AuthInfo::checkAuthentication(AuthType authType,
                                          std::string const& secret) {
   if (_outdated) {
@@ -387,6 +393,7 @@ AuthResult AuthInfo::checkAuthentication(AuthType authType,
   return AuthResult();
 }
 
+// private
 AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   auto const& it = _authBasicCache.find(secret);
 
