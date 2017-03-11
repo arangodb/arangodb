@@ -1,6 +1,8 @@
 v3.1.14 (2017-03-13)
 --------------------
 
+* added missing locks to authentication cache methods
+
 * ui - fixed wrong merge of statistics information from different coordinators
 
 * ui - fixed issue #2316
