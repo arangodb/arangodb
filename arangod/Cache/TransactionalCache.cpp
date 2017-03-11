@@ -270,9 +270,10 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
   term = std::max(term, source->_blacklistTerm);
 
   // lock target bucket(s)
-  targets->applyToAllBuckets([&term](void* ptr) -> bool {
+  int64_t tries = Cache::triesGuarantee;
+  targets->applyToAllBuckets([&term, tries](void* ptr) -> bool {
     auto targetBucket = reinterpret_cast<TransactionalBucket*>(ptr);
-    bool locked = targetBucket->lock(Cache::triesGuarantee);
+    bool locked = targetBucket->lock(tries);
     term = std::max(term, targetBucket->_blacklistTerm);
     return locked;
   });
@@ -401,9 +402,10 @@ TransactionalCache::getBucket(uint32_t hash, int64_t maxTries,
 }
 
 Table::BucketClearer TransactionalCache::bucketClearer(Metadata* metadata) {
-  return [metadata](void* ptr) -> void {
+  int64_t tries = Cache::triesGuarantee;
+  return [metadata, tries](void* ptr) -> void {
     auto bucket = reinterpret_cast<TransactionalBucket*>(ptr);
-    bucket->lock(Cache::triesGuarantee);
+    bucket->lock(tries);
     for (size_t j = 0; j < TransactionalBucket::slotsData; j++) {
       if (bucket->_cachedData[j] != nullptr) {
         uint64_t size = bucket->_cachedData[j]->size();

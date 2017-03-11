@@ -225,9 +225,10 @@ void PlainCache::migrateBucket(void* sourcePtr,
   source->lock(Cache::triesGuarantee);
 
   // lock target bucket(s)
-  targets->applyToAllBuckets([](void* ptr) -> bool {
+  int64_t tries = Cache::triesGuarantee;
+  targets->applyToAllBuckets([tries](void* ptr) -> bool {
     auto targetBucket = reinterpret_cast<PlainBucket*>(ptr);
-    return targetBucket->lock(Cache::triesGuarantee);
+    return targetBucket->lock(tries);
   });
 
   for (size_t j = 0; j < PlainBucket::slotsData; j++) {
@@ -308,9 +309,10 @@ std::tuple<bool, PlainBucket*, std::shared_ptr<Table>> PlainCache::getBucket(
 }
 
 Table::BucketClearer PlainCache::bucketClearer(Metadata* metadata) {
-  return [metadata](void* ptr) -> void {
+  int64_t tries = Cache::triesGuarantee;
+  return [metadata, tries](void* ptr) -> void {
     auto bucket = reinterpret_cast<PlainBucket*>(ptr);
-    bucket->lock(Cache::triesGuarantee);
+    bucket->lock(tries);
     for (size_t j = 0; j < PlainBucket::slotsData; j++) {
       if (bucket->_cachedData[j] != nullptr) {
         uint64_t size = bucket->_cachedData[j]->size();
