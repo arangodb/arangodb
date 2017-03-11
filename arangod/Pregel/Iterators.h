@@ -84,26 +84,26 @@ template <typename T>
 class RangeIterator {
  private:
   // void *_begin, *_end, *_current;
-  std::vector<T>& _vector;
-  size_t _begin, _end, _current;
+  T* _data;
+  size_t _current, _size;
 
  public:
   typedef RangeIterator<T> iterator;
   typedef const RangeIterator<T> const_iterator;
 
-  RangeIterator(std::vector<T>& v, size_t begin, size_t end)
-      : _vector(v), _begin(begin), _end(end), _current(begin) {}
+  RangeIterator(T *v, size_t size)
+      : _data(v), _current(0), _size(size) {}
 
-  iterator begin() { return RangeIterator(_vector, _begin, _end); }
-  const_iterator begin() const { return RangeIterator(_vector, _begin, _end); }
+  iterator begin() { return RangeIterator(_data, _size); }
+  const_iterator begin() const { return RangeIterator(_data, _size); }
   iterator end() {
-    auto it = RangeIterator(_vector, _begin, _end);
-    it._current = it._end;
+    auto it = RangeIterator(_data, _size);
+    it._current = it._size;
     return it;
   }
   const_iterator end() const {
-    auto it = RangeIterator(_vector, _begin, _end);
-    it._current = it._end;
+    auto it = RangeIterator(_data, _size);
+    it._current = it._size;
     return it;
   }
 
@@ -121,20 +121,18 @@ class RangeIterator {
   }
 
   T* operator*() const {
-    T* el = _vector.data();
-    return el + _current;
+    return _data + _current;
   }
 
   T* operator->() const {
-    T* el = _vector.data();
-    return el + _current;
+    return _data + _current;
   }
 
   bool operator!=(RangeIterator<T> const& other) const {
     return _current != other._current;
   }
 
-  size_t size() const { return _end - _begin; }
+  size_t size() const { return _size; }
 
   /*EdgeIterator(void* beginPtr, void* endPtr)
    : _begin(beginPtr), _end(endPtr), _current(_begin) {}

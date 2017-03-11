@@ -111,34 +111,7 @@ TypedBuffer* TypedBuffer::createInMemory(size_t entries) {
   return new TypedBuffer(entries, new T[entries]);
 }
 
-int TypedBuffer::close() {
-  int res = TRI_ERROR_NO_ERROR;
-  if (_state == TypedBufferState::MEMORY_MAPPED_FILE) {
-    size_t mappedSize = sizeof(T) * _size;
-    res = TRI_UNMMFile(_data, mappedSize, _fd, &_mmHandle);
-    if (res != TRI_ERROR_NO_ERROR) {
-      // leave file open here as it will still be memory-mapped
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "munmap failed with: " << res;
-      return res;
-    }
-    
-    if (isPhysical()) {
-      TRI_ASSERT(_fd >= 0);
-      int res = TRI_CLOSE(_fd);
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to close pregel mapped file '" << getName() << "': " << res;
-      }
-    }
-    
-    _data = nullptr;
-    _fd = -1;
-  } else if (_state == TypedBufferState::IN_MEMORY) {
-    delete _data;
-    _data = nullptr;
-  }
-  _state = TypedBufferState::CLOSED;
-  return res;
-}
+int TypedBuffer::close()
 
 void TypedBuffer::sequentialAccess() {
   TRI_MMFileAdvise(_data, _initSize, TRI_MADVISE_SEQUENTIAL);

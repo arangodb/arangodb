@@ -399,7 +399,6 @@ SET(ARANGOD_SOURCES
   Pregel/Algos/EffectiveCloseness/HLLCounter.cpp
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp
-#  Pregel/MemoryMapped.cpp
   Pregel/IncomingCache.cpp
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp

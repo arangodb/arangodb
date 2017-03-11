@@ -32,6 +32,7 @@
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
+#include "Pregel/TypedBuffer.h"
 
 struct TRI_vocbase_t;
 
@@ -42,9 +43,9 @@ class Methods;
 }
 namespace pregel {
 
+template <typename T> struct TypedBuffer;
 class WorkerConfig;
-template <typename V, typename E>
-struct GraphFormat;
+template <typename V, typename E> struct GraphFormat;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry graph data for a worker job. NOT THREAD SAFE ON DOCUMENT LOADS
@@ -61,10 +62,12 @@ class GraphStore {
   // std::map<std::string, std::string> _shardsPlanIdMap;
 
   // only for demo, move to memory
+  //std::vector<V> _vertexData;
+  //std::vector<Edge<E>> _edges;
   std::vector<VertexEntry> _index;
-  std::vector<V> _vertexData;
-  std::vector<Edge<E>> _edges;
-
+  TypedBuffer<V> *_vertexData = nullptr;
+  TypedBuffer<Edge<E>> *_edges = nullptr;
+  
   // cacge the amount of vertices
   std::set<ShardID> _loadedShards;
   // actual count of loaded vertices / edges
