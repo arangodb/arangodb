@@ -146,10 +146,11 @@ void AuthInfo::setJwtSecret(std::string const& jwtSecret) {
 }
 
 std::string AuthInfo::jwtSecret() {
+  READ_LOCKER(writeLocker, _authJwtLock);
   return _jwtSecret;
 }
 
-// private
+// private, must be called with _authInfoLock in write mode
 void AuthInfo::insertInitial() {
   if (!_authInfo.empty()) {
     return;
@@ -196,11 +197,10 @@ void AuthInfo::insertInitial() {
   }
 }
 
-// private
+// private, must be called with _authInfoLock in write mode
 bool AuthInfo::populate(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
 
-  WRITE_LOCKER(writeLocker, _authInfoLock);
   _authInfo.clear();
   _authBasicCache.clear();
 
@@ -208,14 +208,14 @@ bool AuthInfo::populate(VPackSlice const& slice) {
     AuthEntry auth = CreateAuthEntry(authSlice.resolveExternal());
 
     if (auth.isActive()) {
-      _authInfo.emplace(auth.username(), auth);
+      _authInfo.emplace(auth.username(), std::move(auth));
     }
   }
 
   return true;
 }
 
-// private
+// private, will acquire _authInfoLock in write-mode and release it
 void AuthInfo::reload() {
   auto role = ServerState::instance()->getRole();
 
@@ -224,7 +224,11 @@ void AuthInfo::reload() {
     _outdated = false;
     return;
   }
-  insertInitial();
+  
+  {
+    WRITE_LOCKER(writeLocker, _authInfoLock);
+    insertInitial();
+  }
 
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
 
@@ -268,10 +272,14 @@ void AuthInfo::reload() {
     return;
   }
 
-  if (usersSlice.length() == 0) {
-    insertInitial();
-  } else {
-    populate(usersSlice);
+  {
+    WRITE_LOCKER(writeLocker, _authInfoLock);
+
+    if (usersSlice.length() == 0) {
+      insertInitial();
+    } else {
+      populate(usersSlice);
+    }
   }
 
   _outdated = false;
@@ -284,8 +292,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
     reload();
   }
 
-  AuthResult result;
-  result._username = username;
+  AuthResult result(username);
 
   // look up username
   READ_LOCKER(readLocker, _authInfoLock);
@@ -364,6 +371,8 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
     reload();
   }
 
+  READ_LOCKER(readLocker, _authInfoLock);
+  
   auto const& it = _authInfo.find(username);
 
   if (it == _authInfo.end()) {
@@ -395,10 +404,13 @@ AuthResult AuthInfo::checkAuthentication(AuthType authType,
 
 // private
 AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
-  auto const& it = _authBasicCache.find(secret);
+  {
+    READ_LOCKER(readLocker, _authInfoLock);
+    auto const& it = _authBasicCache.find(secret);
 
-  if (it != _authBasicCache.end()) {
-    return it->second;
+    if (it != _authBasicCache.end()) {
+      return it->second;
+    }
   }
 
   std::string const up = StringUtils::decodeBase64(secret);
@@ -415,9 +427,21 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
 
   AuthResult result = checkPassword(username, password);
 
-  if (result._authorized) {
-    _authBasicCache.emplace(secret, result);
-  }
+  {
+    WRITE_LOCKER(readLocker, _authInfoLock);
+
+    if (result._authorized) {
+      if (!_authBasicCache.emplace(secret, result).second) {
+        // insertion did not work - probably another thread did insert the 
+        // same data right now
+        // erase it and re-insert our version
+        _authBasicCache.erase(secret);
+        _authBasicCache.emplace(secret, result);
+      }
+    } else {
+      _authBasicCache.erase(secret);
+    }
+  } 
 
   return result;
 }
@@ -476,6 +500,7 @@ AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Couldn't validate jwt signature " << signature << " " << _jwtSecret;
     return AuthResult();
   }
+
   WRITE_LOCKER(writeLocker, _authJwtLock);
   _authJwtCache.put(jwt, result);
   return (AuthResult) result;

@@ -61,6 +61,18 @@ class AuthEntry {
         _mustChange(mustChange),
         _databases(std::move(databases)),
         _allDatabases(allDatabases) {}
+  
+  AuthEntry(AuthEntry const& other) = delete;
+
+  AuthEntry(AuthEntry&& other) noexcept
+      : _username(std::move(other._username)),
+        _passwordMethod(std::move(other._passwordMethod)),
+        _passwordSalt(std::move(other._passwordSalt)),
+        _passwordHash(std::move(other._passwordHash)),
+        _active(other._active),
+        _mustChange(other._mustChange),
+        _databases(std::move(other._databases)),
+        _allDatabases(other._allDatabases) {}
 
  public:
   std::string const& username() const { return _username; }
@@ -89,7 +101,12 @@ class AuthEntry {
 
 class AuthResult {
  public:
-  AuthResult() : _authorized(false), _mustChange(false) {}
+  AuthResult() 
+      : _authorized(false), _mustChange(false) {}
+  
+  explicit AuthResult(std::string const& username) 
+      : _username(username), _authorized(false), _mustChange(false) {} 
+
   std::string _username;
   bool _authorized;
   bool _mustChange;
