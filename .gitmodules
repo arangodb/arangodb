@@ -1,3 +1,6 @@
 [submodule "3rdParty/V8/v8"]
 	path = 3rdParty/V8/v8
 	url = https://github.com/arangodb-helper/v8.git
+[submodule "3rdParty/rocksdb/rocksdb"]
+	path = 3rdParty/rocksdb/rocksdb
+	url = https://github.com/arangodb-helper/rocksdb.git

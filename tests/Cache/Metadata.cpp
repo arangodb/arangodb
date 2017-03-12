@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2017 triagens GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,161 +19,102 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Daniel H. Larkin
-/// @author Copyright 2017, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Cache/Metadata.h"
 #include "Basics/Common.h"
+#include "Cache/PlainCache.h"
+#include "Cache/Table.h"
 
 #include "catch.hpp"
-
-#include "Cache/Metadata.h"
 
 #include <stdint.h>
 #include <memory>
 
 using namespace arangodb::cache;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
+TEST_CASE("cache::Metadata", "[cache]") {
+  SECTION("test basic constructor") {
+    uint64_t usageLimit = 1024;
+    uint64_t fixed = 128;
+    uint64_t table = Table::allocationSize(Table::minLogSize);
+    uint64_t max = UINT64_MAX;
+    Metadata metadata(usageLimit, fixed, table, max);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
+    REQUIRE(metadata.fixedSize == fixed);
+    REQUIRE(metadata.tableSize == table);
+    REQUIRE(metadata.maxSize == max);
+    REQUIRE(metadata.allocatedSize > (usageLimit + fixed + table));
+    REQUIRE(metadata.deservedSize == metadata.allocatedSize);
 
-TEST_CASE("CCacheMetadataTest", "[cache]") {
+    REQUIRE(metadata.usage == 0);
+    REQUIRE(metadata.softUsageLimit == usageLimit);
+    REQUIRE(metadata.hardUsageLimit == usageLimit);
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test constructor with valid data
-////////////////////////////////////////////////////////////////////////////////
+  SECTION("verify usage limits are adjusted and enforced correctly") {
+    bool success;
+    uint64_t overhead = 48;
+    Metadata metadata(1024, 0, 0, 2048 + overhead);
 
-SECTION("tst_constructor") {
-  uint64_t limit = 1024;
-  Metadata metadata(limit);
+    metadata.lock();
+
+    REQUIRE(metadata.adjustUsageIfAllowed(512));
+    REQUIRE(metadata.adjustUsageIfAllowed(512));
+    REQUIRE(!metadata.adjustUsageIfAllowed(512));
+
+    REQUIRE(!metadata.adjustLimits(2048, 2048));
+    REQUIRE(metadata.allocatedSize == 1024 + overhead);
+    REQUIRE(metadata.adjustDeserved(2048 + overhead));
+    REQUIRE(metadata.adjustLimits(2048, 2048));
+    REQUIRE(metadata.allocatedSize == 2048 + overhead);
+
+    REQUIRE(metadata.adjustUsageIfAllowed(1024));
+
+    REQUIRE(metadata.adjustLimits(1024, 2048));
+    REQUIRE(metadata.allocatedSize == 2048 + overhead);
+
+    REQUIRE(!metadata.adjustUsageIfAllowed(512));
+    REQUIRE(metadata.adjustUsageIfAllowed(-512));
+    REQUIRE(metadata.adjustUsageIfAllowed(512));
+    REQUIRE(metadata.adjustUsageIfAllowed(-1024));
+    REQUIRE(!metadata.adjustUsageIfAllowed(512));
+
+    REQUIRE(metadata.adjustLimits(1024, 1024));
+    REQUIRE(metadata.allocatedSize == 1024 + overhead);
+    REQUIRE(!metadata.adjustLimits(512, 512));
+
+    REQUIRE(!metadata.adjustLimits(2049, 2049));
+    REQUIRE(metadata.allocatedSize == 1024 + overhead);
+
+    metadata.unlock();
+  }
+
+  SECTION("verify table methods work correctly") {
+    bool success;
+    uint64_t overhead = 48;
+    Metadata metadata(1024, 0, 512, 2048 + overhead);
+
+    metadata.lock();
+
+    REQUIRE(!metadata.migrationAllowed(1024));
+    REQUIRE(2048 + overhead == metadata.adjustDeserved(2048 + overhead));
+
+    REQUIRE(metadata.migrationAllowed(1024));
+    metadata.changeTable(1024);
+    REQUIRE(metadata.tableSize == 1024);
+    REQUIRE(metadata.allocatedSize == 2048 + overhead);
+
+    REQUIRE(!metadata.migrationAllowed(1025));
+    REQUIRE(metadata.migrationAllowed(512));
+    metadata.changeTable(512);
+    REQUIRE(metadata.tableSize == 512);
+    REQUIRE(metadata.allocatedSize == 1536 + overhead);
+
+    metadata.unlock();
+  }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test getters
-////////////////////////////////////////////////////////////////////////////////
-
-SECTION("tst_getters") {
-  uint64_t dummy;
-  std::shared_ptr<Cache> dummyCache(reinterpret_cast<Cache*>(&dummy),
-                                    [](Cache* p) -> void {});
-  uint64_t limit = 1024;
-
-  Metadata metadata(limit);
-  metadata.link(dummyCache);
-
-  metadata.lock();
-
-  CHECK(dummyCache == metadata.cache());
-
-  CHECK(limit == metadata.softLimit());
-  CHECK(limit == metadata.hardLimit());
-  CHECK(0UL == metadata.usage());
-
-  metadata.unlock();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test usage limits
-////////////////////////////////////////////////////////////////////////////////
-
-SECTION("tst_usage_limits") {
-  bool success;
-
-  Metadata metadata(1024ULL);
-
-  metadata.lock();
-
-  success = metadata.adjustUsageIfAllowed(512LL);
-  CHECK(success);
-  success = metadata.adjustUsageIfAllowed(512LL);
-  CHECK(success);
-  success = metadata.adjustUsageIfAllowed(512LL);
-  CHECK(!success);
-
-  success = metadata.adjustLimits(2048ULL, 2048ULL);
-  CHECK(success);
-
-  success = metadata.adjustUsageIfAllowed(1024LL);
-  CHECK(success);
-
-  success = metadata.adjustLimits(1024ULL, 2048ULL);
-  CHECK(success);
-
-  success = metadata.adjustUsageIfAllowed(512LL);
-  CHECK(!success);
-  success = metadata.adjustUsageIfAllowed(-512LL);
-  CHECK(success);
-  success = metadata.adjustUsageIfAllowed(512LL);
-  CHECK(success);
-  success = metadata.adjustUsageIfAllowed(-1024LL);
-  CHECK(success);
-  success = metadata.adjustUsageIfAllowed(512LL);
-  CHECK(!success);
-
-  success = metadata.adjustLimits(1024ULL, 1024ULL);
-  CHECK(success);
-  success = metadata.adjustLimits(512ULL, 512ULL);
-  CHECK(!success);
-
-  metadata.unlock();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test migration methods
-////////////////////////////////////////////////////////////////////////////////
-
-SECTION("tst_migration") {
-  uint8_t dummyTable;
-  uint8_t dummyAuxiliaryTable;
-  uint32_t logSize = 1;
-  uint32_t auxiliaryLogSize = 2;
-  uint64_t limit = 1024;
-
-  Metadata metadata(limit);
-
-  metadata.lock();
-
-  metadata.grantAuxiliaryTable(&dummyTable, logSize);
-  metadata.swapTables();
-
-  metadata.grantAuxiliaryTable(&dummyAuxiliaryTable, auxiliaryLogSize);
-  CHECK(auxiliaryLogSize == metadata.auxiliaryLogSize());
-  CHECK(&dummyAuxiliaryTable == metadata.auxiliaryTable());
-
-  metadata.swapTables();
-  CHECK(logSize == metadata.auxiliaryLogSize());
-  CHECK(auxiliaryLogSize == metadata.logSize());
-  CHECK(&dummyTable == metadata.auxiliaryTable());
-  CHECK(&dummyAuxiliaryTable == metadata.table());
-
-  uint8_t* result = metadata.releaseAuxiliaryTable();
-  CHECK(0UL == metadata.auxiliaryLogSize());
-  CHECK(nullptr == metadata.auxiliaryTable());
-  CHECK(result == &dummyTable);
-
-  result = metadata.releaseTable();
-  CHECK(0UL == metadata.logSize());
-  CHECK(nullptr == metadata.table());
-  CHECK(result == &dummyAuxiliaryTable);
-
-  metadata.unlock();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
-////////////////////////////////////////////////////////////////////////////////
-
-}
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

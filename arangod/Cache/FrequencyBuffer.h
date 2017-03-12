@@ -64,7 +64,13 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize with the given capacity.
   //////////////////////////////////////////////////////////////////////////////
-  FrequencyBuffer(uint64_t capacity) : _current(0), _cmp(), _empty() {
+  FrequencyBuffer(uint64_t capacity)
+      : _current(0),
+        _capacity(0),
+        _mask(0),
+        _buffer(nullptr),
+        _cmp(),
+        _empty() {
     uint64_t i = 0;
     for (; (static_cast<uint64_t>(1) << i) < capacity; i++) {
     }
@@ -93,9 +99,7 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Insert an individual event record.
   //////////////////////////////////////////////////////////////////////////////
-  void insertRecord(T record) {
-    (*_buffer)[_current++ & _mask] = record;
-  }
+  void insertRecord(T record) { (*_buffer)[_current++ & _mask] = record; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Remove all occurrences of the specified event record.

@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Cache/CachedValue.h"
+#include "Cache/Common.h"
 #include "Cache/State.h"
 
 #include <stdint.h>
@@ -44,18 +45,18 @@ namespace cache {
 /// Data entries are carefully laid out to ensure the structure fits in a single
 /// cacheline.
 ////////////////////////////////////////////////////////////////////////////////
-struct alignas(64) TransactionalBucket {
+struct alignas(BUCKET_SIZE) TransactionalBucket {
   State _state;
 
   // actual cached entries
-  uint32_t _cachedHashes[3];
-  CachedValue* _cachedData[3];
-  static size_t SLOTS_DATA;
+  static constexpr size_t slotsData = 3;
+  uint32_t _cachedHashes[slotsData];
+  CachedValue* _cachedData[slotsData];
 
   // blacklist entries for transactional semantics
-  uint32_t _blacklistHashes[4];
+  static constexpr size_t slotsBlacklist = 4;
+  uint32_t _blacklistHashes[slotsBlacklist];
   uint64_t _blacklistTerm;
-  static size_t SLOTS_BLACKLIST;
 
 // padding, if necessary?
 #ifdef TRI_PADDING_32
@@ -69,10 +70,8 @@ struct alignas(64) TransactionalBucket {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempt to lock bucket (failing after maxTries attempts).
-  ///
-  /// If the bucket is successfully locked, the transaction term is updated.
   //////////////////////////////////////////////////////////////////////////////
-  bool lock(uint64_t transactionTerm, int64_t maxTries);
+  bool lock(int64_t maxTries);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlock the bucket. Requires bucket to be locked.
@@ -193,6 +192,10 @@ struct alignas(64) TransactionalBucket {
   void moveSlot(size_t slot, bool moveToFront);
   bool haveOpenTransaction() const;
 };
+
+// ensure that TransactionalBucket is exactly BUCKET_SIZE
+static_assert(sizeof(TransactionalBucket) == BUCKET_SIZE,
+              "Expected sizeof(TransactionalBucket) == BUCKET_SIZE.");
 
 };  // end namespace cache
 };  // end namespace arangodb

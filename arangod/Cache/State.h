@@ -58,12 +58,13 @@ struct State {
   enum class Flag : uint32_t {
     locked = 0x00000001,
     blacklisted = 0x00000002,
-    migrated = 0x00000004,
-    migrating = 0x00000008,
-    rebalancing = 0x00000010,
-    resizing = 0x00000020,
-    shutdown = 0x00000040,
-    shuttingDown = 0x00000080
+    disabled = 0x00000004,
+    migrated = 0x00000008,
+    migrating = 0x00000010,
+    rebalancing = 0x00000020,
+    resizing = 0x00000040,
+    shutdown = 0x00000080,
+    shuttingDown = 0x00000100
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -75,6 +76,11 @@ struct State {
   /// @brief Initializes state to match another
   //////////////////////////////////////////////////////////////////////////////
   State(State const& other);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Initializes state to match another
+  //////////////////////////////////////////////////////////////////////////////
+  State& operator=(State const& other);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if state is locked.

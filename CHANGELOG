@@ -1,6 +1,8 @@
 devel
 -----
 
+* improved diagnostic messages written to logfiles by supervisor process
+
 * fixed issue #2367
 
 * added "bindVars" to attributes of currently running and slow queries
@@ -123,7 +125,21 @@ v3.2.alpha1 (2017-02-05)
 * generated Foxx services now use swagger tags
 
 
-v3.1.13 (XXXX-XX-XX)
+v3.1.14 (2017-03-13)
+--------------------
+
+* ui - fixed wrong merge of statistics information from different coordinators
+
+* ui - fixed issue #2316
+
+* ui - fixed wrong protocol usage within encrypted environment
+
+* fixed compile error on Mac Yosemite
+
+* minor UI fixes
+
+
+v3.1.13 (2017-03-06)
 --------------------
 
 * fixed variables parsing in GraphQL

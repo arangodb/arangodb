@@ -477,14 +477,14 @@ router.get("/coordshort", function(req, res) {
           _.each(http, function(value) {
             counter2 = 0;
             _.each(stat[value], function(x) {
-              merged.http[value][counter] = merged.http[value][counter] + x;
+              merged.http[value][counter2] = merged.http[value][counter2] + x;
               counter2++;
             });
           });
           _.each(arrays, function(value) {
             counter2 = 0;
             _.each(stat[value], function(x) {
-              merged[value][counter] = merged[value][counter] + x;
+              merged[value][counter2] = merged[value][counter2] + x;
               counter2++;
             });
           });
@@ -498,6 +498,10 @@ router.get("/coordshort", function(req, res) {
   if (Array.isArray(coordinators)) {
     var coordinatorStats = coordinators.map(coordinator => {
       var endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinator);
+      if (endpoint.substring(0, 3) === 'ssl') {
+        // if protocol ssl is returned, change it to https
+        endpoint = 'https' + endpoint.substring(3);
+      }
       if (endpoint !== "") {
         var response = download(endpoint.replace(/^tcp/, "http") + "/_db/_system/_admin/aardvark/statistics/short?count=" + coordinators.length, '', {headers: {}});
         if (response.body === undefined) {

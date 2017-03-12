@@ -26,11 +26,13 @@
 
 #include "Basics/Common.h"
 #include "Cache/CachedValue.h"
+#include "Cache/Common.h"
 #include "Cache/FrequencyBuffer.h"
 #include "Cache/Manager.h"
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
 #include "Cache/State.h"
+#include "Cache/Table.h"
 
 #include <stdint.h>
 #include <list>
@@ -62,6 +64,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
  public:
   typedef FrequencyBuffer<uint8_t> StatBuffer;
+
+  static const uint64_t minSize;
+  static const uint64_t minLogSize;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -107,9 +112,10 @@ class Cache : public std::enable_shared_from_this<Cache> {
   };
 
  public:
-  Cache(ConstructionGuard guard, Manager* manager,
-        Manager::MetadataItr metadata, bool allowGrowth,
-        bool enableWindowedStats);
+  Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
+        std::shared_ptr<Table> table, bool enableWindowedStats,
+        std::function<Table::BucketClearer(Metadata*)> bucketClearer,
+        size_t slotsPerBucket);
   virtual ~Cache() = default;
 
   // primary functionality; documented in derived classes
@@ -119,12 +125,17 @@ class Cache : public std::enable_shared_from_this<Cache> {
   virtual bool blacklist(void const* key, uint32_t keySize) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Returns the limit on memory usage for this cache in bytes.
+  /// @brief Returns the total memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t limit();
+  uint64_t size();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Returns the current memory usage for this cache in bytes.
+  /// @brief Returns the limit on data memory usage for this cache in bytes.
+  //////////////////////////////////////////////////////////////////////////////
+  uint64_t usageLimit();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns the current data memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
   uint64_t usage();
 
@@ -139,47 +150,18 @@ class Cache : public std::enable_shared_from_this<Cache> {
   std::pair<double, double> hitRates();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Disallows the cache from requesting to be resized when it runs out
-  /// of space.
-  //////////////////////////////////////////////////////////////////////////////
-  void disableGrowth();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Allows the cache from requesting to be resized when it runs out of
-  /// space.
-  //////////////////////////////////////////////////////////////////////////////
-  void enableGrowth();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Request that this cache be given a new limit as specified.
-  ///
-  /// If there is enough free memory globally and the cache is not currently
-  /// resizing, the request should be granted. If downsizing the cache, it may
-  /// need to free some memory, which will be done in an asynchronous task.
-  //////////////////////////////////////////////////////////////////////////////
-  bool resize(uint64_t requestedLimit = 0);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache is currently in the process of resizing.
   //////////////////////////////////////////////////////////////////////////////
   bool isResizing();
 
  protected:
+  static constexpr int64_t triesFast = 50;
+  static constexpr int64_t triesSlow = 10000;
+  static constexpr int64_t triesGuarantee = -1;
+
+ protected:
   State _state;
 
-  // whether to allow the cache to resize larger when it fills
-  bool _allowGrowth;
-
-  // structures to handle statistics
-  enum class Stat : uint8_t {
-    findHit = 1,
-    findMiss = 2,
-    insertEviction = 3,
-    insertNoEviction = 4
-  };
-  static uint64_t _evictionStatsCapacity;
-  StatBuffer _evictionStats;
-  std::atomic<uint64_t> _insertionCount;
   static uint64_t _findStatsCapacity;
   bool _enableWindowedStats;
   std::unique_ptr<StatBuffer> _findStats;
@@ -188,7 +170,12 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   // allow communication with manager
   Manager* _manager;
-  Manager::MetadataItr _metadata;
+  Metadata _metadata;
+
+  // manage the actual table
+  std::shared_ptr<Table> _table;
+  Table::BucketClearer _bucketClearer;
+  size_t _slotsPerBucket;
 
   // keep track of number of open operations to allow clean shutdown
   std::atomic<uint32_t> _openOperations;
@@ -196,7 +183,6 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // times to wait until requesting is allowed again
   Manager::time_point _migrateRequestTime;
   Manager::time_point _resizeRequestTime;
-  bool _lastResizeRequestStatus;
 
   // friend class manager and tasks
   friend class FreeMemoryTask;
@@ -212,24 +198,29 @@ class Cache : public std::enable_shared_from_this<Cache> {
   void endOperation();
 
   bool isMigrating() const;
-  bool requestResize(uint64_t requestedLimit = 0, bool internal = true);
+  void requestGrow();
   void requestMigrate(uint32_t requestedLogSize = 0);
 
-  void freeValue(CachedValue* value);
+  static void freeValue(CachedValue* value);
   bool reclaimMemory(uint64_t size);
-  virtual void clearTables() = 0;
 
   uint32_t hashKey(void const* key, uint32_t keySize) const;
-  void recordStat(Cache::Stat stat);
+  void recordStat(Stat stat);
 
   // management
-  Manager::MetadataItr& metadata();
+  Metadata* metadata();
+  std::shared_ptr<Table> table();
   void beginShutdown();
   void shutdown();
   bool canResize();
   bool canMigrate();
-  virtual bool freeMemory() = 0;
-  virtual bool migrate() = 0;
+  bool freeMemory();
+  bool migrate(std::shared_ptr<Table> newTable);
+
+  virtual uint64_t freeMemoryFrom(uint32_t hash) = 0;
+  virtual void migrateBucket(void* sourcePtr,
+                             std::unique_ptr<Table::Subtable> targets,
+                             std::shared_ptr<Table> newTable) = 0;
 };
 
 };  // end namespace cache

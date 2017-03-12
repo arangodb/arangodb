@@ -206,8 +206,6 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
 }
 
 static bool SetRequestContext(GeneralRequest* request, void* data) {
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
-  TRI_ASSERT(authentication != nullptr);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request);
 
   // invalid database name specified, database not found etc.
