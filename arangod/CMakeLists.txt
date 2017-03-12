@@ -405,6 +405,8 @@ target_link_libraries(arangoserver
   boost_boost
   boost_system
   ${SYSTEM_LIBRARIES}
+  ldap
+  lber
 )
 
 add_executable(${BIN_ARANGOD}
