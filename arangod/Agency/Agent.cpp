@@ -1180,9 +1180,6 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
 
   auto logs = _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1);
   
-  LOG_TOPIC(TRACE, Logger::AGENCY)
-    << "Rebuilding leader key value stores with " << logs;
-  
   _spearhead.apply(logs, _leaderCommitIndex, _constituent.term());
   _readDB.apply(logs, _leaderCommitIndex, _constituent.term());
   
