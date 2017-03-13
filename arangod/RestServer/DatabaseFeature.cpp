@@ -887,8 +887,8 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
 }
 
 void DatabaseFeature::useSystemDatabase() {
-  bool result = useDatabase(TRI_VOC_SYSTEM_DATABASE);
-  TRI_ASSERT(result);
+  TRI_vocbase_t* result = useDatabase(TRI_VOC_SYSTEM_DATABASE);
+  TRI_ASSERT(result != nullptr);
 }
 
 /// @brief get a coordinator database by its id
