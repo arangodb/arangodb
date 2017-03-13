@@ -131,8 +131,10 @@ bool FailedServer::start() {
 
       for (auto const& collptr : database.second->children()) {
         auto const& collection = *(collptr.second);
+
+        auto const& found = cdatabase.find(collptr.first);
         
-        if (!cdatabase.find(collptr.first)->second->children().empty()) {
+        if (found != cdatabase.end() && !found->second->children().empty()) {
 
           auto const& collection = *(collptr.second);
           auto const& replicationFactor = collection("replicationFactor");
