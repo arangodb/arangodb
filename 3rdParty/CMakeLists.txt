@@ -126,10 +126,10 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/rocksdb)
 list(APPEND LINK_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/rocksdb/rocksdb")
 
 set(ROCKSDB_LIBS
-  "rocksdb"
+  "rocksdblib"
   CACHE INTERNAL
   "${PROJECT_NAME}: Libraries"
-  )
+)
 
 
 ################################################################################
