@@ -295,6 +295,12 @@ void AuthInfo::reload() {
   _outdated = false;
 }
 
+
+
+
+
+
+
 // public
 AuthResult AuthInfo::checkPassword(std::string const& username,
                                    std::string const& password) {
@@ -305,17 +311,96 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   AuthResult result(username);
 
   // look up username
-  READ_LOCKER(readLocker, _authInfoLock);
+  // READ_LOCKER(readLocker, _authInfoLock);
+  WRITE_LOCKER(writeLocker, _authInfoLock);
+
+  #if USE_LDAP_AUTH
+    LDAP *ld;
+    int  ldap_result;
+    int  auth_method = LDAP_AUTH_SIMPLE;
+    int desired_version = LDAP_VERSION3;
+    std::string ldap_host = "ldap.forumsys.com";
+    std::string root_dn = "uid=" + username + ",dc=example,dc=com";
+    std::string root_pw = password;
+
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "password is " << root_pw << " user is " << username;
+
+    if ((ld = ldap_init(ldap_host.c_str(), LDAP_PORT)) == NULL ) {
+      perror( "ldap_init failed" );
+      exit( EXIT_FAILURE );
+    }
+
+    /* set the LDAP version to be 3 */
+    if (ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &desired_version) != LDAP_OPT_SUCCESS)
+    {
+        ldap_perror(ld, "ldap_set_option");
+        exit(EXIT_FAILURE);
+    }
+
+    if (ldap_bind_s(ld, root_dn.c_str(), root_pw.c_str(), auth_method) != LDAP_SUCCESS ) {
+      ldap_perror( ld, "ldap_bind" );
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cant auth";
+      // return result;
+    }
+
+    ldap_result = ldap_unbind_s(ld);
+
+    if (ldap_result != 0) {
+      fprintf(stderr, "ldap_unbind_s: %s\n", ldap_err2string(ldap_result));
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "cant unbind";
+      exit( EXIT_FAILURE );
+    }
+
+    auto itt = _authInfo.find(username);
+
+    if (itt == _authInfo.end()) {
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "would insert new user";
+
+      VPackBuilder builder;
+      builder.openObject();
+
+      // username
+      builder.add("user", VPackValue(username));
+      builder.add("authData", VPackValue(VPackValueType::Object));
+
+      // simple auth
+      builder.add("simple", VPackValue(VPackValueType::Object));
+      builder.add("method", VPackValue("sha256"));
+
+      char const* salt = "1f71c278";
+      builder.add("salt", VPackValue(salt));
+
+      char const* hash = "552b759174be3baea8ede173df210fe9dafae21c4971c9454010dc9789d4d3de";
+      builder.add("hash", VPackValue(hash));
+
+      builder.close();  // simple
+
+      builder.add("active", VPackValue(true));
+
+      builder.close();  // authData
+
+      builder.add("databases", VPackValue(VPackValueType::Object));
+      builder.add("*", VPackValue("rw"));
+      builder.close();
+      builder.close();  // The Object
+
+      AuthEntry auth = CreateAuthEntry(builder.slice().resolveExternal());
+
+      _authInfo.emplace(auth.username(), std::move(auth));
+    }
+  #endif
 
   auto it = _authInfo.find(username);
 
   if (it == _authInfo.end()) {
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "authinfo list is empty";
     return result;
   }
 
   AuthEntry const& auth = it->second;
 
   if (!auth.isActive()) {
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "not active";
     return result;
   }
 
@@ -357,10 +442,14 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
     // exceptions
   }
 
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "cryptedLength " << cryptedLength << " crypted " << crypted;
+
   if (crypted != nullptr) {
     if (0 < cryptedLength) {
       size_t hexLen;
       char* hex = TRI_EncodeHexString(crypted, cryptedLength, &hexLen);
+
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "hex is " << hex;
 
       if (hex != nullptr) {
         result._authorized = auth.checkPasswordHash(hex);
@@ -369,7 +458,11 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
     }
 
     delete[] crypted;
+  } else {
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "authinfo crypted is nullptr";
   }
+
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "everything ok " << result._authorized << " " << result._mustChange << " " << result._username;
 
   return result;
 }
@@ -380,58 +473,6 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
   if (_outdated) {
     reload();
   }
-
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "AuthInfo::canUseDatabase(,)";
-
-// LDAP
-
-  LDAP *ld;
-  int  result;
-  int  auth_method = LDAP_AUTH_SIMPLE;
-  int desired_version = LDAP_VERSION3;
-  std::string ldap_host = "ldap.forumsys.com";
-  std::string root_dn = "uid=" + username + ",dc=example,dc=com";
-  std::string root_pw = "password";
-
-/*
-OPTS = {
-  server: {
-    url: 'ldap://ldap.forumsys.com:389',
-    bindDn: 'cn=read-only-admin,dc=example,dc=com',
-    bindCredentials: 'password',
-    searchBase: 'dc=example,dc=com',
-    searchFilter: '(uid={{username}})'
-  }
-};
-*/
-
-  if ((ld = ldap_init(ldap_host.c_str(), LDAP_PORT)) == NULL ) {
-    perror( "ldap_init failed" );
-    exit( EXIT_FAILURE );
-  }
-
-  /* set the LDAP version to be 3 */
-  if (ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &desired_version) != LDAP_OPT_SUCCESS)
-   {
-      ldap_perror(ld, "ldap_set_option");
-      exit(EXIT_FAILURE);
-   }
-
-  if (ldap_bind_s(ld, root_dn.c_str(), root_pw.c_str(), auth_method) != LDAP_SUCCESS ) {
-    ldap_perror( ld, "ldap_bind" );
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cant auth";
-    // exit( EXIT_FAILURE );
-  }
-
-  result = ldap_unbind_s(ld);
-
-  if (result != 0) {
-    fprintf(stderr, "ldap_unbind_s: %s\n", ldap_err2string(result));
-    // exit( EXIT_FAILURE );
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "cant unbind";
-  }
-
-// LDAP
 
   READ_LOCKER(readLocker, _authInfoLock);
 
@@ -446,7 +487,7 @@ OPTS = {
   return entry.canUseDatabase(dbname);
 }
 
-// public
+// public called from VocbaseContext.cpp
 AuthResult AuthInfo::checkAuthentication(AuthType authType,
                                          std::string const& secret) {
   if (_outdated) {
