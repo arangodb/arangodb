@@ -1011,8 +1011,57 @@ void MMFilesEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t col
   }
 };
 
+
+/// @brief callback for unloading a collection
+static bool UnloadCollectionCallback(LogicalCollection* collection) {
+  TRI_ASSERT(collection != nullptr);
+
   
-void MMFilesEngine::unloadCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId) {
+  WRITE_LOCKER_EVENTUAL(locker, collection->lock());
+
+  if (collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
+    return false;
+  }
+
+  auto ditches =
+      arangodb::MMFilesCollection::toMMFilesCollection(collection)->ditches();
+
+  if (ditches->contains(arangodb::MMFilesDitch::TRI_DITCH_DOCUMENT) ||
+      ditches->contains(arangodb::MMFilesDitch::TRI_DITCH_REPLICATION) ||
+      ditches->contains(arangodb::MMFilesDitch::TRI_DITCH_COMPACTION)) {
+    locker.unlock();
+
+    // still some ditches left...
+    // as the cleanup thread has already popped the unload ditch from the
+    // ditches list,
+    // we need to insert a new one to really execute the unload
+    collection->vocbase()->unloadCollection(collection, false);
+    return false;
+  }
+
+  int res = collection->close();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    std::string const colName(collection->name());
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to close collection '" << colName
+             << "': " << res;
+
+    collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
+    return true;
+  }
+
+  collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
+
+  return true;
+}
+
+void MMFilesEngine::unloadCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection) {
+  // add callback for unload
+  arangodb::MMFilesCollection::toMMFilesCollection(collection)
+      ->ditches()
+      ->createMMFilesUnloadCollectionDitch(collection, UnloadCollectionCallback,
+                                    __FILE__, __LINE__);
+ 
   signalCleanup(vocbase);
 }
 

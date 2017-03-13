@@ -285,6 +285,10 @@ class LogicalCollection {
   ///        created and only on Sinlge/DBServer
   void persistPhysicalCollection();
 
+  basics::ReadWriteLock& lock() {
+    return _lock;
+  }
+
  private:
 
   // SECTION: Indexes (local only)

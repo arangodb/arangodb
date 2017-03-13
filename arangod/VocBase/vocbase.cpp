@@ -217,48 +217,6 @@ bool TRI_vocbase_t::unregisterCollection(arangodb::LogicalCollection* collection
   return true;
 }
 
-/// @brief callback for unloading a collection
-bool TRI_vocbase_t::UnloadCollectionCallback(LogicalCollection* collection) {
-  TRI_ASSERT(collection != nullptr);
-
-  WRITE_LOCKER_EVENTUAL(locker, collection->_lock);
-
-  if (collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
-    return false;
-  }
-
-  auto ditches =
-      arangodb::MMFilesCollection::toMMFilesCollection(collection)->ditches();
-
-  if (ditches->contains(arangodb::MMFilesDitch::TRI_DITCH_DOCUMENT) ||
-      ditches->contains(arangodb::MMFilesDitch::TRI_DITCH_REPLICATION) ||
-      ditches->contains(arangodb::MMFilesDitch::TRI_DITCH_COMPACTION)) {
-    locker.unlock();
-
-    // still some ditches left...
-    // as the cleanup thread has already popped the unload ditch from the
-    // ditches list,
-    // we need to insert a new one to really execute the unload
-    collection->vocbase()->unloadCollection(collection, false);
-    return false;
-  }
-
-  int res = collection->close();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    std::string const colName(collection->name());
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to close collection '" << colName
-             << "': " << TRI_last_error();
-
-    collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
-    return true;
-  }
-
-  collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
-
-  return true;
-}
-
 /// @brief drops a collection
 bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection* collection) {
   std::string const name(collection->name());
@@ -935,19 +893,13 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, boo
 
     // mark collection as unloading
     collection->setStatus(TRI_VOC_COL_STATUS_UNLOADING);
-
-    // add callback for unload
-    arangodb::MMFilesCollection::toMMFilesCollection(collection)
-        ->ditches()
-        ->createMMFilesUnloadCollectionDitch(collection, UnloadCollectionCallback,
-                                      __FILE__, __LINE__);
   } // release locks
 
   collection->unload();
 
   // wake up the cleanup thread
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->unloadCollection(this, cid);
+  engine->unloadCollection(this, collection);
 
   return TRI_ERROR_NO_ERROR;
 }
