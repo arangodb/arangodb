@@ -53,29 +53,29 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   std::string _appPath;
   std::string _startupDirectory;
   std::vector<std::string> _moduleDirectory;
-  uint64_t _nrContexts;
+  uint64_t _nrMaxContexts;  // maximum number of contexts to create
+  uint64_t _nrMinContexts; // minimum number of contexts to keep
+  uint64_t _nrInflightContexts; // number of contexts currently in creation 
 
  public:
   JSLoader* startupLoader() { return &_startupLoader; };
   bool addGlobalContextMethod(std::string const&);
   void collectGarbage();
 
-  void loadJavascript(TRI_vocbase_t*, std::string const&);
+  void loadJavaScriptFileInAllContexts(TRI_vocbase_t*, std::string const& file);
+  void loadJavaScriptFileInDefaultContext(TRI_vocbase_t*, std::string const& file);
   void startGarbageCollection();
 
-  V8Context* enterContext(TRI_vocbase_t*, bool useDatabase,
+  V8Context* enterContext(TRI_vocbase_t*, bool allowUseDatabase,
                           ssize_t forceContext = -1);
   void exitContext(V8Context*);
 
   void defineContextUpdate(
       std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
       TRI_vocbase_t*);
-  void applyContextUpdates();
   void setMinimumContexts(size_t nr) { _minimumContexts = nr; }
   void setNumberContexts(size_t nr) { _forceNrContexts = nr; }
   void increaseContexts() { ++_nrAdditionalContexts; }
-
-  void shutdownContexts();
 
   void defineBoolean(std::string const& name, bool value) {
     _definedBooleans[name] = value;
@@ -87,22 +87,29 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   std::string const& appPath() const { return _appPath; }
 
-  void loadJavascriptFiles(TRI_vocbase_t*, std::string const&, size_t);
-
  private:
+  uint64_t nextId() { return _nextId++; }
+  V8Context* addContext();
+  V8Context* buildContext(size_t id);
   V8Context* pickFreeContextForGc();
-  void initializeContext(size_t);
-  void shutdownV8Instance(V8Context*);
+  void shutdownContext(V8Context* context);
+  void loadJavaScriptFileInternal(std::string const& file, V8Context* context);
+  bool loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file, V8Context* context);
+  void enterContextInternal(TRI_vocbase_t* vocbase, V8Context* context, bool allowUseDatabase);
+  void exitContextInternal(V8Context*);
+  void applyContextUpdate(V8Context* context);
+  void shutdownContexts();
 
  private:
   std::atomic<bool> _ok;
+  std::atomic<uint64_t> _nextId;
 
-  Thread* _gcThread;
+  std::unique_ptr<Thread> _gcThread;
   std::atomic<bool> _stopping;
   std::atomic<bool> _gcFinished;
 
-  std::vector<V8Context*> _contexts;
   basics::ConditionVariable _contextCondition;
+  std::vector<V8Context*> _contexts;
   std::vector<V8Context*> _freeContexts;
   std::vector<V8Context*> _dirtyContexts;
   std::unordered_set<V8Context*> _busyContexts;

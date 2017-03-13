@@ -305,10 +305,10 @@ void TRI_InitV8Shell(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   // create the global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_PROCESS_CSV_FILE"),
                                JS_ProcessCsvFile);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("SYS_PROCESS_JSON_FILE"),
                                JS_ProcessJsonFile);
 
@@ -419,6 +419,6 @@ void TRI_InitV8Shell(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("COLORS"),
+  TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING("COLORS"),
                                colors);
 }

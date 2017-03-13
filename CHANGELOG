@@ -1,6 +1,32 @@
 devel
 -----
 
+* make arangod start with less V8 JavaScript contexts
+
+  This speeds up the server start (a little bit) and makes it use less memory.
+  Whenever a V8 context is needed by a Foxx action or some other operation and
+  there is no usable V8 context, a new one will be created dynamically now.
+
+  Up to `--javascript.v8-contexts` V8 contexts will be created, so this option 
+  will change its meaning. Previously as many V8 contexts as specified by this 
+  option were created at server start, and the number of V8 contexts did not
+  change at runtime. Now up to this number of V8 contexts will be in use at the 
+  same time, but the actual number of V8 contexts is dynamic.
+
+  The garbage collector thread will automatically delete unused V8 contexts after 
+  a while. The number of spare contexts will go down to as few as configured in 
+  the new option `--javascript.v8-contexts-minimum`. Actually that many V8 contexts 
+  are also created at server start.
+
+  The first few requests in new V8 contexts will take longer than in contexts 
+  that have been there already. Performance may therefore suffer a bit for the
+  initial requests sent to ArangoDB or when there are only few but performance-
+  critical situations in which new V8 contexts will be created. If this is a 
+  concern, it can easily be fixed by setting `--javascipt.v8-contexts-minimum`
+  and `--javascript.v8-contexts` to a relatively high value, which will guarantee
+  that many number of V8 contexts to be created at startup and kept around even
+  when unused.
+
 * improved diagnostic messages written to logfiles by supervisor process
 
 * fixed issue #2367

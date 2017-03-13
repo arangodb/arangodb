@@ -25,6 +25,7 @@
 
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
+#include "Basics/EnumIterator.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -35,7 +36,11 @@ using namespace arangodb::aql;
 
 /// @brief create a profile
 QueryProfile::QueryProfile(Query* query)
-    : query(query), results(), stamp(query->startTime()), tracked(false) {
+    : query(query), stamp(query->startTime()), tracked(false) {
+
+  for (auto& it : timers) {
+    it = 0.0; // reset timers
+  }
   auto queryList = query->vocbase()->queryList();
 
   try {
@@ -63,7 +68,7 @@ void QueryProfile::setDone(QueryExecutionState::ValueType state) {
 
   if (state != QueryExecutionState::ValueType::INVALID_STATE) {
     // record duration of state
-    results.emplace_back(state, now - stamp);
+    timers[static_cast<int>(state)] = now - stamp;
   }
 
   // set timestamp
@@ -75,9 +80,13 @@ std::shared_ptr<VPackBuilder> QueryProfile::toVelocyPack() {
   auto result = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder b(result.get());
-    for (auto const& it : results) {
-      result->add(QueryExecutionState::toString(it.first),
-                  VPackValue(it.second));
+
+    for (auto state : ENUM_ITERATOR(QueryExecutionState::ValueType, INITIALIZATION, FINISHED)) {
+      double const value = timers[static_cast<size_t>(state)];
+
+      if (value > 0.0) {
+        result->add(QueryExecutionState::toString(state), VPackValue(value));
+      }
     }
   }
   return result;

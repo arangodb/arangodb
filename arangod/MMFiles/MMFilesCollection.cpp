@@ -28,6 +28,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/PerformanceLogScope.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Timers.h"
 #include "Basics/VelocyPackHelper.h"
@@ -113,7 +114,7 @@ static DatafileStatisticsContainer* FindDatafileStats(
 
 } // namespace
 
-CollectionResult MMFilesCollection::updateProperties(VPackSlice const& slice,
+arangodb::Result MMFilesCollection::updateProperties(VPackSlice const& slice,
                                                      bool doSync) {
   // validation
   uint32_t tmp = arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
@@ -172,22 +173,32 @@ CollectionResult MMFilesCollection::updateProperties(VPackSlice const& slice,
     updateCount(count);
   }
  
-  return CollectionResult{TRI_ERROR_NO_ERROR};
+  return {};
 }
 
-int MMFilesCollection::persistProperties() noexcept {
+arangodb::Result MMFilesCollection::persistProperties() noexcept {
+  int res = TRI_ERROR_NO_ERROR;
   try {
     VPackBuilder infoBuilder =
         _logicalCollection->toVelocyPackIgnore({"path", "statusString"}, true);
     MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, _logicalCollection->vocbase()->id(), _logicalCollection->cid(), infoBuilder.slice());
     MMFilesWalSlotInfoCopy slotInfo =
         MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
-    return slotInfo.errorCode;
+    res = slotInfo.errorCode;
   } catch (arangodb::basics::Exception const& ex) {
-    return ex.code();
+    res = ex.code();
   } catch (...) {
-    return TRI_ERROR_INTERNAL;
+    res = TRI_ERROR_INTERNAL;
   }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // TODO: what to do here
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save collection change marker in log: "
+              << TRI_errno_string(res);
+    return {res, TRI_errno_string(res)};
+  }
+  return {};
+
 }
 
 PhysicalCollection* MMFilesCollection::clone(LogicalCollection* logical,PhysicalCollection* physical){
@@ -481,6 +492,9 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
   _keyOptions = VPackBuilder::clone(physical->keyOptions()).steal();
   MMFilesCollection& mmfiles = *static_cast<MMFilesCollection*>(physical);
   _keyGenerator.reset(KeyGenerator::factory(mmfiles.keyOptions()));
+  _cleanupIndexes = mmfiles._cleanupIndexes;
+  _persistentIndexes = mmfiles._persistentIndexes;
+  _useSecondaryIndexes = mmfiles._useSecondaryIndexes;
   _initialCount = mmfiles._initialCount;
   _revisionError = mmfiles._revisionError;
   _lastRevision = mmfiles._lastRevision;

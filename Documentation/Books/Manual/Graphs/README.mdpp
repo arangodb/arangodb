@@ -62,9 +62,9 @@ This gives you more freedom than the strict *named graphs*.
 
 As noted above, named graphs ensure graph integrity, both when inserting or removing edges or vertices.
 So you won't encounter dangling edges, even if you use the same vertex collection in several named graphs.
-This involves more operations inside the database which don't come for free.
+This involves more operations inside the database which come at a cost.
 Therefore anonymous graphs may be faster in many operations.
-So this question boils down to 'Can I afford the additional effort or do I need the warranty for integrity?'. 
+So this question may be narrowed down to: 'Can I afford the additional effort or do I need the warranty for integrity?'. 
 
 ### Multiple edge collections vs. `FILTER`s on edge document attributes
 
@@ -104,7 +104,7 @@ an edge collection per relation type.
 ArangoDB does not require you to store your data in graph structures with edges and vertices, you can also decide
 to embed attributes such as which groups a user is part of, or `_id`s of documents in another document instead of
 connecting the documents with edges. It can be a meaningful performance optimization for *1:n* relationships, if
-your data is not very focused on relations and you don't need graph traversal with varying depth. It usually means
+your data is not focused on relations and you don't need graph traversal with varying depth. It usually means
 to introduce some redundancy and possibly inconsistencies if you embed data, but it can be an acceptable tradeoff.
 
 #### Vertices
@@ -126,8 +126,9 @@ like the permissions of **John** in this group, the date when he joined the grou
 #### Advantages of this approach
 
 Graphs give you the advantage of not just being able to have a fixed number of **m:n** relations in a row, but an
-arbitrary number. Edges can be traversed in both directions, so it's very easy to determine all groups a user is in,
-but also to find out which members a certain group has. Users could also be interconnected to create a social network.
+arbitrary number. Edges can be traversed in both directions, so it's easy to determine all
+groups a user is in, but also to find out which members a certain group has. Users could also be
+interconnected to create a social network.
 
 Using the graph data model, dealing with data that has lots of relations stays manageable and can be queried in very
 flexible ways, whereas it would cause headache to handle it in a relational database system.
@@ -164,6 +165,7 @@ We will have the following directed relations:
   - *Eve* knows *Bob*
 
 This is how we create it, inspect its *vertices* and *edges*, and drop it again:
+
     @startDocuBlockInline graph_create_knows_sample
     @EXAMPLE_ARANGOSH_OUTPUT{graph_create_knows_sample}
     var examples = require("@arangodb/graph-examples/example-graph.js");

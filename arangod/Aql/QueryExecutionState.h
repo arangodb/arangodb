@@ -47,6 +47,7 @@ enum class ValueType {
   INVALID_STATE
 };
 
+QueryExecutionState::ValueType fromNumber(size_t value);
 std::string toString(QueryExecutionState::ValueType state);
 std::string toStringWithPrefix(QueryExecutionState::ValueType state);
 

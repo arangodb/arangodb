@@ -21,21 +21,21 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_WAL_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_WAL_HANDLER_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_REST_WAL_HANDLER_H
+#define ARANGOD_MMFILES_MMFILES_REST_WAL_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
 
-class RestWalHandler : public RestVocbaseBaseHandler {
+class MMFilesRestWalHandler : public RestVocbaseBaseHandler {
  public:
-  RestWalHandler(GeneralRequest*, GeneralResponse*);
+  MMFilesRestWalHandler(GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override final;
-  char const* name() const override final { return "RestWalHandler"; }
+  char const* name() const override final { return "MMFilesRestWalHandler"; }
 
  private:
   void flush();

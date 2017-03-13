@@ -64,7 +64,6 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestVersionHandler.h"
-#include "RestHandler/RestWalHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
@@ -75,6 +74,8 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslServerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
@@ -89,9 +90,7 @@ GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
-      _proxyCheck(true),
-      _handlerFactory(nullptr),
-      _jobManager(nullptr) {
+      _proxyCheck(true) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Agency");
@@ -380,10 +379,6 @@ void GeneralServerFeature::defineHandlers() {
       queryRegistry);
 
   _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::WAL_PATH,
-      RestHandlerCreator<RestWalHandler>::createNoData);
-
-  _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
       RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
@@ -500,4 +495,10 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler(
       "/", RestHandlerCreator<RestActionHandler>::createNoData);
+        
+  
+  // engine specific handlers      
+  StorageEngine* engine = EngineSelectorFeature::ENGINE; 
+  TRI_ASSERT(engine != nullptr); // Engine not loaded. Startup broken
+  engine->addRestHandlers(_handlerFactory.get());
 }

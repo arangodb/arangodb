@@ -136,7 +136,7 @@ struct OptimizerRule {
     // remove redundant OR conditions
     removeRedundantOrRule_pass6,
 
-    applyMMFilesGeoIndexRule,
+    applyGeoIndexRule,
 
     useIndexesRule_pass6,
 

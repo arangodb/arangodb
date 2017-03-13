@@ -68,10 +68,21 @@ static TRI_action_result_t ExecuteActionVocbase(
 /// @brief action description for V8
 ////////////////////////////////////////////////////////////////////////////////
 
-class v8_action_t : public TRI_action_t {
+class v8_action_t final : public TRI_action_t {
  public:
-  v8_action_t() : TRI_action_t(), _callbacks(), _callbacksLock() {
-    _type = "JAVASCRIPT";
+  v8_action_t() : TRI_action_t(), _callbacks(), _callbacksLock() {}
+
+  void visit(void* data) override {
+    v8::Isolate* isolate = static_cast<v8::Isolate*>(data);
+    
+    WRITE_LOCKER(writeLocker, _callbacksLock);
+
+    auto it = _callbacks.find(isolate);
+
+    if (it != _callbacks.end()) {
+      (*it).second.Reset(); // dispose persistent
+      _callbacks.erase(it); // remove entry from map
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -83,11 +94,11 @@ class v8_action_t : public TRI_action_t {
 
     auto it = _callbacks.find(isolate);
 
-    if (it != _callbacks.end()) {
-      it->second.Reset();
+    if (it == _callbacks.end()) {
+      _callbacks[isolate].Reset(isolate, callback);
+    } else {
+      LOG_TOPIC(ERR, Logger::V8) << "cannot recreate callback for '" << _url << "'";
     }
-
-    _callbacks[isolate].Reset(isolate, callback);
   }
 
   TRI_action_result_t execute(TRI_vocbase_t* vocbase, GeneralRequest* request,
@@ -155,6 +166,10 @@ class v8_action_t : public TRI_action_t {
       auto localFunction =
           v8::Local<v8::Function>::New(context->_isolate, it->second);
 
+      // we can release the lock here already as no other threads will
+      // work in our isolate at this time
+      readLocker.unlock();
+
       try {
         result = ExecuteActionVocbase(vocbase, context->_isolate, this,
                                       localFunction, request, response);
@@ -196,7 +211,7 @@ class v8_action_t : public TRI_action_t {
   /// @brief callback dictionary
   //////////////////////////////////////////////////////////////////////////////
 
-  std::map<v8::Isolate*, v8::Persistent<v8::Function>> _callbacks;
+  std::unordered_map<v8::Isolate*, v8::Persistent<v8::Function>> _callbacks;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lock for the callback dictionary
@@ -1024,7 +1039,7 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (action != nullptr) {
       action->createCallback(isolate, callback);
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create callback for V8 action";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot create callback for V8 action";
     }
   } else {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot define V8 action";
@@ -1353,23 +1368,23 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   // create the global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_DEFINE_ACTION"),
                                JS_DefineAction);
   TRI_AddGlobalFunctionVocbase(
-      isolate, context,
+      isolate,
       TRI_V8_ASCII_STRING("SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION"),
       JS_ExecuteGlobalContextFunction);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_GET_CURRENT_REQUEST"),
                                JS_GetCurrentRequest);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("SYS_GET_CURRENT_RESPONSE"),
                                JS_GetCurrentResponse);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_RAW_REQUEST_BODY"),
                                JS_RawRequestBody, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_REQUEST_PARTS"),
                                JS_RequestParts, true);
 }
@@ -1586,17 +1601,17 @@ void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           std::string const& startupPath,
                           std::string const& modules) {
   // debugging functions
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_CLEAR_FAILAT"),
                                JS_DebugClearFailAt);
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING("SYS_DEBUG_SEGFAULT"),
                                JS_DebugSegfault);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_SET_FAILAT"),
                                JS_DebugSetFailAt);
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_REMOVE_FAILAT"),
                                JS_DebugRemoveFailAt);
 #endif

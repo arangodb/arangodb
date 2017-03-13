@@ -20,8 +20,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_OPTIMIZER_RULES_FEATURE_H
-#define ARANGOD_AQL_AQL_OPTIMIZER_RULES_FEATURE_H 1
+#ifndef ARANGOD_AQL_OPTIMIZER_RULES_FEATURE_H
+#define ARANGOD_AQL_OPTIMIZER_RULES_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/OptimizerRule.h"
@@ -37,7 +37,6 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
 
  public:
   void prepare() override final;
-  void unprepare() override final;
   
   /// @brief translate a list of rule ids into rule name
   static std::vector<std::string> translateRules(std::vector<int> const&);

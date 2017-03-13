@@ -40,6 +40,10 @@ class MMFilesCompactorThread;
 class TransactionCollection;
 class TransactionState;
 
+namespace rest {
+class RestHandlerFactory;
+}
+
 namespace transaction {
 class ContextData;
 }
@@ -153,18 +157,24 @@ public:
   std::string createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                arangodb::LogicalCollection const* parameters) override;
   
+  // asks the storage engine to persist the collection.
+  // After this call the collection is persisted over recovery.
+  // This call will write wal markers.
+  arangodb::Result persistCollection(
+      TRI_vocbase_t* vocbase,
+      arangodb::LogicalCollection const* collection) override;
+
   // asks the storage engine to drop the specified collection and persist the 
   // deletion info. Note that physical deletion of the collection data must not 
   // be carried out by this call, as there may
-  // still be readers of the collection's data. It is recommended that this operation
-  // only sets a deletion flag for the collection but let's an async task perform
-  // the actual deletion.
-  // the WAL entry for collection deletion will be written *after* the call
-  // to "dropCollection" returns
-  void prepareDropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) override;
+  // still be readers of the collection's data.
+  // This call will write the WAL entry for collection deletion
+  arangodb::Result dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) override;
   
   // perform a physical deletion of the collection
-  void dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) override;
+  // After this call data of this collection is corrupted, only perform if
+  // assured that no one is using the collection anymore
+  void destroyCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) override;
   
   // asks the storage engine to change properties of the collection as specified in 
   // the VPack Slice object and persist them. If this operation fails 
@@ -261,16 +271,22 @@ public:
   
   int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) override;
   
+  /// @brief Add engine-specific AQL functions.
+  void addAqlFunctions() override;
+  
+  /// @brief Add engine-specific optimizer rules
+  void addOptimizerRules() override;
+  
+  /// @brief Add engine-specific V8 functions
+  void addV8Functions() override;
+  
+  /// @brief Add engine-specific REST handlers
+  void addRestHandlers(rest::RestHandlerFactory*) override;
+  
   /// @brief transfer markers into a collection
   int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
                       MMFilesOperationsType const&);
 
-  /// @brief Add engine-specific AQL functions.
-  void addAqlFunctions() const override;
-  
-  /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules() const override;
-  
  private:
   /// @brief: check the initial markers in a datafile
   bool checkDatafileHeader(MMFilesDatafile* datafile, std::string const& filename) const;
