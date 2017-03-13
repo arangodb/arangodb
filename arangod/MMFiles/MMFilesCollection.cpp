@@ -28,6 +28,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/PerformanceLogScope.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Timers.h"
 #include "Basics/VelocyPackHelper.h"
@@ -113,7 +114,7 @@ static DatafileStatisticsContainer* FindDatafileStats(
 
 } // namespace
 
-CollectionResult MMFilesCollection::updateProperties(VPackSlice const& slice,
+arangodb::Result MMFilesCollection::updateProperties(VPackSlice const& slice,
                                                      bool doSync) {
   // validation
   uint32_t tmp = arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
@@ -172,7 +173,7 @@ CollectionResult MMFilesCollection::updateProperties(VPackSlice const& slice,
     updateCount(count);
   }
  
-  return CollectionResult{TRI_ERROR_NO_ERROR};
+  return {};
 }
 
 arangodb::Result MMFilesCollection::persistProperties() noexcept {

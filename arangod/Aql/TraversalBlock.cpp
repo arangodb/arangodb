@@ -356,12 +356,14 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
     traceGetSomeEnd(nullptr);
     return nullptr;
   }
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "TravBlock atMost " << atMost;
 
   if (_buffer.empty()) {
     size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
     if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
       _done = true;
       traceGetSomeEnd(nullptr);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "TravBlock done nullptr";
       return nullptr;
     }
     _pos = 0;  // this is in the first block
@@ -391,6 +393,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
       }
       auto r = getSome(atMost, atMost);
       traceGetSomeEnd(r);
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "TravBlock recursion return";
       return r;
     }
   }
@@ -445,6 +448,8 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   traceGetSomeEnd(res.get());
+
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "TravBlock return: " << res->size();
   return res.release();
 
   // cppcheck-suppress style

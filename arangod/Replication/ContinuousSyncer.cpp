@@ -24,6 +24,7 @@
 #include "ContinuousSyncer.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -784,7 +785,7 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
 
   arangodb::CollectionGuard guard(_vocbase, cid);
   bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-  return guard.collection()->updateProperties(data, doSync).code;
+  return guard.collection()->updateProperties(data, doSync).errorNumber();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

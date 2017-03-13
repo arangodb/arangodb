@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -1651,7 +1652,7 @@ int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,
           "Database")
           ->forceSyncProperties();
 
-  return guard.collection()->updateProperties(slice, doSync).code;
+  return guard.collection()->updateProperties(slice, doSync).errorNumber();
 }
  
 ////////////////////////////////////////////////////////////////////////////////

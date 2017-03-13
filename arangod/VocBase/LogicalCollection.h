@@ -51,36 +51,11 @@ class IndexIterator;
 class ManagedDocumentResult;
 struct OperationOptions;
 class PhysicalCollection;
+class Result;
 class StringRef;
 namespace transaction {
 class Methods;
 }
-
-struct CollectionResult {
-  CollectionResult() : code(TRI_ERROR_NO_ERROR) {}
-
-  explicit CollectionResult(int code) : code(code) {
-    if (code != TRI_ERROR_NO_ERROR) {
-      errorMessage = TRI_errno_string(code);
-    }
-  }
-
-  CollectionResult(int code, std::string const& message)
-      : code(code), errorMessage(message) {
-    TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
-  }
-
-  bool successful() const {
-    return code == TRI_ERROR_NO_ERROR;
-  }
-
-  bool failed() const { 
-    return !successful();
-  }
-
-  int code;
-  std::string errorMessage;
-};
 
 class LogicalCollection {
   friend struct ::TRI_vocbase_t;
@@ -241,7 +216,7 @@ class LogicalCollection {
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 
   // Update this collection.
-  virtual CollectionResult updateProperties(velocypack::Slice const&, bool);
+  virtual arangodb::Result updateProperties(velocypack::Slice const&, bool);
 
   /// @brief return the figures for a collection
   virtual std::shared_ptr<velocypack::Builder> figures();
