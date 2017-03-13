@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestWalHandler.h"
+#include "MMFilesRestWalHandler.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -30,11 +30,11 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestWalHandler::RestWalHandler(
+MMFilesRestWalHandler::MMFilesRestWalHandler(
     GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
-RestStatus RestWalHandler::execute() {
+RestStatus MMFilesRestWalHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
@@ -74,7 +74,7 @@ RestStatus RestWalHandler::execute() {
   return RestStatus::DONE;
 }
 
-void RestWalHandler::properties() {
+void MMFilesRestWalHandler::properties() {
   auto l = MMFilesLogfileManager::instance();
 
   if (_request->requestType() == rest::RequestType::PUT) {
@@ -137,7 +137,7 @@ void RestWalHandler::properties() {
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
-void RestWalHandler::flush() {
+void MMFilesRestWalHandler::flush() {
   std::shared_ptr<VPackBuilder> parsedRequest;
   VPackSlice slice;
   try {
@@ -202,7 +202,7 @@ void RestWalHandler::flush() {
   generateResult(rest::ResponseCode::OK, basics::VelocyPackHelper::EmptyObjectValue());
 }
 
-void RestWalHandler::transactions() {
+void MMFilesRestWalHandler::transactions() {
   auto const& info =
       MMFilesLogfileManager::instance()->runningTransactions();
  

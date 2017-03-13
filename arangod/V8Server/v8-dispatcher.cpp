@@ -612,15 +612,15 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate,
   v8::HandleScope scope(isolate);
 
   // we need a scheduler and a dispatcher to define periodic tasks
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_REGISTER_TASK"),
                                JS_RegisterTask);
 
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_UNREGISTER_TASK"),
                                JS_UnregisterTask);
 
-  TRI_AddGlobalFunctionVocbase(isolate, context,
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_GET_TASK"), JS_GetTask);
 }
 

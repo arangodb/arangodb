@@ -726,7 +726,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   try {
     TRI_voc_cid_t cid = 0;
     arangodb::LogicalCollection const* collection =
-        vocbase->createCollection(infoSlice, cid, true);
+        vocbase->createCollection(infoSlice, cid);
 
     TRI_ASSERT(collection != nullptr);
 
@@ -777,7 +777,7 @@ static void JS_CreateEdgeCollectionVocbase(
   TRI_V8_TRY_CATCH_END
 }
 
-void TRI_InitV8indexArangoDB(v8::Isolate* isolate,
+void TRI_InitV8IndexArangoDB(v8::Isolate* isolate,
                              v8::Handle<v8::ObjectTemplate> rt) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_create"),
                        JS_CreateVocbase, true);
@@ -789,7 +789,7 @@ void TRI_InitV8indexArangoDB(v8::Isolate* isolate,
                        JS_CreateDocumentCollectionVocbase);
 }
 
-void TRI_InitV8indexCollection(v8::Isolate* isolate,
+void TRI_InitV8IndexCollection(v8::Isolate* isolate,
                                v8::Handle<v8::ObjectTemplate> rt) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("dropIndex"),
                        JS_DropIndexVocbaseCol);

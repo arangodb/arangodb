@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -1651,7 +1652,7 @@ int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,
           "Database")
           ->forceSyncProperties();
 
-  return guard.collection()->updateProperties(slice, doSync).code;
+  return guard.collection()->updateProperties(slice, doSync).errorNumber();
 }
  
 ////////////////////////////////////////////////////////////////////////////////
@@ -1780,7 +1781,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
           // regular collection
           setProgress("dropping " + collectionMsg);
 
-          int res = _vocbase->dropCollection(col, true, true);
+          int res = _vocbase->dropCollection(col, true);
 
           if (res != TRI_ERROR_NO_ERROR) {
             errorMsg = "unable to drop " + collectionMsg + ": " +

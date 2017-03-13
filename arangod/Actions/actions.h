@@ -53,13 +53,13 @@ class TRI_action_result_t {
 class TRI_action_t {
  public:
   TRI_action_t()
-      : _type(),
-        _url(),
-        _urlParts(0),
+      : _urlParts(0),
         _isPrefix(false),
         _allowUseDatabase(false) {}
 
   virtual ~TRI_action_t() {}
+
+  virtual void visit(void*) = 0;
 
   virtual TRI_action_result_t execute(TRI_vocbase_t*,
                                       arangodb::GeneralRequest*,
@@ -69,7 +69,6 @@ class TRI_action_t {
 
   virtual bool cancel(arangodb::Mutex* dataLock, void** data) = 0;
 
-  std::string _type;
   std::string _url;
 
   size_t _urlParts;
@@ -96,5 +95,11 @@ TRI_action_t* TRI_LookupActionVocBase(arangodb::GeneralRequest* request);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CleanupActions();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visit all actions
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_VisitActions(std::function<void(TRI_action_t*)> const& visitor);
 
 #endif

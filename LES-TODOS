@@ -37,24 +37,26 @@ MMFiles reference removals from files:
   - Storage Engine can implement these functions with specific code and interna
     - e.g.: Geo, Fulltext
 - Replace Usage of new callback-based IndexIterator
-
-
-in progress
------------
 - move engine-specific parts of transaction.cpp into engine
-- transaction API
-to do
------
-- rename TRI_df_marker_* to something storage-engine specific
-- check for illegal includes
-- fix includes during API conversion
+- Logical => Physical
+  - keyGenerator
+  - dropIndex(p) => phys->dropIndex(p, true)
 - DML API
 - DDL API
-- add new serialization RW lock to LogicalCollection. all DML ops must acquire it in read mode, the explicit lock command must acquire it in write mode.
 - StorageEngineAPI readDocument requires 2 functions:
   - void readDocument(TOKEN id, VPackBuilder& result)  => Collects the document and inserts it asis into result. Does NOT clear result.
   - void readDocument(TOKEN id, std::vector<std::string> const& attributePath, VPackBuilder& result) => Collects the document and writes only the value at the given attributePath (e.g. `a.b.c`) into result. Does NOT clear result.
+in progress
 
+-----------
+- check for illegal includes
+- fix includes during API conversion
+
+to do
+-----
+- rename TRI_df_marker_* to something storage-engine specific
+- applyForTickRange has to be moved to MMFilesCollection (used in replication-dump)
+- add new serialization RW lock to LogicalCollection. all DML ops must acquire it in read mode, the explicit lock command must acquire it in write mode.
 - AqlValue needs a (lazy evaluated) type TOKEN that handles collection ID and TOKEN inplace.
   - slice() => looksup the value in the Database
   - We need to keep in mind the cluster. If a DBServer creates this token-type it has to be translated BEFORE the register is teleported to coordinator
@@ -62,31 +64,18 @@ to do
 - InitialySyncer.cpp knows details of StorageEngine MMFiles
 
 MMFiles are known to the following files:
-* arangod/Aql/Functions.cpp
 * arangod/Replication/InitialSyncer.cpp
-* arangod/RestHandler/RestEdgesHandler.cpp
 * arangod/RestHandler/RestExportHandler.cpp
-* arangod/RestHandler/RestReplicationHandler.cpp
 * arangod/RestHandler/RestWalHandler.cpp
+* arangod/RestHandler/RestReplicationHandler.cpp
 * arangod/RestServer/arangod.cpp
-* arangod/RestServer/DatabaseFeature.cpp
-* arangod/RestServer/UpgradeFeature.cpp
 * arangod/StorageEngine/EngineSelectorFeature.cpp
-* arangod/StorageEngine/RocksDBEngine.cpp
-* arangod/StorageEngine/StorageEngine.h
 * arangod/Utils/CollectionExport.cpp
 * arangod/Utils/CollectionKeys.cpp
-* arangod/Utils/TransactionContext.cpp
-* arangod/Utils/Transaction.cpp
-* arangod/V8Server/v8-collection.cpp
 * arangod/V8Server/v8-replication.cpp
+* arangod/V8Server/v8-collection.cpp
 * arangod/V8Server/v8-vocbase.cpp
-* arangod/V8Server/v8-vocindex.cpp
-* arangod/VocBase/EdgeCollectionInfo.cpp
-* arangod/VocBase/Ditch.cpp
-* arangod/VocBase/LogicalCollection.cpp
 * arangod/VocBase/replication-dump.cpp
-* arangod/VocBase/transaction.cpp
 * arangod/VocBase/vocbase.cpp
 
 - IndexFactory needs a function to stringifyIndexes and rename idxFoo => IdxZirkusBar
@@ -95,8 +84,7 @@ MMFiles are known to the following files:
   - Geo
 
 - OperationOptions
-  - revoryMarker
-
+  - recovoryMarker
 - re-enable RocksDB storage engine (e.g arangod.cpp)
 - implement RocksDB storage engine
 
@@ -106,7 +94,6 @@ Questions
 
 OpenIssues Hacki
 ----------------
-* batchSize == 0 ? What Happens? ASSERT ok? React gracefully?
 * HashIndex Lookup into a still local buffer, could be replaced by callback as well.
 * SingleServerTraverser API does NOT takeover responsibility for slice data. getMore() hopes slices to not go away
   * This API can be improved if we make better use of those callbacks.

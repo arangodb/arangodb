@@ -32,7 +32,6 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
-;
 
 namespace basics {
 class VPackStringBufferAdapter;
@@ -51,10 +50,9 @@ typedef std::function<AqlValue(arangodb::aql::Query*, transaction::Methods*,
     FunctionImplementation;
 
 struct Functions {
-
   protected:
 
-/// @brief validate the number of parameters
+  /// @brief validate the number of parameters
    static void ValidateParameters(VPackFunctionParameters const& parameters,
                                   char const* function, int minParams,
                                   int maxParams);

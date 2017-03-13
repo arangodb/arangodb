@@ -704,21 +704,19 @@ void TRI_AddMethodVocbase(
 
 /// @brief adds a global function to the given context
 void TRI_AddGlobalFunctionVocbase(
-    v8::Isolate* isolate, v8::Handle<v8::Context> context,
+    v8::Isolate* isolate, 
     v8::Handle<v8::String> name,
     void (*func)(v8::FunctionCallbackInfo<v8::Value> const&),
     bool isHidden = false);
 
 /// @brief adds a global function to the given context
 void TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate,
-                                  v8::Handle<v8::Context> context,
                                   v8::Handle<v8::String> name,
                                   v8::Handle<v8::Function> func,
                                   bool isHidden = false);
 
 /// @brief adds a global read-only variable to the given context
 void TRI_AddGlobalVariableVocbase(v8::Isolate* isolate,
-                                  v8::Handle<v8::Context> context,
                                   v8::Handle<v8::String> name,
                                   v8::Handle<v8::Value> value);
 

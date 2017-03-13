@@ -51,9 +51,11 @@ struct PageRank : public SimpleAlgorithm<float, float, float> {
   VertexComputation<float, float, float>* createComputation(
       WorkerConfig const*) const override;
 
-  IAggregator* aggregator(std::string const& name) const override;
-
+  WorkerContext* workerContext(VPackSlice userParams) const override;
+  
   MasterContext* masterContext(VPackSlice userParams) const override;
+
+  IAggregator* aggregator(std::string const& name) const override;
 
   uint64_t maxGlobalSuperstep() const override { return _maxGSS; }
 };

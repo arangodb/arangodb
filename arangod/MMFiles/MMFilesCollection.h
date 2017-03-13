@@ -43,6 +43,7 @@ class ManagedDocumentResult;
 struct MMFilesDocumentOperation;
 class MMFilesPrimaryIndex;
 class MMFilesWalMarker;
+class Result;
 
 class MMFilesCollection final : public PhysicalCollection {
   friend class MMFilesCompactorThread;
@@ -129,8 +130,8 @@ class MMFilesCollection final : public PhysicalCollection {
     _path = path;
   };
 
-  CollectionResult updateProperties(VPackSlice const& slice, bool doSync) override;
-  virtual int persistProperties() noexcept override;
+  arangodb::Result updateProperties(VPackSlice const& slice, bool doSync) override;
+  virtual arangodb::Result persistProperties() noexcept override;
 
   virtual PhysicalCollection* clone(LogicalCollection*, PhysicalCollection*) override;
 

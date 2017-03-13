@@ -423,8 +423,7 @@ AqlValue MMFilesAqlFunctions::Within(
   return buildGeoResult(trx, index->collection(), query, cors, cid, attributeName);
 }
 
-
-void MMFilesAqlFunctions::RegisterFunctions() {
+void MMFilesAqlFunctions::registerResources() {
   auto functions = AqlFunctionFeature::AQLFUNCTIONS;
   TRI_ASSERT(functions != nullptr);
 

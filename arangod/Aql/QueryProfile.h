@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Aql/QueryExecutionState.h"
 
-#include <velocypack/Builder.h>
+#include <array>
 
 namespace arangodb {
 
@@ -52,10 +52,15 @@ struct QueryProfile {
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack();
 
   Query* query;
-  std::vector<std::pair<QueryExecutionState::ValueType, double>> results;
+  std::array<double, static_cast<size_t>(QueryExecutionState::ValueType::INVALID_STATE)> timers;
   double stamp;
   bool tracked;
 };
+
+// we want the number of execution states to be quite low
+// as we reserve a statically sized array for it
+static_assert(static_cast<int>(QueryExecutionState::ValueType::INITIALIZATION) == 0, "unexpected min QueryExecutionState enum value");
+static_assert(static_cast<int>(QueryExecutionState::ValueType::INVALID_STATE) < 10, "unexpected max QueryExecutionState enum value");
 
 }
 }

@@ -266,11 +266,10 @@ struct TRI_vocbase_t {
   /// using a cid of > 0 is supported to import dumps from other servers etc.
   /// but the functionality is not advertised
   arangodb::LogicalCollection* createCollection(
-      arangodb::velocypack::Slice parameters, TRI_voc_cid_t cid,
-      bool writeMarker);
+      arangodb::velocypack::Slice parameters, TRI_voc_cid_t cid);
 
   /// @brief drops a collection
-  int dropCollection(arangodb::LogicalCollection* collection, bool allowDropSystem, bool writeMarker);
+  int dropCollection(arangodb::LogicalCollection* collection, bool allowDropSystem);
 
   /// @brief callback for collection dropping
   static bool DropCollectionCallback(arangodb::LogicalCollection* collection);
@@ -323,11 +322,7 @@ struct TRI_vocbase_t {
 
   /// @brief drops a collection, worker function
   int dropCollectionWorker(arangodb::LogicalCollection* collection,
-                           bool writeMarker, DropState& state);
-
-  /// @brief write a drop collection marker into the log
-  int writeDropCollectionMarker(TRI_voc_cid_t collectionId,
-                                std::string const& name);
+                           DropState& state);
 };
 
 // scope guard for a database

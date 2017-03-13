@@ -101,7 +101,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
 
   _vpack.reserve(16384);
 
-  // copy all datafile markers into the result under the read-lock
+  // copy all document tokens into the result under the read-lock
   {
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(_collection->vocbase()), _name,
@@ -125,7 +125,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
     trx.finish(res);
   }
 
-  // now sort all markers without the read-lock
+  // now sort all document tokens without the read-lock
   std::sort(_vpack.begin(), _vpack.end(),
             [](uint8_t const* lhs, uint8_t const* rhs) -> bool {
     return (StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(lhs))) < StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(rhs))));

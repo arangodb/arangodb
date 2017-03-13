@@ -1698,14 +1698,14 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
 
   connection_inst->SetInternalFieldCount(2);
 
-  TRI_AddGlobalVariableVocbase(isolate, context,
+  TRI_AddGlobalVariableVocbase(isolate,
                                TRI_V8_ASCII_STRING("ArangoConnection"),
                                connection_proto->NewInstance());
 
   ConnectionTempl.Reset(isolate, connection_inst);
 
   // add the client connection to the context:
-  TRI_AddGlobalVariableVocbase(isolate, context,
+  TRI_AddGlobalVariableVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_ARANGO"),
                                WrapV8ClientConnection(isolate, this));
 }

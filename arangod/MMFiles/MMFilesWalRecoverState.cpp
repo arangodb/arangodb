@@ -25,11 +25,12 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/memory-map.h"
+#include "Basics/Result.h"
 #include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
@@ -673,7 +674,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         if (other != nullptr) {
           TRI_voc_cid_t otherCid = other->cid();
           state->releaseCollection(otherCid);
-          vocbase->dropCollection(other, true, false);
+          vocbase->dropCollection(other, true);
         }
 
         int res = vocbase->renameCollection(collection, name, true);
@@ -732,11 +733,12 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         // be
         // dropped later
         bool const forceSync = state->willBeDropped(databaseId, collectionId);
-        CollectionResult res = collection->updateProperties(payloadSlice, forceSync);
-        if (!res.successful()) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot change collection properties for collection "
-                    << collectionId << " in database " << databaseId << ": "
-                    << res.errorMessage;
+        arangodb::Result res = collection->updateProperties(payloadSlice, forceSync);
+        if (!res.ok()) {
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot change collection properties for collection "
+              << collectionId << " in database " << databaseId << ": "
+              << res.errorMessage();
           ++state->errorCount;
           return state->canContinue();
         }
@@ -865,7 +867,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
 
         if (collection != nullptr) {
           // drop an existing collection
-          vocbase->dropCollection(collection, true, false);
+          vocbase->dropCollection(collection, true);
         }
 
         MMFilesPersistentIndexFeature::dropCollection(databaseId, collectionId);
@@ -884,7 +886,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
             TRI_voc_cid_t otherCid = collection->cid();
 
             state->releaseCollection(otherCid);
-            vocbase->dropCollection(collection, true, false);
+            vocbase->dropCollection(collection, true);
           }
         } else {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "empty name attribute in create collection marker for "
@@ -916,12 +918,12 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
             bool oldSync = state->databaseFeature->forceSyncProperties();
             state->databaseFeature->forceSyncProperties(false);
             collection =
-                vocbase->createCollection(b2.slice(), collectionId, false);
+                vocbase->createCollection(b2.slice(), collectionId);
             state->databaseFeature->forceSyncProperties(oldSync);
           } else {
             // collection will be kept
             collection =
-                vocbase->createCollection(b2.slice(), collectionId, false);
+                vocbase->createCollection(b2.slice(), collectionId);
           }
           TRI_ASSERT(collection != nullptr);
         } catch (basics::Exception const& ex) {
@@ -1092,7 +1094,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         }
 
         if (collection != nullptr) {
-          vocbase->dropCollection(collection, true, false);
+          vocbase->dropCollection(collection, true);
         }
         MMFilesPersistentIndexFeature::dropCollection(databaseId, collectionId);
         break;

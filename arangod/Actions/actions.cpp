@@ -36,13 +36,13 @@ using namespace arangodb::basics;
 /// @brief actions
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::map<std::string, TRI_action_t*> Actions;
+static std::unordered_map<std::string, TRI_action_t*> Actions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prefix actions
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::map<std::string, TRI_action_t*> PrefixActions;
+static std::unordered_map<std::string, TRI_action_t*> PrefixActions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions lock
@@ -56,8 +56,6 @@ static ReadWriteLock ActionsLock;
 
 TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
                                       TRI_action_t* action) {
-  WRITE_LOCKER(writeLocker, ActionsLock);
-
   std::string url = name;
 
   while (!url.empty() && url[0] == '/') {
@@ -66,42 +64,31 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
 
   action->_url = url;
   action->_urlParts = StringUtils::split(url, "/").size();
+  
+  std::unordered_map<std::string, TRI_action_t*>* which;
+
+  WRITE_LOCKER(writeLocker, ActionsLock);
 
   // create a new action and store the callback function
   if (action->_isPrefix) {
-    if (PrefixActions.find(url) == PrefixActions.end()) {
-      PrefixActions[url] = action;
-    } else {
-      TRI_action_t* oldAction = PrefixActions[url];
-
-      if (oldAction->_type != action->_type) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "trying to define two incompatible actions of type '" << oldAction->_type << "' and '" << action->_type << "' for prefix url '" << action->_url << "'";
-
-        delete oldAction;
-      } else {
-        delete action;
-        action = oldAction;
-      }
-    }
+    which = &PrefixActions;
   } else {
-    if (Actions.find(url) == Actions.end()) {
-      Actions[url] = action;
-    } else {
-      TRI_action_t* oldAction = Actions[url];
+    which = &Actions;
+  }
 
-      if (oldAction->_type != action->_type) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "trying to define two incompatible actions of type '" << oldAction->_type << "' and type '" << action->_type << "' for url '" << action->_url << "'";
+  auto it = which->find(url);
 
-        delete oldAction;
-      } else {
-        delete action;
-        action = oldAction;
-      }
-    }
+  if (it == which->end()) {
+    which->emplace(url, action);
+  } else {
+    TRI_action_t* oldAction = (*it).second;
+
+    delete action;
+    action = oldAction;
   }
 
   // some debug output
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "created " << action->_type << " " << (action->_isPrefix ? "prefix " : "") << " '" << url << "'";
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "created JavaScript " << (action->_isPrefix ? "prefix " : "") << " action '" << url << "'";
 
   // return old or new action description
   return action;
@@ -119,19 +106,21 @@ TRI_action_t* TRI_LookupActionVocBase(arangodb::GeneralRequest* request) {
   std::string name = StringUtils::join(suffixes, '/');
 
   READ_LOCKER(readLocker, ActionsLock);
-  std::map<std::string, TRI_action_t*>::iterator i = Actions.find(name);
+  auto it = Actions.find(name);
 
-  if (i != Actions.end()) {
-    return i->second;
+  if (it != Actions.end()) {
+    return (*it).second;
   }
 
   // find longest prefix match
   while (true) {
-    i = PrefixActions.find(name);
+    auto it = PrefixActions.find(name);
 
-    if (i != PrefixActions.end()) {
-      return i->second;
+    if (it != PrefixActions.end()) {
+      return (*it).second;
     }
+
+    readLocker.unlock();
 
     if (suffixes.empty()) {
       break;
@@ -139,6 +128,8 @@ TRI_action_t* TRI_LookupActionVocBase(arangodb::GeneralRequest* request) {
 
     suffixes.pop_back();
     name = StringUtils::join(suffixes, '/');
+
+    readLocker.lock();
   }
 
   return nullptr;
@@ -149,6 +140,8 @@ TRI_action_t* TRI_LookupActionVocBase(arangodb::GeneralRequest* request) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CleanupActions() {
+  WRITE_LOCKER(writeLocker, ActionsLock);
+
   for (auto& it : Actions) {
     delete it.second;
   }
@@ -158,4 +151,16 @@ void TRI_CleanupActions() {
     delete it.second;
   }
   PrefixActions.clear();
+}
+
+void TRI_VisitActions(std::function<void(TRI_action_t*)> const& visitor) {
+  READ_LOCKER(writeLocker, ActionsLock);
+  
+  for (auto& it : Actions) {
+    visitor(it.second);
+  }
+  
+  for (auto& it : PrefixActions) {
+    visitor(it.second);
+  }
 }

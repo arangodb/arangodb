@@ -79,16 +79,12 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
-// TODO - the following MMFiles includes should probably be removed
+// TODO - move the following MMFiles includes to the storage engine
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesWalRecoveryFeature.h"
-
-// #include "StorageEngine/RocksDBEngine.h" // enable when adding Rocksdb Engine
-// this include will be disabled until
-// we begin to implement the RocksDB
-// engine
 #include "MMFiles/MMFilesEngine.h"
+
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -155,8 +151,6 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new LockfileFeature(&server));
     server.addFeature(new LoggerBufferFeature(&server));
     server.addFeature(new LoggerFeature(&server, true));
-    server.addFeature(new MMFilesLogfileManager(&server));
-    server.addFeature(new MMFilesPersistentIndexFeature(&server));
     server.addFeature(new NonceFeature(&server));
     server.addFeature(new PageSizeFeature(&server));
     server.addFeature(new pregel::PregelFeature(&server));
@@ -198,8 +192,8 @@ static int runServer(int argc, char** argv) {
     // storage engines
     server.addFeature(new MMFilesEngine(&server));
     server.addFeature(new MMFilesWalRecoveryFeature(&server));
-    // server.addFeature(new RocksDBEngine(&server)); //enable RocksDB storage
-    // here
+    server.addFeature(new MMFilesLogfileManager(&server));
+    server.addFeature(new MMFilesPersistentIndexFeature(&server));
 
     try {
       server.run(argc, argv);
