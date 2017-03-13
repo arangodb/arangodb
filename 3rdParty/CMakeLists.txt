@@ -119,7 +119,10 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.50.3)
 if (${JEMALLOC_FOUND})
 #   set(USE_JEMALLOC_DEFAULT 1)
 endif()
+
 set(SKIP_INSTALL_ALL ON)
+set(FAIL_ON_WARNINGS OFF CACHE BOOL "do not enable -Werror")
+
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/rocksdb)
 

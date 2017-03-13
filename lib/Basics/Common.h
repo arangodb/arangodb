@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <crtdbg.h>
 
-// disable definition of macros MIN and MAX (TODO: test side-effects)
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -175,8 +174,10 @@ typedef long suseconds_t;
 #undef TRI_WITHIN_COMMON
 
 #ifdef _WIN32
-// some Windows header defines a macro named free, leading to follow-up compile errors
+// some Windows headers define macros named free and small, 
+// leading to follow-up compile errors
 #undef free
+#undef small
 #endif
 
 /// @brief helper macro for calculating strlens for static strings at

@@ -102,10 +102,9 @@ TEST_CASE("cache::Table", "[cache]") {
       auto res = small->setAuxiliary(large);
       REQUIRE(res.get() == nullptr);
 
-      uint64_t indexSmall = 17;  // picked something at "random"
-      uint64_t indexLarge = indexSmall << 2;
-      uint32_t hash =
-          static_cast<uint32_t>(indexSmall << (32 - small->logSize()));
+      uint32_t indexSmall = 17;  // picked something at "random"
+      uint32_t indexLarge = indexSmall << 2;
+      uint32_t hash = indexSmall << (32 - small->logSize());
 
       auto pair = small->fetchAndLockBucket(hash, -1);
       auto bucket = reinterpret_cast<PlainBucket*>(pair.first);
@@ -132,10 +131,9 @@ TEST_CASE("cache::Table", "[cache]") {
       auto res = large->setAuxiliary(small);
       REQUIRE(res.get() == nullptr);
 
-      uint64_t indexLarge = 822;  // picked something at "random"
-      uint64_t indexSmall = indexLarge >> 2;
-      uint32_t hash =
-          static_cast<uint32_t>(indexLarge << (32 - large->logSize()));
+      uint32_t indexLarge = 822;  // picked something at "random"
+      uint32_t indexSmall = indexLarge >> 2;
+      uint32_t hash = indexLarge << (32 - large->logSize());
 
       auto subtable = large->auxiliaryBuckets(indexLarge);
       REQUIRE(subtable.get() != nullptr);
@@ -147,8 +145,8 @@ TEST_CASE("cache::Table", "[cache]") {
       auto res = small->setAuxiliary(large);
       REQUIRE(res.get() == nullptr);
 
-      uint64_t indexSmall = 217;  // picked something at "random"
-      uint64_t indexLargeBase = indexSmall << 2;
+      uint32_t indexSmall = 217;  // picked something at "random"
+      uint32_t indexLargeBase = indexSmall << 2;
 
       auto subtable = small->auxiliaryBuckets(indexSmall);
       REQUIRE(subtable.get() != nullptr);
@@ -164,8 +162,8 @@ TEST_CASE("cache::Table", "[cache]") {
       auto res = small->setAuxiliary(large);
       REQUIRE(res.get() == nullptr);
 
-      uint64_t indexSmall = 172;  // picked something at "random"
-      uint64_t indexLargeBase = indexSmall << 2;
+      uint32_t indexSmall = 172;  // picked something at "random"
+      uint32_t indexLargeBase = indexSmall << 2;
 
       auto subtable = small->auxiliaryBuckets(indexSmall);
       REQUIRE(subtable.get() != nullptr);
