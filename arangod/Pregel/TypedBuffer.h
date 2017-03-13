@@ -106,8 +106,9 @@ public:
     _vector.resize(newSize);
   }
   
-  void push_back(T const& val) {
-    _vector.push_back(val);
+  void appendEmptyElement() {
+    _vector.push_back(T());
+    this->_ptr = _vector.data();// might change adress
   }
 };
   

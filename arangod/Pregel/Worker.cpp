@@ -173,7 +173,6 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::IDLE) {
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Expected GSS " << _expectedGSS;
     LOG_TOPIC(ERR, Logger::PREGEL)
         << "Cannot prepare a gss when the worker is not idle";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);

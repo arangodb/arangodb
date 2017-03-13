@@ -193,7 +193,7 @@ pregel.start("pagerank", "graphname", {maxGSS: 100, threshold:0.00000001})
 
 #### Single-Source Shortest Path
 
-Calcuclates the distance of each vertex to a certain shortest path. The algorithm will run until it converges,
+Calculates the distance of each vertex to a certain shortest path. The algorithm will run until it converges,
 the iterations are bound by the diameter (the longest shortest path) of your graph.
 
 ```javascript
