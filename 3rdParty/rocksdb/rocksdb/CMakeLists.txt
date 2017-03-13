@@ -59,7 +59,7 @@ string(REGEX REPLACE "[^0-9a-f]+" "" GIT_SHA ${GIT_SHA})
 
 configure_file (
   ${CMAKE_CURRENT_SOURCE_DIR}/util/build_version.cc.in
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/build_version.cc
+  ${CMAKE_CURRENT_BINARY_DIR}/util/build_version.cc
   NEWLINE_STYLE UNIX
 )
 
@@ -328,6 +328,7 @@ endif ()
 
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_SOURCE_DIR}/util)
 
 set(ROCKSDB_LIBS rocksdblib${ARTIFACT_SUFFIX})
 
@@ -443,7 +444,7 @@ set(SOURCES
         tools/dump/db_dump_tool.cc
         util/arena.cc
         util/bloom.cc
-        util/build_version.cc
+        ${CMAKE_CURRENT_BINARY_DIR}/util/build_version.cc
         util/cache.cc
         util/coding.cc
         util/compaction_job_stats_impl.cc
