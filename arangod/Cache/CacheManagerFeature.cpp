@@ -49,8 +49,7 @@ using namespace arangodb::options;
 using namespace arangodb::rest;
 
 Manager* CacheManagerFeature::MANAGER = nullptr;
-
-static constexpr uint64_t MIN_REBALANCING_INTERVAL = 500 * 1000;
+const uint64_t CacheManagerFeature::minRebalancingInterval = 500 * 1000;
 
 CacheManagerFeature::CacheManagerFeature(
     application_features::ApplicationServer* server)
@@ -81,17 +80,17 @@ void CacheManagerFeature::collectOptions(
 
 void CacheManagerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
-  if (_cacheSize < Manager::MINIMUM_SIZE) {
+  if (_cacheSize < Manager::minSize) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for `--cache.size', need at least "
-        << Manager::MINIMUM_SIZE;
+        << Manager::minSize;
     FATAL_ERROR_EXIT();
   }
 
-  if (_cacheSize < (MIN_REBALANCING_INTERVAL)) {
+  if (_cacheSize < (CacheManagerFeature::minRebalancingInterval)) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for `--cache.rebalancing-interval', need at least "
-        << (MIN_REBALANCING_INTERVAL);
+        << (CacheManagerFeature::minRebalancingInterval);
     FATAL_ERROR_EXIT();
   }
 }

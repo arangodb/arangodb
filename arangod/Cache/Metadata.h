@@ -39,12 +39,28 @@ class Cache;  // forward declaration
 /// @brief Metadata object to facilitate information sharing between individual
 /// Cache instances and Manager.
 ////////////////////////////////////////////////////////////////////////////////
-class Metadata {
- public:
+struct Metadata {
+  // info about allocated memory
+  uint64_t fixedSize;
+  uint64_t tableSize;
+  uint64_t maxSize;
+  uint64_t allocatedSize;
+  uint64_t deservedSize;
+
+  // vital information about memory usage
+  uint64_t usage;
+  uint64_t softUsageLimit;
+  uint64_t hardUsageLimit;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Default constructor for placeholder objects.
+  //////////////////////////////////////////////////////////////////////////////
+  Metadata();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes record with given information.
   //////////////////////////////////////////////////////////////////////////////
-  Metadata(uint64_t limit);
+  Metadata(uint64_t usage, uint64_t fixed, uint64_t table, uint64_t max);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes record from an existing record.
@@ -52,9 +68,9 @@ class Metadata {
   Metadata(Metadata const& other);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Links the metadata object to an actual cache.
+  /// @brief Initializes record from an existing record.
   //////////////////////////////////////////////////////////////////////////////
-  void link(std::shared_ptr<Cache> cache);
+  Metadata& operator=(Metadata const& other);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Locks the record.
@@ -72,64 +88,6 @@ class Metadata {
   bool isLocked() const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Returns a shared pointer to the underlying cache. Requires record
-  /// to be locked.
-  //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<Cache> cache() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Pointer to the table. Requires record to be locked.
-  //////////////////////////////////////////////////////////////////////////////
-  uint8_t* table() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief The base-2 logarithm of the number of buckets in the table.
-  /// Requires record to be locked.
-  //////////////////////////////////////////////////////////////////////////////
-  uint32_t logSize() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Pointer to the auxiliary table. Requires record to be locked.
-  ///
-  /// Will typically be nullptr. This will be set to a non-null value prior to
-  /// migration. During migration, both tables will temporarily be in use. Upon
-  /// completion of migration, the tables are swapped and the old table is
-  /// released to the manager.
-  //////////////////////////////////////////////////////////////////////////////
-  uint8_t* auxiliaryTable() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief The base-2 logarithm of the number of buckets in the auxiliary
-  /// table. Requires record to be locked.
-  //////////////////////////////////////////////////////////////////////////////
-  uint32_t auxiliaryLogSize() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief The current memory usage of the cache in bytes. Requires record to
-  /// be locked.
-  //////////////////////////////////////////////////////////////////////////////
-  uint64_t usage() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief The soft usage limit for this cache. Requires record to be locked.
-  ///
-  /// Typically, this will be equal to the hard limit. It may be lower when the
-  /// cache is resizing. If the current usage is below the soft limit, then new
-  /// insertions are not allowed to exceed the soft limit. If the current usage
-  /// is above the soft limit, then new insertions may occur as long as they do
-  /// not exceed the hard limit; a background task will be working in parallel
-  /// to remove older values to bring usage below the soft limit.
-  //////////////////////////////////////////////////////////////////////////////
-  uint64_t softLimit() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief The hard usage limit for this cache. Requires record to be locked.
-  ///
-  /// Usage is guaranteed to remain under this value at all times.
-  //////////////////////////////////////////////////////////////////////////////
-  uint64_t hardLimit() const;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Adjusts usage by the specified amount if it will not violate
   /// limits. Requires record to be locked.
   ///
@@ -145,28 +103,29 @@ class Metadata {
   bool adjustLimits(uint64_t softLimit, uint64_t hardLimit);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Lets the manager grant a new table lease to the cache for
-  /// migration. Requires record to be locked.
+  /// @brief Sets the deserved size. Requires record to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  void grantAuxiliaryTable(uint8_t* table, uint32_t logSize);
+  uint64_t adjustDeserved(uint64_t deserved);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Swap the main and auxiliary tables (both pointers and sizes).
-  /// Requires record to be locked.
+  /// @brief Calculates the new usage limit based on deserved size and other
+  /// values. Requires record to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  void swapTables();
+  uint64_t newLimit();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Release the main table back to the manager. Requires record to be
-  /// locked.
+  /// @brief Checks feasibility of new table size prior to migration. Requires
+  /// record to be locked.
+  ///
+  /// If migrating to table of new size would exceed either deserved or maximum
+  /// size, then returns false.
   //////////////////////////////////////////////////////////////////////////////
-  uint8_t* releaseTable();
+  bool migrationAllowed(uint64_t newTableSize);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Release the auxiliary table back to the manager. Requires record to
-  /// be locked.
+  /// @brief Sets the table size after migration. Requires record to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  uint8_t* releaseAuxiliaryTable();
+  void changeTable(uint64_t newTableSize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if flag is set in state. Requires record to be locked.
@@ -180,20 +139,6 @@ class Metadata {
 
  private:
   State _state;
-
-  // pointer to underlying cache
-  std::shared_ptr<Cache> _cache;
-
-  // vital information about memory usage
-  uint64_t _usage;
-  uint64_t _softLimit;
-  uint64_t _hardLimit;
-
-  // information about table leases
-  uint8_t* _table;
-  uint8_t* _auxiliaryTable;
-  uint32_t _logSize;
-  uint32_t _auxiliaryLogSize;
 };
 
 };  // end namespace cache

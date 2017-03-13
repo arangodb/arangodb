@@ -1,6 +1,8 @@
 devel
 -----
 
+* improved diagnostic messages written to logfiles by supervisor process
+
 * fixed issue #2367
 
 * added "bindVars" to attributes of currently running and slow queries

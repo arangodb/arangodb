@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2017 triagens GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,16 +19,17 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Daniel H. Larkin
-/// @author Copyright 2017, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TransactionalStore.h"
 #include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
+#include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 
@@ -38,7 +39,6 @@
 #include <rocksdb/utilities/transaction_db.h>
 
 #include <chrono>
-#include <iostream>
 
 using namespace arangodb::cache;
 
@@ -76,8 +76,7 @@ TransactionalStore::TransactionalStore(Manager* manager)
       _writeOptions(rocksdb::WriteOptions()),
       _txOptions(rocksdb::TransactionOptions()) {
   TRI_ASSERT(manager != nullptr);
-  _cache = manager->createCache(Manager::CacheType::Transactional, 1024 * 1024,
-                                true, true);
+  _cache = manager->createCache(CacheType::Transactional, true);
   TRI_ASSERT(_cache.get() != nullptr);
 
   _directory.appendText(TRI_GetTempPath());
@@ -92,7 +91,7 @@ TransactionalStore::TransactionalStore(Manager* manager)
   auto status = rocksdb::TransactionDB::Open(
       options, rocksdb::TransactionDBOptions(), _directory.c_str(), &_db);
   if (!status.ok()) {
-    std::cerr << status.ToString() << std::endl;
+    throw;
   }
   TRI_ASSERT(status.ok());
 }
