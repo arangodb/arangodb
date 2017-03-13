@@ -428,8 +428,7 @@ OPTS = {
   if (result != 0) {
     fprintf(stderr, "ldap_unbind_s: %s\n", ldap_err2string(result));
     // exit( EXIT_FAILURE );
-    LOG_TOPIC(INFO, arangodb:
-    :Logger::FIXME) << "cant unbind";
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "cant unbind";
   }
 
 // LDAP
