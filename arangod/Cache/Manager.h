@@ -216,7 +216,7 @@ class Manager {
   // friend class tasks and caches to allow access
   friend class Cache;
   friend class FreeMemoryTask;
-  friend class Metadata;
+  friend struct Metadata;
   friend class MigrateTask;
   friend class PlainCache;
   friend class Rebalancer;
