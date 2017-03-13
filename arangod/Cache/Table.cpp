@@ -180,7 +180,7 @@ std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(uint32_t index) {
     uint32_t diff = _auxiliary->_logSize - _logSize;
     base = &(_auxiliary->_buckets[index << diff]);
     size = static_cast<uint64_t>(1) << diff;
-    mask = ((size - 1) << _auxiliary->_shift);
+    mask = (static_cast<uint32_t>(size - 1) << _auxiliary->_shift);
     shift = _auxiliary->_shift;
   }
   _state.unlock();

@@ -53,7 +53,7 @@ Graph Viewer Options
 
 Graph Options Menu: 
 
-- Startnode (string - valid node id): Heart of your graph. Rendering and traversing will start from here. Empty value means: a random starting point will be used.
+- Startnode (string - valid node id or space seperated list of id's): Heart of your graph. Rendering and traversing will start from here. Empty value means: a random starting point will be used.
 - Layout: Different graph layouting algoritms. No overlap (optimal: big graph), force layout (optimal: medium graph), fruchtermann (optimal: little to medium graph).
 - Renderer: Canvas mode allows editing. WebGL currently offers only display mode (a lot faster with much nodes/edges).
 - Search depth (number): Search depth which is starting from your start node. 

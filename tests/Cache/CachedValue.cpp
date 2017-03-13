@@ -52,7 +52,8 @@ TEST_CASE("cache::CachedValue", "[cache]") {
     delete cv;
 
     // variable key, fixed value
-    cv = CachedValue::construct(v.data(), v.size(), &k, sizeof(uint64_t));
+    cv = CachedValue::construct(v.data(), static_cast<uint32_t>(v.size()), &k,
+                                sizeof(uint64_t));
     REQUIRE(nullptr != cv);
     REQUIRE(v.size() == cv->keySize);
     REQUIRE(sizeof(uint64_t) == cv->valueSize);
@@ -119,17 +120,17 @@ TEST_CASE("cache::CachedValue", "[cache]") {
     std::string k3("TEST");
     uint64_t v = 1;
 
-    auto cv =
-        CachedValue::construct(k1.data(), k1.size(), &v, sizeof(uint64_t));
+    auto cv = CachedValue::construct(
+        k1.data(), static_cast<uint32_t>(k1.size()), &v, sizeof(uint64_t));
 
     // same key
-    REQUIRE(cv->sameKey(k1.data(), k1.size()));
+    REQUIRE(cv->sameKey(k1.data(), static_cast<uint32_t>(k1.size())));
 
     // different length, matching prefix
-    REQUIRE(!cv->sameKey(k2.data(), k2.size()));
+    REQUIRE(!cv->sameKey(k2.data(), static_cast<uint32_t>(k2.size())));
 
     // same length, different key
-    REQUIRE(!cv->sameKey(k3.data(), k3.size()));
+    REQUIRE(!cv->sameKey(k3.data(), static_cast<uint32_t>(k3.size())));
 
     delete cv;
   }

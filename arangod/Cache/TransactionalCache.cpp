@@ -75,7 +75,6 @@ bool TransactionalCache::insert(CachedValue* value) {
     bool maybeMigrate = false;
     bool allowed = !bucket->isBlacklisted(hash);
     if (allowed) {
-      bool eviction = false;
       int64_t change = value->size();
       CachedValue* candidate = bucket->find(hash, value->key(), value->keySize);
 
@@ -96,6 +95,7 @@ bool TransactionalCache::insert(CachedValue* value) {
         _metadata.unlock();
 
         if (allowed) {
+          bool eviction = false;
           if (candidate != nullptr) {
             bucket->evict(candidate, true);
             freeValue(candidate);

@@ -362,15 +362,19 @@ authRouter.get('/graph/:name', function (req, res) {
     res.throw('bad request', e.message, {cause: e});
   }
 
+  var multipleIds;
   if (config.nodeStart) {
-    try {
-      startVertex = db._document(config.nodeStart);
-    } catch (e) {
-      res.throw('bad request', e.message, {cause: e});
-    }
-
-    if (!startVertex) {
-      startVertex = db[vertexName].any();
+    if (config.nodeStart.indexOf(' ') > -1) {
+      multipleIds = config.nodeStart.split(' ');
+    } else {
+      try {
+        startVertex = db._document(config.nodeStart);
+      } catch (e) {
+        res.throw('bad request', e.message, {cause: e});
+      }
+      if (!startVertex) {
+        startVertex = db[vertexName].any();
+      }
     }
   } else {
     startVertex = db[vertexName].any();
@@ -400,16 +404,34 @@ authRouter.get('/graph/:name', function (req, res) {
     }
   } else {
     var aqlQuery;
+    var aqlQueries = [];
+
     if (config.query) {
       aqlQuery = config.query;
     } else {
-      aqlQuery =
-        'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + startVertex._id + '" GRAPH "' + name + '"';
-
-      if (limit !== 0) {
-        aqlQuery += ' LIMIT ' + limit;
+      if (multipleIds) {
+        /* TODO: uncomment after #75 fix
+          aqlQuery =
+            'FOR x IN ' + JSON.stringify(multipleIds) + ' ' +
+            'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY x GRAPH "' + name + '"';
+        */
+        _.each(multipleIds, function (nodeid) {
+          aqlQuery =
+            'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + nodeid + '" GRAPH "' + name + '"';
+          if (limit !== 0) {
+            aqlQuery += ' LIMIT ' + limit;
+          }
+          aqlQuery += ' RETURN p';
+          aqlQueries.push(aqlQuery);
+        });
+      } else {
+        aqlQuery =
+          'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + startVertex._id + '" GRAPH "' + name + '"';
+        if (limit !== 0) {
+          aqlQuery += ' LIMIT ' + limit;
+        }
+        aqlQuery += ' RETURN p';
       }
-      aqlQuery += ' RETURN p';
     }
 
     var getAttributeByKey = function (o, s) {
@@ -464,7 +486,18 @@ authRouter.get('/graph/:name', function (req, res) {
       });
     } else {
     // get all nodes and edges which are connected to the given start node
-      cursor = AQL_EXECUTE(aqlQuery);
+      if (aqlQueries.length === 0) {
+        cursor = AQL_EXECUTE(aqlQuery);
+      } else {
+        var x;
+        cursor = AQL_EXECUTE(aqlQueries[0]);
+        for (var k = 1; k < aqlQueries.length; k++) {
+          x = AQL_EXECUTE(aqlQueries[k]);
+          _.each(x.json, function (val) {
+            cursor.json.push(val);
+          });
+        }
+      }
     }
 
     var nodesObj = {};

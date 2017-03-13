@@ -28,6 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
+#include <thread>
 
 #include "Agency/GossipCallback.h"
 #include "Basics/ConditionLocker.h"
@@ -628,6 +629,7 @@ query_t Agent::lastAckedAgo() const {
 }
 
 trans_ret_t Agent::transact(query_t const& queries) {
+
   arangodb::consensus::index_t maxind = 0; // maximum write index
 
   auto leader = _constituent.leaderID();
@@ -760,6 +762,7 @@ inquire_ret_t Agent::inquire(query_t const& query) {
 
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query) {
+
   std::vector<bool> applied;
   std::vector<index_t> indices;
   auto multihost = size()>1;
@@ -1160,8 +1163,8 @@ void Agent::notify(query_t const& message) {
 
   _config.update(message);
 
-  _state.persistActiveAgents(_config.activeToBuilder(),
-                             _config.poolToBuilder());
+  _state.persistActiveAgents(_config.activeToBuilder(), _config.poolToBuilder());
+  
 }
 
 // Rebuild key value stores
@@ -1174,21 +1177,16 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
   LOG_TOPIC(DEBUG, Logger::AGENCY)
     << "Rebuilding key-value stores from index "
     << _lastAppliedIndex << " to " << _leaderCommitIndex;
-  
-  _spearhead.apply(
-    _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1),
-    _leaderCommitIndex, _constituent.term());
-  
-  _readDB.apply(
-    _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1),
-    _leaderCommitIndex, _constituent.term());
 
-  _compacted.apply(
-    _state.slices(_lastCompactionIndex+1, _leaderCommitIndex+1),
-    _leaderCommitIndex, _constituent.term());
-
+  auto logs = _state.slices(_lastAppliedIndex+1, _leaderCommitIndex+1);
+  
+  _spearhead.apply(logs, _leaderCommitIndex, _constituent.term());
+  _readDB.apply(logs, _leaderCommitIndex, _constituent.term());
+  
+  LOG_TOPIC(TRACE, Logger::AGENCY)
+    << "ReadDB: " << _readDB;
+  
   _lastAppliedIndex = _leaderCommitIndex;
-  _lastCompactionIndex = _leaderCommitIndex;
   
   return _lastAppliedIndex;
 
