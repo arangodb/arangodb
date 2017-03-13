@@ -15,14 +15,14 @@ devel
 
   The garbage collector thread will automatically delete unused V8 contexts after 
   a while. The number of spare contexts will go down to as few as configured in 
-  the new option `--javascript.v8-contexts-spare`. Actually that many V8 contexts 
+  the new option `--javascript.v8-contexts-minimum`. Actually that many V8 contexts 
   are also created at server start.
 
   The first few requests in new V8 contexts will take longer than in contexts 
   that have been there already. Performance may therefore suffer a bit for the
   initial requests sent to ArangoDB or when there are only few but performance-
   critical situations in which new V8 contexts will be created. If this is a 
-  concern, it can easily be fixed by setting `--javascipt.v8-contexts-spare`
+  concern, it can easily be fixed by setting `--javascipt.v8-contexts-minimum`
   and `--javascript.v8-contexts` to a relatively high value, which will guarantee
   that many number of V8 contexts to be created at startup and kept around even
   when unused.

@@ -423,11 +423,29 @@ This option only has an effect if the query cache mode is set to either *on* or
 
 `--javascript.v8-contexts number`
 
-Specifies the *number* of V8 contexts that are created for executing JavaScript
-code. More contexts allow execute more JavaScript actions in parallel, provided
-that there are also enough threads available. Please note that each V8 context
+Specifies the maximum *number* of V8 contexts that are created for executing 
+JavaScript code. More contexts allow executing more JavaScript actions in parallel, 
+provided that there are also enough threads available. Please note that each V8 context
 will use a substantial amount of memory and requires periodic CPU processing
 time for garbage collection.
+
+Note that this value configures the maximum number of V8 contexts that can be
+used in parallel. Upon server start only as many V8 contexts will be created as are
+configured in option `--javascript.v8-contexts-minimum`. The actual number of
+available V8 contexts may float at runtime between `--javascript.v8-contexts-minimum`
+and `--javascript.v8-contexts`. When there are unused V8 contexts that linger around, 
+the server's garbage collector thread will automatically delete them.
+
+
+`--javascript.v8-contexts-minimum number`
+
+Specifies the minimum *number* of V8 contexts that will be present at any time
+the server is running. The actual number of V8 contexts will never drop below this
+value, but it may go up as high as specified via the option `--javascript.v8-contexts`.
+
+When there are unused V8 contexts that linger around and the number of V8 contexts
+is greater than `--javascript.v8-contexts-minimum` the server's garbage collector 
+thread will automatically delete them.
 
 
 ### Garbage collection frequency (time-based)

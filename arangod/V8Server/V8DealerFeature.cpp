@@ -143,8 +143,8 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "maximum number of V8 contexts that are created for executing JavaScript actions",
       new UInt64Parameter(&_nrMaxContexts));
   
-  options->addHiddenOption(
-      "--javascript.v8-contexts-spare",
+  options->addOption(
+      "--javascript.v8-contexts-minimum",
       "minimum number of V8 contexts that keep available for executing JavaScript actions",
       new UInt64Parameter(&_nrMinContexts));
 }
