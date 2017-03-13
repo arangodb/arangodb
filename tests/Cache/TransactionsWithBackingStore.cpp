@@ -320,7 +320,7 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
     auto readWorker = [&store1, &store2, &storeBias, &writersDone, writerCount,
                        totalDocuments, readBatchSize]() -> void {
       while (writersDone.load() < writerCount) {
-        uint32_t r = RandomGenerator::interval(99UL);
+        uint32_t r = RandomGenerator::interval(static_cast<uint32_t>(99UL));
         TransactionalStore* store = (r <= storeBias) ? &store1 : &store2;
         auto tx = store->beginTransaction(true);
         uint64_t start = static_cast<uint64_t>(
@@ -346,7 +346,7 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
       uint64_t batches = (upper + 1 - lower) / writeBatchSize;
       uint64_t choice = lower;
       for (uint64_t batch = 0; batch < batches; batch++) {
-        uint32_t r = RandomGenerator::interval(99UL);
+        uint32_t r = RandomGenerator::interval(static_cast<uint32_t>(99UL));
         TransactionalStore* store = (r <= storeBias) ? &store1 : &store2;
         auto tx = store->beginTransaction(false);
         for (uint64_t i = 0; i < writeBatchSize; i++) {
