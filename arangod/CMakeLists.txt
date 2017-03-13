@@ -183,6 +183,7 @@ SET(ARANGOD_SOURCES
   Cache/PlainCache.cpp
   Cache/Rebalancer.cpp
   Cache/State.cpp
+  Cache/Table.cpp
   Cache/Transaction.cpp
   Cache/TransactionalBucket.cpp
   Cache/TransactionalCache.cpp
@@ -247,7 +248,6 @@ SET(ARANGOD_SOURCES
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
-  RestHandler/RestWalHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
@@ -377,6 +377,7 @@ set(ARANGOD_SOURCES
   MMFiles/MMFilesPrimaryIndex.cpp
   MMFiles/MMFilesRemoverThread.cpp
   MMFiles/MMFilesRestHandlers.cpp
+  MMFiles/MMFilesRestWalHandler.cpp
   MMFiles/MMFilesRevisionsCache.cpp
   MMFiles/MMFilesSkiplistIndex.cpp
   MMFiles/MMFilesSynchronizerThread.cpp

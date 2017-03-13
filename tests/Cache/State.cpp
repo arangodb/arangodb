@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2017 triagens GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,110 +19,81 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Daniel H. Larkin
-/// @author Copyright 2017, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Cache/State.h"
 #include "Basics/Common.h"
 
 #include "catch.hpp"
-
-#include "Cache/State.h"
 
 #include <stdint.h>
 
 using namespace arangodb::cache;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
+TEST_CASE("cache::State", "[cache]") {
+  SECTION("test lock methods") {
+    State state;
+    bool success;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
+    uint32_t outsideState = 0;
 
-TEST_CASE("CCacheStateTest", "[cache]") {
+    auto cb1 = [&outsideState]() -> void { outsideState = 1; };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test lock methods
-////////////////////////////////////////////////////////////////////////////////
+    auto cb2 = [&outsideState]() -> void { outsideState = 2; };
 
-SECTION("tst_lock") {
-  State state;
-  bool success;
+    // check lock without contention
+    REQUIRE(!state.isLocked());
+    success = state.lock(-1, cb1);
+    REQUIRE(success);
+    REQUIRE(state.isLocked());
+    REQUIRE(1UL == outsideState);
 
-  uint32_t outsideState = 0;
+    // check lock with contention
+    success = state.lock(10LL, cb2);
+    REQUIRE(!success);
+    REQUIRE(state.isLocked());
+    REQUIRE(1UL == outsideState);
 
-  auto cb1 = [&outsideState]() -> void { outsideState = 1; };
+    // check unlock
+    state.unlock();
+    REQUIRE(!state.isLocked());
+  }
 
-  auto cb2 = [&outsideState]() -> void { outsideState = 2; };
+  SECTION("test methods for non-lock flags") {
+    State state;
+    bool success;
 
-  // check lock without contention
-  CHECK(!state.isLocked());
-  success = state.lock(-1, cb1);
-  CHECK(success);
-  CHECK(state.isLocked());
-  CHECK(1UL == outsideState);
+    success = state.lock();
+    REQUIRE(success);
+    REQUIRE(!state.isSet(State::Flag::migrated));
+    state.unlock();
 
-  // check lock with contention
-  success = state.lock(10LL, cb2);
-  CHECK(!success);
-  CHECK(state.isLocked());
-  CHECK(1UL == outsideState);
+    success = state.lock();
+    REQUIRE(success);
+    REQUIRE(!state.isSet(State::Flag::migrated));
+    state.toggleFlag(State::Flag::migrated);
+    REQUIRE(state.isSet(State::Flag::migrated));
+    state.unlock();
 
-  // check unlock
-  state.unlock();
-  CHECK(!state.isLocked());
+    success = state.lock();
+    REQUIRE(success);
+    REQUIRE(state.isSet(State::Flag::migrated));
+    state.unlock();
+
+    success = state.lock();
+    REQUIRE(success);
+    REQUIRE(state.isSet(State::Flag::migrated));
+    state.toggleFlag(State::Flag::migrated);
+    REQUIRE(!state.isSet(State::Flag::migrated));
+    state.unlock();
+
+    success = state.lock();
+    REQUIRE(success);
+    REQUIRE(!state.isSet(State::Flag::migrated));
+    state.unlock();
+  }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test methods for non-lock flags
-////////////////////////////////////////////////////////////////////////////////
-
-SECTION("tst_flags") {
-  State state;
-  bool success;
-
-  success = state.lock();
-  CHECK(success);
-  CHECK(!state.isSet(State::Flag::migrated));
-  state.unlock();
-
-  success = state.lock();
-  CHECK(success);
-  CHECK(!state.isSet(State::Flag::migrated));
-  state.toggleFlag(State::Flag::migrated);
-  CHECK(state.isSet(State::Flag::migrated));
-  state.unlock();
-
-  success = state.lock();
-  CHECK(success);
-  CHECK(state.isSet(State::Flag::migrated));
-  state.unlock();
-
-  success = state.lock();
-  CHECK(success);
-  CHECK(state.isSet(State::Flag::migrated));
-  state.toggleFlag(State::Flag::migrated);
-  CHECK(!state.isSet(State::Flag::migrated));
-  state.unlock();
-
-  success = state.lock();
-  CHECK(success);
-  CHECK(!state.isSet(State::Flag::migrated));
-  state.unlock();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
-////////////////////////////////////////////////////////////////////////////////
-
-}
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

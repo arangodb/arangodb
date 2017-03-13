@@ -46,6 +46,10 @@ class Result;
 class TransactionCollection;
 class TransactionState;
 
+namespace rest {
+class RestHandlerFactory;
+}
+
 namespace transaction {
 class ContextData;
 }
@@ -342,7 +346,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void addV8Functions() = 0;
   
   /// @brief Add engine-specific REST handlers
-  virtual void addRestHandlers() = 0;
+  virtual void addRestHandlers(rest::RestHandlerFactory*) = 0;
 
  protected:
   void registerCollection(TRI_vocbase_t* vocbase,

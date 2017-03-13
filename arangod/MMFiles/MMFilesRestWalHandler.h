@@ -21,14 +21,27 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFilesRestHandlers.h"
-#include "GeneralServer/RestHandlerFactory.h"
-#include "MMFiles/MMFilesRestWalHandler.h"
-#include "RestHandler/RestHandlerCreator.h"
+#ifndef ARANGOD_MMFILES_MMFILES_REST_WAL_HANDLER_H
+#define ARANGOD_MMFILES_MMFILES_REST_WAL_HANDLER_H 1
 
-using namespace arangodb;
+#include "Basics/Common.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
-void MMFilesRestHandlers::registerResources(rest::RestHandlerFactory* handlerFactory) {
-  handlerFactory->addPrefixHandler(
-      "/_admin/wal", RestHandlerCreator<MMFilesRestWalHandler>::createNoData);
+namespace arangodb {
+
+class MMFilesRestWalHandler : public RestVocbaseBaseHandler {
+ public:
+  MMFilesRestWalHandler(GeneralRequest*, GeneralResponse*);
+
+ public:
+  RestStatus execute() override final;
+  char const* name() const override final { return "MMFilesRestWalHandler"; }
+
+ private:
+  void flush();
+  void transactions();
+  void properties();
+};
 }
+
+#endif

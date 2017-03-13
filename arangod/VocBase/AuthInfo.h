@@ -49,18 +49,30 @@ class AuthEntry {
  public:
   AuthEntry() : _active(false), _mustChange(false), _allDatabases(AuthLevel::NONE) {}
 
-  AuthEntry(std::string const& username, std::string const& passwordMethod,
-            std::string const& passwordSalt, std::string const& passwordHash,
-            std::unordered_map<std::string, AuthLevel> const& databases, AuthLevel allDatabases,
+  AuthEntry(std::string&& username, std::string&& passwordMethod,
+            std::string&& passwordSalt, std::string&& passwordHash,
+            std::unordered_map<std::string, AuthLevel>&& databases, AuthLevel allDatabases,
             bool active, bool mustChange)
-      : _username(username),
-        _passwordMethod(passwordMethod),
-        _passwordSalt(passwordSalt),
-        _passwordHash(passwordHash),
+      : _username(std::move(username)),
+        _passwordMethod(std::move(passwordMethod)),
+        _passwordSalt(std::move(passwordSalt)),
+        _passwordHash(std::move(passwordHash)),
         _active(active),
         _mustChange(mustChange),
-        _databases(databases),
+        _databases(std::move(databases)),
         _allDatabases(allDatabases) {}
+  
+  AuthEntry(AuthEntry const& other) = delete;
+
+  AuthEntry(AuthEntry&& other) noexcept
+      : _username(std::move(other._username)),
+        _passwordMethod(std::move(other._passwordMethod)),
+        _passwordSalt(std::move(other._passwordSalt)),
+        _passwordHash(std::move(other._passwordHash)),
+        _active(other._active),
+        _mustChange(other._mustChange),
+        _databases(std::move(other._databases)),
+        _allDatabases(other._allDatabases) {}
 
  public:
   std::string const& username() const { return _username; }
@@ -77,19 +89,24 @@ class AuthEntry {
   AuthLevel canUseDatabase(std::string const& dbname) const;
 
  private:
-  std::string _username;
-  std::string _passwordMethod;
-  std::string _passwordSalt;
-  std::string _passwordHash;
-  bool _active;
+  std::string const _username;
+  std::string const _passwordMethod;
+  std::string const _passwordSalt;
+  std::string const _passwordHash;
+  bool const _active;
   bool _mustChange;
-  std::unordered_map<std::string, AuthLevel> _databases;
-  AuthLevel _allDatabases;
+  std::unordered_map<std::string, AuthLevel> const _databases;
+  AuthLevel const _allDatabases;
 };
 
 class AuthResult {
  public:
-  AuthResult() : _authorized(false), _mustChange(false) {}
+  AuthResult() 
+      : _authorized(false), _mustChange(false) {}
+  
+  explicit AuthResult(std::string const& username) 
+      : _username(username), _authorized(false), _mustChange(false) {} 
+
   std::string _username;
   bool _authorized;
   bool _mustChange;
@@ -120,7 +137,8 @@ class AuthInfo {
   void setQueryRegistry(aql::QueryRegistry* registry) {
     TRI_ASSERT(registry != nullptr);
     _queryRegistry = registry;
-  };
+  }
+
   void outdate() { _outdated = true; }
 
   AuthResult checkPassword(std::string const& username,
@@ -139,7 +157,6 @@ class AuthInfo {
  
  private:
   void reload();
-  void clear();
   void insertInitial();
   bool populate(velocypack::Slice const& slice);
 

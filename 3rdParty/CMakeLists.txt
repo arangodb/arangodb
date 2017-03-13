@@ -6,7 +6,8 @@
 
 
 if(NOT EXISTS ${PROJECT_SOURCE_DIR}/3rdParty/V8/v8/LICENSE AND
-   NOT EXISTS ${PROJECT_SOURCE_DIR}/3rdParty/V8/v8/testing/gtest/LICENSE)
+   NOT EXISTS ${PROJECT_SOURCE_DIR}/3rdParty/V8/v8/testing/gtest/LICENSE AND
+   NOT EXISTS ${PROJECT_SOURCE_DIR}/3rdParty/V8/v8/tools/gyp/gyp_main.py)
  message(FATAL_ERROR "GIT sumbodules not checked out properly - aborting! Run: 
 git submodule update --recursive
 git submodule update --init --recursive
@@ -121,6 +122,15 @@ endif()
 set(SKIP_INSTALL_ALL ON)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/rocksdb)
+
+list(APPEND LINK_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/rocksdb/rocksdb")
+
+set(ROCKSDB_LIBS
+  "rocksdblib"
+  CACHE INTERNAL
+  "${PROJECT_NAME}: Libraries"
+)
+
 
 ################################################################################
 ## LINK_DIRECTORIES

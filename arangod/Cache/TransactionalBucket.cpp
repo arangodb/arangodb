@@ -31,18 +31,13 @@
 
 using namespace arangodb::cache;
 
-size_t TransactionalBucket::SLOTS_DATA = 3;
-size_t TransactionalBucket::SLOTS_BLACKLIST = 4;
-
 TransactionalBucket::TransactionalBucket() {
   _state.lock();
   clear();
 }
 
-bool TransactionalBucket::lock(uint64_t transactionTerm, int64_t maxTries) {
-  return _state.lock(maxTries, [this, transactionTerm]() -> void {
-    updateBlacklistTerm(transactionTerm);
-  });
+bool TransactionalBucket::lock(int64_t maxTries) {
+  return _state.lock(maxTries);
 }
 
 void TransactionalBucket::unlock() {
@@ -65,9 +60,9 @@ bool TransactionalBucket::isFullyBlacklisted() const {
 bool TransactionalBucket::isFull() const {
   TRI_ASSERT(isLocked());
   bool hasEmptySlot = false;
-  for (size_t i = 0; i < SLOTS_DATA; i++) {
-    size_t slot = SLOTS_DATA - (i + 1);
-    if (_cachedHashes[slot] == 0) {
+  for (size_t i = 0; i < slotsData; i++) {
+    size_t slot = slotsData - (i + 1);
+    if (_cachedData[slot] == nullptr) {
       hasEmptySlot = true;
       break;
     }
@@ -81,8 +76,8 @@ CachedValue* TransactionalBucket::find(uint32_t hash, void const* key,
   TRI_ASSERT(isLocked());
   CachedValue* result = nullptr;
 
-  for (size_t i = 0; i < SLOTS_DATA; i++) {
-    if (_cachedHashes[i] == 0) {
+  for (size_t i = 0; i < slotsData; i++) {
+    if (_cachedData[i] == nullptr) {
       break;
     }
     if (_cachedHashes[i] == hash && _cachedData[i]->sameKey(key, keySize)) {
@@ -103,8 +98,8 @@ void TransactionalBucket::insert(uint32_t hash, CachedValue* value) {
     return;
   }
 
-  for (size_t i = 0; i < SLOTS_DATA; i++) {
-    if (_cachedHashes[i] == 0) {
+  for (size_t i = 0; i < slotsData; i++) {
+    if (_cachedData[i] == nullptr) {
       // found an empty slot
       _cachedHashes[i] = hash;
       _cachedData[i] = value;
@@ -141,7 +136,7 @@ CachedValue* TransactionalBucket::blacklist(uint32_t hash, void const* key,
     return value;
   }
 
-  for (size_t i = 0; i < SLOTS_BLACKLIST; i++) {
+  for (size_t i = 0; i < slotsBlacklist; i++) {
     if (_blacklistHashes[i] == 0) {
       // found an empty slot
       _blacklistHashes[i] = hash;
@@ -165,7 +160,7 @@ bool TransactionalBucket::isBlacklisted(uint32_t hash) const {
   }
 
   bool blacklisted = false;
-  for (size_t i = 0; i < SLOTS_BLACKLIST; i++) {
+  for (size_t i = 0; i < slotsBlacklist; i++) {
     if (_blacklistHashes[i] == hash) {
       blacklisted = true;
       break;
@@ -177,9 +172,9 @@ bool TransactionalBucket::isBlacklisted(uint32_t hash) const {
 
 CachedValue* TransactionalBucket::evictionCandidate(bool ignoreRefCount) const {
   TRI_ASSERT(isLocked());
-  for (size_t i = 0; i < SLOTS_DATA; i++) {
-    size_t slot = SLOTS_DATA - (i + 1);
-    if (_cachedHashes[slot] == 0) {
+  for (size_t i = 0; i < slotsData; i++) {
+    size_t slot = slotsData - (i + 1);
+    if (_cachedData[slot] == nullptr) {
       continue;
     }
     if (ignoreRefCount || _cachedData[slot]->isFreeable()) {
@@ -192,8 +187,8 @@ CachedValue* TransactionalBucket::evictionCandidate(bool ignoreRefCount) const {
 
 void TransactionalBucket::evict(CachedValue* value, bool optimizeForInsertion) {
   TRI_ASSERT(isLocked());
-  for (size_t i = 0; i < SLOTS_DATA; i++) {
-    size_t slot = SLOTS_DATA - (i + 1);
+  for (size_t i = 0; i < slotsData; i++) {
+    size_t slot = slotsData - (i + 1);
     if (_cachedData[slot] == value) {
       // found a match
       _cachedHashes[slot] = 0;
@@ -217,7 +212,7 @@ void TransactionalBucket::updateBlacklistTerm(uint64_t term) {
       _state.toggleFlag(State::Flag::blacklisted);
     }
 
-    memset(_blacklistHashes, 0, (SLOTS_BLACKLIST * sizeof(uint32_t)));
+    memset(_blacklistHashes, 0, (slotsBlacklist * sizeof(uint32_t)));
   }
 }
 
@@ -234,7 +229,7 @@ void TransactionalBucket::moveSlot(size_t slot, bool moveToFront) {
     }
   } else {
     // move slot to back
-    for (; (i < SLOTS_DATA - 1) && (_cachedHashes[i + 1] != 0); i++) {
+    for (; (i < slotsData - 1) && (_cachedHashes[i + 1] != 0); i++) {
       _cachedHashes[i] = _cachedHashes[i + 1];
       _cachedData[i] = _cachedData[i + 1];
     }
