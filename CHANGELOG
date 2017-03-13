@@ -154,6 +154,10 @@ v3.2.alpha1 (2017-02-05)
 v3.1.14 (2017-03-13)
 --------------------
 
+* added missing locks to authentication cache methods
+
+* ui - added feature request (multiple start nodes within graph viewer) #2317
+
 * ui - fixed wrong merge of statistics information from different coordinators
 
 * ui - fixed issue #2316
