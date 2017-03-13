@@ -1,6 +1,8 @@
 v3.1.14 (2017-03-13)
 --------------------
 
+* ui - added feature request (multiple start nodes within graph viewer) #2317
+
 * added missing locks to authentication cache methods
 
 * ui - fixed wrong merge of statistics information from different coordinators

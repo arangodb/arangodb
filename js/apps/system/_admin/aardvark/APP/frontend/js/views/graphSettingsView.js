@@ -21,7 +21,7 @@
       'nodeStart': {
         type: 'string',
         name: 'Startnode',
-        desc: 'A valid node id. If empty, a random node will be chosen.',
+        desc: 'A valid node id or space seperated list of id\'s. If empty, a random node will be chosen.',
         value: 2
       },
       'layout': {
