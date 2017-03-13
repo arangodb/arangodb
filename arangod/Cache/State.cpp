@@ -33,6 +33,14 @@ State::State() : _state(0) {}
 
 State::State(State const& other) : _state(other._state.load()) {}
 
+State& State::operator=(State const& other) {
+  if (this != &other) {
+    _state = other._state.load();
+  }
+
+  return *this;
+}
+
 bool State::isLocked() const {
   return ((_state.load() & static_cast<uint32_t>(Flag::locked)) > 0);
 }

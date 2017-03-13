@@ -142,8 +142,9 @@ struct BooleanParameter : public Parameter {
       return "";
     }
     if (value == "true" || value == "false" || value == "on" ||
-        value == "off" || value == "1" || value == "0") {
-      *ptr = (value == "true" || value == "on" || value == "1");
+        value == "off" || value == "1" || value == "0" ||
+        value == "yes" || value == "no") {
+      *ptr = (value == "true" || value == "on" || value == "1" || value == "yes");
       return "";
     }
     return "invalid value. expecting 'true' or 'false'";
