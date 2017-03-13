@@ -593,6 +593,10 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
+  if (_state == WorkerState::DONE) {
+    LOG_TOPIC(WARN, Logger::PREGEL) << "Calling finalize after the fact";
+    return;
+  }
   _state = WorkerState::DONE;
 
   VPackSlice store = body.get(Utils::storeResultsKey);

@@ -135,9 +135,9 @@ public:
 #endif
     
     // memory map the data
-    size_t mapped = sizeof(T) * entries;
+    _mappedSize = sizeof(T) * entries;
     void* ptr;
-    int res = TRI_MMFile(nullptr, mapped, PROT_WRITE | PROT_READ, flags,
+    int res = TRI_MMFile(nullptr, _mappedSize, PROT_WRITE | PROT_READ, flags,
                          _fd, &_mmHandle, 0, &ptr);
 #ifdef MAP_ANONYMOUS
     // nothing to do
@@ -166,8 +166,8 @@ public:
     std::string file = "pregel_" + std::to_string((uint64_t)tt) + ".mmap";
     std::string filename = FileUtils::buildFilename(TRI_GetTempPath(), file);
     
-    size_t mappedSize = sizeof(T) * _size;
-    _fd = TRI_CreateDatafile(filename, mappedSize);
+    _mappedSize = sizeof(T) * _size;
+    _fd = TRI_CreateDatafile(filename, _mappedSize);
     if (_fd < 0) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
@@ -179,7 +179,7 @@ public:
     // try populating the mapping already
     flags |= MAP_POPULATE;
 #endif
-    int res = TRI_MMFile(0, mappedSize, PROT_WRITE | PROT_READ, flags, _fd,
+    int res = TRI_MMFile(0, _mappedSize, PROT_WRITE | PROT_READ, flags, _fd,
                          &_mmHandle, 0, &data);
     
     if (res != TRI_ERROR_NO_ERROR) {
@@ -209,30 +209,24 @@ public:
   inline bool isPhysical() const { return !_filename.empty(); }
   
   void sequentialAccess() {
-    size_t mappedSize = sizeof(T) * _size;
-    TRI_MMFileAdvise(this->_ptr, mappedSize, TRI_MADVISE_SEQUENTIAL);
+    TRI_MMFileAdvise(this->_ptr, _mappedSize, TRI_MADVISE_SEQUENTIAL);
   }
   
   void randomAccess() {
-    size_t mappedSize = sizeof(T) * _size;
-    TRI_MMFileAdvise(this->_ptr, mappedSize, TRI_MADVISE_RANDOM);
+    TRI_MMFileAdvise(this->_ptr, _mappedSize, TRI_MADVISE_RANDOM);
   }
   
   void willNeed() {
-    size_t mappedSize = sizeof(T) * _size;
-    TRI_MMFileAdvise(this->_ptr, mappedSize, TRI_MADVISE_WILLNEED);
+    TRI_MMFileAdvise(this->_ptr, _mappedSize, TRI_MADVISE_WILLNEED);
   }
   
   void dontNeed() {
-    size_t mappedSize = sizeof(T) * _size;
-    TRI_MMFileAdvise(this->_ptr, mappedSize, TRI_MADVISE_DONTNEED);
+    TRI_MMFileAdvise(this->_ptr, _mappedSize, TRI_MADVISE_DONTNEED);
   }
   
   /// close file
   void close() override {
-    int res = TRI_ERROR_NO_ERROR;
-    size_t mappedSize = sizeof(T) * _size;
-    res = TRI_UNMMFile(this->_ptr, mappedSize, _fd, &_mmHandle);
+    int res = TRI_UNMMFile(this->_ptr, _mappedSize, _fd, &_mmHandle);
     if (res != TRI_ERROR_NO_ERROR) {
       // leave file open here as it will still be memory-mapped
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "munmap failed with: " << res;
@@ -271,15 +265,17 @@ public:
   void resize(size_t newSize) override {
     if (this->_ptr == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    } else if (newSize == _size) {
+      return;
     }
 
 #ifdef __linux__
-    size_t mappedSize = sizeof(T) * _size;
     size_t newMappedSize = sizeof(T) * newSize;
-    this->_ptr = mremap(this->_ptr, mappedSize, newMappedSize, MREMAP_MAYMOVE);
-    _size = newSize;
+    this->_ptr = mremap(this->_ptr, _mappedSize, newMappedSize, MREMAP_MAYMOVE);
     if (this->_ptr != MAP_FAILED) {// success
       TRI_ASSERT(this->_ptr != nullptr);
+      _mappedSize = newMappedSize;
+      _size = newSize;
       return;
     }
     if (errno == ENOMEM) {
@@ -293,35 +289,13 @@ public:
     LOG_TOPIC(WARN, Logger::MMAP) << "memory-mapping failed for range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
     errno = tmp;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
-#elseif
-    //if (!isPhysical() || _fd == -1) {
-    //  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Can't remap anonymous mmpap");
-    //}
-    
-    size_t mappedSize = sizeof(T) * _size;
-    int res = TRI_UNMMFile(this->_ptr, mappedSize, _fd, &_mmHandle);
-    if (res != ENOMEM) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "munmap failed with: " << res;
-      THROW_ARANGO_EXCEPTION(res);
+#else 
+    if (_size < newSize || newSize * sizeof(T) <= _mappedSize) {
+      _size = newSize;
+    } else {
+      LOG_TOPIC(ERR, Logger::MMAP) << "Resizing mmap not supported on this platform";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
     }
-    
-    int flags = TRI_MMAP_ANONYMOUS | MAP_SHARED;
-    size_t newSize mapped = sizeof(T) * entries;
-    void* ptr;
-    res = TRI_MMFile(nullptr, mapped, PROT_WRITE | PROT_READ, flags,
-                         _fd, &_mmHandle, 0, &ptr);
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_set_errno(res);
-      TRI_CLOSE(fd);
-      LOG_TOPIC(WARN, Logger::MMAP) << "memory-mapping failed for range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
-
-      // remove empty file
-      TRI_UnlinkFile(filename.c_str());
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-    
-    this->_ptr = (T*)ptr;
-    _size = newSize;
 #endif
   }
   
@@ -345,6 +319,7 @@ private:
   int _fd = -1;              // underlying file descriptor
   void* _mmHandle;  // underlying memory map object handle (windows only)
   size_t _size = 0;
+  size_t _mappedSize;
 };
 
 }

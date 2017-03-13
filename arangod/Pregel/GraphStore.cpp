@@ -105,7 +105,7 @@ std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
   }
   _index.resize(count);
   if (_graphFormat->estimatedVertexSize() > 0) {
-    if (count * _graphFormat->estimatedVertexSize() > 0.5 * totalMemory) {
+    if (count * _graphFormat->estimatedVertexSize() > totalMemory / 2) {
         _vertexData = new MappedFileBuffer<V>(count);
     } else {
       _vertexData = new VectorTypedBuffer<V>(count);
@@ -122,7 +122,7 @@ std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
     count += opResult.slice().getUInt();
   }
   
-  if (count * _graphFormat->estimatedEdgeSize() > 0.5 * totalMemory) {
+  if (count * _graphFormat->estimatedEdgeSize() > totalMemory / 2) {
     _edges = new MappedFileBuffer<Edge<E>>(count);
   } else {
     _edges = new VectorTypedBuffer<Edge<E>>(count);
