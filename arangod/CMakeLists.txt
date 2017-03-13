@@ -429,9 +429,19 @@ target_link_libraries(arangoserver
   boost_boost
   boost_system
   ${SYSTEM_LIBRARIES}
-  ldap
-  lber
 )
+
+if (MSVC)
+  target_link_libraries(arangoserver
+    Wldap32.lib
+  )
+else ()
+  target_link_libraries(arangoserver
+    ldap
+    lber
+  )
+endif ()
+
 
 add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp

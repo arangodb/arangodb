@@ -43,9 +43,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+#if _WIN32
+#include <ntldap.h>
+#include <winldap.h>
+#else
 #include <lber.h>
 #include <ldap.h>
-
+#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
