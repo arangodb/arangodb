@@ -3337,6 +3337,17 @@ int MMFilesCollection::remove(arangodb::transaction::Methods* trx, VPackSlice co
   return res;
 }
 
+/// @brief Defer a callback to be executed when the collection
+///        can be dropped. The callback is supposed to drop
+///        the collection and it is guaranteed that no one is using
+///        it at that moment.
+void MMFilesCollection::deferDropCollection(
+    std::function<bool(LogicalCollection*)> callback) {
+  // add callback for dropping
+  ditches()->createMMFilesDropCollectionDitch(_logicalCollection, callback,
+                                              __FILE__, __LINE__);
+}
+
 /// @brief rolls back a document operation
 int MMFilesCollection::rollbackOperation(transaction::Methods* trx,
                                          TRI_voc_document_operation_e type,

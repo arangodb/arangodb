@@ -48,9 +48,6 @@
 #include "Basics/threads.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesCollection.h"
-#include "MMFiles/MMFilesDitch.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -349,10 +346,8 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // someone is trying to unload the collection, cancel this,
   // release the WRITE lock and try again
   if (collection->status() == TRI_VOC_COL_STATUS_UNLOADING) {
-    // check if there is a deferred drop action going on for this collection
-    if (arangodb::MMFilesCollection::toMMFilesCollection(collection)
-            ->ditches()
-            ->contains(arangodb::MMFilesDitch::TRI_DITCH_COLLECTION_DROP)) {
+    // check if the collection is dropped
+    if (collection->deleted()) {
       // drop call going on, we must abort
       locker.unlock();
 
@@ -516,17 +511,17 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     }
     case TRI_VOC_COL_STATUS_UNLOADED: {
       // collection is unloaded
+      StorageEngine* engine = EngineSelectorFeature::ENGINE;
       bool doSync =
+        !engine->inRecovery() &&
           application_features::ApplicationServer::getFeature<DatabaseFeature>(
               "Database")
               ->forceSyncProperties();
-      doSync = (doSync && !MMFilesLogfileManager::instance()->isInRecovery());
 
       if (!collection->deleted()) {
         collection->setDeleted(true);
    
         try { 
-          StorageEngine* engine = EngineSelectorFeature::ENGINE;
           engine->changeCollection(this, collection->cid(), collection, doSync);
         } catch (arangodb::basics::Exception const& ex) {
           collection->setDeleted(false);
@@ -546,7 +541,6 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
       writeLocker.unlock();
 
-      StorageEngine* engine = EngineSelectorFeature::ENGINE;
       TRI_ASSERT(engine != nullptr);
       engine->dropCollection(this, collection);
     
@@ -558,11 +552,14 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       // collection is loaded
       collection->setDeleted(true);
 
-      bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-      doSync = (doSync && !MMFilesLogfileManager::instance()->isInRecovery());
+      StorageEngine* engine = EngineSelectorFeature::ENGINE;
+      bool doSync =
+          !engine->inRecovery() &&
+          application_features::ApplicationServer::getFeature<DatabaseFeature>(
+              "Database")
+              ->forceSyncProperties();
 
       VPackBuilder builder;
-      StorageEngine* engine = EngineSelectorFeature::ENGINE;
       engine->getCollectionInfo(this, collection->cid(), builder, false, 0);
       arangodb::Result res = collection->updateProperties(builder.slice().get("parameters"), doSync);
 
@@ -838,7 +835,6 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
 
 /// @brief unloads a collection
 int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, bool force) {
-  TRI_voc_cid_t cid = collection->cid();
   {
     WRITE_LOCKER_EVENTUAL(locker, collection->_lock);
 
@@ -908,9 +904,10 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, boo
 int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool allowDropSystem) {
   TRI_ASSERT(collection != nullptr);
 
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   if (!allowDropSystem && 
       collection->isSystem() &&
-      !MMFilesLogfileManager::instance()->isInRecovery()) {
+      !engine->inRecovery()) {
     // prevent dropping of system collections
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
@@ -925,17 +922,11 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool 
     }
 
     if (state == DROP_PERFORM) {
-      if (MMFilesLogfileManager::instance()->isInRecovery()) {
+      if (engine->inRecovery()) {
         DropCollectionCallback(collection);
       } else {
-        // add callback for dropping
-        arangodb::MMFilesCollection::toMMFilesCollection(collection)
-            ->ditches()
-            ->createMMFilesDropCollectionDitch(collection, DropCollectionCallback,
-                                        __FILE__, __LINE__);
-
-        // wake up the cleanup thread
-        StorageEngine* engine = EngineSelectorFeature::ENGINE;
+        collection->deferDropCollection(DropCollectionCallback);
+       // wake up the cleanup thread
         engine->signalCleanup(collection->vocbase());
       }
     }
