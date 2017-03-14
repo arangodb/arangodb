@@ -40,9 +40,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 
 #if _WIN32
 #include <ntldap.h>
