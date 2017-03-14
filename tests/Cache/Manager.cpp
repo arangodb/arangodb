@@ -133,7 +133,7 @@ TEST_CASE("cache::Manager", "[cache][!hide][longRunning]") {
                                         static_cast<int64_t>(validUpper));
           size_t cacheIndex = item % cacheCount;
 
-          Cache::Finding f = caches[cacheIndex]->find(&item, sizeof(uint64_t));
+          auto f = caches[cacheIndex]->find(&item, sizeof(uint64_t));
           if (f.found()) {
             hitCount++;
             TRI_ASSERT(f.value() != nullptr);

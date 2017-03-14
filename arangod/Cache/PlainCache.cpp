@@ -26,6 +26,7 @@
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
+#include "Cache/Finding.h"
 #include "Cache/FrequencyBuffer.h"
 #include "Cache/Metadata.h"
 #include "Cache/PlainBucket.h"
@@ -39,7 +40,7 @@
 
 using namespace arangodb::cache;
 
-Cache::Finding PlainCache::find(void const* key, uint32_t keySize) {
+Finding PlainCache::find(void const* key, uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   Finding result(nullptr);
   uint32_t hash = hashKey(key, keySize);

@@ -1,0 +1,75 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+to{
+    Currencies{
+        AUD{
+            "AUD$",
+            "AUD",
+        }
+        BRL{
+            "R$",
+            "BRL",
+        }
+        FJD{
+            "FJD",
+            "FJD",
+        }
+        NZD{
+            "NZD$",
+            "NZD",
+        }
+        PGK{
+            "PGK",
+            "PGK",
+        }
+        SBD{
+            "SBD",
+            "SBD",
+        }
+        TOP{
+            "T$",
+            "Paʻanga fakatonga",
+        }
+        VUV{
+            "VUV",
+            "VUV",
+        }
+        WST{
+            "WST",
+            "Tala fakahaʻamoa",
+        }
+        XPF{
+            "CFPF",
+            "XPF",
+        }
+        XXX{
+            "XXX",
+            "Pa’anga Ta’e’ilo",
+        }
+    }
+    Currencies%narrow{
+        AUD{"$"}
+        FJD{"$"}
+        NZD{"$"}
+        SBD{"$"}
+        TWD{"$"}
+    }
+    Currencies%variant{
+        GEL{"₾"}
+    }
+    CurrencyPlurals{
+        TOP{
+            other{"Paʻanga fakatonga"}
+        }
+        WST{
+            other{"Tala fakahaʻamoa"}
+        }
+        XXX{
+            other{"Pa’anga Ta’e’ilo"}
+        }
+    }
+    CurrencyUnitPatterns{
+        other{"{1} {0}"}
+    }
+    Version{"2.1.27.98"}
+}

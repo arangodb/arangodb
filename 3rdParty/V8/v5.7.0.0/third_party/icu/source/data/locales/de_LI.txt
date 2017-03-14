@@ -1,0 +1,29 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+de_LI{
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"¤ #,##0.00"}
+                percentFormat{"#,##0%"}
+            }
+            symbols{
+                decimal{"."}
+                group{"'"}
+            }
+        }
+    }
+    Version{"2.1.27.40"}
+    calendar{
+        gregorian{
+            dayPeriod{
+                stand-alone{
+                    narrow{
+                        am{"vm."}
+                        pm{"nm."}
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,334 @@
+﻿#
+# Copyright (C) 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html
+# Copyright (C) 2002-2016, International Business Machines Corporation 
+# and others. All Rights Reserved.
+#
+# file:  word.txt
+#
+# ICU Word Break Rules
+#      See Unicode Standard Annex #29.
+#      These rules are based on UAX #29 Revision 29 for Unicode Version 9.0
+#      with additions for Emoji Sequences from https://goo.gl/cluFCn
+#
+# Note:  Updates to word.txt will usually need to be merged into
+#        word_POSIX.txt also.
+
+##############################################################################
+#
+#  Character class definitions from TR 29
+#
+##############################################################################
+
+!!chain;
+
+
+#
+#  Character Class Definitions.
+#
+
+$CR                 = [\p{Word_Break = CR}];
+$LF                 = [\p{Word_Break = LF}];
+$Newline            = [\p{Word_Break = Newline} ];
+$Extend             = [\p{Word_Break = Extend}];
+$ZWJ                = [\p{Word_Break = ZWJ}];
+$Regional_Indicator = [\p{Word_Break = Regional_Indicator}];
+$Format             = [\p{Word_Break = Format}];
+$Katakana           = [\p{Word_Break = Katakana}];
+$Hebrew_Letter      = [\p{Word_Break = Hebrew_Letter}];
+$ALetter            = [\p{Word_Break = ALetter}];
+$Single_Quote       = [\p{Word_Break = Single_Quote}];
+$Double_Quote       = [\p{Word_Break = Double_Quote}];
+# Remove two full stop characters from $MidNumLet and add them to $MidNum
+# to break a hostname into its components at the cost of breaking
+# 'e.g.' and 'i.e.' as well.
+# $MidNumLet is used in rules 6/7 (rules of our interest) and rules 11/12.
+# Because it's OR'd with $MidNum in rules 11/12, rules 11/12 are not affected
+# while rules 6/7 are reverted to the old behavior we want.
+$MidNumLet    = [[\p{Word_Break = MidNumLet}] - [\u002E \uFF0E]];
+$MidLetter          = [\p{Word_Break = MidLetter}];
+$MidNum       = [\p{Word_Break = MidNum}[\u002E \uFF0E]];
+$Numeric      = [\p{Word_Break = Numeric}[\uff10-\uff19]]; #includes fullwidth digits
+$ExtendNumLet       = [\p{Word_Break = ExtendNumLet}];
+$E_Base             = [\p{Word_Break = EB}\U0001F3C2\U0001F3C7\U0001F3CC\U0001F46A-\U0001F46D\U0001F46F\U0001F574\U0001F6CC];
+$E_Modifier         = [\p{Word_Break = EM}];
+
+# Data for Extended Pictographic scraped from CLDR common/properties/ExtendedPictographic.txt, r12773
+$Extended_Pict      = [\U0001F774-\U0001F77F\u2700-\u2701\u2703-\u2704\u270E\u2710-\u2711\u2765-\u2767\U0001F030-\U0001F093\U0001F094-\U0001F09F\U0001F10D-\U0001F10F\U0001F12F\U0001F16C-\U0001F16F\U0001F1AD-\U0001F1E5\U0001F203-\U0001F20F\U0001F23C-\U0001F23F\U0001F249-\U0001F24F\U0001F252-\U0001F2FF\U0001F7D5-\U0001F7FF\U0001F000-\U0001F003\U0001F005-\U0001F02B\U0001F02C-\U0001F02F\U0001F322-\U0001F323\U0001F394-\U0001F395\U0001F398\U0001F39C-\U0001F39D\U0001F3F1-\U0001F3F2\U0001F3F6\U0001F4FE\U0001F53E-\U0001F548\U0001F54F\U0001F568-\U0001F56E\U0001F571-\U0001F572\U0001F57B-\U0001F586\U0001F588-\U0001F589\U0001F58E-\U0001F58F\U0001F591-\U0001F594\U0001F597-\U0001F5A3\U0001F5A6-\U0001F5A7\U0001F5A9-\U0001F5B0\U0001F5B3-\U0001F5BB\U0001F5BD-\U0001F5C1\U0001F5C5-\U0001F5D0\U0001F5D4-\U0001F5DB\U0001F5DF-\U0001F5E0\U0001F5E2\U0001F5E4-\U0001F5E7\U0001F5E9-\U0001F5EE\U0001F5F0-\U0001F5F2\U0001F5F4-\U0001F5F9\u2605\u2607-\u260D\u260F-\u2610\u2612\u2616-\u2617\u2619-\u261C\u261E-\u261F\u2621\u2624-\u2625\u2627-\u2629\u262B-\u262D\u2630-\u2637\u263B-\u2647\u2654-\u265F\u2661-\u2662\u2664\u2667\u2669-\u267A\u267C-\u267E\u2680-\u2691\u2695\u2698\u269A\u269D-\u269F\u26A2-\u26A9\u26AC-\u26AF\u26B2-\u26BC\u26BF-\u26C3\u26C6-\u26C7\u26C9-\u26CD\u26D0\u26D2\u26D5-\u26E8\u26EB-\u26EF\u26F6\u26FB-\u26FC\u26FE-\u26FF\u2388\U0001FA00-\U0001FFFD\U0001F0A0-\U0001F0AE\U0001F0B1-\U0001F0BF\U0001F0C1-\U0001F0CF\U0001F0D1-\U0001F0F5\U0001F0AF-\U0001F0B0\U0001F0C0\U0001F0D0\U0001F0F6-\U0001F0FF\U0001F80C-\U0001F80F\U0001F848-\U0001F84F\U0001F85A-\U0001F85F\U0001F888-\U0001F88F\U0001F8AE-\U0001F8FF\U0001F900-\U0001F90F\U0001F91F\U0001F928-\U0001F92F\U0001F931-\U0001F932\U0001F93F\U0001F94C-\U0001F94F\U0001F95F-\U0001F97F\U0001F992-\U0001F9BF\U0001F9C1-\U0001F9FF\U0001F6C6-\U0001F6CA\U0001F6E6-\U0001F6E8\U0001F6EA\U0001F6F1-\U0001F6F2\U0001F6D3-\U0001F6DF\U0001F6ED-\U0001F6EF\U0001F6F7-\U0001F6FF];
+$EBG                = [\p{Word_Break = EBG}];
+$EmojiNRK           = [[\p{Emoji}] - [\p{Word_Break = Regional_Indicator}\u002a\u00230-9©®™〰〽]];
+
+$Han                = [:Han:];
+$Hiragana           = [:Hiragana:];
+
+
+#   Dictionary character set, for triggering language-based break engines. Currently
+#   limited to LineBreak=Complex_Context. Note that this set only works in Unicode
+#   5.0 or later as the definition of Complex_Context was corrected to include all
+#   characters requiring dictionary break.
+
+$Control        = [\p{Grapheme_Cluster_Break = Control}]; 
+$HangulSyllable = [\uac00-\ud7a3];
+$ComplexContext = [:LineBreak = Complex_Context:];
+$KanaKanji      = [$Han $Hiragana $Katakana];
+$dictionaryCJK  = [$KanaKanji $HangulSyllable];
+$dictionary     = [$ComplexContext $dictionaryCJK];
+
+# leave CJK scripts out of ALetterPlus
+$ALetterPlus  = [$ALetter-$dictionaryCJK [$ComplexContext-$Extend-$Control]];
+
+
+#
+#  Rules 4    Ignore Format and Extend characters, 
+#             except when they appear at the beginning of a region of text.
+#
+# TODO: check if handling of katakana in dictionary makes rules incorrect/void
+$KatakanaEx           = $Katakana           ($Extend |  $Format | $ZWJ)*;
+$Hebrew_LetterEx      = $Hebrew_Letter      ($Extend |  $Format | $ZWJ)*;
+$ALetterEx            = $ALetterPlus        ($Extend |  $Format | $ZWJ)*;
+$Single_QuoteEx       = $Single_Quote       ($Extend |  $Format | $ZWJ)*;
+$Double_QuoteEx       = $Double_Quote       ($Extend |  $Format | $ZWJ)*;
+$MidNumLetEx          = $MidNumLet          ($Extend |  $Format | $ZWJ)*;
+$MidLetterEx          = $MidLetter          ($Extend |  $Format | $ZWJ)*;
+$MidNumEx             = $MidNum             ($Extend |  $Format | $ZWJ)*;
+$NumericEx            = $Numeric            ($Extend |  $Format | $ZWJ)*;
+$ExtendNumLetEx       = $ExtendNumLet       ($Extend |  $Format | $ZWJ)*;
+$Regional_IndicatorEx = $Regional_Indicator ($Extend |  $Format | $ZWJ)*;
+
+$Ideographic    = [\p{Ideographic}];
+$HiraganaEx     = $Hiragana     ($Extend |  $Format | $ZWJ)*;
+$IdeographicEx  = $Ideographic  ($Extend |  $Format | $ZWJ)*;
+
+## -------------------------------------------------
+
+!!forward;
+
+
+# Rule 3 - CR x LF
+#
+$CR $LF;
+
+# Rule 3c   ZWJ x (Extended_Pict | EmojiNRK).  Precedes WB4, so no intervening Extend chars allowed.
+#
+$ZWJ ($Extended_Pict | $EmojiNRK);
+
+
+# Rule 4 - ignore Format and Extend characters, except when they appear at the beginning
+#          of a region of Text.   The rule here comes into play when the start of text
+#          begins with a group of Format chars, or with a "word" consisting of a single
+#          char that is not in any of the listed word break categories followed by
+#          format char(s), or is not a CJK dictionary character.
+[^$CR $LF $Newline]? ($Extend |  $Format | $ZWJ)+;
+
+$NumericEx {100};
+$ALetterEx {200};
+$HangulSyllable {200};
+$Hebrew_LetterEx{200};
+$KatakanaEx {400};       # note:  these status values override those from rule 5
+$HiraganaEx {400};       #        by virtue of being numerically larger.
+$IdeographicEx {400};    #
+
+$E_Base ($Extend | $Format | $ZWJ)*;
+$E_Modifier ($Extend | $Format | $ZWJ)*;
+$Extended_Pict ($Extend | $Format | $ZWJ)*;
+
+#
+# rule 5
+#    Do not break between most letters.
+#
+($ALetterEx | $Hebrew_LetterEx)  ($ALetterEx | $Hebrew_LetterEx) {200};
+
+# rule 6 and 7
+($ALetterEx | $Hebrew_LetterEx) ($MidLetterEx | $MidNumLetEx | $Single_QuoteEx) ($ALetterEx | $Hebrew_LetterEx) {200};
+
+# rule 7a
+$Hebrew_LetterEx $Single_QuoteEx {200};
+
+# rule 7b and 7c
+$Hebrew_LetterEx $Double_QuoteEx $Hebrew_LetterEx {200};
+
+# rule 8
+
+$NumericEx $NumericEx {100};
+
+# rule 9
+
+($ALetterEx | $Hebrew_LetterEx) $NumericEx {200};
+
+# rule 10
+
+$NumericEx ($ALetterEx | $Hebrew_LetterEx) {200};
+
+# rule 11 and 12 
+
+$NumericEx ($MidNumEx | $MidNumLetEx | $Single_QuoteEx) $NumericEx {100};
+
+# rule 13
+# to be consistent with $KanaKanji $KanaKanhi, changed
+# from 300 to 400.
+# See also TestRuleStatus in intltest/rbbiapts.cpp
+$KatakanaEx  $KatakanaEx {400};
+
+# rule 13a/b
+
+$ALetterEx       $ExtendNumLetEx {200};    #  (13a)
+$Hebrew_LetterEx $ExtendNumLetEx {200};    #  (13a)
+$NumericEx       $ExtendNumLetEx {100};    #  (13a)
+$KatakanaEx      $ExtendNumLetEx {400};    #  (13a)
+$ExtendNumLetEx  $ExtendNumLetEx {200};    #  (13a)
+
+$ExtendNumLetEx  $ALetterEx      {200};    #  (13b)
+$ExtendNumLetEx  $Hebrew_Letter  {200};    #  (13b)
+$ExtendNumLetEx  $NumericEx      {100};    #  (13b)
+$ExtendNumLetEx  $KatakanaEx     {400};    #  (13b)
+
+# rule 14
+#    Do not break within emoji modifier sequences
+
+($E_Base | $EBG) ($Format | $Extend | $ZWJ)* $E_Modifier;
+
+# rules 15 - 17
+#    Pairs of Regional Indicators stay together.
+#    With rule chaining disabled by ^, this rule will match exactly two of them.
+#    No other rule begins with a Regional_Indicator, so chaining cannot extend the match.
+#
+^$Regional_IndicatorEx $Regional_IndicatorEx;
+
+# special handling for CJK characters: chain for later dictionary segmentation
+$HangulSyllable $HangulSyllable {200};
+$KanaKanji $KanaKanji {400}; # different rule status if both kana and kanji found 
+
+
+## -------------------------------------------------
+
+!!reverse;
+
+$BackHebrew_LetterEx      = ($Format | $Extend | $ZWJ)* $Hebrew_Letter;
+$BackALetterEx            = ($Format | $Extend | $ZWJ)* $ALetterPlus;
+$BackSingle_QuoteEx       = ($Format | $Extend | $ZWJ)* $Single_Quote;
+$BackDouble_QuoteEx       = ($Format | $Extend | $ZWJ)* $Double_Quote;
+$BackMidNumLetEx          = ($Format | $Extend | $ZWJ)* $MidNumLet;
+$BackNumericEx            = ($Format | $Extend | $ZWJ)* $Numeric;
+$BackMidNumEx             = ($Format | $Extend | $ZWJ)* $MidNum;
+$BackMidLetterEx          = ($Format | $Extend | $ZWJ)* $MidLetter;
+$BackKatakanaEx           = ($Format | $Extend | $ZWJ)* $Katakana;
+$BackHiraganaEx           = ($Format | $Extend | $ZWJ)* $Hiragana;
+$BackExtendNumLetEx       = ($Format | $Extend | $ZWJ)* $ExtendNumLet;
+$BackRegional_IndicatorEx = ($Format | $Extend | $ZWJ)* $Regional_Indicator;
+
+# rule 3
+$LF $CR;
+
+# Rule 3c   ZWJ x (Extended_Pict | EmojiNRK).  Precedes WB4, so no intervening Extend chars allowed.
+#
+($Extended_Pict | $EmojiNRK) $ZWJ;
+
+# rule 4
+($Format | $Extend | $ZWJ)*  [^$CR $LF $Newline]?;
+
+# rule 5
+
+($BackALetterEx | $BackHebrew_LetterEx) ($BackALetterEx | $BackHebrew_LetterEx);
+
+# rule 6 and 7
+
+($BackALetterEx | $BackHebrew_LetterEx) ($BackMidLetterEx | $BackMidNumLetEx | $BackSingle_QuoteEx) ($BackALetterEx | $BackHebrew_LetterEx);
+
+# rule 7a
+$BackSingle_QuoteEx $BackHebrew_LetterEx;
+
+# Rule 7b and 7c
+$BackHebrew_LetterEx $BackDouble_QuoteEx $BackHebrew_LetterEx;
+
+# rule 8
+
+$BackNumericEx $BackNumericEx;
+
+# rule 9
+
+$BackNumericEx ($BackALetterEx | $BackHebrew_LetterEx);
+
+# rule 10
+
+($BackALetterEx | $BackHebrew_LetterEx) $BackNumericEx;
+
+# rule 11 and 12
+
+$BackNumericEx ($BackMidNumEx | $BackMidNumLetEx | $BackSingle_QuoteEx) $BackNumericEx;
+
+# rule 13
+
+$BackKatakanaEx $BackKatakanaEx;
+
+# rules 13 a/b
+#
+$BackExtendNumLetEx ($BackALetterEx | $BackHebrew_LetterEx | $BackNumericEx | $BackKatakanaEx | $BackExtendNumLetEx);
+($BackALetterEx | $BackHebrew_LetterEx | $BackNumericEx | $BackKatakanaEx) $BackExtendNumLetEx; 
+
+# special handling for CJK characters: chain for later dictionary segmentation
+$HangulSyllable $HangulSyllable;
+$KanaKanji $KanaKanji; #different rule status if both kanji and kana found
+
+# rule 14
+
+$E_Modifier ($Format | $Extend | $ZWJ)* ($E_Base | $EBG);
+
+# rule 15 - 17
+#    Pairs of Regional Indicators stay together.
+
+^$BackRegional_IndicatorEx / ($BackRegional_IndicatorEx $BackRegional_IndicatorEx)* 
+        ($Format | $Extend | $ZWJ)* [[^$Regional_Indicator $Format $Extend $ZWJ] {eof}];
+^$BackRegional_IndicatorEx $BackRegional_IndicatorEx / ($BackRegional_IndicatorEx $BackRegional_IndicatorEx)* 
+        ($Format | $Extend | $ZWJ)* [[^$Regional_Indicator $Format $Extend $ZWJ] {eof}];
+
+($Extended_Pict | $EmojiNRK) $ZWJ $BackRegional_IndicatorEx / ($BackRegional_IndicatorEx $BackRegional_IndicatorEx)* 
+        ($Format | $Extend | $ZWJ)* [[^$Regional_Indicator $Format $Extend $ZWJ] {eof}];
+($Extended_Pict | $EmojiNRK) $ZWJ $BackRegional_IndicatorEx $BackRegional_IndicatorEx / ($BackRegional_IndicatorEx $BackRegional_IndicatorEx)* 
+        ($Format | $Extend | $ZWJ)* [[^$Regional_Indicator $Format $Extend $ZWJ] {eof}];
+
+
+
+## -------------------------------------------------
+
+!!safe_reverse;
+
+# rule 3
+($Extend | $Format | $ZWJ)+ .?;
+
+# rule 6
+($MidLetter | $MidNumLet | $Single_Quote) ($BackALetterEx | $BackHebrew_LetterEx);
+
+# rule 7b
+$Double_Quote $BackHebrew_LetterEx;
+
+
+# rule 11
+($MidNum | $MidNumLet | $Single_Quote) $BackNumericEx;
+
+# rule 13c
+$BackRegional_IndicatorEx*;
+
+# For dictionary-based break
+$dictionary $dictionary;
+
+## -------------------------------------------------
+
+!!safe_forward;
+
+# rule 4
+($Extend | $Format | $ZWJ)+ .?;
+
+# rule 6
+($MidLetterEx | $MidNumLetEx | $Single_QuoteEx) ($ALetterEx | $Hebrew_LetterEx);
+
+# rule 7b
+$Double_QuoteEx $Hebrew_LetterEx;
+
+# rule 11
+($MidNumEx | $MidNumLetEx | $Single_QuoteEx) $NumericEx;
+
+# rule 13c
+$Regional_IndicatorEx*;
+
+# For dictionary-based break
+$dictionary $dictionary;

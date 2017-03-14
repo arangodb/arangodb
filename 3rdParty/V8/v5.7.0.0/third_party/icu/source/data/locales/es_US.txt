@@ -1,0 +1,94 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_US{
+    %%Parent{"es_419"}
+    NumberElements{
+        latn{
+            patternsShort{
+                decimalFormat{
+                    1000{
+                        one{"0"}
+                        other{"0"}
+                    }
+                    10000{
+                        one{"00k"}
+                        other{"00k"}
+                    }
+                    100000{
+                        one{"000k"}
+                        other{"000k"}
+                    }
+                }
+            }
+        }
+    }
+    Version{"2.1.27.99"}
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "a. m.",
+                "p. m.",
+            }
+            AmPmMarkersAbbr{
+                "a. m.",
+                "p. m.",
+            }
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d 'de' MMMM 'de' y",
+                "d 'de' MMMM 'de' y",
+                "d MMM y",
+                "d/M/yy",
+                "{1} {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            dayPeriod{
+                format{
+                    narrow{
+                        evening1{"de la tarde"}
+                        morning1{"de la madrugada"}
+                        morning2{"mañana"}
+                        night1{"de la noche"}
+                        noon{"del mediodía"}
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                    narrow{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                    wide{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                }
+            }
+            intervalFormats{
+                H{
+                    H{"HH – HH"}
+                }
+                Hm{
+                    H{"HH:mm – HH:mm"}
+                    m{"HH:mm – HH:mm"}
+                }
+                Hmv{
+                    H{"HH:mm – HH:mm v"}
+                    m{"HH:mm – HH:mm v"}
+                }
+                Hv{
+                    H{"HH – HH v"}
+                }
+            }
+        }
+    }
+}

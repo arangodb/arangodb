@@ -1,0 +1,13 @@
+﻿# © 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html#License
+#
+# File: Latn_Jamo.txt
+# Generated from CLDR
+#
+
+::[[:script=Latin:][:M:]-];
+::NFD;
+::Lower;
+::Latin-ConjoiningJamo;
+::[[:script=Latin:][:M:]] NFC;
+
