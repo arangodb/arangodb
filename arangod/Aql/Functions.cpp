@@ -1652,7 +1652,7 @@ AqlValue Functions::Attributes(arangodb::aql::Query* query,
     result.openArray();
     for (auto const& it : keys) {
       TRI_ASSERT(!it.empty());
-      if (removeInternal && it.at(0) == '_') {
+      if (removeInternal && !it.empty() && it.at(0) == '_') {
         continue;
       }
       result.add(VPackValue(it));
@@ -1712,9 +1712,13 @@ AqlValue Functions::Values(arangodb::aql::Query* query,
       // somehow invalid
       continue;
     }
-    if (removeInternal && entry.key.copyString().at(0) == '_') {
-      // skip attribute
-      continue;
+    if (removeInternal) {
+      VPackValueLength l;
+      char const* p = entry.key.getString(l);
+      if (l > 0 && *p == '_') {
+        // skip attribute
+        continue;
+      }
     }
     if (entry.value.isCustom()) {
       builder->add(VPackValue(trx->extractIdString(slice)));
