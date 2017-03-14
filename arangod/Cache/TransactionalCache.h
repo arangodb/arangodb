@@ -28,6 +28,7 @@
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
+#include "Cache/Finding.h"
 #include "Cache/FrequencyBuffer.h"
 #include "Cache/Manager.h"
 #include "Cache/ManagerTasks.h"
@@ -77,7 +78,7 @@ class TransactionalCache final : public Cache {
   /// May report a false negative if it fails to acquire a lock in a timely
   /// fashion. Should not block for long.
   //////////////////////////////////////////////////////////////////////////////
-  Cache::Finding find(void const* key, uint32_t keySize);
+  Finding find(void const* key, uint32_t keySize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempts to insert the given value.

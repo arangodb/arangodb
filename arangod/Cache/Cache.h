@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
+#include "Cache/Finding.h"
 #include "Cache/FrequencyBuffer.h"
 #include "Cache/Manager.h"
 #include "Cache/ManagerTasks.h"
@@ -67,49 +68,6 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   static const uint64_t minSize;
   static const uint64_t minLogSize;
-
- public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief A helper class for managing CachedValue lifecycles.
-  ///
-  /// Returned to clients by Cache::find. Clients must destroy the Finding
-  /// object within a short period of time to allow proper memory management
-  /// within the cache system. If the underlying value needs to be retained for
-  /// any significant period of time, it must be copied so that the finding
-  /// object may be destroyed.
-  //////////////////////////////////////////////////////////////////////////////
-  class Finding {
-   public:
-    Finding(CachedValue* v);
-    Finding(Finding const& other);
-    Finding(Finding&& other);
-    Finding& operator=(Finding const& other);
-    Finding& operator=(Finding&& other);
-    ~Finding();
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief Changes the underlying CachedValue pointer.
-    ////////////////////////////////////////////////////////////////////////////
-    void reset(CachedValue* v);
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief Specifies whether the value was found. If not, value is nullptr.
-    ////////////////////////////////////////////////////////////////////////////
-    bool found() const;
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief Returns the underlying value pointer.
-    ////////////////////////////////////////////////////////////////////////////
-    CachedValue const* value() const;
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief Creates a copy of the underlying value and returns a pointer.
-    ////////////////////////////////////////////////////////////////////////////
-    CachedValue* copy() const;
-
-   private:
-    CachedValue* _value;
-  };
 
  public:
   Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,

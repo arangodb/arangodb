@@ -39,8 +39,6 @@
 #include <list>
 #include <thread>
 
-#include <iostream>  // TODO
-
 using namespace arangodb::cache;
 
 const uint64_t Cache::minSize = 16384;
@@ -49,79 +47,6 @@ const uint64_t Cache::minLogSize = 14;
 uint64_t Cache::_findStatsCapacity = 16384;
 
 Cache::ConstructionGuard::ConstructionGuard() {}
-
-Cache::Finding::Finding(CachedValue* v) : _value(v) {
-  if (_value != nullptr) {
-    _value->lease();
-  }
-}
-
-Cache::Finding::Finding(Finding const& other) : _value(other._value) {
-  if (_value != nullptr) {
-    _value->lease();
-  }
-}
-
-Cache::Finding::Finding(Finding&& other) : _value(other._value) {
-  other._value = nullptr;
-}
-
-Cache::Finding& Cache::Finding::operator=(Finding const& other) {
-  if (&other == this) {
-    return *this;
-  }
-
-  if (_value != nullptr) {
-    _value->release();
-  }
-
-  _value = other._value;
-  if (_value != nullptr) {
-    _value->lease();
-  }
-
-  return *this;
-}
-
-Cache::Finding& Cache::Finding::operator=(Finding&& other) {
-  if (&other == this) {
-    return *this;
-  }
-
-  if (_value != nullptr) {
-    _value->release();
-  }
-
-  _value = other._value;
-  other._value = nullptr;
-
-  return *this;
-}
-
-Cache::Finding::~Finding() {
-  if (_value != nullptr) {
-    _value->release();
-  }
-}
-
-void Cache::Finding::reset(CachedValue* v) {
-  if (_value != nullptr) {
-    _value->release();
-  }
-
-  _value = v;
-  if (_value != nullptr) {
-    _value->lease();
-  }
-}
-
-bool Cache::Finding::found() const { return (_value != nullptr); }
-
-CachedValue const* Cache::Finding::value() const { return _value; }
-
-CachedValue* Cache::Finding::copy() const {
-  return ((_value == nullptr) ? nullptr : _value->copy());
-}
 
 Cache::Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
              std::shared_ptr<Table> table, bool enableWindowedStats,

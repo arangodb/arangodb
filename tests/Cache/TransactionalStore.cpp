@@ -242,7 +242,7 @@ TransactionalStore::Document TransactionalStore::lookup(
 
   Document result;
   {
-    Cache::Finding f = _cache->find(&key, sizeof(uint64_t));
+    Finding f = _cache->find(&key, sizeof(uint64_t));
     if (f.found()) {
       CachedValue const* cv = f.value();
       memcpy(&result, cv->value(), sizeof(Document));
