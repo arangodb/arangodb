@@ -43,7 +43,7 @@ function testAlgo(v, e, a, p) {
   var i = 1000;
   do {
     console.log("Waiting...");
-    internal.wait(100);
+    internal.wait(1);
     var doc = db._pregelStatus(key);
     if (doc.state !== "running") {
       console.log("Finished algorithm " + a);
