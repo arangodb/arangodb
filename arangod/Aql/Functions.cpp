@@ -1668,8 +1668,7 @@ AqlValue Functions::Attributes(arangodb::aql::Query* query,
   VPackBuilder result;
   result.openArray();
   for (auto const& it : keys) {
-    TRI_ASSERT(!it.empty());
-    if (removeInternal && it.at(0) == '_') {
+    if (removeInternal && !it.empty() && it.at(0) == '_') {
       continue;
     }
     result.add(VPackValue(it));
