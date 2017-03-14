@@ -1,0 +1,17 @@
+// ***************************************************************************
+// *
+// * Copyright (C) 2016 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// *
+// ***************************************************************************
+/**
+ *  Chrome Note: This locale data is the minimum to add 'an' to the
+ *  Accept-Language menu. ExemplarCharacters field is based on
+    https://en.wikipedia.org/wiki/Aragonese_language#Orthography
+ */
+an{
+    ExemplarCharacters{"[a-z á ç í é ó ü]"}
+    LocaleScript{
+        "Latn",
+    }
+}

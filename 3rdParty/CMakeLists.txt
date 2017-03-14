@@ -18,16 +18,18 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost)
 
 option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
+
+set(V8_SUB_DIR "v5.7.0.0")
 if (USE_PRECOMPILED_V8)
   set(V8_VERSION
-    "V8-5.7.0.0"
+    "V8-${V8_SUB_DIR}"
     CACHE INTERNAL
     "${PROJECT_NAME}: Version"
     FORCE
   )
 
-  set(V8_DIR ${PROJECT_SOURCE_DIR}/build/3rdParty/V8/v8)
-  set(V8_SRC_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8/${V8_VERSION})
+  set(V8_DIR ${PROJECT_SOURCE_DIR}/build/3rdParty/V8/${V8_SUB_DIR})
+  set(V8_SRC_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8/${V8_SUB_DIR})
 
   set(V8_PROC_ARCH "x64")
   set(V8_TARGET_ARCH "${V8_PROC_ARCH}.release")

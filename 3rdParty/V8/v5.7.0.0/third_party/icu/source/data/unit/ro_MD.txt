@@ -1,0 +1,49 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ro_MD{
+    Version{"2.1.27.99"}
+    unitsNarrow{
+        duration{
+            day{
+                few{"{0}zile"}
+                one{"{0}zi"}
+                other{"{0}zile"}
+            }
+            millisecond{
+                dnam{"msec"}
+                few{"{0}ms"}
+                one{"{0}ms"}
+                other{"{0}ms"}
+            }
+            minute{
+                dnam{"min"}
+                few{"{0}min."}
+                one{"{0}min."}
+                other{"{0}min."}
+            }
+            month{
+                dnam{"lună"}
+                few{"{0}luni"}
+                one{"{0}lună"}
+                other{"{0}luni"}
+            }
+            week{
+                few{"{0}săpt."}
+                one{"{0}săpt."}
+                other{"{0}săpt."}
+            }
+            year{
+                few{"{0}ani"}
+                one{"{0}an"}
+                other{"{0}ani"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            millisecond{
+                dnam{"milisec."}
+            }
+        }
+    }
+}

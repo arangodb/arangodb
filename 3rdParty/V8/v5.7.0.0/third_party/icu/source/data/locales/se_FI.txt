@@ -1,0 +1,82 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+se_FI{
+    Version{"2.1.27.78"}
+    calendar{
+        gregorian{
+            dayNames{
+                format{
+                    narrow{
+                        "S",
+                        "M",
+                        "D",
+                        "G",
+                        "D",
+                        "B",
+                        "L",
+                    }
+                    wide{
+                        "sotnabeaivi",
+                        "vuossárgga",
+                        "maŋŋebárgga",
+                        "gaskavahku",
+                        "duorastaga",
+                        "bearjadaga",
+                        "lávvardaga",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "S",
+                        "M",
+                        "D",
+                        "G",
+                        "D",
+                        "B",
+                        "L",
+                    }
+                }
+            }
+        }
+    }
+    fields{
+        era{
+            dn{"áigodat"}
+        }
+        quarter{
+            dn{"jahkenjealjádas"}
+        }
+        week{
+            dn{"vahkku"}
+        }
+        weekday{
+            dn{"vahkkobeaivi"}
+        }
+        year{
+            dn{"jahki"}
+            relative{
+                "-1"{"mannan jagi"}
+                "0"{"dán jagi"}
+                "1"{"boahtte jagi"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} jagi siste"}
+                    other{"{0} jagi siste"}
+                    two{"{0} jagi siste"}
+                }
+                past{
+                    one{"{0} jagi árat"}
+                    other{"{0} jagi árat"}
+                    two{"{0} jagi árat"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"j."}
+        }
+        year-short{
+            dn{"j."}
+        }
+    }
+}
