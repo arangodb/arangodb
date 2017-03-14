@@ -44,6 +44,10 @@ class Slice;
 enum class AuthLevel {
   NONE, RO, RW
 };
+
+enum class AuthSource {
+  COLLECTION, LDAP
+};
   
 class AuthEntry {
  public:
@@ -52,13 +56,15 @@ class AuthEntry {
   AuthEntry(std::string&& username, std::string&& passwordMethod,
             std::string&& passwordSalt, std::string&& passwordHash,
             std::unordered_map<std::string, AuthLevel>&& databases, AuthLevel allDatabases,
-            bool active, bool mustChange)
+            bool active, bool mustChange, AuthSource source)
       : _username(std::move(username)),
         _passwordMethod(std::move(passwordMethod)),
         _passwordSalt(std::move(passwordSalt)),
         _passwordHash(std::move(passwordHash)),
         _active(active),
         _mustChange(mustChange),
+        _created(TRI_microtime()),
+        _source(source),
         _databases(std::move(databases)),
         _allDatabases(allDatabases) {}
   
@@ -71,6 +77,8 @@ class AuthEntry {
         _passwordHash(std::move(other._passwordHash)),
         _active(other._active),
         _mustChange(other._mustChange),
+        _created(other._created),
+        _source(other._source),
         _databases(std::move(other._databases)),
         _allDatabases(other._allDatabases) {}
 
@@ -81,6 +89,8 @@ class AuthEntry {
   std::string const& passwordHash() const { return _passwordHash; }
   bool isActive() const { return _active; }
   bool mustChange() const { return _mustChange; }
+  double created() const { return _created; }
+  AuthSource source() const { return _source; }
 
   bool checkPasswordHash(std::string const& hash) const {
     return _passwordHash == hash;
@@ -95,6 +105,8 @@ class AuthEntry {
   std::string const _passwordHash;
   bool const _active;
   bool _mustChange;
+  double _created;
+  AuthSource _source;
   std::unordered_map<std::string, AuthLevel> const _databases;
   AuthLevel const _allDatabases;
 };

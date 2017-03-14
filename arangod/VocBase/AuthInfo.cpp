@@ -55,7 +55,7 @@ using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
 
-static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
+static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
   if (slice.isNone() || !slice.isObject()) {
     return AuthEntry();
   }
@@ -138,7 +138,7 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
   // build authentication entry
   return AuthEntry(userSlice.copyString(), methodSlice.copyString(),
                    saltSlice.copyString(), hashSlice.copyString(), std::move(databases),
-                   allDatabases, active, mustChange);
+                   allDatabases, active, mustChange, source);
 }
 
 AuthLevel AuthEntry::canUseDatabase(std::string const& dbname) const {
@@ -217,7 +217,7 @@ bool AuthInfo::populate(VPackSlice const& slice) {
   _authBasicCache.clear();
 
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
-    AuthEntry auth = CreateAuthEntry(authSlice.resolveExternal());
+    AuthEntry auth = CreateAuthEntry(authSlice.resolveExternal(), AuthSource::COLLECTION);
 
     if (auth.isActive()) {
       _authInfo.emplace(auth.username(), std::move(auth));
@@ -312,11 +312,16 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
 
   AuthResult result(username);
 
-  // look up username
-  // READ_LOCKER(readLocker, _authInfoLock);
+#if USE_LDAP_AUTH
   WRITE_LOCKER(writeLocker, _authInfoLock);
+  auto it = _authInfo.find(username);
 
-  #if USE_LDAP_AUTH
+  if (it != _authInfo.end() ) {
+    printf("%lf\n%lf\n", it->second.created(), (TRI_microtime() - 60) );
+  }
+
+  // TODO: remove username != root <--- only for testing
+  if (username != "root" && (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP && it->second.created() < TRI_microtime() - 60))) {
     LDAP *ld;
     int  ldap_result;
     int  auth_method = LDAP_AUTH_SIMPLE;
@@ -341,8 +346,8 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
 
     if (ldap_bind_s(ld, root_dn.c_str(), root_pw.c_str(), auth_method) != LDAP_SUCCESS ) {
       ldap_perror( ld, "ldap_bind" );
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cant auth";
-      // return result;
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "cant auth return";
+      return result;
     }
 
     ldap_result = ldap_unbind_s(ld);
@@ -353,9 +358,13 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
       exit( EXIT_FAILURE );
     }
 
-    auto itt = _authInfo.find(username);
+    if (it != _authInfo.end() && it->second.created() < TRI_microtime() - 60) {
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "authinfo timeout erase";
+      _authInfo.erase(username);
+      it = _authInfo.end();
+    }
 
-    if (itt == _authInfo.end()) {
+    if (it == _authInfo.end()) {
       LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "would insert new user";
 
       VPackBuilder builder;
@@ -369,6 +378,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
       builder.add("simple", VPackValue(VPackValueType::Object));
       builder.add("method", VPackValue("sha256"));
 
+      // TODO: random salt + password hash calculation
       char const* salt = "1f71c278";
       builder.add("salt", VPackValue(salt));
 
@@ -386,13 +396,17 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
       builder.close();
       builder.close();  // The Object
 
-      AuthEntry auth = CreateAuthEntry(builder.slice().resolveExternal());
+      AuthEntry auth = CreateAuthEntry(builder.slice().resolveExternal(), AuthSource::LDAP);
 
       _authInfo.emplace(auth.username(), std::move(auth));
-    }
-  #endif
 
+      it = _authInfo.find(username);
+    }
+  }
+# else
+  READ_LOCKER(readLocker, _authInfoLock);
   auto it = _authInfo.find(username);
+# endif
 
   if (it == _authInfo.end()) {
     LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "authinfo list is empty";
@@ -443,8 +457,6 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
     // SslInterface::ssl....() allocate strings with new, which might throw
     // exceptions
   }
-
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "cryptedLength " << cryptedLength << " crypted " << crypted;
 
   if (crypted != nullptr) {
     if (0 < cryptedLength) {
