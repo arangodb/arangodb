@@ -64,6 +64,7 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestVersionHandler.h"
+#include "RestHandler/RestViewHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
@@ -210,7 +211,7 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
   if (vocbase == nullptr) {
     return false;
   }
-  
+
   TRI_ASSERT(!vocbase->isDangling());
 
   // database needs upgrade
@@ -251,7 +252,8 @@ void GeneralServerFeature::start() {
 
   // populate the authentication cache. otherwise no one can access the new
   // database
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication =
+      FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(authentication != nullptr);
   if (authentication->isEnabled()) {
     authentication->authInfo()->outdate();
@@ -289,8 +291,9 @@ void GeneralServerFeature::buildServers() {
             "SslServer");
 
     if (ssl == nullptr) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "no ssl context is known, cannot create https server, "
-                    "please enable SSL";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "no ssl context is known, cannot create https server, "
+             "please enable SSL";
       FATAL_ERROR_EXIT();
     }
 
@@ -391,6 +394,10 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::UPLOAD_PATH,
       RestHandlerCreator<RestUploadHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::VIEW_PATH,
+      RestHandlerCreator<RestViewHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_api/aql",
@@ -495,10 +502,9 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler(
       "/", RestHandlerCreator<RestActionHandler>::createNoData);
-        
-  
-  // engine specific handlers      
-  StorageEngine* engine = EngineSelectorFeature::ENGINE; 
-  TRI_ASSERT(engine != nullptr); // Engine not loaded. Startup broken
+
+  // engine specific handlers
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
   engine->addRestHandlers(_handlerFactory.get());
 }

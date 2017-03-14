@@ -247,6 +247,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestVersionHandler.cpp
+  RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
   RestServer/AqlFeature.cpp
@@ -345,7 +346,7 @@ SET(ARANGOD_SOURCES
 )
 
 # add sources for mmfiles engine
-set(ARANGOD_SOURCES 
+set(ARANGOD_SOURCES
   ${ARANGOD_SOURCES}
   MMFiles/fulltext-handles.cpp
   MMFiles/fulltext-index.cpp
