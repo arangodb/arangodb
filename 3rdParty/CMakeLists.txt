@@ -4,18 +4,6 @@
 # External Projects used by ArangoDB
 # ------------------------------------------------------------------------------
 
-
-if(NOT EXISTS ${PROJECT_SOURCE_DIR}/3rdParty/V8/v8/LICENSE AND
-   NOT EXISTS ${PROJECT_SOURCE_DIR}/3rdParty/V8/v8/testing/gtest/LICENSE AND
-   NOT EXISTS ${PROJECT_SOURCE_DIR}/3rdParty/V8/v8/tools/gyp/gyp_main.py)
- message(FATAL_ERROR "GIT sumbodules not checked out properly - aborting! Run: 
-git submodule update --recursive
-git submodule update --init --recursive
-On Windows you need to make sure git is recent enough and may create symlinks!
-")
-endif()
-
-
 include(ExternalProject)
 
 ################################################################################
@@ -124,9 +112,9 @@ set(SKIP_INSTALL_ALL ON)
 set(FAIL_ON_WARNINGS OFF CACHE BOOL "do not enable -Werror")
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/rocksdb)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/v5.1.4)
 
-list(APPEND LINK_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/rocksdb/rocksdb")
+list(APPEND LINK_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/rocksdb/v5.1.4")
 
 set(ROCKSDB_LIBS
   "rocksdblib"
