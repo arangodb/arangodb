@@ -61,8 +61,8 @@ static void JS_StateLoggerReplication(
 
   v8::Handle<v8::Object> state = v8::Object::New(isolate);
   state->Set(TRI_V8_ASCII_STRING("running"), v8::True(isolate));
-  state->Set(TRI_V8_ASCII_STRING("lastLogTick"), V8TickId(isolate, s.lastCommittedTick));
-  state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"), V8TickId(isolate, s.lastAssignedTick));
+  state->Set(TRI_V8_ASCII_STRING("lastLogTick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastCommittedTick));
+  state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, s.lastAssignedTick));
   state->Set(TRI_V8_ASCII_STRING("totalEvents"),
              v8::Number::New(isolate, static_cast<double>(s.numEvents + s.numEventsSync)));
   state->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_STD_STRING(s.timeString));
@@ -102,8 +102,8 @@ static void JS_TickRangesLoggerReplication(
     df->ForceSet(TRI_V8_ASCII_STRING("datafile"),
                  TRI_V8_STD_STRING(it.filename));
     df->ForceSet(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(it.state));
-    df->ForceSet(TRI_V8_ASCII_STRING("tickMin"), V8TickId(isolate, it.tickMin));
-    df->ForceSet(TRI_V8_ASCII_STRING("tickMax"), V8TickId(isolate, it.tickMax));
+    df->ForceSet(TRI_V8_ASCII_STRING("tickMin"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, it.tickMin));
+    df->ForceSet(TRI_V8_ASCII_STRING("tickMax"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, it.tickMax));
 
     result->Set(i++, df);
   }
@@ -139,7 +139,7 @@ static void JS_FirstTickLoggerReplication(
     TRI_V8_RETURN(v8::Null(isolate));
   }
 
-  TRI_V8_RETURN(V8TickId(isolate, tick));
+  TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_tick_t>(isolate, tick));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -351,11 +351,11 @@ static void JS_SynchronizeReplication(
 
     if (keepBarrier) {
       result->Set(TRI_V8_ASCII_STRING("barrierId"),
-                  V8TickId(isolate, syncer.stealBarrier()));
+                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer.stealBarrier()));
     }
 
     result->Set(TRI_V8_ASCII_STRING("lastLogTick"),
-                V8TickId(isolate, syncer.getLastLogTick()));
+                TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer.getLastLogTick()));
 
     std::map<TRI_voc_cid_t, std::string>::const_iterator it;
     std::map<TRI_voc_cid_t, std::string> const& c =

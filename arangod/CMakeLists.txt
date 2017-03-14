@@ -318,6 +318,7 @@ SET(ARANGOD_SOURCES
   V8Server/v8-statistics.cpp
   V8Server/v8-user-structures.cpp
   V8Server/v8-util.cpp
+  V8Server/v8-views.cpp
   V8Server/v8-vocbase.cpp
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
@@ -327,6 +328,7 @@ SET(ARANGOD_SOURCES
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
+  VocBase/LogicalView.cpp
   VocBase/PathEnumerator.cpp
   VocBase/PhysicalCollection.cpp
   VocBase/SingleServerTraverser.cpp
@@ -385,6 +387,7 @@ set(ARANGOD_SOURCES
   MMFiles/MMFilesTransactionContextData.cpp
   MMFiles/MMFilesTransactionState.cpp
   MMFiles/MMFilesV8Functions.cpp
+  MMFiles/MMFilesView.cpp
   MMFiles/MMFilesWalLogfile.cpp
   MMFiles/MMFilesWalRecoverState.cpp
   MMFiles/MMFilesWalRecoveryFeature.cpp

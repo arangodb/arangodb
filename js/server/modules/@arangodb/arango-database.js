@@ -41,8 +41,9 @@ exports.ArangoDatabase = internal.ArangoDatabase;
 
 var ArangoDatabase = exports.ArangoDatabase;
 
-// must called after export
+// must be called after export
 var ArangoCollection = require('@arangodb/arango-collection').ArangoCollection;
+var ArangoView = require('@arangodb/arango-view').ArangoView;
 var ArangoError = require('@arangodb').ArangoError;
 var ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
 
@@ -134,6 +135,30 @@ ArangoDatabase.prototype._drop = function (name, options) {
 
   try {
     return collection.drop(options);
+  } catch (err) {
+    // ignore if the collection does not exist
+    if (err instanceof ArangoError &&
+      err.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
+      return;
+    }
+    // rethrow exception
+    throw err;
+  }
+};
+
+ArangoDatabase.prototype._dropView = function (name) {
+  var view = name;
+
+  if (!(name instanceof ArangoView)) {
+    view = internal.db._view(name);
+  }
+
+  if (view === null) {
+    return;
+  }
+
+  try {
+    return view.drop();
   } catch (err) {
     // ignore if the collection does not exist
     if (err instanceof ArangoError &&

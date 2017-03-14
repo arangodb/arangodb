@@ -32,6 +32,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+#include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/PhysicalCollection.h"
@@ -162,7 +163,7 @@ static void JS_DatafileScanVocbaseCol(
              v8::Number::New(isolate, entry.size));
       o->Set(TRI_V8_ASCII_STRING("realSize"),
              v8::Number::New(isolate, entry.realSize));
-      o->Set(TRI_V8_ASCII_STRING("tick"), V8TickId(isolate, entry.tick));
+      o->Set(TRI_V8_ASCII_STRING("tick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, entry.tick));
       o->Set(TRI_V8_ASCII_STRING("type"),
              v8::Number::New(isolate, static_cast<int>(entry.type)));
       o->Set(TRI_V8_ASCII_STRING("status"),
@@ -467,7 +468,7 @@ static void JS_TransactionsWal(
                        v8::Null(isolate));
     } else {
       result->ForceSet(TRI_V8_ASCII_STRING("minLastCollected"),
-                       V8TickId(isolate, static_cast<TRI_voc_tick_t>(value)));
+                       TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value)));
     }
   }
 
@@ -478,7 +479,7 @@ static void JS_TransactionsWal(
       result->ForceSet(TRI_V8_ASCII_STRING("minLastSealed"), v8::Null(isolate));
     } else {
       result->ForceSet(TRI_V8_ASCII_STRING("minLastSealed"),
-                       V8TickId(isolate, static_cast<TRI_voc_tick_t>(value)));
+                       TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value)));
     }
   }
 

@@ -51,8 +51,8 @@ class CollectionNameResolver;
 class CollectionKeysRepository;
 class CursorRepository;
 class LogicalCollection;
+class LogicalView;
 class StorageEngine;
-class Thread;
 }
 
 /// @brief predefined collection name for users
@@ -163,6 +163,12 @@ struct TRI_vocbase_t {
   std::unordered_map<std::string, arangodb::LogicalCollection*> _collectionsByName;  // collections by name
   std::unordered_map<TRI_voc_cid_t, arangodb::LogicalCollection*> _collectionsById;    // collections by id
   
+  arangodb::basics::ReadWriteLock _viewsLock;  // views management lock
+  std::vector<arangodb::LogicalView*> _views;  // pointers to ALL views
+  std::unordered_map<std::string, arangodb::LogicalView*> _viewsByName;  // views by name
+  std::unordered_map<TRI_voc_cid_t, arangodb::LogicalView*> _viewsById;    // views by id
+  
+  
   std::unique_ptr<arangodb::aql::QueryList> _queries;
   std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
   std::unique_ptr<arangodb::CollectionKeysRepository> _collectionKeys;
@@ -232,6 +238,9 @@ struct TRI_vocbase_t {
 
   /// @brief closes a database and all collections
   void shutdown();
+  
+  /// @brief returns all known views
+  std::vector<arangodb::LogicalView*> views();
 
   /// @brief returns all known collections
   std::vector<arangodb::LogicalCollection*> collections(bool includeDeleted);
@@ -248,6 +257,11 @@ struct TRI_vocbase_t {
   arangodb::LogicalCollection* lookupCollection(std::string const& name);
   /// @brief looks up a collection by identifier
   arangodb::LogicalCollection* lookupCollection(TRI_voc_cid_t id);
+  
+  /// @brief looks up a view by name
+  arangodb::LogicalView* lookupView(std::string const& name);
+  /// @brief looks up a view by identifier
+  arangodb::LogicalView* lookupView(TRI_voc_cid_t id);
 
   /// @brief returns all known collections with their parameters
   /// and optionally indexes
@@ -279,6 +293,17 @@ struct TRI_vocbase_t {
   
   /// @brief callback for unloading a collection
   static bool UnloadCollectionCallback(arangodb::LogicalCollection* collection);
+
+  /// @brief creates a new view from parameter set
+  /// view id is normally passed with a value of 0
+  /// this means that the system will assign a new id automatically
+  /// using a cid of > 0 is supported to import dumps from other servers etc.
+  /// but the functionality is not advertised
+  arangodb::LogicalView* createView(
+      arangodb::velocypack::Slice parameters, TRI_voc_cid_t id);
+
+  /// @brief drops a view
+  int dropView(arangodb::LogicalView* view);
 
   /// @brief locks a collection for usage, loading or manifesting it
   /// Note that this will READ lock the collection you have to release the
@@ -323,6 +348,19 @@ struct TRI_vocbase_t {
   /// @brief drops a collection, worker function
   int dropCollectionWorker(arangodb::LogicalCollection* collection,
                            DropState& state);
+  
+  /// @brief creates a new view, worker function
+  arangodb::LogicalView* createViewWorker(
+      arangodb::velocypack::Slice parameters, TRI_voc_cid_t& id);
+
+  
+  /// @brief adds a new view
+  /// caller must hold _viewsLock in write mode or set doLock
+  void registerView(bool doLock, arangodb::LogicalView* view);
+
+  /// @brief removes a view from the global list of views
+  /// This function is called when a view is dropped.
+  bool unregisterView(arangodb::LogicalView* view);
 };
 
 // scope guard for a database

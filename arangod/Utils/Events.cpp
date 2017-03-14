@@ -37,5 +37,7 @@ void CreateDatabase(std::string const& name, int result) {}
 void DropDatabase(std::string const& name, int result) {}
 void CreateIndex(std::string const& col, VPackSlice const&) {}
 void DropIndex(std::string const& col, std::string const& idx, int result) {}
+void CreateView(std::string const& name, int result) {}
+void DropView(std::string const& name, int result) {}
 }
 }

@@ -25,7 +25,7 @@
 
 TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
     : JSCollections(),
-      JSVPack(),
+      JSViews(),
 
       AgencyTempl(),
       AgentTempl(),
@@ -35,6 +35,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       ArangoErrorTempl(),
       VPackTempl(),
       VocbaseColTempl(),
+      VocbaseViewTempl(),
       VocbaseTempl(),
 
       BufferTempl(),

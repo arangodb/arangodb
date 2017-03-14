@@ -37,6 +37,8 @@
 namespace arangodb {
 class MMFilesCleanupThread;
 class MMFilesCompactorThread;
+class PhysicalCollection;
+class PhysicalView;
 class TransactionCollection;
 class TransactionState;
 
@@ -89,6 +91,9 @@ class MMFilesEngine final : public StorageEngine {
 
   // create storage-engine specific collection
   PhysicalCollection* createPhysicalCollection(LogicalCollection*, VPackSlice const&) override;
+  
+  // create storage-engine specific view
+  PhysicalView* createPhysicalView(LogicalView*, VPackSlice const&) override;
 
   // inventory functionality
   // -----------------------
@@ -155,26 +160,26 @@ public:
   // the WAL entry for the collection creation will be written *after* the call
   // to "createCollection" returns
   std::string createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                               arangodb::LogicalCollection const* parameters) override;
+                               arangodb::LogicalCollection const*) override;
   
   // asks the storage engine to persist the collection.
   // After this call the collection is persisted over recovery.
   // This call will write wal markers.
   arangodb::Result persistCollection(
       TRI_vocbase_t* vocbase,
-      arangodb::LogicalCollection const* collection) override;
+      arangodb::LogicalCollection const*) override;
 
   // asks the storage engine to drop the specified collection and persist the 
   // deletion info. Note that physical deletion of the collection data must not 
   // be carried out by this call, as there may
   // still be readers of the collection's data.
   // This call will write the WAL entry for collection deletion
-  arangodb::Result dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) override;
+  arangodb::Result dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection*) override;
   
   // perform a physical deletion of the collection
   // After this call data of this collection is corrupted, only perform if
   // assured that no one is using the collection anymore
-  void destroyCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) override;
+  void destroyCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection*) override;
   
   // asks the storage engine to change properties of the collection as specified in 
   // the VPack Slice object and persist them. If this operation fails 
@@ -183,13 +188,13 @@ public:
   // the WAL entry for the propery change will be written *after* the call
   // to "changeCollection" returns
   void changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                        arangodb::LogicalCollection const* parameters,
+                        arangodb::LogicalCollection const*,
                         bool doSync) override;
 
   // asks the storage engine to persist renaming of a collection
   // This will write a renameMarker if not in recovery
   arangodb::Result renameCollection(
-      TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection,
+      TRI_vocbase_t* vocbase, arangodb::LogicalCollection const*,
       std::string const& oldName) override;
 
   // asks the storage engine to create an index as specified in the VPack
@@ -218,6 +223,28 @@ public:
                           arangodb::velocypack::Slice const& data, bool writeMarker, int&) override;
 
   void unloadCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId) override;
+  
+  
+  void createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, arangodb::LogicalView const*) override;
+  
+  arangodb::Result persistView(
+      TRI_vocbase_t* vocbase,
+      arangodb::LogicalView const*) override;
+
+  arangodb::Result dropView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) override;
+  
+  void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) override;
+  
+  void changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                  arangodb::LogicalView const*, bool doSync) override;
+
+  
+  std::string createViewDirectoryName(std::string const& basePath, TRI_voc_cid_t id);
+  
+  void saveViewInfo(TRI_vocbase_t* vocbase,
+                    TRI_voc_cid_t id,
+                    arangodb::LogicalView const*,
+                    bool forceSync) const;
   
   void signalCleanup(TRI_vocbase_t* vocbase) override;
 
@@ -324,6 +351,8 @@ public:
   std::string databaseParametersFilename(TRI_voc_tick_t databaseId) const;
   std::string collectionDirectory(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) const;
   std::string collectionParametersFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) const;
+  std::string viewDirectory(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) const;
+  std::string viewParametersFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) const;
   std::string indexFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId) const;
   std::string indexFilename(TRI_idx_iid_t indexId) const;
 
@@ -352,6 +381,8 @@ public:
 
   void registerCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, std::string const& path);
   void unregisterCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id);
+  void registerViewPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, std::string const& path);
+  void unregisterViewPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id);
 
   void saveCollectionInfo(TRI_vocbase_t* vocbase,
                           TRI_voc_cid_t id,
@@ -359,7 +390,7 @@ public:
                           bool forceSync) const;
 
   arangodb::velocypack::Builder loadCollectionInfo(TRI_vocbase_t* vocbase, std::string const& path);
-  
+ 
   // start the cleanup thread for the database 
   int startCleanup(TRI_vocbase_t* vocbase);
   // stop and delete the cleanup thread for the database 
@@ -388,6 +419,7 @@ public:
 
   arangodb::basics::ReadWriteLock mutable _pathsLock;
   std::unordered_map<TRI_voc_tick_t, std::unordered_map<TRI_voc_cid_t, std::string>> _collectionPaths;
+  std::unordered_map<TRI_voc_tick_t, std::unordered_map<TRI_voc_cid_t, std::string>> _viewPaths;
 
   struct CompactionBlocker {
     CompactionBlocker(TRI_voc_tick_t id, double expires) : _id(id), _expires(expires) {}
