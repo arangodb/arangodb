@@ -347,6 +347,12 @@ class MMFilesCollection final : public PhysicalCollection {
              bool lock, TRI_voc_rid_t const& revisionId,
              TRI_voc_rid_t& prevRev) override;
 
+  /// @brief Defer a callback to be executed when the collection
+  ///        can be dropped. The callback is supposed to drop
+  ///        the collection and it is guaranteed that no one is using
+  ///        it at that moment.
+  void deferDropCollection(std::function<bool(LogicalCollection*)> callback) override;
+
   int rollbackOperation(transaction::Methods*, TRI_voc_document_operation_e,
                         TRI_voc_rid_t oldRevisionId,
                         velocypack::Slice const& oldDoc,

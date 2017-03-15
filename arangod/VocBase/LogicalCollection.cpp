@@ -939,6 +939,15 @@ void LogicalCollection::persistPhysicalCollection() {
   getPhysical()->setPath(path);
 }
 
+/// @brief Defer a callback to be executed when the collection
+///        can be dropped. The callback is supposed to drop
+///        the collection and it is guaranteed that no one is using
+///        it at that moment.
+void LogicalCollection::deferDropCollection(
+    std::function<bool(LogicalCollection*)> callback) {
+  _physical->deferDropCollection(callback);
+}
+
 /// @brief reads an element from the document collection
 int LogicalCollection::read(transaction::Methods* trx, std::string const& key,
                             ManagedDocumentResult& result, bool lock) {
