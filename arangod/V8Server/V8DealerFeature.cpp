@@ -115,12 +115,12 @@ V8DealerFeature::V8DealerFeature(
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("javascript", "Configure the Javascript engine");
 
-  options->addOption(
+  options->addHiddenOption(
       "--javascript.gc-frequency",
       "JavaScript time-based garbage collection frequency (each x seconds)",
       new DoubleParameter(&_gcFrequency));
 
-  options->addOption(
+  options->addHiddenOption(
       "--javascript.gc-interval",
       "JavaScript request-based garbage collection interval (each x requests)",
       new UInt64Parameter(&_gcInterval));

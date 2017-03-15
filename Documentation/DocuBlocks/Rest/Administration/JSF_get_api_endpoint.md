@@ -38,19 +38,12 @@ The server will respond with *HTTP 405* if an unsupported HTTP method is used.
 
 @EXAMPLE_ARANGOSH_RUN{RestEndpointGet}
     var url = "/_api/endpoint";
-    var endpoint = "tcp://127.0.0.1:8532";
-    var body = {
-      endpoint: endpoint,
-      databases: [ "mydb1", "mydb2" ]
-    };
-    curlRequest('POST', url, JSON.stringify(body));
 
     var response = logCurlRequest('GET', url);
 
     assert(response.code === 200);
 
     logJsonResponse(response);
-    curlRequest('DELETE', url + '/' + encodeURIComponent(endpoint));
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
 

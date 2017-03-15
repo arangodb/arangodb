@@ -1,0 +1,160 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+sr_Cyrl_BA{
+    Version{"2.1.27.99"}
+    calendar{
+        generic{
+            intervalFormats{
+                MMMEd{
+                    M{"E, d. MMM – E, d. MMM"}
+                    d{"E, d. MMM – E, d. MMM"}
+                }
+                yMd{
+                    M{"d.M.y. – d.M.y. GGGGG"}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkers{
+                "прије подне",
+                "по подне",
+            }
+            AmPmMarkersAbbr{
+                "прије подне",
+                "по подне",
+            }
+            availableFormats{
+                MMMMW{
+                    few{"W. 'сједмица' 'у' MMM"}
+                    one{"W. 'сједмица' 'у' MMM"}
+                    other{"W. 'сједмица' 'у' MMM"}
+                }
+                yw{
+                    few{"w. 'сједмица' 'у' y."}
+                    one{"w. 'сједмица' 'у' y."}
+                    other{"w. 'сједмица' 'у' y."}
+                }
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "нед.",
+                        "пон.",
+                        "ут.",
+                        "ср.",
+                        "чет.",
+                        "пет.",
+                        "суб.",
+                    }
+                    wide{
+                        "недјеља",
+                        "понедељак",
+                        "уторак",
+                        "сриједа",
+                        "четвртак",
+                        "петак",
+                        "субота",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "нед.",
+                        "пон.",
+                        "ут.",
+                        "ср.",
+                        "чет.",
+                        "пет.",
+                        "суб.",
+                    }
+                    wide{
+                        "недјеља",
+                        "понедељак",
+                        "уторак",
+                        "сриједа",
+                        "четвртак",
+                        "петак",
+                        "субота",
+                    }
+                }
+            }
+            dayPeriod{
+                format{
+                    abbreviated{
+                        afternoon1{"по под."}
+                        evening1{"вече"}
+                        midnight{"поноћ"}
+                        morning1{"јутро"}
+                        night1{"ноћу"}
+                        noon{"подне"}
+                    }
+                    narrow{
+                        afternoon1{"по под."}
+                        evening1{"вече"}
+                        midnight{"поноћ"}
+                        morning1{"јутро"}
+                        night1{"ноћ"}
+                        noon{"подне"}
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        am{"прије подне"}
+                        pm{"по подне"}
+                    }
+                    narrow{
+                        am{"а"}
+                        pm{"p"}
+                    }
+                    wide{
+                        am{"прије подне"}
+                        pm{"по подне"}
+                    }
+                }
+            }
+            eras{
+                wide{
+                    "прије нове ере",
+                    "нове ере",
+                }
+                wide%variant{
+                    "BCE",
+                    "нове ере",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "јан.",
+                        "феб.",
+                        "март",
+                        "апр.",
+                        "мај",
+                        "јун",
+                        "јул",
+                        "авг.",
+                        "септ.",
+                        "окт.",
+                        "нов.",
+                        "дец.",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "јан.",
+                        "феб.",
+                        "март",
+                        "апр.",
+                        "мај",
+                        "јун",
+                        "јул",
+                        "авг.",
+                        "септ.",
+                        "окт.",
+                        "нов.",
+                        "дец.",
+                    }
+                }
+            }
+        }
+    }
+}

@@ -176,6 +176,7 @@ SET(ARANGOD_SOURCES
   Cache/CacheManagerFeature.cpp
   Cache/CacheManagerFeatureThreads.cpp
   Cache/CachedValue.cpp
+  Cache/Finding.cpp
   Cache/Manager.cpp
   Cache/ManagerTasks.cpp
   Cache/Metadata.cpp
@@ -343,7 +344,7 @@ SET(ARANGOD_SOURCES
 )
 
 # add sources for mmfiles engine
-set(ARANGOD_SOURCES 
+set(ARANGOD_SOURCES
   ${ARANGOD_SOURCES}
   MMFiles/fulltext-handles.cpp
   MMFiles/fulltext-index.cpp

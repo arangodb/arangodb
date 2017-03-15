@@ -317,7 +317,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
               RandomGenerator::interval(static_cast<int64_t>(validLower),
                                         static_cast<int64_t>(validUpper));
 
-          Cache::Finding f = cache->find(&item, sizeof(uint64_t));
+          Finding f = cache->find(&item, sizeof(uint64_t));
           if (f.found()) {
             hitCount++;
             TRI_ASSERT(f.value() != nullptr);
