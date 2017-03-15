@@ -64,6 +64,7 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestVersionHandler.h"
+#include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
@@ -407,6 +408,9 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_api/query-cache",
       RestHandlerCreator<RestQueryCacheHandler>::createNoData);
+  
+  _handlerFactory->addPrefixHandler("/_api/pregel",
+                                    RestHandlerCreator<RestPregelHandler>::createNoData);
 
   if (agency->isEnabled()) {
     _handlerFactory->addPrefixHandler(

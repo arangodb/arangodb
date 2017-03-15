@@ -29,6 +29,7 @@
 #include "Indexes/IndexLookupContext.h"
 #include "MMFiles/MMFilesDatafileStatistics.h"
 #include "MMFiles/MMFilesDitch.h"
+#include "MMFiles/MMFilesDocumentPosition.h"
 #include "MMFiles/MMFilesRevisionsCache.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -346,14 +347,22 @@ class MMFilesCollection final : public PhysicalCollection {
              bool lock, TRI_voc_rid_t const& revisionId,
              TRI_voc_rid_t& prevRev) override;
 
+  /// @brief Defer a callback to be executed when the collection
+  ///        can be dropped. The callback is supposed to drop
+  ///        the collection and it is guaranteed that no one is using
+  ///        it at that moment.
+  void deferDropCollection(std::function<bool(LogicalCollection*)> callback) override;
+
   int rollbackOperation(transaction::Methods*, TRI_voc_document_operation_e,
                         TRI_voc_rid_t oldRevisionId,
                         velocypack::Slice const& oldDoc,
                         TRI_voc_rid_t newRevisionId,
                         velocypack::Slice const& newDoc);
 
-  void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
-                      TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
+  MMFilesDocumentPosition insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
+                                         TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
+
+  void insertRevision(MMFilesDocumentPosition const& position, bool shouldLock);
 
   void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
                       TRI_voc_fid_t fid, bool isInWal);

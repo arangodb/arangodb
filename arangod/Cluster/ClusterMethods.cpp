@@ -1514,9 +1514,7 @@ int fetchEdgesFromEngines(
 
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>(builder.toJson());
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "DISTINCT Requests edges";
   for (auto const& engine : *engines) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Fetching edges";
     requests.emplace_back("server:" + engine.first, RequestType::PUT,
                           url + StringUtils::itoa(engine.second), body);
   }
@@ -1607,9 +1605,7 @@ void fetchVerticesFromEngines(
 
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>(builder.toJson());
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "DISTINCT Requests vertices";
   for (auto const& engine : *engines) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Fetching vertices";
     requests.emplace_back("server:" + engine.first, RequestType::PUT,
                           url + StringUtils::itoa(engine.second), body);
   }

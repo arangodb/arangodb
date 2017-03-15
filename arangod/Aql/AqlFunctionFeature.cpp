@@ -118,6 +118,9 @@ void AqlFunctionFeature::prepare() {
   addDateFunctions();
   addMiscFunctions();
   addStorageEngineFunctions();
+  
+  add({"PREGEL_RESULT", "AQL_PREGEL_RESULT", "n", true, false, true,
+    true, true, &Functions::PregelResult, NotInCoordinator});
 }
 
 void AqlFunctionFeature::unprepare() {

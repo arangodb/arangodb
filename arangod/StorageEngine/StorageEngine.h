@@ -282,7 +282,7 @@ class StorageEngine : public application_features::ApplicationFeature {
     return _indexFactory.get();
   }
 
-  virtual void unloadCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId) = 0;
+  virtual void unloadCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) = 0;
 
   virtual void signalCleanup(TRI_vocbase_t* vocbase) = 0;
 

@@ -109,6 +109,7 @@ class LogicalCollection {
   std::string cid_as_string() const;
 
   TRI_voc_cid_t planId() const;
+  std::string planId_as_string() const;
 
   TRI_col_type_e type() const;
 
@@ -284,6 +285,16 @@ class LogicalCollection {
   ///        This should be called AFTER the collection is successfully
   ///        created and only on Sinlge/DBServer
   void persistPhysicalCollection();
+
+  basics::ReadWriteLock& lock() {
+    return _lock;
+  }
+
+  /// @brief Defer a callback to be executed when the collection
+  ///        can be dropped. The callback is supposed to drop
+  ///        the collection and it is guaranteed that no one is using
+  ///        it at that moment.
+  void deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback);
 
  private:
 

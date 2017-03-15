@@ -144,7 +144,7 @@ class MMFilesEngine final : public StorageEngine {
 private:
   int dropDatabaseMMFiles(TRI_vocbase_t* vocbase);
   TRI_vocbase_t* createDatabaseMMFiles(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data);
-
+ 
 public:
   // asks the storage engine to create a collection as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server 
@@ -217,7 +217,7 @@ public:
   void dropIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                           arangodb::velocypack::Slice const& data, bool writeMarker, int&) override;
 
-  void unloadCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId) override;
+  void unloadCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) override;
   
   void signalCleanup(TRI_vocbase_t* vocbase) override;
 
