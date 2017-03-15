@@ -20,6 +20,8 @@ const router = createRouter();
 module.context.registerType('multipart/form-data', require('./multipart'));
 module.context.use(router);
 
+const LDJSON = 'application/x-ldjson';
+
 const legacyErrors = new Map([
   [errors.ERROR_SERVICE_INVALID_NAME.code, errors.ERROR_SERVICE_SOURCE_NOT_FOUND.code],
   [errors.ERROR_SERVICE_INVALID_MOUNT.code, errors.ERROR_INVALID_MOUNTPOINT.code],
@@ -385,7 +387,12 @@ instanceRouter.post('/tests', (req, res) => {
   const service = req.service;
   const reporter = req.queryParams.reporter || null;
   const result = fm.runTests(service.mount, {reporter});
-  if (reporter === 'xunit' && req.accepts('xml', 'json') === 'xml') {
+  if (reporter === 'stream' && req.accepts(LDJSON, 'json') === LDJSON) {
+    res.type(LDJSON);
+    for (const row of result) {
+      res.write(JSON.stringify(row) + '\r\n');
+    }
+  } else if (reporter === 'xunit' && req.accepts('xml', 'json') === 'xml') {
     res.type('xml');
     res.write('<?xml version="1.0" encoding="utf-8"?>\n');
     res.write(jsonml2xml(result) + '\n');
@@ -399,7 +406,7 @@ instanceRouter.post('/tests', (req, res) => {
   }
 })
 .queryParam('reporter', joi.only(...reporters).optional(), `Test reporter to use`)
-.response(200, ['json', 'xml', 'text'], `Test results.`)
+.response(200, ['json', LDJSON, 'xml', 'text'], `Test results.`)
 .summary(`Run service tests`)
 .description(dd`
   Runs the tests for the service at the given mount path and returns the results.
