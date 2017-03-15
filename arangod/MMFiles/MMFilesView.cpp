@@ -108,7 +108,6 @@ PhysicalView* MMFilesView::clone(LogicalView* logical, PhysicalView* physical){
 MMFilesView::MMFilesView(LogicalView* view,
                          VPackSlice const& info)
     : PhysicalView(view, info) {
-  LOG_TOPIC(ERR, Logger::FIXME) << "CTOR PHYSICAL " << this;
   auto pathSlice = info.get("path");
   if (pathSlice.isString()) {
     _path = pathSlice.copyString();
@@ -117,13 +116,9 @@ MMFilesView::MMFilesView(LogicalView* view,
 
 MMFilesView::MMFilesView(LogicalView* logical,
                          PhysicalView* physical)
-    : PhysicalView(logical, VPackSlice::emptyObjectSlice()) {
-  LOG_TOPIC(ERR, Logger::FIXME) << "CTOR2 PHYSICAL " << this;
-      }
+    : PhysicalView(logical, VPackSlice::emptyObjectSlice()) {}
 
-MMFilesView::~MMFilesView() {
-  LOG_TOPIC(ERR, Logger::FIXME) << "DTOR PHYSICAL " << this;
-}
+MMFilesView::~MMFilesView() {}
 
 void MMFilesView::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());

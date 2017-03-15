@@ -784,7 +784,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           return true;
         }
 
-        LogicalView* view = vocbase->lookupView(viewId);
+        std::shared_ptr<arangodb::LogicalView> view = vocbase->lookupView(viewId);
 
         if (view == nullptr) {
           // if the underlying collection is gone, we can go on
@@ -1039,7 +1039,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
           return true;
         }
 
-        arangodb::LogicalView* view = vocbase->lookupView(viewId);
+        std::shared_ptr<arangodb::LogicalView> view = vocbase->lookupView(viewId);
 
         if (view != nullptr) {
           // drop an existing view
@@ -1277,7 +1277,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
         }
 
         // ignore any potential error returned by this call
-        arangodb::LogicalView* view = vocbase->lookupView(viewId);
+        std::shared_ptr<arangodb::LogicalView> view = vocbase->lookupView(viewId);
 
         if (view != nullptr) {
           vocbase->dropView(view);

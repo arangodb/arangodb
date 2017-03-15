@@ -24,13 +24,8 @@
 
 #include "RestViewHandler.h"
 #include "Basics/Exceptions.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackDumper.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Transaction/Context.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -109,7 +104,7 @@ void RestViewHandler::createView() {
     }
 
     TRI_voc_cid_t id = 0;
-    LogicalView* view = _vocbase->createView(body, id);
+    std::shared_ptr<LogicalView> view = _vocbase->createView(body, id);
     if (view != nullptr) {
       generateOk(rest::ResponseCode::CREATED);
     } else {
@@ -141,7 +136,7 @@ void RestViewHandler::modifyView() {
   }
 
   std::string const& name = suffixes[0];
-  LogicalView* view = _vocbase->lookupView(name);
+  std::shared_ptr<LogicalView> view = _vocbase->lookupView(name);
   if (view == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "could not find view by that name");
@@ -180,16 +175,14 @@ void RestViewHandler::deleteView() {
   }
 
   std::string const& name = suffixes[0];
-  LogicalView* view = _vocbase->lookupView(name);
-  if (view == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                  "could not find view by that name");
-    return;
-  }
 
-  int res = _vocbase->dropView(view);
+  int res = _vocbase->dropView(name);
+
   if (res == TRI_ERROR_NO_ERROR) {
     generateOk();
+  } else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  "could not find view by that name");
   } else {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "problem dropping view");

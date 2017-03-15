@@ -120,7 +120,6 @@ LogicalView::LogicalView(TRI_vocbase_t* vocbase,
       _vocbase(vocbase),
       _physical(
           EngineSelectorFeature::ENGINE->createPhysicalView(this, info)) {
-  LOG_TOPIC(ERR, Logger::FIXME) << "CTOR LOGICAL " << this;
   TRI_ASSERT(_physical != nullptr);
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -130,9 +129,7 @@ LogicalView::LogicalView(TRI_vocbase_t* vocbase,
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(_id));
 }
 
-LogicalView::~LogicalView() {
-  LOG_TOPIC(ERR, Logger::FIXME) << "DTOR LOGICAL " << this;
-  }
+LogicalView::~LogicalView() {}
 
 bool LogicalView::IsAllowedName(VPackSlice parameters) {
   std::string name = ReadStringValue(parameters, "name", "");
