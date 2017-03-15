@@ -24,11 +24,14 @@
 
 #include "RestViewHandler.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "VocBase/LogicalView.h"
 
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestViewHandler::RestViewHandler(GeneralRequest* request,
@@ -51,6 +54,11 @@ RestStatus RestViewHandler::execute() {
 
   if (type == rest::RequestType::DELETE_REQ) {
     deleteView();
+    return RestStatus::DONE;
+  }
+
+  if (type == rest::RequestType::GET) {
+    getViews();
     return RestStatus::DONE;
   }
 
@@ -106,7 +114,11 @@ void RestViewHandler::createView() {
     TRI_voc_cid_t id = 0;
     std::shared_ptr<LogicalView> view = _vocbase->createView(body, id);
     if (view != nullptr) {
-      generateOk(rest::ResponseCode::CREATED);
+      VPackBuilder props;
+      props.openObject();
+      view->toVelocyPack(props);
+      props.close();
+      generateResult(rest::ResponseCode::CREATED, props.slice());
     } else {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                     "problem creating view");
@@ -181,10 +193,72 @@ void RestViewHandler::deleteView() {
   if (res == TRI_ERROR_NO_ERROR) {
     generateOk();
   } else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                   "could not find view by that name");
   } else {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "problem dropping view");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JSF_post_api_cursor_delete
+////////////////////////////////////////////////////////////////////////////////
+
+void RestViewHandler::getViews() {
+  std::vector<std::string> const& suffixes = _request->suffixes();
+
+  if (suffixes.size() > 1) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting GET [/_api/view | /_api/view/<view-name>]");
+    return;
+  }
+
+  if (suffixes.size() == 0) {
+    getListOfViews();
+    return;
+  } else {
+    std::string const& name = suffixes[0];
+    getSingleView(name);
+    return;
+  }
+}
+
+void RestViewHandler::getListOfViews() {
+  std::vector<std::shared_ptr<LogicalView>> views = _vocbase->views();
+  std::sort(views.begin(), views.end(),
+            [](std::shared_ptr<LogicalView> const& lhs,
+               std::shared_ptr<LogicalView> const& rhs) -> bool {
+              return StringUtils::tolower(lhs->name()) <
+                     StringUtils::tolower(rhs->name());
+            });
+
+  VPackBuilder props;
+  props.openArray();
+  for (std::shared_ptr<LogicalView> view : views) {
+    if (view.get() != nullptr) {
+      props.openObject();
+      view->toVelocyPack(props);
+      props.close();
+    }
+  }
+  props.close();
+  generateResult(rest::ResponseCode::OK, props.slice());
+}
+
+void RestViewHandler::getSingleView(std::string const& name) {
+  std::shared_ptr<LogicalView> view = _vocbase->lookupView(name);
+
+  if (view.get() != nullptr) {
+    VPackBuilder props;
+    props.openObject();
+    view->toVelocyPack(props);
+    props.close();
+    generateResult(rest::ResponseCode::OK, props.slice());
+  } else {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  "could not find view by that name");
   }
 }

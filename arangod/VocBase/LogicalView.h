@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "VocBase/ViewImplementation.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -44,7 +45,7 @@ class LogicalView {
 
  public:
   LogicalView(TRI_vocbase_t*, velocypack::Slice const&);
-   ~LogicalView();
+  ~LogicalView();
 
  protected:  // If you need a copy outside the class, use clone below.
   explicit LogicalView(LogicalView const&);
@@ -61,7 +62,7 @@ class LogicalView {
   }
 
   inline TRI_voc_cid_t id() const { return _id; }
-  
+
   TRI_voc_cid_t planId() const;
 
   std::string type() const { return _type; }
@@ -72,7 +73,7 @@ class LogicalView {
   void setDeleted(bool);
 
   PhysicalView* getPhysical() const { return _physical.get(); }
-  
+
   void drop();
 
   // SECTION: Serialization
@@ -87,7 +88,10 @@ class LogicalView {
   ///        This should be called AFTER the view is successfully
   ///        created and only on Sinlge/DBServer
   void persistPhysicalView();
-  
+
+  /// @brief Create implementation object using factory method
+  void spawnImplementation(ViewCreator creator);
+
   static bool IsAllowedName(velocypack::Slice parameters);
   static bool IsAllowedName(std::string const& name);
 
@@ -96,7 +100,7 @@ class LogicalView {
   //
   // @brief Local view id
   TRI_voc_cid_t const _id;
-  
+
   // @brief Global view id
   TRI_voc_cid_t const _planId;
 
@@ -111,9 +115,10 @@ class LogicalView {
   TRI_vocbase_t* _vocbase;
 
   std::unique_ptr<PhysicalView> _physical;
+  std::unique_ptr<ViewImplementation> _implementation;
 
-  mutable basics::ReadWriteLock _lock; // lock protecting the status and name
-  mutable basics::ReadWriteLock _infoLock; // lock protecting the properties
+  mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
+  mutable basics::ReadWriteLock _infoLock;  // lock protecting the properties
 };
 
 }  // namespace arangodb

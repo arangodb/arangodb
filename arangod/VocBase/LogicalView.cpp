@@ -89,7 +89,6 @@ static std::string const ReadStringValue(VPackSlice info,
   }
   return Helper::getStringValue(info, name, def);
 }
-
 }
 
 /// @brief This the "copy" constructor used in the cluster
@@ -110,16 +109,14 @@ LogicalView::LogicalView(LogicalView const& other)
 // @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this view
-LogicalView::LogicalView(TRI_vocbase_t* vocbase,
-                         VPackSlice const& info)
+LogicalView::LogicalView(TRI_vocbase_t* vocbase, VPackSlice const& info)
     : _id(ReadId(info)),
       _planId(ReadPlanId(info, _id)),
       _type(ReadStringValue(info, "type", "")),
       _name(ReadStringValue(info, "name", "")),
       _isDeleted(Helper::readBooleanValue(info, "deleted", false)),
       _vocbase(vocbase),
-      _physical(
-          EngineSelectorFeature::ENGINE->createPhysicalView(this, info)) {
+      _physical(EngineSelectorFeature::ENGINE->createPhysicalView(this, info)) {
   TRI_ASSERT(_physical != nullptr);
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -208,7 +205,7 @@ void LogicalView::toVelocyPack(VPackBuilder& result) const {
 
   // Cluster Specific
   result.add("planId", VPackValue(std::to_string(_planId)));
-  
+
   TRI_ASSERT(result.isOpenObject());
   // We leave the object open
 }
@@ -217,7 +214,7 @@ arangodb::Result LogicalView::updateProperties(VPackSlice const& slice,
                                                bool doSync) {
   WRITE_LOCKER(writeLocker, _infoLock);
 
- // The physical may first reject illegal properties.
+  // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
   getPhysical()->updateProperties(slice, doSync);
 
@@ -240,3 +237,10 @@ void LogicalView::persistPhysicalView() {
   engine->createView(_vocbase, _id, this);
 }
 
+void LogicalView::spawnImplementation(ViewCreator creator) {
+  VPackBuilder properties;
+  properties.openObject();
+  toVelocyPack(properties);
+  properties.close();
+  _implementation = creator(this, getPhysical(), properties.slice());
+}

@@ -29,9 +29,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
-#include "Aql/PlanCache.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -62,6 +62,7 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/PhysicalView.h"
+#include "VocBase/ViewImplementation.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 
@@ -69,7 +70,7 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-  
+
 /// @brief increase the reference counter for a database
 bool TRI_vocbase_t::use() {
   auto expected = _refCount.load(std::memory_order_relaxed);
@@ -83,7 +84,9 @@ bool TRI_vocbase_t::use() {
     // marked as deleted
     auto updated = expected + 2;
     TRI_ASSERT((updated & 1) == 0);
-    if (_refCount.compare_exchange_weak(expected, updated, std::memory_order_release, std::memory_order_relaxed)) {
+    if (_refCount.compare_exchange_weak(expected, updated,
+                                        std::memory_order_release,
+                                        std::memory_order_relaxed)) {
       // compare-exchange worked. we're done
       return true;
     }
@@ -92,9 +95,7 @@ bool TRI_vocbase_t::use() {
   }
 }
 
-void TRI_vocbase_t::forceUse() {
-  _refCount += 2;
-}
+void TRI_vocbase_t::forceUse() { _refCount += 2; }
 
 /// @brief decrease the reference counter for a database
 void TRI_vocbase_t::release() {
@@ -115,7 +116,7 @@ bool TRI_vocbase_t::isDangling() const {
   // that noone else references the database but it has been marked as deleted
   return (refCount == 1);
 }
-  
+
 /// @brief whether or not the vocbase has been marked as deleted
 bool TRI_vocbase_t::isDropped() const {
   auto refCount = _refCount.load();
@@ -151,12 +152,14 @@ void TRI_vocbase_t::registerCollection(
 
     // check name
     auto it = _collectionsByName.emplace(name, collection);
-        
+
     if (!it.second) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "duplicate entry for collection name '" << name << "'";
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "collection id " << cid
-              << " has same name as already added collection "
-              << _collectionsByName[name]->cid();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "duplicate entry for collection name '" << name << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "collection id " << cid
+          << " has same name as already added collection "
+          << _collectionsByName[name]->cid();
 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
     }
@@ -168,13 +171,13 @@ void TRI_vocbase_t::registerCollection(
       if (!it2.second) {
         _collectionsByName.erase(name);
 
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "duplicate collection identifier " << collection->cid()
-                << " for name '" << name << "'";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << "duplicate collection identifier " << collection->cid()
+            << " for name '" << name << "'";
 
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
       }
-    }
-    catch (...) {
+    } catch (...) {
       _collectionsByName.erase(name);
       throw;
     }
@@ -183,14 +186,13 @@ void TRI_vocbase_t::registerCollection(
 
     try {
       _collections.emplace_back(collection);
-    }
-    catch (...) {
+    } catch (...) {
       _collectionsByName.erase(name);
       _collectionsById.erase(cid);
       TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
       throw;
     }
-  
+
     collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
     TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
   }
@@ -199,10 +201,11 @@ void TRI_vocbase_t::registerCollection(
 /// @brief removes a collection name from the global list of collections
 /// This function is called when a collection is dropped.
 /// NOTE: You need a writelock on _collectionsLock
-bool TRI_vocbase_t::unregisterCollection(arangodb::LogicalCollection* collection) {
+bool TRI_vocbase_t::unregisterCollection(
+    arangodb::LogicalCollection* collection) {
   TRI_ASSERT(collection != nullptr);
   std::string const colName(collection->name());
-  
+
   // pre-condition
   TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
 
@@ -211,8 +214,8 @@ bool TRI_vocbase_t::unregisterCollection(arangodb::LogicalCollection* collection
     // this is because someone else might have created a new collection with the
     // same name, but with a different id
     _collectionsByName.erase(colName);
-  } 
-  
+  }
+
   // post-condition
   TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
 
@@ -221,8 +224,8 @@ bool TRI_vocbase_t::unregisterCollection(arangodb::LogicalCollection* collection
 
 /// @brief adds a new view
 /// caller must hold _viewLock in write mode or set doLock
-void TRI_vocbase_t::registerView(
-    bool doLock, std::shared_ptr<arangodb::LogicalView> view) {
+void TRI_vocbase_t::registerView(bool doLock,
+                                 std::shared_ptr<arangodb::LogicalView> view) {
   std::string const name = view->name();
   TRI_voc_cid_t const id = view->id();
   {
@@ -230,12 +233,13 @@ void TRI_vocbase_t::registerView(
 
     // check name
     auto it = _viewsByName.emplace(name, view);
-        
+
     if (!it.second) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "duplicate entry for view name '" << name << "'";
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "view id " << id
-              << " has same name as already added view "
-              << _viewsByName[name]->id();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "duplicate entry for view name '" << name << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "view id " << id << " has same name as already added view "
+          << _viewsByName[name]->id();
 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
     }
@@ -247,13 +251,13 @@ void TRI_vocbase_t::registerView(
       if (!it2.second) {
         _viewsByName.erase(name);
 
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "duplicate view identifier " << view->id()
-                << " for name '" << name << "'";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "duplicate view identifier "
+                                                << view->id() << " for name '"
+                                                << name << "'";
 
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
       }
-    }
-    catch (...) {
+    } catch (...) {
       _viewsByName.erase(name);
       throw;
     }
@@ -265,10 +269,11 @@ void TRI_vocbase_t::registerView(
 /// @brief removes a views name from the global list of views
 /// This function is called when a view is dropped.
 /// NOTE: You need a writelock on _viewsLock
-bool TRI_vocbase_t::unregisterView(std::shared_ptr<arangodb::LogicalView> view) {
+bool TRI_vocbase_t::unregisterView(
+    std::shared_ptr<arangodb::LogicalView> view) {
   TRI_ASSERT(view != nullptr);
   std::string const name(view->name());
-  
+
   // pre-condition
   TRI_ASSERT(_viewsByName.size() == _viewsById.size());
 
@@ -277,8 +282,8 @@ bool TRI_vocbase_t::unregisterView(std::shared_ptr<arangodb::LogicalView> view) 
     // this is because someone else might have created a new view with the
     // same name, but with a different id
     _viewsByName.erase(name);
-  } 
-  
+  }
+
   // post-condition
   TRI_ASSERT(_viewsByName.size() == _viewsById.size());
 
@@ -315,8 +320,9 @@ bool TRI_vocbase_t::UnloadCollectionCallback(LogicalCollection* collection) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     std::string const colName(collection->name());
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to close collection '" << colName
-             << "': " << TRI_last_error();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to close collection '"
+                                            << colName
+                                            << "': " << TRI_last_error();
 
     collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
     return true;
@@ -328,17 +334,19 @@ bool TRI_vocbase_t::UnloadCollectionCallback(LogicalCollection* collection) {
 }
 
 /// @brief drops a collection
-bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection* collection) {
+bool TRI_vocbase_t::DropCollectionCallback(
+    arangodb::LogicalCollection* collection) {
   std::string const name(collection->name());
 
   {
-    WRITE_LOCKER_EVENTUAL(statusLock, collection->_lock); 
+    WRITE_LOCKER_EVENTUAL(statusLock, collection->_lock);
 
     if (collection->status() != TRI_VOC_COL_STATUS_DELETED) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "someone resurrected the collection '" << name << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "someone resurrected the collection '" << name << "'";
       return false;
     }
-  } // release status lock
+  }  // release status lock
 
   // remove from list of collections
   TRI_vocbase_t* vocbase = collection->vocbase();
@@ -367,9 +375,10 @@ bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection* collecti
 /// @brief creates a new collection, worker function
 arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     VPackSlice parameters, TRI_voc_cid_t& cid) {
-  std::string name = arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name" , "");
+  std::string name = arangodb::basics::VelocyPackHelper::getStringValue(
+      parameters, "name", "");
   TRI_ASSERT(!name.empty());
-    
+
   // Try to create a new collection. This is not registered yet
 
   std::unique_ptr<arangodb::LogicalCollection> collection =
@@ -401,7 +410,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
 
     // Let's try to persist it.
     collection->persistPhysicalCollection();
- 
+
     events::CreateCollection(name, TRI_ERROR_NO_ERROR);
     return collection.release();
   } catch (...) {
@@ -505,7 +514,9 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
       }
 
       // only throw this particular error if the server is configured to do so
-      auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+      auto databaseFeature =
+          application_features::ApplicationServer::getFeature<DatabaseFeature>(
+              "Database");
       if (databaseFeature->throwCollectionNotLoadedError()) {
         return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED;
       }
@@ -526,7 +537,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     // status while it is loading (loading may take a long time because of
     // disk activity, index creation etc.)
     locker.unlock();
-      
+
     bool ignoreDatafileErrors = false;
     if (DatabaseFeature::DATABASE != nullptr) {
       ignoreDatafileErrors = DatabaseFeature::DATABASE->ignoreDatafileErrors();
@@ -535,15 +546,21 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     try {
       collection->open(ignoreDatafileErrors);
     } catch (arangodb::basics::Exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception while opening collection '" << collection->name() << "': " << ex.what();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "caught exception while opening collection '" << collection->name()
+          << "': " << ex.what();
       collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
       return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception while opening collection '" << collection->name() << "': " << ex.what();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "caught exception while opening collection '" << collection->name()
+          << "': " << ex.what();
       collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
       return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception while opening collection '" << collection->name() << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "caught unknown exception while opening collection '"
+          << collection->name() << "'";
       collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
       return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
     }
@@ -563,8 +580,9 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   }
 
   std::string const colName(collection->name());
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown collection status " << collection->status() << " for '"
-           << colName << "'";
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown collection status "
+                                          << collection->status() << " for '"
+                                          << colName << "'";
 
   return TRI_set_errno(TRI_ERROR_INTERNAL);
 }
@@ -574,10 +592,12 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
                                         DropState& state) {
   state = DROP_EXIT;
   std::string const colName(collection->name());
-    
+
   // do not acquire these locks instantly
-  CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock, basics::ConditionalLocking::DoNotLock);
-  CONDITIONAL_WRITE_LOCKER(locker, collection->_lock, basics::ConditionalLocking::DoNotLock);
+  CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock,
+                           basics::ConditionalLocking::DoNotLock);
+  CONDITIONAL_WRITE_LOCKER(locker, collection->_lock,
+                           basics::ConditionalLocking::DoNotLock);
 
   while (true) {
     TRI_ASSERT(!writeLocker.isLocked());
@@ -596,7 +616,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
     // unlock the write locker so we don't block other operations
     writeLocker.unlock();
-    
+
     TRI_ASSERT(!writeLocker.isLocked());
     TRI_ASSERT(!locker.isLocked());
 
@@ -634,8 +654,8 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
       if (!collection->deleted()) {
         collection->setDeleted(true);
-   
-        try { 
+
+        try {
           StorageEngine* engine = EngineSelectorFeature::ENGINE;
           engine->changeCollection(this, collection->cid(), collection, doSync);
         } catch (arangodb::basics::Exception const& ex) {
@@ -659,7 +679,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
       TRI_ASSERT(engine != nullptr);
       engine->dropCollection(this, collection);
-    
+
       DropCollectionCallback(collection);
       break;
     }
@@ -668,13 +688,17 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       // collection is loaded
       collection->setDeleted(true);
 
-      bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+      bool doSync =
+          application_features::ApplicationServer::getFeature<DatabaseFeature>(
+              "Database")
+              ->forceSyncProperties();
       doSync = (doSync && !MMFilesLogfileManager::instance()->isInRecovery());
 
       VPackBuilder builder;
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
       engine->getCollectionInfo(this, collection->cid(), builder, false, 0);
-      arangodb::Result res = collection->updateProperties(builder.slice().get("parameters"), doSync);
+      arangodb::Result res = collection->updateProperties(
+          builder.slice().get("parameters"), doSync);
 
       if (!res.ok()) {
         return res.errorNumber();
@@ -733,7 +757,7 @@ void TRI_vocbase_t::shutdown() {
   setState(TRI_vocbase_t::State::SHUTDOWN_COMPACTOR);
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  // shutdownDatabase() stops all threads 
+  // shutdownDatabase() stops all threads
   engine->shutdownDatabase(this);
 
   // this will signal the cleanup thread to do one last iteration
@@ -781,9 +805,12 @@ std::vector<std::string> TRI_vocbase_t::collectionNames() {
 /// The list of collections will be sorted if sort function is given
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(TRI_voc_tick_t maxTick,
-    bool (*filter)(arangodb::LogicalCollection*, void*), void* data, bool shouldSort,
-    std::function<bool(arangodb::LogicalCollection*, arangodb::LogicalCollection*)> sortCallback) {
+std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(
+    TRI_voc_tick_t maxTick, bool (*filter)(arangodb::LogicalCollection*, void*),
+    void* data, bool shouldSort,
+    std::function<bool(arangodb::LogicalCollection*,
+                       arangodb::LogicalCollection*)>
+        sortCallback) {
   std::vector<arangodb::LogicalCollection*> collections;
 
   // cycle on write-lock
@@ -874,7 +901,8 @@ LogicalCollection* TRI_vocbase_t::lookupCollection(std::string const& name) {
 }
 
 /// @brief looks up a collection by name
-LogicalCollection* TRI_vocbase_t::lookupCollectionNoLock(std::string const& name) {
+LogicalCollection* TRI_vocbase_t::lookupCollectionNoLock(
+    std::string const& name) {
   if (name.empty()) {
     return nullptr;
   }
@@ -904,7 +932,7 @@ LogicalCollection* TRI_vocbase_t::lookupCollectionNoLock(std::string const& name
 /// @brief looks up a collection by identifier
 LogicalCollection* TRI_vocbase_t::lookupCollection(TRI_voc_cid_t id) {
   READ_LOCKER(readLocker, _collectionsLock);
-  
+
   auto it = _collectionsById.find(id);
 
   if (it == _collectionsById.end()) {
@@ -914,7 +942,8 @@ LogicalCollection* TRI_vocbase_t::lookupCollection(TRI_voc_cid_t id) {
 }
 
 /// @brief looks up a view by name
-std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(std::string const& name) {
+std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
+    std::string const& name) {
   if (name.empty()) {
     return std::shared_ptr<LogicalView>();
   }
@@ -940,7 +969,7 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(std::string const& name) 
 /// @brief looks up a view by identifier
 std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(TRI_voc_cid_t id) {
   READ_LOCKER(readLocker, _viewsLock);
-  
+
   auto it = _viewsById.find(id);
 
   if (it == _viewsById.end()) {
@@ -955,19 +984,18 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(TRI_voc_cid_t id) {
 /// using a cid of > 0 is supported to import dumps from other servers etc.
 /// but the functionality is not advertised
 arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
-    VPackSlice parameters,
-    TRI_voc_cid_t cid) {
+    VPackSlice parameters, TRI_voc_cid_t cid) {
   // check that the name does not contain any strange characters
   if (!LogicalCollection::IsAllowedName(parameters)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
-  
 
   READ_LOCKER(readLocker, _inventoryLock);
 
   // note: cid may be modified by this function call
-  arangodb::LogicalCollection* collection = createCollectionWorker(parameters, cid);
-  
+  arangodb::LogicalCollection* collection =
+      createCollectionWorker(parameters, cid);
+
   if (collection == nullptr) {
     // something went wrong... must not continue
     return nullptr;
@@ -977,13 +1005,15 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   TRI_ASSERT(engine != nullptr);
   // TODO Review
   arangodb::Result res2 = engine->persistCollection(this, collection);
-  // API compatibility, we always return the collection, even if creation failed.
+  // API compatibility, we always return the collection, even if creation
+  // failed.
 
   return collection;
 }
 
 /// @brief unloads a collection
-int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, bool force) {
+int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection,
+                                    bool force) {
   TRI_voc_cid_t cid = collection->cid();
   {
     WRITE_LOCKER_EVENTUAL(locker, collection->_lock);
@@ -1043,9 +1073,9 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, boo
     // add callback for unload
     arangodb::MMFilesCollection::toMMFilesCollection(collection)
         ->ditches()
-        ->createMMFilesUnloadCollectionDitch(collection, UnloadCollectionCallback,
-                                      __FILE__, __LINE__);
-  } // release locks
+        ->createMMFilesUnloadCollectionDitch(
+            collection, UnloadCollectionCallback, __FILE__, __LINE__);
+  }  // release locks
 
   collection->unload();
 
@@ -1057,11 +1087,11 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, boo
 }
 
 /// @brief drops a collection
-int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool allowDropSystem) {
+int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
+                                  bool allowDropSystem) {
   TRI_ASSERT(collection != nullptr);
 
-  if (!allowDropSystem && 
-      collection->isSystem() &&
+  if (!allowDropSystem && collection->isSystem() &&
       !MMFilesLogfileManager::instance()->isInRecovery()) {
     // prevent dropping of system collections
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
@@ -1083,8 +1113,8 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool 
         // add callback for dropping
         arangodb::MMFilesCollection::toMMFilesCollection(collection)
             ->ditches()
-            ->createMMFilesDropCollectionDitch(collection, DropCollectionCallback,
-                                        __FILE__, __LINE__);
+            ->createMMFilesDropCollectionDitch(
+                collection, DropCollectionCallback, __FILE__, __LINE__);
 
         // wake up the cleanup thread
         StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -1104,7 +1134,8 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool 
 
 /// @brief renames a collection
 int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
-                                    std::string const& newName, bool doOverride) {
+                                    std::string const& newName,
+                                    bool doOverride) {
   if (collection->isSystem()) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
@@ -1139,10 +1170,10 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
-  
+
   CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock, false);
   CONDITIONAL_WRITE_LOCKER(locker, collection->_lock, false);
-  
+
   while (true) {
     TRI_ASSERT(!writeLocker.isLocked());
     TRI_ASSERT(!locker.isLocked());
@@ -1160,17 +1191,17 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
 
     // unlock the write locker so we don't block other operations
     writeLocker.unlock();
-    
+
     TRI_ASSERT(!writeLocker.isLocked());
     TRI_ASSERT(!locker.isLocked());
 
     // sleep for a while
     std::this_thread::yield();
   }
-  
+
   TRI_ASSERT(writeLocker.isLocked());
   TRI_ASSERT(locker.isLocked());
-  
+
   // Check for duplicate name
   auto other = lookupCollectionNoLock(newName);
 
@@ -1220,8 +1251,8 @@ int TRI_vocbase_t::useCollection(arangodb::LogicalCollection* collection,
 }
 
 /// @brief locks a (document) collection for usage by id
-arangodb::LogicalCollection* TRI_vocbase_t::useCollection(TRI_voc_cid_t cid,
-    TRI_vocbase_col_status_e& status) {
+arangodb::LogicalCollection* TRI_vocbase_t::useCollection(
+    TRI_voc_cid_t cid, TRI_vocbase_col_status_e& status) {
   // check that we have an existing name
   arangodb::LogicalCollection* collection = nullptr;
   {
@@ -1252,8 +1283,8 @@ arangodb::LogicalCollection* TRI_vocbase_t::useCollection(TRI_voc_cid_t cid,
 }
 
 /// @brief locks a collection for usage by name
-arangodb::LogicalCollection* TRI_vocbase_t::useCollection(std::string const& name,
-    TRI_vocbase_col_status_e& status) {
+arangodb::LogicalCollection* TRI_vocbase_t::useCollection(
+    std::string const& name, TRI_vocbase_col_status_e& status) {
   // check that we have an existing name
   arangodb::LogicalCollection* collection = nullptr;
 
@@ -1288,12 +1319,22 @@ void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) {
   collection->_lock.unlock();
 }
 
+void TRI_vocbase_t::registerViewImplementation(std::string const& type,
+                                               ViewCreator creator) {
+  _viewImplementations.emplace(type, creator);
+}
+
+bool TRI_vocbase_t::unregisterViewImplementation(std::string const& type) {
+  return (_viewImplementations.erase(type) > 0);
+}
+
 /// @brief creates a new view, worker function
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
     VPackSlice parameters, TRI_voc_cid_t& id) {
-  std::string name = arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name" , "");
+  std::string name = arangodb::basics::VelocyPackHelper::getStringValue(
+      parameters, "name", "");
   TRI_ASSERT(!name.empty());
-    
+
   // Try to create a new view. This is not registered yet
 
   std::shared_ptr<arangodb::LogicalView> view =
@@ -1317,7 +1358,16 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
 
     // Let's try to persist it.
     view->persistPhysicalView();
- 
+
+    // now let's actually create the backing implementation
+    /* no implementations exist yet, need a dummy for testing
+    auto creator = _viewImplementations.find(view->type());
+    if (creator != _viewImplementations.end()) {
+      view->spawnImplementation(*creator);
+    } else {
+      throw;  // no creator found for that type
+    }*/
+
     events::CreateView(name, TRI_ERROR_NO_ERROR);
     return view;
   } catch (...) {
@@ -1332,18 +1382,17 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
 /// using a cid of > 0 is supported to import dumps from other servers etc.
 /// but the functionality is not advertised
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
-    VPackSlice parameters,
-    TRI_voc_cid_t id) {
+    VPackSlice parameters, TRI_voc_cid_t id) {
   // check that the name does not contain any strange characters
   if (!LogicalView::IsAllowedName(parameters)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
-  
+
   READ_LOCKER(readLocker, _inventoryLock);
 
   // note: id may be modified by this function call
   std::shared_ptr<LogicalView> view = createViewWorker(parameters, id);
-  
+
   if (view == nullptr) {
     // something went wrong... must not continue
     return nullptr;
@@ -1360,7 +1409,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
 
 int TRI_vocbase_t::dropView(std::string const& name) {
   std::shared_ptr<LogicalView> view = lookupView(name);
-  
+
   if (view == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -1373,10 +1422,12 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
   TRI_ASSERT(view != nullptr);
 
   READ_LOCKER(readLocker, _inventoryLock);
-    
+
   // do not acquire these locks instantly
-  CONDITIONAL_WRITE_LOCKER(writeLocker, _viewsLock, basics::ConditionalLocking::DoNotLock);
-  CONDITIONAL_WRITE_LOCKER(locker, view->_lock, basics::ConditionalLocking::DoNotLock);
+  CONDITIONAL_WRITE_LOCKER(writeLocker, _viewsLock,
+                           basics::ConditionalLocking::DoNotLock);
+  CONDITIONAL_WRITE_LOCKER(locker, view->_lock,
+                           basics::ConditionalLocking::DoNotLock);
 
   while (true) {
     TRI_ASSERT(!writeLocker.isLocked());
@@ -1395,7 +1446,7 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
 
     // unlock the write locker so we don't block other operations
     writeLocker.unlock();
-    
+
     TRI_ASSERT(!writeLocker.isLocked());
     TRI_ASSERT(!locker.isLocked());
 
@@ -1416,19 +1467,19 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
   b.close();
 
   bool doSync =
-     application_features::ApplicationServer::getFeature<DatabaseFeature>(
+      application_features::ApplicationServer::getFeature<DatabaseFeature>(
           "Database")
           ->forceSyncProperties();
-  view->updateProperties(b.slice(), doSync); 
+  view->updateProperties(b.slice(), doSync);
 
   unregisterView(view);
-  
+
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->dropView(this, view.get());
 
   locker.unlock();
   writeLocker.unlock();
-          
+
   events::DropView(view->name(), TRI_ERROR_NO_ERROR);
 
   return TRI_ERROR_NO_ERROR;
@@ -1445,7 +1496,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
       _isOwnAppsDirectory(true),
       _deadlockDetector(false),
       _userStructures(nullptr) {
-
   _queries.reset(new arangodb::aql::QueryList(this));
   _cursorRepository.reset(new arangodb::CursorRepository(this));
   _collectionKeys.reset(new arangodb::CollectionKeysRepository());
@@ -1471,7 +1521,7 @@ TRI_vocbase_t::~TRI_vocbase_t() {
     delete it;
   }
 }
-  
+
 std::string TRI_vocbase_t::path() const {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   return engine->databasePath(this);
@@ -1512,7 +1562,7 @@ bool TRI_vocbase_t::IsAllowedName(bool allowSystem, std::string const& name) {
 
   return true;
 }
-  
+
 void TRI_vocbase_t::addReplicationApplier(TRI_replication_applier_t* applier) {
   _replicationApplier.reset(applier);
 }
@@ -1567,7 +1617,8 @@ std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
   return views;
 }
 
-std::vector<arangodb::LogicalCollection*> TRI_vocbase_t::collections(bool includeDeleted) {
+std::vector<arangodb::LogicalCollection*> TRI_vocbase_t::collections(
+    bool includeDeleted) {
   std::vector<arangodb::LogicalCollection*> collections;
 
   {
@@ -1604,7 +1655,7 @@ TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice slice) {
   }
   return 0;
 }
-  
+
 /// @brief extract the _rev attribute from a slice as a slice
 VPackSlice TRI_ExtractRevisionIdAsSlice(VPackSlice const slice) {
   if (!slice.isObject()) {
@@ -1623,9 +1674,8 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
   while (it.valid()) {
     StringRef key(it.key());
     if (key.empty() || key[0] != '_' ||
-         (key != StaticStrings::KeyString &&
-          key != StaticStrings::IdString &&
-          key != StaticStrings::RevString)) {
+        (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
+         key != StaticStrings::RevString)) {
       builder.add(key.data(), key.size(), it.value());
     }
     it.next();
@@ -1634,17 +1684,16 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
 
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open. also excludes _from and _to
-void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) {
+void TRI_SanitizeObjectWithEdges(VPackSlice const slice,
+                                 VPackBuilder& builder) {
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice, true);
   while (it.valid()) {
     StringRef key(it.key());
     if (key.empty() || key[0] != '_' ||
-         (key != StaticStrings::KeyString &&
-          key != StaticStrings::IdString &&
-          key != StaticStrings::RevString &&
-          key != StaticStrings::FromString &&
-          key != StaticStrings::ToString)) {
+        (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
+         key != StaticStrings::RevString && key != StaticStrings::FromString &&
+         key != StaticStrings::ToString)) {
       builder.add(key.data(), key.length(), it.value());
     }
     it.next();
@@ -1652,8 +1701,9 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
 }
 
 /// @brief Convert a revision ID to a string
-constexpr static TRI_voc_rid_t tickLimit 
-  = static_cast<TRI_voc_rid_t>(2016ULL - 1970ULL) * 1000ULL * 60ULL * 60ULL * 24ULL * 365ULL;
+constexpr static TRI_voc_rid_t tickLimit =
+    static_cast<TRI_voc_rid_t>(2016ULL - 1970ULL) * 1000ULL * 60ULL * 60ULL *
+    24ULL * 365ULL;
 
 std::string TRI_RidToString(TRI_voc_rid_t rid) {
   if (rid <= tickLimit) {
@@ -1669,18 +1719,20 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool warn) {
 }
 
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
-TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld, bool warn) {
+TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld,
+                              bool warn) {
   return TRI_StringToRid(ridStr.c_str(), ridStr.size(), isOld, warn);
 }
 
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
-TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld, bool warn) {
+TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld,
+                              bool warn) {
   if (len > 0 && *p >= '1' && *p <= '9') {
     TRI_voc_rid_t r = arangodb::basics::StringUtils::uint64_check(p, len);
     if (warn && r > tickLimit) {
       // An old tick value that could be confused with a time stamp
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "Saw old _rev value that could be confused with a time stamp!";
+          << "Saw old _rev value that could be confused with a time stamp!";
     }
     isOld = true;
     return r;
@@ -1688,4 +1740,3 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld, bool warn)
   isOld = false;
   return HybridLogicalClock::decodeTimeStamp(p, len);
 }
-
