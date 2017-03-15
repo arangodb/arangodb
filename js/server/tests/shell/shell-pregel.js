@@ -38,7 +38,7 @@ var console = require("console");
 var EPS = 0.0001;
 
 function testAlgo(v, e, a, p) {  
-  var key = db._pregelStart(v, e, a, p);
+  var key = db._pregelStart(a, v, e, p);
 
   var i = 1000;
   do {

@@ -25,6 +25,7 @@
 #include "Basics/MutexLocker.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/Recovery.h"
@@ -38,10 +39,10 @@ using namespace arangodb::pregel;
 static PregelFeature* Instance = nullptr;
 static uint64_t _uniqueId = 0;
 uint64_t PregelFeature::createExecutionNumber() {
-  if (ClusterInfo::instance() == nullptr) {
-    return ++_uniqueId;
-  } else {
+  if (ServerState::instance()->isRunningInCluster()) {
     return ClusterInfo::instance()->uniqid();
+  } else {
+    return ++_uniqueId;
   }
 }
 
