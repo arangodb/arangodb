@@ -1312,7 +1312,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
   registerView(basics::ConditionalLocking::DoNotLock, view);
 
   try {
-    // cid might have been assigned
+    // id might have been assigned
     id = view->id();
 
     // Let's try to persist it.
@@ -1410,6 +1410,16 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
   view->setDeleted(true);
+  VPackBuilder b;
+  b.openObject();
+  view->toVelocyPack(b);
+  b.close();
+
+  bool doSync =
+     application_features::ApplicationServer::getFeature<DatabaseFeature>(
+          "Database")
+          ->forceSyncProperties();
+  view->updateProperties(b.slice(), doSync); 
 
   unregisterView(view);
   

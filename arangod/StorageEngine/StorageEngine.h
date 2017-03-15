@@ -116,6 +116,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   // for each database
   virtual int getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result,
                                        bool wasCleanShutdown, bool isUpgrade) = 0;
+  
+  virtual int getViews(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result) = 0;
 
   // return the path for a database
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const = 0;
@@ -397,6 +399,11 @@ class StorageEngine : public application_features::ApplicationFeature {
   void registerCollection(TRI_vocbase_t* vocbase,
                           arangodb::LogicalCollection* collection) {
     vocbase->registerCollection(true, collection);
+  }
+  
+  void registerView(TRI_vocbase_t* vocbase,
+                    std::shared_ptr<arangodb::LogicalView> view) {
+    vocbase->registerView(true, view);
   }
 
  private:

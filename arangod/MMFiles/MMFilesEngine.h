@@ -114,6 +114,8 @@ class MMFilesEngine final : public StorageEngine {
   int getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result,
                                bool wasCleanShutdown, bool isUpgrade) override;
   
+  int getViews(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result) override;
+  
   // return the path for a collection
   std::string collectionPath(TRI_vocbase_t const* vocbase, TRI_voc_cid_t id) const override { 
     return collectionDirectory(vocbase->id(), id); 
@@ -313,6 +315,8 @@ public:
   /// @brief transfer markers into a collection
   int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
                       MMFilesOperationsType const&);
+  
+  std::string viewDirectory(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) const;
 
  private:
   /// @brief: check the initial markers in a datafile
@@ -351,7 +355,6 @@ public:
   std::string databaseParametersFilename(TRI_voc_tick_t databaseId) const;
   std::string collectionDirectory(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) const;
   std::string collectionParametersFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) const;
-  std::string viewDirectory(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) const;
   std::string viewParametersFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) const;
   std::string indexFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId) const;
   std::string indexFilename(TRI_idx_iid_t indexId) const;
@@ -390,6 +393,7 @@ public:
                           bool forceSync) const;
 
   arangodb::velocypack::Builder loadCollectionInfo(TRI_vocbase_t* vocbase, std::string const& path);
+  arangodb::velocypack::Builder loadViewInfo(TRI_vocbase_t* vocbase, std::string const& path);
  
   // start the cleanup thread for the database 
   int startCleanup(TRI_vocbase_t* vocbase);

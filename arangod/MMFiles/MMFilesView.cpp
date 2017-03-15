@@ -22,52 +22,51 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesView.h"
-#include "Aql/PlanCache.h"
-#include "Aql/QueryCache.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/PerformanceLogScope.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/Timers.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/encoding.h"
-#include "Basics/process-utils.h"
-#include "Cluster/ClusterMethods.h"
-#include "Cluster/CollectionLockState.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesCollectionReadLocker.h"
-#include "MMFiles/MMFilesCollectionWriteLocker.h"
-#include "MMFiles/MMFilesDatafile.h"
-#include "MMFiles/MMFilesDatafileHelper.h"
-#include "MMFiles/MMFilesDocumentOperation.h"
-#include "MMFiles/MMFilesDocumentPosition.h"
-#include "MMFiles/MMFilesIndexElement.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesPrimaryIndex.h"
-#include "MMFiles/MMFilesToken.h"
-#include "MMFiles/MMFilesTransactionState.h"
-#include "RestServer/DatabaseFeature.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/Helpers.h"
-#include "Transaction/Methods.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
-#include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "Transaction/StandaloneContext.h"
-#include "VocBase/KeyGenerator.h"
-#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-#include "Indexes/IndexIterator.h"
 
 using namespace arangodb;
-using Helper = arangodb::basics::VelocyPackHelper;
+
+MMFilesView::MMFilesView(LogicalView* view,
+                         VPackSlice const& info)
+    : PhysicalView(view, info) {}
+
+MMFilesView::MMFilesView(LogicalView* logical,
+                         PhysicalView* physical)
+    : PhysicalView(logical, VPackSlice::emptyObjectSlice()) {}
+
+MMFilesView::~MMFilesView() {
+  if (_logicalView->deleted()) {
+    try {
+      StorageEngine* engine = EngineSelectorFeature::ENGINE;
+      std::string directory = static_cast<MMFilesEngine*>(engine)->viewDirectory(_logicalView->vocbase()->id(), _logicalView->id());
+      TRI_RemoveDirectory(directory.c_str());
+    } catch (...) {
+      // must ignore errors here as we are in the destructor
+    }
+  }
+}
+
+void MMFilesView::getPropertiesVPack(velocypack::Builder& result) const {
+  TRI_ASSERT(result.isOpenObject());
+  result.add("path", VPackValue(_path));
+  TRI_ASSERT(result.isOpenObject());
+}
+  
+/// @brief opens an existing view
+void MMFilesView::open(bool ignoreErrors) {}
+
+void MMFilesView::drop() {}
 
 arangodb::Result MMFilesView::updateProperties(VPackSlice const& slice,
                                                bool doSync) {
@@ -105,23 +104,3 @@ PhysicalView* MMFilesView::clone(LogicalView* logical, PhysicalView* physical){
   return new MMFilesView(logical, physical);
 }
 
-MMFilesView::MMFilesView(LogicalView* view,
-                         VPackSlice const& info)
-    : PhysicalView(view, info) {}
-
-MMFilesView::MMFilesView(LogicalView* logical,
-                         PhysicalView* physical)
-    : PhysicalView(logical, VPackSlice::emptyObjectSlice()) {}
-
-MMFilesView::~MMFilesView() {}
-
-void MMFilesView::getPropertiesVPack(velocypack::Builder& result) const {
-  TRI_ASSERT(result.isOpenObject());
-  result.add("path", VPackValue(_path));
-  TRI_ASSERT(result.isOpenObject());
-}
-  
-/// @brief opens an existing view
-void MMFilesView::open(bool ignoreErrors) {}
-
-void MMFilesView::drop() {}

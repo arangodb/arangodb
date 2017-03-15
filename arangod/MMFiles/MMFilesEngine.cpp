@@ -268,12 +268,12 @@ void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {
     std::string const& name = it.first;
     std::string const& file = it.second;
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "collection '" << name << "' was deleted, wiping it";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "collection/view '" << name << "' was deleted, wiping it";
 
     int res = TRI_RemoveDirectory(file.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot wipe deleted collection '" << name << "': " << TRI_errno_string(res);
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot wipe deleted collection/view '" << name << "': " << TRI_errno_string(res);
     }
   }
   _deleted.clear();
@@ -497,10 +497,8 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
 
     if (!TRI_IsWritable(directory.c_str())) {
       // the collection directory we found is not writable for the current
-      // user
-      // this can cause serious trouble so we will abort the server start if
-      // we
-      // encounter this situation
+      // user. this can cause serious trouble so we will abort the server start if
+      // we encounter this situation
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "database subdirectory '" << directory
                 << "' is not writable for current user";
 
@@ -533,6 +531,76 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
       res = e.code();
 
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read collection info file in directory '"
+                << directory << "': " << TRI_errno_string(res);
+
+      return res;
+    }
+  }
+
+  result.close();
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+int MMFilesEngine::getViews(TRI_vocbase_t* vocbase, 
+                            arangodb::velocypack::Builder& result) {
+  result.openArray();
+
+  std::string const path = databaseDirectory(vocbase->id());
+  std::vector<std::string> files = TRI_FilesDirectory(path.c_str());
+
+  for (auto const& name : files) {
+    TRI_ASSERT(!name.empty());
+
+    if (!StringUtils::isPrefix(name, "view-") ||
+        StringUtils::isSuffix(name, ".tmp")) {
+      // no match, ignore this file
+      continue;
+    }
+
+    std::string const directory = FileUtils::buildFilename(path, name);
+
+    if (!TRI_IsDirectory(directory.c_str())) {
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "ignoring non-directory '" << directory << "'";
+      continue;
+    }
+
+    if (!TRI_IsWritable(directory.c_str())) {
+      // the collection directory we found is not writable for the current
+      // user. this can cause serious trouble so we will abort the server start if
+      // we encounter this situation
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "database subdirectory '" << directory
+                << "' is not writable for current user";
+
+      return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
+    }
+
+    int res = TRI_ERROR_NO_ERROR;
+
+    try {
+      VPackBuilder builder = loadViewInfo(vocbase, directory);
+      VPackSlice info = builder.slice();
+
+      if (VelocyPackHelper::readBooleanValue(info, "deleted", false)) {
+        std::string name = VelocyPackHelper::getStringValue(info, "name", "");
+        _deleted.emplace_back(std::make_pair(name, directory));
+        continue;
+      }
+      // add view info
+      result.add(info);
+    } catch (arangodb::basics::Exception const& e) {
+      std::string tmpfile = FileUtils::buildFilename(directory, ".tmp");
+
+      if (TRI_ExistsFile(tmpfile.c_str())) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "ignoring temporary directory '" << tmpfile << "'";
+        // temp file still exists. this means the view was not created
+        // fully and needs to be ignored
+        continue;  // ignore this directory
+      }
+
+      res = e.code();
+
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read view info file in directory '"
                 << directory << "': " << TRI_errno_string(res);
 
       return res;
@@ -1692,6 +1760,38 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
                                                    bool wasCleanShutdown, bool isUpgrade) {
   auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
 
+  // scan the database path for views
+  try {
+    VPackBuilder builder;
+    int res = getViews(vocbase.get(), builder);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    
+    VPackSlice slice = builder.slice();
+    TRI_ASSERT(slice.isArray());
+
+    for (auto const& it : VPackArrayIterator(slice)) {
+      // we found a view that is still active
+      TRI_ASSERT(!it.get("id").isNone());
+      std::shared_ptr<LogicalView> view = std::make_shared<arangodb::LogicalView>(vocbase.get(), it);
+      StorageEngine::registerView(vocbase.get(), view);
+
+      auto physical = static_cast<MMFilesView*>(view->getPhysical());
+      TRI_ASSERT(physical != nullptr);
+
+      registerViewPath(vocbase->id(), view->id(), physical->path());
+    }
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: " << ex.what();
+    throw;
+  } catch (...) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: unknown exception";
+    throw;
+  }
+
+
   // scan the database path for collections
   try {
     VPackBuilder builder;
@@ -1996,6 +2096,44 @@ VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase, std::stri
   indexesPatch.close();
 
   return VPackCollection::merge(slice, indexesPatch.slice(), false);
+}
+
+VPackBuilder MMFilesEngine::loadViewInfo(TRI_vocbase_t* vocbase, std::string const& path) {
+  // find parameter file
+  std::string filename =
+      arangodb::basics::FileUtils::buildFilename(path, parametersFilename());
+
+  if (!TRI_ExistsFile(filename.c_str())) {
+    filename += ".tmp";  // try file with .tmp extension
+    if (!TRI_ExistsFile(filename.c_str())) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
+    }
+  }
+
+  std::shared_ptr<VPackBuilder> content =
+      arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
+  VPackSlice slice = content->slice();
+  if (!slice.isObject()) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot open '" << filename
+             << "', view parameters are not readable";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
+  }
+
+  if (filename.substr(filename.size() - 4, 4) == ".tmp") {
+    // we got a tmp file. Now try saving the original file
+    std::string const original(filename.substr(0, filename.size() - 4));
+    bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(original, slice, true);
+    
+    if (!ok) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot store view parameters in file '" << original << "'";
+    }
+  }
+
+  VPackBuilder patch;
+  patch.openObject();
+  patch.add("path", VPackValue(path));
+  patch.close();
+  return VPackCollection::merge(slice, patch.slice(), false);
 }
 
 /// @brief remove data of expired compaction blockers
