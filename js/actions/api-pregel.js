@@ -23,7 +23,7 @@
 
 var arangodb = require('@arangodb');
 var actions = require('@arangodb/actions');
-var internal = require('internal')
+var internal = require('internal');
 var db = internal.db;
 
 var graph_module;
@@ -71,13 +71,14 @@ function post_api_pregel (req, res) {
   }
   
   var params = json.params || {};
+  var executionNum;
   if (json.vertexCollections && json.vertexCollections instanceof Array
       && json.edgeCollections && typeof json.edgeCollection === 'string') {
     
-    var executionNum = db._pregelStart(json.algorithm,
-                                       json.vertexCollections,
-                                       json.edgeCollections,
-                                       params);
+    executionNum = db._pregelStart(json.algorithm,
+                                   json.vertexCollections,
+                                   json.edgeCollections,
+                                   params);
     actions.resultOk(req, res, actions.HTTP_OK, executionNum);
     
   } else if (json.graphName &&  typeof json.graphName === 'string') {
@@ -91,10 +92,8 @@ function post_api_pregel (req, res) {
       var edges = graph._edgeCollections();
       if (edges.length > 0) {
         var edgeCollections = edges.map(e => e.name());
-        var executionNum = db._pregelStart(json.algorithm,
-                                           vertexCollections,
-                                           edgeCollections,
-                                           params);
+        executionNum = db._pregelStart(json.algorithm, vertexCollections,
+                                       edgeCollections, params);
         actions.resultOk(req, res, actions.HTTP_OK, executionNum);
         
       } else {

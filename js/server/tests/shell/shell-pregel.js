@@ -105,23 +105,23 @@ function clientTestSuite () {
       db.demo_v.insert({_key:'J', sssp:-1, pagerank:0.01363636});
       db.demo_v.insert({_key:'K', sssp:0, pagerank:0.013636363});
 
-      db.demo_e.insert({_from:'demo_v/B', _to:'demo_v/C', vertex:'B'})
-      db.demo_e.insert({_from:'demo_v/C', _to:'demo_v/B', vertex:'C'})
-      db.demo_e.insert({_from:'demo_v/D', _to:'demo_v/A', vertex:'D'})
-      db.demo_e.insert({_from:'demo_v/D', _to:'demo_v/B', vertex:'D'})
-      db.demo_e.insert({_from:'demo_v/E', _to:'demo_v/B', vertex:'E'})
-      db.demo_e.insert({_from:'demo_v/E', _to:'demo_v/D', vertex:'E'})
-      db.demo_e.insert({_from:'demo_v/E', _to:'demo_v/F', vertex:'E'})
-      db.demo_e.insert({_from:'demo_v/F', _to:'demo_v/B', vertex:'F'})
-      db.demo_e.insert({_from:'demo_v/F', _to:'demo_v/E', vertex:'F'})
-      db.demo_e.insert({_from:'demo_v/G', _to:'demo_v/B', vertex:'G'})
-      db.demo_e.insert({_from:'demo_v/G', _to:'demo_v/E', vertex:'G'})
-      db.demo_e.insert({_from:'demo_v/H', _to:'demo_v/B', vertex:'H'})
-      db.demo_e.insert({_from:'demo_v/H', _to:'demo_v/E', vertex:'H'})
-      db.demo_e.insert({_from:'demo_v/I', _to:'demo_v/B', vertex:'I'})
-      db.demo_e.insert({_from:'demo_v/I', _to:'demo_v/E', vertex:'I'})
-      db.demo_e.insert({_from:'demo_v/J', _to:'demo_v/E', vertex:'J'})
-      db.demo_e.insert({_from:'demo_v/K', _to:'demo_v/E', vertex:'K'})
+      db.demo_e.insert({_from:'demo_v/B', _to:'demo_v/C', vertex:'B'});
+      db.demo_e.insert({_from:'demo_v/C', _to:'demo_v/B', vertex:'C'});
+      db.demo_e.insert({_from:'demo_v/D', _to:'demo_v/A', vertex:'D'});
+      db.demo_e.insert({_from:'demo_v/D', _to:'demo_v/B', vertex:'D'});
+      db.demo_e.insert({_from:'demo_v/E', _to:'demo_v/B', vertex:'E'});
+      db.demo_e.insert({_from:'demo_v/E', _to:'demo_v/D', vertex:'E'});
+      db.demo_e.insert({_from:'demo_v/E', _to:'demo_v/F', vertex:'E'});
+      db.demo_e.insert({_from:'demo_v/F', _to:'demo_v/B', vertex:'F'});
+      db.demo_e.insert({_from:'demo_v/F', _to:'demo_v/E', vertex:'F'});
+      db.demo_e.insert({_from:'demo_v/G', _to:'demo_v/B', vertex:'G'});
+      db.demo_e.insert({_from:'demo_v/G', _to:'demo_v/E', vertex:'G'});
+      db.demo_e.insert({_from:'demo_v/H', _to:'demo_v/B', vertex:'H'});
+      db.demo_e.insert({_from:'demo_v/H', _to:'demo_v/E', vertex:'H'});
+      db.demo_e.insert({_from:'demo_v/I', _to:'demo_v/B', vertex:'I'});
+      db.demo_e.insert({_from:'demo_v/I', _to:'demo_v/E', vertex:'I'});
+      db.demo_e.insert({_from:'demo_v/J', _to:'demo_v/E', vertex:'J'});
+      db.demo_e.insert({_from:'demo_v/K', _to:'demo_v/E', vertex:'K'});
     },
     
     ////////////////////////////////////////////////////////////////////////////////
