@@ -281,6 +281,8 @@ struct Functions {
                                    VPackFunctionParameters const&);
    static AqlValue VarianceSample(arangodb::aql::Query*, transaction::Methods*,
                                   VPackFunctionParameters const&);
+   static AqlValue PregelResult(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
    static AqlValue VariancePopulation(arangodb::aql::Query*,
                                       transaction::Methods*,
                                       VPackFunctionParameters const&);

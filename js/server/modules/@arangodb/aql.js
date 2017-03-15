@@ -5429,6 +5429,21 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
     return null;
   }
 }
+        
+        
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return at most <limit> documents near a certain point
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_PREGEL_RESULT (executionNr) {
+  'use strict';
+
+  if (isCoordinator) {
+      return INTERNAL.db._pregelAqlResult(executionNr);
+  } else {
+    THROW('PREGEL_RESULT', INTERNAL.errors.ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+  }
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief format a date (numerical values only)
@@ -5686,6 +5701,7 @@ exports.AQL_DATE_SUBTRACT = AQL_DATE_SUBTRACT;
 exports.AQL_DATE_DIFF = AQL_DATE_DIFF;
 exports.AQL_DATE_COMPARE = AQL_DATE_COMPARE;
 exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
+exports.AQL_PREGEL_RESULT = AQL_PREGEL_RESULT;
 
 exports.reload = reloadUserFunctions;
 exports.clearCaches = clearCaches;

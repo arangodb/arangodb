@@ -2628,8 +2628,10 @@ int MMFilesCollection::insert(transaction::Methods* trx,
   operation.setRevisions(DocumentDescriptor(),
                          DocumentDescriptor(revisionId, doc.begin()));
 
+  MMFilesDocumentPosition old;
+
   try {
-    insertRevision(revisionId, marker->vpack(), 0, true, true);
+    old = insertRevision(revisionId, marker->vpack(), 0, true, true);
     // and go on with the insertion...
   } catch (basics::Exception const& ex) {
     return ex.code();
@@ -2667,6 +2669,9 @@ int MMFilesCollection::insert(transaction::Methods* trx,
       // from the list of revisions
       try {
         removeRevision(revisionId, false);
+        if (old) {
+          insertRevision(old, true);
+        }
       } catch (...) {
       }
       throw;
@@ -2674,6 +2679,10 @@ int MMFilesCollection::insert(transaction::Methods* trx,
 
     if (res != TRI_ERROR_NO_ERROR) {
       operation.revert(trx);
+        
+      if (old) {
+        insertRevision(old, true);
+      }
     }
   }
 
@@ -2738,10 +2747,14 @@ uint8_t const* MMFilesCollection::lookupRevisionVPackConditional(TRI_voc_rid_t r
   return vpack; 
 }
 
-void MMFilesCollection::insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock) {
+MMFilesDocumentPosition MMFilesCollection::insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock) {
   TRI_ASSERT(revisionId != 0);
   TRI_ASSERT(dataptr != nullptr);
-  _revisionsCache.insert(revisionId, dataptr, fid, isInWal, shouldLock);
+  return _revisionsCache.insert(revisionId, dataptr, fid, isInWal, shouldLock);
+}
+
+void MMFilesCollection::insertRevision(MMFilesDocumentPosition const& position, bool shouldLock) {
+  return _revisionsCache.insert(position, shouldLock);
 }
 
 void MMFilesCollection::updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) {
@@ -3335,6 +3348,17 @@ int MMFilesCollection::remove(arangodb::transaction::Methods* trx, VPackSlice co
     resultMarkerTick = operation.tick();
   }
   return res;
+}
+
+/// @brief Defer a callback to be executed when the collection
+///        can be dropped. The callback is supposed to drop
+///        the collection and it is guaranteed that no one is using
+///        it at that moment.
+void MMFilesCollection::deferDropCollection(
+    std::function<bool(LogicalCollection*)> callback) {
+  // add callback for dropping
+  ditches()->createMMFilesDropCollectionDitch(_logicalCollection, callback,
+                                              __FILE__, __LINE__);
 }
 
 /// @brief rolls back a document operation

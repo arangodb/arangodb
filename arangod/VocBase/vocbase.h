@@ -277,9 +277,6 @@ struct TRI_vocbase_t {
   /// @brief unloads a collection
   int unloadCollection(arangodb::LogicalCollection* collection, bool force);
   
-  /// @brief callback for unloading a collection
-  static bool UnloadCollectionCallback(arangodb::LogicalCollection* collection);
-
   /// @brief locks a collection for usage, loading or manifesting it
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself.

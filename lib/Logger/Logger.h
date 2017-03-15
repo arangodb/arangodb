@@ -140,6 +140,7 @@ class Logger {
   static LogTopic MEMORY;
   static LogTopic MMAP;
   static LogTopic PERFORMANCE;
+  static LogTopic PREGEL;
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
   static LogTopic REQUESTS;

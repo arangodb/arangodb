@@ -187,6 +187,12 @@ class PhysicalCollection {
                      TRI_voc_tick_t& resultMarkerTick, bool lock,
                      TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev) = 0;
 
+  /// @brief Defer a callback to be executed when the collection
+  ///        can be dropped. The callback is supposed to drop
+  ///        the collection and it is guaranteed that no one is using
+  ///        it at that moment.
+  virtual void deferDropCollection(std::function<bool(LogicalCollection*)> callback) = 0;
+
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
   inline KeyGenerator* keyGenerator() const {

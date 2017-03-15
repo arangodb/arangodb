@@ -34,6 +34,7 @@
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
+#include "Pregel/PregelFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
@@ -152,6 +153,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new LoggerFeature(&server, true));
     server.addFeature(new NonceFeature(&server));
     server.addFeature(new PageSizeFeature(&server));
+    server.addFeature(new pregel::PregelFeature(&server));
     server.addFeature(new PrivilegeFeature(&server));
     server.addFeature(new RandomFeature(&server));
     server.addFeature(new QueryRegistryFeature(&server));

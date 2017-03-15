@@ -150,6 +150,12 @@ v3.2.alpha1 (2017-02-05)
 
 * generated Foxx services now use swagger tags
 
+v3.1.15 (????-??-??)
+
+* added endpoint /_api/cluster/endpoints in cluster case to get all
+  coordinator endpoints
+
+* fix documentation of /_api/endpoint, declaring this API obsolete.
 
 v3.1.14 (2017-03-13)
 --------------------

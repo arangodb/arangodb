@@ -273,10 +273,15 @@ build-book:
 	done
 	python ../Scripts/generateMdFiles.py $(NAME) ppbooks/ ../../js/apps/system/_admin/aardvark/APP/api-docs.json $(FILTER)
 
-	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' styles/header.js
-	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' HEADER.html
-	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' README.md
-	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' book.json
+	if echo $(newVersionNumber) | grep devel; then \
+		export VERSION="$(newVersionNumber) `date +' %d. %b %Y '`"; \
+	else \
+		export VERSION="$(newVersionNumber)"; \
+	fi; \
+	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" styles/header.js); \
+	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" HEADER.html); \
+	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" README.md); \
+	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" book.json)
 
 	test -d books/$(NAME) || mkdir -p books/$(NAME)
 

@@ -462,6 +462,10 @@ std::string LogicalCollection::cid_as_string() const {
 
 TRI_voc_cid_t LogicalCollection::planId() const { return _planId; }
 
+std::string LogicalCollection::planId_as_string() const {
+  return basics::StringUtils::itoa(_planId);
+}
+
 TRI_col_type_e LogicalCollection::type() const { return _type; }
 
 std::string LogicalCollection::name() const {
@@ -933,6 +937,15 @@ void LogicalCollection::persistPhysicalCollection() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   std::string path = engine->createCollection(_vocbase, _cid, this);
   getPhysical()->setPath(path);
+}
+
+/// @brief Defer a callback to be executed when the collection
+///        can be dropped. The callback is supposed to drop
+///        the collection and it is guaranteed that no one is using
+///        it at that moment.
+void LogicalCollection::deferDropCollection(
+    std::function<bool(LogicalCollection*)> callback) {
+  _physical->deferDropCollection(callback);
 }
 
 /// @brief reads an element from the document collection
