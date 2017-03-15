@@ -327,18 +327,18 @@ HexHashResult AuthInfo::hexHashFromData(std::string const& hashMethod, char cons
     } else {
       // invalid algorithm...
       LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "invalid algorithm";
-      return HexHashResult(3); // TODO: fix to correct error number
+      return HexHashResult(TRI_ERROR_FAILED); // TODO: fix to correct error number
     }
   } catch (...) {
     // SslInterface::ssl....() allocate strings with new, which might throw
     // exceptions
-    return HexHashResult(3);
+    return HexHashResult(TRI_ERROR_FAILED);
   }
 
   if (crypted == nullptr ||
       cryptedLength <= 0) {
     delete[] crypted;
-    return HexHashResult(3);
+    return HexHashResult(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   size_t hexLen;
@@ -346,7 +346,7 @@ HexHashResult AuthInfo::hexHashFromData(std::string const& hashMethod, char cons
   delete[] crypted;
 
   if (hex == nullptr) {
-    return HexHashResult(3);
+    return HexHashResult(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   HexHashResult result(std::string(hex, hexLen));
@@ -386,16 +386,12 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
     std::string root_pw = password;
 
     LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "password is " << root_pw << " user is " << username;
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "abc";
-
 
     if ((ld = ldap_init(ldap_host.c_str(), LDAP_PORT)) == NULL ) {
       LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ldapt init failed";
       perror( "ldap_init failed" );
       exit( EXIT_FAILURE );
     }
-
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ba";
 
     /* set the LDAP version to be 3 */
     if (ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &desired_version) != LDAP_OPT_SUCCESS)
@@ -404,15 +400,11 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
         exit(EXIT_FAILURE);
     }
 
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "bb";
-
     if (ldap_bind_s(ld, root_dn.c_str(), root_pw.c_str(), auth_method) != LDAP_SUCCESS ) {
       LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "cant auth return";
       ldap_perror( ld, "ldap_bind" );
       return result;
     }
-
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "bc";
 
     ldap_result = ldap_unbind_s(ld);
 
@@ -422,15 +414,11 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
       exit( EXIT_FAILURE );
     }
 
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "bd";
-
     if (it != _authInfo.end() && it->second.created() < TRI_microtime() - 60) {
       LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "authinfo timeout erase";
       _authInfo.erase(username);
       it = _authInfo.end();
     }
-
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "be";
 
     if (it == _authInfo.end()) {
       LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "would insert new user";
@@ -454,11 +442,10 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
       std::string saltedPassword = salt + password;
       LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "new salted password is " << saltedPassword;
 
-      HexHashResult hexHash = hexHashFromData("sha256a", saltedPassword.data(), saltedPassword.size());
+      HexHashResult hexHash = hexHashFromData("sha256", saltedPassword.data(), saltedPassword.size());
 
       if (!hexHash.ok()) {
-        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "hex calc was not ok :(";
-        throw;
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "hexcalc did not work");
       }
 
       LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "hexHashFromData " << hexHash.hexHash();
@@ -489,14 +476,10 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   auto it = _authInfo.find(username);
 # endif
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "aa";
-
   if (it == _authInfo.end()) {
     LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "authinfo list is empty";
     return result;
   }
-
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ab";
 
   AuthEntry const& auth = it->second;
 
@@ -505,69 +488,16 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
     return result;
   }
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ac";
-
   result._mustChange = auth.mustChange();
 
   std::string salted = auth.passwordSalt() + password;
-  size_t len = salted.size();
+  HexHashResult hexHash = hexHashFromData(auth.passwordMethod(), salted.data(), salted.size());
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ad";
-
-  std::string const& passwordMethod = auth.passwordMethod();
-
-  // default value is false
-  char* crypted = nullptr;
-  size_t cryptedLength;
-
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ae";
-
-  try {
-    if (passwordMethod == "sha1") {
-      arangodb::rest::SslInterface::sslSHA1(salted.c_str(), len, crypted,
-                                            cryptedLength);
-    } else if (passwordMethod == "sha512") {
-      arangodb::rest::SslInterface::sslSHA512(salted.c_str(), len, crypted,
-                                              cryptedLength);
-    } else if (passwordMethod == "sha384") {
-      arangodb::rest::SslInterface::sslSHA384(salted.c_str(), len, crypted,
-                                              cryptedLength);
-    } else if (passwordMethod == "sha256") {
-      arangodb::rest::SslInterface::sslSHA256(salted.c_str(), len, crypted,
-                                              cryptedLength);
-    } else if (passwordMethod == "sha224") {
-      arangodb::rest::SslInterface::sslSHA224(salted.c_str(), len, crypted,
-                                              cryptedLength);
-    } else if (passwordMethod == "md5") {
-      arangodb::rest::SslInterface::sslMD5(salted.c_str(), len, crypted,
-                                           cryptedLength);
-    } else {
-      // invalid algorithm...
-    }
-  } catch (...) {
-    // SslInterface::ssl....() allocate strings with new, which might throw
-    // exceptions
+  if (!hexHash.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "hexcalc did not work");
   }
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "af";
-
-  if (crypted != nullptr) {
-    if (0 < cryptedLength) {
-      size_t hexLen;
-      char* hex = TRI_EncodeHexString(crypted, cryptedLength, &hexLen);
-
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "hex is " << hex;
-
-      if (hex != nullptr) {
-        result._authorized = auth.checkPasswordHash(hex);
-        TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
-      }
-    }
-
-    delete[] crypted;
-  } else {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "authinfo crypted is nullptr";
-  }
+  result._authorized = auth.checkPasswordHash(hexHash.hexHash());
 
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "everything ok " << result._authorized << " " << result._mustChange << " " << result._username;
 
