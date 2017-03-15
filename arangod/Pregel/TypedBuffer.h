@@ -272,7 +272,7 @@ public:
 
 #ifdef __linux__
     size_t newMappedSize = sizeof(T) * newSize;
-    this->_ptr = mremap(this->_ptr, _mappedSize, newMappedSize, MREMAP_MAYMOVE);
+    this->_ptr = (T*) mremap((void*)this->_ptr, _mappedSize, newMappedSize, MREMAP_MAYMOVE);
     if (this->_ptr != MAP_FAILED) {// success
       TRI_ASSERT(this->_ptr != nullptr);
       _mappedSize = newMappedSize;
@@ -287,7 +287,7 @@ public:
     
     // preserve errno value while we're logging
     int tmp = errno;
-    LOG_TOPIC(WARN, Logger::MMAP) << "memory-mapping failed for range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
+    LOG_TOPIC(WARN, Logger::MMAP) << "memory-mapping failed";
     errno = tmp;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 #else 
