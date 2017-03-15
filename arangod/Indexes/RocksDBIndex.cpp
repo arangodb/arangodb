@@ -207,8 +207,7 @@ IndexLookupResult RocksDBIterator::next() {
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t iid,
                            arangodb::LogicalCollection* collection,
                            arangodb::velocypack::Slice const& info)
-    : PathBasedIndex(iid, collection, info, 0, true),
-      _db(RocksDBFeature::instance()->db()) {}
+    : PathBasedIndex(iid, collection, info, 0, true) {}
 
 /// @brief destroy the index
 RocksDBIndex::~RocksDBIndex() {}
@@ -566,8 +565,10 @@ RocksDBIterator* RocksDBIndex::lookup(arangodb::Transaction* trx,
   // Secured by trx. The shared_ptr index stays valid in
   // _collection at least as long as trx is running.
   // Same for the iterator
+  auto db = RocksDBFeature::instance()->db();
+  TRI_ASSERT(db != nullptr);
   auto idx = _collection->primaryIndex();
-  return new RocksDBIterator(_collection, trx, mmdr, this, idx, _db, reverse, leftBorder, rightBorder);
+  return new RocksDBIterator(_collection, trx, mmdr, this, idx, db, reverse, leftBorder, rightBorder);
 }
 
 bool RocksDBIndex::accessFitsIndex(
