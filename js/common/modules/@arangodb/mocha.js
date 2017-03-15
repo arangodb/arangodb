@@ -50,6 +50,8 @@ function deleteFrom (obj) {
 exports.reporters = {
   stream: StreamReporter,
   suite: SuiteReporter,
+  xunit: XunitReporter,
+  tap: TapReporter,
   default: DefaultReporter
 };
 
@@ -59,10 +61,11 @@ exports.run = function runMochaTests (run, files, reporterName, grep) {
   }
 
   if (reporterName && !exports.reporters[reporterName]) {
-    throw new Error(
-      'Unknown test reporter: ' + reporterName
-      + ' Known reporters: ' + Object.keys(exports.reporters).join(', ')
-    );
+    throw new Error(`Unknown test reporter: "${
+      reporterName
+    }". Known reporters: ${
+      Object.keys(exports.reporters).join(', ')
+    }`);
   }
 
   var suite = new MochaSuite('', new MochaContext());
@@ -76,11 +79,15 @@ exports.run = function runMochaTests (run, files, reporterName, grep) {
   var options = {};
   var mocha = {
     options: options,
-    grep(re) {
-      this.options.grep = typeof re === 'string' ? new RegExp(escapeRe(re)) : re;
+    grep (re) {
+      this.options.grep = (
+        typeof re === 'string'
+        ? new RegExp(escapeRe(re))
+        : re
+      );
       return this;
     },
-    invert() {
+    invert () {
       this.options.invert = true;
       return this;
     }
@@ -196,6 +203,71 @@ function SuiteReporter (runner) {
       suites: currentSuite ? currentSuite.suites : [],
       tests: currentSuite ? currentSuite.tests : []
     };
+  });
+}
+
+function XunitReporter (runner) {
+  DefaultReporter.call(this, runner);
+  let start;
+  runner.on('start', function () {
+    start = new Date().toISOString();
+  });
+  runner.on('end', function () {
+    const result = runner.testResults;
+    const tests = [];
+    for (const test of result.tests) {
+      const parentName = test.fullTitle.slice(0, -(test.title.length + 1)) || 'global';
+      const testcase = ['testcase', {
+        classname: parentName,
+        name: test.title,
+        time: test.duration || 0
+      }];
+      if (test.err.stack) {
+        const [cause, ...stack] = test.err.stack.split('\n');
+        const [type, ...message] = cause.split(': ');
+        testcase.push(['failure', {
+          message: message.join(': '),
+          type
+        }, [cause, ...stack].join('\n')]);
+      }
+      tests.push(testcase);
+    }
+    runner.testResults = ['testsuite', {
+      timestamp: start,
+      tests: result.stats.tests || 0,
+      errors: 0,
+      failures: result.stats.failures || 0,
+      skip: result.stats.pending || 0,
+      time: result.stats.duration || 0
+    }, ...tests];
+  });
+}
+
+function TapReporter (runner) {
+  DefaultReporter.call(this, runner);
+  runner.on('end', function () {
+    const result = runner.testResults;
+    const lines = [];
+    lines.push(`1..${result.stats.tests}`);
+    for (let i = 0; i < result.tests.length; i++) {
+      const test = result.tests[i];
+      if (test.err.stack) {
+        lines.push(`not ok ${i + 1} ${test.fullTitle}`);
+        const [message, ...stack] = test.err.stack.split('\n');
+        lines.push('  ' + message);
+        for (const line of stack) {
+          lines.push('  ' + line);
+        }
+      } else if (test.duration === undefined) {
+        lines.push(`ok ${i + 1} ${test.fullTitle} # SKIP -`);
+      } else {
+        lines.push(`ok ${i + 1} ${test.fullTitle}`);
+      }
+    }
+    lines.push(`# tests ${result.stats.tests}`);
+    lines.push(`# pass ${result.stats.passes}`);
+    lines.push(`# fail ${result.stats.failures}`);
+    runner.testResults = lines;
   });
 }
 

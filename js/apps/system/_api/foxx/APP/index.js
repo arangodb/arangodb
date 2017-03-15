@@ -8,6 +8,7 @@ const semver = require('semver');
 const actions = require('@arangodb/actions');
 const ArangoError = require('@arangodb').ArangoError;
 const errors = require('@arangodb').errors;
+const jsonml2xml = require('@arangodb/util').jsonml2xml;
 const swaggerJson = require('@arangodb/foxx/legacy/swagger').swaggerJson;
 const fm = require('@arangodb/foxx/manager');
 const fmu = require('@arangodb/foxx/manager-utils');
@@ -383,10 +384,22 @@ instanceRouter.post('/download', (req, res) => {
 instanceRouter.post('/tests', (req, res) => {
   const service = req.service;
   const reporter = req.queryParams.reporter || null;
-  res.json(fm.runTests(service.mount, {reporter}));
+  const result = fm.runTests(service.mount, {reporter});
+  if (reporter === 'xunit' && req.accepts('xml', 'json') === 'xml') {
+    res.type('xml');
+    res.write('<?xml version="1.0" encoding="utf-8"?>\n');
+    res.write(jsonml2xml(result) + '\n');
+  } else if (reporter === 'tap' && req.accepts('text', 'json') === 'text') {
+    res.type('text');
+    for (const row of result) {
+      res.write(row + '\n');
+    }
+  } else {
+    res.json(result);
+  }
 })
 .queryParam('reporter', joi.only(...reporters).optional(), `Test reporter to use`)
-.response(200, joi.object(), `Test results.`)
+.response(200, ['json', 'xml', 'text'], `Test results.`)
 .summary(`Run service tests`)
 .description(dd`
   Runs the tests for the service at the given mount path and returns the results.
