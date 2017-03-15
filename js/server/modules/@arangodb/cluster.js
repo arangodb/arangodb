@@ -2023,6 +2023,16 @@ function waitForSyncRepl (dbName, collList) {
   return false;
 }
 
+function endpoints() {
+  try {
+    let coords = global.ArangoClusterInfo.getCoordinators();
+    let endpoints = coords.map(c => global.ArangoClusterInfo.getServerEndpoint(c));
+    return endpoints.map(function(e) { return {"endpoint": e}; });
+  } catch (err) {
+    return { error: true, exception: err };
+  }
+}
+
 exports.coordinatorId = coordinatorId;
 exports.handlePlanChange = handlePlanChange;
 exports.isCluster = isCluster;
@@ -2039,6 +2049,7 @@ exports.rebalanceShards = rebalanceShards;
 exports.moveShard = moveShard;
 exports.supervisionState = supervisionState;
 exports.waitForSyncRepl = waitForSyncRepl;
+exports.endpoints = endpoints;
 
 exports.executePlanForDatabases = executePlanForDatabases;
 exports.executePlanForCollections = executePlanForCollections;
