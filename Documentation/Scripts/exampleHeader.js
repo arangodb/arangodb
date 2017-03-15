@@ -114,6 +114,12 @@ var curlRequestRaw = internal.appendCurlRequest(swallowText, swallowText, swallo
 var curlRequest = function () {
   rc = curlRequestRaw.apply(curlRequestRaw, arguments);
   if (rc.code != 200) {
+    expectRC = arguments["4"];
+    if (typeof expectRC !== undefined) {
+      if (expectRC.indexOf(rc.code) >=0) {
+        return rc;
+      }
+    }
     throw rc.code + " " + rc.errorMessage
   }
   return rc
