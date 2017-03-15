@@ -35,6 +35,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/LruCache.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -48,7 +49,17 @@ enum class AuthLevel {
 enum class AuthSource {
   COLLECTION, LDAP
 };
-  
+
+class HexHashResult : public arangodb::Result {
+  public:
+    HexHashResult(int errorNumber) : Result(errorNumber) {}
+    HexHashResult(std::string const& hexHash) : Result(0),  _hexHash(hexHash) {}
+    std::string const& hexHash() { return _hexHash; }
+
+  protected:
+    std::string const _hexHash;
+};
+
 class AuthEntry {
  public:
   AuthEntry() : _active(false), _mustChange(false), _allDatabases(AuthLevel::NONE) {}
@@ -178,6 +189,10 @@ class AuthInfo {
   AuthJwtResult validateJwtBody(std::string const&);
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
   std::shared_ptr<VPackBuilder> parseJson(std::string const&, std::string const&);
+
+
+  HexHashResult hexHashFromData(std::string const& hashMethod, char const* data, size_t len);
+
 
  private:
   basics::ReadWriteLock _authInfoLock;
