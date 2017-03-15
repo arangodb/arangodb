@@ -1,6 +1,6 @@
 #!/bin/bash
 
-##python3-setuptools
+##python-setuptools
 ##
 ##python setup.py install
 ##
@@ -12,7 +12,7 @@
 ##  http://calibre-ebook.com/download
 
 test_tools(){
-    if ! type easy_install3 >> /dev/null; then
+    if ! type easy_install >> /dev/null; then
         echo "you are missing setuptools"
         echo "apt-get install python-setuptools"
         exit 1
@@ -37,29 +37,18 @@ test_tools(){
     fi
 }
 
-install_tools(){
-    (
-        if ! [[ -f markdown-pp ]]; then
-            git clone https://github.com/arangodb-helper/markdown-pp/
-        fi
-        cd  markdown-pp
-        python2 setup.py install --user
-    )
-    npm install gitbook-cli
-
-
-}
-
 main(){
     #test for basic tools
     test_tools
 
-    #cd into target dir
-    mkdir -p "$1"
-    cd $1 || { echo "unable to change into $1"; exit 1; }
+    ./scripts/build-deb.sh
 
-    install_tools
-
+    ln -s build-deb build
+    
+    ./utils/generateExamples.sh
+    ./utils/generateSwagger.sh
+    cd Documentation/Books
+    make build-dist-books
 }
 
 main "$@"
