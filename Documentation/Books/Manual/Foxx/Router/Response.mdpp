@@ -359,6 +359,23 @@ If an error is passed instead of an options object it will be interpreted as the
 
 Returns nothing.
 
+type
+----
+
+`res.type([type]): string`
+
+Sets the response content-type to the given type if provided or returns the previously set content-type.
+
+**Arguments**
+
+* **type**: `string` (optional)
+
+  Content-type of the response body.
+
+  Unlike `res.set('content-type', type)` file extensions can be provided as values and will be translated to the corresponding MIME type (e.g. `json` becomes `application/json`).
+
+Returns the content-type of the response body.
+
 vary
 ----
 

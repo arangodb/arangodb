@@ -1,9 +1,12 @@
 v3.1.15 (????-??-??)
+--------------------
 
 * added endpoint /_api/cluster/endpoints in cluster case to get all
   coordinator endpoints
 
 * fix documentation of /_api/endpoint, declaring this API obsolete.
+
+* Foxx response objects now have a `type` method for manipulating the content-type header
 
 v3.1.14 (2017-03-13)
 --------------------
