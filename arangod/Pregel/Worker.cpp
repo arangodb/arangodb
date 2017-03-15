@@ -477,7 +477,7 @@ void Worker<V, E, M>::_finishedProcessing() {
       }
 
       _readCache->forEach(
-          [this](prgl_shard_t shard, std::string const& key, M const&) {
+          [this](PregelShard shard, PregelKey const& key, M const&) {
             _graphStore->loadDocument(&_config, shard, key);
           });
 

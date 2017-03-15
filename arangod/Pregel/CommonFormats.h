@@ -117,7 +117,7 @@ struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
   void unwrapValue(VPackSlice s, SenderMessage<T>& senderVal) const override {
     VPackArrayIterator array(s);
     senderVal.senderId.shard = (*array).getUInt();
-    senderVal.senderId.key = (*(++array)).copyString();
+    senderVal.senderId.key = (*(++array)).getUInt();//(*(++array)).copyString();
     senderVal.value = (*(++array)).getNumber<T>();
   }
   void addValue(VPackBuilder& arrayBuilder,

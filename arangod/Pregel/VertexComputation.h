@@ -93,8 +93,8 @@ class VertexContext {
   inline uint64_t globalSuperstep() const { return _gss; }
   inline uint64_t localSuperstep() const { return _lss; }
 
-  prgl_shard_t shard() const { return _vertexEntry->shard(); }
-  std::string const& key() const { return _vertexEntry->key(); }
+  PregelShard shard() const { return _vertexEntry->shard(); }
+  PregelKey const& key() const { return _vertexEntry->key(); }
   PregelID pregelId() const { return _vertexEntry->pregelId(); }
 };
 

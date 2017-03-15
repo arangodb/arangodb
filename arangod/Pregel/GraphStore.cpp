@@ -222,8 +222,8 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config,
 
 template <typename V, typename E>
 void GraphStore<V, E>::loadDocument(WorkerConfig* config,
-                                    prgl_shard_t sourceShard,
-                                    std::string const& _key) {
+                                    PregelShard sourceShard,
+                                    PregelKey const& _key) {
   _config = config;
   std::unique_ptr<transaction::Methods> trx(_createTransaction());
 
@@ -245,7 +245,8 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config,
   }
 
   std::string documentId = trx->extractIdString(opResult.slice());
-  _index.emplace_back(sourceShard, _key);
+  //_index.emplace_back(sourceShard, _key);
+  _index.push_back(VertexEntry(sourceShard, _key));
 
   VertexEntry& entry = _index.back();
   if (_graphFormat->estimatedVertexSize() > 0) {
@@ -345,7 +346,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   std::unique_ptr<transaction::Methods> trx(_createTransaction());
   TRI_voc_cid_t cid = trx->addCollectionAtRuntime(vertexShard);
   trx->pinData(cid);  // will throw when it fails
-  prgl_shard_t sourceShard = (prgl_shard_t)_config->shardId(vertexShard);
+  PregelShard sourceShard = (PregelShard)_config->shardId(vertexShard);
 
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
@@ -370,7 +371,9 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
 
       VertexEntry& ventry = _index[vertexOffset];
       ventry._shard = sourceShard;
-      ventry._key = document.get(StaticStrings::KeyString).copyString();
+      //ventry._key = document.get(StaticStrings::KeyString).copyString();
+      std::string key = document.get(StaticStrings::KeyString).copyString();
+      ventry._key = std::stoull(key);
       ventry._edgeDataOffset = edgeOffset;
 
       // load vertex data
@@ -446,19 +449,22 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods* trx,
         // lazy loading always uses vector backed storage
         ((VectorTypedBuffer<Edge<E>>*)_edges)->appendEmptyElement();
       }
+      
       Edge<E> *edge = _edges->data() + offset;
-      edge->_toKey = toValue.substr(pos + 1, toValue.length() - pos - 1);
+      // edge->_toKey = toValue.substr(pos + 1, toValue.length() - pos - 1);
+      std::string toKey = toValue.substr(pos + 1, toValue.length() - pos - 1);
+      edge->_toKey = std::stoull(toKey);
 
         // resolve the shard of the target vertex.
       ShardID responsibleShard;
       int res = Utils::resolveShard(_config, collectionName,
-                                    StaticStrings::KeyString, edge->_toKey, responsibleShard);
+                                    StaticStrings::KeyString, toKey, responsibleShard);
       
       if (res == TRI_ERROR_NO_ERROR) {
-        //prgl_shard_t sourceShard = (prgl_shard_t)_config->shardId(edgeShard);
-        edge->_targetShard = (prgl_shard_t)_config->shardId(responsibleShard);
+        //PregelShard sourceShard = (PregelShard)_config->shardId(edgeShard);
+        edge->_targetShard = (PregelShard)_config->shardId(responsibleShard);
         _graphFormat->copyEdgeData(document, edge->data(), sizeof(E));
-        if (edge->_targetShard != (prgl_shard_t)-1) {
+        if (edge->_targetShard != (PregelShard)-1) {
           added++;
           offset++;
         } else {
@@ -484,7 +490,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
                                       RangeIterator<VertexEntry>& it) {
   // transaction on one shard
   std::unique_ptr<UserTransaction> trx;
-  prgl_shard_t currentShard = (prgl_shard_t)-1;
+  PregelShard currentShard = (PregelShard)-1;
   int res = TRI_ERROR_NO_ERROR;
   
   V* vData = _vertexData->data();
@@ -518,7 +524,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
       // or there are no more vertices for to store (or the buffer is full)
       V* data = vData + it->_vertexDataOffset;
       b->openObject();
-      b->add(StaticStrings::KeyString, VPackValue(it->key()));
+      b->add(StaticStrings::KeyString, VPackValue(std::to_string(it->key())));
       /// bool store =
       _graphFormat->buildVertexDocument(*(b.get()), data, sizeof(V));
       b->close();
@@ -571,6 +577,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
       try {
         RangeIterator<VertexEntry> it = vertexIterator(start, end);
         _storeVertices(state.globalShardIDs(), it);
+        // TODO can't just write edges with smart graphs
       } catch (...) {
         LOG_TOPIC(ERR, Logger::PREGEL) << "Storing vertex data failed";
       }

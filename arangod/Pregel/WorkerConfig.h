@@ -100,17 +100,17 @@ class WorkerConfig {
   };
 
   /// Actual set of pregel shard id's located here
-  inline std::set<prgl_shard_t> const& localPregelShardIDs() const {
+  inline std::set<PregelShard> const& localPregelShardIDs() const {
     return _localPregelShardIDs;
   }
 
-  inline prgl_shard_t shardId(ShardID const& responsibleShard) const {
+  inline PregelShard shardId(ShardID const& responsibleShard) const {
     auto const& it = _pregelShardIDs.find(responsibleShard);
-    return it != _pregelShardIDs.end() ? it->second : (prgl_shard_t)-1;
+    return it != _pregelShardIDs.end() ? it->second : (PregelShard)-1;
   }
 
   // index in globalShardIDs
-  inline bool isLocalVertexShard(prgl_shard_t shardIndex) const {
+  inline bool isLocalVertexShard(PregelShard shardIndex) const {
     // TODO cache this? prob small
     return _localPregelShardIDs.find(shardIndex) != _localPregelShardIDs.end();
   }
@@ -142,8 +142,8 @@ class WorkerConfig {
       _edgeCollectionShards;
   
   /// cache these ids as much as possible, since we access them often
-  std::unordered_map<std::string, prgl_shard_t> _pregelShardIDs;
-  std::set<prgl_shard_t> _localPregelShardIDs;
+  std::unordered_map<std::string, PregelShard> _pregelShardIDs;
+  std::set<PregelShard> _localPregelShardIDs;
 };
 }
 }

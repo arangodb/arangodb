@@ -47,13 +47,14 @@ void InCache<M>::parseMessages(VPackSlice const& incomingData) {
 
   // temporary variables
   VPackValueLength i = 0;
-  std::string key;
-  prgl_shard_t shard = (prgl_shard_t)shardSlice.getUInt();
+  PregelKey key;
+  PregelShard shard = (PregelShard)shardSlice.getUInt();
   MUTEX_LOCKER(guard, this->_bucketLocker[shard]);
 
   for (VPackSlice current : VPackArrayIterator(messages)) {
     if (i % 2 == 0) {  // TODO support multiple recipients
-      key = current.copyString();
+      //key = current.copyString();
+      key = current.getUInt();
     } else {
       if (current.isArray()) {
         VPackValueLength c = 0;
@@ -82,15 +83,15 @@ void InCache<M>::parseMessages(VPackSlice const& incomingData) {
 }
 
 template <typename M>
-void InCache<M>::storeMessageNoLock(prgl_shard_t shard,
-                                    std::string const& vertexId,
+void InCache<M>::storeMessageNoLock(PregelShard shard,
+                                    PregelKey const& vertexId,
                                     M const& data) {
   this->_set(shard, vertexId, data);
   this->_containedMessageCount++;
 }
 
 template <typename M>
-void InCache<M>::storeMessage(prgl_shard_t shard, std::string const& vertexId,
+void InCache<M>::storeMessage(PregelShard shard, PregelKey const& vertexId,
                               M const& data) {
   MUTEX_LOCKER(guard, this->_bucketLocker[shard]);
   this->_set(shard, vertexId, data);
@@ -104,9 +105,9 @@ ArrayInCache<M>::ArrayInCache(WorkerConfig const* config,
                               MessageFormat<M> const* format)
     : InCache<M>(format) {
   if (config != nullptr) {
-    std::set<prgl_shard_t> const& shardIDs = config->localPregelShardIDs();
+    std::set<PregelShard> const& shardIDs = config->localPregelShardIDs();
     // one mutex per shard, we will see how this scales
-    for (prgl_shard_t shardID : shardIDs) {
+    for (PregelShard shardID : shardIDs) {
       this->_bucketLocker[shardID];
       _shardMap[shardID];
     }
@@ -114,7 +115,7 @@ ArrayInCache<M>::ArrayInCache(WorkerConfig const* config,
 }
 
 template <typename M>
-void ArrayInCache<M>::_set(prgl_shard_t shard, std::string const& key,
+void ArrayInCache<M>::_set(PregelShard shard, PregelKey const& key,
                            M const& newValue) {
   HMap& vertexMap(_shardMap[shard]);
   vertexMap[key].push_back(newValue);
@@ -127,14 +128,14 @@ void ArrayInCache<M>::mergeCache(WorkerConfig const& config,
   this->_containedMessageCount += other->_containedMessageCount;
 
   // ranomize access to buckets, don't wait for the lock
-  std::set<prgl_shard_t> const& shardIDs = config.localPregelShardIDs();
-  std::vector<prgl_shard_t> randomized(shardIDs.begin(), shardIDs.end());
+  std::set<PregelShard> const& shardIDs = config.localPregelShardIDs();
+  std::vector<PregelShard> randomized(shardIDs.begin(), shardIDs.end());
   std::random_shuffle(randomized.begin(), randomized.end());
 
   size_t i = 0;
   do {
     i = (i + 1) % randomized.size();
-    prgl_shard_t shardId = randomized[i];
+    PregelShard shardId = randomized[i];
 
     auto const& it = other->_shardMap.find(shardId);
     if (it != other->_shardMap.end() && it->second.size() > 0) {
@@ -160,8 +161,8 @@ void ArrayInCache<M>::mergeCache(WorkerConfig const& config,
 }
 
 template <typename M>
-MessageIterator<M> ArrayInCache<M>::getMessages(prgl_shard_t shard,
-                                                std::string const& key) {
+MessageIterator<M> ArrayInCache<M>::getMessages(PregelShard shard,
+                                                PregelKey const& key) {
   HMap const& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {
@@ -185,7 +186,7 @@ void ArrayInCache<M>::clear() {
 
 /// Deletes one entry. DOES NOT LOCK
 template <typename M>
-void ArrayInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
+void ArrayInCache<M>::erase(PregelShard shard, PregelKey const& key) {
   HMap& vertexMap = _shardMap[shard];
   auto const& it = vertexMap.find(key);
   if (it != vertexMap.end()) {
@@ -196,9 +197,9 @@ void ArrayInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
 
 template <typename M>
 void ArrayInCache<M>::forEach(
-    std::function<void(prgl_shard_t, std::string const&, M const&)> func) {
+    std::function<void(PregelShard, PregelKey const&, M const&)> func) {
   for (auto const& pair : _shardMap) {
-    prgl_shard_t shard = pair.first;
+    PregelShard shard = pair.first;
     HMap const& vertexMap = pair.second;
     for (auto& vertexMsgs : vertexMap) {
       for (M const& val : vertexMsgs.second) {
@@ -216,9 +217,9 @@ CombiningInCache<M>::CombiningInCache(WorkerConfig const* config,
                                       MessageCombiner<M> const* combiner)
     : InCache<M>(format), _combiner(combiner) {
   if (config != nullptr) {
-    std::set<prgl_shard_t> const& shardIDs = config->localPregelShardIDs();
+    std::set<PregelShard> const& shardIDs = config->localPregelShardIDs();
     // one mutex per shard, we will see how this scales
-    for (prgl_shard_t shardID : shardIDs) {
+    for (PregelShard shardID : shardIDs) {
       this->_bucketLocker[shardID];
       _shardMap[shardID];
     }
@@ -226,7 +227,7 @@ CombiningInCache<M>::CombiningInCache(WorkerConfig const* config,
 }
 
 template <typename M>
-void CombiningInCache<M>::_set(prgl_shard_t shard, std::string const& key,
+void CombiningInCache<M>::_set(PregelShard shard, PregelKey const& key,
                                M const& newValue) {
   HMap& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
@@ -244,14 +245,14 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
   this->_containedMessageCount += other->_containedMessageCount;
 
   // ranomize access to buckets, don't wait for the lock
-  std::set<prgl_shard_t> const& shardIDs = config.localPregelShardIDs();
-  std::vector<prgl_shard_t> randomized(shardIDs.begin(), shardIDs.end());
+  std::set<PregelShard> const& shardIDs = config.localPregelShardIDs();
+  std::vector<PregelShard> randomized(shardIDs.begin(), shardIDs.end());
   std::random_shuffle(randomized.begin(), randomized.end());
 
   size_t i = 0;
   do {
     i = (i + 1) % randomized.size();
-    prgl_shard_t shardId = randomized[i];
+    PregelShard shardId = randomized[i];
 
     auto const& it = other->_shardMap.find(shardId);
     if (it != other->_shardMap.end() && it->second.size() > 0) {
@@ -280,8 +281,8 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
 }
 
 template <typename M>
-MessageIterator<M> CombiningInCache<M>::getMessages(prgl_shard_t shard,
-                                                    std::string const& key) {
+MessageIterator<M> CombiningInCache<M>::getMessages(PregelShard shard,
+                                                    PregelKey const& key) {
   HMap const& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {
@@ -301,7 +302,7 @@ void CombiningInCache<M>::clear() {
 
 /// Deletes one entry. DOES NOT LOCK
 template <typename M>
-void CombiningInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
+void CombiningInCache<M>::erase(PregelShard shard, PregelKey const& key) {
   HMap& vertexMap = _shardMap[shard];
   auto const& it = vertexMap.find(key);
   if (it != vertexMap.end()) {
@@ -313,10 +314,10 @@ void CombiningInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
 /// Calls function for each entry. DOES NOT LOCK
 template <typename M>
 void CombiningInCache<M>::forEach(
-    std::function<void(prgl_shard_t shard, std::string const& key, M const&)>
+    std::function<void(PregelShard shard, PregelKey const& key, M const&)>
         func) {
   for (auto const& pair : _shardMap) {
-    prgl_shard_t shard = pair.first;
+    PregelShard shard = pair.first;
     HMap const& vertexMap = pair.second;
     for (auto& vertexMessage : vertexMap) {
       func(shard, vertexMessage.first, vertexMessage.second);

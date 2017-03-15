@@ -58,7 +58,7 @@ void ArrayOutCache<M>::_removeContainedMessages() {
 }
 
 template <typename M>
-void ArrayOutCache<M>::appendMessage(prgl_shard_t shard, std::string const& key,
+void ArrayOutCache<M>::appendMessage(PregelShard shard, PregelKey const& key,
                                      M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {  // I use the global cache, we need locking
@@ -94,8 +94,8 @@ void ArrayOutCache<M>::flushMessages() {
 
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _shardMap) {
-    prgl_shard_t shard = it.first;
-    std::unordered_map<std::string, std::vector<M>> const& vertexMessageMap =
+    PregelShard shard = it.first;
+    std::unordered_map<PregelKey, std::vector<M>> const& vertexMessageMap =
         it.second;
     if (vertexMessageMap.size() == 0) {
       continue;
@@ -161,8 +161,8 @@ void CombiningOutCache<M>::_removeContainedMessages() {
 }
 
 template <typename M>
-void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
-                                         std::string const& key,
+void CombiningOutCache<M>::appendMessage(PregelShard shard,
+                                         PregelKey const& key,
                                          M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {
@@ -173,7 +173,7 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
       this->_sendCount++;
     }
   } else {
-    std::unordered_map<std::string, M>& vertexMap = _shardMap[shard];
+    std::unordered_map<PregelKey, M>& vertexMap = _shardMap[shard];
     auto it = vertexMap.find(key);
     if (it != vertexMap.end()) {  // more than one message
       _combiner->combine(vertexMap[key], data);
@@ -206,8 +206,8 @@ void CombiningOutCache<M>::flushMessages() {
 
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _shardMap) {
-    prgl_shard_t shard = it.first;
-    std::unordered_map<std::string, M> const& vertexMessageMap = it.second;
+    PregelShard shard = it.first;
+    std::unordered_map<PregelKey, M> const& vertexMessageMap = it.second;
     if (vertexMessageMap.size() == 0) {
       continue;
     }

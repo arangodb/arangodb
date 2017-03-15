@@ -30,14 +30,20 @@
 namespace arangodb {
 namespace pregel {
 
-typedef uint16_t prgl_shard_t;
-const prgl_shard_t invalid_prgl_shard = -1;
+//typedef std::string PregelKey;
+typedef uint64_t PregelKey;
+typedef uint16_t PregelShard;
+const PregelShard invalid_prgl_shard = -1;
+  
 struct PregelID {
-  prgl_shard_t shard;
-  std::string key;
+  PregelShard shard;
+  PregelKey key;
 
-  PregelID() : shard(0), key("") {}
-  PregelID(prgl_shard_t s, std::string const& k) : shard(s), key(k) {}
+  //PregelID() : shard(0), key("") {}
+  PregelID() : shard(invalid_prgl_shard), key((uint64_t)-1) {}
+  PregelID(PregelShard s, PregelKey const& k) : shard(s), key(k) {}
+  PregelID(PregelShard s, std::string const& k) : shard(s), key(std::stoull(k)) {}
+
 
   inline bool operator==(const PregelID& rhs) const {
     return shard == rhs.shard && key == rhs.key;
@@ -48,7 +54,7 @@ struct PregelID {
   }
 
   bool inline isValid() const {
-    return shard != invalid_prgl_shard && !key.empty();
+    return shard != invalid_prgl_shard && key != (uint64_t)-1;//!key.empty();
   }
 };
 
@@ -61,33 +67,33 @@ class Edge {
   template <typename V, typename E2>
   friend class GraphStore;
 
-  // prgl_shard_t _sourceShard;
-  prgl_shard_t _targetShard;
-  std::string _toKey;
+  // PregelShard _sourceShard;
+  PregelShard _targetShard;
+  PregelKey _toKey;
   E _data;
 
  public:
   // EdgeEntry() : _nextEntryOffset(0), _dataSize(0), _vertexIDSize(0) {}
   Edge() {}
-  Edge(prgl_shard_t target, std::string const& key)
+  Edge(PregelShard target, PregelKey const& key)
       : _targetShard(target), _toKey(key) {}
 
   // size_t getSize() { return sizeof(EdgeEntry) + _vertexIDSize + _dataSize; }
-  std::string const& toKey() const { return _toKey; }
+  PregelKey const& toKey() const { return _toKey; }
   // size_t getDataSize() { return _dataSize; }
   inline E* data() {
     return &_data;  // static_cast<E>(this + sizeof(EdgeEntry) + _vertexIDSize);
   }
-  // inline prgl_shard_t sourceShard() const { return _sourceShard; }
-  inline prgl_shard_t targetShard() const { return _targetShard; }
+  // inline PregelShard sourceShard() const { return _sourceShard; }
+  inline PregelShard targetShard() const { return _targetShard; }
 };
 
 class VertexEntry {
   template <typename V, typename E>
   friend class GraphStore;
 
-  prgl_shard_t _shard;
-  std::string _key;
+  PregelShard _shard;
+  PregelKey _key;
   size_t _vertexDataOffset = 0;
   size_t _edgeDataOffset = 0;
   size_t _edgeCount = 0;
@@ -95,7 +101,7 @@ class VertexEntry {
 
  public:
   VertexEntry() {}
-  VertexEntry(prgl_shard_t shard, std::string const& key)
+  VertexEntry(PregelShard shard, PregelKey const& key)
       : _shard(shard),
         _key(key),
         _vertexDataOffset(0),
@@ -110,8 +116,8 @@ class VertexEntry {
   inline bool active() const { return _active; }
   inline void setActive(bool bb) { _active = bb; }
 
-  inline prgl_shard_t shard() const { return _shard; }
-  inline std::string const& key() const { return _key; };
+  inline PregelShard shard() const { return _shard; }
+  inline PregelKey const& key() const { return _key; };
   PregelID pregelId() const { return PregelID(_shard, _key); }
   /*std::string const& key() const {
     return std::string(_key, _keySize);
@@ -182,7 +188,7 @@ struct hash<arangodb::pregel::PregelID> {
     // Compute individual hash values for first,
     // second and third and combine them using XOR
     // and bit shifting:
-    std::size_t h1 = std::hash<string>()(k.key);
+    std::size_t h1 = std::hash<arangodb::pregel::PregelKey>()(k.key);
     std::size_t h2 = std::hash<int32_t>()(k.shard);
     return h1 ^ (h2 << 1);
   }

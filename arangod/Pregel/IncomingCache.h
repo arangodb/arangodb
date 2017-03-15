@@ -47,14 +47,14 @@ processing */
 template <typename M>
 class InCache {
  protected:
-  mutable std::map<prgl_shard_t, arangodb::Mutex> _bucketLocker;
+  mutable std::map<PregelShard, arangodb::Mutex> _bucketLocker;
   std::atomic<uint64_t> _containedMessageCount;
   MessageFormat<M> const* _format;
 
   /// Initialize format and mutex map.
   /// @param config can be null if you don't want locks
   InCache(MessageFormat<M> const* format);
-  virtual void _set(prgl_shard_t shard, std::string const& vertexId,
+  virtual void _set(PregelShard shard, PregelKey const& vertexId,
                     M const& data) = 0;
 
  public:
@@ -67,38 +67,38 @@ class InCache {
 
   /// @brief Store a single message.
   /// Only ever call when you are sure this is a thread local store
-  void storeMessageNoLock(prgl_shard_t shard, std::string const& vertexId,
+  void storeMessageNoLock(PregelShard shard, PregelKey const& vertexId,
                           M const& data);
   /// @brief  Store a single message
-  void storeMessage(prgl_shard_t shard, std::string const& vertexId,
+  void storeMessage(PregelShard shard, PregelKey const& vertexId,
                     M const& data);
 
   virtual void mergeCache(WorkerConfig const& config,
                           InCache<M> const* otherCache) = 0;
   /// @brief get messages for vertex id. (Don't use keys from _from or _to
   /// directly, they contain the collection name)
-  virtual MessageIterator<M> getMessages(prgl_shard_t shard,
-                                         std::string const& key) = 0;
+  virtual MessageIterator<M> getMessages(PregelShard shard,
+                                         PregelKey const& key) = 0;
   /// clear cache
   virtual void clear() = 0;
 
   /// Deletes one entry. DOES NOT LOCK
-  virtual void erase(prgl_shard_t shard, std::string const& key) = 0;
+  virtual void erase(PregelShard shard, PregelKey const& key) = 0;
 
   /// Calls function for each entry. DOES NOT LOCK
   virtual void forEach(
-      std::function<void(prgl_shard_t, std::string const&, M const&)> func) = 0;
+      std::function<void(PregelShard, PregelKey const&, M const&)> func) = 0;
 };
 
 /// Cache version which stores a std::vector<M> for each pregel id
 /// containing all messages for this vertex
 template <typename M>
 class ArrayInCache : public InCache<M> {
-  typedef std::unordered_map<std::string, std::vector<M>> HMap;
-  std::map<prgl_shard_t, HMap> _shardMap;
+  typedef std::unordered_map<PregelKey, std::vector<M>> HMap;
+  std::map<PregelShard, HMap> _shardMap;
 
  protected:
-  void _set(prgl_shard_t shard, std::string const& vertexId,
+  void _set(PregelShard shard, PregelKey const& vertexId,
             M const& data) override;
 
  public:
@@ -106,11 +106,11 @@ class ArrayInCache : public InCache<M> {
 
   void mergeCache(WorkerConfig const& config,
                   InCache<M> const* otherCache) override;
-  MessageIterator<M> getMessages(prgl_shard_t shard,
-                                 std::string const& key) override;
+  MessageIterator<M> getMessages(PregelShard shard,
+                                 PregelKey const& key) override;
   void clear() override;
-  void erase(prgl_shard_t shard, std::string const& key) override;
-  void forEach(std::function<void(prgl_shard_t shard, std::string const& key,
+  void erase(PregelShard shard, PregelKey const& key) override;
+  void forEach(std::function<void(PregelShard shard, PregelKey const& key,
                                   M const& val)>
                    func) override;
 };
@@ -118,13 +118,13 @@ class ArrayInCache : public InCache<M> {
 /// Cache which stores one value per vertex id
 template <typename M>
 class CombiningInCache : public InCache<M> {
-  typedef std::unordered_map<std::string, M> HMap;
+  typedef std::unordered_map<PregelKey, M> HMap;
 
   MessageCombiner<M> const* _combiner;
-  std::map<prgl_shard_t, HMap> _shardMap;
+  std::map<PregelShard, HMap> _shardMap;
 
  protected:
-  void _set(prgl_shard_t shard, std::string const& vertexId,
+  void _set(PregelShard shard, PregelKey const& vertexId,
             M const& data) override;
 
  public:
@@ -135,11 +135,11 @@ class CombiningInCache : public InCache<M> {
 
   void mergeCache(WorkerConfig const& config,
                   InCache<M> const* otherCache) override;
-  MessageIterator<M> getMessages(prgl_shard_t shard,
-                                 std::string const& key) override;
+  MessageIterator<M> getMessages(PregelShard shard,
+                                 PregelKey const& key) override;
   void clear() override;
-  void erase(prgl_shard_t shard, std::string const& key) override;
-  void forEach(std::function<void(prgl_shard_t, std::string const&, M const&)>
+  void erase(PregelShard shard, PregelKey const& key) override;
+  void forEach(std::function<void(PregelShard, PregelKey const&, M const&)>
                    func) override;
 };
 }

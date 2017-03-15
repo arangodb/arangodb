@@ -1886,11 +1886,11 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   // check the arguments
   uint32_t const argLength = args.Length();
-  if (argLength < 3 || !args[2]->IsString()) {
+  if (argLength < 3 || !args[0]->IsString()) {
       // TODO extend this for named graphs, use the Graph class
       TRI_V8_THROW_EXCEPTION_USAGE(
-                                   "_pregelStart(<vertexCollections>, <edgeCollections>, <algorithm>[, "
-                                   "{maxGSS:100, ...}]");
+                                   "_pregelStart(<algorithm>, <vertexCollections>,"
+                                   "<edgeCollections>[, {maxGSS:100, ...}]");
   }
   auto parse = [](v8::Local<v8::Value> const& value, std::vector<std::string> &out) {
     v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(value);
@@ -1903,28 +1903,28 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   };
   
-  std::vector<std::string> vertices, edges;
-  if (args[0]->IsArray()) {
-    parse(args[0], vertices);
-  } else if (args[0]->IsString()) {
-      vertices.push_back(TRI_ObjectToString(args[0]));
+  std::string algorithm = TRI_ObjectToString(args[0]);
+  std::vector<std::string> paramVertices, paramEdges;
+  if (args[1]->IsArray()) {
+    parse(args[1], paramVertices);
+  } else if (args[1]->IsString()) {
+      paramVertices.push_back(TRI_ObjectToString(args[1]));
   } else {
       TRI_V8_THROW_EXCEPTION_USAGE("Specify an array of vertex collections (or a string)");
   }
-  if (vertices.size() == 0) {
+  if (paramVertices.size() == 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("Specify at least one vertex collection");
   }
-  if (args[1]->IsArray()) {
-    parse(args[1], edges);
-  } else if (args[1]->IsString()) {
-    edges.push_back(TRI_ObjectToString(args[1]));
+  if (args[2]->IsArray()) {
+    parse(args[2], paramEdges);
+  } else if (args[2]->IsString()) {
+    paramEdges.push_back(TRI_ObjectToString(args[1]));
   } else {
     TRI_V8_THROW_EXCEPTION_USAGE("Specify an array of edge collections (or a string)");
   }
-  if (edges.size() == 0) {
+  if (paramEdges.size() == 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("Specify at least one edge collection");
   }
-  std::string algorithm = TRI_ObjectToString(args[2]);
   VPackBuilder paramBuilder;
   if (argLength >= 4 && args[3]->IsObject()) {
       int res = TRI_V8ToVPack(isolate, paramBuilder, args[3], false);
@@ -1934,7 +1934,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-  for (std::string const& name : vertices) {
+  for (std::string const& name : paramVertices) {
     if (ss->isCoordinator()) {
       try {
         auto coll =
@@ -1943,10 +1943,10 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
           TRI_V8_THROW_EXCEPTION_USAGE(
                                        "Cannot use pregel on system collection");
         }
-        if (!coll->usesDefaultShardKeys()) {
-          TRI_V8_THROW_EXCEPTION_USAGE(
-                                       "Vertex collection needs to be shared after '_key'");
-        }
+        //if (!coll->usesDefaultShardKeys()) {
+        //  TRI_V8_THROW_EXCEPTION_USAGE(
+        //                               "Vertex collection needs to be shared after '_key'");
+        //}
         if (coll->deleted()) {
           TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
         }
@@ -1962,8 +1962,10 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
   }
+  
+  std::vector<CollectionID> edgeColls;
   // load edge collection
-  for (std::string const& name : edges) {
+  for (std::string const& name : paramEdges) {
     if (ss->isCoordinator()) {
       try {
         auto coll =
@@ -1972,15 +1974,20 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
           TRI_V8_THROW_EXCEPTION_USAGE(
                                        "Cannot use pregel on system collection");
         }
-        std::vector<std::string> eKeys = coll->shardKeys();
-        if (eKeys.size() != 1 || eKeys[0] != "vertex") {
-          TRI_V8_THROW_EXCEPTION_USAGE(
-                                       "Edge collection needs to be sharded after 'vertex', or use "
-                                       "smart graphs");
+        if (!coll->isSmart()) {
+          std::vector<std::string> eKeys = coll->shardKeys();
+          if ( eKeys.size() != 1 || eKeys[0] != "vertex") {
+            TRI_V8_THROW_EXCEPTION_USAGE(
+                                         "Edge collection needs to be sharded after 'vertex', or use "
+                                         "smart graphs");
+          }
         }
         if (coll->deleted()) {
           TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
         }
+        // smart edge collections contain multiple actual collections
+        std::vector<std::string> actual = coll->realNamesForRead();
+        edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
       } catch (...) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
       }
@@ -1995,7 +2002,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   
   uint64_t en = pregel::PregelFeature::instance()->createExecutionNumber();
-  auto c = std::make_unique<pregel::Conductor>(en, vocbase, vertices, edges,
+  auto c = std::make_unique<pregel::Conductor>(en, vocbase, paramVertices, edgeColls,
                                                algorithm, paramBuilder.slice());
   pregel::PregelFeature::instance()->addExecution(c.get(), en);
   c->start();

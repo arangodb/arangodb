@@ -98,8 +98,8 @@ class GraphStore {
   // ====================== NOT THREAD SAFE ===========================
   void loadShards(WorkerConfig* state, std::function<void()> callback);
   void loadDocument(WorkerConfig* config, std::string const& documentID);
-  void loadDocument(WorkerConfig* config, prgl_shard_t sourceShard,
-                    std::string const& _key);
+  void loadDocument(WorkerConfig* config, PregelShard sourceShard,
+                    PregelKey const& _key);
   // ======================================================================
 
   // only thread safe if your threads coordinate access to memory locations

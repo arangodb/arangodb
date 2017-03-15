@@ -64,7 +64,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   // list of all shards, equal on all workers. Used to avoid storing strings of
   // shard names
   // Instead we have an index identifying a shard name in this vector
-  prgl_shard_t i = 0;
+  PregelShard i = 0;
   for (VPackSlice shard : VPackArrayIterator(globalShards)) {
     ShardID s = shard.copyString();
     _globalShardIDs.push_back(s);
@@ -115,6 +115,7 @@ PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
   ShardID responsibleShard;
   Utils::resolveShard(this, coll, StaticStrings::KeyString, _key, responsibleShard);
 
-  prgl_shard_t source = this->shardId(responsibleShard);
+  PregelShard source = this->shardId(responsibleShard);
   return PregelID(source, _key);
+
 }

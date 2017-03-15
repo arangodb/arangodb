@@ -45,7 +45,7 @@ uint64_t PregelFeature::createExecutionNumber() {
 }
 
 PregelFeature::PregelFeature(application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Pregel") {
+: application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");

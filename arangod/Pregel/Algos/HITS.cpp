@@ -66,8 +66,8 @@ struct HITSComputation
     } else {
       HITSWorkerContext const* ctx = (HITSWorkerContext*)context();
       for (SenderMessage<double> const* message : messages) {
-        // we don't put a valid shard id into the messages FROM our outgoing
-        // messages
+        // we don't put a valid shard id into the messages FROM
+        // our outgoing messages
         if (message->senderId.isValid()) {
           auth += message->value;  // hub from incoming Neighbors
         } else {
@@ -84,7 +84,7 @@ struct HITSComputation
     aggregate<double>(kHubNorm, auth * auth);
 
     // no sender required, the senders have an outgoing edge to us
-    SenderMessage<double> authData(PregelID(invalid_prgl_shard, ""), auth);
+    SenderMessage<double> authData(PregelID(), auth);
     for (SenderMessage<double> const* message : messages) {
       if (message->senderId.isValid()) {  // send to incoming Neighbors
         sendMessage(message->senderId, authData);

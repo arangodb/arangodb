@@ -36,7 +36,7 @@ using namespace arangodb::pregel;
 inline uint8_t _get_leading_zero_count(uint32_t x, uint8_t b) {
   
 #if defined (_MSC_VER)
-  uint32_t leading_zero_len = 32;
+  unsigned long leading_zero_len = 32;
   ::_BitScanReverse(&leading_zero_len, x);
   --leading_zero_len;
   return std::min(b, (uint8_t)leading_zero_len);

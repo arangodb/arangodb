@@ -23,8 +23,15 @@
 
 var arangodb = require('@arangodb');
 var actions = require('@arangodb/actions');
-var db = require('internal').db;
-var graph_module = require('@arangodb/general-graph');
+var internal = require('internal')
+var db = internal.db;
+
+var graph_module;
+if (internal.isEnterprise()) {
+  graph_module = require('@arangodb/smart-graph');
+} else {
+  graph_module = require('@arangodb/general-graph');
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief create a "bad parameter" error
@@ -67,9 +74,9 @@ function post_api_pregel (req, res) {
   if (json.vertexCollections && json.vertexCollections instanceof Array
       && json.edgeCollections && typeof json.edgeCollection === 'string') {
     
-    var executionNum = db._pregelStart(json.vertexCollections,
+    var executionNum = db._pregelStart(json.algorithm,
+                                       json.vertexCollections,
                                        json.edgeCollections,
-                                       json.algorithm,
                                        params);
     actions.resultOk(req, res, actions.HTTP_OK, executionNum);
     
@@ -84,9 +91,9 @@ function post_api_pregel (req, res) {
       var edges = graph._edgeCollections();
       if (edges.length > 0) {
         var edgeCollections = edges.map(e => e.name());
-        var executionNum = db._pregelStart(vertexCollections,
+        var executionNum = db._pregelStart(json.algorithm,
+                                           vertexCollections,
                                            edgeCollections,
-                                           json.algorithm,
                                            params);
         actions.resultOk(req, res, actions.HTTP_OK, executionNum);
         
