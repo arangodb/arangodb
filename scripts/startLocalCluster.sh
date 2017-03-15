@@ -164,7 +164,7 @@ CO_BASE=$(( $PORT_OFFSET + 8530 ))
 DB_BASE=$(( $PORT_OFFSET + 8629 ))
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 
-#rm -rf cluster
+rm -rf cluster
 if [ -d cluster-init ];then
   cp -a cluster-init cluster
 fi

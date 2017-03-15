@@ -51,7 +51,7 @@ function testAlgo(v, e, a, p) {
 
       db.demo_v.all().toArray()
       .forEach(function(d) {
-                 if (d[a]!= -1) {
+                 if (d[a] !== -1) {
                    var diff = Math.abs(d[a] - d.result);
                    if (diff > EPS) {
                      console.log("Error on " + JSON.stringify(d));
@@ -75,7 +75,7 @@ function clientTestSuite () {
     
     setUp : function () {
       
-      var exists = graph_module._list().indexOf("demo") != -1;
+      var exists = graph_module._list().indexOf("demo") !== -1;
       if (exists || db.demo_v) {
         return;
       }
@@ -146,7 +146,7 @@ function clientTestSuite () {
       // should test correct convergence behaviour, might fail if EPS is too low
       testAlgo("demo_v", "demo_e", "pagerank", {threshold:EPS / 10});
     },
-  }
+  };
 };
 
 jsunity.run(clientTestSuite);
