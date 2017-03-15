@@ -146,30 +146,6 @@ ArangoDatabase.prototype._drop = function (name, options) {
   }
 };
 
-ArangoDatabase.prototype._dropView = function (name) {
-  var view = name;
-
-  if (!(name instanceof ArangoView)) {
-    view = internal.db._view(name);
-  }
-
-  if (view === null) {
-    return;
-  }
-
-  try {
-    return view.drop();
-  } catch (err) {
-    // ignore if the collection does not exist
-    if (err instanceof ArangoError &&
-      err.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
-      return;
-    }
-    // rethrow exception
-    throw err;
-  }
-};
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock collectionDatabaseTruncate
 // //////////////////////////////////////////////////////////////////////////////

@@ -107,12 +107,7 @@ PhysicalView* MMFilesView::clone(LogicalView* logical, PhysicalView* physical){
 
 MMFilesView::MMFilesView(LogicalView* view,
                          VPackSlice const& info)
-    : PhysicalView(view, info) {
-  auto pathSlice = info.get("path");
-  if (pathSlice.isString()) {
-    _path = pathSlice.copyString();
-  }
-}
+    : PhysicalView(view, info) {}
 
 MMFilesView::MMFilesView(LogicalView* logical,
                          PhysicalView* physical)
