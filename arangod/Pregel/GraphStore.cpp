@@ -245,8 +245,7 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config,
   }
 
   std::string documentId = trx->extractIdString(opResult.slice());
-  //_index.emplace_back(sourceShard, _key);
-  _index.push_back(VertexEntry(sourceShard, _key));
+  _index.emplace_back(sourceShard, _key);
 
   VertexEntry& entry = _index.back();
   if (_graphFormat->estimatedVertexSize() > 0) {
@@ -368,12 +367,10 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
       if (document.isExternal()) {
         document = document.resolveExternal();
       }
-
+      
       VertexEntry& ventry = _index[vertexOffset];
       ventry._shard = sourceShard;
-      //ventry._key = document.get(StaticStrings::KeyString).copyString();
-      std::string key = document.get(StaticStrings::KeyString).copyString();
-      ventry._key = std::stoull(key);
+      ventry._key = document.get(StaticStrings::KeyString).copyString();
       ventry._edgeDataOffset = edgeOffset;
 
       // load vertex data
@@ -451,14 +448,12 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods* trx,
       }
       
       Edge<E> *edge = _edges->data() + offset;
-      // edge->_toKey = toValue.substr(pos + 1, toValue.length() - pos - 1);
-      std::string toKey = toValue.substr(pos + 1, toValue.length() - pos - 1);
-      edge->_toKey = std::stoull(toKey);
+      edge->_toKey = toValue.substr(pos + 1, toValue.length() - pos - 1);
 
-        // resolve the shard of the target vertex.
+      // resolve the shard of the target vertex.
       ShardID responsibleShard;
       int res = Utils::resolveShard(_config, collectionName,
-                                    StaticStrings::KeyString, toKey, responsibleShard);
+                                    StaticStrings::KeyString, edge->_toKey, responsibleShard);
       
       if (res == TRI_ERROR_NO_ERROR) {
         //PregelShard sourceShard = (PregelShard)_config->shardId(edgeShard);
@@ -524,7 +519,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
       // or there are no more vertices for to store (or the buffer is full)
       V* data = vData + it->_vertexDataOffset;
       b->openObject();
-      b->add(StaticStrings::KeyString, VPackValue(std::to_string(it->key())));
+      b->add(StaticStrings::KeyString, VPackValue(it->key()));
       /// bool store =
       _graphFormat->buildVertexDocument(*(b.get()), data, sizeof(V));
       b->close();

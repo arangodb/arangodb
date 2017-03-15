@@ -53,8 +53,7 @@ void InCache<M>::parseMessages(VPackSlice const& incomingData) {
 
   for (VPackSlice current : VPackArrayIterator(messages)) {
     if (i % 2 == 0) {  // TODO support multiple recipients
-      //key = current.copyString();
-      key = current.getUInt();
+      key = current.copyString();
     } else {
       if (current.isArray()) {
         VPackValueLength c = 0;

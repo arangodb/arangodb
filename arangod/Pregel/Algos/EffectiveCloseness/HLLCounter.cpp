@@ -56,7 +56,7 @@ inline uint8_t _get_leading_zero_count(uint32_t x, uint8_t b) {
 
 static std::hash<PregelID> _hashFn;
 void HLLCounter::addNode(PregelID const& pregelId) {
-  uint64_t hash = _hashFn(pregelId);;
+  uint64_t hash = _hashFn(pregelId);
   // last 6 bits as bucket index
   uint64_t index = hash >> (32 - 6);
   uint8_t rank = _GET_CLZ((hash << 6), 32 - 6);

@@ -129,9 +129,12 @@ void PregelFeature::cleanup(uint64_t executionNumber) {
     _conductors.erase(executionNumber);
   }
   auto wit = _workers.find(executionNumber);
-  if (wit != _workers.end()) {
-    delete (wit->second);
-    _workers.erase(executionNumber);
+  if (wit != _workers.end()) {// unmapping etc might need time
+    _threadPool->enqueue([this, executionNumber]{
+        auto wit = _workers.find(executionNumber);
+        delete (wit->second);
+        _workers.erase(executionNumber);
+    });
   }
 }
 

@@ -23,7 +23,7 @@
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algos/AsyncSCC.h"
 #include "Pregel/Algos/ConnectedComponents.h"
-//#include "Pregel/Algos/DMID/DMID.h"
+#include "Pregel/Algos/DMID/DMID.h"
 #include "Pregel/Algos/EffectiveCloseness/EffectiveCloseness.h"
 #include "Pregel/Algos/HITS.h"
 #include "Pregel/Algos/LabelPropagation.h"
@@ -62,9 +62,9 @@ IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm,
     return new algos::HITS(userParams);
   } else if (algorithm == "labelpropagation") {
     return new algos::LabelPropagation(userParams);
-  } /*else if (algorithm == "dmid") {
+  } else if (algorithm == "dmid") {
     return new algos::DMID(userParams);
-  }*/ else {
+  } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
   }
@@ -115,9 +115,9 @@ IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
     return createWorker(vocbase, new algos::HITS(userParams), body);
   } else if (algorithm == "labelpropagation") {
     return createWorker(vocbase, new algos::LabelPropagation(userParams), body);
-  } /*else if (algorithm == "dmid") {
+  } else if (algorithm == "dmid") {
     return createWorker(vocbase, new algos::DMID(userParams), body);
-  }*/ else {
+  } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
   }

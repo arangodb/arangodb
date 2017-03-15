@@ -30,8 +30,8 @@
 namespace arangodb {
 namespace pregel {
 
-//typedef std::string PregelKey;
-typedef uint64_t PregelKey;
+typedef std::string PregelKey;
+//typedef uint64_t PregelKey;
 typedef uint16_t PregelShard;
 const PregelShard invalid_prgl_shard = -1;
   
@@ -39,10 +39,9 @@ struct PregelID {
   PregelShard shard;
   PregelKey key;
 
-  //PregelID() : shard(0), key("") {}
-  PregelID() : shard(invalid_prgl_shard), key((uint64_t)-1) {}
+  PregelID() : shard(invalid_prgl_shard), key("") {}
   PregelID(PregelShard s, PregelKey const& k) : shard(s), key(k) {}
-  PregelID(PregelShard s, std::string const& k) : shard(s), key(std::stoull(k)) {}
+  //PregelID(PregelShard s, std::string const& k) : shard(s), key(std::stoull(k)) {}
 
 
   inline bool operator==(const PregelID& rhs) const {
@@ -54,7 +53,7 @@ struct PregelID {
   }
 
   bool inline isValid() const {
-    return shard != invalid_prgl_shard && key != (uint64_t)-1;//!key.empty();
+    return shard != invalid_prgl_shard && !key.empty();
   }
 };
 

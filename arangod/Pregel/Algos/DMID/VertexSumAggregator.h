@@ -58,8 +58,7 @@ struct VertexSumAggregator : public IAggregator {
       VPackValueLength i = 0;
       for (VPackSlice const& val : VPackArrayIterator(pair.value)) {
         if (i % 2 == 0) {
-          //key = val.copyString();
-          key = val.getUInt();
+          key = val.copyString();
         } else {
           _entries[shard][key] += val.getNumber<double>();
         }
@@ -77,8 +76,7 @@ struct VertexSumAggregator : public IAggregator {
       VPackValueLength i = 0;
       for (VPackSlice const& val : VPackArrayIterator(pair.value)) {
         if (i % 2 == 0) {
-          //key = val.copyString();
-          key = val.getUInt();
+          key = val.copyString();
         } else {
           _entries[shard][key] = val.getNumber<double>();
         }
