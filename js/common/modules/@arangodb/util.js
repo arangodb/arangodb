@@ -31,6 +31,7 @@ const fs = require('fs');
 const Chalk = require('chalk').constructor;
 const chalk = new Chalk({enabled: true});
 const dedent = require('dedent');
+const internal = require('internal');
 const codeFrame = require('babel-code-frame');
 const stackParser = require('error-stack-parser');
 
@@ -77,7 +78,7 @@ exports.drain = function (generator) {
   return results;
 };
 
-exports.codeFrame = function (e, basePath, withColor = false) {
+exports.codeFrame = function (e, basePath, withColor = internal.COLOR_OUTPUT) {
   try {
     let ctx;
     let err = e;

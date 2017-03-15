@@ -29,8 +29,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const Module = require('module');
-const Chalk = require('chalk').constructor;
-const chalk = new Chalk({enabled: true});
+const chalk = require('chalk');
 const runTests = require('@arangodb/mocha').run;
 const indent = require('@arangodb/util').indentation;
 

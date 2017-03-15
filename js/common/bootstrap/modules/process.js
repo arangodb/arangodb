@@ -14,7 +14,7 @@ global.DEFINE_MODULE('process', (function () {
   exports.env = internal.env;
   exports.argv = [];
   exports.stdout = {
-    isTTY: false,
+    isTTY: internal.COLOR_OUTPUT,
     write(text) {
       console.infoLines(text);
     }
