@@ -395,8 +395,7 @@ endif ()
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/rocksdb/include)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/libcuckoo/include)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.1.4/include)
 
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
@@ -817,7 +816,7 @@ endif ()
 ################################################################################
 
 include_directories(${V8_INCLUDE_DIR})
-add_definitions("-DARANGODB_V8_VERSION=\"5.7.0.0\"")
+add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 
 ################################################################################
 ## ZLIB

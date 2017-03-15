@@ -93,7 +93,7 @@ void MMFilesRevisionsCache::clear() {
   _positions.truncate([](MMFilesDocumentPosition&) { return true; });
 }
 
-void MMFilesRevisionsCache::insert(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock) {
+MMFilesDocumentPosition MMFilesRevisionsCache::insert(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock) {
   TRI_ASSERT(revisionId != 0);
   TRI_ASSERT(dataptr != nullptr);
 
@@ -101,9 +101,17 @@ void MMFilesRevisionsCache::insert(TRI_voc_rid_t revisionId, uint8_t const* data
   int res = _positions.insert(nullptr, MMFilesDocumentPosition(revisionId, dataptr, fid, isInWal));
 
   if (res != TRI_ERROR_NO_ERROR) {
-    _positions.removeByKey(nullptr, &revisionId);
+    MMFilesDocumentPosition old = _positions.removeByKey(nullptr, &revisionId);
     _positions.insert(nullptr, MMFilesDocumentPosition(revisionId, dataptr, fid, isInWal));
+    return old;
   }
+
+  return MMFilesDocumentPosition();
+}
+
+void MMFilesRevisionsCache::insert(MMFilesDocumentPosition const& position, bool shouldLock) {
+  CONDITIONAL_WRITE_LOCKER(locker, _lock, shouldLock);
+  _positions.insert(nullptr, position);
 }
 
 void MMFilesRevisionsCache::update(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) {

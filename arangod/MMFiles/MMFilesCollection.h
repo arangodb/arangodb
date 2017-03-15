@@ -29,6 +29,7 @@
 #include "Indexes/IndexLookupContext.h"
 #include "MMFiles/MMFilesDatafileStatistics.h"
 #include "MMFiles/MMFilesDitch.h"
+#include "MMFiles/MMFilesDocumentPosition.h"
 #include "MMFiles/MMFilesRevisionsCache.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -352,8 +353,10 @@ class MMFilesCollection final : public PhysicalCollection {
                         TRI_voc_rid_t newRevisionId,
                         velocypack::Slice const& newDoc);
 
-  void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
-                      TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
+  MMFilesDocumentPosition insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
+                                         TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
+
+  void insertRevision(MMFilesDocumentPosition const& position, bool shouldLock);
 
   void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
                       TRI_voc_fid_t fid, bool isInWal);

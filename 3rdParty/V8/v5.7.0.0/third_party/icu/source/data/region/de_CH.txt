@@ -1,0 +1,15 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+de_CH{
+    Countries{
+        BN{"Brunei"}
+        BW{"Botswana"}
+        BY{"Weissrussland"}
+        CV{"Kapverden"}
+        GB{"Grossbritannien"}
+        QO{"Äusseres Ozeanien"}
+        SB{"Salomon-Inseln"}
+        ZW{"Zimbabwe"}
+    }
+    Version{"2.1.29.33"}
+}

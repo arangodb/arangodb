@@ -1,0 +1,26 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+da{
+    Version{"2.1.19.14"}
+    collations{
+        search{
+            Sequence{
+                "[import und-u-co-search]"
+                "[import da-u-co-standard]"
+                "[caseFirst off]"
+            }
+            Version{"30.0.2"}
+        }
+        standard{
+            Sequence{
+                "[caseFirst upper]"
+                "&D<<đ<<<Đ<<ð<<<Ð"
+                "&t<<<þ/h"
+                "&T<<<Þ/H"
+                "&Y<<ü<<<Ü<<ű<<<Ű"
+                "&[before 1]ǀ<æ<<<Æ<<ä<<<Ä<ø<<<Ø<<ö<<<Ö<<ő<<<Ő<<œ<<<Œ<å<<<Å<<<aa<<<Aa<<<AA"
+            }
+            Version{"30.0.2"}
+        }
+    }
+}

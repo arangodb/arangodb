@@ -1,0 +1,215 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_AU{
+    %%Parent{"en_001"}
+    NumberElements{
+        latn{
+            symbols{
+                exponential{"e"}
+            }
+        }
+    }
+    Version{"2.1.30.50"}
+    calendar{
+        generic{
+            availableFormats{
+                yMEd{"E, dd/MM/y"}
+                yMd{"dd/MM/y"}
+            }
+            intervalFormats{
+                MEd{
+                    M{"E, d/M – E, d/M"}
+                    d{"E, d/M – E, d/M"}
+                }
+                MMMEd{
+                    M{"E, d MMM – E, d MMM"}
+                    d{"E, d MMM – E, d MMM"}
+                }
+                yMMMEd{
+                    d{"E, d MMM – E, d MMM y G"}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkers{
+                "am",
+                "pm",
+            }
+            AmPmMarkersAbbr{
+                "am",
+                "pm",
+            }
+            AmPmMarkersNarrow{
+                "am",
+                "pm",
+            }
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d MMMM y",
+                "d MMMM y",
+                "d MMM y",
+                "d/M/yy",
+                "{1}, {0}",
+                "{1} 'at' {0}",
+                "{1} 'at' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "Sun.",
+                        "Mon.",
+                        "Tue.",
+                        "Wed.",
+                        "Thu.",
+                        "Fri.",
+                        "Sat.",
+                    }
+                    narrow{
+                        "Su.",
+                        "M.",
+                        "Tu.",
+                        "W.",
+                        "Th.",
+                        "F.",
+                        "Sa.",
+                    }
+                    short{
+                        "Su.",
+                        "Mon.",
+                        "Tu.",
+                        "Wed.",
+                        "Th.",
+                        "Fri.",
+                        "Sat.",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "Su.",
+                        "M.",
+                        "Tu.",
+                        "W.",
+                        "Th.",
+                        "F.",
+                        "Sa.",
+                    }
+                    short{
+                        "Su.",
+                        "Mon.",
+                        "Tu.",
+                        "Wed.",
+                        "Th.",
+                        "Fri.",
+                        "Sat.",
+                    }
+                }
+            }
+            dayPeriod{
+                format{
+                    abbreviated{
+                        afternoon1{"afternoon"}
+                        evening1{"evening"}
+                        midnight{"midnight"}
+                        morning1{"morning"}
+                        night1{"night"}
+                        noon{"midday"}
+                    }
+                    narrow{
+                        afternoon1{"afternoon"}
+                        evening1{"evening"}
+                        midnight{"midnight"}
+                        morning1{"morning"}
+                        night1{"night"}
+                        noon{"midday"}
+                    }
+                    wide{
+                        afternoon1{"in the afternoon"}
+                        evening1{"in the evening"}
+                        midnight{"midnight"}
+                        morning1{"in the morning"}
+                        night1{"at night"}
+                        noon{"midday"}
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        noon{"midday"}
+                    }
+                    narrow{
+                        am{"am"}
+                        noon{"midday"}
+                        pm{"pm"}
+                    }
+                    wide{
+                        am{"am"}
+                        noon{"midday"}
+                        pm{"pm"}
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "Jan.",
+                        "Feb.",
+                        "Mar.",
+                        "Apr.",
+                        "May",
+                        "Jun.",
+                        "Jul.",
+                        "Aug.",
+                        "Sep.",
+                        "Oct.",
+                        "Nov.",
+                        "Dec.",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Jan.",
+                        "Feb.",
+                        "Mar.",
+                        "Apr.",
+                        "May",
+                        "Jun.",
+                        "Jul.",
+                        "Aug.",
+                        "Sep.",
+                        "Oct.",
+                        "Nov.",
+                        "Dec.",
+                    }
+                }
+            }
+        }
+    }
+    characterLabel{
+        nonspacing{"Non-spacing"}
+    }
+    fields{
+        hour-short{
+            dn{"h"}
+        }
+        quarter-narrow{
+            relativeTime{
+                past{
+                    one{"in {0} qtr. ago"}
+                    other{"{0} qtrs. ago"}
+                }
+            }
+        }
+    }
+    listPattern{
+        standard{
+            end{"{0} and {1}"}
+        }
+        standard-short{
+            end{"{0} and {1}"}
+        }
+    }
+}
