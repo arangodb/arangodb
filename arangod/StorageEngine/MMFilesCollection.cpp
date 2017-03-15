@@ -1177,10 +1177,14 @@ uint8_t const* MMFilesCollection::lookupRevisionVPackConditional(TRI_voc_rid_t r
   return vpack; 
 }
 
-void MMFilesCollection::insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock) {
+MMFilesDocumentPosition MMFilesCollection::insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock) {
   TRI_ASSERT(revisionId != 0);
   TRI_ASSERT(dataptr != nullptr);
-  _revisionsCache.insert(revisionId, dataptr, fid, isInWal, shouldLock);
+  return _revisionsCache.insert(revisionId, dataptr, fid, isInWal, shouldLock);
+}
+
+void MMFilesCollection::insertRevision(MMFilesDocumentPosition const& position, bool shouldLock) {
+  return _revisionsCache.insert(position, shouldLock);
 }
 
 void MMFilesCollection::updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) {

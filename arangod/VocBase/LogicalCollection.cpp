@@ -48,6 +48,7 @@
 #include "RestServer/RevisionCacheFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/MMFilesDocumentOperation.h"
+#include "StorageEngine/MMFilesDocumentPosition.h"
 #include "StorageEngine/MMFilesWalMarker.h"
 #include "StorageEngine/MMFilesWalSlots.h"
 #include "StorageEngine/StorageEngine.h"
@@ -2157,8 +2158,9 @@ int LogicalCollection::insert(Transaction* trx, VPackSlice const slice,
   operation.setRevisions(DocumentDescriptor(),
                          DocumentDescriptor(revisionId, doc.begin()));
 
+  MMFilesDocumentPosition old;
   try {
-    insertRevision(revisionId, marker->vpack(), 0, true);
+    old = insertRevision(revisionId, marker->vpack(), 0, true);
     // and go on with the insertion...
   } catch (basics::Exception const& ex) {
     return ex.code();
@@ -2193,6 +2195,9 @@ int LogicalCollection::insert(Transaction* trx, VPackSlice const slice,
       // from the list of revisions 
       try {
         removeRevision(revisionId, false);
+        if (old) {
+          insertRevision(old, true);
+        }
       } catch (...) {
       }
       throw;
@@ -2200,6 +2205,10 @@ int LogicalCollection::insert(Transaction* trx, VPackSlice const slice,
 
     if (res != TRI_ERROR_NO_ERROR) {
       operation.revert(trx);
+
+      if (old) {
+        insertRevision(old, true);
+      }
     }
   }
 
@@ -3848,12 +3857,16 @@ bool LogicalCollection::readRevisionConditional(Transaction* trx,
                                                     maxTick, excludeWal, true);
 }
 
-void LogicalCollection::insertRevision(TRI_voc_rid_t revisionId,
+MMFilesDocumentPosition LogicalCollection::insertRevision(TRI_voc_rid_t revisionId,
                                        uint8_t const* dataptr,
                                        TRI_voc_fid_t fid, bool isInWal) {
   // note: there is no need to insert into the cache here as the data points to
   // temporary storage
-  getPhysical()->insertRevision(revisionId, dataptr, fid, isInWal, true);
+  return getPhysical()->insertRevision(revisionId, dataptr, fid, isInWal, true);
+}
+
+void LogicalCollection::insertRevision(MMFilesDocumentPosition const& position, bool shouldLock) {
+  return getPhysical()->insertRevision(position, shouldLock);
 }
 
 void LogicalCollection::updateRevision(TRI_voc_rid_t revisionId,
