@@ -41,9 +41,11 @@ main(){
     #test for basic tools
     test_tools
 
-    ./scripts/build-deb.sh
+    ./scripts/build-deb.sh --buildDir build-docu
 
-    ln -s build-deb build
+    # we expect this to be a symlink, so no -r ;-)
+    rm -f build
+    ln -s build-docu build
     
     ./utils/generateExamples.sh
     ./utils/generateSwagger.sh
@@ -51,5 +53,13 @@ main(){
     make build-dist-books
 }
 
-main "$@"
+if test "$1" != "docker"; then
+    cd "$(dirname "${BASH_SOURCE[0]}")/.."
+    pwd
+    WD=`pwd`
+    docker run -it --volume ${WD}:/build arangodb/documentation-builder /build/scripts/generateDocumentation.sh docker $@
 
+else
+    cd /build
+    main "$@"
+fi
