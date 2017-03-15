@@ -58,7 +58,7 @@ class WorkerConfig {
 
   inline bool lazyLoading() const { return _lazyLoading; }
 
-  inline uint32_t parallelism() const { return _parallelism; }
+  inline uint64_t parallelism() const { return _parallelism; }
 
   inline std::string const& coordinatorId() const { return _coordinatorId; }
 

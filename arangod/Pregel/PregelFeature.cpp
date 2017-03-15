@@ -32,6 +32,7 @@
 #include "Pregel/Utils.h"
 #include "Pregel/Worker.h"
 
+using namespace arangodb;
 using namespace arangodb::pregel;
 
 static PregelFeature* Instance = nullptr;
