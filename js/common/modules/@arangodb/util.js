@@ -102,3 +102,14 @@ exports.shallowCopy = function (src) {
   }
   return dest;
 };
+
+exports.indentation = function (level, indentWith) {
+  if (!indentWith) {
+    indentWith = '    ';
+  }
+  let padding = '';
+  for (let i = 0; i < level; i++) {
+    padding += indentWith;
+  }
+  return padding;
+};
