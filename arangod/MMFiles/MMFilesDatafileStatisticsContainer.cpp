@@ -21,12 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DatafileStatisticsContainer.h"
+#include "MMFilesDatafileStatisticsContainer.h"
 
 using namespace arangodb;
 
 /// @brief create an empty datafile statistics container
-DatafileStatisticsContainer::DatafileStatisticsContainer()
+MMFilesDatafileStatisticsContainer::MMFilesDatafileStatisticsContainer()
     : numberAlive(0),
       numberDead(0),
       numberDeletions(0),
@@ -35,8 +35,8 @@ DatafileStatisticsContainer::DatafileStatisticsContainer()
       numberUncollected(0) {}
 
 /// @brief update statistics from another container
-void DatafileStatisticsContainer::update(
-    DatafileStatisticsContainer const& other) {
+void MMFilesDatafileStatisticsContainer::update(
+    MMFilesDatafileStatisticsContainer const& other) {
   numberAlive += other.numberAlive;
   numberDead += other.numberDead;
   numberDeletions += other.numberDeletions;
@@ -46,7 +46,7 @@ void DatafileStatisticsContainer::update(
 }
 
 /// @brief flush the statistics values
-void DatafileStatisticsContainer::reset() {
+void MMFilesDatafileStatisticsContainer::reset() {
   numberAlive = 0;
   numberDead = 0;
   numberDeletions = 0;

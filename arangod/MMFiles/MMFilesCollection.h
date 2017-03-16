@@ -28,6 +28,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexLookupContext.h"
 #include "MMFiles/MMFilesDatafileStatistics.h"
+#include "MMFiles/MMFilesDatafileStatisticsContainer.h"
 #include "MMFiles/MMFilesDitch.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "MMFiles/MMFilesRevisionsCache.h"
@@ -71,8 +72,8 @@ class MMFilesCollection final : public PhysicalCollection {
     arangodb::MMFilesPrimaryIndex* _primaryIndex;
     TRI_voc_tid_t _tid;
     TRI_voc_fid_t _fid;
-    std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer*> _stats;
-    DatafileStatisticsContainer* _dfi;
+    std::unordered_map<TRI_voc_fid_t, MMFilesDatafileStatisticsContainer*> _stats;
+    MMFilesDatafileStatisticsContainer* _dfi;
     transaction::Methods* _trx;
     ManagedDocumentResult _mmdr;
     IndexLookupContext _context;
@@ -185,7 +186,7 @@ class MMFilesCollection final : public PhysicalCollection {
   int sealDatafile(MMFilesDatafile* datafile, bool isCompactor);
 
   /// @brief increase dead stats for a datafile, if it exists
-  void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) {
+  void updateStats(TRI_voc_fid_t fid, MMFilesDatafileStatisticsContainer const& values) {
     _datafileStatistics.update(fid, values);
   }
    
@@ -414,7 +415,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief create statistics for a datafile, using the stats provided
   void createStats(TRI_voc_fid_t fid,
-                   DatafileStatisticsContainer const& values) {
+                   MMFilesDatafileStatisticsContainer const& values) {
     _datafileStatistics.create(fid, values);
     }
 

@@ -21,12 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_MMFILES_DATAFILE_STATISTICS_H
-#define ARANGOD_STORAGE_ENGINE_MMFILES_DATAFILE_STATISTICS_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_DATAFILE_STATISTICS_H
+#define ARANGOD_MMFILES_MMFILES_DATAFILE_STATISTICS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "VocBase/DatafileStatisticsContainer.h"
+#include "MMFiles/MMFilesDatafileStatisticsContainer.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -44,19 +44,19 @@ class MMFilesDatafileStatistics {
   void create(TRI_voc_fid_t);
 
   /// @brief create statistics for a datafile, using the stats provided
-  void create(TRI_voc_fid_t, DatafileStatisticsContainer const&);
+  void create(TRI_voc_fid_t, MMFilesDatafileStatisticsContainer const&);
 
   /// @brief remove statistics for a datafile
   void remove(TRI_voc_fid_t);
 
   /// @brief merge statistics for a datafile
-  void update(TRI_voc_fid_t, DatafileStatisticsContainer const&);
+  void update(TRI_voc_fid_t, MMFilesDatafileStatisticsContainer const&);
 
   /// @brief merge statistics for a datafile, by copying the stats from another
   void update(TRI_voc_fid_t, TRI_voc_fid_t);
 
   /// @brief replace statistics for a datafile
-  void replace(TRI_voc_fid_t, DatafileStatisticsContainer const&);
+  void replace(TRI_voc_fid_t, MMFilesDatafileStatisticsContainer const&);
 
   /// @brief increase dead stats for a datafile, if it exists
   void increaseDead(TRI_voc_fid_t, int64_t, int64_t);
@@ -65,17 +65,17 @@ class MMFilesDatafileStatistics {
   void increaseUncollected(TRI_voc_fid_t, int64_t);
 
   /// @brief return a copy of the datafile statistics for a file
-  DatafileStatisticsContainer get(TRI_voc_fid_t);
+  MMFilesDatafileStatisticsContainer get(TRI_voc_fid_t);
 
   /// @brief return aggregated datafile statistics for all files
-  DatafileStatisticsContainer all();
+  MMFilesDatafileStatisticsContainer all();
 
  private:
   /// @brief lock to protect the statistics
   arangodb::basics::ReadWriteLock _lock;
 
   /// @brief per-file statistics
-  std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer*> _stats;
+  std::unordered_map<TRI_voc_fid_t, MMFilesDatafileStatisticsContainer*> _stats;
 };
 }
 

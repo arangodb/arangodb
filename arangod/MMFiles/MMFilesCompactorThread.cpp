@@ -33,6 +33,7 @@
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesCompactionLocker.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesDatafileStatisticsContainer.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
@@ -73,7 +74,7 @@ struct CompactionContext {
   transaction::Methods* _trx;
   LogicalCollection* _collection;
   MMFilesDatafile* _compactor;
-  DatafileStatisticsContainer _dfi;
+  MMFilesDatafileStatisticsContainer _dfi;
   bool _keepDeletions;
 
   CompactionContext(CompactionContext const&) = delete;
@@ -702,7 +703,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     MMFilesDatafile* df = datafiles[i];
     TRI_ASSERT(df != nullptr);
 
-    DatafileStatisticsContainer dfi = static_cast<MMFilesCollection*>(collection->getPhysical())->_datafileStatistics.get(df->fid());
+    MMFilesDatafileStatisticsContainer dfi = static_cast<MMFilesCollection*>(collection->getPhysical())->_datafileStatistics.get(df->fid());
 
     if (dfi.numberUncollected > 0) {
       LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "cannot compact datafile " << df->fid() << " of collection '" << collection->name() << "' because it still has uncollected entries";
