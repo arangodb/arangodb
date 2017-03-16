@@ -156,7 +156,6 @@ describe ArangoDB do
         cmd3 = api
         doc3 = ArangoDB.log_get("#{prefix}-short-list", cmd3)
         doc3.code.should eq(200)
-        puts doc3
         doc3.headers['content-type'].should eq("application/json; charset=utf-8")
         doc3.parsed_response.length.should eq(2)
         doc3.parsed_response[0]['name'].should eq("abc")
