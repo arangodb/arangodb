@@ -58,9 +58,9 @@ function logStats (stats) {
     chalk.bold(stats.duration + 'ms')
   } (${
     chalk.green(stats.passes)
-  } | ${
+  }|${
     chalk.red(stats.failures)
-  } | ${
+  }|${
     chalk.cyan(stats.pending)
   })`);
 }
