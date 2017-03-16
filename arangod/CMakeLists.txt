@@ -273,6 +273,7 @@ SET(ARANGOD_SOURCES
   RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/UnitTestsFeature.cpp
   RestServer/UpgradeFeature.cpp
+  RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
   RestServer/WorkMonitorFeature.cpp
   Scheduler/Acceptor.cpp

@@ -185,9 +185,6 @@ struct TRI_vocbase_t {
   std::unordered_map<TRI_server_id_t, std::pair<double, TRI_voc_tick_t>>
       _replicationClients;
 
-  // view factory
-  std::unordered_map<std::string, arangodb::ViewCreator> _viewImplementations;
-
  public:
   arangodb::basics::DeadlockDetector<arangodb::LogicalCollection>
       _deadlockDetector;
@@ -308,13 +305,6 @@ struct TRI_vocbase_t {
 
   /// @brief unloads a collection
   int unloadCollection(arangodb::LogicalCollection* collection, bool force);
-
-  /// @brief adds a new view implementation
-  void registerViewImplementation(std::string const& type,
-                                  arangodb::ViewCreator creator);
-
-  /// @brief removes a view implementation
-  bool unregisterViewImplementation(std::string const& type);
 
   /// @brief creates a new view from parameter set
   /// view id is normally passed with a value of 0

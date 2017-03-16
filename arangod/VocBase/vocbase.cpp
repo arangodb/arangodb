@@ -49,6 +49,7 @@
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionKeysRepository.h"
@@ -1258,24 +1259,27 @@ void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) {
   collection->_lock.unlock();
 }
 
-void TRI_vocbase_t::registerViewImplementation(std::string const& type,
-                                               ViewCreator creator) {
-  _viewImplementations.emplace(type, creator);
-}
-
-bool TRI_vocbase_t::unregisterViewImplementation(std::string const& type) {
-  return (_viewImplementations.erase(type) > 0);
-}
-
 /// @brief creates a new view, worker function
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
     VPackSlice parameters, TRI_voc_cid_t& id) {
   std::string name = arangodb::basics::VelocyPackHelper::getStringValue(
       parameters, "name", "");
-  TRI_ASSERT(!name.empty());
+ 
+  // check that the name does not contain any strange characters
+  if (!LogicalView::IsAllowedName(name)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  }
+   
+  std::string type = arangodb::basics::VelocyPackHelper::getStringValue(
+      parameters, "type", "");
+    
+  ViewTypesFeature* viewTypesFeature = 
+      application_features::ApplicationServer::getFeature<ViewTypesFeature>("ViewTypes");
+
+  // will throw if type is invalid
+  ViewCreator& creator = viewTypesFeature->creator(type);
 
   // Try to create a new view. This is not registered yet
-
   std::shared_ptr<arangodb::LogicalView> view =
       std::make_shared<arangodb::LogicalView>(this, parameters);
   TRI_ASSERT(view != nullptr);
@@ -1300,12 +1304,9 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
 
     // now let's actually create the backing implementation
     /* no implementations exist yet, need a dummy for testing
-    auto creator = _viewImplementations.find(view->type());
-    if (creator != _viewImplementations.end()) {
-      view->spawnImplementation(*creator);
-    } else {
-      throw;  // no creator found for that type
-    }*/
+
+    view->spawnImplementation(*creator);
+    */
 
     events::CreateView(name, TRI_ERROR_NO_ERROR);
     return view;
@@ -1322,11 +1323,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
 /// but the functionality is not advertised
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
     VPackSlice parameters, TRI_voc_cid_t id) {
-  // check that the name does not contain any strange characters
-  if (!LogicalView::IsAllowedName(parameters)) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-  }
-
+  
   READ_LOCKER(readLocker, _inventoryLock);
 
   // note: id may be modified by this function call

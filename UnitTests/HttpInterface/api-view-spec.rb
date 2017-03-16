@@ -52,24 +52,39 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(400)
         doc.parsed_response['errorNum'].should eq(400)
       end
+      
+      it "creating a view invalid type" do
+        cmd = api
+        body = <<-END
+               { "name": "test",
+                 "type": "foobar" }
+               END
+        doc = ArangoDB.log_post("#{prefix}-create-invalid-type", cmd, :body => body)
+
+        doc.code.should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(10)
+      end
 
       it "duplicate name" do
         cmd1 = api
         body1 = <<-END
                { "name": "dup",
-                 "type": "type1" }
+                 "type": "test" }
                END
         doc1 = ArangoDB.log_post("#{prefix}-create-duplicate", cmd1, :body => body1)
 
         doc1.code.should eq(201)
         doc1.headers['content-type'].should eq("application/json; charset=utf-8")
         doc1.parsed_response['name'].should eq("dup")
-        doc1.parsed_response['type'].should eq("type1")
+        doc1.parsed_response['type'].should eq("test")
 
         cmd2 = api
         body2 = <<-END
                { "name": "dup",
-                 "type": "type2" }
+                 "type": "test" }
                END
         doc2 = ArangoDB.log_post("#{prefix}-create-duplicate", cmd1, :body => body2)
 
@@ -93,14 +108,14 @@ describe ArangoDB do
         cmd = api
         body = <<-END
                { "name": "abc",
-                 "type": "def" }
+                 "type": "test" }
                END
         doc = ArangoDB.log_post("#{prefix}-create-a-view", cmd, :body => body)
 
         doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['name'].should eq("abc")
-        doc.parsed_response['type'].should eq("def")
+        doc.parsed_response['type'].should eq("test")
       end
 
       it "dropping a view" do
@@ -134,24 +149,24 @@ describe ArangoDB do
         cmd1 = api
         body1 = <<-END
                {"name": "abc",
-                "type": "type1"}
+                "type": "test"}
                END
         doc1 = ArangoDB.log_post("#{prefix}-short-list", cmd1, :body => body1)
         doc1.code.should eq(201)
         doc1.headers['content-type'].should eq("application/json; charset=utf-8")
         doc1.parsed_response['name'].should eq("abc")
-        doc1.parsed_response['type'].should eq("type1")
+        doc1.parsed_response['type'].should eq("test")
 
         cmd2 = api
         body2 = <<-END
                {"name": "def",
-                "type": "type2"}
+                "type": "test"}
                END
         doc2 = ArangoDB.log_post("#{prefix}-short-list", cmd2, :body => body2)
         doc2.code.should eq(201)
         doc2.headers['content-type'].should eq("application/json; charset=utf-8")
         doc2.parsed_response['name'].should eq("def")
-        doc2.parsed_response['type'].should eq("type2")
+        doc2.parsed_response['type'].should eq("test")
 
         cmd3 = api
         doc3 = ArangoDB.log_get("#{prefix}-short-list", cmd3)
@@ -160,8 +175,8 @@ describe ArangoDB do
         doc3.parsed_response.length.should eq(2)
         doc3.parsed_response[0]['name'].should eq("abc")
         doc3.parsed_response[1]['name'].should eq("def")
-        doc3.parsed_response[0]['type'].should eq("type1")
-        doc3.parsed_response[1]['type'].should eq("type2")
+        doc3.parsed_response[0]['type'].should eq("test")
+        doc3.parsed_response[1]['type'].should eq("test")
       end
     end
 
