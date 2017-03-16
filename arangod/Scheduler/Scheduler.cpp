@@ -92,8 +92,8 @@ class SchedulerThread : public Thread {
  public:
   void run() {
     _scheduler->incRunning();
-    LOG_TOPIC(DEBUG, Logger::THREADS) << "running (" << _scheduler->infoStatus()
-                                      << ")";
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "started thread ("
+                                      << _scheduler->infoStatus() << ")";
 
     auto start = std::chrono::steady_clock::now();
 
@@ -102,6 +102,8 @@ class SchedulerThread : public Thread {
       static double MIN_SECONDS = 30;
 
       size_t counter = 0;
+      bool doDecrement = true;
+
       while (!_scheduler->isStopping()) {
         _service->run_one();
 
@@ -114,17 +116,22 @@ class SchedulerThread : public Thread {
           if (diff.count() > MIN_SECONDS) {
             start = std::chrono::steady_clock::now();
 
-            if (_scheduler->stopThread()) {
+            if (_scheduler->shouldStopThread()) {
               auto n = _scheduler->decRunning();
 
-              if (n <= 2) {
+              if (n <= _scheduler->minimum()) {
                 _scheduler->incRunning();
               } else {
+                doDecrement = false;
                 break;
               }
             }
           }
         }
+      }
+
+      if (doDecrement) {
+        _scheduler->decRunning();
       }
 
       LOG_TOPIC(DEBUG, Logger::THREADS) << "stopped ("
@@ -153,28 +160,24 @@ class SchedulerThread : public Thread {
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-Scheduler::Scheduler(size_t nrThreads, size_t maxQueueSize)
-    : _nrThreads(nrThreads),
+Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrDesired, uint64_t nrMaximum,
+                     uint64_t maxQueueSize)
+    : _stopping(false),
       _maxQueueSize(maxQueueSize),
-      _stopping(false),
+      _nrMinimum(nrMinimum),
+      _nrDesired(nrDesired),
+      _nrMaximum(nrMaximum),
       _nrWorking(0),
+      _nrQueued(0),
       _nrBlocked(0),
-      _nrRunning(0),
-      _nrMinimal(0),
-      _nrMaximal(0),
-      _nrRealMaximum(0),
-      _lastThreadWarning(0) {
+      _nrRunning(0) {
   // setup signal handlers
   initializeSignalHandlers();
 }
 
 Scheduler::~Scheduler() {
   if (_threadManager != nullptr) {
-    try {
-      _threadManager->cancel();
-    } catch (...) {
-      // must not throw in the dtor
-    }
+    _threadManager->cancel();
   }
 
   try {
@@ -191,9 +194,13 @@ Scheduler::~Scheduler() {
 // -----------------------------------------------------------------------------
 
 void Scheduler::post(std::function<void()> callback) {
+  ++_nrQueued;
+
   _ioService.get()->post([this, callback]() {
     JobGuard guard(this);
     guard.work();
+
+    --_nrQueued;
 
     callback();
   });
@@ -203,20 +210,11 @@ bool Scheduler::start(ConditionVariable* cv) {
   // start the I/O
   startIoService();
 
-  // initialize thread handling
-  if (_nrMaximal <= 0) {
-    _nrMaximal = _nrThreads;
-  }
+  TRI_ASSERT(0 < _nrMinimum);
+  TRI_ASSERT(_nrMinimum <= _nrDesired);
+  TRI_ASSERT(_nrDesired <= _nrMaximum);
 
-  if (_nrRealMaximum <= 0) {
-    _nrRealMaximum = 4 * _nrMaximal;
-  }
-
-  if (_nrRealMaximum <= 64) {
-    _nrRealMaximum = 64;
-  }
-
-  for (size_t i = 0; i < 2; ++i) {
+  for (size_t i = 0; i < (size_t)_nrMinimum; ++i) {
     startNewThread();
   }
 
@@ -224,7 +222,7 @@ bool Scheduler::start(ConditionVariable* cv) {
   startRebalancer();
 
   // initialize the queue handling
-  _jobQueue.reset(new JobQueue(_maxQueueSize, _ioService.get()));
+  _jobQueue.reset(new JobQueue(_maxQueueSize, this));
   _jobQueue->start();
 
   // done
@@ -241,7 +239,7 @@ void Scheduler::startIoService() {
 }
 
 void Scheduler::startRebalancer() {
-  std::chrono::milliseconds interval(500);
+  std::chrono::milliseconds interval(100);
   _threadManager.reset(new boost::asio::steady_timer(*_managerService));
 
   _threadHandler = [this, interval](const boost::system::error_code& error) {
@@ -257,8 +255,6 @@ void Scheduler::startRebalancer() {
 
   _threadManager->expires_from_now(interval);
   _threadManager->async_wait(_threadHandler);
-
-  _lastThreadWarning.store(TRI_microtime());
 }
 
 void Scheduler::startManagerThread() {
@@ -279,20 +275,52 @@ void Scheduler::startNewThread() {
   thread->start();
 }
 
-bool Scheduler::stopThread() {
-  if (_nrRunning <= _nrMinimal) {
+bool Scheduler::shouldStopThread() {
+  if (_nrRunning <= _nrWorking + _nrQueued + _nrMinimum) {
     return false;
   }
 
-  if (_nrRunning >= 3) {
-    int64_t low = ((_nrRunning <= 4) ? 0 : (_nrRunning * 1 / 4)) - _nrBlocked;
-
-    if (_nrWorking <= low) {
-      return true;
-    }
+  if (_nrMinimum + _nrBlocked < _nrRunning) {
+    return true;
   }
 
   return false;
+}
+
+bool Scheduler::shouldQueueMore() {
+  if (_nrWorking + _nrQueued + _nrMinimum < _nrMaximum) {
+    return true;
+  }
+
+  return false;
+}
+
+bool Scheduler::hasQueueCapacity() {
+  if (_nrWorking + _nrQueued + _nrMinimum >= _nrMaximum) {
+    return false;
+  }
+
+  auto jobQueue = _jobQueue.get();
+  auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
+
+  return queueSize == 0;
+}
+
+bool Scheduler::queue(std::unique_ptr<Job> job) {
+  return _jobQueue->queue(std::move(job));
+}
+
+std::string Scheduler::infoStatus() {
+  auto jobQueue = _jobQueue.get();
+  auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
+
+  return "working: " + std::to_string(_nrWorking) + ", queued: " +
+         std::to_string(_nrQueued) + ", blocked: " +
+         std::to_string(_nrBlocked) + ", running: " +
+         std::to_string(_nrRunning) + ", outstanding: " +
+         std::to_string(queueSize) + ", min/des/max: " +
+         std::to_string(_nrMinimum) + "/" + std::to_string(_nrDesired) + "/" +
+         std::to_string(_nrMaximum);
 }
 
 void Scheduler::threadDone(Thread* thread) {
@@ -326,48 +354,19 @@ void Scheduler::deleteOldThreads() {
 }
 
 void Scheduler::rebalanceThreads() {
-  static double const MIN_WARN_INTERVAL = 10;
-  static double const MIN_ERR_INTERVAL = 300;
+  static uint64_t count = 0;
 
-  int64_t high = (_nrRunning <= 4) ? 1 : (_nrRunning * 11 / 16);
+  ++count;
 
-  LOG_TOPIC(DEBUG, Logger::THREADS) << "rebalancing threads, high: " << high
-                                    << ", " << infoStatus();
-
-  if (_nrWorking >= high) {
-    if (_nrRunning < _nrMaximal + _nrBlocked &&
-        _nrRunning < _nrRealMaximum) {  // added by Max 22.12.2016
-      // otherwise we exceed the total maximum
-      startNewThread();
-      return;
-    }
+  if ((count % 5) == 0) {
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "rebalancing threads: " << infoStatus();
+  } else {
+    LOG_TOPIC(TRACE, Logger::THREADS) << "rebalancing threads: " << infoStatus();
   }
 
-  if (_nrWorking >= _nrMaximal + _nrBlocked || _nrRunning < _nrMinimal) {
-    double ltw = _lastThreadWarning.load();
-    double now = TRI_microtime();
-
-    if (_nrRunning >= _nrRealMaximum) {
-      if (ltw - now > MIN_ERR_INTERVAL) {
-        LOG_TOPIC(ERR, Logger::THREADS) << "too many threads (" << infoStatus()
-                                        << ")";
-        _lastThreadWarning.store(now);
-      }
-    } else {
-      if (_nrRunning >= _nrRealMaximum * 3 / 4) {
-        if (ltw - now > MIN_WARN_INTERVAL) {
-          LOG_TOPIC(WARN, Logger::THREADS)
-              << "number of threads is reaching a critical limit ("
-              << infoStatus() << ")";
-          _lastThreadWarning.store(now);
-        }
-      }
-
-      LOG_TOPIC(DEBUG, Logger::THREADS) << "overloading threads ("
-                                        << infoStatus() << ")";
-
-      startNewThread();
-    }
+  while (_nrRunning < _nrWorking + _nrQueued + _nrMinimum) {
+    startNewThread();
+    usleep(5000);
   }
 }
 
