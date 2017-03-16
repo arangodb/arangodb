@@ -57,7 +57,7 @@ WorkerContext* LineRank::workerContext(VPackSlice params) const {
 struct LRComputation : public VertexComputation<float, float, float> {
   LRComputation() {}
   void compute(MessageIterator<float> const& messages) override {
-    LRWorkerContext* ctx = (LRWorkerContext*)context();
+    LRWorkerContext const* ctx = static_cast<LRWorkerContext const*>(context());
 
     float* vertexValue = mutableVertexData();
     RangeIterator<Edge<float>> edges = getEdges();

@@ -39,8 +39,8 @@ static std::string const kHubNorm = "hub";
 struct HITSWorkerContext : public WorkerContext {
   HITSWorkerContext() {}
 
-  double authNormRoot;
-  double hubNormRoot;
+  double authNormRoot = 0;
+  double hubNormRoot = 0;
 
   void preGlobalSuperstep(uint64_t gss) override {
     double const* authNorm = getAggregatedValue<double>(kAuthNorm);
@@ -64,7 +64,7 @@ struct HITSComputation
       auth = 1.0f;
       hub = 1.0f;
     } else {
-      HITSWorkerContext const* ctx = (HITSWorkerContext*)context();
+      HITSWorkerContext const* ctx = static_cast<HITSWorkerContext const*>(context());
       for (SenderMessage<double> const* message : messages) {
         // we don't put a valid shard id into the messages FROM
         // our outgoing messages
@@ -140,7 +140,7 @@ WorkerContext* HITS::workerContext(VPackSlice userParams) const {
 }
 
 struct HITSMasterContext : public MasterContext {
-  HITSMasterContext() {}
+  HITSMasterContext() : authNorm(0), hubNorm(0) {}
 
   double authNorm;
   double hubNorm;

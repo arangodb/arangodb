@@ -551,7 +551,7 @@ struct DMIDComputation
         
         VertexSumAggregator *vecGL = (VertexSumAggregator*)getAggregator(GL_AGG);
         //DoubleSparseVector vecGL = getAggregatedValue(GL_AGG);
-        std::map<PregelID, float> newMemDeg;
+        //std::map<PregelID, float> newMemDeg;
         
         vecGL->forEach([&](PregelID const& _id, double entry) {
           if (entry != 0.0) {

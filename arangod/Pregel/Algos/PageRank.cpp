@@ -38,7 +38,7 @@ static std::string const kConvergence = "convergence";
 struct PRWorkerContext : public WorkerContext {
   PRWorkerContext() {}
   
-  float commonProb;
+  float commonProb = 0;
   void preGlobalSuperstep(uint64_t gss) override {
     if (gss == 0) {
       commonProb = 1.0 / vertexCount();
@@ -57,7 +57,7 @@ PageRank::PageRank(VPackSlice const& params)
 struct PRComputation : public VertexComputation<float, float, float> {
   PRComputation() {}
   void compute(MessageIterator<float> const& messages) override {
-    PRWorkerContext const* ctx = (PRWorkerContext*)context();
+    PRWorkerContext const* ctx = static_cast<PRWorkerContext const*>(context());
     float* ptr = mutableVertexData();
     float copy = *ptr;
 
@@ -92,7 +92,7 @@ WorkerContext* PageRank::workerContext(VPackSlice userParams) const {
 
 struct PRMasterContext : public MasterContext {
   float _threshold = EPS;
-  PRMasterContext(VPackSlice params) {
+  explicit PRMasterContext(VPackSlice params) {
     VPackSlice t = params.get("threshold");
     _threshold = t.isNumber() ? t.getNumber<float>() : EPS;
   }
