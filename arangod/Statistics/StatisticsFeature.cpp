@@ -89,12 +89,7 @@ class arangodb::StatisticsThread final : public Thread {
           }
         }
 
-#ifdef _WIN32
-        usleep((unsigned long)sleepTime);
-#else
-        usleep((useconds_t)sleepTime);
-#endif
-
+        usleep(static_cast<TRI_usleep_t>(sleepTime));
       } else {
         nothingHappened = 0;
 

@@ -183,11 +183,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
                 << " - retries left: " << (_maxRetries - tries);
     }
 
-#ifdef _WIN32
-    usleep((unsigned long)_retryWaitTime);
-#else
-    usleep((useconds_t)_retryWaitTime);
-#endif
+    usleep(static_cast<TRI_usleep_t>(_retryWaitTime));
   }
 
   return result;
