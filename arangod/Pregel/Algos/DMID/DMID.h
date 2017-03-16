@@ -34,7 +34,7 @@ namespace algos {
 struct DMID
     : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
  public:
-  DMID(VPackSlice userParams) : SimpleAlgorithm<DMIDValue, float, DMIDMessage>(
+  explicit DMID(VPackSlice userParams) : SimpleAlgorithm<DMIDValue, float, DMIDMessage>(
             "DMID", userParams) {}
 
   GraphFormat<DMIDValue, float>* inputFormat() const override;

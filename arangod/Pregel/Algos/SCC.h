@@ -46,7 +46,7 @@ namespace algos {
 
 struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
  public:
-  SCC(VPackSlice userParams)
+  explicit SCC(VPackSlice userParams)
       : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>(
             "SCC", userParams) {}
 

@@ -46,7 +46,7 @@ namespace algos {
 
 struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
  public:
-  HITS(VPackSlice userParams)
+  explicit HITS(VPackSlice userParams)
       : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>("HITS",
                                                                   userParams) {}
 

@@ -203,12 +203,6 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
       size_t& values, 
       std::unordered_set<std::string>& nonNullAttributes,
       bool) const;
-
- private:
-
-  /// @brief the RocksDB instance
-  rocksdb::OptimisticTransactionDB* _db;
-
 };
 }
 

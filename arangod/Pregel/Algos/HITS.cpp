@@ -103,7 +103,7 @@ HITS::createComputation(WorkerConfig const* config) const {
 struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
   const std::string _resultField;
 
-  HITSGraphFormat(std::string const& result) : _resultField(result) {}
+  explicit HITSGraphFormat(std::string const& result) : _resultField(result) {}
 
   size_t estimatedEdgeSize() const override { return 0; };
 

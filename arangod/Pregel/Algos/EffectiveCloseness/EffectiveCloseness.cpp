@@ -90,7 +90,7 @@ EffectiveCloseness::createComputation(WorkerConfig const*) const {
 struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
   const std::string _resultField;
 
-  ECGraphFormat(std::string const& result) : _resultField(result) {}
+  explicit ECGraphFormat(std::string const& result) : _resultField(result) {}
 
   size_t estimatedEdgeSize() const override { return 0; };
 
