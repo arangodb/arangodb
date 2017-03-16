@@ -31,7 +31,11 @@ const isNotPattern = (pattern) => pattern.indexOf('*') === -1;
 
 exports.run = function runFoxxTests (service, reporterName) {
   const run = (file, context) => service.run(file, {context: context});
-  return mocha.run(run, exports.findTests(service), reporterName);
+  const result = mocha.run(run, exports.findTests(service), reporterName);
+  if (reporterName === 'xunit' && Array.isArray(result) && result[1]) {
+    result[1].name = service.mount;
+  }
+  return result;
 };
 
 exports.findTests = function findTestFiles (service) {

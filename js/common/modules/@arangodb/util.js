@@ -31,6 +31,7 @@ const fs = require('fs');
 const Chalk = require('chalk').constructor;
 const chalk = new Chalk({enabled: true});
 const dedent = require('dedent');
+const internal = require('internal');
 const codeFrame = require('babel-code-frame');
 const stackParser = require('error-stack-parser');
 
@@ -77,7 +78,7 @@ exports.drain = function (generator) {
   return results;
 };
 
-exports.codeFrame = function (e, basePath, withColor = false) {
+exports.codeFrame = function (e, basePath, withColor = internal.COLOR_OUTPUT) {
   try {
     let ctx;
     let err = e;
@@ -174,4 +175,50 @@ exports.shallowCopy = function (src) {
     dest[key] = src[key];
   }
   return dest;
+};
+
+exports.indentation = function (level, indentWith) {
+  if (!indentWith) {
+    indentWith = '    ';
+  }
+  let padding = '';
+  for (let i = 0; i < level; i++) {
+    padding += indentWith;
+  }
+  return padding;
+};
+
+function xmlAttrValue (str) {
+  return String(str)
+  .replace(/&/g, '&amp;')
+  .replace(/"/g, '&quot;');
+}
+
+function xmlCharacterData (str) {
+  return String(str)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;');
+}
+
+exports.jsonml2xml = function (jsonml, html = false, indentLevel = 0) {
+  if (typeof jsonml === 'string') {
+    return jsonml.split('\n')
+    .map((line) => exports.indentation(indentLevel, '\t') + xmlCharacterData(line))
+    .join('\n');
+  }
+  const [tagname, attrs, ...children] = jsonml;
+  const xml = (
+    children.length
+    ? children.map((child) => exports.jsonml2xml(child, html, indentLevel + 1)).join('\n') + '\n'
+    : ''
+  );
+  return exports.indentation(indentLevel, '\t') + `<${
+    tagname
+  } ${
+    Object.keys(attrs).map((name) => `${name}="${xmlAttrValue(attrs[name])}"`).join(' ')
+  }${
+    xml || html
+    ? `>\n${xml}${exports.indentation(indentLevel, '\t')}</${tagname}>`
+    : '/>'
+  }`;
 };

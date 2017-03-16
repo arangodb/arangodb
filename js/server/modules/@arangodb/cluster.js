@@ -2077,7 +2077,9 @@ function endpoints() {
   try {
     let coords = global.ArangoClusterInfo.getCoordinators();
     let endpoints = coords.map(c => global.ArangoClusterInfo.getServerEndpoint(c));
-    return endpoints.map(function(e) { return {"endpoint": e}; });
+    return { "endpoints": endpoints.map(function(e) {
+                                          return {"endpoint": e};
+                                        }) };
   } catch (err) {
     return { error: true, exception: err };
   }

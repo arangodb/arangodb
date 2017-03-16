@@ -249,6 +249,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
+  RestHandler/RestPregelHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
@@ -340,6 +341,31 @@ SET(ARANGOD_SOURCES
   VocBase/replication-dump.cpp
   VocBase/ticks.cpp
   VocBase/vocbase.cpp
+  Pregel/AggregatorHandler.cpp
+  Pregel/AlgoRegistry.cpp
+  Pregel/Algos/SSSP.cpp
+  Pregel/Algos/ShortestPath.cpp
+  Pregel/Algos/PageRank.cpp
+  Pregel/Algos/RecoveringPageRank.cpp
+  Pregel/Algos/LineRank.cpp
+  Pregel/Algos/ConnectedComponents.cpp
+  Pregel/Algos/SCC.cpp
+  Pregel/Algos/AsyncSCC.cpp
+  Pregel/Algos/HITS.cpp
+  Pregel/Algos/LabelPropagation.cpp
+  Pregel/Algos/DMID/DMID.cpp
+  Pregel/Algos/EffectiveCloseness/EffectiveCloseness.cpp
+  Pregel/Algos/EffectiveCloseness/HLLCounter.cpp
+  Pregel/Conductor.cpp
+  Pregel/GraphStore.cpp
+  Pregel/IncomingCache.cpp
+  Pregel/OutgoingCache.cpp
+  Pregel/PregelFeature.cpp
+  Pregel/Utils.cpp
+  Pregel/Recovery.cpp
+  Pregel/ThreadPool.cpp
+  Pregel/Worker.cpp
+  Pregel/WorkerConfig.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 

@@ -1,0 +1,134 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Simon Grätzer
+////////////////////////////////////////////////////////////////////////////////
+
+// NOTE: this files exists primarily to include these algorithm specfic structs
+// in the
+// cpp files to do template specialization
+
+#ifndef ARANGODB_PREGEL_COMMON_MFORMATS_H
+#define ARANGODB_PREGEL_COMMON_MFORMATS_H 1
+
+#include "Pregel/Graph.h"
+#include "Pregel/GraphFormat.h"
+#include "Pregel/MessageFormat.h"
+
+namespace arangodb {
+namespace pregel {
+
+// Label propagation
+struct LPValue {
+  /// The desired partition the vertex want to migrate to.
+  uint64_t currentCommunity;
+  /// The actual partition.
+  uint64_t lastCommunity = UINT64_MAX;
+  /// Iterations since last migration.
+  uint64_t stabilizationRounds = 0;
+};
+
+/// Value for Hyperlink-Induced Topic Search (HITS; also known as
+/// hubs and authorities)
+struct HITSValue {
+  float authorityScore;
+  float hubScore;
+};
+
+struct DMIDValue {
+  constexpr static float INVALID_DEGREE = -1;
+  float weightedInDegree = INVALID_DEGREE;
+  std::map<PregelID, float> membershipDegree;
+  std::map<PregelID, float> disCol;
+};
+
+struct DMIDMessage {
+  DMIDMessage() {}
+  DMIDMessage(PregelID const& pid, float const& val)
+      : senderId(pid), weight(val) {}
+
+  DMIDMessage(PregelID const& sender, PregelID const& leader)
+      : senderId(sender), leaderId(leader) {}
+
+  PregelID senderId;
+  PregelID leaderId;
+  float weight;
+};
+
+/// A counter for counting unique vertex IDs using a HyperLogLog sketch.
+/// @author Aljoscha Krettek, Robert Metzger, Robert Waury
+/// https://github.com/hideo55/cpp-HyperLogLog/blob/master/include/hyperloglog.hpp
+/// https://github.com/rmetzger/spargel-closeness/blob/master/src/main/java/de/robertmetzger/HLLCounterWritable.java
+struct HLLCounter {
+  friend struct HLLCounterFormat;
+  constexpr static int32_t NUM_BUCKETS = 64;
+  constexpr static double ALPHA = 0.709;
+
+  uint32_t getCount();
+  void addNode(PregelID const& pregelId);
+  void merge(HLLCounter const& counter);
+
+ private:
+  uint8_t _buckets[NUM_BUCKETS] = {0};
+};
+
+/// Effective closeness value
+struct ECValue {
+  HLLCounter counter;
+  std::vector<int32_t> shortestPaths;
+};
+
+struct SCCValue {
+  std::vector<PregelID> parents;
+  uint64_t vertexID;
+  uint64_t color;
+};
+
+template <typename T>
+struct SenderMessage {
+  SenderMessage() {}
+  SenderMessage(PregelID const& pid, T const& val)
+      : senderId(pid), value(val) {}
+
+  PregelID senderId;
+  T value;
+};
+
+template <typename T>
+struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
+  static_assert(std::is_arithmetic<T>::value, "Message type must be numeric");
+  SenderMessageFormat() {}
+  void unwrapValue(VPackSlice s, SenderMessage<T>& senderVal) const override {
+    VPackArrayIterator array(s);
+    senderVal.senderId.shard = (*array).getUInt();
+    senderVal.senderId.key = (*(++array)).copyString();
+    senderVal.value = (*(++array)).getNumber<T>();
+  }
+  void addValue(VPackBuilder& arrayBuilder,
+                SenderMessage<T> const& senderVal) const override {
+    arrayBuilder.openArray();
+    arrayBuilder.add(VPackValue(senderVal.senderId.shard));
+    arrayBuilder.add(VPackValue(senderVal.senderId.key));
+    arrayBuilder.add(VPackValue(senderVal.value));
+    arrayBuilder.close();
+  }
+};
+}
+}
+#endif

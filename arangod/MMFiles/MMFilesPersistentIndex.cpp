@@ -210,8 +210,7 @@ bool MMFilesPersistentIndexIterator::next(TokenCallback const& cb, size_t limit)
 MMFilesPersistentIndex::MMFilesPersistentIndex(TRI_idx_iid_t iid,
                            arangodb::LogicalCollection* collection,
                            arangodb::velocypack::Slice const& info)
-    : MMFilesPathBasedIndex(iid, collection, info, 0, true),
-      _db(MMFilesPersistentIndexFeature::instance()->db()) {}
+    : MMFilesPathBasedIndex(iid, collection, info, 0, true) {}
 
 /// @brief destroy the index
 MMFilesPersistentIndex::~MMFilesPersistentIndex() {}
@@ -573,7 +572,8 @@ MMFilesPersistentIndexIterator* MMFilesPersistentIndex::lookup(transaction::Meth
   // Same for the iterator
   auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
   auto idx = physical->primaryIndex();
-  return new MMFilesPersistentIndexIterator(_collection, trx, mmdr, this, idx, _db, reverse, leftBorder, rightBorder);
+  auto db = MMFilesPersistentIndexFeature::instance()->db();
+  return new MMFilesPersistentIndexIterator(_collection, trx, mmdr, this, idx, db, reverse, leftBorder, rightBorder);
 }
 
 bool MMFilesPersistentIndex::accessFitsIndex(

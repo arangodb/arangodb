@@ -46,6 +46,8 @@
 #include "V8/v8-globals.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/vocbase.h"
+#include "Pregel/PregelFeature.h"
+#include "Pregel/Recovery.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -568,7 +570,21 @@ void HeartbeatThread::runCoordinator() {
               failedServers.push_back(server.key.copyString());
             }
           }
+          // calling pregel code
           ClusterInfo::instance()->setFailedServers(failedServers);
+          
+          pregel::PregelFeature *prgl = pregel::PregelFeature::instance();
+          if (prgl != nullptr && failedServers.size() > 0) {
+            pregel::RecoveryManager* mngr = prgl->recoveryManager();
+            if (mngr != nullptr) {
+              try {
+                mngr->updatedFailedServers();
+              } catch (std::exception const& e) {
+                LOG_TOPIC(ERR, Logger::HEARTBEAT)
+                << "Got an exception in coordinator heartbeat: " << e.what();
+              }
+            }
+          }
         } else {
           LOG_TOPIC(WARN, Logger::HEARTBEAT)
               << "FailedServers is not an object. ignoring for now";
