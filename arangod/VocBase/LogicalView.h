@@ -73,11 +73,15 @@ class LogicalView {
   void setDeleted(bool);
 
   PhysicalView* getPhysical() const { return _physical.get(); }
+  ViewImplementation* getImplementation() const {
+    return _implementation.get();
+  }
 
   void drop();
 
   // SECTION: Serialization
-  void toVelocyPack(velocypack::Builder&) const;
+  void toVelocyPack(velocypack::Builder&, bool includeProperties = false,
+                    bool includeSystem = false) const;
 
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 
@@ -90,7 +94,8 @@ class LogicalView {
   void persistPhysicalView();
 
   /// @brief Create implementation object using factory method
-  void spawnImplementation(ViewCreator creator);
+  void spawnImplementation(ViewCreator creator,
+                           arangodb::velocypack::Slice const& parameters);
 
   static bool IsAllowedName(velocypack::Slice parameters);
   static bool IsAllowedName(std::string const& name);

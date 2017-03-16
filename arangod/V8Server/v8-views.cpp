@@ -52,13 +52,13 @@ static std::shared_ptr<arangodb::LogicalView> GetViewFromArgument(
 }
 
 /// @brief weak reference callback for views
-static void WeakViewCallback(const v8::WeakCallbackInfo<
-                             v8::Persistent<v8::External>>& data) {
+static void WeakViewCallback(
+    const v8::WeakCallbackInfo<v8::Persistent<v8::External>>& data) {
   auto isolate = data.GetIsolate();
   auto persistent = data.GetParameter();
   auto myView = v8::Local<v8::External>::New(isolate, *persistent);
   auto v = static_cast<std::shared_ptr<LogicalView>*>(myView->Value());
- 
+
   TRI_ASSERT(v != nullptr);
   LogicalView* view = v->get();
   TRI_ASSERT(view != nullptr);
@@ -70,7 +70,7 @@ static void WeakViewCallback(const v8::WeakCallbackInfo<
   // decrease the reference-counter for the database
   TRI_ASSERT(!view->vocbase()->isDangling());
 
-  // find the persistent handle
+// find the persistent handle
 #if ARANGODB_ENABLE_MAINTAINER_MODE
   auto const& it = v8g->JSViews.find(view);
   TRI_ASSERT(it != v8g->JSViews.end());
@@ -79,9 +79,9 @@ static void WeakViewCallback(const v8::WeakCallbackInfo<
   // dispose and clear the persistent handle
   v8g->JSViews[view].Reset();
   v8g->JSViews.erase(view);
-  
+
   view->vocbase()->release();
-  delete v; // delete the shared_ptr on the heap
+  delete v;  // delete the shared_ptr on the heap
 }
 
 /// @brief wraps a LogicalView
@@ -107,9 +107,8 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
       try {
         auto v = new std::shared_ptr<arangodb::LogicalView>(view);
         auto externalView = v8::External::New(isolate, v);
-    
-        result->SetInternalField(SLOT_CLASS,
-                                 v8::External::New(isolate, v));
+
+        result->SetInternalField(SLOT_CLASS, v8::External::New(isolate, v));
 
         result->SetInternalField(SLOT_EXTERNAL, externalView);
 
@@ -130,7 +129,8 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
     }
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_DbNameKey);
-    result->ForceSet(_IdKey, TRI_V8UInt64String<TRI_voc_cid_t>(isolate, view->id()),
+    result->ForceSet(_IdKey,
+                     TRI_V8UInt64String<TRI_voc_cid_t>(isolate, view->id()),
                      v8::ReadOnly);
     result->Set(_DbNameKey, TRI_V8_STD_STRING(view->vocbase()->name()));
   }
@@ -138,7 +138,8 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
   return scope.Escape<v8::Object>(result);
 }
 
-static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_CreateViewVocbase(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -148,9 +149,9 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  // we require exactly 2 arguments
-  if (args.Length() != 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("_createView(<name>, <properties>)");
+  // we require exactly 3 arguments
+  if (args.Length() != 3) {
+    TRI_V8_THROW_EXCEPTION_USAGE("_createView(<name>, <type>, <properties>)");
   }
 
   if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
@@ -162,36 +163,38 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
   // extract the name
   std::string const name = TRI_ObjectToString(args[0]);
 
-  if (!args[1]->IsObject()) {
+  // extract the type
+  std::string const type = TRI_ObjectToString(args[1]);
+
+  if (!args[2]->IsObject()) {
     TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
   }
-  v8::Handle<v8::Object> obj = args[1]->ToObject();
-  if (!obj->Has(TRI_V8_ASCII_STRING("type"))) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("missing 'type' attribute");
-  }
+  v8::Handle<v8::Object> obj = args[2]->ToObject();
 
-  v8::Handle<v8::Value> typeVal = obj->Get(TRI_V8_ASCII_STRING("type"));
-  if (!typeVal->IsString() && !typeVal->IsStringObject()) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid 'type' attribute");
-  }
-
-  // fiddle "name" attribute into the object 
+  // fiddle "name" attribute into the object
   obj->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING(name));
 
-  VPackBuilder builder;
+  VPackBuilder full;
+  full.openObject();
+  full.add("name", VPackValue(name));
+  full.add("type", VPackValue(type));
   VPackSlice infoSlice;
-   
-  int res = TRI_V8ToVPack(isolate, builder, obj, false);
+
+  VPackBuilder properties;
+  int res = TRI_V8ToVPack(isolate, properties, obj, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-    
-  infoSlice = builder.slice();
+
+  full.add("properties", properties.slice());
+  full.close();
+  infoSlice = full.slice();
 
   try {
     TRI_voc_cid_t id = 0;
-    std::shared_ptr<arangodb::LogicalView> view = vocbase->createView(infoSlice, id);
+    std::shared_ptr<arangodb::LogicalView> view =
+        vocbase->createView(infoSlice, id);
 
     TRI_ASSERT(view != nullptr);
 
@@ -211,7 +214,8 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_DropViewVocbase(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -233,42 +237,44 @@ static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
   int res = vocbase->dropView(name);
 
-  if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+  if (res != TRI_ERROR_NO_ERROR &&
+      res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
 
 /// @brief drops a view
-static void JS_DropViewVocbaseObj(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_DropViewVocbaseObj(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   std::shared_ptr<arangodb::LogicalView>* v =
-      TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(args.Holder(), WRP_VOCBASE_VIEW_TYPE);
+      TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(
+          args.Holder(), WRP_VOCBASE_VIEW_TYPE);
 
   if (v == nullptr || v->get() == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
   }
 
   LogicalView* view = v->get();
-  
+
   PREVENT_EMBEDDED_TRANSACTION();
-  
+
   int res = view->vocbase()->dropView(view->name());
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop view");
   }
-  
+
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_ViewVocbase(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -286,9 +292,10 @@ static void JS_ViewVocbase(
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("_view(<name>|<identifier>)");
   }
-  
+
   v8::Handle<v8::Value> val = args[0];
-  std::shared_ptr<arangodb::LogicalView> view = GetViewFromArgument(vocbase, val);
+  std::shared_ptr<arangodb::LogicalView> view =
+      GetViewFromArgument(vocbase, val);
 
   if (view == nullptr) {
     TRI_V8_RETURN_NULL();
@@ -305,8 +312,7 @@ static void JS_ViewVocbase(
 }
 
 /// @brief return a list of all views
-static void JS_ViewsVocbase(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -318,9 +324,12 @@ static void JS_ViewsVocbase(
 
   std::vector<std::shared_ptr<LogicalView>> views = vocbase->views();
 
-  std::sort(views.begin(), views.end(), [](std::shared_ptr<LogicalView> const& lhs, std::shared_ptr<LogicalView> const& rhs) -> bool {
-    return StringUtils::tolower(lhs->name()) < StringUtils::tolower(rhs->name());
-  });
+  std::sort(views.begin(), views.end(),
+            [](std::shared_ptr<LogicalView> const& lhs,
+               std::shared_ptr<LogicalView> const& rhs) -> bool {
+              return StringUtils::tolower(lhs->name()) <
+                     StringUtils::tolower(rhs->name());
+            });
 
   bool error = false;
   // already create an array of the correct size
@@ -350,19 +359,21 @@ static void JS_ViewsVocbase(
 }
 
 /// @brief returns the name of a view
-static void JS_NameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_NameViewVocbase(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   std::shared_ptr<arangodb::LogicalView>* v =
-      TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(args.Holder(), WRP_VOCBASE_VIEW_TYPE);
+      TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(
+          args.Holder(), WRP_VOCBASE_VIEW_TYPE);
 
   if (v == nullptr || v->get() == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
   }
 
   LogicalView* view = v->get();
-  
+
   std::string const name(view->name());
 
   if (name.empty()) {
@@ -379,9 +390,10 @@ static void JS_PropertiesViewVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   std::shared_ptr<arangodb::LogicalView>* v =
-      TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(args.Holder(), WRP_VOCBASE_VIEW_TYPE);
+      TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(
+          args.Holder(), WRP_VOCBASE_VIEW_TYPE);
 
   if (v == nullptr || v->get() == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
@@ -406,11 +418,15 @@ static void JS_PropertiesViewVocbase(
       VPackSlice const slice = builder.slice();
 
       // try to write new parameter to file
-      bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+      bool doSync =
+          application_features::ApplicationServer::getFeature<DatabaseFeature>(
+              "Database")
+              ->forceSyncProperties();
       arangodb::Result updateRes = view->updateProperties(slice, doSync);
 
       if (!updateRes.ok()) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(updateRes.errorNumber(), updateRes.errorMessage());
+        TRI_V8_THROW_EXCEPTION_MESSAGE(updateRes.errorNumber(),
+                                       updateRes.errorMessage());
       }
 
       auto physical = view->getPhysical();
@@ -422,25 +438,28 @@ static void JS_PropertiesViewVocbase(
   }
 
   VPackBuilder vpackProperties;
-  vpackProperties.openObject();  
-  view->toVelocyPack(vpackProperties);
+  vpackProperties.openObject();
+  view->toVelocyPack(vpackProperties, true);
   vpackProperties.close();
 
   // return the current parameter set
   v8::Handle<v8::Object> result =
-                TRI_VPackToV8(isolate, vpackProperties.slice())->ToObject();
+      TRI_VPackToV8(isolate, vpackProperties.slice().get("properties"))
+          ->ToObject();
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 
 /// @brief return the type of a view
-static void JS_TypeViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_TypeViewVocbase(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   std::shared_ptr<arangodb::LogicalView>* v =
-      TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(args.Holder(), WRP_VOCBASE_VIEW_TYPE);
+      TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(
+          args.Holder(), WRP_VOCBASE_VIEW_TYPE);
 
   if (v == nullptr || v->get() == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
@@ -453,8 +472,7 @@ static void JS_TypeViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_V8_TRY_CATCH_END
 }
 
-void TRI_InitV8Views(v8::Handle<v8::Context> context,
-                     TRI_vocbase_t* vocbase,
+void TRI_InitV8Views(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
                      TRI_v8_global_t* v8g, v8::Isolate* isolate,
                      v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_createView"),
@@ -474,7 +492,7 @@ void TRI_InitV8Views(v8::Handle<v8::Context> context,
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(3);
-  
+
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("drop"),
                        JS_DropViewVocbaseObj);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("name"),
@@ -485,7 +503,6 @@ void TRI_InitV8Views(v8::Handle<v8::Context> context,
                        JS_TypeViewVocbase);
 
   v8g->VocbaseViewTempl.Reset(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("ArangoView"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("ArangoView"),
                                ft->GetFunction());
 }

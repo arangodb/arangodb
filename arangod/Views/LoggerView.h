@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,45 +18,55 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_VIEW_IMPLEMENTATION_H
-#define ARANGOD_VOCBASE_VIEW_IMPLEMENTATION_H 1
+#ifndef ARANGOD_VIEWS_LOGGER_VIEW_H
+#define ARANGOD_VIEWS_LOGGER_VIEW_H 1
 
 #include "Basics/Common.h"
+#include "Logger/Logger.h"
+#include "VocBase/ViewImplementation.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-class LogicalView;
 class PhysicalView;
 class Result;
 
-class ViewImplementation {
- protected:
-  ViewImplementation(LogicalView* logical,
-                     arangodb::velocypack::Slice const& info)
-      : _logicalView(logical) {}
+class LoggerView final : public ViewImplementation {
+ public:
+  static std::string type;
+  static std::unique_ptr<ViewImplementation> creator(
+      LogicalView*, arangodb::velocypack::Slice const&);
+
+ private:
+  struct ConstructionGuard {
+    ConstructionGuard() {}
+  };
 
  public:
-  virtual ~ViewImplementation() = default;
+  LoggerView(ConstructionGuard const& guard, LogicalView* logical,
+             arangodb::velocypack::Slice const& info);
+  ~LoggerView() = default;
 
-  virtual arangodb::Result updateProperties(
-      arangodb::velocypack::Slice const& slice, bool doSync) = 0;
+  arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice,
+                                    bool doSync);
+  arangodb::Result persistProperties() noexcept;
 
   /// @brief export properties
-  virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
+  void getPropertiesVPack(velocypack::Builder&) const;
 
   /// @brief opens an existing view
-  virtual void open(bool ignoreErrors) = 0;
+  void open(bool ignoreErrors);
 
-  virtual void drop() = 0;
+  void drop();
 
  protected:
   LogicalView* _logicalView;
+  arangodb::LogLevel _level;
 };
 
 typedef std::function<std::unique_ptr<ViewImplementation>(

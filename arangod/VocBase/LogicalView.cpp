@@ -190,22 +190,32 @@ void LogicalView::drop() {
   _physical->drop();
 }
 
-void LogicalView::toVelocyPack(VPackBuilder& result) const {
+void LogicalView::toVelocyPack(VPackBuilder& result, bool includeProperties,
+                               bool includeSystem) const {
   // We write into an open object
   TRI_ASSERT(result.isOpenObject());
-
   // Meta Information
   result.add("id", VPackValue(std::to_string(_id)));
   result.add("name", VPackValue(_name));
   result.add("type", VPackValue(_type));
-  result.add("deleted", VPackValue(_isDeleted));
+  if (includeSystem) {
+    result.add("deleted", VPackValue(_isDeleted));
+    // Cluster Specific
+    result.add("planId", VPackValue(std::to_string(_planId)));
+    if (getPhysical() != nullptr) {
+      // Physical Information
+      result.add("physical", VPackValue(VPackValueType::Object));
+      getPhysical()->getPropertiesVPack(result, includeSystem);
+      result.close();
+    }
+  }
 
-  // Physical Information
-  getPhysical()->getPropertiesVPack(result);
-
-  // Cluster Specific
-  result.add("planId", VPackValue(std::to_string(_planId)));
-
+  if (includeProperties && (getImplementation() != nullptr)) {
+    // implementation Information
+    result.add("properties", VPackValue(VPackValueType::Object));
+    getImplementation()->getPropertiesVPack(result);
+    result.close();
+  }
   TRI_ASSERT(result.isOpenObject());
   // We leave the object open
 }
@@ -214,14 +224,19 @@ arangodb::Result LogicalView::updateProperties(VPackSlice const& slice,
                                                bool doSync) {
   WRITE_LOCKER(writeLocker, _infoLock);
 
-  // The physical may first reject illegal properties.
-  // After this call it either has thrown or the properties are stored
-  getPhysical()->updateProperties(slice, doSync);
+  // the implementation may filter/change/react to the changes
+  arangodb::Result implResult =
+      getImplementation()->updateProperties(slice, doSync);
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->changeView(_vocbase, _id, this, doSync);
+  if (implResult.ok()) {
+    // after this call the properties are stored
+    getPhysical()->persistProperties();
 
-  return {};
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    engine->changeView(_vocbase, _id, this, doSync);
+  }
+
+  return implResult;
 }
 
 /// @brief Persist the connected physical view
@@ -237,10 +252,7 @@ void LogicalView::persistPhysicalView() {
   engine->createView(_vocbase, _id, this);
 }
 
-void LogicalView::spawnImplementation(ViewCreator creator) {
-  VPackBuilder properties;
-  properties.openObject();
-  toVelocyPack(properties);
-  properties.close();
-  _implementation = creator(this, getPhysical(), properties.slice());
+void LogicalView::spawnImplementation(
+    ViewCreator creator, arangodb::velocypack::Slice const& parameters) {
+  _implementation = creator(this, parameters);
 }

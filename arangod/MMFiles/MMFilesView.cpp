@@ -37,19 +37,47 @@
 
 using namespace arangodb;
 
-MMFilesView::MMFilesView(LogicalView* view,
-                         VPackSlice const& info)
-    : PhysicalView(view, info) {}
+static std::string ReadPath(VPackSlice info) {
+  if (!info.isObject()) {
+    // ERROR CASE
+    return "";
+  }
+  VPackSlice physical = info.get("physical");
+  if (physical.isNone()) {
+    return "";
+  }
 
-MMFilesView::MMFilesView(LogicalView* logical,
-                         PhysicalView* physical)
+  if (physical.isObject()) {
+    VPackSlice path = physical.get("path");
+    if (path.isNone()) {
+      return "";
+    }
+
+    if (path.isString()) {
+      return path.copyString();
+    }
+  }
+  return "";
+}
+
+MMFilesView::MMFilesView(LogicalView* view, VPackSlice const& info)
+    : PhysicalView(view, info) {
+  std::string path = ReadPath(info);
+  if (!path.empty()) {
+    setPath(path);
+  }
+}
+
+MMFilesView::MMFilesView(LogicalView* logical, PhysicalView* physical)
     : PhysicalView(logical, VPackSlice::emptyObjectSlice()) {}
 
 MMFilesView::~MMFilesView() {
   if (_logicalView->deleted()) {
     try {
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
-      std::string directory = static_cast<MMFilesEngine*>(engine)->viewDirectory(_logicalView->vocbase()->id(), _logicalView->id());
+      std::string directory =
+          static_cast<MMFilesEngine*>(engine)->viewDirectory(
+              _logicalView->vocbase()->id(), _logicalView->id());
       TRI_RemoveDirectory(directory.c_str());
     } catch (...) {
       // must ignore errors here as we are in the destructor
@@ -57,12 +85,15 @@ MMFilesView::~MMFilesView() {
   }
 }
 
-void MMFilesView::getPropertiesVPack(velocypack::Builder& result) const {
+void MMFilesView::getPropertiesVPack(velocypack::Builder& result,
+                                     bool includeSystem) const {
   TRI_ASSERT(result.isOpenObject());
-  result.add("path", VPackValue(_path));
+  if (includeSystem) {
+    result.add("path", VPackValue(_path));
+  }
   TRI_ASSERT(result.isOpenObject());
 }
-  
+
 /// @brief opens an existing view
 void MMFilesView::open(bool ignoreErrors) {}
 
@@ -78,10 +109,12 @@ arangodb::Result MMFilesView::persistProperties() noexcept {
   try {
     VPackBuilder infoBuilder;
     infoBuilder.openObject();
-    _logicalView->toVelocyPack(infoBuilder);
+    _logicalView->toVelocyPack(infoBuilder, true, true);
     infoBuilder.close();
 
-    MMFilesViewMarker marker(TRI_DF_MARKER_VPACK_CHANGE_VIEW, _logicalView->vocbase()->id(), _logicalView->id(), infoBuilder.slice());
+    MMFilesViewMarker marker(TRI_DF_MARKER_VPACK_CHANGE_VIEW,
+                             _logicalView->vocbase()->id(), _logicalView->id(),
+                             infoBuilder.slice());
     MMFilesWalSlotInfoCopy slotInfo =
         MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
     res = slotInfo.errorCode;
@@ -93,14 +126,14 @@ arangodb::Result MMFilesView::persistProperties() noexcept {
 
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO: what to do here
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not save collection view marker in log: "
-              << TRI_errno_string(res);
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "could not save collection view marker in log: "
+        << TRI_errno_string(res);
     return {res, TRI_errno_string(res)};
   }
   return {};
 }
 
-PhysicalView* MMFilesView::clone(LogicalView* logical, PhysicalView* physical){
+PhysicalView* MMFilesView::clone(LogicalView* logical, PhysicalView* physical) {
   return new MMFilesView(logical, physical);
 }
-

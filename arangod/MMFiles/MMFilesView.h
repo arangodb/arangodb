@@ -38,8 +38,7 @@ class Result;
 
 class MMFilesView final : public PhysicalView {
  public:
-  static inline MMFilesView* toMMFilesView(
-      PhysicalView* physical) {
+  static inline MMFilesView* toMMFilesView(PhysicalView* physical) {
     auto rv = static_cast<MMFilesView*>(physical);
     TRI_ASSERT(rv != nullptr);
     return rv;
@@ -53,25 +52,24 @@ class MMFilesView final : public PhysicalView {
 
  public:
   explicit MMFilesView(LogicalView*, VPackSlice const& info);
-  explicit MMFilesView(LogicalView*, PhysicalView*); //use in cluster only!!!!!
+  explicit MMFilesView(LogicalView*, PhysicalView*);  // use in cluster
+                                                      // only!!!!!
 
   ~MMFilesView();
 
-  std::string const& path() const override {
-    return _path;
-  }
+  std::string const& path() const override { return _path; }
 
-  void setPath(std::string const& path) override {
-    _path = path;
-  }
+  void setPath(std::string const& path) override { _path = path; }
 
-  arangodb::Result updateProperties(VPackSlice const& slice, bool doSync) override;
+  arangodb::Result updateProperties(VPackSlice const& slice,
+                                    bool doSync) override;
   virtual arangodb::Result persistProperties() noexcept override;
 
   virtual PhysicalView* clone(LogicalView*, PhysicalView*) override;
 
-  void getPropertiesVPack(velocypack::Builder&) const override;
-  
+  void getPropertiesVPack(velocypack::Builder&,
+                          bool includeSystem = false) const override;
+
   /// @brief opens an existing view
   void open(bool ignoreErrors) override;
 
@@ -80,7 +78,6 @@ class MMFilesView final : public PhysicalView {
  private:
   std::string _path;
 };
-
 }
 
 #endif

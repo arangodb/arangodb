@@ -24,12 +24,15 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 
+#include "Views/LoggerView.h"
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
-  
-std::unordered_map<std::string, arangodb::ViewCreator> ViewTypesFeature::_viewCreators;
+
+std::unordered_map<std::string, arangodb::ViewCreator>
+    ViewTypesFeature::_viewCreators;
 
 ViewTypesFeature::ViewTypesFeature(ApplicationServer* server)
     : ApplicationFeature(server, "ViewTypes") {
@@ -39,16 +42,13 @@ ViewTypesFeature::ViewTypesFeature(ApplicationServer* server)
 }
 
 void ViewTypesFeature::prepare() {
-  registerViewImplementation("test", [](LogicalView*, PhysicalView*, arangodb::velocypack::Slice const&) {
-    return std::unique_ptr<ViewImplementation>();
-  });
+  registerViewImplementation(LoggerView::type, LoggerView::creator);
 }
 
-void ViewTypesFeature::unprepare() {
-  _viewCreators.clear();
-}
+void ViewTypesFeature::unprepare() { _viewCreators.clear(); }
 
-void ViewTypesFeature::registerViewImplementation(std::string const& type, ViewCreator creator) {
+void ViewTypesFeature::registerViewImplementation(std::string const& type,
+                                                  ViewCreator creator) {
   _viewCreators.emplace(type, creator);
 }
 
@@ -60,8 +60,8 @@ ViewCreator& ViewTypesFeature::creator(std::string const& type) const {
   auto it = _viewCreators.find(type);
 
   if (it == _viewCreators.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "no handler found for view type");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "no handler found for view type");
   }
   return (*it).second;
 }
-

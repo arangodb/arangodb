@@ -601,7 +601,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       // collection is unloaded
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
       bool doSync =
-        !engine->inRecovery() &&
+          !engine->inRecovery() &&
           application_features::ApplicationServer::getFeature<DatabaseFeature>(
               "Database")
               ->forceSyncProperties();
@@ -1019,7 +1019,7 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection,
 
     // mark collection as unloading
     collection->setStatus(TRI_VOC_COL_STATUS_UNLOADING);
-  } // release locks
+  }  // release locks
 
   collection->unload();
 
@@ -1036,9 +1036,7 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
   TRI_ASSERT(collection != nullptr);
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  if (!allowDropSystem && 
-      collection->isSystem() &&
-      !engine->inRecovery()) {
+  if (!allowDropSystem && collection->isSystem() && !engine->inRecovery()) {
     // prevent dropping of system collections
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
@@ -1057,7 +1055,7 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
         DropCollectionCallback(collection);
       } else {
         collection->deferDropCollection(DropCollectionCallback);
-       // wake up the cleanup thread
+        // wake up the cleanup thread
         engine->signalCleanup(collection->vocbase());
       }
     }
@@ -1264,21 +1262,21 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
     VPackSlice parameters, TRI_voc_cid_t& id) {
   std::string name = arangodb::basics::VelocyPackHelper::getStringValue(
       parameters, "name", "");
- 
+
   // check that the name does not contain any strange characters
   if (!LogicalView::IsAllowedName(name)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
-   
+
   std::string type = arangodb::basics::VelocyPackHelper::getStringValue(
       parameters, "type", "");
-    
-  ViewTypesFeature* viewTypesFeature = 
-      application_features::ApplicationServer::getFeature<ViewTypesFeature>("ViewTypes");
+
+  ViewTypesFeature* viewTypesFeature =
+      application_features::ApplicationServer::getFeature<ViewTypesFeature>(
+          "ViewTypes");
 
   // will throw if type is invalid
   ViewCreator& creator = viewTypesFeature->creator(type);
-
   // Try to create a new view. This is not registered yet
   std::shared_ptr<arangodb::LogicalView> view =
       std::make_shared<arangodb::LogicalView>(this, parameters);
@@ -1294,19 +1292,15 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
   }
 
   registerView(basics::ConditionalLocking::DoNotLock, view);
-
   try {
     // id might have been assigned
     id = view->id();
 
+    // now let's actually create the backing implementation
+    view->spawnImplementation(creator, parameters);
+
     // Let's try to persist it.
     view->persistPhysicalView();
-
-    // now let's actually create the backing implementation
-    /* no implementations exist yet, need a dummy for testing
-
-    view->spawnImplementation(*creator);
-    */
 
     events::CreateView(name, TRI_ERROR_NO_ERROR);
     return view;
@@ -1323,7 +1317,6 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
 /// but the functionality is not advertised
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
     VPackSlice parameters, TRI_voc_cid_t id) {
-  
   READ_LOCKER(readLocker, _inventoryLock);
 
   // note: id may be modified by this function call
@@ -1399,7 +1392,7 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
   view->setDeleted(true);
   VPackBuilder b;
   b.openObject();
-  view->toVelocyPack(b);
+  view->toVelocyPack(b, true, true);
   b.close();
 
   bool doSync =
