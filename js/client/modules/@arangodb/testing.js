@@ -471,7 +471,7 @@ function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
   command += "printf 'bt \n\n";
   // LLDB doesn't have an equivilant of `bt full` so we try to show the upper
   // most 5 frames with all variables
-  for (i = 0; i < 5; i ++)
+  for (var i = 0; i < 5; i ++)
     command += 'frame variable\\n up \\n';
   command += " bt full\\n thread backtrace all\\n';";
   command += 'sleep 10;';
