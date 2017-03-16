@@ -21,18 +21,18 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_DATAFILE_STATISTICS_CONTAINER_H
-#define ARANGOD_VOC_BASE_DATAFILE_STATISTICS_CONTAINER_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_DATAFILE_STATISTICS_CONTAINER_H
+#define ARANGOD_MMFILES_MMFILES_DATAFILE_STATISTICS_CONTAINER_H 1
 
 #include "Basics/Common.h"
 
 namespace arangodb {
 
 /// @brief datafile statistics
-struct DatafileStatisticsContainer {
-  DatafileStatisticsContainer();
+struct MMFilesDatafileStatisticsContainer {
+  MMFilesDatafileStatisticsContainer();
 
-  void update(DatafileStatisticsContainer const&);
+  void update(MMFilesDatafileStatisticsContainer const&);
   void reset();
 
   int64_t numberAlive;

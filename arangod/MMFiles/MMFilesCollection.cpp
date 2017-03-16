@@ -99,7 +99,7 @@ class MMFilesIndexFillerTask : public basics::LocalTask {
 };
 
 /// @brief find a statistics container for a given file id
-static DatafileStatisticsContainer* FindDatafileStats(
+static MMFilesDatafileStatisticsContainer* FindDatafileStats(
     MMFilesCollection::OpenIteratorState* state, TRI_voc_fid_t fid) {
   auto it = state->_stats.find(fid);
 
@@ -107,7 +107,7 @@ static DatafileStatisticsContainer* FindDatafileStats(
     return (*it).second;
   }
 
-  auto stats = std::make_unique<DatafileStatisticsContainer>();
+  auto stats = std::make_unique<MMFilesDatafileStatisticsContainer>();
   state->_stats.emplace(fid, stats.get());
   return stats.release();
 }
@@ -279,7 +279,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
     physical->insertRevision(revisionId, vpack, fid, false, false);
 
     // update the datafile info
-    DatafileStatisticsContainer* dfi;
+    MMFilesDatafileStatisticsContainer* dfi;
     if (old.fid() == state->_fid) {
       dfi = state->_dfi;
     } else {
@@ -352,7 +352,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* m
     MMFilesDocumentPosition const old = physical->lookupRevision(oldRevisionId);
     
     // update the datafile info
-    DatafileStatisticsContainer* dfi;
+    MMFilesDatafileStatisticsContainer* dfi;
 
     if (old.fid() == state->_fid) {
       dfi = state->_dfi;
@@ -1171,7 +1171,7 @@ void MMFilesCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Bu
   builder->add("waitingFor", VPackValue(waitingForDitch == nullptr ? "-" : waitingForDitch));
   
   // add datafile statistics
-  DatafileStatisticsContainer dfi = _datafileStatistics.all();
+  MMFilesDatafileStatisticsContainer dfi = _datafileStatistics.all();
 
   builder->add("alive", VPackValue(VPackValueType::Object));
   builder->add("count", VPackValue(dfi.numberAlive));
@@ -2347,7 +2347,7 @@ int MMFilesCollection::beginReadTimed(bool useDeadlockDetector,
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
-      usleep(waitTime);
+      usleep(static_cast<TRI_usleep_t>(waitTime));
       if (waitTime < 500000) {
         waitTime *= 2;
       }
@@ -2454,7 +2454,7 @@ int MMFilesCollection::beginWriteTimed(bool useDeadlockDetector,
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
-      usleep(waitTime);
+      usleep(static_cast<TRI_usleep_t>(waitTime));
       if (waitTime < 500000) {
         waitTime *= 2;
       }

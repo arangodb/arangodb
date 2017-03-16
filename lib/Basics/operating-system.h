@@ -179,6 +179,7 @@
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 
+#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -335,6 +336,7 @@
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 
+#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -478,6 +480,7 @@
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 
+#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -640,6 +643,7 @@
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 
+#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -835,6 +839,7 @@ typedef unsigned char bool;
 #define TRI_UNLINK ::_unlink
 #define TRI_WRITE ::_write
 
+#define TRI_usleep_t unsigned long
 #define TRI_lseek_t __int64
 #define TRI_read_t unsigned int
 #define TRI_stat_t struct _stat64
