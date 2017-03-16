@@ -47,7 +47,7 @@ namespace algos {
 struct AsyncSCC
     : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
  public:
-  AsyncSCC(VPackSlice userParams)
+  explicit AsyncSCC(VPackSlice userParams)
       : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>(
             "AsyncSCC", userParams) {}
 

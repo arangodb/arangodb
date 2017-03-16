@@ -40,7 +40,7 @@ namespace algos {
 /// maximum superstep number.
 struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
  public:
-  LabelPropagation(VPackSlice userParams)
+  explicit LabelPropagation(VPackSlice userParams)
       : SimpleAlgorithm<LPValue, int8_t, uint64_t>("LabelPropagation",
                                                    userParams) {}
 

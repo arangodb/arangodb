@@ -56,7 +56,7 @@ ConnectedComponents::createComputation(WorkerConfig const* config) const {
 struct MyGraphFormat : public VertexGraphFormat<int64_t, int64_t> {
   uint64_t vertexIdRange = 0;
 
-  MyGraphFormat(std::string const& result)
+  explicit MyGraphFormat(std::string const& result)
       : VertexGraphFormat<int64_t, int64_t>(result, 0) {}
 
   void willLoadVertices(uint64_t count) override {

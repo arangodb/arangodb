@@ -154,7 +154,7 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   const std::string _resultField;
   uint64_t vertexIdRange = 0;
 
-  SCCGraphFormat(std::string const& result) : _resultField(result) {}
+  explicit SCCGraphFormat(std::string const& result) : _resultField(result) {}
 
   void willLoadVertices(uint64_t count) override {
     // if we aren't running in a cluster it doesn't matter

@@ -107,7 +107,7 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   std::string _resultField;
   uint64_t vertexIdRange = 0;
 
-  LPGraphFormat(std::string const& result) : _resultField(result) {}
+  explicit LPGraphFormat(std::string const& result) : _resultField(result) {}
 
   size_t estimatedVertexSize() const override { return sizeof(LPValue); };
   size_t estimatedEdgeSize() const override { return 0; };

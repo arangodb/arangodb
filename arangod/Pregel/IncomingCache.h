@@ -53,7 +53,7 @@ class InCache {
 
   /// Initialize format and mutex map.
   /// @param config can be null if you don't want locks
-  InCache(MessageFormat<M> const* format);
+  explicit InCache(MessageFormat<M> const* format);
   virtual void _set(PregelShard shard, PregelKey const& vertexId,
                     M const& data) = 0;
 

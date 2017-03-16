@@ -119,7 +119,7 @@ VertexCompensation<float, float, float>* RecoveringPageRank::createCompensation(
 struct RPRMasterContext : public MasterContext {
   float _threshold;
 
-  RPRMasterContext(VPackSlice params) {
+  explicit RPRMasterContext(VPackSlice params) {
     VPackSlice t = params.get("convergenceThreshold");
     _threshold = t.isNumber() ? t.getNumber<float>() : EPS;
   };

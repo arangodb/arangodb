@@ -34,7 +34,7 @@ namespace algos {
 struct PageRank : public SimpleAlgorithm<float, float, float> {
   uint64_t _maxGSS = 250;
 
-  PageRank(arangodb::velocypack::Slice const& params);
+  explicit PageRank(arangodb::velocypack::Slice const& params);
 
   GraphFormat<float, float>* inputFormat() const override {
     return new VertexGraphFormat<float, float>(_resultField, 0);

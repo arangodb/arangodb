@@ -33,7 +33,7 @@ namespace algos {
 /// Effective Closeness
 struct EffectiveCloseness : public SimpleAlgorithm<ECValue, int8_t, HLLCounter> {
   
-  EffectiveCloseness(VPackSlice params)
+  explicit EffectiveCloseness(VPackSlice params)
       : SimpleAlgorithm<ECValue, int8_t, HLLCounter>("EffectiveCloseness", params) {}
 
   GraphFormat<ECValue, int8_t>* inputFormat() const override;

@@ -49,13 +49,14 @@ class PregelFeature final : public application_features::ApplicationFeature {
   void beginShutdown() override final;
 
   uint64_t createExecutionNumber();
-  void addExecution(Conductor* const exec, uint64_t executionNumber);
+  void addConductor(Conductor* const exec, uint64_t executionNumber);
   Conductor* conductor(uint64_t executionNumber);
 
   void addWorker(IWorker* const worker, uint64_t executionNumber);
   IWorker* worker(uint64_t executionNumber);
 
-  void cleanup(uint64_t executionNumber);
+  void cleanupConductor(uint64_t executionNumber);
+  void cleanupWorker(uint64_t executionNumber);
   void cleanupAll();
 
   ThreadPool* threadPool() { return _threadPool.get(); }

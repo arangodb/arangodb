@@ -1918,7 +1918,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args[2]->IsArray()) {
     parse(args[2], paramEdges);
   } else if (args[2]->IsString()) {
-    paramEdges.push_back(TRI_ObjectToString(args[1]));
+    paramEdges.push_back(TRI_ObjectToString(args[2]));
   } else {
     TRI_V8_THROW_EXCEPTION_USAGE("Specify an array of edge collections (or a string)");
   }
@@ -1996,6 +1996,8 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
       if (coll == nullptr || coll->deleted()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
       }
+      std::vector<std::string> actual = coll->realNamesForRead();
+      edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
     } else {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
@@ -2004,7 +2006,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint64_t en = pregel::PregelFeature::instance()->createExecutionNumber();
   auto c = std::make_unique<pregel::Conductor>(en, vocbase, paramVertices, edgeColls,
                                                algorithm, paramBuilder.slice());
-  pregel::PregelFeature::instance()->addExecution(c.get(), en);
+  pregel::PregelFeature::instance()->addConductor(c.get(), en);
   c->start();
   c.release();
   
@@ -2056,7 +2058,7 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
   }
   c->cancel();
-  pregel::PregelFeature::instance()->cleanup(executionNum);
+  pregel::PregelFeature::instance()->cleanupConductor(executionNum);
   
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END

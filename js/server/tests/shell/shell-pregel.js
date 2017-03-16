@@ -37,9 +37,11 @@ var console = require("console");
 
 var EPS = 0.0001;
 
-function testAlgo(v, e, a, p) {  
-  var key = db._pregelStart(v, e, a, p);
+var graphName = "UnitTest_pregel";
+var vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
+function testAlgo(a, p) {
+  var key = db._pregelStart(a, vColl, eColl, p);
   var i = 1000;
   do {
     console.log("Waiting...");
@@ -47,9 +49,8 @@ function testAlgo(v, e, a, p) {
     var doc = db._pregelStatus(key);
     if (doc.state !== "running") {
       console.log("Finished algorithm " + a);
-      internal.wait(1);// wait for workers to store data
 
-      db.demo_v.all().toArray()
+      db[vColl].all().toArray()
       .forEach(function(d) {
                  if (d[a] !== -1) {
                    var diff = Math.abs(d[a] - d.result);
@@ -79,8 +80,7 @@ function clientTestSuite () {
       if (exists || db.demo_v) {
         return;
       }
-      var vColl = "demo_v", eColl = "demo_e";
-      var graph = graph_module._create("demo");
+      var graph = graph_module._create(graphName);
       db._create(vColl, {numberOfShards: 4});
       graph._addVertexCollection(vColl);
       db._createEdgeCollection(eColl, {
@@ -91,37 +91,40 @@ function clientTestSuite () {
       
       var rel = graph_module._relation(eColl, [vColl], [vColl]);
       graph._extendEdgeDefinitions(rel);
+      
+      var vertices = db[vColl];
+      var edges = db[eColl];
     
     
-      db.demo_v.insert({_key:'A', sssp:3, pagerank:0.027645934});
-      db.demo_v.insert({_key:'B', sssp:2, pagerank:0.3241496});
-      db.demo_v.insert({_key:'C', sssp:3, pagerank:0.289220});
-      db.demo_v.insert({_key:'D', sssp:2, pagerank:0.0329636});
-      db.demo_v.insert({_key:'E', sssp:1, pagerank:0.0682141});
-      db.demo_v.insert({_key:'F', sssp:2, pagerank:0.0329636});
-      db.demo_v.insert({_key:'G', sssp:-1, pagerank:0.0136363});
-      db.demo_v.insert({_key:'H', sssp:-1, pagerank:0.01363636});
-      db.demo_v.insert({_key:'I', sssp:-1, pagerank:0.01363636});
-      db.demo_v.insert({_key:'J', sssp:-1, pagerank:0.01363636});
-      db.demo_v.insert({_key:'K', sssp:0, pagerank:0.013636363});
+      var A = vertices.insert({_key:'A', sssp:3, pagerank:0.027645934})._id;
+      var B = vertices.insert({_key:'B', sssp:2, pagerank:0.3241496})._id;
+      var C = vertices.insert({_key:'C', sssp:3, pagerank:0.289220})._id;
+      var D = vertices.insert({_key:'D', sssp:2, pagerank:0.0329636})._id;
+      var E = vertices.insert({_key:'E', sssp:1, pagerank:0.0682141})._id;
+      var F = vertices.insert({_key:'F', sssp:2, pagerank:0.0329636})._id;
+      var G = vertices.insert({_key:'G', sssp:-1, pagerank:0.0136363})._id;
+      var H = vertices.insert({_key:'H', sssp:-1, pagerank:0.01363636})._id;
+      var I = vertices.insert({_key:'I', sssp:-1, pagerank:0.01363636})._id;
+      var J = vertices.insert({_key:'J', sssp:-1, pagerank:0.01363636})._id;
+      var K = vertices.insert({_key:'K', sssp:0, pagerank:0.013636363})._id;
 
-      db.demo_e.insert({_from:'demo_v/B', _to:'demo_v/C', vertex:'B'});
-      db.demo_e.insert({_from:'demo_v/C', _to:'demo_v/B', vertex:'C'});
-      db.demo_e.insert({_from:'demo_v/D', _to:'demo_v/A', vertex:'D'});
-      db.demo_e.insert({_from:'demo_v/D', _to:'demo_v/B', vertex:'D'});
-      db.demo_e.insert({_from:'demo_v/E', _to:'demo_v/B', vertex:'E'});
-      db.demo_e.insert({_from:'demo_v/E', _to:'demo_v/D', vertex:'E'});
-      db.demo_e.insert({_from:'demo_v/E', _to:'demo_v/F', vertex:'E'});
-      db.demo_e.insert({_from:'demo_v/F', _to:'demo_v/B', vertex:'F'});
-      db.demo_e.insert({_from:'demo_v/F', _to:'demo_v/E', vertex:'F'});
-      db.demo_e.insert({_from:'demo_v/G', _to:'demo_v/B', vertex:'G'});
-      db.demo_e.insert({_from:'demo_v/G', _to:'demo_v/E', vertex:'G'});
-      db.demo_e.insert({_from:'demo_v/H', _to:'demo_v/B', vertex:'H'});
-      db.demo_e.insert({_from:'demo_v/H', _to:'demo_v/E', vertex:'H'});
-      db.demo_e.insert({_from:'demo_v/I', _to:'demo_v/B', vertex:'I'});
-      db.demo_e.insert({_from:'demo_v/I', _to:'demo_v/E', vertex:'I'});
-      db.demo_e.insert({_from:'demo_v/J', _to:'demo_v/E', vertex:'J'});
-      db.demo_e.insert({_from:'demo_v/K', _to:'demo_v/E', vertex:'K'});
+      edges.insert({_from:B, _to:C, vertex:'B'});
+      edges.insert({_from:C, _to:B, vertex:'C'});
+      edges.insert({_from:D, _to:A, vertex:'D'});
+      edges.insert({_from:D, _to:B, vertex:'D'});
+      edges.insert({_from:E, _to:B, vertex:'E'});
+      edges.insert({_from:E, _to:D, vertex:'E'});
+      edges.insert({_from:E, _to:F, vertex:'E'});
+      edges.insert({_from:F, _to:B, vertex:'F'});
+      edges.insert({_from:F, _to:E, vertex:'F'});
+      edges.insert({_from:G, _to:B, vertex:'G'});
+      edges.insert({_from:G, _to:E, vertex:'G'});
+      edges.insert({_from:H, _to:B, vertex:'H'});
+      edges.insert({_from:H, _to:E, vertex:'H'});
+      edges.insert({_from:I, _to:B, vertex:'I'});
+      edges.insert({_from:I, _to:E, vertex:'I'});
+      edges.insert({_from:J, _to:E, vertex:'J'});
+      edges.insert({_from:K, _to:E, vertex:'K'});
     },
     
     ////////////////////////////////////////////////////////////////////////////////
@@ -129,22 +132,20 @@ function clientTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
     
     tearDown : function () {
-      graph_module._drop("demo", true);
-      //db.demo_v.drop();
-      //db.demo_e.drop();
+      graph_module._drop(graphName, true);
     },
     
     testSSSPNormal: function () {
-      testAlgo("demo_v", "demo_e", "sssp", {async:false, source:"demo_v/K"});
+      testAlgo("sssp", {async:false, source:vColl + "/K"});
     },
     
     testSSSPAsync: function () {
-      testAlgo("demo_v", "demo_e", "sssp", {async:true, source:"demo_v/K"});
+      testAlgo("sssp", {async:true, source:vColl + "/K"});
     },
     
     testPageRank: function () {
       // should test correct convergence behaviour, might fail if EPS is too low
-      testAlgo("demo_v", "demo_e", "pagerank", {threshold:EPS / 10});
+      testAlgo("pagerank", {threshold:EPS / 10});
     },
   };
 };

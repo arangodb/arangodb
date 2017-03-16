@@ -25,6 +25,7 @@
 #include "Basics/MutexLocker.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/Recovery.h"
@@ -38,10 +39,10 @@ using namespace arangodb::pregel;
 static PregelFeature* Instance = nullptr;
 static uint64_t _uniqueId = 0;
 uint64_t PregelFeature::createExecutionNumber() {
-  if (ClusterInfo::instance() == nullptr) {
-    return ++_uniqueId;
-  } else {
+  if (ServerState::instance()->isRunningInCluster()) {
     return ClusterInfo::instance()->uniqid();
+  } else {
+    return ++_uniqueId;
   }
 }
 
@@ -98,7 +99,7 @@ void PregelFeature::start() {
 
 void PregelFeature::beginShutdown() { cleanupAll(); }
 
-void PregelFeature::addExecution(Conductor* const exec,
+void PregelFeature::addConductor(Conductor* const exec,
                                  uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   //_executions.
@@ -122,13 +123,17 @@ IWorker* PregelFeature::worker(uint64_t executionNumber) {
   return it != _workers.end() ? it->second : nullptr;
 }
 
-void PregelFeature::cleanup(uint64_t executionNumber) {
+void PregelFeature::cleanupConductor(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto cit = _conductors.find(executionNumber);
   if (cit != _conductors.end()) {
     delete (cit->second);
     _conductors.erase(executionNumber);
   }
+}
+
+void PregelFeature::cleanupWorker(uint64_t executionNumber) {
+  MUTEX_LOCKER(guard, _mutex);
   auto wit = _workers.find(executionNumber);
   if (wit != _workers.end()) {// unmapping etc might need time
     _threadPool->enqueue([this, executionNumber]{
@@ -218,7 +223,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
     w->cancelGlobalStep(body);
   } else if (path == Utils::finalizeExecutionPath) {
     w->finalizeExecution(body);
-    Instance->cleanup(executionNumber);
+    Instance->cleanupWorker(executionNumber);
   } else if (path == Utils::continueRecoveryPath) {
     w->compensateStep(body);
   } else if (path == Utils::finalizeRecoveryPath) {

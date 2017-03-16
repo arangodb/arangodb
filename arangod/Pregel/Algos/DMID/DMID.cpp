@@ -551,7 +551,7 @@ struct DMIDComputation
         
         VertexSumAggregator *vecGL = (VertexSumAggregator*)getAggregator(GL_AGG);
         //DoubleSparseVector vecGL = getAggregatedValue(GL_AGG);
-        std::map<PregelID, float> newMemDeg;
+        //std::map<PregelID, float> newMemDeg;
         
         vecGL->forEach([&](PregelID const& _id, double entry) {
           if (entry != 0.0) {
@@ -584,7 +584,7 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
   const std::string _resultField;
   uint64_t vertexIdRange = 0;
 
-  DMIDGraphFormat(std::string const& result) : _resultField(result) {}
+  explicit DMIDGraphFormat(std::string const& result) : _resultField(result) {}
 
   void willLoadVertices(uint64_t count) override {
     // if we aren't running in a cluster it doesn't matter

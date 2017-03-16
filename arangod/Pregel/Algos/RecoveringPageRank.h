@@ -32,7 +32,7 @@ namespace algos {
 
 /// PageRank
 struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
-  RecoveringPageRank(arangodb::velocypack::Slice params)
+  explicit RecoveringPageRank(arangodb::velocypack::Slice params)
       : SimpleAlgorithm("PageRank", params) {}
 
   bool supportsCompensation() const override { return true; }

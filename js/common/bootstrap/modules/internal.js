@@ -943,9 +943,11 @@ global.DEFINE_MODULE('internal', (function () {
   var useColor = false;
 
   if (global.COLOR_OUTPUT) {
-    useColor = global.COLOR_OUTPUT;
+    useColor = Boolean(global.COLOR_OUTPUT);
     delete global.COLOR_OUTPUT;
   }
+
+  exports.COLOR_OUTPUT = useColor;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief usePrettyPrint
