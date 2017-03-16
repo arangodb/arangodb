@@ -465,6 +465,39 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief analyzes a core dump using lldb (macos)
+// /
+// / We assume the system has core files in /cores/, and we have a lldb.
+// //////////////////////////////////////////////////////////////////////////////
+
+function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
+  let lldbOutputFile = fs.getTempFile();
+
+
+  let command;
+  command = '(';
+  command += "printf 'bt \n\n";
+  // LLDB doesn't have an equivilant of `bt full` so we try to show the upper
+  // most 5 frames with all variables
+  for (i = 0; i < 5; i ++)
+    command += 'frame variable\\n up \\n';
+  command += " bt full\\n thread backtrace all\\n';";
+  command += 'sleep 10;';
+  command += 'echo quit;';
+  command += 'sleep 2';
+  command += ') | lldb ' + storeArangodPath;
+  command += ' -c /cores/core.' + pid;
+  command += " > " + lldbOutputFile + " 2>&1";
+  const args = ['-c', command];
+  print(JSON.stringify(args));
+
+  executeExternalAndWait('/bin/bash', args);
+  GDB_OUTPUT = fs.read(lldbOutputFile);
+  print(GDB_OUTPUT);
+
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief analyzes a core dump using cdb (Windows)
 // /  cdb is part of the WinDBG package.
 // //////////////////////////////////////////////////////////////////////////////
@@ -545,6 +578,10 @@ function analyzeServerCrash (arangod, options, checkStr) {
     // Windows: wait for procdump to do its job...
     statusExternal(arangod.monitor, true);
     analyzeCoreDumpWindows(arangod);
+  }
+  else if (platform === 'darwin') {
+    fs.copyFile(ARANGOD_BIN, storeArangodPath);
+    analyzeCoreDumpMac(arangod, options, storeArangodPath, arangod.pid);    
   } else {
     fs.copyFile(ARANGOD_BIN, storeArangodPath);
     analyzeCoreDump(arangod, options, storeArangodPath, arangod.pid);
