@@ -263,6 +263,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("InitDatabase");
   startsAfter("IndexThread");
   startsAfter("RevisionCache");
+  startsAfter("RocksDBIndex");
 }
 
 DatabaseFeature::~DatabaseFeature() {
