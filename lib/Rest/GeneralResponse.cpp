@@ -443,6 +443,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
       return ResponseCode::GONE;
 
     case TRI_ERROR_ARANGO_CONFLICT:
+    case TRI_ERROR_ARANGO_DUPLICATE_NAME:
     case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
     case TRI_ERROR_CURSOR_BUSY:
     case TRI_ERROR_USER_DUPLICATE:

@@ -73,10 +73,10 @@ describe ArangoDB do
                END
         doc2 = ArangoDB.log_post("#{prefix}-create-duplicate", cmd1, :body => body2)
 
-        doc2.code.should eq(500)
+        doc2.code.should eq(409)
         doc2.headers['content-type'].should eq("application/json; charset=utf-8")
         doc2.parsed_response['error'].should eq(true)
-        doc2.parsed_response['code'].should eq(500)
+        doc2.parsed_response['code'].should eq(409)
         doc2.parsed_response['errorNum'].should eq(1207)
 
         cmd3 = api + '/dup'

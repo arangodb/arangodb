@@ -85,47 +85,42 @@ void RestViewHandler::createView() {
     return;
   }
 
-  try {
-    bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = true;
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(parseSuccess);
 
-    if (!parseSuccess) {
-      return;
-    }
-    VPackSlice body = parsedBody.get()->slice();
+  if (!parseSuccess) {
+    return;
+  }
+  VPackSlice body = parsedBody.get()->slice();
 
-    // TODO: validate body
-    if (!body.isObject()) {
-      generateError(
-          rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-          "expecting body to be of the form {name: <string>, type: <string>}");
-      return;
-    }
-    VPackSlice const nameSlice = body.get("name");
-    VPackSlice const typeSlice = body.get("type");
-    if (!nameSlice.isString() || !typeSlice.isString()) {
-      generateError(
-          rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-          "expecting body to be of the form {name: <string>, type: <string>}");
-      return;
-    }
+  // TODO: validate body
+  if (!body.isObject()) {
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expecting body to be of the form {name: <string>, type: <string>}");
+    return;
+  }
+  VPackSlice const nameSlice = body.get("name");
+  VPackSlice const typeSlice = body.get("type");
+  if (!nameSlice.isString() || !typeSlice.isString()) {
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expecting body to be of the form {name: <string>, type: <string>}");
+    return;
+  }
 
-    TRI_voc_cid_t id = 0;
-    std::shared_ptr<LogicalView> view = _vocbase->createView(body, id);
-    if (view != nullptr) {
-      VPackBuilder props;
-      props.openObject();
-      view->toVelocyPack(props);
-      props.close();
-      generateResult(rest::ResponseCode::CREATED, props.slice());
-    } else {
-      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "problem creating view");
-    }
-  } catch (...) {
-    // TODO: cleanup?
-    throw;
+  TRI_voc_cid_t id = 0;
+  std::shared_ptr<LogicalView> view = _vocbase->createView(body, id);
+  if (view != nullptr) {
+    VPackBuilder props;
+    props.openObject();
+    view->toVelocyPack(props);
+    props.close();
+    generateResult(rest::ResponseCode::CREATED, props.slice());
+  } else {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "problem creating view");
   }
 }
 
