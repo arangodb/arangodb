@@ -39,7 +39,7 @@ namespace algos {
 /// github.com/JananiC/NetworkCentralities/blob/master/src/main/java/linerank/LineRank.java
 struct LineRank : public SimpleAlgorithm<float, float, float> {
  public:
-  LineRank(arangodb::velocypack::Slice params);
+  explicit LineRank(arangodb::velocypack::Slice params);
 
   GraphFormat<float, float>* inputFormat() const override {
     return new VertexGraphFormat<float, float>(_resultField, -1.0);

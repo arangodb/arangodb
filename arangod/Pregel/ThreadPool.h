@@ -95,7 +95,7 @@ class WorkerThread : public arangodb::Thread {
   WorkerThread(WorkerThread const&) = delete;
   WorkerThread operator=(WorkerThread const&) = delete;
 
-  WorkerThread(ThreadPool* pool)
+  explicit WorkerThread(ThreadPool* pool)
       : Thread(pool->name()), _pool(pool), _status(0) {}
 
   ~WorkerThread() {

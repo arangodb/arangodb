@@ -36,7 +36,7 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   std::string _sourceDocumentId, _resultField = "result";
 
  public:
-  SSSPAlgorithm(VPackSlice userParams) : Algorithm("SSSP") {
+  explicit SSSPAlgorithm(VPackSlice userParams) : Algorithm("SSSP") {
       if (!userParams.isObject() || !userParams.hasKey("source")) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "You need to specify the source document id");

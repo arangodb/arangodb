@@ -37,7 +37,7 @@ static std::string const spUpperPathBound = "bound";
 struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
   PregelID _target;
 
-  SPComputation(PregelID const& target) : _target(target) {}
+  explicit SPComputation(PregelID const& target) : _target(target) {}
   void compute(MessageIterator<int64_t> const& messages) override {
     int64_t current = vertexData();
     for (const int64_t* msg : messages) {
