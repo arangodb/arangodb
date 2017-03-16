@@ -3232,7 +3232,11 @@ int LogicalCollection::beginReadTimed(bool useDeadlockDetector,
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
+#ifdef _WIN32
+      usleep(static_cast<unsigned long>(waitTime));
+#else
       usleep(waitTime);
+#endif
       if (waitTime < 500000) {
         waitTime *= 2;
       }
@@ -3336,7 +3340,11 @@ int LogicalCollection::beginWriteTimed(bool useDeadlockDetector,
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
+#ifdef _WIN32
+      usleep(static_cast<unsigned long>(waitTime));
+#else
       usleep(waitTime);
+#endif
       if (waitTime < 500000) {
         waitTime *= 2;
       }
