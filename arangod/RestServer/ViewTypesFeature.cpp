@@ -39,15 +39,17 @@ ViewTypesFeature::ViewTypesFeature(ApplicationServer* server)
 }
 
 void ViewTypesFeature::prepare() {
-  ViewCreator creator = [](LogicalView*, PhysicalView*, arangodb::velocypack::Slice const&) {
+  registerViewImplementation("test", [](LogicalView*, PhysicalView*, arangodb::velocypack::Slice const&) {
     return std::unique_ptr<ViewImplementation>();
-  };
-
-  _viewCreators.emplace("test", creator);
+  });
 }
 
 void ViewTypesFeature::unprepare() {
   _viewCreators.clear();
+}
+
+void ViewTypesFeature::registerViewImplementation(std::string const& type, ViewCreator creator) {
+  _viewCreators.emplace(type, creator);
 }
 
 bool ViewTypesFeature::isValidType(std::string const& type) const {

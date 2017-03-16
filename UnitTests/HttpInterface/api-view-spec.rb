@@ -53,7 +53,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(400)
       end
       
-      it "creating a view invalid type" do
+      it "creating a view with invalid type" do
         cmd = api
         body = <<-END
                { "name": "test",

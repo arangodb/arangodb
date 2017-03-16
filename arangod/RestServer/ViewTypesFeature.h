@@ -37,6 +37,8 @@ class ViewTypesFeature final
   void prepare() override final;
   void unprepare() override final;
 
+  void registerViewImplementation(std::string const& type, ViewCreator creator);
+
   bool isValidType(std::string const& type) const;
 
   ViewCreator& creator(std::string const& type) const;
