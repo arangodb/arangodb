@@ -127,21 +127,24 @@ void PregelFeature::cleanupConductor(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto cit = _conductors.find(executionNumber);
   if (cit != _conductors.end()) {
-    delete (cit->second);
+    std::unique_ptr<Conductor> cond(cit->second);
     _conductors.erase(executionNumber);
+    cond.reset();
   }
 }
 
 void PregelFeature::cleanupWorker(uint64_t executionNumber) {
-  MUTEX_LOCKER(guard, _mutex);
-  auto wit = _workers.find(executionNumber);
-  if (wit != _workers.end()) {// unmapping etc might need time
-    _threadPool->enqueue([this, executionNumber]{
-        auto wit = _workers.find(executionNumber);
-        delete (wit->second);
-        _workers.erase(executionNumber);
-    });
-  }
+  // unmapping etc might need a few seconds
+  _threadPool->enqueue([this, executionNumber] {
+    MUTEX_LOCKER(guard, _mutex);
+    
+    auto wit = _workers.find(executionNumber);
+    if (wit != _workers.end()) {
+      std::unique_ptr<IWorker> worker(wit->second);
+      _workers.erase(executionNumber);
+      worker.reset();
+    }
+  });
 }
 
 void PregelFeature::cleanupAll() {

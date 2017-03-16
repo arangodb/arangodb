@@ -272,9 +272,10 @@ public:
 
 #ifdef __linux__
     size_t newMappedSize = sizeof(T) * newSize;
-    this->_ptr = (T*) mremap((void*)this->_ptr, _mappedSize, newMappedSize, MREMAP_MAYMOVE);
-    if (this->_ptr != MAP_FAILED) {// success
+    void *newPtr = mremap((void*)this->_ptr, _mappedSize, newMappedSize, MREMAP_MAYMOVE);
+    if (newPtr != MAP_FAILED) {// success
       TRI_ASSERT(this->_ptr != nullptr);
+      this->_ptr = (T*)newPtr;
       _mappedSize = newMappedSize;
       _size = newSize;
       return;
@@ -282,15 +283,13 @@ public:
     if (errno == ENOMEM) {
       LOG_TOPIC(DEBUG, Logger::MMAP) << "out of memory in mmap";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY_MMAP);
-      return;
+    } else {
+      // preserve errno value while we're logging
+      LOG_TOPIC(WARN, Logger::MMAP) << "memory-mapping failed";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
     }
-    
-    // preserve errno value while we're logging
-    int tmp = errno;
-    LOG_TOPIC(WARN, Logger::MMAP) << "memory-mapping failed";
-    errno = tmp;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 #else 
+    // resizing mappings doesn't exist on other systems
     if (_size < newSize || newSize * sizeof(T) <= _mappedSize) {
       _size = newSize;
     } else {
