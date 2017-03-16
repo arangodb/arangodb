@@ -143,7 +143,7 @@ bool Conductor::_startGlobalStep() {
       });
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
-    LOG_TOPIC(INFO, Logger::PREGEL)
+    LOG_TOPIC(ERR, Logger::PREGEL)
         << "Seems there is at least one worker out of order";
     // the recovery mechanisms should take care of this
     return false;
@@ -198,11 +198,11 @@ bool Conductor::_startGlobalStep() {
   res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Conductor could not start GSS "
+    LOG_TOPIC(ERR, Logger::PREGEL) << "Conductor could not start GSS "
                                     << _globalSuperstep;
     // the recovery mechanisms should take care od this
   } else {
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Conductor started new gss "
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Conductor started new gss "
                                     << _globalSuperstep;
   }
   return res == TRI_ERROR_NO_ERROR;

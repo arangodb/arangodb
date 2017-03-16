@@ -115,7 +115,7 @@ GSSContext::~GSSContext() {}*/
 
 template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Called ~Worker()";
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Called ~Worker()";
   _state = WorkerState::DONE;
   usleep(50000);  // 50ms wait for threads to die
   delete _readCache;
@@ -238,7 +238,7 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
   _workerAggregators->serializeValues(response);
   response.close();
 
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Responded: " << response.toJson();
+  //LOG_TOPIC(INFO, Logger::PREGEL) << "Responded: " << response.toJson();
   return response;
 }
 
@@ -297,7 +297,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
     _workerContext->preGlobalSuperstep(gss);
   }
 
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Worker starts new gss: " << gss;
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Worker starts new gss: " << gss;
   _startProcessing();  // sets _state = COMPUTING;
 }
 
@@ -344,7 +344,7 @@ void Worker<V, E, M>::_startProcessing() {
     i++;
   } while (start != total);
   // TRI_ASSERT(_runningThreads == i);
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Using " << i << " Threads";
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Using " << i << " Threads";
 }
 
 template <typename V, typename E, typename M>
@@ -399,7 +399,7 @@ bool Worker<V, E, M>::_processVertices(
       }
     }
     if (_state != WorkerState::COMPUTING) {
-      LOG_TOPIC(INFO, Logger::PREGEL) << "Execution aborted prematurely.";
+      LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
       break;
     }
   }
@@ -413,11 +413,11 @@ bool Worker<V, E, M>::_processVertices(
     _nextGSSSendMessageCount += outCache->sendCountNextGSS();
   }
 
-  double t = TRI_microtime();
+  //double t = TRI_microtime();
   // merge thread local messages, _writeCache does locking
   _writeCache->mergeCache(_config, inCache);
   // TODO ask how to implement message sending without waiting for a response
-  t = TRI_microtime() - t;
+  //t = TRI_microtime() - t;
 
   MessageStats stats;
   stats.sendCount = outCache->sendCount();
@@ -428,10 +428,10 @@ bool Worker<V, E, M>::_processVertices(
   bool lastThread = false;
   {  // only one thread at a time
     MUTEX_LOCKER(guard, _threadMutex);
-    if (t > 0.005) {
-      LOG_TOPIC(INFO, Logger::PREGEL) << "Total " << stats.superstepRuntimeSecs
+    /*if (t > 0.005) {
+      LOG_TOPIC(DEBUG, Logger::PREGEL) << "Total " << stats.superstepRuntimeSecs
                                       << " s merge took " << t << " s";
-    }
+    }*/
 
     // merge the thread local stats and aggregators
     _workerAggregators->aggregateValues(workerAggregator);
@@ -632,7 +632,7 @@ void Worker<V, E, M>::startRecovery(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
   VPackSlice method = data.get(Utils::recoveryMethodKey);
   if (method.compareString(Utils::compensate) != 0) {
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Unsupported operation";
+    LOG_TOPIC(ERR, Logger::PREGEL) << "Unsupported operation";
     return;
   }
   // else if (method.compareString(Utils::rollback) == 0)
@@ -668,7 +668,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this] {
     if (_state != WorkerState::RECOVERING) {
-      LOG_TOPIC(INFO, Logger::PREGEL) << "Compensation aborted prematurely.";
+      LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
     }
 
@@ -684,7 +684,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
       vCompensate->compensate(i > _preRecoveryTotal);
       i++;
       if (_state != WorkerState::RECOVERING) {
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Execution aborted prematurely.";
+        LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         break;
       }
     }
@@ -705,7 +705,7 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::RECOVERING) {
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Compensation aborted prematurely.";
+    LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
     return;
   }
 

@@ -87,6 +87,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
       shards.push_back(shard);
       _localVertexShardIDs.push_back(shard);
       _localPregelShardIDs.insert(_pregelShardIDs[shard]);
+      _localPShardIDs_hash.insert(_pregelShardIDs[shard]);
     }
     _vertexCollectionShards.emplace(pair.key.copyString(), shards);
   }
