@@ -185,7 +185,7 @@ Scheduler::~Scheduler() {
   } catch (...) {
     // probably out of memory here...
     // must not throw in the dtor
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to delete old scheduler threads";
+    LOG(ERR) << "unable to delete old scheduler threads";
   }
 }
 
