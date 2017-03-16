@@ -123,7 +123,7 @@ Dependencies
 ------------
 * *Ruby*, *rspec*, *httparty* to install the required dependencies run:
   `cd UnitTests/HttpInterface; bundler`
-* boost_test (compile time)
+* catch (compile time, shipped in the 3rdParty directory)
 
 
 Filename conventions
