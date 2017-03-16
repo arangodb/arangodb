@@ -482,10 +482,8 @@ double ShortestPathNode::estimateCost(size_t& nrItems) const {
   // At this point we know |E| but do not know |V|.
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
-  auto trx = _plan->getAst()->query()->trx();
   auto collections = _plan->getAst()->query()->collections();
   size_t edgesCount = 0;
-  double nodesEstimate = 0;
 
   TRI_ASSERT(collections != nullptr);
 
@@ -496,7 +494,7 @@ double ShortestPathNode::estimateCost(size_t& nrItems) const {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unexpected pointer for collection");
     }
-    size_t edgesCount += collection->count();
+    edgesCount += collection->count();
   }
   // Hard-Coded number of vertices edges / 10
   nrItems = edgesCount + static_cast<size_t>(std::log2(edgesCount / 10) * (edgesCount / 10));
