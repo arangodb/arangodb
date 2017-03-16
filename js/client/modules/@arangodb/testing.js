@@ -481,7 +481,7 @@ function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
   // most 5 frames with all variables
   for (var i = 0; i < 5; i ++)
     command += 'frame variable\\n up \\n';
-  command += " bt full\\n thread backtrace all\\n';";
+  command += " thread backtrace all\\n';";
   command += 'sleep 10;';
   command += 'echo quit;';
   command += 'sleep 2';

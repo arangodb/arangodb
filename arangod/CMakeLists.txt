@@ -327,7 +327,6 @@ SET(ARANGOD_SOURCES
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
   VocBase/AuthInfo.cpp
-  VocBase/DatafileStatisticsContainer.cpp
   VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
@@ -390,6 +389,7 @@ set(ARANGOD_SOURCES
   MMFiles/MMFilesCompactorThread.cpp
   MMFiles/MMFilesDatafile.cpp
   MMFiles/MMFilesDatafileStatistics.cpp
+  MMFiles/MMFilesDatafileStatisticsContainer.cpp
   MMFiles/MMFilesDitch.cpp
   MMFiles/MMFilesDocumentOperation.cpp
   MMFiles/MMFilesEdgeIndex.cpp

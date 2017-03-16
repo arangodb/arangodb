@@ -65,11 +65,7 @@ bool ReadWriteLock::tryReadLock(uint64_t sleepTime) {
       return true;
     }
 
-#ifdef _WIN32
-    usleep((unsigned long)sleepTime);
-#else
-    usleep((useconds_t)sleepTime);
-#endif
+    usleep(static_cast<TRI_usleep_t>(sleepTime));
   }
 }
 
@@ -107,11 +103,7 @@ bool ReadWriteLock::tryWriteLock(uint64_t sleepTime) {
       return true;
     }
 
-#ifdef _WIN32
-    usleep((unsigned long)sleepTime);
-#else
-    usleep((useconds_t)sleepTime);
-#endif
+    usleep(static_cast<TRI_usleep_t>(sleepTime));
   }
 }
 
