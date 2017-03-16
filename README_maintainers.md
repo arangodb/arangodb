@@ -414,6 +414,22 @@ ________________________________________________________________________________
 
 Documentation
 =============
+Using Docker container
+----------------------
+We provide the docker container `arangodb/documentation-builder` which brings all neccessary dependencies to build the documentation.
+
+You can automagically build it using
+
+    ./scripts/generateDocumentation.sh
+
+which will start the docker container, compile ArangoDB, generate fresh example snippets, generate swagger, and all gitbook
+produced output files.
+
+You can also use `proselint` inside of that container to let it proof read your english ;-)
+
+
+Installing on local system
+--------------------------
 Dependencies to build documentation:
 
 - [swagger 2](http://swagger.io/) for the API-Documentation inside aardvark (no installation required)

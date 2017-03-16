@@ -78,11 +78,29 @@ void Mutex::lock() {
   }
 }
 
+bool Mutex::tryLock() {
+  int rc = pthread_mutex_trylock(&_mutex);
+  
+  if (rc != 0) {
+    if (rc == EBUSY) { // lock is already beeing held
+      return false;
+    } else if (rc == EDEADLK) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
+    }
+    
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not lock the mutex object: " << strerror(rc);
+    FATAL_ERROR_ABORT();
+  }
+  return true;
+}
+
 #endif
 
 #ifdef TRI_HAVE_WIN32_THREADS
 
 void Mutex::lock() { AcquireSRWLockExclusive(&_mutex); }
+
+bool Mutex::tryLock() { return TryAcquireSRWLockExclusive(&_mutex); }
 
 #endif
 

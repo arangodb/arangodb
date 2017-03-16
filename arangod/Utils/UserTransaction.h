@@ -28,7 +28,7 @@
 
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
-#include "Transaction/V8Context.h"
+#include "Transaction/Context.h"
 
 namespace arangodb {
 

@@ -462,6 +462,10 @@ std::string LogicalCollection::cid_as_string() const {
 
 TRI_voc_cid_t LogicalCollection::planId() const { return _planId; }
 
+std::string LogicalCollection::planId_as_string() const {
+  return basics::StringUtils::itoa(_planId);
+}
+
 TRI_col_type_e LogicalCollection::type() const { return _type; }
 
 std::string LogicalCollection::name() const {

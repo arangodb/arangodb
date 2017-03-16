@@ -238,6 +238,8 @@ start() {
        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$AG_BASE \
        --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
        --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
+       --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
+       --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
        --cluster.my-role $ROLE \
        --log.file cluster/$PORT.log \
        --log.level $LOG_LEVEL \
@@ -350,6 +352,8 @@ for p in `seq $DB_BASE $PORTTOPDB` ; do
         start dbserver $p
     fi
 done
+
+if [ "$NRCOORDINATORS" -gt 0 ] ; then
 PORTTOPCO=`expr $CO_BASE + $NRCOORDINATORS - 1`
 for p in `seq $CO_BASE $PORTTOPCO` ; do
     if [ "$CLUSTERDEBUGGER" == "1" ] ; then
@@ -362,6 +366,7 @@ for p in `seq $CO_BASE $PORTTOPCO` ; do
         start coordinator $p
     fi
 done
+fi
 
 if [ "$CLUSTERDEBUGGER" == "1" ] ; then
     echo Waiting for you to setup debugger windows, hit RETURN to continue!
@@ -391,9 +396,12 @@ testServer() {
 for p in `seq $DB_BASE $PORTTOPDB` ; do
     testServer $p
 done
+
+if [ "$NRCOORDINATORS" -gt 0 ] ; then
 for p in `seq $CO_BASE $PORTTOPCO` ; do
     testServer $p
 done
+fi
 
 if [ "$SECONDARIES" == "1" ] ; then
     let index=1
@@ -429,7 +437,9 @@ if [ "$SECONDARIES" == "1" ] ; then
 fi
 
 echo Done, your cluster is ready at
+if [ "$NRCOORDINATORS" -gt 0 ] ; then
 for p in `seq $CO_BASE $PORTTOPCO` ; do
     echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://127.0.0.1:$p"
 done
+fi
 
