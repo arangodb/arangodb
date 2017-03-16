@@ -240,6 +240,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("MMFilesLogfileManager");
   startsAfter("InitDatabase");
   startsAfter("MMFilesEngine");
+  startsAfter("MMFilesPersistentIndex");
 }
 
 DatabaseFeature::~DatabaseFeature() {

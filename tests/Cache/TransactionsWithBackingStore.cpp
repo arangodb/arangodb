@@ -194,7 +194,7 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
 
     auto hitRates = manager.globalHitRates();
     REQUIRE(hitRates.first >= 30.0);
-    REQUIRE(hitRates.second >= 50.0);
+    REQUIRE(hitRates.second >= 45.0);
 
     RandomGenerator::shutdown();
   }

@@ -112,7 +112,7 @@ class WorkerConfig {
   // index in globalShardIDs
   inline bool isLocalVertexShard(PregelShard shardIndex) const {
     // TODO cache this? prob small
-    return _localPregelShardIDs.find(shardIndex) != _localPregelShardIDs.end();
+    return _localPShardIDs_hash.find(shardIndex) != _localPShardIDs_hash.end();
   }
 
   // convert an arangodb document id to a pregel id
@@ -144,6 +144,7 @@ class WorkerConfig {
   /// cache these ids as much as possible, since we access them often
   std::unordered_map<std::string, PregelShard> _pregelShardIDs;
   std::set<PregelShard> _localPregelShardIDs;
+  std::unordered_set<PregelShard> _localPShardIDs_hash;
 };
 }
 }
