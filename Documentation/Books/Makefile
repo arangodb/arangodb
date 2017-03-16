@@ -28,7 +28,7 @@ stop_X11_display:
 # per book targets
 check-summary:
 	@echo "${STD_COLOR}##### checking summary for $(NAME)${RESET}"
-	@find ppbooks/$(NAME) -name \*.md |sed -e "s;ppbooks/$(NAME)/;;" |grep -vf SummaryBlacklist.txt |grep -v gitbook-plugin |sort > /tmp/is_md.txt
+	@find ppbooks/$(NAME) -name \*.md |sed -e "s;ppbooks/$(NAME)/;;" |grep -vf SummaryBlacklist.txt |grep -v gitbook-plugin |grep -v node_modules/ |sort > /tmp/is_md.txt
 	@cat $(NAME)/SUMMARY.md |grep -v '^ *# '|grep '(' |sed -e "s;.*(;;" -e "s;).*;;" |sort  > /tmp/is_summary.txt
 	@if test "`comm -3 /tmp/is_md.txt /tmp/is_summary.txt|wc -l`" -ne 0; then \
 		echo "${ERR_COLOR}"; \
