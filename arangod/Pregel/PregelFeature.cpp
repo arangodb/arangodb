@@ -99,7 +99,7 @@ void PregelFeature::start() {
 
 void PregelFeature::beginShutdown() { cleanupAll(); }
 
-void PregelFeature::addExecution(Conductor* const exec,
+void PregelFeature::addConductor(Conductor* const exec,
                                  uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   //_executions.
@@ -123,13 +123,17 @@ IWorker* PregelFeature::worker(uint64_t executionNumber) {
   return it != _workers.end() ? it->second : nullptr;
 }
 
-void PregelFeature::cleanup(uint64_t executionNumber) {
+void PregelFeature::cleanupConductor(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto cit = _conductors.find(executionNumber);
   if (cit != _conductors.end()) {
     delete (cit->second);
     _conductors.erase(executionNumber);
   }
+}
+
+void PregelFeature::cleanupWorker(uint64_t executionNumber) {
+  MUTEX_LOCKER(guard, _mutex);
   auto wit = _workers.find(executionNumber);
   if (wit != _workers.end()) {// unmapping etc might need time
     _threadPool->enqueue([this, executionNumber]{
@@ -219,7 +223,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
     w->cancelGlobalStep(body);
   } else if (path == Utils::finalizeExecutionPath) {
     w->finalizeExecution(body);
-    Instance->cleanup(executionNumber);
+    Instance->cleanupWorker(executionNumber);
   } else if (path == Utils::continueRecoveryPath) {
     w->compensateStep(body);
   } else if (path == Utils::finalizeRecoveryPath) {
