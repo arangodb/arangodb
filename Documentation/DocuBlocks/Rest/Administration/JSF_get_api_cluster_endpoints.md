@@ -5,10 +5,11 @@
 
 @RESTDESCRIPTION 
 
-Returns an array of objects, which each have
-the attribute `endpoint`, whose value is a string with the endpoint
-description. There is an entry for each coordinator in the cluster.
-This method only works on coordinators in cluster mode.
+Returns an object with a single attribute `endpoints`, which contains an
+array of objects, which each have the attribute `endpoint`, whose value
+is a string with the endpoint description. There is an entry for each
+coordinator in the cluster. This method only works on coordinators in
+cluster mode.
 
 @RESTRETURNCODES
 
