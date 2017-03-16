@@ -2848,7 +2848,7 @@
         }, 
         "/_api/cluster/endpoints": {
             "get": {
-                "description": "\n\n\nReturns an array of objects, which each have\nthe attribute `endpoint`, whose value is a string with the endpoint\ndescription. There is an entry for each coordinator in the cluster.\nThis method only works on coordinators in cluster mode.\n\n", 
+                "description": "\n\n\nReturns an object with an attribute `endpoints`, which contains an\narray of objects, which each have the attribute `endpoint`, whose value\nis a string with the endpoint description. There is an entry for each\ncoordinator in the cluster. This method only works on coordinators in\ncluster mode. In case of an error the `error` attribute is set to\n`true`.\n\n", 
                 "parameters": [], 
                 "responses": {
                     "200": {
