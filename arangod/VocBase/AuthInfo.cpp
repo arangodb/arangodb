@@ -262,7 +262,7 @@ void AuthInfo::reload() {
                              arangodb::aql::PART_MAIN);
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "starting to load authentication and authorization information";
-  TRI_ASSERT(_queryRegistry != nullptr); 
+  TRI_ASSERT(_queryRegistry != nullptr);
   auto queryResult = query.execute(_queryRegistry);
   
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -420,8 +420,87 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
       it = _authInfo.end();
     }
 
+
     if (it == _authInfo.end()) {
       LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "would insert new user";
+
+
+
+      TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+
+      if (vocbase == nullptr) {
+        LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown, cannot load authentication "
+                  << "and authorization information";
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "_system databse is unknown");
+      }
+
+      MUTEX_LOCKER(locker, _queryLock);
+
+      std::string const queryStr("UPSERT {user: @username} INSERT @user UPDATE @user IN _users");
+      auto emptyBuilder = std::make_shared<VPackBuilder>();
+
+      // TODO: reuse from authData builder
+      VPackBuilder binds;
+      binds.openObject();
+      binds.add("username", VPackValue(username));
+
+      binds.add("user", VPackValue(VPackValueType::Object));
+
+      binds.add("user", VPackValue(username));
+
+      binds.add("databases", VPackValue(VPackValueType::Object));
+      binds.add("*", VPackValue("rw"));
+      binds.close();
+
+      binds.add("configData", VPackValue(VPackValueType::Object));
+      binds.close();
+
+      binds.add("userData", VPackValue(VPackValueType::Object));
+      binds.close();
+
+      binds.add("authData", VPackValue(VPackValueType::Object));
+      binds.add("active", VPackValue(true));
+      binds.add("changePassword", VPackValue(false));
+
+      binds.add("simple", VPackValue(VPackValueType::Object));
+      binds.add("method", VPackValue("sha256"));
+
+      std::string s = "1f71c278"; // TODO: random salt + password hash calculation
+      binds.add("salt", VPackValue(s));
+
+      std::string spw = s + password;
+      HexHashResult hex = hexHashFromData("sha256", spw.data(), spw.size());
+      if (!hex.ok()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "hexcalc did not work");
+      }
+      binds.add("hash", VPackValue(hex.hexHash()));
+
+      binds.close();  // simple
+      binds.close(); // authData
+
+      binds.close(); // user
+      binds.close(); // obj
+
+      arangodb::aql::Query query(false, vocbase, queryStr.c_str(),
+                                queryStr.size(), std::make_shared<VPackBuilder>(binds), emptyBuilder,
+                                arangodb::aql::PART_MAIN);
+
+      TRI_ASSERT(_queryRegistry != nullptr);
+      auto queryResult = query.execute(_queryRegistry);
+
+      if (queryResult.code != TRI_ERROR_NO_ERROR) {
+        if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
+            (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+        }
+        _outdated = false;
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "query error");
+      }
+
+      VPackSlice resultSlice = queryResult.result->slice();
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << resultSlice.toJson();
+
+
 
       VPackBuilder builder;
       builder.openObject();
@@ -464,8 +543,6 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
       builder.close();  // The Object
 
       AuthEntry auth = CreateAuthEntry(builder.slice().resolveExternal(), AuthSource::LDAP);
-      // TRI_FreeString(TRI_CORE_MEM_ZONE, hash);
-
       _authInfo.emplace(auth.username(), std::move(auth));
 
       it = _authInfo.find(username);
