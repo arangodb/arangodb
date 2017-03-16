@@ -3676,7 +3676,7 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   int signal = SIGTERM;
   if (args.Length() == 2) {
-    signal = static_cast<int>(TRI_ObjectToInt64(args[0]));
+    signal = static_cast<int>(TRI_ObjectToInt64(args[1]));
   }
   TRI_external_id_t pid;
   memset(&pid, 0, sizeof(TRI_external_id_t));
