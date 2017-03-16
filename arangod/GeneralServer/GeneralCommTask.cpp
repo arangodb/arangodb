@@ -260,7 +260,6 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
   // ok, we need to queue the request
   LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler: "
                                     << _loop._scheduler->infoStatus();
-  size_t queue = handler->queue();
   uint64_t messageId = handler->messageId();
 
   std::unique_ptr<Job> job(
