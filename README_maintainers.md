@@ -512,7 +512,7 @@ restrictions. You can use pythons build in http server for this.
 
 To only regereneate one file (faster) you may specify a filter:
 
-    make FILTER=Manual/Aql/Invoke.mdpp
+    make build-book NAME=Manual FILTER=Manual/Aql/Invoke.mdpp
 
 (regular expressions allowed)
 
