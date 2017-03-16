@@ -44,8 +44,6 @@ class JobGuard : public SameThreadAsserter {
   ~JobGuard() { release(); }
 
  public:
-  bool isIdle() { return _scheduler->isIdle(); }
-
   void work() {
     TRI_ASSERT(!_isWorkingFlag);
 
