@@ -180,7 +180,13 @@ Scheduler::~Scheduler() {
     _threadManager->cancel();
   }
 
-  deleteOldThreads();
+  try {
+    deleteOldThreads();
+  } catch (...) {
+    // probably out of memory here...
+    // must not throw in the dtor
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to delete old scheduler threads";
+  }
 }
 
 // -----------------------------------------------------------------------------

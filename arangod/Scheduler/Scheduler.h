@@ -49,6 +49,7 @@ class Builder;
 }
 
 namespace rest {
+
 class Scheduler {
   Scheduler(Scheduler const&) = delete;
   Scheduler& operator=(Scheduler const&) = delete;
