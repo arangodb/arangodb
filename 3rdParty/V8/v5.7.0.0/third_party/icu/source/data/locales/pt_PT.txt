@@ -1,0 +1,1008 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+pt_PT{
+    Ellipsis{
+        medial{"{0}…{1}"}
+    }
+    ExemplarCharactersPunctuation{
+        "[\\- ‐ – — , ; \\: ! ? . … ' \u0022 “ ” « » ( ) \\[ \\] § @ * / \\& # † ‡ ′ "
+        "″]"
+    }
+    NumberElements{
+        latn{
+            miscPatterns{
+                range{"{0} - {1}"}
+            }
+            patterns{
+                accountingFormat{"#,##0.00 ¤;(#,##0.00 ¤)"}
+                currencyFormat{"#,##0.00 ¤"}
+            }
+            patternsLong{
+                decimalFormat{
+                    1000000{
+                        one{"0 milhão"}
+                        other{"0 milhões"}
+                    }
+                    10000000{
+                        one{"00 milhões"}
+                        other{"00 milhões"}
+                    }
+                    100000000{
+                        one{"000 milhões"}
+                        other{"000 milhões"}
+                    }
+                    1000000000{
+                        one{"0 mil milhões"}
+                        other{"0 mil milhões"}
+                    }
+                    10000000000{
+                        one{"00 mil milhões"}
+                        other{"00 mil milhões"}
+                    }
+                    100000000000{
+                        one{"000 mil milhões"}
+                        other{"000 mil milhões"}
+                    }
+                    1000000000000{
+                        one{"0 bilião"}
+                        other{"0 biliões"}
+                    }
+                    10000000000000{
+                        one{"00 biliões"}
+                        other{"00 biliões"}
+                    }
+                    100000000000000{
+                        one{"000 biliões"}
+                        other{"000 biliões"}
+                    }
+                }
+            }
+            patternsShort{
+                currencyFormat{
+                    1000000{
+                        one{"¤0 M"}
+                        other{"¤0 M"}
+                    }
+                    10000000{
+                        one{"¤00 M"}
+                        other{"¤00 M"}
+                    }
+                    100000000{
+                        one{"¤000 M"}
+                        other{"¤000 M"}
+                    }
+                    1000000000{
+                        one{"¤0 mM"}
+                        other{"¤0 mM"}
+                    }
+                    10000000000{
+                        one{"¤00 mM"}
+                        other{"¤00 mM"}
+                    }
+                    100000000000{
+                        one{"¤000 mM"}
+                        other{"¤000 mM"}
+                    }
+                    1000000000000{
+                        one{"¤0 B"}
+                        other{"¤0 B"}
+                    }
+                    10000000000000{
+                        one{"¤00 B"}
+                        other{"¤00 B"}
+                    }
+                    100000000000000{
+                        one{"¤000 B"}
+                        other{"¤000 B"}
+                    }
+                }
+                decimalFormat{
+                    1000000{
+                        one{"0 M"}
+                        other{"0 M"}
+                    }
+                    10000000{
+                        one{"00 M"}
+                        other{"00 M"}
+                    }
+                    100000000{
+                        one{"000 M"}
+                        other{"000 M"}
+                    }
+                    1000000000{
+                        one{"0 mM"}
+                        other{"0 mM"}
+                    }
+                    10000000000{
+                        one{"00 mM"}
+                        other{"00 mM"}
+                    }
+                    100000000000{
+                        one{"000 mM"}
+                        other{"000 mM"}
+                    }
+                    1000000000000{
+                        one{"0 Bi"}
+                        other{"0 Bi"}
+                    }
+                    10000000000000{
+                        one{"00 Bi"}
+                        other{"00 Bi"}
+                    }
+                    100000000000000{
+                        one{"000 Bi"}
+                        other{"000 Bi"}
+                    }
+                }
+            }
+            symbols{
+                group{" "}
+            }
+        }
+        minimumGroupingDigits{"2"}
+    }
+    Version{"2.1.29.54"}
+    calendar{
+        buddhist{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d 'de' MMMM 'de' y G",
+                "d 'de' MMMM 'de' y G",
+                "dd/MM/y G",
+                "d/M/y G",
+                "{1}, {0}",
+                "{1} 'às' {0}",
+                "{1} 'às' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+        }
+        chinese{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d 'de' MMMM 'de' U",
+                "d 'de' MMMM 'de' U",
+                "d 'de' MMM 'de' U",
+                "dd/MM/yy",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "M1",
+                        "M2",
+                        "M3",
+                        "M4",
+                        "M5",
+                        "M6",
+                        "M7",
+                        "M8",
+                        "M9",
+                        "M10",
+                        "M11",
+                        "M12",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "M1",
+                        "M2",
+                        "M3",
+                        "M4",
+                        "M5",
+                        "M6",
+                        "M7",
+                        "M8",
+                        "M9",
+                        "M10",
+                        "M11",
+                        "M12",
+                    }
+                }
+            }
+        }
+        generic{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d 'de' MMMM 'de' y G",
+                "d 'de' MMMM 'de' y G",
+                "dd/MM/y G",
+                "d/M/y G",
+                "{1}, {0}",
+                "{1} 'às' {0}",
+                "{1} 'às' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            availableFormats{
+                yyyyMMM{"MM/y G"}
+                yyyyMMMEEEEd{"EEEE, d/MM/y"}
+                yyyyMMMEd{"E, d/MM/y G"}
+                yyyyMMMd{"d/MM/y G"}
+                yyyyQQQ{"QQQQ 'de' y G"}
+                yyyyQQQQ{"QQQQ 'de' y G"}
+            }
+            intervalFormats{
+                M{
+                    M{"MM–MM"}
+                }
+                MMM{
+                    M{"MMM–MMM"}
+                }
+                MMMEd{
+                    d{"ccc, dd/MM – ccc, dd/MM"}
+                }
+                MMMMEd{
+                    M{"ccc, d 'de' MMMM – ccc, d 'de' MMMM"}
+                    d{"ccc, d 'de' MMMM – ccc, d 'de' MMMM"}
+                }
+                h{
+                    a{"h a – h a"}
+                    h{"h–h a"}
+                }
+                hm{
+                    h{"h:mm – h:mm a"}
+                }
+                y{
+                    y{"y–y G"}
+                }
+                yMMMEd{
+                    d{"E, dd/MM – E, dd/MM/y G"}
+                    y{"E, dd/MM/y – E, dd/MM/y G"}
+                }
+                yMMMM{
+                    M{"MMMM – MMMM 'de' y G"}
+                }
+                yMMMMEd{
+                    M{"E, d 'de' MMMM – E, d 'de' MMMM 'de' y G"}
+                    d{"E, d 'de' MMMM – E, d 'de' MMMM 'de' y G"}
+                    y{"E, d 'de' MMMM 'de' y – E, d 'de' MMMM 'de' y G"}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkers{
+                "da manhã",
+                "da tarde",
+            }
+            AmPmMarkersAbbr{
+                "a.m.",
+                "p.m.",
+            }
+            AmPmMarkersNarrow{
+                "a.m.",
+                "p.m.",
+            }
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d 'de' MMMM 'de' y",
+                "d 'de' MMMM 'de' y",
+                "dd/MM/y",
+                "dd/MM/yy",
+                "{1}, {0}",
+                "{1} 'às' {0}",
+                "{1} 'às' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            availableFormats{
+                MMMEd{"E, d/MM"}
+                MMMMEd{"ccc, d 'de' MMMM"}
+                MMMMW{
+                    one{"W.'ª' 'semana' 'de' MMM"}
+                    other{"W.'ª' 'semana' 'de' MMM"}
+                }
+                MMMd{"d/MM"}
+                Md{"dd/MM"}
+                yMMM{"MM/y"}
+                yMMMEEEEd{"EEEE, d/MM/y"}
+                yMMMEd{"E, d/MM/y"}
+                yMMMMEd{"ccc, d 'de' MMMM 'de' y"}
+                yMMMd{"d/MM/y"}
+                yQQQ{"QQQQ 'de' y"}
+                yw{
+                    one{"w.'ª' 'semana' 'de' y"}
+                    other{"w.'ª' 'semana' 'de' y"}
+                }
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "domingo",
+                        "segunda",
+                        "terça",
+                        "quarta",
+                        "quinta",
+                        "sexta",
+                        "sábado",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "domingo",
+                        "segunda",
+                        "terça",
+                        "quarta",
+                        "quinta",
+                        "sexta",
+                        "sábado",
+                    }
+                }
+            }
+            dayPeriod{
+                format{
+                    narrow{
+                        afternoon1{"tarde"}
+                        evening1{"noite"}
+                        midnight{"meia-noite"}
+                        morning1{"manhã"}
+                        night1{"madrugada"}
+                        noon{"meio-dia"}
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        am{"a.m."}
+                        pm{"p.m."}
+                    }
+                    narrow{
+                        am{"a.m."}
+                        pm{"p.m."}
+                    }
+                    wide{
+                        am{"manhã"}
+                        pm{"tarde"}
+                    }
+                }
+            }
+            eras{
+                abbreviated%variant{
+                    "a.E.C.",
+                    "E.C.",
+                }
+            }
+            intervalFormats{
+                H{
+                    H{"HH–HH"}
+                }
+                M{
+                    M{"M–M"}
+                }
+                MEd{
+                    M{"ccc, dd/MM – ccc, dd/MM"}
+                    d{"ccc, dd/MM – ccc, dd/MM"}
+                }
+                MMM{
+                    M{"MMM–MMM"}
+                }
+                MMMEd{
+                    M{"ccc, dd/MM – ccc, dd/MM"}
+                    d{"ccc, dd/MM – ccc, dd/MM"}
+                }
+                MMMMEd{
+                    M{"ccc, d 'de' MMMM – ccc, d 'de' MMMM"}
+                    d{"ccc, d 'de' MMMM – ccc, d 'de' MMMM"}
+                }
+                MMMd{
+                    d{"d–d 'de' MMM"}
+                }
+                d{
+                    d{"d–d"}
+                }
+                h{
+                    a{"h a – h a"}
+                    h{"h–h a"}
+                }
+                hv{
+                    h{"h–h a v"}
+                }
+                y{
+                    y{"y–y"}
+                }
+                yMEd{
+                    M{"ccc, dd/MM/y – ccc, dd/MM/y"}
+                    d{"ccc, dd/MM/y – ccc, dd/MM/y"}
+                    y{"ccc, dd/MM/y – ccc, dd/MM/y"}
+                }
+                yMMM{
+                    M{"MMM–MMM 'de' y"}
+                }
+                yMMMEd{
+                    d{"E, dd/MM – E, dd/MM/y"}
+                }
+                yMMMMEd{
+                    M{"E, d 'de' MMMM – E, d 'de' MMMM 'de' y"}
+                    d{"E, d 'de' MMMM – E, d 'de' MMMM 'de' y"}
+                    y{"E, d 'de' MMMM 'de' y – E, d 'de' MMMM 'de' y"}
+                }
+                yMMMd{
+                    d{"d–d 'de' MMM 'de' y"}
+                }
+            }
+            quarters{
+                format{
+                    wide{
+                        "1.º trimestre",
+                        "2.º trimestre",
+                        "3.º trimestre",
+                        "4.º trimestre",
+                    }
+                }
+                stand-alone{
+                    wide{
+                        "1.º trimestre",
+                        "2.º trimestre",
+                        "3.º trimestre",
+                        "4.º trimestre",
+                    }
+                }
+            }
+        }
+        hebrew{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d 'de' MMMM 'de' y G",
+                "d 'de' MMMM 'de' y G",
+                "dd/MM/y G",
+                "d/M/y G",
+                "{1}, {0}",
+                "{1} 'às' {0}",
+                "{1} 'às' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+        }
+        islamic{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d 'de' MMMM 'de' y G",
+                "d 'de' MMMM 'de' y G",
+                "dd/MM/y G",
+                "d/M/y G",
+                "{1}, {0}",
+                "{1} 'às' {0}",
+                "{1} 'às' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+        }
+        japanese{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d 'de' MMMM 'de' y G",
+                "d 'de' MMMM 'de' y G",
+                "dd/MM/y G",
+                "d/M/y G",
+                "{1}, {0}",
+                "{1} 'às' {0}",
+                "{1} 'às' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+        }
+        roc{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d 'de' MMMM 'de' y G",
+                "d 'de' MMMM 'de' y G",
+                "dd/MM/y G",
+                "d/M/y G",
+                "{1}, {0}",
+                "{1} 'às' {0}",
+                "{1} 'às' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+        }
+    }
+    characterLabel{
+        emoji{"emoji"}
+        female{"feminino"}
+        hanzi_simplified{"Hanzi (simplificado)"}
+        hanzi_traditional{"Hanzi (tradicional)"}
+        keycap{"tecla"}
+        male{"masculino"}
+        sign_standard_symbols{"Símbolos de sinalização"}
+        smiley{"cara sorridente"}
+        sport{"desporto"}
+        travel{"viajar"}
+        weather{"tempo"}
+    }
+    contextTransforms{
+        languages:intvector{
+            0,
+            1,
+        }
+    }
+    delimiters{
+        alternateQuotationEnd{"”"}
+        alternateQuotationStart{"“"}
+        quotationEnd{"»"}
+        quotationStart{"«"}
+    }
+    fields{
+        day{
+            relativeTime{
+                future{
+                    one{"dentro de {0} dia"}
+                    other{"dentro de {0} dias"}
+                }
+            }
+        }
+        day-short{
+            relativeTime{
+                future{
+                    one{"dentro de {0} dia"}
+                    other{"dentro de {0} dias"}
+                }
+            }
+        }
+        fri{
+            relativeTime{
+                future{
+                    one{"dentro de {0} sexta-feira"}
+                    other{"dentro de {0} sextas-feiras"}
+                }
+                past{
+                    one{"há {0} sexta-feira"}
+                    other{"há {0} sextas-feiras"}
+                }
+            }
+        }
+        fri-narrow{
+            relativeTime{
+                future{
+                    one{"dentro de {0} sex."}
+                    other{"dentro de {0} sex."}
+                }
+                past{
+                    one{"há {0} sex."}
+                    other{"há {0} sex."}
+                }
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"sexta passada"}
+                "0"{"esta sexta"}
+                "1"{"próxima sexta"}
+            }
+            relativeTime{
+                future{
+                    one{"dentro de {0} sexta"}
+                    other{"dentro de {0} sextas"}
+                }
+                past{
+                    one{"há {0} sexta"}
+                    other{"há {0} sextas"}
+                }
+            }
+        }
+        hour{
+            relativeTime{
+                future{
+                    one{"dentro de {0} hora"}
+                    other{"dentro de {0} horas"}
+                }
+            }
+        }
+        hour-short{
+            relativeTime{
+                future{
+                    one{"dentro de {0} h"}
+                    other{"dentro de {0} h"}
+                }
+            }
+        }
+        minute{
+            relativeTime{
+                future{
+                    one{"dentro de {0} minuto"}
+                    other{"dentro de {0} minutos"}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"min"}
+            relativeTime{
+                future{
+                    one{"+{0} min"}
+                    other{"+{0} min"}
+                }
+                past{
+                    one{"-{0} min"}
+                    other{"-{0} min"}
+                }
+            }
+        }
+        minute-short{
+            dn{"min"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} min"}
+                    other{"dentro de {0} min"}
+                }
+                past{
+                    one{"há {0} min"}
+                    other{"há {0} min"}
+                }
+            }
+        }
+        mon{
+            relativeTime{
+                future{
+                    one{"dentro de {0} segunda-feira"}
+                    other{"dentro de {0} segundas-feiras"}
+                }
+            }
+        }
+        mon-narrow{
+            relativeTime{
+                future{
+                    one{"dentro de {0} seg."}
+                    other{"dentro de {0} seg."}
+                }
+                past{
+                    one{"há {0} seg."}
+                    other{"há {0} seg."}
+                }
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"segunda passada"}
+                "0"{"esta segunda"}
+                "1"{"próxima segunda"}
+            }
+            relativeTime{
+                future{
+                    one{"dentro de {0} segunda"}
+                    other{"dentro de {0} segundas"}
+                }
+                past{
+                    one{"há {0} segunda"}
+                    other{"há {0} segundas"}
+                }
+            }
+        }
+        month{
+            relativeTime{
+                future{
+                    one{"dentro de {0} mês"}
+                    other{"dentro de {0} meses"}
+                }
+            }
+        }
+        month-short{
+            relativeTime{
+                future{
+                    one{"dentro de {0} mês"}
+                    other{"dentro de {0} meses"}
+                }
+            }
+        }
+        quarter{
+            relative{
+                "-1"{"trimestre passado"}
+                "0"{"este trimestre"}
+                "1"{"próximo trimestre"}
+            }
+            relativeTime{
+                future{
+                    one{"dentro de {0} trimestre"}
+                    other{"dentro de {0} trimestres"}
+                }
+            }
+        }
+        quarter-narrow{
+            relative{
+                "-1"{"trim. passado"}
+                "0"{"este trim."}
+                "1"{"próximo trim."}
+            }
+            relativeTime{
+                future{
+                    one{"+{0} trim."}
+                    other{"+{0} trim."}
+                }
+                past{
+                    one{"-{0} trim."}
+                    other{"-{0} trim."}
+                }
+            }
+        }
+        quarter-short{
+            relative{
+                "-1"{"trim. passado"}
+                "0"{"este trim."}
+                "1"{"próximo trim."}
+            }
+            relativeTime{
+                future{
+                    one{"dentro de {0} trim."}
+                    other{"dentro de {0} trim."}
+                }
+                past{
+                    one{"há {0} trim."}
+                    other{"há {0} trim."}
+                }
+            }
+        }
+        sat{
+            relativeTime{
+                future{
+                    one{"dentro de {0} sábado"}
+                    other{"dentro de {0} sábados"}
+                }
+            }
+        }
+        sat-narrow{
+            relativeTime{
+                future{
+                    one{"dentro de {0} sáb."}
+                    other{"dentro de {0} sáb."}
+                }
+                past{
+                    one{"há {0} sáb."}
+                    other{"há {0} sáb."}
+                }
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"sábado passado"}
+                "0"{"este sábado"}
+                "1"{"próximo sábado"}
+            }
+            relativeTime{
+                future{
+                    one{"dentro de {0} sábado"}
+                    other{"dentro de {0} sábados"}
+                }
+                past{
+                    one{"há {0} sábado"}
+                    other{"há {0} sábados"}
+                }
+            }
+        }
+        second{
+            relativeTime{
+                future{
+                    one{"dentro de {0} segundo"}
+                    other{"dentro de {0} segundos"}
+                }
+            }
+        }
+        second-short{
+            dn{"s"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} s"}
+                    other{"dentro de {0} s"}
+                }
+                past{
+                    one{"há {0} s"}
+                    other{"há {0} s"}
+                }
+            }
+        }
+        sun{
+            relativeTime{
+                future{
+                    one{"dentro de {0} domingo"}
+                    other{"dentro de {0} domingos"}
+                }
+            }
+        }
+        sun-narrow{
+            relativeTime{
+                future{
+                    one{"dentro de {0} dom."}
+                    other{"dentro de {0} dom."}
+                }
+                past{
+                    one{"há {0} dom."}
+                    other{"há {0} dom."}
+                }
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"domingo passado"}
+                "0"{"este domingo"}
+                "1"{"próximo domingo"}
+            }
+            relativeTime{
+                future{
+                    one{"dentro de {0} domingo"}
+                    other{"dentro de {0} domingos"}
+                }
+            }
+        }
+        thu{
+            relativeTime{
+                future{
+                    one{"dentro de {0} quinta-feira"}
+                    other{"dentro de {0} quintas-feiras"}
+                }
+                past{
+                    one{"há {0} quinta-feira"}
+                    other{"há {0} quintas-feiras"}
+                }
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"qui. passada"}
+                "0"{"esta qui."}
+                "1"{"próxima qui."}
+            }
+            relativeTime{
+                future{
+                    one{"dentro de {0} qui."}
+                    other{"dentro de {0} qui."}
+                }
+                past{
+                    one{"há {0} qui."}
+                    other{"há {0} qui."}
+                }
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"quinta passada"}
+                "0"{"esta quinta"}
+                "1"{"próxima quinta"}
+            }
+            relativeTime{
+                future{
+                    one{"dentro de {0} quinta"}
+                    other{"dentro de {0} quintas"}
+                }
+                past{
+                    one{"há {0} quinta"}
+                    other{"há {0} quintas"}
+                }
+            }
+        }
+        tue{
+            relativeTime{
+                future{
+                    one{"dentro de {0} terça-feira"}
+                    other{"dentro de {0} terças-feiras"}
+                }
+            }
+        }
+        tue-narrow{
+            relativeTime{
+                future{
+                    one{"dentro de {0} ter."}
+                    other{"dentro de {0} ter."}
+                }
+                past{
+                    one{"há {0} ter."}
+                    other{"há {0} ter."}
+                }
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"terça passada"}
+                "0"{"esta terça"}
+                "1"{"próxima terça"}
+            }
+            relativeTime{
+                future{
+                    one{"dentro de {0} terça"}
+                    other{"dentro de {0} terças"}
+                }
+                past{
+                    one{"há {0} terça"}
+                    other{"há {0} terças"}
+                }
+            }
+        }
+        wed{
+            relativeTime{
+                future{
+                    one{"dentro de {0} quarta-feira"}
+                    other{"dentro de {0} quartas-feiras"}
+                }
+                past{
+                    one{"há {0} quarta-feira"}
+                    other{"há {0} quartas-feiras"}
+                }
+            }
+        }
+        wed-narrow{
+            relativeTime{
+                future{
+                    one{"dentro de {0} qua."}
+                    other{"dentro de {0} qua."}
+                }
+                past{
+                    one{"há {0} qua."}
+                    other{"há {0} qua."}
+                }
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"quarta passada"}
+                "0"{"esta quarta"}
+                "1"{"próxima quarta"}
+            }
+            relativeTime{
+                future{
+                    one{"dentro de {0} quarta-feira"}
+                    other{"dentro de {0} quartas-feiras"}
+                }
+                past{
+                    one{"há {0} quarta-feira"}
+                    other{"há {0} quartas-feiras"}
+                }
+            }
+        }
+        week{
+            relativeTime{
+                future{
+                    one{"dentro de {0} semana"}
+                    other{"dentro de {0} semanas"}
+                }
+            }
+        }
+        week-short{
+            relativePeriod{"a sem. de {0}"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} sem."}
+                    other{"dentro de {0} sem."}
+                }
+            }
+        }
+        year{
+            relativeTime{
+                future{
+                    one{"dentro de {0} ano"}
+                    other{"dentro de {0} anos"}
+                }
+            }
+        }
+        year-short{
+            relativeTime{
+                future{
+                    one{"dentro de {0} ano"}
+                    other{"dentro de {0} anos"}
+                }
+            }
+        }
+    }
+}

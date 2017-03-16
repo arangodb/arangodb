@@ -1,0 +1,42 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+smn{
+    Version{"2.1.27.40"}
+    units{
+        duration{
+            day{
+                dnam{"peeivih"}
+            }
+            hour{
+                dnam{"tiijmeh"}
+            }
+            microsecond{
+                dnam{"mikrosekunteh"}
+                one{"{0} μs"}
+                other{"{0} μs"}
+                two{"{0} μs"}
+            }
+            millisecond{
+                dnam{"millisekunteh"}
+            }
+            minute{
+                dnam{"minutteh"}
+            }
+            month{
+                dnam{"mánuppajeh"}
+            }
+            nanosecond{
+                dnam{"nanosekunteh"}
+            }
+            second{
+                dnam{"sekunteh"}
+            }
+            week{
+                dnam{"ohoh"}
+            }
+            year{
+                dnam{"iveh"}
+            }
+        }
+    }
+}

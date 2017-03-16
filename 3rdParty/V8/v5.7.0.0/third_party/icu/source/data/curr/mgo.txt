@@ -1,0 +1,19 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+mgo{
+    Currencies{
+        XAF{
+            "FCFA",
+            "shirè",
+        }
+        XXX{
+            "XXX",
+            "iku ikap mɔʼɔ",
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+    Version{"2.1.27.40"}
+}

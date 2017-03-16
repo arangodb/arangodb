@@ -1,0 +1,18 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_419{
+    Countries{
+        035{"Asia sudoriental"}
+        CI{"Costa de Marfil"}
+        IC{"Islas Canarias"}
+        QO{"Islas Ultramarinas"}
+        TA{"Tristán da Cunha"}
+        TL{"Timor Oriental"}
+        UM{"Islas Ultramarinas de EE.UU."}
+    }
+    Countries%short{
+        GB{"R. U."}
+        US{"EE.UU."}
+    }
+    Version{"2.1.27.99"}
+}

@@ -309,9 +309,6 @@ struct TRI_vocbase_t {
   /// @brief unloads a collection
   int unloadCollection(arangodb::LogicalCollection* collection, bool force);
 
-  /// @brief callback for unloading a collection
-  static bool UnloadCollectionCallback(arangodb::LogicalCollection* collection);
-
   /// @brief adds a new view implementation
   void registerViewImplementation(std::string const& type,
                                   arangodb::ViewCreator creator);

@@ -41,7 +41,7 @@ Remove existing Task
       period: 2
     }
     // Ensure it's really not there:
-    curlRequest('DELETE', url + sampleTask.id);
+    curlRequest('DELETE', url + sampleTask.id, null, null, [404,200]);
     // put in something we may delete:
     curlRequest('PUT', url + sampleTask.id,
                 sampleTask);

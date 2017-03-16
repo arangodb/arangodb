@@ -1,0 +1,16 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+de_LU{
+    Version{"2.1.27.99"}
+    calendar{
+        gregorian{
+            AmPmMarkersNarrow{
+                "vorm.",
+                "nachm.",
+            }
+            availableFormats{
+                h{"h a"}
+            }
+        }
+    }
+}

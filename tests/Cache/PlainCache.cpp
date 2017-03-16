@@ -239,7 +239,7 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
               RandomGenerator::interval(static_cast<int64_t>(validLower),
                                         static_cast<int64_t>(validUpper));
 
-          Cache::Finding f = cache->find(&item, sizeof(uint64_t));
+          Finding f = cache->find(&item, sizeof(uint64_t));
           if (f.found()) {
             hitCount++;
             TRI_ASSERT(f.value() != nullptr);
@@ -303,10 +303,10 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
     {
       auto cacheStats = cacheHit->hitRates();
       auto managerStats = manager.globalHitRates();
-      REQUIRE(cacheStats.first >= 85.0);
-      REQUIRE(cacheStats.second >= 85.0);
-      REQUIRE(managerStats.first >= 85.0);
-      REQUIRE(managerStats.second >= 85.0);
+      REQUIRE(cacheStats.first >= 80.0);
+      REQUIRE(cacheStats.second >= 80.0);
+      REQUIRE(managerStats.first >= 80.0);
+      REQUIRE(managerStats.second >= 80.0);
     }
 
     for (uint64_t i = 1024; i < 2048; i++) {
@@ -317,9 +317,9 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
       auto managerStats = manager.globalHitRates();
       REQUIRE(cacheStats.first == 0.0);
       REQUIRE(cacheStats.second == 0.0);
-      REQUIRE(managerStats.first > 40.0);
+      REQUIRE(managerStats.first > 35.0);
       REQUIRE(managerStats.first < 50.0);
-      REQUIRE(managerStats.second > 40.0);
+      REQUIRE(managerStats.second > 35.0);
       REQUIRE(managerStats.second < 50.0);
     }
 
@@ -332,13 +332,13 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
     {
       auto cacheStats = cacheMixed->hitRates();
       auto managerStats = manager.globalHitRates();
-      REQUIRE(cacheStats.first > 40.0);
+      REQUIRE(cacheStats.first > 35.0);
       REQUIRE(cacheStats.first < 50.0);
-      REQUIRE(cacheStats.second > 40.0);
+      REQUIRE(cacheStats.second > 35.0);
       REQUIRE(cacheStats.second < 50.0);
-      REQUIRE(managerStats.first > 40.0);
+      REQUIRE(managerStats.first > 35.0);
       REQUIRE(managerStats.first < 50.0);
-      REQUIRE(managerStats.second > 40.0);
+      REQUIRE(managerStats.second > 35.0);
       REQUIRE(managerStats.second < 50.0);
     }
 

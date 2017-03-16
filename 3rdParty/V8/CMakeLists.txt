@@ -11,12 +11,11 @@ if (POLICY CMP0048)
 endif ()
 
 project(V8)
-set(V8_VERSION 5.7.0.0)
 
 # create target directory
 
-set(V8_DIR "${PROJECT_SOURCE_DIR}/v8")
-set(V8_TARGET_DIR "${CMAKE_CURRENT_BINARY_DIR}/v8")
+set(V8_DIR "${PROJECT_SOURCE_DIR}/${V8_SUB_DIR}")
+set(V8_TARGET_DIR "${CMAKE_CURRENT_BINARY_DIR}/${V8_SUB_DIR}")
 
 file(MAKE_DIRECTORY ${V8_TARGET_DIR})
 

@@ -1,0 +1,11 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ru_MD{
+    Currencies{
+        MDL{
+            "L",
+            "Молдавский лей",
+        }
+    }
+    Version{"2.1.27.40"}
+}

@@ -1,0 +1,28 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ar_AE{
+    Version{"2.1.27.40"}
+    calendar{
+        gregorian{
+            eras{
+                abbreviated%variant{
+                    "ق.م",
+                    "ب.م",
+                }
+                wide%variant{
+                    "قبل الميلاد",
+                    "بعد الميلاد",
+                }
+            }
+        }
+    }
+    fields{
+        year{
+            relative{
+                "-1"{"السنة الماضية"}
+                "0"{"هذه السنة"}
+                "1"{"السنة التالية"}
+            }
+        }
+    }
+}

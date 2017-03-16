@@ -26,6 +26,7 @@
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
+#include "Cache/Finding.h"
 #include "Cache/FrequencyBuffer.h"
 #include "Cache/Metadata.h"
 #include "Cache/PlainBucket.h"
@@ -39,7 +40,7 @@
 
 using namespace arangodb::cache;
 
-Cache::Finding PlainCache::find(void const* key, uint32_t keySize) {
+Finding PlainCache::find(void const* key, uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   Finding result(nullptr);
   uint32_t hash = hashKey(key, keySize);
@@ -71,7 +72,6 @@ bool PlainCache::insert(CachedValue* value) {
 
   if (ok) {
     bool allowed = true;
-    bool eviction = false;
     bool maybeMigrate = false;
     int64_t change = static_cast<int64_t>(value->size());
     CachedValue* candidate = bucket->find(hash, value->key(), value->keySize);
@@ -93,6 +93,7 @@ bool PlainCache::insert(CachedValue* value) {
       _metadata.unlock();
 
       if (allowed) {
+        bool eviction = false;
         if (candidate != nullptr) {
           bucket->evict(candidate, true);
           freeValue(candidate);
@@ -121,7 +122,6 @@ bool PlainCache::insert(CachedValue* value) {
 bool PlainCache::remove(void const* key, uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool removed = false;
-  bool maybeMigrate = false;
   uint32_t hash = hashKey(key, keySize);
 
   bool ok;
@@ -130,6 +130,7 @@ bool PlainCache::remove(void const* key, uint32_t keySize) {
   std::tie(ok, bucket, source) = getBucket(hash, Cache::triesSlow);
 
   if (ok) {
+    bool maybeMigrate = false;
     CachedValue* candidate = bucket->remove(hash, key, keySize);
 
     if (candidate != nullptr) {

@@ -1,0 +1,8 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_US_POSIX{
+    Version{"2.1.29.25"}
+    boundaries{
+        word:process(dependency){"word_POSIX.brk"}
+    }
+}

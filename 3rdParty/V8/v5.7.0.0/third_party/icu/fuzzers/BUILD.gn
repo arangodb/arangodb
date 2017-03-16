@@ -1,0 +1,101 @@
+# Copyright 2016 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# ICU fuzzers.
+
+import("//third_party/icu/config.gni")
+import("//testing/libfuzzer/fuzzer_test.gni")
+
+# root BUILD depenends on this target. Needed for package discovery
+group("fuzzers") {
+}
+
+source_set("fuzzer_support") {
+  public = [
+    "fuzzer_utils.h",
+  ]
+  deps = [
+    "//base",
+    "//base:i18n",
+    "//third_party/icu",
+  ]
+  public_configs = [ "//third_party/icu:icu_config" ]
+}
+
+fuzzer_test("icu_uregex_open_fuzzer") {
+  sources = [
+    "icu_uregex_open_fuzzer.cc",
+  ]
+  deps = [
+    ":fuzzer_support",
+  ]
+  dict = "icu_regex.dict"
+  libfuzzer_options = [ "max_len=128" ]
+}
+
+fuzzer_test("icu_unicode_string_codepage_create_fuzzer") {
+  sources = [
+    "icu_unicode_string_codepage_create_fuzzer.cc",
+  ]
+  deps = [
+    ":fuzzer_support",
+  ]
+  seed_corpus = "//third_party/icu/source/test/testdata"
+  libfuzzer_options = [ "max_len=10240" ]
+}
+
+fuzzer_test("icu_number_format_fuzzer") {
+  sources = [
+    "icu_number_format_fuzzer.cc",
+  ]
+  deps = [
+    ":fuzzer_support",
+  ]
+  seed_corpus = "//third_party/icu/source/test/testdata"
+  libfuzzer_options = [ "max_len=10240" ]
+}
+
+fuzzer_test("icu_break_iterator_fuzzer") {
+  sources = [
+    "icu_break_iterator_fuzzer.cc",
+  ]
+  deps = [
+    ":fuzzer_support",
+  ]
+  seed_corpus = "//third_party/icu/source/test/testdata"
+  libfuzzer_options = [ "max_len=10240" ]
+}
+
+fuzzer_test("icu_break_iterator_utf32_fuzzer") {
+  sources = [
+    "icu_break_iterator_utf32_fuzzer.cc",
+  ]
+  deps = [
+    ":fuzzer_support",
+  ]
+  seed_corpus = "//third_party/icu/source/test/testdata"
+  libfuzzer_options = [ "max_len=10240" ]
+}
+
+fuzzer_test("icu_ucasemap_fuzzer") {
+  sources = [
+    "icu_ucasemap_fuzzer.cc",
+  ]
+  deps = [
+    ":fuzzer_support",
+  ]
+  seed_corpus = "//third_party/icu/source/test/testdata"
+  libfuzzer_options = [ "max_len=10240" ]
+}
+
+fuzzer_test("icu_converter_fuzzer") {
+  sources = [
+    "icu_converter_fuzzer.cc",
+  ]
+  deps = [
+    ":fuzzer_support",
+  ]
+  seed_corpus = "//third_party/icu/source/test/testdata"
+  libfuzzer_options = [ "max_len=10240" ]
+}
