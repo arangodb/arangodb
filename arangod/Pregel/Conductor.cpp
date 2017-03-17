@@ -399,26 +399,27 @@ void Conductor::startRecovery() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
   TRI_ASSERT(ioService != nullptr);
-  ioService->post([this] {
-    // let's wait for a final state in the cluster
-    // on some systems usleep does not
-    // like arguments greater than 1000000
-    usleep(1000000);
-    usleep(1000000);
-    if (_state != ExecutionState::RECOVERING) {
+  
+  // let's wait for a final state in the cluster
+  _boost_timer.reset(new boost::asio::deadline_timer(*ioService,
+                                                     boost::posix_time::seconds(2)));
+  _boost_timer->async_wait([this] (const boost::system::error_code& error) {
+    _boost_timer.reset();
+    
+    if (error == boost::asio::error::operation_aborted
+        || _state != ExecutionState::RECOVERING) {
       return;  // seems like we are canceled
     }
-
     std::vector<ServerID> goodServers;
     int res = PregelFeature::instance()->recoveryManager()->filterGoodServers(
-        _dbServers, goodServers);
+                                                                              _dbServers, goodServers);
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::PREGEL) << "Recovery proceedings failed";
       cancel();
       return;
     }
     _dbServers = goodServers;
-
+    
     VPackBuilder b;
     b.openObject();
     b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -428,7 +429,7 @@ void Conductor::startRecovery() {
     if (_state != ExecutionState::RECOVERING) {
       return;  // seems like we are canceled
     }
-
+    
     // Let's try recovery
     if (_masterContext) {
       bool proceed = _masterContext->preCompensation();
@@ -436,14 +437,14 @@ void Conductor::startRecovery() {
         cancel();
       }
     }
-
+    
     VPackBuilder additionalKeys;
     additionalKeys.openObject();
     additionalKeys.add(Utils::recoveryMethodKey, VPackValue(Utils::compensate));
     _aggregators->serializeValues(b);
     additionalKeys.close();
     _aggregators->resetValues();
-
+    
     // initialize workers will reconfigure the workers and set the
     // _dbServers list to the new primary DBServers
     res = _initializeWorkers(Utils::startRecoveryPath, additionalKeys.slice());
@@ -533,7 +534,6 @@ int Conductor::_initializeWorkers(std::string const& suffix,
   }
 
   std::string coordinatorId = ServerState::instance()->getId();
-  LOG_TOPIC(INFO, Logger::PREGEL) << "My id: " << coordinatorId;
   std::vector<ClusterCommRequest> requests;
 
   for (auto const& it : vertexMap) {

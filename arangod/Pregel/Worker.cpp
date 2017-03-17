@@ -575,23 +575,29 @@ void Worker<V, E, M>::_continueAsync() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
   TRI_ASSERT(ioService != nullptr);
-  ioService->post([this] {
-    if (_writeCache->containedMessageCount() < _messageBatchSize) {
-      usleep(50000);
-    }
-    {  // swap these pointers atomically
-      MY_WRITE_LOCKER(guard, _cacheRWLock);
-      std::swap(_readCache, _writeCache);
-      if (_writeCacheNextGSS->containedMessageCount() > 0) {
-        _requestedNextGSS = true;
+  
+  // wait for new messages before beginning to process
+  int64_t milli = _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
+  // start next iteration in $milli mseconds.
+  _boost_timer.reset(new boost::asio::deadline_timer(*ioService,
+                                                     boost::posix_time::millisec(milli)));
+  _boost_timer->async_wait([this] (const boost::system::error_code& error) {
+    if (error != boost::asio::error::operation_aborted) {
+      {  // swap these pointers atomically
+        MY_WRITE_LOCKER(guard, _cacheRWLock);
+        std::swap(_readCache, _writeCache);
+        if (_writeCacheNextGSS->containedMessageCount() > 0) {
+          _requestedNextGSS = true;
+        }
       }
+      MUTEX_LOCKER(guard, _commandMutex);
+      // overwrite conductor values with local values
+      _conductorAggregators->resetValues();
+      _conductorAggregators->aggregateValues(*_workerAggregators.get());
+      _workerAggregators->resetValues();
+      _startProcessing();
+      _boost_timer.reset();
     }
-    MUTEX_LOCKER(guard, _commandMutex);
-    // overwrite conductor values with local values
-    _conductorAggregators->resetValues();
-    _conductorAggregators->aggregateValues(*_workerAggregators.get());
-    _workerAggregators->resetValues();
-    _startProcessing();
   });
 }
 

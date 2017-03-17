@@ -31,6 +31,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Statistics.h"
 #include "VocBase/vocbase.h"
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace arangodb {
 namespace pregel {
@@ -87,6 +88,7 @@ class Conductor {
   uint64_t _totalEdgesCount = 0;
   /// some tracking info
   double _startTimeSecs = 0, _computationStartTimeSecs, _endTimeSecs = 0;
+  std::unique_ptr<boost::asio::deadline_timer> _boost_timer;
 
   bool _startGlobalStep();
   int _initializeWorkers(std::string const& path, VPackSlice additional);
