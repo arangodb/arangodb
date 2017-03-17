@@ -79,6 +79,10 @@ void VppCommTask::addResponse(VppResponse* response, RequestStatistics* stat) {
 
   if (response->generateBody()) {
     for (auto& payload : response_message._payloads) {
+      LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-result\",\""
+                                         << (void*)this << "/" << id << "\","
+                                         << payload.toJson() << "\"";
+
       slices.push_back(payload);
     }
   }
@@ -131,7 +135,7 @@ void VppCommTask::addResponse(VppResponse* response, RequestStatistics* stat) {
 
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
-      << "\"vst-request-end\",\"" << (void*)this << "\",\""
+      << "\"vst-request-end\",\"" << (void*)this << "/" << id << "\",\""
       << _connectionInfo.clientAddress << "\",\""
       << VppRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response->responseCode()) << ","
@@ -278,13 +282,14 @@ bool VppCommTask::processRead(double startTime) {
   if (doExecute) {
     VPackSlice header = message.header();
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-header\",\""
-                                       << "\"," << message.header().toJson()
-                                       << "\"";
+    LOG_TOPIC(DEBUG, Logger::REQUESTS)
+        << "\"vst-request-header\",\"" << (void*)this << "/"
+        << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-payload\",\""
-                                       << "\"," << message.payload().toJson()
-                                       << "\"";
+    LOG_TOPIC(DEBUG, Logger::REQUESTS)
+        << "\"vst-request-payload\",\"" << (void*)this << "/"
+        << chunkHeader._messageID << "\"," << message.payload().toJson()
+        << "\"";
 
     // get type of request
     int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
