@@ -118,7 +118,7 @@ struct StatsManager {
       received += pair.second.receivedCount;
     }
     LOG_TOPIC(TRACE, Logger::PREGEL) << send << " - " << received << " : "
-                                    << send - received;
+                                     << send - received;
   }
 
   /// tests if active count is greater 0

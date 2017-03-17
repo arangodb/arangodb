@@ -83,8 +83,7 @@ void InCache<M>::parseMessages(VPackSlice const& incomingData) {
 
 template <typename M>
 void InCache<M>::storeMessageNoLock(PregelShard shard,
-                                    PregelKey const& vertexId,
-                                    M const& data) {
+                                    PregelKey const& vertexId, M const& data) {
   this->_set(shard, vertexId, data);
   this->_containedMessageCount++;
 }

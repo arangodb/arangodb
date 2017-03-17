@@ -35,11 +35,11 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/Scheduler.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -54,34 +54,32 @@ const char* arangodb::pregel::ExecutionStateNames[6] = {
 Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t* vocbase,
                      std::vector<CollectionID> const& vertexCollections,
                      std::vector<CollectionID> const& edgeCollections,
-                     std::string const& algoName,
-                     VPackSlice const& config)
+                     std::string const& algoName, VPackSlice const& config)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _algorithm(AlgoRegistry::createAlgorithm(algoName, config)),
       _vertexCollections(vertexCollections),
-      _edgeCollections(edgeCollections)
-{
+      _edgeCollections(edgeCollections) {
   if (!config.isObject()) {
     _userParams.openObject();
     _userParams.close();
   } else {
     _userParams.add(config);
   }
-  
+
   if (!_algorithm) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Algorithm not found");
   }
   _masterContext.reset(_algorithm->masterContext(config));
   _aggregators.reset(new AggregatorHandler(_algorithm.get()));
-  
+
   _maxSuperstep =
-  VelocyPackHelper::getNumericValue(config, "maxGSS", _maxSuperstep);
+      VelocyPackHelper::getNumericValue(config, "maxGSS", _maxSuperstep);
   // configure the async mode as off by default
   VPackSlice async = _userParams.slice().get("async");
   _asyncMode =
-  _algorithm->supportsAsyncMode() && async.isBool() && async.getBoolean();
+      _algorithm->supportsAsyncMode() && async.isBool() && async.getBoolean();
   if (_asyncMode) {
     LOG_TOPIC(INFO, Logger::PREGEL) << "Running in async mode";
   }
@@ -107,7 +105,7 @@ void Conductor::start() {
   _startTimeSecs = TRI_microtime();
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
-  
+
   LOG_TOPIC(DEBUG, Logger::PREGEL) << "Telling workers to load the data";
   int res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
@@ -200,11 +198,11 @@ bool Conductor::_startGlobalStep() {
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
     LOG_TOPIC(ERR, Logger::PREGEL) << "Conductor could not start GSS "
-                                    << _globalSuperstep;
+                                   << _globalSuperstep;
     // the recovery mechanisms should take care od this
   } else {
     LOG_TOPIC(DEBUG, Logger::PREGEL) << "Conductor started new gss "
-                                    << _globalSuperstep;
+                                     << _globalSuperstep;
   }
   return res == TRI_ERROR_NO_ERROR;
 }
@@ -295,7 +293,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   _globalSuperstep++;
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
   TRI_ASSERT(ioService != nullptr);
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
@@ -399,7 +397,7 @@ void Conductor::startRecovery() {
   _statistics.reset();
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
   TRI_ASSERT(ioService != nullptr);
   ioService->post([this] {
     // let's wait for a final state in the cluster
@@ -458,40 +456,40 @@ void Conductor::startRecovery() {
 
 // resolves into an ordered list of shards for each collection on each server
 static void resolveInfo(
-    TRI_vocbase_t *vocbase,
-    CollectionID const& collectionID,
-    std::map<CollectionID, std::string> &collectionPlanIdMap,
+    TRI_vocbase_t* vocbase, CollectionID const& collectionID,
+    std::map<CollectionID, std::string>& collectionPlanIdMap,
     std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>>& serverMap,
     std::vector<ShardID>& allShards) {
-  
-  ServerState *ss = ServerState::instance();
-  if (!ss->isRunningInCluster()) { // single server mode
-    LogicalCollection *lc = vocbase->lookupCollection(collectionID);
+  ServerState* ss = ServerState::instance();
+  if (!ss->isRunningInCluster()) {  // single server mode
+    LogicalCollection* lc = vocbase->lookupCollection(collectionID);
     if (lc == nullptr || lc->deleted()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                      collectionID);
     }
-    
+
     collectionPlanIdMap.emplace(collectionID, lc->planId_as_string());
     allShards.push_back(collectionID);
     serverMap[ss->getId()][collectionID].push_back(collectionID);
 
-  } else if (ss->isCoordinator()) {// we are in the cluster
-    
+  } else if (ss->isCoordinator()) {  // we are in the cluster
+
     ClusterInfo* ci = ClusterInfo::instance();
-    std::shared_ptr<LogicalCollection> lc = ci->getCollection(vocbase->name(), collectionID);
+    std::shared_ptr<LogicalCollection> lc =
+        ci->getCollection(vocbase->name(), collectionID);
     if (!lc || lc->deleted()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                      collectionID);
     }
     collectionPlanIdMap.emplace(collectionID, lc->planId_as_string());
-    
-    std::shared_ptr<std::vector<ShardID>> shardIDs = ci->getShardList(lc->cid_as_string());
+
+    std::shared_ptr<std::vector<ShardID>> shardIDs =
+        ci->getShardList(lc->cid_as_string());
     allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
-    
+
     for (auto const& shard : *shardIDs) {
       std::shared_ptr<std::vector<ServerID>> servers =
-      ci->getResponsibleServer(shard);
+          ci->getResponsibleServer(shard);
       if (servers->size() > 0) {
         serverMap[(*servers)[0]][lc->name()].push_back(shard);
       }
@@ -505,8 +503,9 @@ static void resolveInfo(
 /// proceedings
 int Conductor::_initializeWorkers(std::string const& suffix,
                                   VPackSlice additional) {
-  std::string const path = Utils::baseUrl(_vocbaseGuard.vocbase()->name(),
-                                          Utils::workerPrefix) + suffix;
+  std::string const path =
+      Utils::baseUrl(_vocbaseGuard.vocbase()->name(), Utils::workerPrefix) +
+      suffix;
 
   // int64_t vertexCount = 0, edgeCount = 0;
   std::map<CollectionID, std::string> collectionPlanIdMap;
@@ -639,8 +638,8 @@ int Conductor::_finalizeWorkers() {
   b.add(Utils::storeResultsKey, VPackValue(store));
   b.close();
   int res = _sendToAllDBServers(Utils::finalizeExecutionPath, b);
-  _endTimeSecs = TRI_microtime();// offically done
-  
+  _endTimeSecs = TRI_microtime();  // offically done
+
   VPackBuilder debugOut;
   debugOut.openObject();
   debugOut.add("stats", VPackValue(VPackValueType::Object));
@@ -698,17 +697,18 @@ int Conductor::_sendToAllDBServers(std::string const& path,
   if (ServerState::instance()->isRunningInCluster() == false) {
     if (handle) {
       VPackBuilder response;
-      PregelFeature::handleWorkerRequest(_vocbaseGuard.vocbase(), path, message.slice(),
-                                         response);
+      PregelFeature::handleWorkerRequest(_vocbaseGuard.vocbase(), path,
+                                         message.slice(), response);
       handle(response.slice());
     } else {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-      boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+      boost::asio::io_service* ioService =
+          SchedulerFeature::SCHEDULER->ioService();
       TRI_ASSERT(ioService != nullptr);
       ioService->post([this, path, message] {
         VPackBuilder response;
-        PregelFeature::handleWorkerRequest(_vocbaseGuard.vocbase(), path, message.slice(),
-                                           response);
+        PregelFeature::handleWorkerRequest(_vocbaseGuard.vocbase(), path,
+                                           message.slice(), response);
       });
     }
     return TRI_ERROR_NO_ERROR;
@@ -720,7 +720,8 @@ int Conductor::_sendToAllDBServers(std::string const& path,
     LOG_TOPIC(WARN, Logger::PREGEL) << "No servers registered";
     return TRI_ERROR_FAILED;
   }
-  std::string base = Utils::baseUrl(_vocbaseGuard.vocbase()->name(), Utils::workerPrefix);
+  std::string base =
+      Utils::baseUrl(_vocbaseGuard.vocbase()->name(), Utils::workerPrefix);
   auto body = std::make_shared<std::string const>(message.toJson());
   std::vector<ClusterCommRequest> requests;
   for (auto const& server : _dbServers) {
@@ -732,7 +733,7 @@ int Conductor::_sendToAllDBServers(std::string const& path,
   size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
                                       LogTopic("Pregel Conductor"));
   LOG_TOPIC(TRACE, Logger::PREGEL) << "Send " << path << " to " << nrDone
-                                  << " servers";
+                                   << " servers";
   Utils::printResponses(requests);
   if (handle && nrGood == requests.size()) {
     for (ClusterCommRequest const& req : requests) {

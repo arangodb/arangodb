@@ -81,8 +81,10 @@ std::string const Utils::enterNextGSSKey = "nextGSS";
 std::string const Utils::compensate = "compensate";
 std::string const Utils::rollback = "rollback";
 
-std::string Utils::baseUrl(std::string const& dbName, std::string const& prefix) {
-  return "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix + prefix + "/";
+std::string Utils::baseUrl(std::string const& dbName,
+                           std::string const& prefix) {
+  return "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix +
+         prefix + "/";
 }
 
 void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
@@ -98,28 +100,27 @@ void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
 }
 
 int Utils::resolveShard(WorkerConfig const* config,
-                            std::string const& collectionName,
-                            std::string const& shardKey,
-                            std::string const& vertexKey,
-                            std::string &responsibleShard) {
-  
+                        std::string const& collectionName,
+                        std::string const& shardKey,
+                        std::string const& vertexKey,
+                        std::string& responsibleShard) {
   if (ServerState::instance()->isRunningInCluster() == false) {
     responsibleShard = collectionName;
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   auto const& planIDMap = config->collectionPlanIdMap();
   ClusterInfo* ci = ClusterInfo::instance();
   std::shared_ptr<LogicalCollection> info;
   auto const& it = planIDMap.find(collectionName);
   if (it != planIDMap.end()) {
-    info = ci->getCollection(config->database(), it->second); // might throw
+    info = ci->getCollection(config->database(), it->second);  // might throw
   } else {
     LOG_TOPIC(ERR, Logger::PREGEL)
-    << "The collection could not be translated to a planID";
+        << "The collection could not be translated to a planID";
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  
+
   bool usesDefaultShardingAttributes;
   VPackBuilder partial;
   partial.openObject();
@@ -127,9 +128,9 @@ int Utils::resolveShard(WorkerConfig const* config,
   partial.close();
   //  LOG_TOPIC(INFO, Logger::PREGEL) << "Partial doc: " << partial.toJson();
   int res =
-      ci->getResponsibleShard(info.get(), partial.slice(), false, responsibleShard,
-                              usesDefaultShardingAttributes);
-  //TRI_ASSERT(usesDefaultShardingAttributes);  // should be true anyway
-  
+      ci->getResponsibleShard(info.get(), partial.slice(), false,
+                              responsibleShard, usesDefaultShardingAttributes);
+  // TRI_ASSERT(usesDefaultShardingAttributes);  // should be true anyway
+
   return res;
 }

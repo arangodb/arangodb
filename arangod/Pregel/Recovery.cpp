@@ -30,9 +30,9 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConfig.h"
-#include "VocBase/LogicalCollection.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -147,9 +147,10 @@ void RecoveryManager::updatedFailedServers() {
     if (it != failed.end()) {
       // found a failed server
       ShardID const& shard = pair.first;
-      
+
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-      boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+      boost::asio::io_service* ioService =
+          SchedulerFeature::SCHEDULER->ioService();
       TRI_ASSERT(ioService != nullptr);
       ioService->post([this, shard] { _renewPrimaryServer(shard); });
     }

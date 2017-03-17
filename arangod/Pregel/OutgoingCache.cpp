@@ -158,8 +158,7 @@ void CombiningOutCache<M>::_removeContainedMessages() {
 
 template <typename M>
 void CombiningOutCache<M>::appendMessage(PregelShard shard,
-                                         PregelKey const& key,
-                                         M const& data) {
+                                         PregelKey const& key, M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {
       this->_localCacheNextGSS->storeMessage(shard, key, data);

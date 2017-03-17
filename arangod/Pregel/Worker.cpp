@@ -36,10 +36,10 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/Scheduler.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -106,9 +106,11 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
     // initialization of the graphstore might take an undefined amount
     // of time. Therefore this is performed asynchronous
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+    boost::asio::io_service* ioService =
+        SchedulerFeature::SCHEDULER->ioService();
     TRI_ASSERT(ioService != nullptr);
-    ioService->post([this, callback] { _graphStore->loadShards(&_config, callback); });
+    ioService->post(
+        [this, callback] { _graphStore->loadShards(&_config, callback); });
   }
 }
 
@@ -240,7 +242,7 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
   _workerAggregators->serializeValues(response);
   response.close();
 
-  //LOG_TOPIC(INFO, Logger::PREGEL) << "Responded: " << response.toJson();
+  // LOG_TOPIC(INFO, Logger::PREGEL) << "Responded: " << response.toJson();
   return response;
 }
 
@@ -315,7 +317,7 @@ void Worker<V, E, M>::_startProcessing() {
   _state = WorkerState::COMPUTING;
   _activeCount = 0;  // active count is only valid after the run
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
   TRI_ASSERT(ioService != nullptr);
 
   size_t total = _graphStore->localVertexCount();
@@ -417,11 +419,11 @@ bool Worker<V, E, M>::_processVertices(
     _nextGSSSendMessageCount += outCache->sendCountNextGSS();
   }
 
-  //double t = TRI_microtime();
+  // double t = TRI_microtime();
   // merge thread local messages, _writeCache does locking
   _writeCache->mergeCache(_config, inCache);
   // TODO ask how to implement message sending without waiting for a response
-  //t = TRI_microtime() - t;
+  // t = TRI_microtime() - t;
 
   MessageStats stats;
   stats.sendCount = outCache->sendCount();
@@ -571,7 +573,7 @@ void Worker<V, E, M>::_continueAsync() {
   }
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
   TRI_ASSERT(ioService != nullptr);
   ioService->post([this] {
     if (_writeCache->containedMessageCount() < _messageBatchSize) {
@@ -595,7 +597,7 @@ void Worker<V, E, M>::_continueAsync() {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
-                                        std::function<void(void)>callback) {
+                                        std::function<void(void)> callback) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
@@ -670,22 +672,22 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
 
   _workerAggregators->resetValues();
   _conductorAggregators->setAggregatedValues(data);
-  
+
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
   TRI_ASSERT(ioService != nullptr);
   ioService->post([this] {
     if (_state != WorkerState::RECOVERING) {
       LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
     }
-    
+
     auto vertexIterator = _graphStore->vertexIterator();
     std::unique_ptr<VertexCompensation<V, E, M>> vCompensate(
-                                                             _algorithm->createCompensation(&_config));
+        _algorithm->createCompensation(&_config));
     _initializeVertexContext(vCompensate.get());
     vCompensate->_writeAggregators = _workerAggregators.get();
-    
+
     size_t i = 0;
     for (VertexEntry* vertexEntry : vertexIterator) {
       vCompensate->_vertexEntry = vertexEntry;
@@ -706,7 +708,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     _workerAggregators->serializeValues(package);
     package.close();
     _callConductor(Utils::finishedRecoveryPath, package);
-  }); 
+  });
 }
 
 template <typename V, typename E, typename M>
@@ -728,7 +730,8 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
                                      VPackBuilder const& message) {
   if (ServerState::instance()->isRunningInCluster() == false) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+    boost::asio::io_service* ioService =
+        SchedulerFeature::SCHEDULER->ioService();
     TRI_ASSERT(ioService != nullptr);
     ioService->post([path, message] {
       VPackBuilder response;
@@ -736,7 +739,8 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
     });
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
-    std::string baseUrl = Utils::baseUrl(_config.database(), Utils::conductorPrefix);
+    std::string baseUrl =
+        Utils::baseUrl(_config.database(), Utils::conductorPrefix);
     CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
     auto headers =
         std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -760,7 +764,8 @@ void Worker<V, E, M>::_callConductorWithResponse(
     handle(response.slice());
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
-    std::string baseUrl = Utils::baseUrl(_config.database(), Utils::conductorPrefix);
+    std::string baseUrl =
+        Utils::baseUrl(_config.database(), Utils::conductorPrefix);
     CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
     std::unordered_map<std::string, std::string> headers;
 

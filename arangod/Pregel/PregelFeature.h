@@ -58,7 +58,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
   void cleanupWorker(uint64_t executionNumber);
   void cleanupAll();
 
-  //ThreadPool* threadPool() { return _threadPool.get(); }
+  // ThreadPool* threadPool() { return _threadPool.get(); }
   RecoveryManager* recoveryManager() {
     if (_recoveryManager) {
       return _recoveryManager.get();

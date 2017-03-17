@@ -31,8 +31,8 @@
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -48,7 +48,7 @@ uint64_t PregelFeature::createExecutionNumber() {
 }
 
 PregelFeature::PregelFeature(application_features::ApplicationServer* server)
-: application_features::ApplicationFeature(server, "Pregel") {
+    : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("WorkMonitor");
@@ -80,8 +80,9 @@ void PregelFeature::start() {
     return;
   }
 
-  //const size_t threadNum = PregelFeature::availableParallelism();
-  //LOG_TOPIC(DEBUG, Logger::PREGEL) << "Pregel uses " << threadNum << " threads";
+  // const size_t threadNum = PregelFeature::availableParallelism();
+  // LOG_TOPIC(DEBUG, Logger::PREGEL) << "Pregel uses " << threadNum << "
+  // threads";
   //_threadPool.reset(new ThreadPool(threadNum, "Pregel"));
 
   if (ServerState::instance()->isCoordinator()) {
@@ -141,11 +142,11 @@ void PregelFeature::cleanupConductor(uint64_t executionNumber) {
 void PregelFeature::cleanupWorker(uint64_t executionNumber) {
   // unmapping etc might need a few seconds
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
   TRI_ASSERT(ioService != nullptr);
   ioService->post([this, executionNumber] {
     MUTEX_LOCKER(guard, _mutex);
-    
+
     auto wit = _workers.find(executionNumber);
     if (wit != _workers.end()) {
       std::unique_ptr<IWorker> worker(wit->second);
