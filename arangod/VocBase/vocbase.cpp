@@ -1297,7 +1297,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
     id = view->id();
 
     // now let's actually create the backing implementation
-    view->spawnImplementation(creator, parameters);
+    view->spawnImplementation(creator, parameters, true);
 
     // Let's try to persist it.
     view->persistPhysicalView();
