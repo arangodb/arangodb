@@ -103,7 +103,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto id = cursor->id(); // need to fetch id before release() as release() will delete the cursor
     cursors->release(cursor);
 
-    auto result = V8TickId(isolate, id);
+    auto result = TRI_V8UInt64String<TRI_voc_tick_t>(isolate, id);
     TRI_V8_RETURN(result);
   } catch (...) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -181,7 +181,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     if (hasNext) {
       result->ForceSet(TRI_V8_ASCII_STRING("id"),
-                       V8TickId(isolate, cursor->id()));
+                       TRI_V8UInt64String<TRI_voc_tick_t>(isolate, cursor->id()));
     }
 
     if (hasCount) {

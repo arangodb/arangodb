@@ -65,6 +65,9 @@ enum TRI_df_marker_type_t : uint8_t {
   TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION = 70,
   TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION = 71,
   TRI_DF_MARKER_VPACK_ABORT_TRANSACTION = 72,
+  TRI_DF_MARKER_VPACK_CREATE_VIEW = 80,
+  TRI_DF_MARKER_VPACK_DROP_VIEW = 81,
+  TRI_DF_MARKER_VPACK_CHANGE_VIEW = 82,
 
   TRI_DF_MARKER_MAX  // again, this is not a real
                      // marker, but we use it for

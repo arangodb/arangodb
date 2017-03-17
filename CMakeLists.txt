@@ -816,7 +816,7 @@ endif ()
 ################################################################################
 
 include_directories(${V8_INCLUDE_DIR})
-add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
+add_definitions("-DARANGODB_V8_VERSION=\"5.0.71.39\"")
 
 ################################################################################
 ## ZLIB

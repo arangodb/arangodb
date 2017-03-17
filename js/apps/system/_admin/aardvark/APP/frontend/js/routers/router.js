@@ -682,7 +682,7 @@
 
       var callback = function (error, type) {
         if (!error) {
-          this.documentView.setType(type);
+          this.documentView.setType();
         } else {
           console.log('Error', 'Could not fetch collection type');
         }

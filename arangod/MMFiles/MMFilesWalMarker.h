@@ -252,6 +252,54 @@ class MMFilesCollectionMarker : public MMFilesWalMarker {
   TRI_df_marker_type_t _type;
 };
 
+/// @brief a marker used for view-related operations
+class MMFilesViewMarker : public MMFilesWalMarker {
+ public:
+  MMFilesViewMarker(TRI_df_marker_type_t type, 
+                    TRI_voc_tick_t databaseId, 
+                    TRI_voc_cid_t viewId, 
+                   arangodb::velocypack::Slice const& data)
+    : _databaseId(databaseId),
+      _viewId(viewId),
+      _data(data.begin()),
+      _type(type) {
+
+    TRI_ASSERT(databaseId > 0);
+    TRI_ASSERT(viewId > 0);
+  }
+
+  ~MMFilesViewMarker() = default;
+
+  /// @brief returns the marker type 
+  TRI_df_marker_type_t type() const override final { return _type; }
+  
+  /// @brief returns the datafile id
+  /// this is always 0 for this type of marker, as the marker is not
+  /// yet in any datafile
+  TRI_voc_fid_t fid() const override final { return 0; }
+  
+  /// @brief returns the marker size 
+  uint32_t size() const override final { 
+    return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) + _data.byteSize());
+  }
+
+  /// @brief store the marker in the memory region starting at mem
+  void store(char* mem) const override final { 
+    // store database id
+    encoding::storeNumber<decltype(_databaseId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::DatabaseIdOffset(_type), _databaseId, sizeof(decltype(_databaseId)));
+    // store view id
+    encoding::storeNumber<decltype(_viewId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::ViewIdOffset(_type), _viewId, sizeof(decltype(_viewId)));
+    // store VPack
+    memcpy(mem + MMFilesDatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
+  }
+
+ private:
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_cid_t _viewId;
+  arangodb::velocypack::Slice _data;
+  TRI_df_marker_type_t _type;
+};
+
 /// @brief a marker used for transaction-related operations
 class MMFilesTransactionMarker : public MMFilesWalMarker {
  public:

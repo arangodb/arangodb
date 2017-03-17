@@ -248,6 +248,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestVersionHandler.cpp
+  RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestPregelHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
@@ -272,6 +273,7 @@ SET(ARANGOD_SOURCES
   RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/UnitTestsFeature.cpp
   RestServer/UpgradeFeature.cpp
+  RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
   RestServer/WorkMonitorFeature.cpp
   Scheduler/Acceptor.cpp
@@ -320,14 +322,17 @@ SET(ARANGOD_SOURCES
   V8Server/v8-statistics.cpp
   V8Server/v8-user-structures.cpp
   V8Server/v8-util.cpp
+  V8Server/v8-views.cpp
   V8Server/v8-vocbase.cpp
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
+  Views/LoggerView.cpp
   VocBase/AuthInfo.cpp
   VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
+  VocBase/LogicalView.cpp
   VocBase/PathEnumerator.cpp
   VocBase/PhysicalCollection.cpp
   VocBase/SingleServerTraverser.cpp
@@ -362,7 +367,6 @@ SET(ARANGOD_SOURCES
   Pregel/PregelFeature.cpp
   Pregel/Utils.cpp
   Pregel/Recovery.cpp
-  Pregel/ThreadPool.cpp
   Pregel/Worker.cpp
   Pregel/WorkerConfig.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
@@ -412,6 +416,7 @@ set(ARANGOD_SOURCES
   MMFiles/MMFilesTransactionContextData.cpp
   MMFiles/MMFilesTransactionState.cpp
   MMFiles/MMFilesV8Functions.cpp
+  MMFiles/MMFilesView.cpp
   MMFiles/MMFilesWalLogfile.cpp
   MMFiles/MMFilesWalRecoverState.cpp
   MMFiles/MMFilesWalRecoveryFeature.cpp

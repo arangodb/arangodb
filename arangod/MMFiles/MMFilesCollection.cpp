@@ -176,7 +176,7 @@ arangodb::Result MMFilesCollection::updateProperties(VPackSlice const& slice,
   return {};
 }
 
-arangodb::Result MMFilesCollection::persistProperties() noexcept {
+arangodb::Result MMFilesCollection::persistProperties() {
   int res = TRI_ERROR_NO_ERROR;
   try {
     VPackBuilder infoBuilder =

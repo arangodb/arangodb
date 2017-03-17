@@ -45,7 +45,7 @@ class WorkerConfig {
   friend class Worker;
 
  public:
-  WorkerConfig(TRI_vocbase_t *vocbase, VPackSlice params);
+  WorkerConfig(TRI_vocbase_t* vocbase, VPackSlice params);
   void updateConfig(VPackSlice updated);
 
   inline uint64_t executionNumber() const { return _executionNumber; }
@@ -77,8 +77,8 @@ class WorkerConfig {
     return _edgeCollectionShards;
   }
 
-  inline std::unordered_map<CollectionID, std::string> const& collectionPlanIdMap()
-      const {
+  inline std::unordered_map<CollectionID, std::string> const&
+  collectionPlanIdMap() const {
     return _collectionPlanIdMap;
   };
 
@@ -131,7 +131,7 @@ class WorkerConfig {
   uint64_t _parallelism = 1;
 
   std::string _coordinatorId;
-  TRI_vocbase_t *_vocbase;
+  TRI_vocbase_t* _vocbase;
 
   std::vector<ShardID> _globalShardIDs;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
@@ -140,7 +140,7 @@ class WorkerConfig {
   // Map from edge collection to their shards, only iterated over keep sorted
   std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards,
       _edgeCollectionShards;
-  
+
   /// cache these ids as much as possible, since we access them often
   std::unordered_map<std::string, PregelShard> _pregelShardIDs;
   std::set<PregelShard> _localPregelShardIDs;

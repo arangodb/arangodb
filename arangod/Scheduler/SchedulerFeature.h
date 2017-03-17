@@ -53,8 +53,8 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
 
  private:
   uint64_t _nrServerThreads = 0;
-  int64_t _nrMinimalThreads = 0;
-  int64_t _nrMaximalThreads = 0;
+  uint64_t _nrMinimalThreads = 0;
+  uint64_t _nrMaximalThreads = 0;
   uint64_t _queueSize = 512;
 
  public:

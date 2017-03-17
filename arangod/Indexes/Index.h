@@ -89,7 +89,7 @@ class Index {
     TRI_IDX_TYPE_EDGE_INDEX,
     TRI_IDX_TYPE_FULLTEXT_INDEX,
     TRI_IDX_TYPE_SKIPLIST_INDEX,
-    TRI_IDX_TYPE_ROCKSDB_INDEX
+    TRI_IDX_TYPE_PERSISTENT_INDEX
   };
 
  public:
@@ -188,7 +188,7 @@ class Index {
   static bool allowExpansion(IndexType type) {
     return (type == TRI_IDX_TYPE_HASH_INDEX ||
             type == TRI_IDX_TYPE_SKIPLIST_INDEX ||
-            type == TRI_IDX_TYPE_ROCKSDB_INDEX);
+            type == TRI_IDX_TYPE_PERSISTENT_INDEX);
   }
 
   virtual IndexType type() const = 0;

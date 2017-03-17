@@ -105,7 +105,7 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
 
  public:
   IndexType type() const override {
-    return Index::TRI_IDX_TYPE_ROCKSDB_INDEX;
+    return Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
   }
   
   bool allowExpansion() const override { return true; }

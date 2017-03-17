@@ -66,6 +66,8 @@ exports.ArangoDatabase = require('@arangodb/arango-database').ArangoDatabase;
 // cannot yet not use arangodb
 exports.ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
 
+exports.ArangoView = require('@arangodb/arango-view').ArangoView;
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief the global db object
 // //////////////////////////////////////////////////////////////////////////////

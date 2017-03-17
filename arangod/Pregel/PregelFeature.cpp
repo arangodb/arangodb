@@ -29,9 +29,10 @@
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/Recovery.h"
-#include "Pregel/ThreadPool.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -47,9 +48,10 @@ uint64_t PregelFeature::createExecutionNumber() {
 }
 
 PregelFeature::PregelFeature(application_features::ApplicationServer* server)
-: application_features::ApplicationFeature(server, "Pregel") {
+    : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("WorkMonitor");
   startsAfter("Logger");
   startsAfter("Database");
   startsAfter("Endpoint");
@@ -78,9 +80,10 @@ void PregelFeature::start() {
     return;
   }
 
-  const size_t threadNum = PregelFeature::availableParallelism();
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Pregel uses " << threadNum << " threads";
-  _threadPool.reset(new ThreadPool(threadNum, "Pregel"));
+  // const size_t threadNum = PregelFeature::availableParallelism();
+  // LOG_TOPIC(DEBUG, Logger::PREGEL) << "Pregel uses " << threadNum << "
+  // threads";
+  //_threadPool.reset(new ThreadPool(threadNum, "Pregel"));
 
   if (ServerState::instance()->isCoordinator()) {
     _recoveryManager.reset(new RecoveryManager());
@@ -97,7 +100,10 @@ void PregelFeature::start() {
   }
 }
 
-void PregelFeature::beginShutdown() { cleanupAll(); }
+void PregelFeature::beginShutdown() {
+  cleanupAll();
+  Instance = nullptr;
+}
 
 void PregelFeature::addConductor(Conductor* const exec,
                                  uint64_t executionNumber) {
@@ -127,21 +133,27 @@ void PregelFeature::cleanupConductor(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto cit = _conductors.find(executionNumber);
   if (cit != _conductors.end()) {
-    delete (cit->second);
+    std::unique_ptr<Conductor> cond(cit->second);
     _conductors.erase(executionNumber);
+    cond.reset();
   }
 }
 
 void PregelFeature::cleanupWorker(uint64_t executionNumber) {
-  MUTEX_LOCKER(guard, _mutex);
-  auto wit = _workers.find(executionNumber);
-  if (wit != _workers.end()) {// unmapping etc might need time
-    _threadPool->enqueue([this, executionNumber]{
-        auto wit = _workers.find(executionNumber);
-        delete (wit->second);
-        _workers.erase(executionNumber);
-    });
-  }
+  // unmapping etc might need a few seconds
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
+  TRI_ASSERT(ioService != nullptr);
+  ioService->post([this, executionNumber] {
+    MUTEX_LOCKER(guard, _mutex);
+
+    auto wit = _workers.find(executionNumber);
+    if (wit != _workers.end()) {
+      std::unique_ptr<IWorker> worker(wit->second);
+      _workers.erase(executionNumber);
+      worker.reset();
+    }
+  });
 }
 
 void PregelFeature::cleanupAll() {
@@ -222,8 +234,11 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
   } else if (path == Utils::cancelGSSPath) {
     w->cancelGlobalStep(body);
   } else if (path == Utils::finalizeExecutionPath) {
-    w->finalizeExecution(body);
-    Instance->cleanupWorker(executionNumber);
+    w->finalizeExecution(body, [executionNumber] {
+      if (Instance != nullptr) {
+        Instance->cleanupWorker(executionNumber);
+      }
+    });
   } else if (path == Utils::continueRecoveryPath) {
     w->compensateStep(body);
   } else if (path == Utils::finalizeRecoveryPath) {

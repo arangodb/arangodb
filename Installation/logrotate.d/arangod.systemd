@@ -1,0 +1,10 @@
+/var/log/arangodb3/arangod.log {
+     rotate 12
+     weekly
+     compress
+     delaycompress
+     create 640  arangodb adm
+     postrotate
+     systemctl -q is-active @SERVICE_NAME@ && systemctl kill --signal=SIGHUP arangoddb3
+     endscript
+     }

@@ -941,9 +941,6 @@
       );
 
       this.collectionName = window.location.hash.split('/')[1];
-      // fill navigation and breadcrumb
-      this.breadcrumb();
-      window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Content');
 
       this.checkCollectionState();
 
@@ -969,6 +966,10 @@
       this.selectActivePagesize();
       this.markFilterToggle();
       this.resize();
+
+      // fill navigation and breadcrumb
+      this.breadcrumb();
+
       return this;
     },
 
@@ -999,9 +1000,18 @@
     },
 
     breadcrumb: function () {
-      $('#subNavigationBar .breadcrumb').html(
-        'Collection: ' + this.collectionName
-      );
+      var self = this;
+
+      if (window.App.naviView) {
+        $('#subNavigationBar .breadcrumb').html(
+          'Collection: ' + this.collectionName
+        );
+        window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Content');
+      } else {
+        window.setTimeout(function () {
+          self.breadcrumb();
+        }, 100);
+      }
     }
 
   });

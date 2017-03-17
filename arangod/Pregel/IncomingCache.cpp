@@ -83,8 +83,7 @@ void InCache<M>::parseMessages(VPackSlice const& incomingData) {
 
 template <typename M>
 void InCache<M>::storeMessageNoLock(PregelShard shard,
-                                    PregelKey const& vertexId,
-                                    M const& data) {
+                                    PregelKey const& vertexId, M const& data) {
   this->_set(shard, vertexId, data);
   this->_containedMessageCount++;
 }
@@ -165,11 +164,9 @@ MessageIterator<M> ArrayInCache<M>::getMessages(PregelShard shard,
   HMap const& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {
-    // LOG_TOPIC(INFO, Logger::PREGEL) << "Got a message for " << key;
     M const* ptr = vmsg->second.data();
     return MessageIterator<M>(ptr, vmsg->second.size());
   } else {
-    // LOG_TOPIC(INFO, Logger::PREGEL) << "No message for " << key;
     return MessageIterator<M>();
   }
 }

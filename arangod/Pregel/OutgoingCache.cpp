@@ -129,10 +129,6 @@ void ArrayOutCache<M>::flushMessages() {
     auto body = std::make_shared<std::string>(data.toJson());
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
-
-    // LOG_TOPIC(INFO, Logger::PREGEL) << "Worker: Sending data to other Shard:
-    // " << shardId;
-    //<< ". Message: " << package.toJson();
   }
   size_t nrDone = 0;
   ClusterComm::instance()->performRequests(requests, 120, nrDone,
@@ -162,8 +158,7 @@ void CombiningOutCache<M>::_removeContainedMessages() {
 
 template <typename M>
 void CombiningOutCache<M>::appendMessage(PregelShard shard,
-                                         PregelKey const& key,
-                                         M const& data) {
+                                         PregelKey const& key, M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {
       this->_localCacheNextGSS->storeMessage(shard, key, data);
@@ -194,8 +189,6 @@ void CombiningOutCache<M>::flushMessages() {
     return;
   }
 
-  // LOG_TOPIC(INFO, Logger::PREGEL) << "Beginning to send messages to other
-  // machines";
   uint64_t gss = this->_config->globalSuperstep();
   if (this->_sendToNextGSS && this->_config->asynchronousMode()) {
     gss += 1;
@@ -237,10 +230,6 @@ void CombiningOutCache<M>::flushMessages() {
     auto body = std::make_shared<std::string>(data.toJson());
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
-
-    // LOG_TOPIC(INFO, Logger::PREGEL) << "Worker: Sending data to other Shard:
-    // " << shardId;
-    //          << ". Message: " << package.toJson();
   }
   size_t nrDone = 0;
   ClusterComm::instance()->performRequests(requests, 180, nrDone,

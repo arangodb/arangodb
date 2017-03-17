@@ -83,7 +83,10 @@ static inline size_t VPackOffset(TRI_df_marker_type_t type) noexcept {
       type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
       type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
       type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
-      type == TRI_DF_MARKER_VPACK_DROP_INDEX) {
+      type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
+      type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
+      type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+      type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
     // VPack is located after database id and collection id
     return sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t);
   }
@@ -117,6 +120,9 @@ static inline size_t DatabaseIdOffset(TRI_df_marker_type_t type) noexcept {
       type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
       type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
       type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
+      type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
+      type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+      type == TRI_DF_MARKER_VPACK_CHANGE_VIEW ||
       type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
       type == TRI_DF_MARKER_VPACK_DROP_DATABASE ||
       type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
@@ -140,6 +146,9 @@ static inline TRI_voc_tick_t DatabaseId(TRI_df_marker_t const* marker) noexcept 
       type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
       type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
       type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
+      type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
+      type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+      type == TRI_DF_MARKER_VPACK_CHANGE_VIEW ||
       type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
       type == TRI_DF_MARKER_VPACK_DROP_DATABASE ||
       type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
@@ -181,6 +190,33 @@ static inline TRI_voc_tick_t CollectionId(TRI_df_marker_t const* marker) noexcep
       type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
       type == TRI_DF_MARKER_VPACK_DROP_INDEX) {
     return encoding::readNumber<TRI_voc_cid_t>(reinterpret_cast<uint8_t const*>(marker) + CollectionIdOffset(type), sizeof(TRI_voc_cid_t));
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the marker-specific view id offset
+////////////////////////////////////////////////////////////////////////////////
+
+static inline size_t ViewIdOffset(TRI_df_marker_type_t type) noexcept {
+  if (type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
+      type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+      type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
+    return sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tick_t);
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the marker-specific view id
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_tick_t ViewId(TRI_df_marker_t const* marker) noexcept {
+  TRI_df_marker_type_t type = marker->getType();
+  if (type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
+      type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+      type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
+    return encoding::readNumber<TRI_voc_cid_t>(reinterpret_cast<uint8_t const*>(marker) + ViewIdOffset(type), sizeof(TRI_voc_cid_t));
   }
   return 0;
 }

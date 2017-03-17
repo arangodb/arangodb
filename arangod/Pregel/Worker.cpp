@@ -27,7 +27,6 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/ThreadPool.h"
 #include "Pregel/Utils.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/WorkerConfig.h"
@@ -37,6 +36,8 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -104,8 +105,11 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   } else {
     // initialization of the graphstore might take an undefined amount
     // of time. Therefore this is performed asynchronous
-    ThreadPool* pool = PregelFeature::instance()->threadPool();
-    pool->enqueue(
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    boost::asio::io_service* ioService =
+        SchedulerFeature::SCHEDULER->ioService();
+    TRI_ASSERT(ioService != nullptr);
+    ioService->post(
         [this, callback] { _graphStore->loadShards(&_config, callback); });
   }
 }
@@ -178,7 +182,7 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
   _state = WorkerState::PREPARING;  // stop any running step
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Received prepare GSS: " << data.toJson();
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Received prepare GSS: " << data.toJson();
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   if (!gssSlice.isInteger()) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
@@ -238,7 +242,7 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
   _workerAggregators->serializeValues(response);
   response.close();
 
-  //LOG_TOPIC(INFO, Logger::PREGEL) << "Responded: " << response.toJson();
+  // LOG_TOPIC(INFO, Logger::PREGEL) << "Responded: " << response.toJson();
   return response;
 }
 
@@ -281,7 +285,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
         TRI_ERROR_INTERNAL,
         "Cannot start a gss when the worker is not prepared");
   }
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Starting GSS: " << data.toJson();
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Starting GSS: " << data.toJson();
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   const uint64_t gss = (uint64_t)gssSlice.getUInt();
   if (gss != _config.globalSuperstep()) {
@@ -312,8 +316,10 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::_startProcessing() {
   _state = WorkerState::COMPUTING;
   _activeCount = 0;  // active count is only valid after the run
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
+  TRI_ASSERT(ioService != nullptr);
 
-  ThreadPool* pool = PregelFeature::instance()->threadPool();
   size_t total = _graphStore->localVertexCount();
   size_t delta = total / _config.parallelism();
   size_t start = 0, end = delta;
@@ -325,9 +331,9 @@ void Worker<V, E, M>::_startProcessing() {
   }
   size_t i = 0;
   do {
-    pool->enqueue([this, start, end, i] {
+    ioService->post([this, start, end, i] {
       if (_state != WorkerState::COMPUTING) {
-        LOG_TOPIC(INFO, Logger::PREGEL) << "Execution aborted prematurely.";
+        LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
       }
       auto vertices = _graphStore->vertexIterator(start, end);
@@ -413,11 +419,11 @@ bool Worker<V, E, M>::_processVertices(
     _nextGSSSendMessageCount += outCache->sendCountNextGSS();
   }
 
-  //double t = TRI_microtime();
+  // double t = TRI_microtime();
   // merge thread local messages, _writeCache does locking
   _writeCache->mergeCache(_config, inCache);
   // TODO ask how to implement message sending without waiting for a response
-  //t = TRI_microtime() - t;
+  // t = TRI_microtime() - t;
 
   MessageStats stats;
   stats.sendCount = outCache->sendCount();
@@ -526,11 +532,11 @@ void Worker<V, E, M>::_finishedProcessing() {
       _messageBatchSize = s > 1000 ? s : 1000;
     }
     _messageStats.resetTracking();
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Batch size: " << _messageBatchSize;
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Batch size: " << _messageBatchSize;
   }
 
   if (_config.asynchronousMode()) {
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Finished LSS: " << package.toJson();
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Finished LSS: " << package.toJson();
 
     // if the conductor is unreachable or has send data (try to) proceed
     _callConductorWithResponse(
@@ -548,7 +554,7 @@ void Worker<V, E, M>::_finishedProcessing() {
 
   } else {  // no answer expected
     _callConductor(Utils::finishedWorkerStepPath, package);
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Finished GSS: " << package.toJson();
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Finished GSS: " << package.toJson();
   }
 }
 
@@ -566,8 +572,10 @@ void Worker<V, E, M>::_continueAsync() {
     _state = WorkerState::COMPUTING;
   }
 
-  ThreadPool* pool = PregelFeature::instance()->threadPool();
-  pool->enqueue([this] {
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
+  TRI_ASSERT(ioService != nullptr);
+  ioService->post([this] {
     if (_writeCache->containedMessageCount() < _messageBatchSize) {
       usleep(50000);
     }
@@ -588,7 +596,8 @@ void Worker<V, E, M>::_continueAsync() {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::finalizeExecution(VPackSlice const& body) {
+void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
+                                        std::function<void(void)> callback) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
@@ -602,11 +611,10 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body) {
   if (store.isBool() && store.getBool() == true) {
     LOG_TOPIC(INFO, Logger::PREGEL) << "Storing results";
     // tell graphstore to remove read locks
-    _graphStore->storeResults(_config);
+    _graphStore->storeResults(&_config, callback);
   } else {
     LOG_TOPIC(WARN, Logger::PREGEL) << "Discarding results";
   }
-  _graphStore.reset();
 }
 
 template <typename V, typename E, typename M>
@@ -665,8 +673,10 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   _workerAggregators->resetValues();
   _conductorAggregators->setAggregatedValues(data);
 
-  ThreadPool* pool = PregelFeature::instance()->threadPool();
-  pool->enqueue([this] {
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
+  TRI_ASSERT(ioService != nullptr);
+  ioService->post([this] {
     if (_state != WorkerState::RECOVERING) {
       LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
@@ -719,14 +729,18 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string const& path,
                                      VPackBuilder const& message) {
   if (ServerState::instance()->isRunningInCluster() == false) {
-    ThreadPool* pool = PregelFeature::instance()->threadPool();
-    pool->enqueue([path, message] {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    boost::asio::io_service* ioService =
+        SchedulerFeature::SCHEDULER->ioService();
+    TRI_ASSERT(ioService != nullptr);
+    ioService->post([path, message] {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(path, message.slice(), response);
     });
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
-    std::string baseUrl = Utils::baseUrl(_config.database(), Utils::conductorPrefix);
+    std::string baseUrl =
+        Utils::baseUrl(_config.database(), Utils::conductorPrefix);
     CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
     auto headers =
         std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -743,14 +757,15 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductorWithResponse(
     std::string const& path, VPackBuilder const& message,
     std::function<void(VPackSlice slice)> handle) {
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Calling the conductor";
+  LOG_TOPIC(TRACE, Logger::PREGEL) << "Calling the conductor";
   if (ServerState::instance()->isRunningInCluster() == false) {
     VPackBuilder response;
     PregelFeature::handleConductorRequest(path, message.slice(), response);
     handle(response.slice());
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
-    std::string baseUrl = Utils::baseUrl(_config.database(), Utils::conductorPrefix);
+    std::string baseUrl =
+        Utils::baseUrl(_config.database(), Utils::conductorPrefix);
     CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
     std::unordered_map<std::string, std::string> headers;
 

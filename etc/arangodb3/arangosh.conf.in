@@ -8,7 +8,7 @@ authentication = true
 # password = 
 
 [log]
-file = -
+@COMMENT_LOGFILE@file = -
 
 [javascript]
 startup-directory = @PKGDATADIR@/js

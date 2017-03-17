@@ -91,8 +91,7 @@ class RangeIterator {
   typedef RangeIterator<T> iterator;
   typedef const RangeIterator<T> const_iterator;
 
-  RangeIterator(T *v, size_t size)
-      : _data(v), _current(0), _size(size) {}
+  RangeIterator(T* v, size_t size) : _data(v), _current(0), _size(size) {}
 
   iterator begin() { return RangeIterator(_data, _size); }
   const_iterator begin() const { return RangeIterator(_data, _size); }
@@ -120,13 +119,9 @@ class RangeIterator {
     return result;
   }
 
-  T* operator*() const {
-    return _data + _current;
-  }
+  T* operator*() const { return _data + _current; }
 
-  T* operator->() const {
-    return _data + _current;
-  }
+  T* operator->() const { return _data + _current; }
 
   bool operator!=(RangeIterator<T> const& other) const {
     return _current != other._current;

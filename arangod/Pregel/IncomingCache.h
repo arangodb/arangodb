@@ -110,9 +110,9 @@ class ArrayInCache : public InCache<M> {
                                  PregelKey const& key) override;
   void clear() override;
   void erase(PregelShard shard, PregelKey const& key) override;
-  void forEach(std::function<void(PregelShard shard, PregelKey const& key,
-                                  M const& val)>
-                   func) override;
+  void forEach(
+      std::function<void(PregelShard shard, PregelKey const& key, M const& val)>
+          func) override;
 };
 
 /// Cache which stores one value per vertex id

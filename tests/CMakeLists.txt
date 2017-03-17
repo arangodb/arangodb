@@ -44,6 +44,7 @@ add_executable(
   Cache/TransactionManager.cpp
   Cache/TransactionsWithBackingStore.cpp
   Geo/georeg.cpp
+  Pregel/typedbuffer.cpp
   main.cpp
 )
 
