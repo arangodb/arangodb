@@ -75,10 +75,10 @@ std::unique_ptr<ViewImplementation> LoggerView::creator(
     LogicalView* view, arangodb::velocypack::Slice const& info) {
   LOG_TOPIC(INFO, Logger::FIXME) << "called LoggerView::creator";
 
-  return std::make_unique<LoggerView>(view, info);
+  return std::make_unique<LoggerView>(ConstructionGuard(), view, info);
 }
 
-LoggerView::LoggerView(LogicalView* logical,
+LoggerView::LoggerView(ConstructionGuard const&, LogicalView* logical,
                        arangodb::velocypack::Slice const& info)
     : ViewImplementation(logical, info) {
   VPackSlice properties = info.get("properties");

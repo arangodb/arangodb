@@ -42,8 +42,15 @@ class LoggerView final : public ViewImplementation {
   static std::unique_ptr<ViewImplementation> creator(
       LogicalView*, arangodb::velocypack::Slice const&);
 
+ private:
+  // private struct that does not do anything
+  // we require it in the constructor of LoggerView so we
+  // can ensure any constructor calls are coming from the
+  // LoggerView's creator method
+  struct ConstructionGuard {};
+
  public:
-  LoggerView(LogicalView* logical,
+  LoggerView(ConstructionGuard const&, LogicalView* logical,
              arangodb::velocypack::Slice const& info);
   ~LoggerView() = default;
 
