@@ -1,6 +1,10 @@
 v3.1.15 (????-??-??)
 --------------------
 
+* ui - changed document api due a chrome bug
+
+* ui - fixed a submenu bug
+
 * added endpoint /_api/cluster/endpoints in cluster case to get all
   coordinator endpoints
 
