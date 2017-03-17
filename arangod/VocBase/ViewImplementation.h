@@ -60,7 +60,8 @@ class ViewImplementation {
 };
 
 typedef std::function<std::unique_ptr<ViewImplementation>(
-    LogicalView*, arangodb::velocypack::Slice const&)>
+    LogicalView*, arangodb::velocypack::Slice const&,
+    bool isNew)>
     ViewCreator;
 
 }  // namespace arangodb

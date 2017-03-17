@@ -2017,7 +2017,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
 
       registerViewPath(vocbase->id(), view->id(), physical->path());
 
-      view->spawnImplementation(creator, it);
+      view->spawnImplementation(creator, it, false);
       view->getImplementation()->open();
     }
   } catch (std::exception const& ex) {

@@ -72,15 +72,18 @@ static std::string LevelEnumToString(LogLevel level) {
 std::string LoggerView::type("logger");
 
 std::unique_ptr<ViewImplementation> LoggerView::creator(
-    LogicalView* view, arangodb::velocypack::Slice const& info) {
-  LOG_TOPIC(INFO, Logger::FIXME) << "called LoggerView::creator";
+    LogicalView* view, arangodb::velocypack::Slice const& info,
+    bool isNew) {
+  LOG_TOPIC(INFO, Logger::FIXME) << "called LoggerView::creator with data: " << info.toJson() << ", isNew: " << isNew;
 
-  return std::make_unique<LoggerView>(ConstructionGuard(), view, info);
+  return std::make_unique<LoggerView>(ConstructionGuard(), view, info, isNew);
 }
 
 LoggerView::LoggerView(ConstructionGuard const&, LogicalView* logical,
-                       arangodb::velocypack::Slice const& info)
+                       arangodb::velocypack::Slice const& info,
+                       bool isNew)
     : ViewImplementation(logical, info) {
+  
   VPackSlice properties = info.get("properties");
   if (!properties.isObject()) {
     _level = LogLevel::TRACE;

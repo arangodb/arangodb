@@ -266,6 +266,6 @@ void LogicalView::persistPhysicalView() {
 }
 
 void LogicalView::spawnImplementation(
-    ViewCreator creator, arangodb::velocypack::Slice const& parameters) {
-  _implementation = creator(this, parameters);
+    ViewCreator creator, arangodb::velocypack::Slice const& parameters, bool isNew) {
+  _implementation = creator(this, parameters, isNew);
 }
