@@ -133,7 +133,7 @@ class MMFilesCollection final : public PhysicalCollection {
   };
 
   arangodb::Result updateProperties(VPackSlice const& slice, bool doSync) override;
-  virtual arangodb::Result persistProperties() noexcept override;
+  virtual arangodb::Result persistProperties() override;
 
   virtual PhysicalCollection* clone(LogicalCollection*, PhysicalCollection*) override;
 

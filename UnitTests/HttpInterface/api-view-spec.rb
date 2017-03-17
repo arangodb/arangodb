@@ -136,7 +136,7 @@ describe ArangoDB do
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
           doc.parsed_response['error'].should eq(true)
           doc.parsed_response['code'].should eq(404)
-          doc.parsed_response['errorNum'].should eq(1203)
+          doc.parsed_response['errorNum'].should eq(1211)
         end
 
       end
@@ -151,7 +151,7 @@ describe ArangoDB do
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
           doc.parsed_response['error'].should eq(true)
           doc.parsed_response['code'].should eq(404)
-          doc.parsed_response['errorNum'].should eq(1203)
+          doc.parsed_response['errorNum'].should eq(1211)
         end
 
         it "getting properties of a non-existent view" do
@@ -162,7 +162,7 @@ describe ArangoDB do
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
           doc.parsed_response['error'].should eq(true)
           doc.parsed_response['code'].should eq(404)
-          doc.parsed_response['errorNum'].should eq(1203)
+          doc.parsed_response['errorNum'].should eq(1211)
         end
 
       end
@@ -194,7 +194,7 @@ describe ArangoDB do
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
           doc.parsed_response['error'].should eq(true)
           doc.parsed_response['code'].should eq(404)
-          doc.parsed_response['errorNum'].should eq(1203)
+          doc.parsed_response['errorNum'].should eq(1211)
         end
 
         it "modifying a view with unacceptable properties" do

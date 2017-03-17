@@ -42,6 +42,7 @@ ViewTypesFeature::ViewTypesFeature(ApplicationServer* server)
 }
 
 void ViewTypesFeature::prepare() {
+  // register the "logger" example view type
   registerViewImplementation(LoggerView::type, LoggerView::creator);
 }
 

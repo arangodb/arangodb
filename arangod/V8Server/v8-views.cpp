@@ -238,7 +238,7 @@ static void JS_DropViewVocbase(
   int res = vocbase->dropView(name);
 
   if (res != TRI_ERROR_NO_ERROR &&
-      res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      res != TRI_ERROR_ARANGO_VIEW_NOT_FOUND) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -377,7 +377,7 @@ static void JS_NameViewVocbase(
   std::string const name(view->name());
 
   if (name.empty()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
   }
 
   v8::Handle<v8::Value> result = TRI_V8_STD_STRING(name);
@@ -428,12 +428,6 @@ static void JS_PropertiesViewVocbase(
         TRI_V8_THROW_EXCEPTION_MESSAGE(updateRes.errorNumber(),
                                        updateRes.errorMessage());
       }
-
-      auto physical = view->getPhysical();
-      TRI_ASSERT(physical != nullptr);
-      arangodb::Result res2 = physical->persistProperties();
-      // TODO Review
-      // TODO API compatibility, for now we ignore if persisting fails...
     }
   }
 

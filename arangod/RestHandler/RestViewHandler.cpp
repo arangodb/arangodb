@@ -148,8 +148,7 @@ void RestViewHandler::modifyView() {
   std::shared_ptr<LogicalView> view = _vocbase->lookupView(name);
   if (view == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                  "could not find view by that name");
+                  TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
     return;
   }
 
@@ -209,10 +208,9 @@ void RestViewHandler::deleteView() {
 
   if (res == TRI_ERROR_NO_ERROR) {
     generateOk();
-  } else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+  } else if (res == TRI_ERROR_ARANGO_VIEW_NOT_FOUND) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                  "could not find view by that name");
+                  TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
   } else {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "problem dropping view");
@@ -280,8 +278,7 @@ void RestViewHandler::getSingleView(std::string const& name) {
     generateResult(rest::ResponseCode::OK, props.slice());
   } else {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                  "could not find view by that name");
+                  TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
   }
 }
 
@@ -296,7 +293,6 @@ void RestViewHandler::getViewProperties(std::string const& name) {
     generateResult(rest::ResponseCode::OK, props.slice());
   } else {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                  "could not find view by that name");
+                  TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
   }
 }

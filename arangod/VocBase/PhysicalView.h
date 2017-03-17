@@ -42,12 +42,12 @@ class PhysicalView {
  public:
   virtual ~PhysicalView() = default;
 
-  // path to logical collection
+  // path to logical view
   virtual std::string const& path() const = 0;
   virtual void setPath(std::string const&) = 0;
   virtual arangodb::Result updateProperties(
       arangodb::velocypack::Slice const& slice, bool doSync) = 0;
-  virtual arangodb::Result persistProperties() noexcept = 0;
+  virtual arangodb::Result persistProperties() = 0;
 
   virtual PhysicalView* clone(LogicalView*, PhysicalView*) = 0;
 
@@ -56,7 +56,7 @@ class PhysicalView {
                                   bool includeSystem = false) const = 0;
 
   /// @brief opens an existing view
-  virtual void open(bool ignoreErrors) = 0;
+  virtual void open() = 0;
 
   virtual void drop() = 0;
 

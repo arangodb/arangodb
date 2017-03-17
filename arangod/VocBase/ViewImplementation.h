@@ -51,7 +51,7 @@ class ViewImplementation {
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
 
   /// @brief opens an existing view
-  virtual void open(bool ignoreErrors) = 0;
+  virtual void open() = 0;
 
   virtual void drop() = 0;
 

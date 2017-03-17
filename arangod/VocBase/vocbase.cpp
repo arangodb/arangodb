@@ -1340,7 +1340,7 @@ int TRI_vocbase_t::dropView(std::string const& name) {
   std::shared_ptr<LogicalView> view = lookupView(name);
 
   if (view == nullptr) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_VIEW_NOT_FOUND;
   }
 
   return dropView(view);
@@ -1389,7 +1389,8 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
   arangodb::aql::PlanCache::instance()->invalidate(this);
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
-  view->setDeleted(true);
+  view->drop();
+  /*
   VPackBuilder b;
   b.openObject();
   view->toVelocyPack(b, true, true);
@@ -1400,9 +1401,9 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
           "Database")
           ->forceSyncProperties();
   view->updateProperties(b.slice(), doSync);
-
+*/
   unregisterView(view);
-
+  
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->dropView(this, view.get());
 

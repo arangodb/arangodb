@@ -30,6 +30,7 @@
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/Events.h"
@@ -38,21 +39,8 @@
 using namespace arangodb;
 
 static std::string ReadPath(VPackSlice info) {
-  if (!info.isObject()) {
-    // ERROR CASE
-    return "";
-  }
-  VPackSlice physical = info.get("physical");
-  if (physical.isNone()) {
-    return "";
-  }
-
-  if (physical.isObject()) {
-    VPackSlice path = physical.get("path");
-    if (path.isNone()) {
-      return "";
-    }
-
+  if (info.isObject()) {
+    VPackSlice path = info.get("path");
     if (path.isString()) {
       return path.copyString();
     }
@@ -95,16 +83,24 @@ void MMFilesView::getPropertiesVPack(velocypack::Builder& result,
 }
 
 /// @brief opens an existing view
-void MMFilesView::open(bool ignoreErrors) {}
+void MMFilesView::open() {}
 
-void MMFilesView::drop() {}
+void MMFilesView::drop() {
+  bool const doSync =
+      application_features::ApplicationServer::getFeature<DatabaseFeature>(
+          "Database")
+          ->forceSyncProperties();
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  static_cast<MMFilesEngine*>(engine)->saveViewInfo(_logicalView->vocbase(), _logicalView->id(), _logicalView, doSync);
+}
 
 arangodb::Result MMFilesView::updateProperties(VPackSlice const& slice,
                                                bool doSync) {
+  // nothing to do here
   return {};
 }
 
-arangodb::Result MMFilesView::persistProperties() noexcept {
+arangodb::Result MMFilesView::persistProperties() {
   int res = TRI_ERROR_NO_ERROR;
   try {
     VPackBuilder infoBuilder;
@@ -127,7 +123,7 @@ arangodb::Result MMFilesView::persistProperties() noexcept {
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO: what to do here
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "could not save collection view marker in log: "
+        << "could not save view change marker in log: "
         << TRI_errno_string(res);
     return {res, TRI_errno_string(res)};
   }

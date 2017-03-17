@@ -42,36 +42,26 @@ class LoggerView final : public ViewImplementation {
   static std::unique_ptr<ViewImplementation> creator(
       LogicalView*, arangodb::velocypack::Slice const&);
 
- private:
-  struct ConstructionGuard {
-    ConstructionGuard() {}
-  };
-
  public:
-  LoggerView(ConstructionGuard const& guard, LogicalView* logical,
+  LoggerView(LogicalView* logical,
              arangodb::velocypack::Slice const& info);
   ~LoggerView() = default;
 
   arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice,
-                                    bool doSync);
-  arangodb::Result persistProperties() noexcept;
+                                    bool doSync) override;
 
   /// @brief export properties
-  void getPropertiesVPack(velocypack::Builder&) const;
+  void getPropertiesVPack(velocypack::Builder&) const override;
 
   /// @brief opens an existing view
-  void open(bool ignoreErrors);
+  void open() override;
 
-  void drop();
+  void drop() override;
 
- protected:
-  LogicalView* _logicalView;
+ private:
+  // example data
   arangodb::LogLevel _level;
 };
-
-typedef std::function<std::unique_ptr<ViewImplementation>(
-    LogicalView*, arangodb::velocypack::Slice const&)>
-    ViewCreator;
 
 }  // namespace arangodb
 

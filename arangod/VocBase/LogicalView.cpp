@@ -182,12 +182,25 @@ bool LogicalView::deleted() const { return _isDeleted; }
 void LogicalView::setDeleted(bool newValue) { _isDeleted = newValue; }
 
 void LogicalView::drop() {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->destroyView(_vocbase, this);
   _isDeleted = true;
 
+  if (getImplementation() != nullptr) {
+    getImplementation()->drop();
+  }
+
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  //StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  //engine->destroyView(_vocbase, this);
+
   _physical->drop();
+}
+
+VPackBuilder LogicalView::toVelocyPack(bool includeProperties, bool includeSystem) const {
+  VPackBuilder builder;
+  builder.openObject();
+  toVelocyPack(builder, includeProperties, includeSystem);
+  builder.close();
+  return builder;
 }
 
 void LogicalView::toVelocyPack(VPackBuilder& result, bool includeProperties,
@@ -204,9 +217,7 @@ void LogicalView::toVelocyPack(VPackBuilder& result, bool includeProperties,
     result.add("planId", VPackValue(std::to_string(_planId)));
     if (getPhysical() != nullptr) {
       // Physical Information
-      result.add("physical", VPackValue(VPackValueType::Object));
       getPhysical()->getPropertiesVPack(result, includeSystem);
-      result.close();
     }
   }
 
@@ -223,6 +234,8 @@ void LogicalView::toVelocyPack(VPackBuilder& result, bool includeProperties,
 arangodb::Result LogicalView::updateProperties(VPackSlice const& slice,
                                                bool doSync) {
   WRITE_LOCKER(writeLocker, _infoLock);
+
+  TRI_ASSERT(getImplementation() != nullptr);
 
   // the implementation may filter/change/react to the changes
   arangodb::Result implResult =
@@ -243,10 +256,10 @@ arangodb::Result LogicalView::updateProperties(VPackSlice const& slice,
 ///        This should be called AFTER the view is successfully
 ///        created and only on Single/DBServer
 void LogicalView::persistPhysicalView() {
-  // Coordinators are not allowed to have local collections!
+  // Coordinators are not allowed to have local views!
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  // We have not yet persisted this collection!
+  // We have not yet persisted this view
   TRI_ASSERT(getPhysical()->path().empty());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->createView(_vocbase, _id, this);

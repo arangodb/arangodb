@@ -73,10 +73,12 @@ std::string LoggerView::type("logger");
 
 std::unique_ptr<ViewImplementation> LoggerView::creator(
     LogicalView* view, arangodb::velocypack::Slice const& info) {
-  return std::make_unique<LoggerView>(ConstructionGuard(), view, info);
+  LOG_TOPIC(INFO, Logger::FIXME) << "called LoggerView::creator";
+
+  return std::make_unique<LoggerView>(view, info);
 }
 
-LoggerView::LoggerView(ConstructionGuard const& guard, LogicalView* logical,
+LoggerView::LoggerView(LogicalView* logical,
                        arangodb::velocypack::Slice const& info)
     : ViewImplementation(logical, info) {
   VPackSlice properties = info.get("properties");
@@ -97,6 +99,9 @@ LoggerView::LoggerView(ConstructionGuard const& guard, LogicalView* logical,
 
 arangodb::Result LoggerView::updateProperties(
     arangodb::velocypack::Slice const& slice, bool doSync) {
+  LOG_TOPIC(INFO, Logger::FIXME) << "called LoggerView::updateProperties with data " << slice.toJson()
+                                 << ". view data: " << _logicalView->toVelocyPack(true, false).slice().toJson();
+
   VPackSlice levelSlice = slice.get("level");
   if (!levelSlice.isString()) {
     return {TRI_ERROR_BAD_PARAMETER,
@@ -111,12 +116,18 @@ arangodb::Result LoggerView::updateProperties(
 
 /// @brief export properties
 void LoggerView::getPropertiesVPack(velocypack::Builder& builder) const {
+  LOG_TOPIC(INFO, Logger::FIXME) << "called LoggerView::getPropertiesVPack";
+
   TRI_ASSERT(builder.isOpenObject());
   builder.add("level", VPackValue(LevelEnumToString(_level)));
   TRI_ASSERT(builder.isOpenObject());
 }
 
 /// @brief opens an existing view
-void LoggerView::open(bool ignoreErrors) {}
+void LoggerView::open() {
+  LOG_TOPIC(INFO, Logger::FIXME) << "called LoggerView::open. view data: " << _logicalView->toVelocyPack(true, false).slice().toJson();
+}
 
-void LoggerView::drop() {}
+void LoggerView::drop() {
+  LOG_TOPIC(INFO, Logger::FIXME) << "called LoggerView::drop. view data: " << _logicalView->toVelocyPack(true, false).slice().toJson();
+}

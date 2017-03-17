@@ -51,6 +51,7 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -627,6 +628,8 @@ int MMFilesEngine::getViews(TRI_vocbase_t* vocbase,
     try {
       VPackBuilder builder = loadViewInfo(vocbase, directory);
       VPackSlice info = builder.slice();
+
+      LOG_TOPIC(TRACE, Logger::FIXME) << "got view slice: " << info.toJson();
 
       if (VelocyPackHelper::readBooleanValue(info, "deleted", false)) {
         std::string name = VelocyPackHelper::getStringValue(info, "name", "");
@@ -1397,7 +1400,7 @@ void MMFilesEngine::saveViewInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
   view->toVelocyPack(builder, true, true);
   builder.close();
 
-  TRI_ASSERT(id != 0);
+  LOG_TOPIC(TRACE, Logger::FIXME) << "storing view properties in file '" << filename << "': " << builder.slice().toJson();
 
   bool ok =
       VelocyPackHelper::velocyPackToFile(filename, builder.slice(), forceSync);
@@ -1406,7 +1409,7 @@ void MMFilesEngine::saveViewInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
     int res = TRI_errno();
     THROW_ARANGO_EXCEPTION_MESSAGE(
         res,
-        std::string("cannot save collection properties file '") + filename +
+        std::string("cannot save view properties file '") + filename +
             "': " + TRI_errno_string(res));
   }
 }
@@ -1990,18 +1993,32 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
 
     VPackSlice slice = builder.slice();
     TRI_ASSERT(slice.isArray());
+  
+    ViewTypesFeature* viewTypesFeature =
+        application_features::ApplicationServer::getFeature<ViewTypesFeature>(
+            "ViewTypes");
 
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a view that is still active
+
+      std::string type = it.get("type").copyString();
+      // will throw if type is invalid
+      ViewCreator& creator = viewTypesFeature->creator(type);
+
       TRI_ASSERT(!it.get("id").isNone());
+
       std::shared_ptr<LogicalView> view =
           std::make_shared<arangodb::LogicalView>(vocbase.get(), it);
+      
       StorageEngine::registerView(vocbase.get(), view);
 
       auto physical = static_cast<MMFilesView*>(view->getPhysical());
       TRI_ASSERT(physical != nullptr);
 
       registerViewPath(vocbase->id(), view->id(), physical->path());
+
+      view->spawnImplementation(creator, it);
+      view->getImplementation()->open();
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "

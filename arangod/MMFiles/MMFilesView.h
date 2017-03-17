@@ -63,7 +63,7 @@ class MMFilesView final : public PhysicalView {
 
   arangodb::Result updateProperties(VPackSlice const& slice,
                                     bool doSync) override;
-  virtual arangodb::Result persistProperties() noexcept override;
+  virtual arangodb::Result persistProperties() override;
 
   virtual PhysicalView* clone(LogicalView*, PhysicalView*) override;
 
@@ -71,7 +71,7 @@ class MMFilesView final : public PhysicalView {
                           bool includeSystem = false) const override;
 
   /// @brief opens an existing view
-  void open(bool ignoreErrors) override;
+  void open() override;
 
   void drop() override;
 
