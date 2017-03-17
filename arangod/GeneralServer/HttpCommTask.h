@@ -48,6 +48,8 @@ class HttpCommTask final : public GeneralCommTask {
                          std::string const& errorMessage,
                          uint64_t messageId = 1) override final;
 
+  bool allowDirectHandling() const override final { return true; }
+
  private:
   void processRequest(std::unique_ptr<HttpRequest>);
   void processCorsOptions(std::unique_ptr<HttpRequest>);

@@ -27,4 +27,4 @@ queues = false
 
 [log]
 level = info
-file = -
+@COMMENT_LOGFILE@file = -

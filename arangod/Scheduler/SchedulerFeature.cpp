@@ -69,11 +69,11 @@ void SchedulerFeature::collectOptions(
 
   options->addHiddenOption("--server.minimal-threads",
                            "minimal number of threads",
-                           new Int64Parameter(&_nrMinimalThreads));
+                           new UInt64Parameter(&_nrMinimalThreads));
 
   options->addHiddenOption("--server.maximal-threads",
                            "maximal number of threads",
-                           new Int64Parameter(&_nrMaximalThreads));
+                           new UInt64Parameter(&_nrMaximalThreads));
 
   options->addOption("--server.maximal-queue-size",
                      "maximum queue length for asynchronous operations",
@@ -99,11 +99,11 @@ void SchedulerFeature::validateOptions(
     _nrMinimalThreads = 2;
   }
 
-  if (_nrServerThreads <= 0) {
-    _nrServerThreads = 1;
+  if (_nrServerThreads <= _nrMinimalThreads) {
+    _nrServerThreads = _nrMinimalThreads;
   }
 
-  if (_nrMaximalThreads <= 0) {
+  if (_nrMaximalThreads == 0) {
     _nrMaximalThreads = 4 * _nrServerThreads;
   }
 
@@ -114,6 +114,10 @@ void SchedulerFeature::validateOptions(
   if (_nrMinimalThreads > _nrMaximalThreads) {
     _nrMaximalThreads = _nrMinimalThreads;
   }
+
+  TRI_ASSERT(0 < _nrMinimalThreads);
+  TRI_ASSERT(_nrMinimalThreads <= _nrServerThreads);
+  TRI_ASSERT(_nrServerThreads <= _nrMaximalThreads);
 }
 
 void SchedulerFeature::start() {

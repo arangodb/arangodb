@@ -206,8 +206,6 @@ Query::~Query() {
   }
   cleanupPlanAndEngine(TRI_ERROR_INTERNAL);  // abort the transaction
 
-  _profile.reset();
-
   _executor.reset();
 
   if (_context != nullptr) {
