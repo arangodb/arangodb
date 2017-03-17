@@ -23,6 +23,7 @@
 
 #include "Aql/QueryList.h"
 #include "Aql/Query.h"
+#include "Aql/QueryProfile.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
@@ -59,7 +60,7 @@ QueryList::QueryList(TRI_vocbase_t*)
 }
 
 /// @brief insert a query
-bool QueryList::insert(Query const* query) {
+bool QueryList::insert(Query* query) {
   // not enable or no query string
   if (!_enabled || query == nullptr || query->queryString() == nullptr) {
     return false;
@@ -83,7 +84,7 @@ bool QueryList::insert(Query const* query) {
 }
 
 /// @brief remove a query
-void QueryList::remove(Query const* query) {
+void QueryList::remove(Query* query) {
   // we're intentionally not checking _enabled here...
 
   // note: there is the possibility that a query got inserted when the
@@ -96,48 +97,60 @@ void QueryList::remove(Query const* query) {
     return;
   }
 
-  size_t const maxLength = _maxQueryStringLength;
-
   WRITE_LOCKER(writeLocker, _lock);
   auto it = _current.find(query->id());
 
-  if (it != _current.end()) {
-    Query const* query = (*it).second;
-    _current.erase(it);
+  if (it == _current.end()) {
+    return;
+  }
 
-    TRI_ASSERT(query != nullptr);
-    double const started = query->startTime();
-    double const now = TRI_microtime();
+  _current.erase(it);
+    
+  if (!_trackSlowQueries || _slowQueryThreshold < 0.0) {
+    return;
+  }
 
-    try {
-      // check if we need to push the query into the list of slow queries
-      if (_trackSlowQueries && _slowQueryThreshold >= 0.0 &&
-          now - started >= _slowQueryThreshold) {
-        // yes.
+  double const started = query->startTime();
+  double const now = TRI_microtime();
 
-        TRI_IF_FAILURE("QueryList::remove") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
+  try {
+    // check if we need to push the query into the list of slow queries
+    if (now - started >= _slowQueryThreshold) {
+      // yes.
 
-        std::string q = extractQueryString(query, maxLength);
-
-        LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "', took: " << Logger::FIXED(now - started);
-
-        _slow.emplace_back(QueryEntryCopy(
-            query->id(),
-            std::move(q),
-            query->bindParameters(),
-            started, now - started,
-            QueryExecutionState::ValueType::FINISHED));
-
-        if (++_slowCount > _maxSlowQueries) {
-          // free first element
-          _slow.pop_front();
-          --_slowCount;
-        }
+      TRI_IF_FAILURE("QueryList::remove") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-    } catch (...) {
+
+      std::string q = extractQueryString(query, _maxQueryStringLength);
+
+      QueryProfile* profile = query->profile();
+      double loadTime = 0.0;
+
+      if (profile != nullptr) {
+        loadTime = profile->timers[QueryExecutionState::toNumber(QueryExecutionState::ValueType::LOADING_COLLECTIONS)];
+      }
+
+      if (loadTime >= 0.1) {
+        LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "', took: " << Logger::FIXED(now - started) << ", loading took: " << Logger::FIXED(loadTime);
+      } else {
+        LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "', took: " << Logger::FIXED(now - started);
+      }
+
+      _slow.emplace_back(QueryEntryCopy(
+          query->id(),
+          std::move(q),
+          query->bindParameters(),
+          started, now - started,
+          QueryExecutionState::ValueType::FINISHED));
+
+      if (++_slowCount > _maxSlowQueries) {
+        // free first element
+        _slow.pop_front();
+        --_slowCount;
+      }
     }
+  } catch (...) {
   }
 }
 
@@ -151,12 +164,12 @@ int QueryList::kill(TRI_voc_tick_t id) {
     return TRI_ERROR_QUERY_NOT_FOUND;
   }
 
-  Query const* query = (*it).second;
+  Query* query = (*it).second;
   StringRef queryString(query->queryString(), query->queryLength());
 
   LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << id << " '" << queryString << "'";
 
-  const_cast<arangodb::aql::Query*>(query)->killed(true);
+  query->killed(true);
   return TRI_ERROR_NO_ERROR;
 }
   
@@ -167,7 +180,7 @@ uint64_t QueryList::killAll(bool silent) {
   WRITE_LOCKER(writeLocker, _lock);
 
   for (auto& it : _current) {
-    Query const* query = it.second;
+    Query* query = it.second;
    
     StringRef queryString(query->queryString(), query->queryLength());
   
@@ -177,7 +190,7 @@ uint64_t QueryList::killAll(bool silent) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << query->id() << " '" << queryString << "'";
     }
     
-    const_cast<arangodb::aql::Query*>(query)->killed(true);
+    query->killed(true);
     ++killed;
   }
 
