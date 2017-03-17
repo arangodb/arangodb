@@ -106,10 +106,6 @@ bool WorkMonitor::pushThread(Thread* thread) {
 }
 
 void WorkMonitor::popThread(Thread* thread) {
-  if (_stopped.load()) {
-    return;
-  }
-
   TRI_ASSERT(thread != nullptr);
   WorkDescription* desc = deactivateWorkDescription();
 
