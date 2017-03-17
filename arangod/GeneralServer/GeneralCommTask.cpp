@@ -244,6 +244,11 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
     isPrio = true;
   }
 
+  if (isDirect && !allowDirectHandling()) {
+    isDirect = false;
+    isPrio = true;
+  }
+
   if (isDirect) {
     handleRequestDirectly(std::move(handler));
     return true;

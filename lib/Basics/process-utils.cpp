@@ -1088,8 +1088,8 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
 }
 
 #ifndef _WIN32
-static bool OurKillProcess(TRI_external_t* pid) {
-  if (0 == kill(pid->_pid, SIGTERM)) {
+static bool OurKillProcess(TRI_external_t* pid, int signal) {
+  if (0 == kill(pid->_pid, signal)) {
     int count;
 
     // Otherwise we just let it be.
@@ -1111,7 +1111,7 @@ static bool OurKillProcess(TRI_external_t* pid) {
   return false;
 }
 #else
-static bool OurKillProcess(TRI_external_t* pid) {
+static bool OurKillProcess(TRI_external_t* pid, int signal) {
   bool ok = true;
   UINT uExitCode = 0;
   DWORD exitCode;
@@ -1198,7 +1198,7 @@ bool TRI_KillExternalProcess(TRI_external_id_t pid, int signal) {
   bool ok = true;
   if (external->_status == TRI_EXT_RUNNING ||
       external->_status == TRI_EXT_STOPPED) {
-    ok = OurKillProcess(external);
+    ok = OurKillProcess(external, signal);
   }
 
   FreeExternal(external);

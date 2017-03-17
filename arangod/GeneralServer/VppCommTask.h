@@ -79,6 +79,8 @@ class VppCommTask : public GeneralCommTask {
                          std::string const& errorMessage,
                          uint64_t messageId) override;
 
+  bool allowDirectHandling() const override final { return false; }
+
  private:
   // reets the internal state this method can be called to clean up when the
   // request handling aborts prematurely
