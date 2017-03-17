@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, unused : false */
-/*global fail, assertTrue, assertFalse, assertEqual */
+/*global fail, assertTrue, assertFalse, assertEqual, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the server-side database interface
@@ -31,7 +31,6 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: dropping databases while holding references
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,6 +47,84 @@ function DatabaseSuite () {
 
     tearDown : function () {
       require("internal").logLevel(logLevel);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test whether the expected keys are present in db._version(true)
+////////////////////////////////////////////////////////////////////////////////
+
+    testVersionDetails : function () {
+      let result = internal.db._version(true);
+
+      let keys = [
+        "architecture",
+        "asan",
+        "asm-crc32",
+        "assertions",
+        "boost-version",
+        "build-date",
+        "compiler",
+        "cplusplus",
+        "debug",
+        "endianness",
+        "failure-tests",
+        "full-version-string",
+        "icu-version",
+        "jemalloc",
+        "maintainer-mode",
+        "openssl-version",
+        "platform",
+        "reactor-type",
+        "rocksdb-version",
+        "server-version",
+        "sse42",
+        "unaligned-access",
+        "v8-version",
+        "vpack-version",
+        "zlib-version"
+      ];
+
+      keys.forEach(function(k) {
+        assertTrue(result.hasOwnProperty(k));
+      });
+    },
+    
+    testVersionBooleans : function () {
+      let result = internal.db._version(true);
+
+      let keys = [
+        "asan",
+        "asm-crc32",
+        "assertions",
+        "debug",
+        "failure-tests",
+        "jemalloc",
+        "maintainer-mode",
+        "sse42",
+        "unaligned-access"
+      ];
+
+      keys.forEach(function(k) {
+        assertTrue(result[k] === "true" || result[k] === "false");
+      });
+    },
+    
+    testVersionNumbers : function () {
+      let result = internal.db._version(true);
+
+      let keys = [
+        "boost-version",
+        "icu-version",
+        "rocksdb-version",
+        "server-version",
+        "v8-version",
+        "vpack-version",
+        "zlib-version"
+      ];
+
+      keys.forEach(function(k) {
+        assertMatch(/^\d+(\.\d+)*([\.\-][a-z\-]+\d*)?$/, result[k]);
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
