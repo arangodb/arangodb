@@ -51,6 +51,10 @@ QueryExecutionState::ValueType QueryExecutionState::fromNumber(size_t value) {
   return static_cast<QueryExecutionState::ValueType>(value);
 }
 
+size_t QueryExecutionState::toNumber(QueryExecutionState::ValueType value) {
+  return static_cast<size_t>(value);
+}
+
 /// @brief get a description of the query's current state
 std::string QueryExecutionState::toString(QueryExecutionState::ValueType state) {
   return StateNames[static_cast<int>(state)];
