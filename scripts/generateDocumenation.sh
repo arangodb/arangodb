@@ -41,7 +41,7 @@ main(){
     #test for basic tools
     test_tools
 
-    ./scripts/build-deb.sh --buildDir build-docu
+    ./scripts/build-deb.sh --buildDir build-docu --parallel 2
 
     # we expect this to be a symlink, so no -r ;-)
     rm -f build
