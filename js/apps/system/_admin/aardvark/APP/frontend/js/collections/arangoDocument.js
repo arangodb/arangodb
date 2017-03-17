@@ -7,16 +7,22 @@ window.ArangoDocument = Backbone.Collection.extend({
   model: arangoDocumentModel,
   collectionInfo: {},
 
-  deleteEdge: function (colid, docid, callback) {
-    this.deleteDocument(colid, docid, callback);
+  deleteEdge: function (colid, dockey, callback) {
+    this.deleteDocument(colid, dockey, callback);
   },
 
-  deleteDocument: function (colid, docid, callback) {
+  deleteDocument: function (colid, dockey, callback) {
+    var data = {
+      keys: [dockey],
+      collection: colid
+    };
+
     $.ajax({
       cache: false,
-      type: 'DELETE',
+      type: 'PUT',
       contentType: 'application/json',
-      url: arangoHelper.databaseUrl('/_api/document/' + encodeURIComponent(colid) + '/' + encodeURIComponent(docid)),
+      data: JSON.stringify(data),
+      url: arangoHelper.databaseUrl('/_api/simple/remove-by-keys'),
       success: function () {
         callback(false);
       },
@@ -119,63 +125,67 @@ window.ArangoDocument = Backbone.Collection.extend({
     });
   },
 
-  getEdge: function (colid, docid, callback) {
-    this.getDocument(colid, docid, callback);
+  getEdge: function (colid, dockey, callback) {
+    this.getDocument(colid, dockey, callback);
   },
 
-  getDocument: function (colid, docid, callback) {
+  getDocument: function (colid, dockey, callback) {
     var self = this;
     this.clearDocument();
+
+    var data = {
+      keys: [dockey],
+      collection: colid
+    };
+
     $.ajax({
       cache: false,
-      type: 'GET',
-      url: arangoHelper.databaseUrl('/_api/document/' + encodeURIComponent(colid) + '/' + encodeURIComponent(docid)),
+      type: 'PUT',
+      url: arangoHelper.databaseUrl('/_api/simple/lookup-by-keys'),
       contentType: 'application/json',
+      data: JSON.stringify(data),
       processData: false,
       success: function (data) {
-        self.add(data);
-        callback(false, data, 'document');
+        self.add(data.documents[0]);
+        if (data.documents[0]._from && data.documents[0]._to) {
+          callback(false, data, 'edge');
+        } else {
+          callback(false, data, 'document');
+        }
       },
       error: function (data) {
         arangoHelper.arangoError('Error', data.responseJSON.errorMessage + ' - error number: ' + data.responseJSON.errorNum);
-        callback(true, data, colid + '/' + docid);
+        callback(true, data, colid + '/' + dockey);
         self.add(true, data);
       }
     });
   },
 
-  saveEdge: function (colid, docid, from, to, model, callback) {
-    var parsed;
-    try {
-      parsed = JSON.parse(model);
-      parsed._to = to;
-      parsed._from = from;
-    } catch (e) {
-      arangoHelper.arangoError('Edge', 'Could not parsed document.');
+  saveEdge: function (colid, dockey, from, to, model, callback) {
+    this.saveDocument(colid, dockey, model, callback, from, to);
+  },
+
+  saveDocument: function (colid, dockey, model, callback, from, to) {
+    if (typeof model === 'string') {
+      try {
+        model = JSON.parse(model);
+      } catch (e) {
+        arangoHelper.arangoError('Could not parse document: ' + model);
+      }
+    }
+    model._key = dockey;
+    model._id = colid + '/' + dockey;
+
+    if (from && to) {
+      model._from = from;
+      model._to = to;
     }
 
     $.ajax({
       cache: false,
       type: 'PUT',
-      url: arangoHelper.databaseUrl('/_api/document/' + encodeURIComponent(colid) + '/' + encodeURIComponent(docid)) + '#replaceEdge',
-      data: JSON.stringify(parsed),
-      contentType: 'application/json',
-      processData: false,
-      success: function (data) {
-        callback(false, data);
-      },
-      error: function (data) {
-        callback(true, data);
-      }
-    });
-  },
-
-  saveDocument: function (colid, docid, model, callback) {
-    $.ajax({
-      cache: false,
-      type: 'PUT',
-      url: arangoHelper.databaseUrl('/_api/document/' + encodeURIComponent(colid) + '/' + encodeURIComponent(docid)),
-      data: model,
+      url: arangoHelper.databaseUrl('/_api/document/' + encodeURIComponent(colid)),
+      data: JSON.stringify([model]),
       contentType: 'application/json',
       processData: false,
       success: function (data) {
