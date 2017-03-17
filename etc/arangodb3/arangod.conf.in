@@ -69,6 +69,6 @@ app-path = @LOCALSTATEDIR@/lib/arangodb3-apps
 
 [log]
 level = info
-file = @LOCALSTATEDIR@/log/arangodb3/arangod.log
+@COMMENT_LOGFILE@file = @LOCALSTATEDIR@/log/arangodb3/arangod.log
 
 [cluster]
