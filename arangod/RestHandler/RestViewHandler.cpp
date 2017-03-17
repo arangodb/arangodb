@@ -47,7 +47,7 @@ RestStatus RestViewHandler::execute() {
     return RestStatus::DONE;
   }
 
-  if (type == rest::RequestType::PATCH) {
+  if (type == rest::RequestType::PUT) {
     modifyView();
     return RestStatus::DONE;
   }
@@ -73,7 +73,7 @@ RestStatus RestViewHandler::execute() {
 
 void RestViewHandler::createView() {
   if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, 600);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
     return;
   }
 
@@ -86,27 +86,29 @@ void RestViewHandler::createView() {
   }
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
     return;
   }
   VPackSlice body = parsedBody.get()->slice();
 
-  // TODO: validate body
+  auto badParamError = [&]() -> void {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting body to be of the form {name: <string>, type: "
+                  "<string>, properties: <object>}");
+  };
+
   if (!body.isObject()) {
-    generateError(
-        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expecting body to be of the form {name: <string>, type: <string>}");
+    badParamError();
     return;
   }
   VPackSlice const nameSlice = body.get("name");
   VPackSlice const typeSlice = body.get("type");
-  if (!nameSlice.isString() || !typeSlice.isString()) {
-    generateError(
-        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expecting body to be of the form {name: <string>, type: <string>}");
+  VPackSlice const propertiesSlice = body.get("properties");
+  if (!nameSlice.isString() || !typeSlice.isString() ||
+      !propertiesSlice.isObject()) {
+    badParamError();
     return;
   }
 
@@ -130,22 +132,23 @@ void RestViewHandler::createView() {
 
 void RestViewHandler::modifyView() {
   if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, 600);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
     return;
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffixes.size() != 1) {
+  if ((suffixes.size() != 2) || (suffixes[1] != "properties")) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting PUT /_api/view/<view-name>");
+                  "expecting PUT /_api/view/<view-name>/properties");
     return;
   }
 
   std::string const& name = suffixes[0];
   std::shared_ptr<LogicalView> view = _vocbase->lookupView(name);
   if (view == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                   "could not find view by that name");
     return;
   }
@@ -160,8 +163,27 @@ void RestViewHandler::modifyView() {
     }
     VPackSlice body = parsedBody.get()->slice();
 
-    // TODO: figure out what to do with body
-    generateNotImplemented("PATCH /_api/view/<view-name>");
+    auto result = view->updateProperties(body, true);  // TODO: not force sync?
+    if (result.ok()) {
+      VPackBuilder updated;
+      updated.openObject();
+      view->getImplementation()->getPropertiesVPack(updated);
+      updated.close();
+      generateResult(rest::ResponseCode::OK, updated.slice());
+      return;
+    } else {
+      rest::ResponseCode httpCode;
+      switch (result.errorNumber()) {
+        case TRI_ERROR_BAD_PARAMETER:
+          httpCode = rest::ResponseCode::BAD;
+          break;
+        default:
+          httpCode = rest::ResponseCode::SERVER_ERROR;
+          break;
+      }
+      generateError(httpCode, result.errorNumber(), result.errorMessage());
+      return;
+    }
   } catch (...) {
     // TODO: cleanup?
     throw;
@@ -204,9 +226,10 @@ void RestViewHandler::deleteView() {
 void RestViewHandler::getViews() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffixes.size() > 1) {
+  if (suffixes.size() > 2 ||
+      ((suffixes.size() == 2) && (suffixes[1] != "properties"))) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting GET [/_api/view | /_api/view/<view-name>]");
+                  "expecting GET /_api/view[/<view-name>[/properties]]");
     return;
   }
 
@@ -215,7 +238,11 @@ void RestViewHandler::getViews() {
     return;
   } else {
     std::string const& name = suffixes[0];
-    getSingleView(name);
+    if (suffixes.size() == 1) {
+      getSingleView(name);
+    } else {
+      getViewProperties(name);
+    }
     return;
   }
 }
@@ -249,6 +276,22 @@ void RestViewHandler::getSingleView(std::string const& name) {
     VPackBuilder props;
     props.openObject();
     view->toVelocyPack(props);
+    props.close();
+    generateResult(rest::ResponseCode::OK, props.slice());
+  } else {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  "could not find view by that name");
+  }
+}
+
+void RestViewHandler::getViewProperties(std::string const& name) {
+  std::shared_ptr<LogicalView> view = _vocbase->lookupView(name);
+
+  if (view.get() != nullptr) {
+    VPackBuilder props;
+    props.openObject();
+    view->getImplementation()->getPropertiesVPack(props);
     props.close();
     generateResult(rest::ResponseCode::OK, props.slice());
   } else {
