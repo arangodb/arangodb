@@ -147,13 +147,20 @@ function ReplicationSuite() {
 
     while (true) {
       var slaveState = replication.applier.state();
-
-      if (!slaveState.state.running || slaveState.state.lastError.errorNum > 0) {
+      
+      if (slaveState.state.lastError.errorNum > 0) {
+        console.log("slave has errored:", JSON.stringify(slaveState.state.lastError));
         break;
       }
 
+      if (!slaveState.state.running) {
+        console.log("slave is not running");
+        break;
+      }
+         
       if (compareTicks(slaveState.state.lastAppliedContinuousTick, syncResult.lastLogTick) >= 0 ||
           compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) >= 0) {
+        console.log("slave has caught up. syncResult.lastLogTick:", syncResult.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
         break;
       }
 
@@ -161,7 +168,7 @@ function ReplicationSuite() {
         console.log("waiting for slave to catch up");
         printed = true;
       }
-      internal.wait(1.0, false);
+      internal.wait(0.5, false);
     }
 
     db._flushCache();
