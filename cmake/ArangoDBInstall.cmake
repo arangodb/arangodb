@@ -138,7 +138,6 @@ install(
 set(IS_SYSTEMD_INSTALL 0)
 set(SYSTEMD_UNIT_DIR "")
 if (UNIX)
-  
   if (${USE_ENTERPRISE})
     set(SERVICE_NAME "arangodb3e")
   else ()
@@ -172,7 +171,6 @@ if (UNIX)
       DESTINATION ${SYSTEMD_UNIT_DIR}/
       RENAME ${SERVICE_NAME})
     
-    endif()
   endif()
 endif()
 ################################################################################
