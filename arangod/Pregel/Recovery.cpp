@@ -28,10 +28,11 @@
 #include "Cluster/ServerState.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/ThreadPool.h"
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConfig.h"
 #include "VocBase/LogicalCollection.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/Scheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -146,8 +147,11 @@ void RecoveryManager::updatedFailedServers() {
     if (it != failed.end()) {
       // found a failed server
       ShardID const& shard = pair.first;
-      ThreadPool* pool = PregelFeature::instance()->threadPool();
-      pool->enqueue([this, shard] { _renewPrimaryServer(shard); });
+      
+      TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+      boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+      TRI_ASSERT(ioService != nullptr);
+      ioService->post([this, shard] { _renewPrimaryServer(shard); });
     }
   }
 }

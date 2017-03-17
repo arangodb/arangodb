@@ -362,7 +362,6 @@ SET(ARANGOD_SOURCES
   Pregel/PregelFeature.cpp
   Pregel/Utils.cpp
   Pregel/Recovery.cpp
-  Pregel/ThreadPool.cpp
   Pregel/Worker.cpp
   Pregel/WorkerConfig.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}

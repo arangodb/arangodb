@@ -73,8 +73,7 @@ class GraphStore {
   // actual count of loaded vertices / edges
   std::atomic<uint64_t> _localVerticeCount;
   std::atomic<uint64_t> _localEdgeCount;
-  uint32_t _runningThreads;
-  mutable Mutex _threadMutex;
+  std::atomic<uint32_t> _runningThreads;
 
   std::map<ShardID, uint64_t> _allocateMemory();
   void _loadVertices(ShardID const& vertexShard,
@@ -113,7 +112,7 @@ class GraphStore {
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
 
   /// Write results to database
-  void storeResults(WorkerConfig const& state);
+  void storeResults(WorkerConfig *config, std::function<void()> callback);
 };
 }
 }

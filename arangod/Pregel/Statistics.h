@@ -117,7 +117,7 @@ struct StatsManager {
       send += pair.second.sendCount;
       received += pair.second.receivedCount;
     }
-    LOG_TOPIC(INFO, Logger::PREGEL) << send << " - " << received << " : "
+    LOG_TOPIC(TRACE, Logger::PREGEL) << send << " - " << received << " : "
                                     << send - received;
   }
 

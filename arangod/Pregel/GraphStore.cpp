@@ -27,7 +27,6 @@
 #include "Basics/MutexLocker.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/ThreadPool.h"
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/TypedBuffer.h"
@@ -41,6 +40,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/Scheduler.h"
 
 #ifdef _MSC_VER
 #include <windows.h>
@@ -144,17 +145,18 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
                                   std::function<void()> callback) {
   _config = config;
   std::map<ShardID, uint64_t> shardSizes(_allocateMemory());
-  
-  ThreadPool* pool = PregelFeature::instance()->threadPool();
   uint64_t vertexOffset = 0, edgeOffset = 0;
   // Contains the shards located on this db server in the right order
   std::map<CollectionID, std::vector<ShardID>> const& vertexCollMap =
       _config->vertexCollectionShards();
   std::map<CollectionID, std::vector<ShardID>> const& edgeCollMap =
       _config->edgeCollectionShards();
+  
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+  TRI_ASSERT(ioService != nullptr);
 
-  _runningThreads = config->localVertexShardIDs().size();
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Using " << _runningThreads
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Using " << config->localVertexShardIDs().size()
                                   << " threads to load data";
   for (auto const& pair : vertexCollMap) {
     std::vector<ShardID> const& vertexShards = pair.second;
@@ -181,19 +183,18 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       }
 
       _loadedShards.insert(vertexShard);
-      pool->enqueue([this, &vertexShard, edgeLookups, vertexOffset, edgeOffset,
-                     callback] {
-
+      _runningThreads++;
+      ioService->post([this, &vertexShard, edgeLookups, vertexOffset,
+                       edgeOffset, callback] {
+        
         _loadVertices(vertexShard, edgeLookups, vertexOffset, edgeOffset);
-        {
-          MUTEX_LOCKER(guard, _threadMutex);
-          _runningThreads--;
-          if (_runningThreads == 0) {
-            if (_localEdgeCount < _edges->size()) {
-              _edges->resize(_localEdgeCount);
-            }
-            callback();
+        _runningThreads--;
+        
+        if (_runningThreads == 0) {
+          if (_localEdgeCount < _edges->size()) {
+            _edges->resize(_localEdgeCount);
           }
+          callback();
         }
       });
       // update to next offset
@@ -554,29 +555,37 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
-  double now = TRI_microtime();
+void GraphStore<V, E>::storeResults(WorkerConfig *config,
+                                    std::function<void()> callback) {
+  _config = config;
 
-  std::atomic<size_t> tCount(0);
+  double now = TRI_microtime();
   size_t total = _index.size();
-  size_t delta = _index.size() / state.localVertexShardIDs().size();
+  size_t delta = _index.size() / _config->localVertexShardIDs().size();
   if (delta < 1000) {
     delta = _index.size();
   }
   size_t start = 0, end = delta;
-
+  
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+  TRI_ASSERT(ioService != nullptr);
   do {
-    tCount++;
-    ThreadPool* pool = PregelFeature::instance()->threadPool();
-    pool->enqueue([this, start, end, &state, &tCount] {
+    _runningThreads++;
+    ioService->post([this, start, end, now, callback] {
       try {
         RangeIterator<VertexEntry> it = vertexIterator(start, end);
-        _storeVertices(state.globalShardIDs(), it);
+        _storeVertices(_config->globalShardIDs(), it);
         // TODO can't just write edges with smart graphs
       } catch (...) {
         LOG_TOPIC(ERR, Logger::PREGEL) << "Storing vertex data failed";
       }
-      tCount--;
+      _runningThreads--;
+      if (_runningThreads == 0) {
+        LOG_TOPIC(INFO, Logger::PREGEL) << "Storing data took "
+          << (TRI_microtime() - now) << "s";
+        callback();
+      }
     });
     start = end;
     end = end + delta;
@@ -584,12 +593,6 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
       end = total;
     }
   } while (start != end);
-
-  while (tCount > 0 && !_destroyed) {
-    usleep(25 * 1000);  // 25ms
-  }
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Storing data took "
-                                  << (TRI_microtime() - now) << "s";
 }
 
 template class arangodb::pregel::GraphStore<int64_t, int64_t>;

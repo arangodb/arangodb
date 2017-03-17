@@ -165,11 +165,9 @@ MessageIterator<M> ArrayInCache<M>::getMessages(PregelShard shard,
   HMap const& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {
-    // LOG_TOPIC(INFO, Logger::PREGEL) << "Got a message for " << key;
     M const* ptr = vmsg->second.data();
     return MessageIterator<M>(ptr, vmsg->second.size());
   } else {
-    // LOG_TOPIC(INFO, Logger::PREGEL) << "No message for " << key;
     return MessageIterator<M>();
   }
 }

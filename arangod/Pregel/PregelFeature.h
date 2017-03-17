@@ -35,7 +35,6 @@ namespace pregel {
 class Conductor;
 class IWorker;
 class RecoveryManager;
-class ThreadPool;
 
 class PregelFeature final : public application_features::ApplicationFeature {
  public:
@@ -59,7 +58,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
   void cleanupWorker(uint64_t executionNumber);
   void cleanupAll();
 
-  ThreadPool* threadPool() { return _threadPool.get(); }
+  //ThreadPool* threadPool() { return _threadPool.get(); }
   RecoveryManager* recoveryManager() {
     if (_recoveryManager) {
       return _recoveryManager.get();
@@ -78,7 +77,6 @@ class PregelFeature final : public application_features::ApplicationFeature {
  private:
   Mutex _mutex;
   std::unique_ptr<RecoveryManager> _recoveryManager;
-  std::unique_ptr<ThreadPool> _threadPool;
   std::unordered_map<uint64_t, Conductor*> _conductors;
   std::unordered_map<uint64_t, IWorker*> _workers;
 };

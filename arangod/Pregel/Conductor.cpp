@@ -27,7 +27,6 @@
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
-#include "Pregel/ThreadPool.h"
 #include "Pregel/Utils.h"
 
 #include "Basics/MutexLocker.h"
@@ -39,6 +38,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/Scheduler.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -107,7 +108,7 @@ void Conductor::start() {
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
   
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Telling workers to load the data";
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Telling workers to load the data";
   int res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::CANCELED;
@@ -192,7 +193,7 @@ bool Conductor::_startGlobalStep() {
   b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
   _aggregators->serializeValues(b);
   b.close();
-  LOG_TOPIC(INFO, Logger::PREGEL) << b.toString();
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << b.toString();
 
   // start vertex level operations, does not get a response
   res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
@@ -287,17 +288,19 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     return response;
   }
 
-  LOG_TOPIC(INFO, Logger::PREGEL)
+  LOG_TOPIC(DEBUG, Logger::PREGEL)
       << "Finished gss " << _globalSuperstep << " in "
       << (TRI_microtime() - _computationStartTimeSecs) << "s";
-  _statistics.debugOutput();
+  //_statistics.debugOutput();
   _globalSuperstep++;
 
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+  TRI_ASSERT(ioService != nullptr);
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  ThreadPool* pool = PregelFeature::instance()->threadPool();
-  pool->enqueue([this] {
-    MUTEX_LOCKER(cguard, _callbackMutex);
+  ioService->post([this] {
+    MUTEX_LOCKER(guard, _callbackMutex);
 
     if (_state == ExecutionState::RUNNING) {
       _startGlobalStep();  // trigger next superstep
@@ -395,8 +398,10 @@ void Conductor::startRecovery() {
   _state = ExecutionState::RECOVERING;
   _statistics.reset();
 
-  ThreadPool* pool = PregelFeature::instance()->threadPool();
-  pool->enqueue([this] {
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+  TRI_ASSERT(ioService != nullptr);
+  ioService->post([this] {
     // let's wait for a final state in the cluster
     // on some systems usleep does not
     // like arguments greater than 1000000
@@ -601,7 +606,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     auto body = std::make_shared<std::string const>(b.toJson());
     requests.emplace_back("server:" + server, rest::RequestType::POST, path,
                           body);
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Initializing Server " << server;
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Initializing Server " << server;
   }
 
   std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
@@ -626,7 +631,7 @@ int Conductor::_finalizeWorkers() {
     mngr->stopMonitoring(this);
   }
 
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Finalizing workers";
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Finalizing workers";
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -697,8 +702,10 @@ int Conductor::_sendToAllDBServers(std::string const& path,
                                          response);
       handle(response.slice());
     } else {
-      ThreadPool *pool = PregelFeature::instance()->threadPool();
-      pool->enqueue([this, path, message] {
+      TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+      boost::asio::io_service *ioService = SchedulerFeature::SCHEDULER->ioService();
+      TRI_ASSERT(ioService != nullptr);
+      ioService->post([this, path, message] {
         VPackBuilder response;
         PregelFeature::handleWorkerRequest(_vocbaseGuard.vocbase(), path, message.slice(),
                                            response);
@@ -724,7 +731,7 @@ int Conductor::_sendToAllDBServers(std::string const& path,
   size_t nrDone = 0;
   size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
                                       LogTopic("Pregel Conductor"));
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Send " << path << " to " << nrDone
+  LOG_TOPIC(TRACE, Logger::PREGEL) << "Send " << path << " to " << nrDone
                                   << " servers";
   Utils::printResponses(requests);
   if (handle && nrGood == requests.size()) {
