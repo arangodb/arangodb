@@ -1,0 +1,10 @@
+/var/log/arangodb3/arangod.log {
+     rotate 12
+     weekly
+     compress
+     delaycompress
+     create 640  arangodb adm
+     postrotate
+     /etc/init.d/arangodb3 reload-log > /dev/null
+     endscript
+     }

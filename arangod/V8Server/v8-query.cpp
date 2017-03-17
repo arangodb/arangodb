@@ -35,6 +35,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+#include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
@@ -116,7 +117,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
 
   arangodb::LogicalCollection const* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   TRI_GetVocBaseColType());
+                                                   WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -192,7 +193,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   TRI_GetVocBaseColType());
+                                                   WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -298,7 +299,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   arangodb::LogicalCollection const* col = TRI_UnwrapClass<arangodb::LogicalCollection>(
-      args.Holder(), TRI_GetVocBaseColType());
+      args.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -354,7 +355,7 @@ static void JS_ChecksumCollection(
   v8::HandleScope scope(isolate);
 
   arangodb::LogicalCollection const* col = TRI_UnwrapClass<arangodb::LogicalCollection>(
-      args.Holder(), TRI_GetVocBaseColType());
+      args.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -487,7 +488,7 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   arangodb::LogicalCollection const* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   TRI_GetVocBaseColType());
+                                                   WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -536,7 +537,7 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   arangodb::LogicalCollection const* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   TRI_GetVocBaseColType());
+                                                   WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");

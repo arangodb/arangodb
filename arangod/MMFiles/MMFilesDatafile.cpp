@@ -413,6 +413,12 @@ char const* TRI_NameMarkerDatafile(TRI_df_marker_type_t type) {
       return "commit transaction";
     case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION:
       return "abort transaction";
+    case TRI_DF_MARKER_VPACK_CREATE_VIEW:
+      return "create view";
+    case TRI_DF_MARKER_VPACK_DROP_VIEW:
+      return "drop view";
+    case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
+      return "change view";
 
     default:
       return "unknown";

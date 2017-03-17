@@ -48,6 +48,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+#include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "V8Server/v8-vocindex.h"
@@ -92,18 +93,6 @@ static inline bool ExtractWaitForSync(
   TRI_ASSERT(index > 0);
 
   return (args.Length() >= index && TRI_ObjectToBoolean(args[index - 1]));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a v8 collection id value from the internal collection id
-////////////////////////////////////////////////////////////////////////////////
-
-static inline v8::Handle<v8::Value> V8CollectionId(v8::Isolate* isolate,
-                                                   TRI_voc_cid_t cid) {
-  char buffer[21];
-  size_t len = TRI_StringUInt64InPlace((uint64_t)cid, (char*)&buffer);
-
-  return TRI_V8_PAIR_STRING((char const*)buffer, (int)len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1242,10 +1231,10 @@ static void JS_PlanIdVocbaseCol(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    TRI_V8_RETURN(V8CollectionId(isolate, collection->cid()));
+    TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->cid()));
   }
 
-  TRI_V8_RETURN(V8CollectionId(isolate, collection->planId()));
+  TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->planId()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2870,10 +2859,12 @@ static void JS_CompletionsVocbase(
   result->Set(j++, TRI_V8_ASCII_STRING("_createDatabase()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_createDocumentCollection()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_createEdgeCollection()"));
+  result->Set(j++, TRI_V8_ASCII_STRING("_createView()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_createStatement()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_document()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_drop()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_dropDatabase()"));
+  result->Set(j++, TRI_V8_ASCII_STRING("_dropView()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_executeTransaction()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_exists()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_id"));
@@ -2881,15 +2872,17 @@ static void JS_CompletionsVocbase(
   result->Set(j++, TRI_V8_ASCII_STRING("_databases()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_name()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_path()"));
+  result->Set(j++, TRI_V8_ASCII_STRING("_pregelStart()"));
+  result->Set(j++, TRI_V8_ASCII_STRING("_pregelStatus()"));
+  result->Set(j++, TRI_V8_ASCII_STRING("_pregelStop()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_query()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_remove()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_replace()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_update()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_useDatabase()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_version()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_pregelStart()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_pregelStatus()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_pregelStop()"));
+  result->Set(j++, TRI_V8_ASCII_STRING("_view()"));
+  result->Set(j++, TRI_V8_ASCII_STRING("_views()"));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -2994,10 +2987,10 @@ static void JS_CountVocbaseCol(
 // generate the arangodb::LogicalCollection template
 // .............................................................................
 
-void TRI_InitV8Collection(v8::Handle<v8::Context> context,
-                          TRI_vocbase_t* vocbase, size_t const threadNumber,
-                          TRI_v8_global_t* v8g, v8::Isolate* isolate,
-                          v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
+void TRI_InitV8Collections(v8::Handle<v8::Context> context,
+                           TRI_vocbase_t* vocbase,
+                           TRI_v8_global_t* v8g, v8::Isolate* isolate,
+                           v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_changeMode"),
                        JS_ChangeOperationModeVocbase);
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_collection"),

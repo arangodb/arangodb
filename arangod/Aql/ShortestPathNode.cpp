@@ -482,10 +482,8 @@ double ShortestPathNode::estimateCost(size_t& nrItems) const {
   // At this point we know |E| but do not know |V|.
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
-  auto trx = _plan->getAst()->query()->trx();
   auto collections = _plan->getAst()->query()->collections();
   size_t edgesCount = 0;
-  double nodesEstimate = 0;
 
   TRI_ASSERT(collections != nullptr);
 
@@ -496,24 +494,9 @@ double ShortestPathNode::estimateCost(size_t& nrItems) const {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unexpected pointer for collection");
     }
-    size_t edges = collection->count();
-
-    auto indexes = trx->indexesForCollection(collection->name);
-    for (auto const& index : indexes) {
-      if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
-        // We can only use Edge Index
-        if (index->hasSelectivityEstimate()) {
-          nodesEstimate += edges * index->selectivityEstimate();
-        } else {
-          // Hard-coded fallback should not happen
-          nodesEstimate += edges * 0.01;
-        }
-        break;
-      }
-    }
-
-    edgesCount += edges;
+    edgesCount += collection->count();
   }
-  nrItems = edgesCount + static_cast<size_t>(std::log2(nodesEstimate) * nodesEstimate);
+  // Hard-Coded number of vertices edges / 10
+  nrItems = edgesCount + static_cast<size_t>(std::log2(edgesCount / 10) * (edgesCount / 10));
   return depCost + nrItems;
 }

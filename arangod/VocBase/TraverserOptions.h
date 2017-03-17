@@ -93,6 +93,9 @@ struct TraverserOptions {
     /// @brief Build a velocypack containing all relevant information
     ///        for DBServer traverser engines.
     void buildEngineInfo(arangodb::velocypack::Builder&) const;
+
+    double estimateCost(size_t& nrItems) const;
+    
   };
 
  public:
@@ -170,7 +173,13 @@ struct TraverserOptions {
 
   void serializeVariables(arangodb::velocypack::Builder&) const;
 
+  double estimateCost(size_t& nrItems) const;
+
  private:
+
+  double costForLookupInfoList(std::vector<LookupInfo> const& list,
+                               size_t& createItems) const;
+
   EdgeCursor* nextCursorLocal(ManagedDocumentResult*,
                               arangodb::velocypack::Slice, uint64_t,
                               std::vector<LookupInfo>&) const;

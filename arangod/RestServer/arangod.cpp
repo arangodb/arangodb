@@ -72,6 +72,7 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UnitTestsFeature.h"
 #include "RestServer/UpgradeFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "RestServer/WorkMonitorFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslFeature.h"
@@ -172,6 +173,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new V8DealerFeature(&server));
     server.addFeature(new V8PlatformFeature(&server));
     server.addFeature(new VersionFeature(&server));
+    server.addFeature(new ViewTypesFeature(&server));
     server.addFeature(new WorkMonitorFeature(&server));
 
 #ifdef ARANGODB_HAVE_FORK

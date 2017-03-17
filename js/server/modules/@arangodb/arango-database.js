@@ -41,8 +41,9 @@ exports.ArangoDatabase = internal.ArangoDatabase;
 
 var ArangoDatabase = exports.ArangoDatabase;
 
-// must called after export
+// must be called after export
 var ArangoCollection = require('@arangodb/arango-collection').ArangoCollection;
+var ArangoView = require('@arangodb/arango-view').ArangoView;
 var ArangoError = require('@arangodb').ArangoError;
 var ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
 
