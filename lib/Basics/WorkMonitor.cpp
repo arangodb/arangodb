@@ -317,6 +317,7 @@ void WorkMonitor::deleteWorkDescription(WorkDescription* desc, bool stopped) {
 
 void WorkMonitor::activateWorkDescription(WorkDescription* desc) {
   if (Thread::CURRENT_THREAD == nullptr) {
+    TRI_ASSERT(CURRENT_WORK_DESCRIPTION == nullptr);
     CURRENT_WORK_DESCRIPTION = desc;
   } else {
     Thread::CURRENT_THREAD->setWorkDescription(desc);

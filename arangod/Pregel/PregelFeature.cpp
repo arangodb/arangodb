@@ -50,6 +50,7 @@ PregelFeature::PregelFeature(application_features::ApplicationServer* server)
 : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("WorkMonitor");
   startsAfter("Logger");
   startsAfter("Database");
   startsAfter("Endpoint");
