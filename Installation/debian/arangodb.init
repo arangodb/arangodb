@@ -37,23 +37,34 @@ start () {
     ulimit -H -n 131072 || true
     ulimit -S -n 131072 || true
 
-    if [ "$1" = "--upgrade" ]; then
-      shift
-      $DAEMON --uid arangodb --gid arangodb --server.rest-server false --database.auto-upgrade true $@
-      RETVAL=$?
-      log_end_msg $RETVAL
-    else
-      $DAEMON --uid arangodb --gid arangodb --server.rest-server false --log.foreground-tty false --database.check-version
-      RETVAL=$?
+    case "$1" in
+        "--upgrade")
+            shift
+            $DAEMON --uid arangodb --gid arangodb --server.rest-server false --database.auto-upgrade true $@
+            RETVAL=$?
+            log_end_msg $RETVAL
+            ;;
+        "--reopen-logs")
+            shift
+            if test -f $PIDFILE; then
+                kill -1 `cat $PIDFILE`
+            fi
+            RETVAL=0
+            log_end_msg $RETVAL
+            ;;
+        *)
+            $DAEMON --uid arangodb --gid arangodb --server.rest-server false --log.foreground-tty false --database.check-version
+            RETVAL=$?
 
-      if [ "$RETVAL" -eq 0 ];  then
-        $DAEMON --uid arangodb --gid arangodb --pid-file "$PIDFILE" --temp.path "/var/tmp/arangod" --log.foreground-tty false  --supervisor $@
-	RETVAL=$?
-	log_end_msg $RETVAL
-      else
-	log_failure_msg "database version check failed, maybe you need to run 'upgrade'?"
-      fi
-    fi
+            if [ "$RETVAL" -eq 0 ];  then
+                $DAEMON --uid arangodb --gid arangodb --pid-file "$PIDFILE" --temp.path "/var/tmp/arangod" --log.foreground-tty false  --supervisor $@
+	        RETVAL=$?
+	        log_end_msg $RETVAL
+            else
+	        log_failure_msg "database version check failed, maybe you need to run 'upgrade'?"
+            fi
+            ;;
+    esac
 
     return $RETVAL
 }
@@ -110,6 +121,14 @@ case "$1" in
     log_daemon_msg "Upgrading $DESC" "$NAME"
 
     start --upgrade
+    exit $?
+    ;;
+  
+  reload-log)
+    log_daemon_msg "Re-Opening Logfiles $DESC" "$NAME"
+
+    start --reopen-logs
+
     exit $?
     ;;
 
