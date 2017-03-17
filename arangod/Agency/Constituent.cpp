@@ -191,7 +191,17 @@ void Constituent::followNoLock(term_t t) {
 void Constituent::lead(term_t term) {
 
   // we need to rebuild spear_head and read_db
-  _agent->prepareLead();
+
+  _agent->beginPrepareLeadership();
+  TRI_DEFER(_agent->endPrepareLeadership());
+  
+  if (!_agent->prepareLead()) {
+    {
+      MUTEX_LOCKER(guard, _castLock);
+      followNoLock(term);
+    }
+    return;
+  }
 
   {
     MUTEX_LOCKER(guard, _castLock);
