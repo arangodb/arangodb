@@ -287,6 +287,15 @@ ERROR_SERVICE_DOWNLOAD_FAILED,1752,"service download failed","Will be raised whe
 ERROR_SERVICE_UPLOAD_FAILED,1753,"service upload failed","Will be raised when a service upload from the client to the ArangoDB server failed."
 
 ################################################################################
+## LDAP errors
+################################################################################
+
+ERROR_LDAP_CANNOT_INIT,1800,"cannot init a LDAP connection","cannot init a LDAP connection"
+ERROR_LDAP_CANNOT_SET_OPTION,1801,"cannot set a LDAP option","cannot set a LDAP option"
+ERROR_LDAP_CANNOT_BIND,1802,"cannot bind to a LDAP server","cannot bind to a LDAP server"
+ERROR_LDAP_CANNOT_UNBIND,1803,"cannot unbind to a LDAP server","cannot unbind to a LDAP server"
+
+################################################################################
 ## Task errors
 ################################################################################
 

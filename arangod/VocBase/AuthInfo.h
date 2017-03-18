@@ -31,11 +31,13 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Mutex.h"
 #include "Basics/LruCache.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "GeneralServer/AuthenticationHandler.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -142,6 +144,9 @@ class AuthJwtResult: public AuthResult {
   std::chrono::system_clock::time_point _expireTime;
 };
 
+
+class AuthenticationHandler;
+
 class AuthInfo {
  public:
   enum class AuthType {
@@ -149,13 +154,8 @@ class AuthInfo {
   };
 
  public:
-  AuthInfo()
-    : _outdated(true),
-    _authJwtCache(16384),
-    _jwtSecret(""),
-    _queryRegistry(nullptr) {
-  }
-  
+  AuthInfo();
+
  public:
   void setQueryRegistry(aql::QueryRegistry* registry) {
     TRI_ASSERT(registry != nullptr);
@@ -205,6 +205,7 @@ class AuthInfo {
   arangodb::basics::LruCache<std::string, arangodb::AuthJwtResult> _authJwtCache;
   std::string _jwtSecret;
   aql::QueryRegistry* _queryRegistry;
+  AuthenticationHandler* _authenticationHandler;
 };
 }
 

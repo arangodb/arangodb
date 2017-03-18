@@ -21,8 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#define LDAP_DEPRECATED 1
-
 #include "AuthInfo.h"
 
 #include "Aql/Query.h"
@@ -31,6 +29,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
@@ -40,14 +39,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-
-#if _WIN32
-#include <ntldap.h>
-#include <winldap.h>
-#else
-#include <ldap.h>
-#include <lber.h>
-#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -151,6 +142,14 @@ AuthLevel AuthEntry::canUseDatabase(std::string const& dbname) const {
   return it->second;
 }
 
+AuthInfo::AuthInfo()
+    : _outdated(true),
+    _authJwtCache(16384),
+    _jwtSecret(""),
+    _queryRegistry(nullptr),
+    _authenticationHandler(nullptr) {
+}
+
 void AuthInfo::setJwtSecret(std::string const& jwtSecret) {
   WRITE_LOCKER(writeLocker, _authJwtLock);
   _jwtSecret = jwtSecret;
@@ -167,6 +166,7 @@ void AuthInfo::insertInitial() {
   if (!_authInfo.empty()) {
     return;
   }
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "insertInitial()";
 
   try {
     VPackBuilder builder;
@@ -213,11 +213,37 @@ void AuthInfo::insertInitial() {
 bool AuthInfo::populate(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
 
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "populate()";
+
   _authInfo.clear();
   _authBasicCache.clear();
 
+/*  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"; // << authSlice.get("user").copyString();
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "slice is object?: " << slice.isObject(); // << authSlice.get("user").copyString();
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "slice as hex: " << slice.toHex(); // << authSlice.get("user").copyString();
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "slice as JSON: " << slice.toJson(); // << authSlice.get("user").copyString();
+*/
+
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
-    AuthEntry auth = CreateAuthEntry(authSlice.resolveExternal(), AuthSource::COLLECTION);
+    VPackSlice const& s = authSlice.resolveExternal();
+
+    /*
+    try {
+    if (s.hasKey("user") && s.get("user").isString()) {
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "user json " << s.toJson();
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "user hex " << s.toHex();
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "user " << s.get("user").copyString();
+    }
+
+    } catch(...) {
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "cought error";
+    }*/
+
+    if (s.hasKey("source") && s.get("source").isString() && s.get("source").copyString() == "LDAP") {
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "jump over user: " << s.get("user").copyString();
+      continue;
+    }
+    AuthEntry auth = CreateAuthEntry(s, AuthSource::COLLECTION);
 
     if (auth.isActive()) {
       _authInfo.emplace(auth.username(), std::move(auth));
@@ -229,12 +255,18 @@ bool AuthInfo::populate(VPackSlice const& slice) {
 
 // private, will acquire _authInfoLock in write-mode and release it
 void AuthInfo::reload() {
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "reload()";
   auto role = ServerState::instance()->getRole();
 
   if (role != ServerState::ROLE_SINGLE
       && role != ServerState::ROLE_COORDINATOR) {
     _outdated = false;
     return;
+  }
+
+  // TODO: is this correct?
+  if (_authenticationHandler == nullptr) {
+    _authenticationHandler = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication")->getHandler();
   }
   
   {
@@ -283,6 +315,8 @@ void AuthInfo::reload() {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read users from _users collection";
     return;
   }
+
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "Done FOR user IN _users AQL query";
 
   {
     WRITE_LOCKER(writeLocker, _authInfoLock);
@@ -367,7 +401,6 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
 
   AuthResult result(username);
 
-#if USE_LDAP_AUTH
   WRITE_LOCKER(writeLocker, _authInfoLock);
   auto it = _authInfo.find(username);
 
@@ -375,183 +408,133 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
     printf("%lf\n%lf\n", it->second.created(), (TRI_microtime() - 60) );
   }
 
-  // TODO: remove username != root <--- only for testing
-  if (username != "root" && (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP && it->second.created() < TRI_microtime() - 60))) {
-    LDAP *ld;
-    int  ldap_result;
-    int  auth_method = LDAP_AUTH_SIMPLE;
-    int desired_version = LDAP_VERSION3;
-    std::string ldap_host = "127.0.0.1";
-    std::string root_dn = "uid=" + username + ",dc=example,dc=com";
-    std::string root_pw = password;
+  if (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP && it->second.created() < TRI_microtime() - 60)) {
+    printf("it == _authInfo.end()\n");
+    AuthenticationResult authResult = _authenticationHandler->authenticate(username, password);
 
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "password is " << root_pw << " user is " << username;
-
-    if ((ld = ldap_init(ldap_host.c_str(), LDAP_PORT)) == NULL ) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ldapt init failed";
-      perror( "ldap_init failed" );
-      exit( EXIT_FAILURE );
+    if (!authResult.ok()) {
+      printf("authResult not ok throw\n");
+      THROW_ARANGO_EXCEPTION_MESSAGE(authResult.errorNumber(), authResult.errorMessage());
     }
 
-    /* set the LDAP version to be 3 */
-    if (ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &desired_version) != LDAP_OPT_SUCCESS)
-    {
-        ldap_perror(ld, "ldap_set_option");
-        exit(EXIT_FAILURE);
-    }
-
-    if (ldap_bind_s(ld, root_dn.c_str(), root_pw.c_str(), auth_method) != LDAP_SUCCESS ) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "cant auth return";
-      ldap_perror( ld, "ldap_bind" );
-      return result;
-    }
-
-    ldap_result = ldap_unbind_s(ld);
-
-    if (ldap_result != 0) {
-      fprintf(stderr, "ldap_unbind_s: %s\n", ldap_err2string(ldap_result));
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "cant unbind";
-      exit( EXIT_FAILURE );
-    }
-
-    if (it != _authInfo.end() && it->second.created() < TRI_microtime() - 60) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "authinfo timeout erase";
-      _authInfo.erase(username);
-      it = _authInfo.end();
-    }
-
-
-    if (it == _authInfo.end()) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "would insert new user";
-
-
-
-      TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
-
-      if (vocbase == nullptr) {
-        LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown, cannot load authentication "
-                  << "and authorization information";
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "_system databse is unknown");
+    if (authResult.source() == AuthSource::LDAP) { // user authed, add to _authInfo _users
+      if (it != _authInfo.end() && it->second.created() < TRI_microtime() - 60) {
+        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "authinfo timeout erase";
+        _authInfo.erase(username);
+        it = _authInfo.end();
       }
 
-      MUTEX_LOCKER(locker, _queryLock);
+      if (it == _authInfo.end()) {
+        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "insert new user";
 
-      std::string const queryStr("UPSERT {user: @username} INSERT @user UPDATE @user IN _users");
-      auto emptyBuilder = std::make_shared<VPackBuilder>();
+        TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
 
-      // TODO: reuse from authData builder
-      VPackBuilder binds;
-      binds.openObject();
-      binds.add("username", VPackValue(username));
-
-      binds.add("user", VPackValue(VPackValueType::Object));
-
-      binds.add("user", VPackValue(username));
-
-      binds.add("databases", VPackValue(VPackValueType::Object));
-      binds.add("*", VPackValue("rw"));
-      binds.close();
-
-      binds.add("configData", VPackValue(VPackValueType::Object));
-      binds.close();
-
-      binds.add("userData", VPackValue(VPackValueType::Object));
-      binds.close();
-
-      binds.add("authData", VPackValue(VPackValueType::Object));
-      binds.add("active", VPackValue(true));
-      binds.add("changePassword", VPackValue(false));
-
-      binds.add("simple", VPackValue(VPackValueType::Object));
-      binds.add("method", VPackValue("sha256"));
-
-      std::string s = "1f71c278"; // TODO: random salt + password hash calculation
-      binds.add("salt", VPackValue(s));
-
-      std::string spw = s + password;
-      HexHashResult hex = hexHashFromData("sha256", spw.data(), spw.size());
-      if (!hex.ok()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "hexcalc did not work");
-      }
-      binds.add("hash", VPackValue(hex.hexHash()));
-
-      binds.close();  // simple
-      binds.close(); // authData
-
-      binds.close(); // user
-      binds.close(); // obj
-
-      arangodb::aql::Query query(false, vocbase, queryStr.c_str(),
-                                queryStr.size(), std::make_shared<VPackBuilder>(binds), emptyBuilder,
-                                arangodb::aql::PART_MAIN);
-
-      TRI_ASSERT(_queryRegistry != nullptr);
-      auto queryResult = query.execute(_queryRegistry);
-
-      if (queryResult.code != TRI_ERROR_NO_ERROR) {
-        if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-            (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+        if (vocbase == nullptr) {
+          LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown, cannot load authentication "
+                    << "and authorization information";
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "_system databse is unknown");
         }
-        _outdated = false;
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "query error");
+
+        MUTEX_LOCKER(locker, _queryLock);
+
+        std::string const queryStr("UPSERT {user: @username} INSERT @user UPDATE @user IN _users");
+        auto emptyBuilder = std::make_shared<VPackBuilder>();
+
+        // TODO: reuse from authData builder
+        VPackBuilder binds;
+        binds.openObject();
+        binds.add("username", VPackValue(username));
+
+        binds.add("user", VPackValue(VPackValueType::Object));
+
+        binds.add("user", VPackValue(username));
+        binds.add("source", VPackValue("LDAP"));
+
+        binds.add("databases", VPackValue(VPackValueType::Object));
+        binds.add("*", VPackValue("rw")); // TODO: use from authResult
+        binds.close();
+
+        binds.add("configData", VPackValue(VPackValueType::Object));
+        binds.close();
+
+        binds.add("userData", VPackValue(VPackValueType::Object));
+        binds.close();
+
+        binds.add("authData", VPackValue(VPackValueType::Object));
+        binds.add("active", VPackValue(true));
+        binds.add("changePassword", VPackValue(false));
+
+        binds.add("simple", VPackValue(VPackValueType::Object));
+        binds.add("method", VPackValue("sha256"));
+
+        std::string salt = "1f71c278"; // TODO: random salt
+        binds.add("salt", VPackValue(salt));
+
+        std::string saltedPassword = salt + password;
+        HexHashResult hex = hexHashFromData("sha256", saltedPassword.data(), saltedPassword.size());
+        if (!hex.ok()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "hexcalc did not work"); // TODO: propper error message?
+        }
+        binds.add("hash", VPackValue(hex.hexHash()));
+
+        binds.close();  // simple
+        binds.close(); // authData
+
+        binds.close(); // user
+        binds.close(); // obj
+
+        arangodb::aql::Query query(false, vocbase, queryStr.c_str(),
+                                  queryStr.size(), std::make_shared<VPackBuilder>(binds), emptyBuilder,
+                                  arangodb::aql::PART_MAIN);
+
+        TRI_ASSERT(_queryRegistry != nullptr);
+        auto queryResult = query.execute(_queryRegistry);
+
+        if (queryResult.code != TRI_ERROR_NO_ERROR) {
+          if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
+              (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+          }
+          _outdated = false;
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "query error");
+        }
+
+        VPackSlice resultSlice = queryResult.result->slice();
+        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << resultSlice.toJson();
+
+        VPackBuilder builder;
+        builder.openObject();
+
+        // username
+        builder.add("user", VPackValue(username));
+        builder.add("authData", VPackValue(VPackValueType::Object));
+
+        // simple auth
+        builder.add("simple", VPackValue(VPackValueType::Object));
+        builder.add("method", VPackValue("sha256"));
+
+        builder.add("salt", VPackValue(salt));
+
+        builder.add("hash", VPackValue(hex.hexHash()));
+
+        builder.close();  // simple
+
+        builder.add("active", VPackValue(true));
+
+        builder.close();  // authData
+
+        builder.add("databases", VPackValue(VPackValueType::Object));
+        builder.add("*", VPackValue("rw"));
+        builder.close();
+        builder.close();  // The Object
+
+        AuthEntry auth = CreateAuthEntry(builder.slice().resolveExternal(), AuthSource::LDAP);
+        _authInfo.emplace(auth.username(), std::move(auth));
+
+        it = _authInfo.find(username);
       }
-
-      VPackSlice resultSlice = queryResult.result->slice();
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << resultSlice.toJson();
-
-
-
-      VPackBuilder builder;
-      builder.openObject();
-
-      // username
-      builder.add("user", VPackValue(username));
-      builder.add("authData", VPackValue(VPackValueType::Object));
-
-      // simple auth
-      builder.add("simple", VPackValue(VPackValueType::Object));
-      builder.add("method", VPackValue("sha256"));
-
-      // TODO: random salt + password hash calculation
-      std::string salt = "1f71c278";
-      builder.add("salt", VPackValue(salt));
-
-
-      std::string saltedPassword = salt + password;
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "new salted password is " << saltedPassword;
-
-      HexHashResult hexHash = hexHashFromData("sha256", saltedPassword.data(), saltedPassword.size());
-
-      if (!hexHash.ok()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "hexcalc did not work");
-      }
-
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "hexHashFromData " << hexHash.hexHash();
-
-      builder.add("hash", VPackValue(hexHash.hexHash()));
-
-      builder.close();  // simple
-
-      builder.add("active", VPackValue(true));
-
-      builder.close();  // authData
-
-      builder.add("databases", VPackValue(VPackValueType::Object));
-      builder.add("*", VPackValue("rw"));
-      builder.close();
-      builder.close();  // The Object
-
-      AuthEntry auth = CreateAuthEntry(builder.slice().resolveExternal(), AuthSource::LDAP);
-      _authInfo.emplace(auth.username(), std::move(auth));
-
-      it = _authInfo.find(username);
-    }
+    } // AuthSource::LDAP
   }
-# else
-  READ_LOCKER(readLocker, _authInfoLock);
-  auto it = _authInfo.find(username);
-# endif
 
   if (it == _authInfo.end()) {
     LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "authinfo list is empty";
