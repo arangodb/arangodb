@@ -25,7 +25,6 @@
 #define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/DatafileStatisticsContainer.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -60,7 +59,7 @@ class PhysicalCollection {
                                                 // creation happens atm in engine->createCollection
   virtual arangodb::Result updateProperties(
       arangodb::velocypack::Slice const& slice, bool doSync) = 0;
-  virtual arangodb::Result persistProperties() noexcept = 0;
+  virtual arangodb::Result persistProperties() = 0;
 
   virtual PhysicalCollection* clone(LogicalCollection*, PhysicalCollection*) = 0;
 

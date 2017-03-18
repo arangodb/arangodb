@@ -59,6 +59,19 @@ struct MMFilesWalRecoverState {
   bool willBeDropped(TRI_voc_cid_t collectionId) const {
     return (totalDroppedCollections.find(collectionId) != totalDroppedCollections.end());
   }
+  
+  /// @brief checks if there will be a drop marker for the view
+  bool willViewBeDropped(TRI_voc_cid_t viewId) const {
+    return (totalDroppedViews.find(viewId) != totalDroppedViews.end());
+  }
+  
+  /// @brief checks if there will be a drop marker for the database or database
+  bool willViewBeDropped(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) const {
+    if (totalDroppedDatabases.find(databaseId) != totalDroppedDatabases.end()) {
+      return true;
+    }
+    return (totalDroppedViews.find(viewId) != totalDroppedViews.end());
+  }
 
   /// @brief checks if a database is dropped already
   bool isDropped(TRI_voc_tick_t databaseId) const {
@@ -116,6 +129,8 @@ struct MMFilesWalRecoverState {
 
   /// @brief gets a collection (and inserts it into the cache if not in it)
   arangodb::LogicalCollection* useCollection(TRI_vocbase_t*, TRI_voc_cid_t, int&);
+  
+  arangodb::LogicalView* releaseView(TRI_voc_cid_t);
 
   /// @brief looks up a collection
   /// the collection will be opened after this call and inserted into a local
@@ -155,8 +170,10 @@ struct MMFilesWalRecoverState {
   std::unordered_map<TRI_voc_tid_t, std::pair<TRI_voc_tick_t, bool>>
       failedTransactions;
   std::unordered_set<TRI_voc_cid_t> droppedCollections;
+  std::unordered_set<TRI_voc_cid_t> droppedViews;
   std::unordered_set<TRI_voc_tick_t> droppedDatabases;
   std::unordered_set<TRI_voc_cid_t> totalDroppedCollections;
+  std::unordered_set<TRI_voc_cid_t> totalDroppedViews;
   std::unordered_set<TRI_voc_tick_t> totalDroppedDatabases;
 
   TRI_voc_tick_t lastTick;

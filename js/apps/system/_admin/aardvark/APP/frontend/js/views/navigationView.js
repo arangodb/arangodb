@@ -265,6 +265,10 @@
             });
           }
         });
+      } else {
+        $(self.subEl + ' .bottom').append(
+          '<li class="subMenuEntry</li>'
+        );
       }
     },
 

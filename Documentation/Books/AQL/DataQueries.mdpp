@@ -286,11 +286,10 @@ must be known to the AQL executor at query-compile time and cannot change at
 runtime. Using a bind parameter to specify the
 [collection name](../Manual/Appendix/Glossary.html#collection-name) is allowed.
 
-Data-modification queries are restricted to modifying data in a single 
-collection per query. That means a data-modification query cannot modify 
-data in multiple collections with a single query. It is still possible (and
-was shown above) to read from one or many collections and modify data in another
-within the same query.
+Data-modification queries are restricted to a single modify operation per collection.
+That means you may not place several `REMOVE` or `UPDATE` statements for one collection 
+in one query. In case you have several places in a query providing you lists of documents
+to delete, collect them in an array so you can remove them all at once.
 
 Only a single data-modification operation can be used per AQL query. Data-modification
 queries cannot be used inside subqueries. Data-modification operations can optionally

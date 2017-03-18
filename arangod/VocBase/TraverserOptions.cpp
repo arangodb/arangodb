@@ -136,6 +136,21 @@ void arangodb::traverser::TraverserOptions::LookupInfo::buildEngineInfo(
   result.close();
 }
 
+double arangodb::traverser::TraverserOptions::LookupInfo::estimateCost(size_t& nrItems) const {
+  // If we do not have an index yet we cannot do anything.
+  // Should NOT be the case
+  TRI_ASSERT(!idxHandles.empty());
+  auto idx = idxHandles[0].getIndex();
+  if (idx->hasSelectivityEstimate()) {
+    double expected = 1 / idx->selectivityEstimate();
+    nrItems += static_cast<size_t>(expected);
+    return expected;
+  }
+  // Some hard-coded value
+  nrItems += 1000;
+  return 1000.0;
+}
+
 arangodb::traverser::TraverserOptions::TraverserOptions(
     transaction::Methods* trx, VPackSlice const& slice)
     : _trx(trx),
@@ -695,3 +710,36 @@ void arangodb::traverser::TraverserOptions::serializeVariables(
   _ctx->serializeAllVariables(_trx, builder);
 }
 
+double arangodb::traverser::TraverserOptions::costForLookupInfoList(
+    std::vector<arangodb::traverser::TraverserOptions::LookupInfo> const& list,
+    size_t& createItems) const {
+  double cost = 0;
+  createItems = 0;
+  for (auto const& li : list) {
+    cost += li.estimateCost(createItems);
+  }
+  return cost;
+}
+
+double arangodb::traverser::TraverserOptions::estimateCost(size_t& nrItems) const {
+  size_t count = 1;
+  double cost = 0;
+  size_t baseCreateItems = 0;
+  double baseCost = costForLookupInfoList(_baseLookupInfos, baseCreateItems);
+
+  for (uint64_t depth = 0; depth < maxDepth; ++depth) {
+    auto liList = _depthLookupInfo.find(depth);
+    if (liList == _depthLookupInfo.end()) {
+      // No LookupInfo for this depth use base
+      cost += baseCost * count;
+      count *= baseCreateItems;
+    } else {
+      size_t createItems = 0;
+      double depthCost = costForLookupInfoList(liList->second, createItems);
+      cost += depthCost * count;
+      count *= createItems;
+    }
+  }
+  nrItems = count;
+  return cost;
+}

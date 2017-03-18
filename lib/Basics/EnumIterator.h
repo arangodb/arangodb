@@ -32,7 +32,7 @@
 namespace arangodb {
 
 /// @brief Iterator for an enum class type
-/// will work only when the enum values are contiguous and are
+/// will work only when the enum values are unique, contiguous and 
 /// sorted in order
 template <typename T, T beginValue, T endValue>
 class EnumIterator {

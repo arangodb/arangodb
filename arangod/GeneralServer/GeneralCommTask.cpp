@@ -28,6 +28,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -179,7 +180,6 @@ void GeneralCommTask::processResponse(GeneralResponse* response) {
   if (response == nullptr) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "processResponse received a nullptr, closing connection";
-
     closeStream();
   } else {
     addResponse(response, nullptr);
@@ -194,7 +194,7 @@ RequestStatistics* GeneralCommTask::acquireStatistics(uint64_t id) {
 
 RequestStatistics* GeneralCommTask::statistics(uint64_t id) {
   MUTEX_LOCKER(locker, _statisticsMutex);
-  
+
   auto iter = _statisticsMap.find(id);
 
   if (iter == _statisticsMap.end()) {
@@ -229,38 +229,51 @@ void GeneralCommTask::transferStatisticsTo(uint64_t id, RestHandler* handler) {
 // -----------------------------------------------------------------------------
 
 bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
+  bool isDirect = false;
+  bool isPrio = false;
+
   if (handler->isDirect()) {
+    isDirect = true;
+  } else if (_loop._scheduler->hasQueueCapacity()) {
+    isDirect = true;
+  } else if (ServerState::instance()->isDBServer()) {
+    isPrio = true;
+  } else if (handler->needsOwnThread()) {
+    isPrio = true;
+  } else if (handler->queue() == JobQueue::AQL_QUEUE) {
+    isPrio = true;
+  }
+
+  if (isDirect && !allowDirectHandling()) {
+    isDirect = false;
+    isPrio = true;
+  }
+
+  if (isDirect) {
     handleRequestDirectly(std::move(handler));
     return true;
   }
 
-  if (_loop._scheduler->isIdle()) {
-    handleRequestDirectly(std::move(handler));
-    return true;
-  }
+  auto self = shared_from_this();
 
-  bool startThread = handler->needsOwnThread();
-
-  if (startThread) {
-    handleRequestDirectly(std::move(handler));
+  if (isPrio) {
+    SchedulerFeature::SCHEDULER->post(
+        [self, this, handler]() { handleRequestDirectly(std::move(handler)); });
     return true;
   }
 
   // ok, we need to queue the request
   LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler: "
                                     << _loop._scheduler->infoStatus();
-  size_t queue = handler->queue();
   uint64_t messageId = handler->messageId();
 
-  auto self = shared_from_this();
   std::unique_ptr<Job> job(
       new Job(_server, std::move(handler),
               [self, this](std::shared_ptr<RestHandler> h) {
                 handleRequestDirectly(h);
               }));
 
-  bool ok =
-      SchedulerFeature::SCHEDULER->jobQueue()->queue(queue, std::move(job));
+  bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
 
   if (!ok) {
     handleSimpleError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_QUEUE_FULL,
@@ -274,8 +287,8 @@ void GeneralCommTask::handleRequestDirectly(
     std::shared_ptr<RestHandler> handler) {
   auto self = shared_from_this();
   handler->initEngine(_loop, [self, this](RestHandler* h) {
-      RequestStatistics* stat = h->stealStatistics();
-      addResponse(h->response(), stat);
+    RequestStatistics* stat = h->stealStatistics();
+    addResponse(h->response(), stat);
   });
 
   HandlerWorkStack monitor(handler);
@@ -309,14 +322,11 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   }
 
   // queue this job
-  size_t queue = handler->queue();
   auto self = shared_from_this();
 
-  auto job =
-      std::make_unique<Job>(_server, std::move(handler),
-                            [self, this](std::shared_ptr<RestHandler> h) {
-                              h->asyncRunEngine();
-                            });
+  auto job = std::make_unique<Job>(
+      _server, std::move(handler),
+      [self, this](std::shared_ptr<RestHandler> h) { h->asyncRunEngine(); });
 
-  return SchedulerFeature::SCHEDULER->jobQueue()->queue(queue, std::move(job));
+  return SchedulerFeature::SCHEDULER->queue(std::move(job));
 }

@@ -43,9 +43,11 @@ class Methods;
 }
 namespace pregel {
 
-template <typename T> struct TypedBuffer;
+template <typename T>
+struct TypedBuffer;
 class WorkerConfig;
-template <typename V, typename E> struct GraphFormat;
+template <typename V, typename E>
+struct GraphFormat;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry graph data for a worker job. NOT THREAD SAFE ON DOCUMENT LOADS
@@ -55,26 +57,17 @@ class GraphStore {
   VocbaseGuard _vocbaseGuard;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
   WorkerConfig* _config;
-
-  // int _indexFd, _vertexFd, _edgeFd;
-  // void *_indexMapping, *_vertexMapping, *_edgeMapping;
-  // size_t _indexSize, _vertexSize, _edgeSize;
-  // std::map<std::string, std::string> _shardsPlanIdMap;
-
-  // only for demo, move to memory
-  //std::vector<V> _vertexData;
-  //std::vector<Edge<E>> _edges;
-  std::vector<VertexEntry> _index;
-  TypedBuffer<V> *_vertexData = nullptr;
-  TypedBuffer<Edge<E>> *_edges = nullptr;
   
+  std::vector<VertexEntry> _index;
+  TypedBuffer<V>* _vertexData = nullptr;
+  TypedBuffer<Edge<E>>* _edges = nullptr;
+
   // cacge the amount of vertices
   std::set<ShardID> _loadedShards;
   // actual count of loaded vertices / edges
   std::atomic<uint64_t> _localVerticeCount;
   std::atomic<uint64_t> _localEdgeCount;
-  uint32_t _runningThreads;
-  mutable Mutex _threadMutex;
+  std::atomic<uint32_t> _runningThreads;
 
   std::map<ShardID, uint64_t> _allocateMemory();
   void _loadVertices(ShardID const& vertexShard,
@@ -113,7 +106,7 @@ class GraphStore {
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
 
   /// Write results to database
-  void storeResults(WorkerConfig const& state);
+  void storeResults(WorkerConfig* config, std::function<void()> callback);
 };
 }
 }

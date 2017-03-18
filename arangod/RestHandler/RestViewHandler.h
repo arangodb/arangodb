@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,32 +19,39 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_DATAFILE_STATISTICS_CONTAINER_H
-#define ARANGOD_VOC_BASE_DATAFILE_STATISTICS_CONTAINER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_VIEW_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_VIEW_HANDLER_H 1
 
 #include "Basics/Common.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
 
-/// @brief datafile statistics
-struct DatafileStatisticsContainer {
-  DatafileStatisticsContainer();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief view request handler
+////////////////////////////////////////////////////////////////////////////////
 
-  void update(DatafileStatisticsContainer const&);
-  void reset();
+class RestViewHandler : public RestVocbaseBaseHandler {
+ public:
+  RestViewHandler(GeneralRequest*, GeneralResponse*);
 
-  int64_t numberAlive;
-  int64_t numberDead;
-  int64_t numberDeletions;
+ public:
+  virtual RestStatus execute() override;
+  char const* name() const override final { return "RestViewHandler"; }
 
-  int64_t sizeAlive;
-  int64_t sizeDead;
+ protected:
+  void createView();
+  void modifyView();
+  void deleteView();
+  void getViews();
 
-  int64_t numberUncollected;
+  void getSingleView(std::string const&);
+  void getViewProperties(std::string const&);
+  void getListOfViews();
 };
-
 }
 
 #endif

@@ -139,10 +139,10 @@ class QueryList {
   }
 
   /// @brief enter a query
-  bool insert(Query const*);
+  bool insert(Query*);
 
   /// @brief remove a query
-  void remove(Query const*);
+  void remove(Query*);
 
   /// @brief kills a query
   int kill(TRI_voc_tick_t);
@@ -167,7 +167,7 @@ class QueryList {
   arangodb::basics::ReadWriteLock _lock;
 
   /// @brief list of current queries
-  std::unordered_map<TRI_voc_tick_t, Query const*> _current;
+  std::unordered_map<TRI_voc_tick_t, Query*> _current;
 
   /// @brief list of slow queries
   std::list<QueryEntryCopy> _slow;

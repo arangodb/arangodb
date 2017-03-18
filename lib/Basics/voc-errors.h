@@ -148,7 +148,7 @@
 ///   Will be raised when a document with a given identifier or handle is
 ///   unknown.
 /// - 1203: @LIT{collection not found}
-///   Will be raised when a collection with a given identifier or name is
+///   Will be raised when a collection with the given identifier or name is
 ///   unknown.
 /// - 1204: @LIT{parameter 'collection' not found}
 ///   Will be raised when the collection parameter is missing.
@@ -164,6 +164,8 @@
 ///   Will be raised when no suitable index for the query is known.
 /// - 1210: @LIT{unique constraint violated}
 ///   Will be raised when there is a unique constraint violation.
+/// - 1211: @LIT{view not found}
+///   Will be raised when a view with the given identifier or name is unknown.
 /// - 1212: @LIT{index not found}
 ///   Will be raised when an index with a given identifier is unknown.
 /// - 1213: @LIT{cross collection request not allowed}
@@ -1311,7 +1313,8 @@ void TRI_InitializeErrorMessages ();
 ///
 /// collection not found
 ///
-/// Will be raised when a collection with a given identifier or name is unknown.
+/// Will be raised when a collection with the given identifier or name is
+/// unknown.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND                             (1203)
@@ -1385,6 +1388,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED                       (1210)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1211: ERROR_ARANGO_VIEW_NOT_FOUND
+///
+/// view not found
+///
+/// Will be raised when a view with the given identifier or name is unknown.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_VIEW_NOT_FOUND                                   (1211)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1212: ERROR_ARANGO_INDEX_NOT_FOUND

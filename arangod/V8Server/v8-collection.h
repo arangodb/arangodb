@@ -57,10 +57,10 @@ bool EqualCollection(arangodb::CollectionNameResolver const* resolver,
 v8::Handle<v8::Object> WrapCollection(
     v8::Isolate* isolate, arangodb::LogicalCollection const* collection);
 
-void TRI_InitV8Collection(v8::Handle<v8::Context> context,
-                          TRI_vocbase_t* vocbase, size_t const threadNumber,
-                          TRI_v8_global_t* v8g, v8::Isolate* isolate,
-                          v8::Handle<v8::ObjectTemplate> ArangoDBNS);
+void TRI_InitV8Collections(v8::Handle<v8::Context> context,
+                           TRI_vocbase_t* vocbase, 
+                           TRI_v8_global_t* v8g, v8::Isolate* isolate,
+                           v8::Handle<v8::ObjectTemplate> ArangoDBNS);
 
 #ifdef USE_ENTERPRISE
 void DropVocbaseColCoordinatorEnterprise(

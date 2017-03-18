@@ -2,7 +2,7 @@
 pretty-print = true
 
 [log]
-file = -
+@COMMENT_LOGFILE@file = -
 
 [server]
 endpoint = tcp://127.0.0.1:8529

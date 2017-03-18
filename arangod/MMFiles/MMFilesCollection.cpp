@@ -99,7 +99,7 @@ class MMFilesIndexFillerTask : public basics::LocalTask {
 };
 
 /// @brief find a statistics container for a given file id
-static DatafileStatisticsContainer* FindDatafileStats(
+static MMFilesDatafileStatisticsContainer* FindDatafileStats(
     MMFilesCollection::OpenIteratorState* state, TRI_voc_fid_t fid) {
   auto it = state->_stats.find(fid);
 
@@ -107,7 +107,7 @@ static DatafileStatisticsContainer* FindDatafileStats(
     return (*it).second;
   }
 
-  auto stats = std::make_unique<DatafileStatisticsContainer>();
+  auto stats = std::make_unique<MMFilesDatafileStatisticsContainer>();
   state->_stats.emplace(fid, stats.get());
   return stats.release();
 }
@@ -176,7 +176,7 @@ arangodb::Result MMFilesCollection::updateProperties(VPackSlice const& slice,
   return {};
 }
 
-arangodb::Result MMFilesCollection::persistProperties() noexcept {
+arangodb::Result MMFilesCollection::persistProperties() {
   int res = TRI_ERROR_NO_ERROR;
   try {
     VPackBuilder infoBuilder =
@@ -279,7 +279,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* m
     physical->insertRevision(revisionId, vpack, fid, false, false);
 
     // update the datafile info
-    DatafileStatisticsContainer* dfi;
+    MMFilesDatafileStatisticsContainer* dfi;
     if (old.fid() == state->_fid) {
       dfi = state->_dfi;
     } else {
@@ -352,7 +352,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* m
     MMFilesDocumentPosition const old = physical->lookupRevision(oldRevisionId);
     
     // update the datafile info
-    DatafileStatisticsContainer* dfi;
+    MMFilesDatafileStatisticsContainer* dfi;
 
     if (old.fid() == state->_fid) {
       dfi = state->_dfi;
@@ -1171,7 +1171,7 @@ void MMFilesCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Bu
   builder->add("waitingFor", VPackValue(waitingForDitch == nullptr ? "-" : waitingForDitch));
   
   // add datafile statistics
-  DatafileStatisticsContainer dfi = _datafileStatistics.all();
+  MMFilesDatafileStatisticsContainer dfi = _datafileStatistics.all();
 
   builder->add("alive", VPackValue(VPackValueType::Object));
   builder->add("count", VPackValue(dfi.numberAlive));
@@ -2266,7 +2266,8 @@ int MMFilesCollection::beginReadTimed(bool useDeadlockDetector,
   // std::cout << "BeginReadTimed: " << _name << std::endl;
   int iterations = 0;
   bool wasBlocked = false;
-  double end = 0.0;
+  uint64_t waitTime = 0;  // indicate that times uninitialized
+  double startTime = 0.0;
 
   while (true) {
     TRY_READ_LOCKER(locker, _idxLock);
@@ -2323,26 +2324,33 @@ int MMFilesCollection::beginReadTimed(bool useDeadlockDetector,
       }
     }
 
-    if (end == 0.0) {
+    double now = TRI_microtime();
+
+    if (waitTime == 0) {   // initialize times
       // set end time for lock waiting
       if (timeout <= 0.0) {
         timeout = 15.0 * 60.0;
       }
-      end = TRI_microtime() + timeout;
-      TRI_ASSERT(end > 0.0);
+      startTime = now;
+      waitTime = 1;
     }
 
-    std::this_thread::yield();
-
-    TRI_ASSERT(end > 0.0);
-
-    if (TRI_microtime() > end) {
+    if (now > startTime + timeout) {
       if (useDeadlockDetector) {
         _logicalCollection->vocbase()->_deadlockDetector.unsetReaderBlocked(_logicalCollection);
       }
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "timed out waiting for read-lock on collection '" << _logicalCollection->name()
                  << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
+    }
+
+    if (now - startTime < 0.001) {
+      std::this_thread::yield();
+    } else {
+      usleep(static_cast<TRI_usleep_t>(waitTime));
+      if (waitTime < 500000) {
+        waitTime *= 2;
+      }
     }
   }
 }
@@ -2365,7 +2373,8 @@ int MMFilesCollection::beginWriteTimed(bool useDeadlockDetector,
   // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
   int iterations = 0;
   bool wasBlocked = false;
-  double end = 0.0;
+  uint64_t waitTime = 0;  // indicate that times uninitialized
+  double startTime = 0.0;
 
   while (true) {
     TRY_WRITE_LOCKER(locker, _idxLock);
@@ -2421,22 +2430,18 @@ int MMFilesCollection::beginWriteTimed(bool useDeadlockDetector,
       }
     }
 
-    std::this_thread::yield();
+    double now = TRI_microtime();
 
-    if (end == 0.0) {
+    if (waitTime == 0) {   // initialize times
       // set end time for lock waiting
       if (timeout <= 0.0) {
         timeout = 15.0 * 60.0;
       }
-      end = TRI_microtime() + timeout;
-      TRI_ASSERT(end > 0.0);
+      startTime = now;
+      waitTime = 1;
     }
 
-    std::this_thread::yield();
-
-    TRI_ASSERT(end > 0.0);
-
-    if (TRI_microtime() > end) {
+    if (now > startTime + timeout) {
       if (useDeadlockDetector) {
         _logicalCollection->vocbase()->_deadlockDetector.unsetWriterBlocked(
             _logicalCollection);
@@ -2445,6 +2450,16 @@ int MMFilesCollection::beginWriteTimed(bool useDeadlockDetector,
                  << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }
+
+    if (now - startTime < 0.001) {
+      std::this_thread::yield();
+    } else {
+      usleep(static_cast<TRI_usleep_t>(waitTime));
+      if (waitTime < 500000) {
+        waitTime *= 2;
+      }
+    }
+
   }
 }
 

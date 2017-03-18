@@ -21,36 +21,30 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DatafileStatisticsContainer.h"
+#ifndef ARANGOD_MMFILES_MMFILES_DATAFILE_STATISTICS_CONTAINER_H
+#define ARANGOD_MMFILES_MMFILES_DATAFILE_STATISTICS_CONTAINER_H 1
 
-using namespace arangodb;
+#include "Basics/Common.h"
 
-/// @brief create an empty datafile statistics container
-DatafileStatisticsContainer::DatafileStatisticsContainer()
-    : numberAlive(0),
-      numberDead(0),
-      numberDeletions(0),
-      sizeAlive(0),
-      sizeDead(0),
-      numberUncollected(0) {}
+namespace arangodb {
 
-/// @brief update statistics from another container
-void DatafileStatisticsContainer::update(
-    DatafileStatisticsContainer const& other) {
-  numberAlive += other.numberAlive;
-  numberDead += other.numberDead;
-  numberDeletions += other.numberDeletions;
-  sizeAlive += other.sizeAlive;
-  sizeDead += other.sizeDead;
-  numberUncollected += other.numberUncollected;
+/// @brief datafile statistics
+struct MMFilesDatafileStatisticsContainer {
+  MMFilesDatafileStatisticsContainer();
+
+  void update(MMFilesDatafileStatisticsContainer const&);
+  void reset();
+
+  int64_t numberAlive;
+  int64_t numberDead;
+  int64_t numberDeletions;
+
+  int64_t sizeAlive;
+  int64_t sizeDead;
+
+  int64_t numberUncollected;
+};
+
 }
 
-/// @brief flush the statistics values
-void DatafileStatisticsContainer::reset() {
-  numberAlive = 0;
-  numberDead = 0;
-  numberDeletions = 0;
-  sizeAlive = 0;
-  sizeDead = 0;
-  numberUncollected = 0;
-}
+#endif

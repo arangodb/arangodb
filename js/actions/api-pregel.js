@@ -26,13 +26,6 @@ var actions = require('@arangodb/actions');
 var internal = require('internal');
 var db = internal.db;
 
-var graph_module;
-if (internal.isEnterprise()) {
-  graph_module = require('@arangodb/smart-graph');
-} else {
-  graph_module = require('@arangodb/general-graph');
-}
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief create a "bad parameter" error
 // //////////////////////////////////////////////////////////////////////////////
@@ -82,6 +75,12 @@ function post_api_pregel (req, res) {
     actions.resultOk(req, res, actions.HTTP_OK, executionNum);
     
   } else if (json.graphName &&  typeof json.graphName === 'string') {
+    var graph_module;
+    if (internal.isEnterprise()) {
+      graph_module = require('@arangodb/smart-graph');
+    } else {
+      graph_module = require('@arangodb/general-graph');
+    }
     var graph = graph_module._graph(json.graphName);
     if (graph) {
       var vertexCollections = [];

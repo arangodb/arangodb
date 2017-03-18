@@ -83,6 +83,7 @@ devel
 
 * arangoimp: fixed issue #2214
 
+
 v3.2.alpha2 (2017-02-20)
 ------------------------
 
@@ -97,13 +98,6 @@ v3.2.alpha2 (2017-02-20)
   * PUT _api/edges
 
   The documented GET _api/edges and the undocumented POST _api/edges remains unmodified.
-
-* moved V8 code into a git submodule
-  this requires running the command
-
-      git submodule update --init --recursive
-
-  once after a source code update or fresh checkout
 
 * updated V8 version to 5.7.0.0
 
@@ -151,6 +145,10 @@ v3.2.alpha1 (2017-02-05)
 * generated Foxx services now use swagger tags
 
 v3.1.15 (????-??-??)
+
+* ui - changed document api due a chrome bug
+
+* ui - fixed a submenu bug
 
 * added endpoint /_api/cluster/endpoints in cluster case to get all
   coordinator endpoints

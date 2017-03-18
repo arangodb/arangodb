@@ -1181,12 +1181,7 @@ bool TRI_replication_applier_t::wait(uint64_t sleepTime) {
     static uint64_t const SleepChunk = 500 * 1000;
 
     while (sleepTime >= SleepChunk) {
-#ifdef _WIN32
-      usleep((unsigned long)SleepChunk);
-#else
-      usleep((useconds_t)SleepChunk);
-#endif
-
+      usleep(static_cast<TRI_usleep_t>(SleepChunk));
       sleepTime -= SleepChunk;
 
       if (isTerminated()) {
@@ -1195,11 +1190,7 @@ bool TRI_replication_applier_t::wait(uint64_t sleepTime) {
     }
 
     if (sleepTime > 0) {
-#ifdef _WIN32
-      usleep((unsigned long)sleepTime);
-#else
-      usleep((useconds_t)sleepTime);
-#endif
+      usleep(static_cast<TRI_usleep_t>(sleepTime));
 
       if (isTerminated()) {
         return false;

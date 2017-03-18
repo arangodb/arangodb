@@ -96,6 +96,10 @@ class Query {
     _trx = trx;
     init();
   }
+  
+  QueryProfile* profile() const {
+    return _profile.get();
+  }
 
   void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
   void decreaseMemoryUsage(size_t value) { _resourceMonitor.decreaseMemoryUsage(value); }

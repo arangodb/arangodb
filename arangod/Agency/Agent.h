@@ -89,7 +89,7 @@ class Agent : public arangodb::Thread {
   void lead();
 
   /// @brief Prepare leadership
-  void prepareLead();
+  bool prepareLead();
 
   /// @brief Load persistent state
   bool load();
@@ -224,6 +224,10 @@ class Agent : public arangodb::Thread {
 
   /// @brief Assemble an agency to commitId
   query_t buildDB(index_t);
+
+  /// @brief Guarding taking over leadership
+  void beginPrepareLeadership() { _preparing = true; }
+  void endPrepareLeadership()  { _preparing = false; }
 
   /// @brief State reads persisted state and prepares the agent
   friend class State;

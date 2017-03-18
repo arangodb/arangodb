@@ -889,44 +889,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 /// @brief the cost of a traversal node
 double TraversalNode::estimateCost(size_t& nrItems) const {
-  size_t incoming = 0;
-  double depCost = _dependencies.at(0)->getCost(incoming);
-  double expectedEdgesPerDepth = 0.0;
-  auto trx = _plan->getAst()->query()->trx();
-  auto collections = _plan->getAst()->query()->collections();
-
-  TRI_ASSERT(collections != nullptr);
-
-  for (auto const& it : _edgeColls) {
-    auto collection = collections->get(it->getName());
-
-    if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "unexpected pointer for collection");
-    }
-
-    TRI_ASSERT(collection != nullptr);
-
-    auto indexes = trx->indexesForCollection(collection->name);
-    for (auto const& index : indexes) {
-      if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
-        // We can only use Edge Index
-        if (index->hasSelectivityEstimate()) {
-          expectedEdgesPerDepth += 1 / index->selectivityEstimate();
-        } else {
-          expectedEdgesPerDepth += 1000;  // Hard-coded
-        }
-        break;
-      }
-    }
-  }
-  nrItems = static_cast<size_t>(
-      incoming *
-      std::pow(expectedEdgesPerDepth, static_cast<double>(_options->maxDepth)));
-  if (nrItems == 0 && incoming > 0) {
-    nrItems = 1;  // min value
-  }
-  return depCost + nrItems;
+  return _options->estimateCost(nrItems);
 }
 
 void TraversalNode::prepareOptions() {

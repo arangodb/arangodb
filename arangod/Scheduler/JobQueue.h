@@ -27,42 +27,41 @@
 
 #include <boost/lockfree/queue.hpp>
 
-#include "Basics/asio-helper.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "Basics/asio-helper.h"
 #include "Scheduler/Job.h"
 
 namespace arangodb {
+namespace rest {
+class Scheduler;
+}
+
+class JobQueueThread;
+
 class JobQueue {
  public:
   // ordered by priority (highst prio first)
-  static size_t const REQUEUED_QUEUE = 0;
   static size_t const AQL_QUEUE = 1;
   static size_t const STANDARD_QUEUE = 2;
-  static size_t const USER_QUEUE = 3;
-  static size_t const SYSTEM_QUEUE_SIZE = 4;
 
  public:
-  JobQueue(size_t queueSize, boost::asio::io_service* ioService);
+  JobQueue(size_t queueSize, rest::Scheduler*);
 
  public:
   void start();
   void beginShutdown();
 
-  int64_t queueSize(size_t i) const { return _queuesSize[i]; }
+  int64_t queueSize() const { return _queueSize; }
 
-  bool queue(size_t i, std::unique_ptr<Job> job) {
-    if (i >= SYSTEM_QUEUE_SIZE) {
-      return false;
-    }
-
+  bool queue(std::unique_ptr<Job> job) {
     try {
-      if (!_queues[i]->push(job.get())) {
+      if (!_queue.push(job.get())) {
         throw "failed to add to queue";
       }
 
       job.release();
-      ++_queuesSize[i];
+      ++_queueSize;
     } catch (...) {
       wakeup();
       return false;
@@ -72,15 +71,11 @@ class JobQueue {
     return true;
   }
 
-  bool pop(size_t i, Job*& job) {
-    if (i >= SYSTEM_QUEUE_SIZE) {
-      return false;
-    }
-
-    bool ok = _queues[i]->pop(job) && job != nullptr;
+  bool pop(Job*& job) {
+    bool ok = _queue.pop(job) && job != nullptr;
 
     if (ok) {
-      --_queuesSize[i];
+      --_queueSize;
     }
 
     return ok;
@@ -89,23 +84,13 @@ class JobQueue {
   void wakeup();
   void waitForWork();
 
-  size_t active() const { return _active.load(); }
-  bool tryActive();
-  void releaseActive();
-
  private:
-  boost::lockfree::queue<Job*> _queueAql;
-  boost::lockfree::queue<Job*> _queueRequeue;
-  boost::lockfree::queue<Job*> _queueStandard;
-  boost::lockfree::queue<Job*> _queueUser;
-  boost::lockfree::queue<Job*>* _queues[SYSTEM_QUEUE_SIZE];
-  std::atomic<int64_t> _queuesSize[SYSTEM_QUEUE_SIZE];
-  std::atomic<size_t> _active;
+  boost::lockfree::queue<Job*> _queue;
+  std::atomic<int64_t> _queueSize;
 
   basics::ConditionVariable _queueCondition;
 
-  boost::asio::io_service* _ioService;
-  std::unique_ptr<Thread> _queueThread;
+  std::shared_ptr<JobQueueThread> _queueThread;
 };
 }
 

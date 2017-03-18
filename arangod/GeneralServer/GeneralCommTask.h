@@ -91,17 +91,13 @@ class GeneralCommTask : public SocketTask {
 
   virtual arangodb::Endpoint::TransportType transportType() = 0;
 
+  void setStatistics(uint64_t, RequestStatistics*);
+
  protected:
   virtual std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) = 0;
 
   virtual void addResponse(GeneralResponse*, RequestStatistics*) = 0;
-
- protected:
-  void executeRequest(std::unique_ptr<GeneralRequest>&&,
-                      std::unique_ptr<GeneralResponse>&&);
-
-  void processResponse(GeneralResponse*);
 
   virtual void handleSimpleError(rest::ResponseCode, uint64_t messageId) = 0;
 
@@ -109,7 +105,14 @@ class GeneralCommTask : public SocketTask {
                                  std::string const& errorMessage,
                                  uint64_t messageId) = 0;
 
-  void setStatistics(uint64_t, RequestStatistics*);
+  virtual bool allowDirectHandling() const = 0;
+
+ protected:
+  void executeRequest(std::unique_ptr<GeneralRequest>&&,
+                      std::unique_ptr<GeneralResponse>&&);
+
+  void processResponse(GeneralResponse*);
+
   RequestStatistics* acquireStatistics(uint64_t);
   RequestStatistics* statistics(uint64_t);
   RequestStatistics* stealStatistics(uint64_t);

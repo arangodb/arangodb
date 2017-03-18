@@ -44,7 +44,7 @@ MMFilesDatafileStatistics::~MMFilesDatafileStatistics() {
 
 /// @brief create an empty statistics container for a file
 void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid) {
-  auto stats = std::make_unique<DatafileStatisticsContainer>();
+  auto stats = std::make_unique<MMFilesDatafileStatisticsContainer>();
 
   WRITE_LOCKER(writeLocker, _lock);
 
@@ -62,8 +62,8 @@ void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid) {
 
 /// @brief create statistics for a datafile, using the stats provided
 void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid,
-                                DatafileStatisticsContainer const& src) {
-  auto stats = std::make_unique<DatafileStatisticsContainer>();
+                                MMFilesDatafileStatisticsContainer const& src) {
+  auto stats = std::make_unique<MMFilesDatafileStatisticsContainer>();
   *stats = src;
 
   WRITE_LOCKER(writeLocker, _lock);
@@ -85,7 +85,7 @@ void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid,
 void MMFilesDatafileStatistics::remove(TRI_voc_fid_t fid) {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "removing statistics for datafile " << fid;
 
-  DatafileStatisticsContainer* found = nullptr;
+  MMFilesDatafileStatisticsContainer* found = nullptr;
   {
     WRITE_LOCKER(writeLocker, _lock);
 
@@ -102,7 +102,7 @@ void MMFilesDatafileStatistics::remove(TRI_voc_fid_t fid) {
 
 /// @brief merge statistics for a file
 void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid,
-                                DatafileStatisticsContainer const& src) {
+                                MMFilesDatafileStatisticsContainer const& src) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
@@ -147,7 +147,7 @@ void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
 
 /// @brief replace statistics for a file
 void MMFilesDatafileStatistics::replace(TRI_voc_fid_t fid,
-                                 DatafileStatisticsContainer const& src) {
+                                 MMFilesDatafileStatisticsContainer const& src) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
@@ -201,8 +201,8 @@ void MMFilesDatafileStatistics::increaseUncollected(TRI_voc_fid_t fid,
 }
 
 /// @brief return a copy of the datafile statistics for a file
-DatafileStatisticsContainer MMFilesDatafileStatistics::get(TRI_voc_fid_t fid) {
-  DatafileStatisticsContainer result;
+MMFilesDatafileStatisticsContainer MMFilesDatafileStatistics::get(TRI_voc_fid_t fid) {
+  MMFilesDatafileStatisticsContainer result;
   {
     READ_LOCKER(readLocker, _lock);
 
@@ -221,8 +221,8 @@ DatafileStatisticsContainer MMFilesDatafileStatistics::get(TRI_voc_fid_t fid) {
 }
 
 /// @brief return a copy of the datafile statistics for a file
-DatafileStatisticsContainer MMFilesDatafileStatistics::all() {
-  DatafileStatisticsContainer result;
+MMFilesDatafileStatisticsContainer MMFilesDatafileStatistics::all() {
+  MMFilesDatafileStatisticsContainer result;
   {
     READ_LOCKER(readLocker, _lock);
 

@@ -1001,11 +1001,16 @@ void Agent::beginShutdown() {
 }
 
 
-void Agent::prepareLead() {
-
-  _preparing = true;
+bool Agent::prepareLead() {
+  
   // Key value stores
-  rebuildDBs();
+  try {
+    rebuildDBs();
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "Failed to rebuild key value stores." << e.what();
+    return false;
+  }
   
   // Reset last acknowledged
   {
@@ -1015,7 +1020,9 @@ void Agent::prepareLead() {
     }
     _leaderSince = system_clock::now();
   }
-
+  
+  return true; 
+  
 }
 
 /// Becoming leader
@@ -1024,7 +1031,6 @@ void Agent::lead() {
   // Wake up run
   {
     CONDITION_LOCKER(guard, _appendCV);
-    _preparing = false;
     guard.broadcast();
   }
 

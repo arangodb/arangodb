@@ -138,6 +138,12 @@ install(
 set(IS_SYSTEMD_INSTALL 0)
 set(SYSTEMD_UNIT_DIR "")
 if (UNIX)
+  if (${USE_ENTERPRISE})
+    set(SERVICE_NAME "arangodb3e")
+  else ()
+    set(SERVICE_NAME "arangodb3")
+  endif ()
+
   find_package(PkgConfig QUIET)
   pkg_check_modules(SYSTEMD systemd)
   if (SYSTEMD_FOUND)
@@ -146,18 +152,25 @@ if (UNIX)
       OUTPUT_VARIABLE SYSTEMD_UNIT_DIR
       OUTPUT_STRIP_TRAILING_WHITESPACE)
     set(IS_SYSTEMD_INSTALL 1)
+    
     configure_file (
-        ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
-        ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
-        NEWLINE_STYLE UNIX)
-      if (${USE_ENTERPRISE})
-        install(FILES ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
-          DESTINATION ${SYSTEMD_UNIT_DIR}/
-          RENAME arangodb3e.service)
-      else()
-        install(FILES ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
-          DESTINATION ${SYSTEMD_UNIT_DIR}/)
-      endif()
+      ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
+      ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
+      NEWLINE_STYLE UNIX)
+    install(FILES ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
+      DESTINATION ${SYSTEMD_UNIT_DIR}/
+      RENAME ${SERVICE_NAME}.service)
+    
+    configure_file (
+      ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.systemd
+      ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangod.systemd
+      NEWLINE_STYLE UNIX)
+    install(
+      FILES ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangod.systemd
+      PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+      DESTINATION ${SYSTEMD_UNIT_DIR}/
+      RENAME ${SERVICE_NAME})
+    
   endif()
 endif()
 ################################################################################
