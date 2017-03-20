@@ -278,6 +278,7 @@ SET(ARANGOD_SOURCES
   RestServer/WorkMonitorFeature.cpp
   RocksDBEngine/RocksDBCollection.cpp
   RocksDBEngine/RocksDBEngine.cpp
+  RocksDBEngine/RocksDBIndexFactory.cpp
   Scheduler/Acceptor.cpp
   Scheduler/AcceptorTcp.cpp
   Scheduler/Job.cpp
