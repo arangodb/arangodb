@@ -32,7 +32,7 @@ const functionsDocumentation = {
   'arangosh': 'arangosh exit codes tests',
   'authentication': 'authentication tests',
   'authentication_parameters': 'authentication parameters tests',
-  'catch': 'catch test suites',
+  'boost': 'boost test suites',
   'config': 'checks the config file parsing',
   'client_resilience': 'client resilience tests',
   'cluster_sync': 'cluster sync tests',
@@ -77,8 +77,7 @@ const optionsDocumentation = [
   '   - `skipArangoBenchNonConnKeepAlive`: if set to true benchmark do not use keep-alive',
   '   - `skipArangoBench`: if set to true benchmark tests are skipped',
   '   - `skipAuthentication : testing authentication and authentication_paramaters will be skipped.',
-  '   - `skipCatch`: if set to true the catch unittests are skipped',
-  '   - `skipCache`: if set to true, the hash cache unittests are skipped',
+  '   - `skipBoost`: if set to true the boost unittests are skipped',
   '   - `skipConfig`: omit the noisy configuration tests',
   '   - `skipFoxxQueues`: omit the test for the foxx queues',
   '   - `skipEndpoints`: if set to true endpoints tests are skipped',
@@ -177,8 +176,7 @@ const optionsDefaults = {
   'skipArangoBench': false,
   'skipArangoBenchNonConnKeepAlive': true,
   'skipAuthentication': false,
-  'skipCatch': false,
-  'skipCache': true,
+  'skipBoost': false,
   'skipEndpoints': false,
   'skipGeo': false,
   'skipLogAnalysis': true,
@@ -2010,7 +2008,7 @@ let allTests = [
   'arangosh',
   'authentication',
   'authentication_parameters',
-  'catch',
+  'boost',
   'config',
   'dump',
   'dump_authentication',
@@ -2647,11 +2645,14 @@ testFuncs.authentication_parameters = function (options) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: Catch
+// / @brief TEST: boost
 // //////////////////////////////////////////////////////////////////////////////
 
-function locateCatchTest (name) {
-  var file = fs.join(UNITTESTS_DIR, name + executable_ext);
+function locateBoostTest (name) {
+  var file = fs.join(UNITTESTS_DIR, name);
+  if (platform.substr(0, 3) === 'win') {
+    file += '.exe';
+  }
 
   if (!fs.exists(file)) {
     return '';
@@ -2659,14 +2660,14 @@ function locateCatchTest (name) {
   return file;
 }
 
-testFuncs.catch = function (options) {
-  let args = [];
+testFuncs.boost = function (options) {
+  const args = ['--show_progress'];
+
   let results = {};
 
-  const icuDir = UNITTESTS_DIR + '/';
-  require('internal').env.ICU_DATA = icuDir;
-  const run = locateCatchTest('arangodbtests');
-  if (!options.skipCatch) {
+  if (!options.skipBoost) {
+    const run = locateBoostTest('basics_suite');
+
     if (run !== '') {
       results.basics = executeAndWait(run, args, options, 'basics');
     } else {
