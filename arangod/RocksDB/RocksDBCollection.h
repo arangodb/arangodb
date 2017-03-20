@@ -40,7 +40,7 @@ class ManagedDocumentResult;
 class Result;
 
 class RocksDBCollection final : public PhysicalCollection {
-//  friend class RocksDBCompactorThread;
+  //  friend class RocksDBCompactorThread;
   friend class RocksDBEngine;
 
  public:
@@ -60,36 +60,42 @@ class RocksDBCollection final : public PhysicalCollection {
 
  public:
   explicit RocksDBCollection(LogicalCollection*, VPackSlice const& info);
-  explicit RocksDBCollection(LogicalCollection*, PhysicalCollection*); //use in cluster only!!!!!
+  explicit RocksDBCollection(LogicalCollection*,
+                             PhysicalCollection*);  // use in cluster only!!!!!
 
   ~RocksDBCollection();
 
   std::string const& path() const override;
   void setPath(std::string const& path) override;
 
-  arangodb::Result updateProperties(VPackSlice const& slice, bool doSync) override;
+  arangodb::Result updateProperties(VPackSlice const& slice,
+                                    bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*, PhysicalCollection*) override;
+  virtual PhysicalCollection* clone(LogicalCollection*,
+                                    PhysicalCollection*) override;
 
   TRI_voc_rid_t revision() const override;
 
-  //void setRevision(TRI_voc_rid_t revision, bool force);
-  //void setRevisionError() { _revisionError = true; }
+  // void setRevision(TRI_voc_rid_t revision, bool force);
+  // void setRevisionError() { _revisionError = true; }
 
   int64_t initialCount() const override;
   void updateCount(int64_t) override;
   size_t journalSize() const override;
   bool isVolatile() const;
 
-  //TRI_voc_tick_t maxTick() const { return _maxTick; }
-  //void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
+  // TRI_voc_tick_t maxTick() const { return _maxTick; }
+  // void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
 
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   // datafile management
-  bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                         std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) override;
+  bool applyForTickRange(
+      TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+      std::function<bool(TRI_voc_tick_t foundTick,
+                         TRI_df_marker_t const* marker)> const& callback)
+      override;
 
   /// @brief closes an open collection
   int close() override;
@@ -105,13 +111,12 @@ class RocksDBCollection final : public PhysicalCollection {
   size_t memory() const override;
   void open(bool ignoreErrors) override;
 
- /// @brief iterate all markers of a collection on load
+  /// @brief iterate all markers of a collection on load
   int iterateMarkersOnLoad(arangodb::transaction::Methods* trx) override;
 
   bool isFullyCollected() const override;
 
-  bool doCompact() const override; // { return _doCompact; }
-
+  bool doCompact() const override;  // { return _doCompact; }
 
   ////////////////////////////////////
   // -- SECTION Indexes --
@@ -132,9 +137,13 @@ class RocksDBCollection final : public PhysicalCollection {
                    std::shared_ptr<Index>&) override;
   /// @brief Drop an index with the given iid.
   bool dropIndex(TRI_idx_iid_t iid) override;
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) override;
-  std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx, ManagedDocumentResult* mdr)  override;
-  void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)> callback) override;
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
+                                                ManagedDocumentResult* mdr,
+                                                bool reverse) override;
+  std::unique_ptr<IndexIterator> getAnyIterator(
+      transaction::Methods* trx, ManagedDocumentResult* mdr) override;
+  void invokeOnAllElements(
+      std::function<bool(DocumentIdentifierToken const&)> callback) override;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
@@ -156,9 +165,8 @@ class RocksDBCollection final : public PhysicalCollection {
 
   int insert(arangodb::transaction::Methods* trx,
              arangodb::velocypack::Slice const newSlice,
-             arangodb::ManagedDocumentResult& result,
-             OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-             bool lock) override;
+             arangodb::ManagedDocumentResult& result, OperationOptions& options,
+             TRI_voc_tick_t& resultMarkerTick, bool lock) override;
 
   int update(arangodb::transaction::Methods* trx,
              arangodb::velocypack::Slice const newSlice,
@@ -184,11 +192,9 @@ class RocksDBCollection final : public PhysicalCollection {
              bool lock, TRI_voc_rid_t const& revisionId,
              TRI_voc_rid_t& prevRev) override;
 
-  void deferDropCollection(std::function<bool(LogicalCollection*)> callback) override;
-
-
+  void deferDropCollection(
+      std::function<bool(LogicalCollection*)> callback) override;
 };
-
 }
 
 #endif
