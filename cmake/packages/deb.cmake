@@ -76,10 +76,10 @@ install(
 
 # deploy the logrotate config:
 install(
-  FILES ${PROJECT_SOURCE_DIR}/Installation/logrotate.d/arangod.sysv
+  FILES ${PROJECT_BINARY_DIR}/arangod.sysv
   PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
   DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/logrotate.d
-  RENAME arangodb3
+  RENAME ${SERVICE_NAME}
   COMPONENT debian-extras
   )
 
