@@ -145,6 +145,8 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
  public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_HASH_INDEX; }
+  
+  char const* typeName() const override { return "hash"; }
 
   bool allowExpansion() const override { return true; }
 

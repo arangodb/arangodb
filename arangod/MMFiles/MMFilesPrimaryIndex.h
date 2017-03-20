@@ -130,6 +130,8 @@ class MMFilesPrimaryIndex final : public Index {
     return Index::TRI_IDX_TYPE_PRIMARY_INDEX;
   }
   
+  char const* typeName() const override { return "primary"; }
+
   bool allowExpansion() const override { return false; }
 
   bool canBeDropped() const override { return false; }

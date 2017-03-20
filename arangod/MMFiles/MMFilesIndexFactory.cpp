@@ -290,7 +290,7 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
     }
 
     
-    enhanced.add("type", VPackValue(Index::typeName(type)));
+    enhanced.add("type", VPackValue(Index::oldtypeName(type)));
 
     switch (type) {
       case Index::TRI_IDX_TYPE_UNKNOWN: {

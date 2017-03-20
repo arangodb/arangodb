@@ -169,7 +169,7 @@ Index::IndexType Index::type(std::string const& type) {
 }
 
 /// @brief return the name of an index type
-char const* Index::typeName(Index::IndexType type) {
+char const* Index::oldtypeName(Index::IndexType type) {
   switch (type) {
     case TRI_IDX_TYPE_PRIMARY_INDEX:
       return "primary";
@@ -354,7 +354,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
 std::string Index::context() const {
   std::ostringstream result;
 
-  result << "index { id: " << id() << ", type: " << typeName()
+  result << "index { id: " << id() << ", type: " << oldtypeName()
          << ", collection: " << _collection->dbName() << "/"
          << _collection->name() << ", unique: " << (_unique ? "true" : "false")
          << ", fields: ";
@@ -386,7 +386,7 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures) const {
 void Index::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("id", VPackValue(std::to_string(_iid)));
-  builder.add("type", VPackValue(typeName()));
+  builder.add("type", VPackValue(oldtypeName()));
 
   builder.add(VPackValue("fields"));
   builder.openArray();
@@ -432,7 +432,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
   VPackSlice typeSlice = info.get("type");
   TRI_ASSERT(typeSlice.isString());
   StringRef typeStr(typeSlice);
-  TRI_ASSERT(typeStr == typeName());
+  TRI_ASSERT(typeStr == oldtypeName());
 #endif
   auto value = info.get("id");
   if (!value.isNone()) {
