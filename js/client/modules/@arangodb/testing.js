@@ -2009,6 +2009,7 @@ let allTests = [
   'authentication',
   'authentication_parameters',
   'boost',
+  'catch',
   'config',
   'dump',
   'dump_authentication',
@@ -2692,6 +2693,10 @@ testFuncs.boost = function (options) {
   }
 
   return results;
+};
+
+testFuncs.catch = function(options) {
+  return testFuncs.boost(options);
 };
 
 // //////////////////////////////////////////////////////////////////////////////

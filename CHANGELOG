@@ -1,4 +1,4 @@
-v3.1.15 (????-??-??)
+v3.1.15 (2017-03-20)
 --------------------
 
 * add logrotate configuration as requested in #2355
