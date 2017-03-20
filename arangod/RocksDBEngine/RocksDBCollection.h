@@ -77,16 +77,9 @@ class RocksDBCollection final : public PhysicalCollection {
 
   TRI_voc_rid_t revision() const override;
 
-  // void setRevision(TRI_voc_rid_t revision, bool force);
-  // void setRevisionError() { _revisionError = true; }
-
   int64_t initialCount() const override;
   void updateCount(int64_t) override;
   size_t journalSize() const override;
-  bool isVolatile() const;
-
-  // TRI_voc_tick_t maxTick() const { return _maxTick; }
-  // void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
 
   void getPropertiesVPack(velocypack::Builder&) const override;
 
