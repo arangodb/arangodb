@@ -240,6 +240,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestImportHandler.cpp
   RestHandler/RestJobHandler.cpp
   RestHandler/RestPleaseUpgradeHandler.cpp
+  RestHandler/RestPregelHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
   RestHandler/RestReplicationHandler.cpp
@@ -250,7 +251,6 @@ SET(ARANGOD_SOURCES
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
-  RestHandler/RestPregelHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
@@ -276,6 +276,8 @@ SET(ARANGOD_SOURCES
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
   RestServer/WorkMonitorFeature.cpp
+  RocksDB/RocksDBCollection.cpp
+  RocksDB/RocksDBEngine.cpp
   Scheduler/Acceptor.cpp
   Scheduler/AcceptorTcp.cpp
   Scheduler/Job.cpp
