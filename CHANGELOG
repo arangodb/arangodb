@@ -1,6 +1,8 @@
 devel
 -----
 
+* require at least cmake 3.2 for building ArangoDB
+
 * make arangod start with less V8 JavaScript contexts
 
   This speeds up the server start (a little bit) and makes it use less memory.
@@ -26,6 +28,9 @@ devel
   and `--javascript.v8-contexts` to a relatively high value, which will guarantee
   that many number of V8 contexts to be created at startup and kept around even
   when unused.
+
+  Waiting for an unused V8 context will now also abort if no V8 context can be 
+  acquired/created after 90 seconds.
 
 * improved diagnostic messages written to logfiles by supervisor process
 
@@ -144,7 +149,13 @@ v3.2.alpha1 (2017-02-05)
 
 * generated Foxx services now use swagger tags
 
+
 v3.1.15 (????-??-??)
+--------------------
+
+* add logrotate configuration as requested in #2355
+
+* fixed issue #2376
 
 * ui - changed document api due a chrome bug
 
@@ -155,8 +166,15 @@ v3.1.15 (????-??-??)
 
 * fix documentation of /_api/endpoint, declaring this API obsolete.
 
+* Foxx response objects now have a `type` method for manipulating the content-type header
+
+* Foxx tests now support `xunit` and `tap` reporters
+
+
 v3.1.14 (2017-03-13)
 --------------------
+
+* ui - added feature request (multiple start nodes within graph viewer) #2317
 
 * added missing locks to authentication cache methods
 

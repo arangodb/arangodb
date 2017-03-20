@@ -108,6 +108,8 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
     return Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
   }
   
+  char const* typeName() const override { return "persistent"; }
+  
   bool allowExpansion() const override { return true; }
   
   bool isPersistent() const override { return true; }

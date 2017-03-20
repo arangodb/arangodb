@@ -159,6 +159,7 @@ mkdir -p %{buildroot}%{_piddir}
 %if @IS_SYSTEMD_INSTALL@
 @SYSTEMD_UNIT_DIR@/@CPACK_PACKAGE_NAME@.service
 %endif
+/etc/logrotate.d/@CPACK_PACKAGE_NAME@
 
 
 %files client

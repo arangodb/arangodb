@@ -155,22 +155,26 @@ if (UNIX)
     
     configure_file (
       ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
-      ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
+      ${PROJECT_BINARY_DIR}/arangodb3.service
       NEWLINE_STYLE UNIX)
-    install(FILES ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
+    install(FILES ${PROJECT_BINARY_DIR}/arangodb3.service
       DESTINATION ${SYSTEMD_UNIT_DIR}/
       RENAME ${SERVICE_NAME}.service)
     
     configure_file (
       ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.systemd
-      ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangod.systemd
+      ${PROJECT_BINARY_DIR}/arangod.systemd
       NEWLINE_STYLE UNIX)
     install(
-      FILES ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangod.systemd
+      FILES ${PROJECT_BINARY_DIR}/arangod.systemd
       PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-      DESTINATION ${SYSTEMD_UNIT_DIR}/
+      DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/logrotate.d
       RENAME ${SERVICE_NAME})
-    
+  else ()
+    configure_file (
+      ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.sysv
+      ${PROJECT_BINARY_DIR}/arangod.sysv
+      NEWLINE_STYLE UNIX)
   endif()
 endif()
 ################################################################################

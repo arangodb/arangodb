@@ -50,6 +50,8 @@ class MMFilesFulltextIndex final : public Index {
     return Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
   }
   
+  char const* typeName() const override { return "fulltext"; }
+  
   bool allowExpansion() const override { return false; }
   
   bool canBeDropped() const override { return true; }
