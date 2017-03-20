@@ -565,7 +565,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
   }
 
   TimedAction exitWhenNoContext([](double waitTime) {
-    LOG_TOPIC(WARN, arangodb::Logger::V8) << "giving up waiting for V8 context after " << Logger::FIXED(waitTime) << " s";
+    LOG_TOPIC(WARN, arangodb::Logger::V8) << "giving up waiting for unused V8 context after " << Logger::FIXED(waitTime) << " s";
   }, 60);
 
 
