@@ -171,7 +171,7 @@ if (UNIX)
   else ()
     configure_file (
       ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.sysv
-      ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangod.systemd
+      ${PROJECT_BINARY_DIR}/arangod.sysv
       NEWLINE_STYLE UNIX)
   endif()
 endif()
