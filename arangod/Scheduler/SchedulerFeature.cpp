@@ -146,7 +146,7 @@ void SchedulerFeature::start() {
 }
 
 void SchedulerFeature::stop() {
-  static size_t const MAX_TRIES = 10;
+  static size_t const MAX_TRIES = 100;
 
   // shutdown user jobs (needs the scheduler)
   TRI_ShutdownV8Dispatcher();

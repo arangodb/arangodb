@@ -565,8 +565,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
   }
 
   TimedAction exitWhenNoContext([](double waitTime) {
-    LOG_TOPIC(WARN, arangodb::Logger::V8) << "giving up waiting for V8 context after " << Logger::FIXED(waitTime) << " s";
-  }, 60);
+    LOG_TOPIC(WARN, arangodb::Logger::V8) << "giving up waiting for unused V8 context after " << Logger::FIXED(waitTime) << " s";
+  }, 120);
 
 
   V8Context* context = nullptr;
@@ -693,7 +693,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         JobGuard jobGuard(SchedulerFeature::SCHEDULER);
         jobGuard.block();
         
-        guard.wait();
+        guard.wait(100000);
       }
 
       if (exitWhenNoContext.tick()) {

@@ -2329,7 +2329,7 @@ int MMFilesCollection::beginReadTimed(bool useDeadlockDetector,
     if (waitTime == 0) {   // initialize times
       // set end time for lock waiting
       if (timeout <= 0.0) {
-        timeout = 15.0 * 60.0;
+        timeout = defaultLockTimeout;
       }
       startTime = now;
       waitTime = 1;
@@ -2339,7 +2339,7 @@ int MMFilesCollection::beginReadTimed(bool useDeadlockDetector,
       if (useDeadlockDetector) {
         _logicalCollection->vocbase()->_deadlockDetector.unsetReaderBlocked(_logicalCollection);
       }
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "timed out waiting for read-lock on collection '" << _logicalCollection->name()
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "timed out after " << timeout << " s waiting for read-lock on collection '" << _logicalCollection->name()
                  << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }
@@ -2435,7 +2435,7 @@ int MMFilesCollection::beginWriteTimed(bool useDeadlockDetector,
     if (waitTime == 0) {   // initialize times
       // set end time for lock waiting
       if (timeout <= 0.0) {
-        timeout = 15.0 * 60.0;
+        timeout = defaultLockTimeout;
       }
       startTime = now;
       waitTime = 1;
@@ -2446,7 +2446,7 @@ int MMFilesCollection::beginWriteTimed(bool useDeadlockDetector,
         _logicalCollection->vocbase()->_deadlockDetector.unsetWriterBlocked(
             _logicalCollection);
       }
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "timed out waiting for write-lock on collection '" << _logicalCollection->name()
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "timed out after " << timeout << " s waiting for write-lock on collection '" << _logicalCollection->name()
                  << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }
