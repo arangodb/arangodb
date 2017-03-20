@@ -1,6 +1,8 @@
 v3.1.15 (????-??-??)
 --------------------
 
+* fixed issue #2376
+
 * ui - changed document api due a chrome bug
 
 * ui - fixed a submenu bug
@@ -13,6 +15,7 @@ v3.1.15 (????-??-??)
 * Foxx response objects now have a `type` method for manipulating the content-type header
 
 * Foxx tests now support `xunit` and `tap` reporters
+
 
 v3.1.14 (2017-03-13)
 --------------------
