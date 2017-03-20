@@ -517,6 +517,16 @@
 /// - 1753: @LIT{service upload failed}
 ///   Will be raised when a service upload from the client to the ArangoDB
 ///   server failed.
+/// - 1800: @LIT{cannot init a LDAP connection}
+///   cannot init a LDAP connection
+/// - 1801: @LIT{cannot set a LDAP option}
+///   cannot set a LDAP option
+/// - 1802: @LIT{cannot bind to a LDAP server}
+///   cannot bind to a LDAP server
+/// - 1803: @LIT{cannot unbind from a LDAP server}
+///   cannot unbind from a LDAP server
+/// - 1810: @LIT{invalid ldap mode}
+///   cant distinguish a valid mode for provided ldap configuration
 /// - 1850: @LIT{invalid task id}
 ///   Will be raised when a task is created with an invalid id.
 /// - 1851: @LIT{duplicate task id}
@@ -2808,6 +2818,56 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_SERVICE_UPLOAD_FAILED                                   (1753)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1800: ERROR_LDAP_CANNOT_INIT
+///
+/// cannot init a LDAP connection
+///
+/// cannot init a LDAP connection
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_INIT                                        (1800)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1801: ERROR_LDAP_CANNOT_SET_OPTION
+///
+/// cannot set a LDAP option
+///
+/// cannot set a LDAP option
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_SET_OPTION                                  (1801)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1802: ERROR_LDAP_CANNOT_BIND
+///
+/// cannot bind to a LDAP server
+///
+/// cannot bind to a LDAP server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_BIND                                        (1802)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1803: ERROR_LDAP_CANNOT_UNBIND
+///
+/// cannot unbind from a LDAP server
+///
+/// cannot unbind from a LDAP server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_UNBIND                                      (1803)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1810: ERROR_LDAP_INVALID_MODE
+///
+/// invalid ldap mode
+///
+/// cant distinguish a valid mode for provided ldap configuration
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_INVALID_MODE                                       (1810)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1850: ERROR_TASK_INVALID_ID

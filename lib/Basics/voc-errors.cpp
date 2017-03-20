@@ -210,6 +210,11 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_SERVICE_INVALID_MOUNT, "invalid mount");
   REG_ERROR(ERROR_SERVICE_DOWNLOAD_FAILED, "service download failed");
   REG_ERROR(ERROR_SERVICE_UPLOAD_FAILED, "service upload failed");
+  REG_ERROR(ERROR_LDAP_CANNOT_INIT, "cannot init a LDAP connection");
+  REG_ERROR(ERROR_LDAP_CANNOT_SET_OPTION, "cannot set a LDAP option");
+  REG_ERROR(ERROR_LDAP_CANNOT_BIND, "cannot bind to a LDAP server");
+  REG_ERROR(ERROR_LDAP_CANNOT_UNBIND, "cannot unbind from a LDAP server");
+  REG_ERROR(ERROR_LDAP_INVALID_MODE, "invalid ldap mode");
   REG_ERROR(ERROR_TASK_INVALID_ID, "invalid task id");
   REG_ERROR(ERROR_TASK_DUPLICATE_ID, "duplicate task id");
   REG_ERROR(ERROR_TASK_NOT_FOUND, "task not found");
