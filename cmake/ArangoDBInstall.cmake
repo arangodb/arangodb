@@ -170,7 +170,11 @@ if (UNIX)
       PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
       DESTINATION ${SYSTEMD_UNIT_DIR}/
       RENAME ${SERVICE_NAME})
-    
+  else ()
+    configure_file (
+      ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.sysv
+      ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangod.systemd
+      NEWLINE_STYLE UNIX)
   endif()
 endif()
 ################################################################################
