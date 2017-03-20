@@ -27,6 +27,9 @@ devel
   that many number of V8 contexts to be created at startup and kept around even
   when unused.
 
+  Waiting for an unused V8 context will now also abort if no V8 context can be 
+  acquired/created after 90 seconds.
+
 * improved diagnostic messages written to logfiles by supervisor process
 
 * fixed issue #2367
