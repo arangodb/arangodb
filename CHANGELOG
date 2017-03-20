@@ -1,6 +1,8 @@
 v3.1.15 (????-??-??)
 --------------------
 
+* add logrotate configuration as requested in #2355
+
 * fixed issue #2376
 
 * ui - changed document api due a chrome bug
