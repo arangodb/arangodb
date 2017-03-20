@@ -10,15 +10,18 @@ if (NOT CMAKE_INSTALL_SYSCONFDIR_ARANGO
 endif()
 
 # Global macros ----------------------------------------------------------------
-macro (generate_root_config name)
-  FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb3/${name}.conf.in FileContent)
-  
-  STRING(REPLACE "@PKGDATADIR@" "@ROOTDIR@/${CMAKE_INSTALL_DATAROOTDIR_ARANGO}"
-    FileContent "${FileContent}")
-  if (DARWIN)
-    # var will be redirected to ~ for the macos bundle
-    STRING(REPLACE "@LOCALSTATEDIR@/" "@HOME@${INC_CPACK_ARANGO_STATE_DIR}/"
-      FileContent "${FileContent}")
+# installs a config file -------------------------------------------------------
+macro (install_config name)
+  if (MSVC OR (DARWIN AND NOT HOMEBREW))
+    set(PKGDATADIR "@ROOTDIR@/${CMAKE_INSTALL_DATAROOTDIR_ARANGO}")
+    if (DARWIN)
+      # var will be redirected to ~ for the macos bundle
+      set(LOCALSTATEDIR "@HOME@${INC_CPACK_ARANGO_STATE_DIR}")
+    else ()
+      set(LOCALSTATEDIR "@ROOTDIR@${CMAKE_INSTALL_LOCALSTATEDIR}")
+    endif ()
+    set(SBINDIR "@ROOTDIR@/${CMAKE_INSTALL_SBINDIR}")  
+    set(SYSCONFDIR "@ROOTDIR@/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}")
   else ()
     set(PKGDATADIR "${CMAKE_INSTALL_DATAROOTDIR_ARANGO}")
     set(LOCALSTATEDIR "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}")
