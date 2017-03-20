@@ -124,6 +124,8 @@ class MMFilesCollection final : public PhysicalCollection {
 
   ~MMFilesCollection();
 
+  constexpr static double defaultLockTimeout = 10.0 * 60.0;
+
   std::string const& path() const override {
     return _path;
   };
