@@ -149,10 +149,8 @@ void RecoveryManager::updatedFailedServers() {
       ShardID const& shard = pair.first;
 
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-      boost::asio::io_service* ioService =
-          SchedulerFeature::SCHEDULER->ioService();
-      TRI_ASSERT(ioService != nullptr);
-      ioService->post([this, shard] { _renewPrimaryServer(shard); });
+      rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+      scheduler->post([this, shard] { _renewPrimaryServer(shard); });
     }
   }
 }

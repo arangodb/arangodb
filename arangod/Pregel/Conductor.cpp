@@ -293,11 +293,10 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   _globalSuperstep++;
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
-  TRI_ASSERT(ioService != nullptr);
+  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  ioService->post([this] {
+  scheduler->post([this] {
     MUTEX_LOCKER(guard, _callbackMutex);
 
     if (_state == ExecutionState::RUNNING) {
@@ -702,10 +701,8 @@ int Conductor::_sendToAllDBServers(std::string const& path,
       handle(response.slice());
     } else {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-      boost::asio::io_service* ioService =
-          SchedulerFeature::SCHEDULER->ioService();
-      TRI_ASSERT(ioService != nullptr);
-      ioService->post([this, path, message] {
+      rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+      scheduler->post([this, path, message] {
         VPackBuilder response;
         PregelFeature::handleWorkerRequest(_vocbaseGuard.vocbase(), path,
                                            message.slice(), response);

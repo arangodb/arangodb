@@ -142,9 +142,8 @@ void PregelFeature::cleanupConductor(uint64_t executionNumber) {
 void PregelFeature::cleanupWorker(uint64_t executionNumber) {
   // unmapping etc might need a few seconds
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
-  TRI_ASSERT(ioService != nullptr);
-  ioService->post([this, executionNumber] {
+  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  scheduler->post([this, executionNumber] {
     MUTEX_LOCKER(guard, _mutex);
 
     auto wit = _workers.find(executionNumber);

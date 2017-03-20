@@ -154,8 +154,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       _config->edgeCollectionShards();
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
-  TRI_ASSERT(ioService != nullptr);
+  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
 
   LOG_TOPIC(DEBUG, Logger::PREGEL) << "Using "
                                    << config->localVertexShardIDs().size()
@@ -186,7 +185,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
 
       _loadedShards.insert(vertexShard);
       _runningThreads++;
-      ioService->post([this, &vertexShard, edgeLookups, vertexOffset,
+      scheduler->post([this, &vertexShard, edgeLookups, vertexOffset,
                        edgeOffset, callback] {
 
         _loadVertices(vertexShard, edgeLookups, vertexOffset, edgeOffset);
