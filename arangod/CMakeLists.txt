@@ -276,8 +276,8 @@ SET(ARANGOD_SOURCES
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
   RestServer/WorkMonitorFeature.cpp
-  RocksDB/RocksDBCollection.cpp
-  RocksDB/RocksDBEngine.cpp
+  RocksDBEngine/RocksDBCollection.cpp
+  RocksDBEngine/RocksDBEngine.cpp
   Scheduler/Acceptor.cpp
   Scheduler/AcceptorTcp.cpp
   Scheduler/Job.cpp

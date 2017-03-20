@@ -86,6 +86,8 @@
 #include "MMFiles/MMFilesWalRecoveryFeature.h"
 #include "MMFiles/MMFilesEngine.h"
 
+#include "RocksDBEngine/RocksDBEngine.h"
+
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -196,6 +198,7 @@ static int runServer(int argc, char** argv) {
     server.addFeature(new MMFilesWalRecoveryFeature(&server));
     server.addFeature(new MMFilesLogfileManager(&server));
     server.addFeature(new MMFilesPersistentIndexFeature(&server));
+    server.addFeature(new RocksDBEngine(&server));
 
     try {
       server.run(argc, argv);
