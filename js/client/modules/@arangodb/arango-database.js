@@ -49,10 +49,15 @@ function ArangoDatabase (connection) {
     this[name] = obj;
   };
 
-  this._views = {};
+  this._viewList = {};
   this._registerView = function (name, obj) {
     // store the view in our own list
-    this._views[name] = obj;
+    this._viewList[name] = obj;
+  };
+  this._unregisterView = function(name) {
+    if (this._viewList[name] !== undefined) {
+      delete this._viewList[name];
+    }
   };
 }
 
@@ -1096,7 +1101,7 @@ ArangoDatabase.prototype._createView = function (name, type, properties) {
 
   if (nname !== undefined) {
     this._registerView(nname, new this._viewConstructor(this, requestResult));
-    return this[nname];
+    return this._viewList[nname];
   }
 
   return undefined;
@@ -1111,9 +1116,9 @@ ArangoDatabase.prototype._views = function () {
 
   arangosh.checkRequestResult(requestResult);
 
-  if (requestResult.result !== undefined) {
-    var views = requestResult.result;
-    var result = [];
+  var result = [];
+  if (requestResult !== undefined) {
+    var views = requestResult;
     var i;
 
     // add all views to object
@@ -1123,8 +1128,8 @@ ArangoDatabase.prototype._views = function () {
       result.push(view);
     }
 
-    return result.sort(function (l, r) {
-      // we assume no two collections have the same name
+    result = result.sort(function (l, r) {
+      // we assume no two views have the same name
       if (l.name().toLowerCase() < r.name().toLowerCase()) {
         return -1;
       }
@@ -1132,7 +1137,7 @@ ArangoDatabase.prototype._views = function () {
     });
   }
 
-  return undefined;
+  return result;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1140,8 +1145,9 @@ ArangoDatabase.prototype._views = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._view = function (id) {
-  if (this._views[id] && this._views[id] instanceof this._viewConstructor) {
-    return this._views[id];
+  if (this._viewList[id] && this._viewList[id] instanceof
+      this._viewConstructor) {
+    return this._viewList[id];
   }
   var url = this._viewurl(id);
   var requestResult = this._connection.GET(url);
@@ -1160,7 +1166,7 @@ ArangoDatabase.prototype._view = function (id) {
 
   if (name !== undefined) {
     this._registerView(name, new this._viewConstructor(this, requestResult));
-    return this[name];
+    return this._viewList[name];
   }
 
   return null;

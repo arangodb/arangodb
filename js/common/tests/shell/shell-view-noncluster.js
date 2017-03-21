@@ -125,11 +125,14 @@ function ViewSuite () {
     ////////////////////////////////////////////////////////////////////////////
     testErrorHandlingModifyUnacceptable : function () {
       var abc = db._createView("abc", "logger", {});
+      assertEqual(abc.name(), "abc");
       try {
-        abc.properties({'bogus': 'junk'});
+        abc.properties({"bogus": "junk"});
         fail();
       }
       catch (err) {
+        assertEqual(10, err.errorNum);
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, 10);
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
         abc.drop();
       }
@@ -166,6 +169,54 @@ function ViewSuite () {
         assertEqual(ERRORS.ERROR_ARANGO_VIEW_NOT_FOUND.code, err.errorNum);
       }
     },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief retrieve empty list of views
+    ////////////////////////////////////////////////////////////////////////////
+    testEmptyList : function () {
+      var views = db._views();
+      assertTrue(Array.isArray(views));
+      assertEqual(views.length, 0);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief retrieve short list of views
+    ////////////////////////////////////////////////////////////////////////////
+    testShortList : function () {
+      var abc = db._createView("abc", "logger", {"level": "WARN"});
+      assertEqual(abc.name(), "abc");
+      var def = db._createView("def", "logger", {"level": "DEBUG"});
+      assertEqual(def.name(), "def");
+      var views = db._views();
+      assertTrue(Array.isArray(views));
+      assertEqual(views.length, 2);
+      assertEqual(abc.name(), views[0].name());
+      assertEqual(def.name(), views[1].name());
+      abc.drop();
+      def.drop();
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief modify properties
+    ////////////////////////////////////////////////////////////////////////////
+    testModifyProperties : function () {
+      var abc = db._createView("abc", "logger", {"level": "WARN"});
+      var props = abc.properties();
+
+      assertEqual(abc.name(), "abc");
+      assertEqual(abc.type(), "logger");
+      assertEqual(props.level, "WARN");
+
+      abc.properties({"level": "TRACE"});
+      abc = db._view("abc");
+      props = abc.properties();
+
+      assertEqual(abc.name(), "abc");
+      assertEqual(abc.type(), "logger");
+      assertEqual(props.level, "TRACE");
+
+      abc.drop();
+    }
 
   };
 }

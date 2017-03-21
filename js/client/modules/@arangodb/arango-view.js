@@ -184,7 +184,7 @@ ArangoView.prototype.properties = function (properties) {
     requestResult = this._database._connection.GET(this._baseurl('properties'));
 
     arangosh.checkRequestResult(requestResult);
-  }else {
+  } else {
     var body = properties;
     requestResult = this._database._connection.PUT(this._baseurl('properties'),
       JSON.stringify(body));
@@ -207,5 +207,7 @@ ArangoView.prototype.drop = function () {
     && requestResult.errorNum !== internal.errors.ERROR_ARANGO_VIEW_NOT_FOUND.code) {
     // check error in case we got anything else but "view not found"
     arangosh.checkRequestResult(requestResult);
+  } else {
+    this._database._unregisterView(this._name);
   }
 };
