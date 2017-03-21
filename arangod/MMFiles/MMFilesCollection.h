@@ -147,13 +147,14 @@ class MMFilesCollection final : public PhysicalCollection {
 
   int64_t initialCount() const override;
   void updateCount(int64_t) override;
-  size_t journalSize() const override;
+  size_t journalSize() const;
   bool isVolatile() const;
  
   TRI_voc_tick_t maxTick() const { return _maxTick; }
   void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
 
   void getPropertiesVPack(velocypack::Builder&) const override;
+  void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
 
   // datafile management
   bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
@@ -233,7 +234,7 @@ class MMFilesCollection final : public PhysicalCollection {
   
   bool isFullyCollected() const override;
 
-  bool doCompact() const override { return _doCompact; }
+  bool doCompact() const { return _doCompact; }
 
   
   int64_t uncollectedLogfileEntries() const {
@@ -255,7 +256,7 @@ class MMFilesCollection final : public PhysicalCollection {
   // -- SECTION Indexes --
   ///////////////////////////////////
 
-  uint32_t indexBuckets() const override;
+  uint32_t indexBuckets() const;
 
   // WARNING: Make sure that this Collection Instance
   // is somehow protected. If it goes out of all scopes

@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_REPLICATION_DUMP_H
-#define ARANGOD_VOC_BASE_REPLICATION_DUMP_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_REPLICATION_DUMP_H
+#define ARANGOD_MMFILES_MMFILES_REPLICATION_DUMP_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -40,12 +40,9 @@
 
 #include <vector>
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief replication dump container
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_replication_dump_t {
-  TRI_replication_dump_t(std::shared_ptr<arangodb::transaction::StandaloneContext>
+struct MMFilesReplicationDumpContext {
+  MMFilesReplicationDumpContext(std::shared_ptr<arangodb::transaction::StandaloneContext>
                              transactionContext,
                          size_t chunkSize, bool includeSystem,
                          TRI_voc_cid_t restrictCollection, bool useVpp = false)
@@ -79,7 +76,7 @@ struct TRI_replication_dump_t {
     }
   }
 
-  ~TRI_replication_dump_t() {
+  ~MMFilesReplicationDumpContext() {
     if (_buffer != nullptr) {
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer);
       _buffer = nullptr;
@@ -104,28 +101,19 @@ struct TRI_replication_dump_t {
   bool _useVpp;
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from a single collection
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_DumpCollectionReplication(TRI_replication_dump_t*,
+int MMFilesDumpCollectionReplication(MMFilesReplicationDumpContext*,
                                   arangodb::LogicalCollection*, TRI_voc_tick_t,
                                   TRI_voc_tick_t, bool);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from the replication log
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_DumpLogReplication(TRI_replication_dump_t*,
+int MMFilesDumpLogReplication(MMFilesReplicationDumpContext*,
                            std::unordered_set<TRI_voc_tid_t> const&,
                            TRI_voc_tick_t, TRI_voc_tick_t, TRI_voc_tick_t,
                            bool);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the transactions that were open at a given point in time
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t*,
+int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext*,
                                              TRI_voc_tick_t, TRI_voc_tick_t,
                                              bool useVpp = false);
 

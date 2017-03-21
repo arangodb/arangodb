@@ -26,8 +26,8 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
-#include "MMFiles/fulltext-index.h"
 #include "MMFiles/MMFilesToken.h"
+#include "MMFiles/mmfiles-fulltext-index.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 #include "StorageEngine/TransactionState.h"
 
@@ -142,7 +142,7 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   VPackSlice typeSlice = info.get("type");
   TRI_ASSERT(typeSlice.isString());
   StringRef typeStr(typeSlice);
-  TRI_ASSERT(typeStr == typeName());
+  TRI_ASSERT(typeStr == oldtypeName());
 #endif
   auto value = info.get("id");
   if (!value.isNone()) {

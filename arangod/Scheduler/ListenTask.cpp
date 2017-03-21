@@ -55,6 +55,9 @@ void ListenTask::start() {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to open endpoint '" << _endpoint->specification()
               << "' with error: " << err.what();
     return;
+  } catch (std::exception const& err) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to open endpoint '" << _endpoint->specification()
+              << "' with error: " << err.what();
   }
 
   _handler = [this](boost::system::error_code const& ec) {

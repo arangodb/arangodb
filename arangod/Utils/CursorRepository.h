@@ -40,8 +40,6 @@ namespace aql {
 struct QueryResult;
 }
 
-class CollectionExport;
-
 class CursorRepository {
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -57,6 +55,14 @@ class CursorRepository {
   ~CursorRepository();
 
  public:
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief stores a cursor in the registry
+  /// the repository will take ownership of the cursor
+  ////////////////////////////////////////////////////////////////////////////////
+
+  Cursor* addCursor(std::unique_ptr<Cursor> cursor);
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a cursor and stores it in the registry
   /// the cursor will be returned with the usage flag set to true. it must be
@@ -64,16 +70,9 @@ class CursorRepository {
   /// the cursor will retain a shared pointer of both json and extra
   //////////////////////////////////////////////////////////////////////////////
 
-  VelocyPackCursor* createFromQueryResult(
+  Cursor* createFromQueryResult(
       aql::QueryResult&&, size_t, std::shared_ptr<arangodb::velocypack::Builder>,
       double, bool);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a cursor and stores it in the registry
-  //////////////////////////////////////////////////////////////////////////////
-
-  ExportCursor* createFromExport(arangodb::CollectionExport*, size_t, double,
-                                 bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a cursor by id

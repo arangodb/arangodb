@@ -55,23 +55,34 @@ start () {
     ulimit -H -n 131072 || true
     ulimit -S -n 131072 || true
 
-    if [ "$1" = "--upgrade" ];  then
-      # remove unsupported option --upgrade but pass --database.auto-upgrade to arangod
-      shift 
-      $ARANGO_BIN --uid arangodb --gid arangodb --database.auto-upgrade true $@
-      rc_status -v
-    else
-      $ARANGO_BIN --uid arangodb --gid arangodb --log.foreground-tty false --database.check-version true
-      RETVAL=$?
+    case "$1" in
+        "--upgrade")
+            shift
+            $ARANGO_BIN --uid arangodb --gid arangodb --server.rest-server false --database.auto-upgrade true $@
+            RETVAL=$?
+            rc_status -v
+            ;;
+        "--reopen-logs")
+            shift
+            if test -f $PIDFILE; then
+                kill -1 `cat $PIDFILE`
+            fi
+            RETVAL=0
+            log_end_msg $RETVAL
+            ;;
+        *)
+            $ARANGO_BIN --uid arangodb --gid arangodb --log.foreground-tty false --database.check-version true
+            RETVAL=$?
 
-      if test $RETVAL -eq 0;  then
-        startproc $ARANGO_BIN --uid arangodb --gid arangodb --pid-file "$ARANGO_PIDFILE" --temp.path "/var/tmp/arangod" --log.foreground-tty false --supervisor true $@ 
-        rc_status -v
-      else
-        echo "database version check failed, maybe need to run 'upgrade'?"
-        rc_status -v
-      fi
-    fi
+            if [ "$RETVAL" -eq 0 ];  then
+                startproc $ARANGO_BIN --uid arangodb --gid arangodb --pid-file "$ARANGO_PIDFILE" --temp.path "/var/tmp/arangod" --log.foreground-tty false --supervisor true $@
+	        rc_status -v
+            else
+	        echo "database version check failed, maybe you need to run 'upgrade'?"
+		rc_status -v
+            fi
+            ;;
+    esac
 }
 
 case "$1" in
@@ -169,6 +180,16 @@ case "$1" in
     echo -n "Upgrading ArangoDB database files"
 
     start --upgrade
+    ;;
+
+  ################################################################################
+  ## rotate logfiles
+  ################################################################################
+
+  reload-log)
+    echo -n "reopening ArangoDB logfiles"
+
+    start --reopen-logs
     ;;
 
   ################################################################################

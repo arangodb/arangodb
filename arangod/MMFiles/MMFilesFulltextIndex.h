@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
-#include "MMFiles/fulltext-common.h"
+#include "MMFiles/mmfiles-fulltext-common.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -49,6 +49,8 @@ class MMFilesFulltextIndex final : public Index {
   IndexType type() const override {
     return Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
   }
+  
+  char const* typeName() const override { return "fulltext"; }
   
   bool allowExpansion() const override { return false; }
   

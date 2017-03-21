@@ -94,6 +94,8 @@ class MMFilesEdgeIndex final : public Index {
   /// @brief typedef for hash tables
  public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }
+  
+  char const* typeName() const override { return "edge"; }
 
   bool allowExpansion() const override { return false; }
 
