@@ -30,6 +30,7 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
+#include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -261,11 +262,17 @@ void MMFilesRestExportHandler::createCursor() {
   auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
-  // create a cursor from the result
-  arangodb::MMFilesExportCursor* cursor = cursors->createFromExport(
-      collectionExport.get(), batchSize, ttl, count);
-  collectionExport.release();
-  
+  Cursor* c = nullptr;
+  {
+    auto cursor = std::make_unique<MMFilesExportCursor>(_vocbase, TRI_NewTickServer(), collectionExport.get(), batchSize, ttl, count);
+    collectionExport.release();
+ 
+    cursor->use();
+    c = cursors->addCursor(std::move(cursor));
+  }
+
+  TRI_ASSERT(c != nullptr);
+
   resetResponse(rest::ResponseCode::CREATED);
 
   try {
@@ -273,16 +280,16 @@ void MMFilesRestExportHandler::createCursor() {
     VPackBuilder builder(buffer);
     builder.openObject();
     builder.add("error", VPackValue(false));
-    builder.add("code", VPackValue((int)_response->responseCode()));
-    cursor->dump(builder);
+    builder.add("code", VPackValue(static_cast<int>(_response->responseCode())));
+    c->dump(builder);
     builder.close();
 
     _response->setContentType(rest::ContentType::JSON);
     generateResult(rest::ResponseCode::CREATED, builder.slice());
 
-    cursors->release(cursor);
+    cursors->release(c);
   } catch (...) {
-    cursors->release(cursor);
+    cursors->release(c);
     throw;
   }
 }
