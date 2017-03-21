@@ -26,6 +26,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "MMFiles/MMFilesEngine.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
@@ -35,7 +36,7 @@ StorageEngine* EngineSelectorFeature::ENGINE = nullptr;
 
 EngineSelectorFeature::EngineSelectorFeature(
     application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "EngineSelector"), _engine(MMFilesEngine::EngineName) {
+    : ApplicationFeature(server, "EngineSelector"), _engine("auto") {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
@@ -44,9 +45,15 @@ EngineSelectorFeature::EngineSelectorFeature(
 void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
 
-  options->addHiddenOption("--server.storage-engine", 
-                           "storage engine type",
-                           new DiscreteValuesParameter<StringParameter>(&_engine, availableEngineNames()));
+  options->addOption("--server.storage-engine", 
+                     "storage engine type",
+                     new DiscreteValuesParameter<StringParameter>(&_engine, availableEngineNames()));
+}
+
+void EngineSelectorFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if(_engine == "auto"){
+    _engine = MMFilesEngine::EngineName;
+  }
 }
 
 void EngineSelectorFeature::prepare() {
@@ -83,12 +90,14 @@ std::unordered_set<std::string> EngineSelectorFeature::availableEngineNames() {
   for (auto const& it : availableEngines()) {
     result.emplace(it.first);
   }
-  return result; 
+  result.emplace("auto");
+  return result;
 }
 
 // return all available storage engines
 std::unordered_map<std::string, std::string> EngineSelectorFeature::availableEngines() { 
   return std::unordered_map<std::string, std::string>{
-    {MMFilesEngine::EngineName, MMFilesEngine::FeatureName}
+    {MMFilesEngine::EngineName, MMFilesEngine::FeatureName},
+    {RocksDBEngine::EngineName, RocksDBEngine::FeatureName}
   };
 }

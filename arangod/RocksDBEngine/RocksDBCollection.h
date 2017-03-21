@@ -79,7 +79,6 @@ class RocksDBCollection final : public PhysicalCollection {
 
   int64_t initialCount() const override;
   void updateCount(int64_t) override;
-  size_t journalSize() const override;
 
   void getPropertiesVPack(velocypack::Builder&) const override;
 
@@ -109,13 +108,9 @@ class RocksDBCollection final : public PhysicalCollection {
 
   bool isFullyCollected() const override;
 
-  bool doCompact() const override;  // { return _doCompact; }
-
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
-
-  uint32_t indexBuckets() const override;
 
   void prepareIndexes(arangodb::velocypack::Slice indexesSlice) override;
 

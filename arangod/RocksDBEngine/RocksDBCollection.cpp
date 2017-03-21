@@ -52,10 +52,6 @@ TRI_voc_rid_t RocksDBCollection::revision() const {
 void RocksDBCollection::updateCount(int64_t) {
   throw std::logic_error("not implemented");
 }
-size_t RocksDBCollection::journalSize() const {
-  throw std::logic_error("not implemented");
-  return 0;
-}
 
 void RocksDBCollection::getPropertiesVPack(velocypack::Builder&) const {
   throw std::logic_error("not implemented");
@@ -110,16 +106,6 @@ int RocksDBCollection::iterateMarkersOnLoad(
 bool RocksDBCollection::isFullyCollected() const {
   throw std::logic_error("not implemented");
   return false;
-}
-
-bool RocksDBCollection::doCompact() const {
-  throw std::logic_error("not implemented");
-  return false;
-}
-
-uint32_t RocksDBCollection::indexBuckets() const {
-  throw std::logic_error("not implemented");
-  return 0;
 }
 
 void RocksDBCollection::prepareIndexes(

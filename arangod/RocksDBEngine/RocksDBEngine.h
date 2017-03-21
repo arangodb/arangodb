@@ -29,6 +29,9 @@
 #include <string>
 #include <vector>
 
+#include <rocksdb/db.h>
+#include <rocksdb/utilities/transaction_db.h>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "StorageEngine/StorageEngine.h"
@@ -54,7 +57,6 @@ class RocksDBEngine final : public StorageEngine {
  public:
   // create the storage engine
   explicit RocksDBEngine(application_features::ApplicationServer*);
-
   ~RocksDBEngine();
 
   // inherited from ApplicationFeature
@@ -70,6 +72,7 @@ class RocksDBEngine final : public StorageEngine {
   // preparation phase for storage engine. can be used for internal setup.
   // the storage engine must not start any threads here or write any files
   void prepare() override;
+
 
   transaction::ContextData* createTransactionContextData() override;
   TransactionState* createTransactionState(TRI_vocbase_t*) override;
@@ -223,9 +226,14 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief Add engine-specific REST handlers
   void addRestHandlers(rest::RestHandlerFactory*) override;
 
- public:
+public:
   static std::string const EngineName;
   static std::string const FeatureName;
+
+private:
+  rocksdb::TransactionDB* _db;
+  rocksdb::Options _options;
+  std::string _path;
 };
 }
 #endif

@@ -1,6 +1,26 @@
+#include "Basics/Exceptions.h"
+#include "Basics/FileUtils.h"
+#include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "RocksDBEngine.h"
 #include <Basics/Result.h>
 #include <stdexcept>
+#include <rocksdb/db.h>
+#include <rocksdb/convenience.h>
+#include <rocksdb/env.h>
+#include <rocksdb/filter_policy.h>
+#include <rocksdb/iterator.h>
+#include <rocksdb/options.h>
+#include <rocksdb/slice_transform.h>
+#include <rocksdb/table.h>
+#include <rocksdb/write_batch.h>
+
+using namespace arangodb;
+using namespace arangodb::application_features;
+using namespace arangodb::options;
 
 namespace arangodb {
 
@@ -11,7 +31,7 @@ std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, nullptr /*new
                                                               MMFilesIndexFactory()*/) {
-  startsAfter("MMFilesEngine");
+      //inherits order from StorageEngine
 }
 
 RocksDBEngine::~RocksDBEngine() { throw std::runtime_error("not implemented"); }
@@ -28,7 +48,30 @@ void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   throw std::runtime_error("not implemented");
 }
 
-void RocksDBEngine::start() { throw std::runtime_error("not implemented"); }
+void RocksDBEngine::start() {
+  //it is already decided that rocksdb is used
+  if (!isEnabled()) {
+    return;
+  }
+
+  // set the database sub-directory for RocksDB
+  auto database = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
+  _path = database->subdirectoryName("engine-rocksdb");
+
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "initializing rocksdb, path: " << _path;
+
+  rocksdb::TransactionDBOptions transactionOptions;
+
+  _options.create_if_missing = true;
+  _options.max_open_files = -1;
+
+  rocksdb::Status status = rocksdb::TransactionDB::Open(_options, transactionOptions, _path, &_db);
+
+  if (! status.ok()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to initialize RocksDB engine: " << status.ToString();
+    FATAL_ERROR_EXIT();
+  }
+}
 void RocksDBEngine::stop() { throw std::runtime_error("not implemented"); }
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
