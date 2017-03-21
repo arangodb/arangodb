@@ -452,7 +452,7 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   if (options.coreDirectory === '') {
     command += 'core';
   } else {
-    command += options.coreDirectory + '/*core*' + pid + '*';
+    command += options.coreDirectory;
   }
   command += " > " + gdbOutputFile + " 2>&1";
   const args = ['-c', command];
@@ -533,7 +533,7 @@ function analyzeCoreDumpWindows (instanceInfo) {
 // / @brief the bad has happened, tell it the user and try to gather more
 // /        information about the incident.
 // //////////////////////////////////////////////////////////////////////////////
-function analyzeServerCrash (arangod, options, checkStr) {
+function analyzeCrash (binary, arangod, options, checkStr) {
   serverCrashed = true;
   var cpf = "/proc/sys/kernel/core_pattern";
 
@@ -549,19 +549,27 @@ function analyzeServerCrash (arangod, options, checkStr) {
       return;
     }
 
-    if (matchSystemdCoredump.exec(cp) == null) {
-      options.coreDirectory = "/var/lib/systemd/coredump";
+    if (matchSystemdCoredump.exec(cp) !== null) {
+      options.coreDirectory = "/var/lib/systemd/coredump/*core*" + arangod.pid + '*';
     }
-    else if (matchVarTmp.exec(cp) == null) {
+    else if (matchVarTmp.exec(cp) !== null) {
+      options.coreDirectory = cp.replace("%e", "*").replace("%t", "*").replace("%p", arangod.pid);
+    }
+    else {
       print(RED + "Don't know howto locate corefiles in your system. '" + cpf + "' contains: '" + cp + "'");
       return;
     }
   }
 
-  const storeArangodPath = arangod.rootDir + '/arangod_' + arangod.pid;
+  let pathParts = binary.split(fs.pathSeparator);
+  let bareBinary = binary;
+  if (pathParts.length > 0) {
+    bareBinary = pathParts[pathParts.length - 1];
+  }
+  const storeArangodPath = arangod.rootDir + '/'+ bareBinary + '_' + arangod.pid;
 
   print(RED +
-    'during: ' + checkStr + ': Core dump written; copying arangod to ' +
+    'during: ' + checkStr + ': Core dump written; copying ' + binary + ' to ' +
     storeArangodPath + ' for later analysis.\n' +
     'Server shut down with :\n' +
     yaml.safeDump(arangod) +
@@ -569,7 +577,7 @@ function analyzeServerCrash (arangod, options, checkStr) {
 
   let corePath = (options.coreDirectory === '')
       ? 'core'
-      : options.coreDirectory + '/core*' + arangod.pid + "*'";
+      : options.coreDirectory;
 
   arangod.exitStatus.gdbHint = "Run debugger with 'gdb " +
     storeArangodPath + ' ' + corePath;
@@ -580,16 +588,22 @@ function analyzeServerCrash (arangod, options, checkStr) {
     analyzeCoreDumpWindows(arangod);
   }
   else if (platform === 'darwin') {
-    fs.copyFile(ARANGOD_BIN, storeArangodPath);
+    fs.copyFile(binary, storeArangodPath);
     analyzeCoreDumpMac(arangod, options, storeArangodPath, arangod.pid);    
   } else {
-    fs.copyFile(ARANGOD_BIN, storeArangodPath);
+    fs.copyFile(binary, storeArangodPath);
     analyzeCoreDump(arangod, options, storeArangodPath, arangod.pid);
   }
 
   print(RESET);
 }
-
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief the bad has happened, tell it the user and try to gather more
+// /        information about the incident.
+// //////////////////////////////////////////////////////////////////////////////
+function analyzeServerCrash (arangod, options, checkStr) {
+  return analyzeCrash (ARANGOD_BIN, arangod, options, checkStr);
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief periodic checks whether spawned arangod processes are still alive
 // //////////////////////////////////////////////////////////////////////////////
@@ -1015,7 +1029,7 @@ function executeArangod (cmd, args, options) {
 // / @brief executes a command and wait for result
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait (cmd, args, options, valgrindTest) {
+function executeAndWait (cmd, args, options, valgrindTest, rootDir) {
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -1057,6 +1071,22 @@ function executeAndWait (cmd, args, options, valgrindTest) {
   const deltaTime = time() - startTime;
 
   let errorMessage = ' - ';
+
+  if (res.hasOwnProperty('signal') &&
+      ((res.signal === 11) ||
+       (res.signal === 6) ||
+       // Windows sometimes has random numbers in signal...
+       (platform.substr(0, 3) === 'win')
+      )
+     ) {
+    print(res);
+    let instanceInfo = {
+      rootDir: rootDir,
+      pid: res.pid,
+      exitStatus: res
+    };
+    analyzeCrash(cmd, instanceInfo, {exitStatus: {}}, 'execution of ' + cmd + ' - '  + res.signal);
+  }
 
   if (res.status === 'TERMINATED') {
     const color = (res.exit === 0 ? GREEN : RED);
@@ -1128,7 +1158,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
     args = Object.assign(args, addArgs);
   }
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
-  let rc = executeAndWait(ARANGOSH_BIN, toArgv(args), options);
+  let rc = executeAndWait(ARANGOSH_BIN, toArgv(args), options, "arangosh", instanceInfo.rootDir);
 
   let result;
   try {
@@ -1167,7 +1197,7 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds) {
 
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   const argv = toArgv(args).concat(cmds);
-  return executeAndWait(ARANGOSH_BIN, argv, options);
+  return executeAndWait(ARANGOSH_BIN, argv, options, "arangoshcmd", instanceInfo.rootDir);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1205,14 +1235,14 @@ function runArangoImp (options, instanceInfo, what) {
     args['convert'] = what.convert ? 'true' : 'false';
   }
 
-  return executeAndWait(ARANGOIMP_BIN, toArgv(args), options);
+  return executeAndWait(ARANGOIMP_BIN, toArgv(args), options, "arangoimp", instanceInfo.rootDir);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangodump or arangorestore
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoDumpRestore (options, instanceInfo, which, database) {
+function runArangoDumpRestore (options, instanceInfo, which, database, rootDir) {
   let args = {
     'configuration': fs.join(CONFIG_DIR, (which === 'dump' ? 'arangodump.conf' : 'arangorestore.conf')),
     'server.username': options.username,
@@ -1233,14 +1263,14 @@ function runArangoDumpRestore (options, instanceInfo, which, database) {
     exe = ARANGORESTORE_BIN;
   }
 
-  return executeAndWait(exe, toArgv(args), options);
+  return executeAndWait(exe, toArgv(args), options, "arangorestore", instanceInfo.rootDir);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangobench
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoBenchmark (options, instanceInfo, cmds) {
+function runArangoBenchmark (options, instanceInfo, cmds, rootDir) {
   let args = {
     'configuration': fs.join(CONFIG_DIR, 'arangobench.conf'),
     'server.username': options.username,
@@ -1257,7 +1287,7 @@ function runArangoBenchmark (options, instanceInfo, cmds) {
     args['flatCommands'] = ['--quiet'];
   }
 
-  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options);
+  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, "arangobench", instanceInfo.rootDir);
 }
 
 function shutdownArangod (arangod, options) {
@@ -1794,7 +1824,7 @@ function rubyTests (options, ssl) {
         }
 
         print('\n' + Date() + ' rspec trying', te, '...');
-        const res = executeAndWait(command, args, options);
+        const res = executeAndWait(command, args, options, "arangosh", instanceInfo.rootDir);
 
         result[te] = {
           total: 0,
@@ -2689,13 +2719,20 @@ function locateCatchTest (name) {
 testFuncs.catch = function (options) {
   let args = [];
   let results = {};
+  let rootDir = UNITTESTS_DIR;
 
   const icuDir = UNITTESTS_DIR + '/';
   require('internal').env.ICU_DATA = icuDir;
   const run = locateCatchTest('arangodbtests');
   if (!options.skipCatch) {
     if (run !== '') {
-      results.basics = executeAndWait(run, ['[exclude:longRunning][exclude:cache]', '-r', 'junit', '-o', fs.join('out', 'catch-standard.xml')], options);
+      let argv = [
+        '[exclude:longRunning][exclude:cache]',
+        '-r',
+        'junit',
+        '-o',
+        fs.join('out', 'catch-standard.xml')];
+      results.basics = executeAndWait(run, argv, options, 'all-catch', rootDir);
     } else {
       results.basics = {
         status: false,
@@ -2706,8 +2743,14 @@ testFuncs.catch = function (options) {
 
   if (!options.skipCache) {
     if (run !== '') {
-      results.cache_suite = executeAndWait(run, ['[cache]', '-r', 'junit', '-o', fs.join('out', 'catch-cache.xml')], options,
-        'cache_suite');
+      let argv = ['[cache]',
+                  '-r',
+                  'junit',
+                  '-o',
+                  fs.join('out', 'catch-cache.xml')
+                 ];
+      results.cache_suite = executeAndWait(run, argv, options,
+                                           'cache_suite', rootDir);
     } else {
       results.cache_suite = {
         status: false,
@@ -2718,7 +2761,13 @@ testFuncs.catch = function (options) {
 
   if (!options.skipGeo) {
     if (run !== '') {
-      results.geo_suite = executeAndWait(run, ['[geo]', '-r', 'junit', '-o', fs.join('out', 'catch-geo.xml')], options, 'geo_suite');
+      let argv = ['[geo]',
+                  '-r',
+                  'junit',
+                  '-o',
+                  fs.join('out', 'catch-geo.xml')
+                 ];
+      results.geo_suite = executeAndWait(run, argv, options, 'geo_suite', rootDir);
     } else {
       results.geo_suite = {
         status: false,
@@ -2769,6 +2818,8 @@ testFuncs.config = function (options) {
     'foxx-manager'
   ];
 
+  let rootDir = UNITTESTS_DIR;
+  
   print('--------------------------------------------------------------------------------');
   print('absolute config tests');
   print('--------------------------------------------------------------------------------');
@@ -2786,7 +2837,7 @@ testFuncs.config = function (options) {
 
     const run = fs.join(BIN_DIR, test);
 
-    results.absolut[test] = executeAndWait(run, toArgv(args), options, test);
+    results.absolut[test] = executeAndWait(run, toArgv(args), options, test, rootDir);
 
     if (!results.absolut[test].status) {
       results.absolut.status = false;
@@ -2820,7 +2871,7 @@ testFuncs.config = function (options) {
 
     const run = fs.join(BIN_DIR, test);
 
-    results.relative[test] = executeAndWait(run, toArgv(args), options, test);
+    results.relative[test] = executeAndWait(run, toArgv(args), options, test, rootDir);
 
     if (!results.relative[test].status) {
       results.relative.status = false;
@@ -2853,7 +2904,7 @@ testFuncs.dfdb = function (options) {
   fs.makeDirectoryRecursive(dataDir);
   let results = {};
 
-  results.dfdb = executeAndWait(ARANGOD_BIN, args, options, 'dfdb');
+  results.dfdb = executeAndWait(ARANGOD_BIN, args, options, 'dfdb', dataDir);
 
   print();
 
@@ -2989,7 +3040,7 @@ testFuncs.export = function (options) {
   }
 
   print(CYAN + Date() + ': Export data (json)' + RESET);
-  results.exportJson = executeAndWait(ARANGOEXPORT_BIN, toArgv(args), options);
+  results.exportJson = executeAndWait(ARANGOEXPORT_BIN, toArgv(args), options, "arangosh", tmpPath);
   try {
     const filesContent = JSON.parse(fs.read(fs.join(tmpPath, 'UnitTestsExport.json')));
     results.parseJson = { status: true };
@@ -2999,7 +3050,7 @@ testFuncs.export = function (options) {
 
   print(CYAN + Date() + ': Export data (jsonl)' + RESET);
   args['type'] = 'jsonl';
-  results.exportJsonl = executeAndWait(ARANGOEXPORT_BIN, toArgv(args), options);
+  results.exportJsonl = executeAndWait(ARANGOEXPORT_BIN, toArgv(args), options, "arangosh", tmpPath);
   try {
     const filesContent = fs.read(fs.join(tmpPath, 'UnitTestsExport.jsonl')).split('\n');
     for(const line of filesContent) {
@@ -3014,7 +3065,7 @@ testFuncs.export = function (options) {
   print(CYAN + Date() + ': Export data (xgmml)' + RESET);
   args['type'] = 'xgmml';
   args['graph-name'] = 'UnitTestsExport';
-  results.exportXgmml = executeAndWait(ARANGOEXPORT_BIN, toArgv(args), options);
+  results.exportXgmml = executeAndWait(ARANGOEXPORT_BIN, toArgv(args), options, "arangosh", tmpPath);
   try {
     const filesContent = fs.read(fs.join(tmpPath, 'UnitTestsExport.xgmml'));
     DOMParser.parseFromString(filesContent);
@@ -3425,7 +3476,7 @@ function runArangodRecovery (instanceInfo, options, script, setup) {
     argv.unshift(ARANGOD_BIN);
   }
 
-  instanceInfo.pid = executeAndWait(binary, argv, options);
+  instanceInfo.pid = executeAndWait(binary, argv, options, "recovery", instanceInfo.rootDir);
 }
 
 const recoveryTests = [
@@ -4085,7 +4136,7 @@ testFuncs.upgrade = function (options) {
 
   const argv = toArgv(args);
 
-  result.upgrade.first = executeAndWait(ARANGOD_BIN, argv, options, 'upgrade');
+  result.upgrade.first = executeAndWait(ARANGOD_BIN, argv, options, 'upgrade', tmpDataDir);
 
   if (result.upgrade.first.status !== true) {
     print('not removing ' + tmpDataDir);
@@ -4094,7 +4145,7 @@ testFuncs.upgrade = function (options) {
 
   ++result.upgrade.total;
 
-  result.upgrade.second = executeAndWait(ARANGOD_BIN, argv, options, 'upgrade');
+  result.upgrade.second = executeAndWait(ARANGOD_BIN, argv, options, 'upgrade', tmpDataDir);
 
   if (result.upgrade.second.status !== true) {
     print('not removing ' + tmpDataDir);

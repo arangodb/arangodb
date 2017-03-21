@@ -51,7 +51,6 @@
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEchoHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
-#include "RestHandler/RestExportHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestJobHandler.h"
@@ -357,10 +356,6 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::EDGES_PATH,
       RestHandlerCreator<RestEdgesHandler>::createNoData);
-
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::EXPORT_PATH,
-      RestHandlerCreator<RestExportHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::IMPORT_PATH,

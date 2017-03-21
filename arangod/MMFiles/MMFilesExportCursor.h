@@ -21,18 +21,44 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFilesRestHandlers.h"
-#include "GeneralServer/RestHandlerFactory.h"
-#include "MMFiles/MMFilesRestExportHandler.h"
-#include "MMFiles/MMFilesRestWalHandler.h"
-#include "RestHandler/RestHandlerCreator.h"
+#ifndef ARANGOD_MMFILES_MMFILES_EXPORT_CURSOR_H
+#define ARANGOD_MMFILES_MMFILES_EXPORT_CURSOR_H 1
 
-using namespace arangodb;
+#include "Basics/Common.h"
+#include "Utils/Cursor.h"
+#include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
-void MMFilesRestHandlers::registerResources(rest::RestHandlerFactory* handlerFactory) {
-  handlerFactory->addPrefixHandler(
-      "/_admin/wal", RestHandlerCreator<MMFilesRestWalHandler>::createNoData);
-  
-  handlerFactory->addPrefixHandler(
-      "/_api/export", RestHandlerCreator<MMFilesRestExportHandler>::createNoData);
+namespace arangodb {
+namespace velocypack {
+class Slice;
 }
+
+class MMFilesCollectionExport;
+
+class MMFilesExportCursor final : public Cursor {
+ public:
+  MMFilesExportCursor(TRI_vocbase_t*, CursorId, arangodb::MMFilesCollectionExport*, size_t,
+               double, bool);
+
+  ~MMFilesExportCursor();
+
+ public:
+  CursorType type() const override final { return CURSOR_EXPORT; }
+
+  bool hasNext() override final;
+
+  arangodb::velocypack::Slice next() override final;
+
+  size_t count() const override final;
+
+  void dump(VPackBuilder&) override final;
+
+ private:
+  VocbaseGuard _vocbaseGuard;
+  arangodb::MMFilesCollectionExport* _ex;
+  size_t const _size;
+};
+}
+
+#endif

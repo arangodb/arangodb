@@ -21,16 +21,16 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestExportHandler.h"
+#include "MMFilesRestExportHandler.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Utils/CollectionExport.h"
+#include "MMFiles/MMFilesCollectionExport.h"
+#include "MMFiles/MMFilesExportCursor.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "MMFiles/MMFilesLogfileManager.h"
+#include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -41,11 +41,11 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestExportHandler::RestExportHandler(GeneralRequest* request,
+MMFilesRestExportHandler::MMFilesRestExportHandler(GeneralRequest* request,
                                      GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response), _restrictions() {}
 
-RestStatus RestExportHandler::execute() {
+RestStatus MMFilesRestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
@@ -80,7 +80,7 @@ RestStatus RestExportHandler::execute() {
 /// @brief build options for the query as JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder RestExportHandler::buildOptions(VPackSlice const& slice) {
+VPackBuilder MMFilesRestExportHandler::buildOptions(VPackSlice const& slice) {
   VPackBuilder options;
   options.openObject();
 
@@ -147,9 +147,9 @@ VPackBuilder RestExportHandler::buildOptions(VPackSlice const& slice) {
     std::string typeString = type.copyString();
 
     if (typeString == "include") {
-      _restrictions.type = CollectionExport::Restrictions::RESTRICTION_INCLUDE;
+      _restrictions.type = MMFilesCollectionExport::Restrictions::RESTRICTION_INCLUDE;
     } else if (typeString == "exclude") {
-      _restrictions.type = CollectionExport::Restrictions::RESTRICTION_EXCLUDE;
+      _restrictions.type = MMFilesCollectionExport::Restrictions::RESTRICTION_EXCLUDE;
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
@@ -176,7 +176,7 @@ VPackBuilder RestExportHandler::buildOptions(VPackSlice const& slice) {
 /// @brief was docuBlock JSF_post_api_export
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestExportHandler::createCursor() {
+void MMFilesRestExportHandler::createCursor() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
@@ -192,8 +192,7 @@ void RestExportHandler::createCursor() {
   if (!found || name.empty()) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
-                  "'collection' is missing, expecting " + EXPORT_PATH +
-                      "?collection=<identifier>");
+                  "'collection' is missing, expecting /_api/export?collection=<identifier>");
     return;
   }
 
@@ -249,7 +248,7 @@ void RestExportHandler::createCursor() {
 
   // this may throw!
   auto collectionExport =
-      std::make_unique<CollectionExport>(_vocbase, name, _restrictions);
+      std::make_unique<MMFilesCollectionExport>(_vocbase, name, _restrictions);
   collectionExport->run(waitTime, limit);
 
   size_t batchSize =
@@ -263,11 +262,17 @@ void RestExportHandler::createCursor() {
   auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
-  // create a cursor from the result
-  arangodb::ExportCursor* cursor = cursors->createFromExport(
-      collectionExport.get(), batchSize, ttl, count);
-  collectionExport.release();
-  
+  Cursor* c = nullptr;
+  {
+    auto cursor = std::make_unique<MMFilesExportCursor>(_vocbase, TRI_NewTickServer(), collectionExport.get(), batchSize, ttl, count);
+    collectionExport.release();
+ 
+    cursor->use();
+    c = cursors->addCursor(std::move(cursor));
+  }
+
+  TRI_ASSERT(c != nullptr);
+
   resetResponse(rest::ResponseCode::CREATED);
 
   try {
@@ -275,21 +280,21 @@ void RestExportHandler::createCursor() {
     VPackBuilder builder(buffer);
     builder.openObject();
     builder.add("error", VPackValue(false));
-    builder.add("code", VPackValue((int)_response->responseCode()));
-    cursor->dump(builder);
+    builder.add("code", VPackValue(static_cast<int>(_response->responseCode())));
+    c->dump(builder);
     builder.close();
 
     _response->setContentType(rest::ContentType::JSON);
     generateResult(rest::ResponseCode::CREATED, builder.slice());
 
-    cursors->release(cursor);
+    cursors->release(c);
   } catch (...) {
-    cursors->release(cursor);
+    cursors->release(c);
     throw;
   }
 }
 
-void RestExportHandler::modifyCursor() {
+void MMFilesRestExportHandler::modifyCursor() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
@@ -340,7 +345,7 @@ void RestExportHandler::modifyCursor() {
   }
 }
 
-void RestExportHandler::deleteCursor() {
+void MMFilesRestExportHandler::deleteCursor() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
