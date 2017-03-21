@@ -1,4 +1,7 @@
 v3.1.16 (2017-XX-XX)
+--------------------
+
+* fixed lost HTTP requests
 
 * ui - fixed some event issues
 
