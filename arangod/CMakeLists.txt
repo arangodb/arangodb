@@ -383,6 +383,7 @@ set(ARANGOD_SOURCES
   MMFiles/MMFilesCleanupThread.cpp
   MMFiles/MMFilesCollection.cpp
   MMFiles/MMFilesCollectionExport.cpp
+  MMFiles/MMFilesCollectionKeys.cpp
   MMFiles/MMFilesCollectorThread.cpp
   MMFiles/MMFilesCompactorThread.cpp
   MMFiles/MMFilesDatafile.cpp

@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectionKeysRepository.h"
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/Logger.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
