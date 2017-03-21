@@ -29,7 +29,6 @@
 
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "MMFiles/fulltext-index.h"
 #include "MMFiles/MMFilesEdgeIndex.h"
 #include "MMFiles/MMFilesFulltextIndex.h"
 #include "MMFiles/MMFilesGeoIndex.h"
@@ -37,6 +36,7 @@
 #include "MMFiles/MMFilesPersistentIndex.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesSkiplistIndex.h"
+#include "MMFiles/mmfiles-fulltext-index.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>

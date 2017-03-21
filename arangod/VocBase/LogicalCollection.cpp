@@ -848,7 +848,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 
   WRITE_LOCKER(writeLocker, _infoLock);
 
- // The physical may first reject illegal properties.
+  // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
   getPhysical()->updateProperties(slice, doSync);
 
@@ -864,7 +864,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
     return {tmp, TRI_errno_string(tmp)};
   }
 
- StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->changeCollection(_vocbase, _cid, this, doSync);
 
   return {};

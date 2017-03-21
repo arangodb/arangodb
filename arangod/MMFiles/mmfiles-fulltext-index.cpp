@@ -21,15 +21,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "fulltext-index.h"
+#include "mmfiles-fulltext-index.h"
 
 #include "Basics/locks.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
-#include "MMFiles/fulltext-handles.h"
-#include "MMFiles/fulltext-list.h"
-#include "MMFiles/fulltext-query.h"
-#include "MMFiles/fulltext-result.h"
+#include "MMFiles/mmfiles-fulltext-handles.h"
+#include "MMFiles/mmfiles-fulltext-list.h"
+#include "MMFiles/mmfiles-fulltext-query.h"
+#include "MMFiles/mmfiles-fulltext-result.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 
 /// @brief use padding for pointers in binary data

@@ -255,6 +255,53 @@ function CollectionSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief indexBuckets
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateWithDoCompact : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn, { doCompact: false });
+
+      assertEqual(cn, c1.name());
+      assertFalse(c1.properties().doCompact);
+
+      c1.properties({ doCompact: true });
+      assertTrue(c1.properties().doCompact);
+      
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief indexBuckets
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateWithIndexBuckets : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn, { indexBuckets: 4 });
+
+      assertEqual(cn, c1.name());
+      assertEqual(4, c1.properties().indexBuckets);
+
+      c1.properties({ indexBuckets: 8 }); 
+      // adjusted number will be stored, but number of index buckets will only
+      // take effect when collection is reloaded
+      assertEqual(8, c1.properties().indexBuckets);
+      
+      db._drop(cn);
+      
+      c1 = db._create(cn, { indexBuckets: 6 });
+
+      assertEqual(cn, c1.name());
+      assertEqual(6, c1.properties().indexBuckets);
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief journalSize
 ////////////////////////////////////////////////////////////////////////////////
 

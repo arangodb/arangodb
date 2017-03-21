@@ -674,7 +674,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   uint64_t const numDocuments = getNumberOfDocuments(collection);
 
   // get maximum size of result file
-  uint64_t maxSize = maxSizeFactor() * (uint64_t)collection->getPhysical()->journalSize();
+  uint64_t maxSize = maxSizeFactor() * static_cast<MMFilesCollection*>(collection->getPhysical())->journalSize();
   if (maxSize < 8 * 1024 * 1024) {
     maxSize = 8 * 1024 * 1024;
   }
@@ -885,7 +885,7 @@ void MMFilesCompactorThread::run() {
               return;
             }
 
-            bool doCompact = collection->getPhysical()->doCompact();
+            bool doCompact = static_cast<MMFilesCollection*>(collection->getPhysical())->doCompact();
 
             // for document collection, compactify datafiles
             if (collection->status() == TRI_VOC_COL_STATUS_LOADED && doCompact) {

@@ -21,8 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CollectionExport.h"
+#include "MMFilesCollectionExport.h"
 #include "Basics/WriteLocker.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDitch.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -33,11 +34,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/vocbase.h"
-#include "MMFiles/MMFilesCollection.h" //TODO -- REMOVE
 
 using namespace arangodb;
 
-CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
+MMFilesCollectionExport::MMFilesCollectionExport(TRI_vocbase_t* vocbase,
                                    std::string const& name,
                                    Restrictions const& restrictions)
     : _collection(nullptr),
@@ -53,13 +53,13 @@ CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
   TRI_ASSERT(_collection != nullptr);
 }
 
-CollectionExport::~CollectionExport() {
+MMFilesCollectionExport::~MMFilesCollectionExport() {
   if (_ditch != nullptr) {
     _ditch->ditches()->freeMMFilesDocumentDitch(_ditch, false);
   }
 }
 
-void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
+void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   // try to acquire the exclusive lock on the compaction
