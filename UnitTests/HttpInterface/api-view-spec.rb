@@ -25,7 +25,7 @@ describe ArangoDB do
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
           doc.parsed_response['error'].should eq(true)
           doc.parsed_response['code'].should eq(400)
-          doc.parsed_response['errorNum'].should eq(400)
+          doc.parsed_response['errorNum'].should eq(10)
         end
 
         it "creating a view without name" do
@@ -40,7 +40,7 @@ describe ArangoDB do
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
           doc.parsed_response['error'].should eq(true)
           doc.parsed_response['code'].should eq(400)
-          doc.parsed_response['errorNum'].should eq(400)
+          doc.parsed_response['errorNum'].should eq(10)
         end
 
         it "creating a view without type" do
@@ -55,7 +55,7 @@ describe ArangoDB do
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
           doc.parsed_response['error'].should eq(true)
           doc.parsed_response['code'].should eq(400)
-          doc.parsed_response['errorNum'].should eq(400)
+          doc.parsed_response['errorNum'].should eq(10)
         end
 
         it "creating a view with invalid type" do
@@ -86,7 +86,7 @@ describe ArangoDB do
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
           doc.parsed_response['error'].should eq(true)
           doc.parsed_response['code'].should eq(400)
-          doc.parsed_response['errorNum'].should eq(400)
+          doc.parsed_response['errorNum'].should eq(10)
         end
 
         it "duplicate name" do
@@ -180,7 +180,7 @@ describe ArangoDB do
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
           doc.parsed_response['error'].should eq(true)
           doc.parsed_response['code'].should eq(400)
-          doc.parsed_response['errorNum'].should eq(400)
+          doc.parsed_response['errorNum'].should eq(10)
         end
 
         it "modifying a non-existent view" do
