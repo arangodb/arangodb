@@ -276,6 +276,7 @@ SET(ARANGOD_SOURCES
   RestServer/VocbaseContext.cpp
   RestServer/WorkMonitorFeature.cpp
   RocksDBEngine/RocksDBCollection.cpp
+  RocksDBEngine/RocksDBComparator.cpp
   RocksDBEngine/RocksDBEngine.cpp
   RocksDBEngine/RocksDBEntry.cpp
   RocksDBEngine/RocksDBIndexFactory.cpp
