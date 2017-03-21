@@ -447,6 +447,7 @@ void SocketTask::asyncReadSome() {
 
       // ignore the result of processAll, try to read more bytes down below
       processAll();
+      compactify();
     }
   } catch (boost::system::system_error& err) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "i/o stream failed with: "
@@ -462,35 +463,41 @@ void SocketTask::asyncReadSome() {
   }
 
   // try to read more bytes
-  if (!reserveMemory()) {
-    LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
-    return;
-  }
-
-  auto self = shared_from_this();
-  auto handler = [self, this](const boost::system::error_code& ec,
-                              std::size_t transferred) {
-    JobGuard guard(_loop);
-    guard.work();
-
-    MUTEX_LOCKER(locker, _readLock);
-
-    if (ec) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "read on stream failed with: "
-                                              << ec.message();
-      closeStream();
-    } else {
-      _readBuffer.increaseLength(transferred);
-
-      if (processAll()) {
-        _loop._scheduler->post([self, this]() { asyncReadSome(); });
-      }
-    }
-  };
-
   if (!_abandoned && _peer) {
-    _peer->asyncRead(boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
-                     handler);
+    if (!reserveMemory()) {
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
+      return;
+    }
+
+    auto self = shared_from_this();
+
+    // WARNING: the _readBuffer MUST NOT be changed until the callback
+    // has been called! Otherwise ASIO will get confused and write to
+    // the wrong position.
+
+    _peer->asyncRead(
+        boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
+        [self, this](const boost::system::error_code& ec,
+                     std::size_t transferred) {
+          JobGuard guard(_loop);
+          guard.work();
+
+          MUTEX_LOCKER(locker, _readLock);
+
+          if (ec) {
+            LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+                << "read on stream failed with: " << ec.message();
+            closeStream();
+          } else {
+            _readBuffer.increaseLength(transferred);
+
+            if (processAll()) {
+              _loop._scheduler->post([self, this]() { asyncReadSome(); });
+            }
+
+            compactify();
+          }
+        });
   }
 }
 

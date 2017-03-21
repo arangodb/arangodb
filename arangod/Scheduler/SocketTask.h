@@ -61,6 +61,7 @@ class SocketTask : virtual public Task {
  protected:
   // caller will hold the _readLock
   virtual bool processRead(double start_time) = 0;
+  virtual void compactify() {}
 
   // This function is used during the protocol switch from http
   // to VelocyStream. This way we no not require additional
