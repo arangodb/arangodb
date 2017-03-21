@@ -107,6 +107,14 @@ friend class MMFilesGeoIndexIterator;
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
   
+  char const* typeName() const override { 
+    if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
+        _variant == INDEX_GEO_COMBINED_LON_LAT) {
+      return "geo1";
+    }
+    return "geo2";
+  }
+  
   IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
