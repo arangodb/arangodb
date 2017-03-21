@@ -277,6 +277,7 @@ SET(ARANGOD_SOURCES
   RestServer/WorkMonitorFeature.cpp
   RocksDBEngine/RocksDBCollection.cpp
   RocksDBEngine/RocksDBEngine.cpp
+  RocksDBEngine/RocksDBEntry.cpp
   RocksDBEngine/RocksDBIndexFactory.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionContextData.cpp
