@@ -52,12 +52,12 @@ void AcceptorTcp::open() {
 
     boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(*query, err);
     if (err) {
-      LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to to resolve Endpoint: " << err.message();
+      LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to to resolve endpoint: " << err.message();
       throw std::runtime_error(err.message());
     }
 
     if(boost::asio::ip::tcp::resolver::iterator{} == iter){
-      LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to to resolve Endpoint: endpoint is default constructed";
+      LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to to resolve endpoint: endpoint is default constructed";
     }
 
     asioEndpoint = iter->endpoint(); // function not documented in boost?!
@@ -70,7 +70,7 @@ void AcceptorTcp::open() {
 
   _acceptor.bind(asioEndpoint, err);
   if (err) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to bind Endpoint: " << err.message();
+    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to bind endpoint: " << err.message();
     throw std::runtime_error(err.message());
   }
   _acceptor.listen();
