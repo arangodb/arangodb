@@ -34,6 +34,7 @@
 #include "GeneralServer/GeneralServer.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesCollectionKeys.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/mmfiles-replication-dump.h"
 #include "Replication/InitialSyncer.h"
@@ -44,7 +45,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
@@ -2348,7 +2348,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
 
   // initialize a container with the keys
   auto keys =
-      std::make_unique<CollectionKeys>(_vocbase, col->name(), id, 300.0);
+      std::make_unique<MMFilesCollectionKeys>(_vocbase, col->name(), id, 300.0);
 
   std::string const idString(std::to_string(keys->id()));
 
@@ -2402,7 +2402,7 @@ void RestReplicationHandler::handleCommandGetKeys() {
   auto keysRepository = _vocbase->collectionKeys();
   TRI_ASSERT(keysRepository != nullptr);
 
-  auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
+  auto collectionKeysId = static_cast<CollectionKeysId>(
       arangodb::basics::StringUtils::uint64(id));
 
   auto collectionKeys = keysRepository->find(collectionKeysId);
@@ -2501,7 +2501,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
   auto keysRepository = _vocbase->collectionKeys();
   TRI_ASSERT(keysRepository != nullptr);
 
-  auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
+  auto collectionKeysId = static_cast<CollectionKeysId>(
       arangodb::basics::StringUtils::uint64(id));
 
   auto collectionKeys = keysRepository->find(collectionKeysId);
@@ -2563,7 +2563,7 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
   auto keys = _vocbase->collectionKeys();
   TRI_ASSERT(keys != nullptr);
 
-  auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
+  auto collectionKeysId = static_cast<CollectionKeysId>(
       arangodb::basics::StringUtils::uint64(id));
   bool found = keys->remove(collectionKeysId);
 
