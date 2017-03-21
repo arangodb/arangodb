@@ -40,7 +40,8 @@ namespace aql {
 struct QueryResult;
 }
 
-class CollectionExport;
+class MMFilesCollectionExport;
+class MMFilesExportCursor;
 
 class CursorRepository {
  public:
@@ -72,7 +73,7 @@ class CursorRepository {
   /// @brief creates a cursor and stores it in the registry
   //////////////////////////////////////////////////////////////////////////////
 
-  ExportCursor* createFromExport(arangodb::CollectionExport*, size_t, double,
+  MMFilesExportCursor* createFromExport(arangodb::MMFilesCollectionExport*, size_t, double,
                                  bool);
 
   //////////////////////////////////////////////////////////////////////////////

@@ -236,7 +236,6 @@ SET(ARANGOD_SOURCES
   RestHandler/RestDocumentHandler.cpp
   RestHandler/RestEchoHandler.cpp
   RestHandler/RestEdgesHandler.cpp
-  RestHandler/RestExportHandler.cpp
   RestHandler/RestImportHandler.cpp
   RestHandler/RestJobHandler.cpp
   RestHandler/RestPleaseUpgradeHandler.cpp
@@ -300,7 +299,6 @@ SET(ARANGOD_SOURCES
   Transaction/Methods.cpp
   Transaction/StandaloneContext.cpp
   Transaction/V8Context.cpp
-  Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp
   Utils/CollectionNameResolver.cpp
@@ -385,6 +383,7 @@ set(ARANGOD_SOURCES
   MMFiles/MMFilesAqlFunctions.cpp
   MMFiles/MMFilesCleanupThread.cpp
   MMFiles/MMFilesCollection.cpp
+  MMFiles/MMFilesCollectionExport.cpp
   MMFiles/MMFilesCollectorThread.cpp
   MMFiles/MMFilesCompactorThread.cpp
   MMFiles/MMFilesDatafile.cpp
@@ -394,6 +393,7 @@ set(ARANGOD_SOURCES
   MMFiles/MMFilesDocumentOperation.cpp
   MMFiles/MMFilesEdgeIndex.cpp
   MMFiles/MMFilesEngine.cpp
+  MMFiles/MMFilesExportCursor.cpp
   MMFiles/MMFilesIndexElement.cpp
   MMFiles/MMFilesIndexFactory.cpp
   MMFiles/MMFilesLogfileManager.cpp
@@ -407,6 +407,7 @@ set(ARANGOD_SOURCES
   MMFiles/MMFilesPersistentIndexKeyComparator.cpp
   MMFiles/MMFilesPrimaryIndex.cpp
   MMFiles/MMFilesRemoverThread.cpp
+  MMFiles/MMFilesRestExportHandler.cpp
   MMFiles/MMFilesRestHandlers.cpp
   MMFiles/MMFilesRestWalHandler.cpp
   MMFiles/MMFilesRevisionsCache.cpp

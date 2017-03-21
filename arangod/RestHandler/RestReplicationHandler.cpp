@@ -1261,16 +1261,6 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   TRI_ASSERT(col != nullptr);
 
   /* Temporary ASSERTS to prove correctness of new constructor */
-  TRI_ASSERT(col->getPhysical()->doCompact() ==
-             arangodb::basics::VelocyPackHelper::getBooleanValue(
-                 slice, "doCompact", true));
-  TRI_ASSERT(
-      col->waitForSync() ==
-      arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, "waitForSync",
-          application_features::ApplicationServer::getFeature<DatabaseFeature>(
-              "Database")
-              ->waitForSync()));
   TRI_ASSERT(col->isSystem() == (name[0] == '_'));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_voc_cid_t planId = 0;

@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_COLLECTION_EXPORT_H
-#define ARANGOD_UTILS_COLLECTION_EXPORT_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_COLLECTION_EXPORT_H
+#define ARANGOD_MMFILES_MMFILES_COLLECTION_EXPORT_H 1
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
@@ -36,8 +36,8 @@ namespace arangodb {
 class CollectionGuard;
 class MMFilesDocumentDitch;
 
-class CollectionExport {
-  friend class ExportCursor;
+class MMFilesCollectionExport {
+  friend class MMFilesExportCursor;
 
  public:
   struct Restrictions {
@@ -50,12 +50,12 @@ class CollectionExport {
   };
 
  public:
-  CollectionExport(CollectionExport const&) = delete;
-  CollectionExport& operator=(CollectionExport const&) = delete;
+  MMFilesCollectionExport(MMFilesCollectionExport const&) = delete;
+  MMFilesCollectionExport& operator=(MMFilesCollectionExport const&) = delete;
 
-  CollectionExport(TRI_vocbase_t*, std::string const&, Restrictions const&);
+  MMFilesCollectionExport(TRI_vocbase_t*, std::string const&, Restrictions const&);
 
-  ~CollectionExport();
+  ~MMFilesCollectionExport();
 
  public:
   void run(uint64_t, size_t);

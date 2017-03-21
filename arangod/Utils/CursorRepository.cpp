@@ -24,7 +24,8 @@
 #include "CursorRepository.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
-#include "Utils/CollectionExport.h"
+#include "MMFiles/MMFilesCollectionExport.h"
+#include "MMFiles/MMFilesExportCursor.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -115,14 +116,14 @@ VelocyPackCursor* CursorRepository::createFromQueryResult(
 /// @brief creates a cursor and stores it in the registry
 ////////////////////////////////////////////////////////////////////////////////
 
-ExportCursor* CursorRepository::createFromExport(arangodb::CollectionExport* ex,
+MMFilesExportCursor* CursorRepository::createFromExport(arangodb::MMFilesCollectionExport* ex,
                                                  size_t batchSize, double ttl,
                                                  bool count) {
   TRI_ASSERT(ex != nullptr);
 
   CursorId const id = TRI_NewTickServer();
-  arangodb::ExportCursor* cursor =
-      new arangodb::ExportCursor(_vocbase, id, ex, batchSize, ttl, count);
+  MMFilesExportCursor* cursor =
+      new MMFilesExportCursor(_vocbase, id, ex, batchSize, ttl, count);
 
   cursor->use();
 

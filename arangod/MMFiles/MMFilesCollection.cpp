@@ -1111,7 +1111,6 @@ bool MMFilesCollection::closeDatafiles(std::vector<MMFilesDatafile*> const& file
   return result;
 }
 
-
 void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
   result.add("count", VPackValue(initialCount()));
@@ -1133,8 +1132,14 @@ void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
 }
 
-void MMFilesCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+void MMFilesCollection::getPropertiesVPackCoordinator(velocypack::Builder& result) const {
+  TRI_ASSERT(result.isOpenObject());
+  result.add("doCompact", VPackValue(_doCompact));
+  result.add("indexBuckets", VPackValue(_indexBuckets));
+  result.add("journalSize", VPackValue(_journalSize));
+}
 
+void MMFilesCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
   // fills in compaction status
   char const* lastCompactionStatus = "-";
   char lastCompactionStampString[21];
