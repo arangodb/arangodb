@@ -21,10 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_COLLECTION_KEYS_H
-#define ARANGOD_UTILS_COLLECTION_KEYS_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_COLLECTION_KEYS_H
+#define ARANGOD_MMFILES_MMFILES_COLLECTION_KEYS_H 1
 
 #include "Basics/Common.h"
+#include "Utils/CollectionKeys.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -34,87 +36,58 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-namespace velocypack {
-class Slice;
-}
-
-class LogicalCollection;
+class CollectionGuard;
+class MMFilesDocumentDitch;
 
 typedef TRI_voc_tick_t CollectionKeysId;
 
-class CollectionKeys {
+class MMFilesCollectionKeys final : public CollectionKeys {
  public:
-  CollectionKeys(CollectionKeys const&) = delete;
-  CollectionKeys& operator=(CollectionKeys const&) = delete;
+  MMFilesCollectionKeys(MMFilesCollectionKeys const&) = delete;
+  MMFilesCollectionKeys& operator=(MMFilesCollectionKeys const&) = delete;
 
-  CollectionKeys(TRI_vocbase_t*, std::string const& name, 
-                 double ttl);
+  MMFilesCollectionKeys(TRI_vocbase_t*, std::string const& name, 
+                        TRI_voc_tick_t blockerId, double ttl);
 
-  virtual ~CollectionKeys() = default;
+  ~MMFilesCollectionKeys();
 
  public:
-  CollectionKeysId id() const { return _id; }
-
-  double ttl() const { return _ttl; }
-
-  double expires() const { return _expires; }
-
-  bool isUsed() const { return _isUsed; }
-
-  bool isDeleted() const { return _isDeleted; }
-
-  void deleted() { _isDeleted = true; }
-
-  void use() {
-    TRI_ASSERT(!_isDeleted);
-    TRI_ASSERT(!_isUsed);
-
-    _isUsed = true;
-    _expires = TRI_microtime() + _ttl;
+  size_t count() const override {
+    return _vpack.size();
   }
-
-  void release() {
-    TRI_ASSERT(_isUsed);
-    _isUsed = false;
-  }
-
-  virtual size_t count() const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initially creates the list of keys
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void create(TRI_voc_tick_t) = 0;
+  void create(TRI_voc_tick_t) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief hashes a chunk of keys
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::tuple<std::string, std::string, uint64_t> hashChunk(size_t,
-                                                           size_t) const = 0;
+  std::tuple<std::string, std::string, uint64_t> hashChunk(size_t,
+                                                           size_t) const override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dumps keys into the result
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void dumpKeys(arangodb::velocypack::Builder&, size_t, size_t) const = 0;
+  void dumpKeys(arangodb::velocypack::Builder&, size_t, size_t) const override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dumps documents into the result
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void dumpDocs(arangodb::velocypack::Builder&, size_t, size_t,
-                        arangodb::velocypack::Slice const&) const = 0;
+  void dumpDocs(arangodb::velocypack::Builder&, size_t, size_t,
+                arangodb::velocypack::Slice const&) const override;
 
- protected:
-  TRI_vocbase_t* _vocbase;
-  arangodb::LogicalCollection* _collection;
-  std::string const _name;
-  CollectionKeysId _id;
-  double _ttl;
-  double _expires;
-  bool _isDeleted;
-  bool _isUsed;
+ private:
+  std::unique_ptr<arangodb::CollectionGuard> _guard;
+  arangodb::MMFilesDocumentDitch* _ditch;
+  arangodb::CollectionNameResolver _resolver;
+  TRI_voc_tick_t _blockerId;
+  std::vector<uint8_t const*> _vpack;
 };
 }
 

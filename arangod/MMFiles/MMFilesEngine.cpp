@@ -768,10 +768,10 @@ std::string MMFilesEngine::createCollection(
 
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) >
-      parameters->getPhysical()->journalSize()) {
+      static_cast<MMFilesCollection*>(parameters->getPhysical())->journalSize()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "cannot create datafile '" << parameters->name() << "' in '" << path
-        << "', maximal size '" << parameters->getPhysical()->journalSize()
+        << "', journal size '" << static_cast<MMFilesCollection*>(parameters->getPhysical())->journalSize()
         << "' is too small";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATAFILE_FULL);
   }

@@ -278,6 +278,8 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
     return Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
   }
   
+  char const* typeName() const override { return "skiplist"; }
+  
   bool allowExpansion() const override { return true; }
 
   bool canBeDropped() const override { return true; }

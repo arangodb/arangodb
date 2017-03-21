@@ -34,7 +34,6 @@ struct MMFilesDocumentOperation;
 namespace transaction {
 class Methods;
 }
-;
 class TransactionState;
 
 /// @brief collection used in a transaction

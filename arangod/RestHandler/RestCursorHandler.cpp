@@ -211,20 +211,20 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     TRI_ASSERT(queryResult.result.get() != nullptr);
 
     // steal the query result, cursor will take over the ownership
-    arangodb::VelocyPackCursor* cursor = cursors->createFromQueryResult(
+    Cursor* cursor = cursors->createFromQueryResult(
         std::move(queryResult), batchSize, extra, ttl, count);
 
     try {
       VPackBuilder result;
       result.openObject();
       result.add("error", VPackValue(false));
-      result.add("code", VPackValue((int)_response->responseCode()));
+      result.add("code", VPackValue(static_cast<int>(_response->responseCode())));
       cursor->dump(result);
       result.close();
 
       _response->setContentType(rest::ContentType::JSON);
       generateResult(_response->responseCode(), result.slice(),
-                     cursor->result()->context);
+                     static_cast<VelocyPackCursor*>(cursor)->result()->context);
 
       cursors->release(cursor);
     } catch (...) {

@@ -35,9 +35,6 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-/* regression testing program for GeoIndex module     */
-/*  R.A.P. 2.1  8.1.2012                              */
-
 #include "Basics/Common.h"
 
 #include "catch.hpp"
@@ -60,13 +57,14 @@ TEST_CASE("tst_pregel1", "[pregel][mmap]") {
 #ifdef __linux__
   mapped.resize(2048);
   REQUIRE(mapped.size() == 2048);
+  ptr = mapped.data();
   for (size_t i = 0; i < 1024; i++) {
     REQUIRE(*(ptr+i) == i);
   }
-  
 #endif
   
   mapped.resize(512);
+  ptr = mapped.data();
   REQUIRE(mapped.size() == 512);
   for (size_t i = 0; i < 512; i++) {
     REQUIRE(*(ptr+i) == i);

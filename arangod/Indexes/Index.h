@@ -176,12 +176,14 @@ class Index {
   static void validateFields(VPackSlice const& slice);
 
   /// @brief return the name of the index
-  char const* typeName() const { return typeName(type()); }
+  char const* oldtypeName() const { return oldtypeName(type()); }
 
   /// @brief return the index type based on a type name
   static IndexType type(char const* type);
 
   static IndexType type(std::string const& type);
+  
+  virtual char const* typeName() const = 0;
 
   virtual bool allowExpansion() const = 0;
 
@@ -194,7 +196,7 @@ class Index {
   virtual IndexType type() const = 0;
 
   /// @brief return the name of an index type
-  static char const* typeName(IndexType);
+  static char const* oldtypeName(IndexType);
 
   /// @brief validate an index id
   static bool validateId(char const*);

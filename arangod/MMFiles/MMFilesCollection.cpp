@@ -1111,7 +1111,6 @@ bool MMFilesCollection::closeDatafiles(std::vector<MMFilesDatafile*> const& file
   return result;
 }
 
-
 void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
   result.add("count", VPackValue(initialCount()));
@@ -1133,8 +1132,14 @@ void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
 }
 
-void MMFilesCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+void MMFilesCollection::getPropertiesVPackCoordinator(velocypack::Builder& result) const {
+  TRI_ASSERT(result.isOpenObject());
+  result.add("doCompact", VPackValue(_doCompact));
+  result.add("indexBuckets", VPackValue(_indexBuckets));
+  result.add("journalSize", VPackValue(_journalSize));
+}
 
+void MMFilesCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
   // fills in compaction status
   char const* lastCompactionStatus = "-";
   char lastCompactionStampString[21];
@@ -2329,7 +2334,7 @@ int MMFilesCollection::beginReadTimed(bool useDeadlockDetector,
     if (waitTime == 0) {   // initialize times
       // set end time for lock waiting
       if (timeout <= 0.0) {
-        timeout = 15.0 * 60.0;
+        timeout = defaultLockTimeout;
       }
       startTime = now;
       waitTime = 1;
@@ -2339,7 +2344,7 @@ int MMFilesCollection::beginReadTimed(bool useDeadlockDetector,
       if (useDeadlockDetector) {
         _logicalCollection->vocbase()->_deadlockDetector.unsetReaderBlocked(_logicalCollection);
       }
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "timed out waiting for read-lock on collection '" << _logicalCollection->name()
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "timed out after " << timeout << " s waiting for read-lock on collection '" << _logicalCollection->name()
                  << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }
@@ -2435,7 +2440,7 @@ int MMFilesCollection::beginWriteTimed(bool useDeadlockDetector,
     if (waitTime == 0) {   // initialize times
       // set end time for lock waiting
       if (timeout <= 0.0) {
-        timeout = 15.0 * 60.0;
+        timeout = defaultLockTimeout;
       }
       startTime = now;
       waitTime = 1;
@@ -2446,7 +2451,7 @@ int MMFilesCollection::beginWriteTimed(bool useDeadlockDetector,
         _logicalCollection->vocbase()->_deadlockDetector.unsetWriterBlocked(
             _logicalCollection);
       }
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "timed out waiting for write-lock on collection '" << _logicalCollection->name()
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "timed out after " << timeout << " s waiting for write-lock on collection '" << _logicalCollection->name()
                  << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }

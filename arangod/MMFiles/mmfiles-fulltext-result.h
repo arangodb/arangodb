@@ -21,10 +21,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_FULLTEXT_INDEX_FULLTEXT_RESULT_H
-#define ARANGOD_FULLTEXT_INDEX_FULLTEXT_RESULT_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_FULLTEXT_RESULT_H
+#define ARANGOD_MMFILES_MMFILES_FULLTEXT_RESULT_H 1
 
-#include "fulltext-common.h"
+#include "mmfiles-fulltext-common.h"
 
 // Forward declarations
 namespace arangodb {

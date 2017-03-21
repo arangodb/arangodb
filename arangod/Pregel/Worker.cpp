@@ -106,10 +106,8 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
     // initialization of the graphstore might take an undefined amount
     // of time. Therefore this is performed asynchronous
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    boost::asio::io_service* ioService =
-        SchedulerFeature::SCHEDULER->ioService();
-    TRI_ASSERT(ioService != nullptr);
-    ioService->post(
+    rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    scheduler->post(
         [this, callback] { _graphStore->loadShards(&_config, callback); });
   }
 }
@@ -317,8 +315,7 @@ void Worker<V, E, M>::_startProcessing() {
   _state = WorkerState::COMPUTING;
   _activeCount = 0;  // active count is only valid after the run
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
-  TRI_ASSERT(ioService != nullptr);
+  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
 
   size_t total = _graphStore->localVertexCount();
   size_t delta = total / _config.parallelism();
@@ -331,7 +328,7 @@ void Worker<V, E, M>::_startProcessing() {
   }
   size_t i = 0;
   do {
-    ioService->post([this, start, end, i] {
+    scheduler->post([this, start, end, i] {
       if (_state != WorkerState::COMPUTING) {
         LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
@@ -680,9 +677,8 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   _conductorAggregators->setAggregatedValues(data);
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
-  TRI_ASSERT(ioService != nullptr);
-  ioService->post([this] {
+  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  scheduler->post([this] {
     if (_state != WorkerState::RECOVERING) {
       LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
@@ -736,10 +732,8 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
                                      VPackBuilder const& message) {
   if (ServerState::instance()->isRunningInCluster() == false) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    boost::asio::io_service* ioService =
-        SchedulerFeature::SCHEDULER->ioService();
-    TRI_ASSERT(ioService != nullptr);
-    ioService->post([path, message] {
+    rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    scheduler->post([path, message] {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(path, message.slice(), response);
     });

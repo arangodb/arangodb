@@ -26,7 +26,6 @@
 
 #include "Aql/QueryResult.h"
 #include "Basics/Common.h"
-#include "Basics/StringBuffer.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -37,8 +36,6 @@ namespace velocypack {
 class Builder;
 class Slice;
 }
-
-class CollectionExport;
 
 typedef TRI_voc_tick_t CursorId;
 
@@ -62,12 +59,9 @@ class Cursor {
 
   size_t batchSize() const { return _batchSize; }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a slice to read the extra values.
   /// Make sure the Cursor Object is not destroyed while reading this slice.
   /// If no extras are set this will return a NONE slice.
-  //////////////////////////////////////////////////////////////////////////////
-
   arangodb::velocypack::Slice extra() const;
 
   bool hasCount() const { return _hasCount; }
@@ -145,29 +139,6 @@ class VelocyPackCursor final : public Cursor {
   bool _cached;
 };
 
-class ExportCursor final : public Cursor {
- public:
-  ExportCursor(TRI_vocbase_t*, CursorId, arangodb::CollectionExport*, size_t,
-               double, bool);
-
-  ~ExportCursor();
-
- public:
-  CursorType type() const override final { return CURSOR_EXPORT; }
-
-  bool hasNext() override final;
-
-  arangodb::velocypack::Slice next() override final;
-
-  size_t count() const override final;
-
-  void dump(VPackBuilder&) override final;
-
- private:
-  VocbaseGuard _vocbaseGuard;
-  arangodb::CollectionExport* _ex;
-  size_t const _size;
-};
 }
 
 #endif
