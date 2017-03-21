@@ -26,8 +26,8 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
-#include "MMFiles/fulltext-index.h"
 #include "MMFiles/MMFilesToken.h"
+#include "MMFiles/mmfiles-fulltext-index.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 #include "StorageEngine/TransactionState.h"
 

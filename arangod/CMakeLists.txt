@@ -257,7 +257,6 @@ SET(ARANGOD_SOURCES
   RestHandler/RestDocumentHandler.cpp
   RestHandler/RestEchoHandler.cpp
   RestHandler/RestEdgesHandler.cpp
-  RestHandler/RestExportHandler.cpp
   RestHandler/RestImportHandler.cpp
   RestHandler/RestJobHandler.cpp
   RestHandler/RestPleaseUpgradeHandler.cpp
@@ -321,7 +320,6 @@ SET(ARANGOD_SOURCES
   Transaction/Methods.cpp
   Transaction/StandaloneContext.cpp
   Transaction/V8Context.cpp
-  Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp
   Utils/CollectionNameResolver.cpp
@@ -363,7 +361,6 @@ SET(ARANGOD_SOURCES
   VocBase/modes.cpp
   VocBase/replication-applier.cpp
   VocBase/replication-common.cpp
-  VocBase/replication-dump.cpp
   VocBase/ticks.cpp
   VocBase/vocbase.cpp
   Pregel/AggregatorHandler.cpp
@@ -396,16 +393,18 @@ SET(ARANGOD_SOURCES
 # add sources for mmfiles engine
 set(ARANGOD_SOURCES
   ${ARANGOD_SOURCES}
-  MMFiles/fulltext-handles.cpp
-  MMFiles/fulltext-index.cpp
-  MMFiles/fulltext-list.cpp
-  MMFiles/fulltext-query.cpp
-  MMFiles/fulltext-result.cpp
-  MMFiles/geo-index.cpp
+  MMFiles/mmfiles-fulltext-handles.cpp
+  MMFiles/mmfiles-fulltext-index.cpp
+  MMFiles/mmfiles-fulltext-list.cpp
+  MMFiles/mmfiles-fulltext-query.cpp
+  MMFiles/mmfiles-fulltext-result.cpp
+  MMFiles/mmfiles-geo-index.cpp
   MMFiles/MMFilesAllocatorThread.cpp
   MMFiles/MMFilesAqlFunctions.cpp
   MMFiles/MMFilesCleanupThread.cpp
   MMFiles/MMFilesCollection.cpp
+  MMFiles/MMFilesCollectionExport.cpp
+  MMFiles/MMFilesCollectionKeys.cpp
   MMFiles/MMFilesCollectorThread.cpp
   MMFiles/MMFilesCompactorThread.cpp
   MMFiles/MMFilesDatafile.cpp
@@ -415,6 +414,7 @@ set(ARANGOD_SOURCES
   MMFiles/MMFilesDocumentOperation.cpp
   MMFiles/MMFilesEdgeIndex.cpp
   MMFiles/MMFilesEngine.cpp
+  MMFiles/MMFilesExportCursor.cpp
   MMFiles/MMFilesIndexElement.cpp
   MMFiles/MMFilesIndexFactory.cpp
   MMFiles/MMFilesLogfileManager.cpp
@@ -428,6 +428,7 @@ set(ARANGOD_SOURCES
   MMFiles/MMFilesPersistentIndexKeyComparator.cpp
   MMFiles/MMFilesPrimaryIndex.cpp
   MMFiles/MMFilesRemoverThread.cpp
+  MMFiles/MMFilesRestExportHandler.cpp
   MMFiles/MMFilesRestHandlers.cpp
   MMFiles/MMFilesRestWalHandler.cpp
   MMFiles/MMFilesRevisionsCache.cpp
@@ -443,6 +444,7 @@ set(ARANGOD_SOURCES
   MMFiles/MMFilesWalRecoveryFeature.cpp
   MMFiles/MMFilesWalSlot.cpp
   MMFiles/MMFilesWalSlots.cpp
+  MMFiles/mmfiles-replication-dump.cpp
 )
 
 if (NOT MSVC)

@@ -80,7 +80,7 @@ void RestViewHandler::createView() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting POST /_api/view");
     return;
   }
@@ -94,7 +94,7 @@ void RestViewHandler::createView() {
   VPackSlice body = parsedBody.get()->slice();
 
   auto badParamError = [&]() -> void {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting body to be of the form {name: <string>, type: "
                   "<string>, properties: <object>}");
   };
@@ -139,7 +139,7 @@ void RestViewHandler::modifyView() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if ((suffixes.size() != 2) || (suffixes[1] != "properties")) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting PUT /_api/view/<view-name>/properties");
     return;
   }
@@ -197,7 +197,7 @@ void RestViewHandler::deleteView() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting DELETE /_api/view/<view-name>");
     return;
   }
@@ -226,7 +226,7 @@ void RestViewHandler::getViews() {
 
   if (suffixes.size() > 2 ||
       ((suffixes.size() == 2) && (suffixes[1] != "properties"))) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting GET /_api/view[/<view-name>[/properties]]");
     return;
   }

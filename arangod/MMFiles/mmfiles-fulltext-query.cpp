@@ -21,10 +21,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "fulltext-query.h"
+#include "mmfiles-fulltext-query.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
-#include "MMFiles/fulltext-index.h"
+#include "MMFiles/mmfiles-fulltext-index.h"
 
 /// @brief normalize a word for a fulltext search query
 static TRI_fulltext_query_operation_e ParseOperation(char c) {

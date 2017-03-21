@@ -21,22 +21,22 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_EXPORT_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_EXPORT_HANDLER_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_REST_EXPORT_HANDLER_H
+#define ARANGOD_MMFILES_MMFILES_REST_EXPORT_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "MMFiles/MMFilesCollectionExport.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "Utils/CollectionExport.h"
 
 namespace arangodb {
-class RestExportHandler : public RestVocbaseBaseHandler {
+class MMFilesRestExportHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestExportHandler(GeneralRequest*, GeneralResponse*);
+  MMFilesRestExportHandler(GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override;
-  char const* name() const override final { return "RestExportHandler"; }
+  char const* name() const override final { return "MMFilesRestExportHandler"; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -68,7 +68,7 @@ class RestExportHandler : public RestVocbaseBaseHandler {
   /// @brief restrictions for export
   //////////////////////////////////////////////////////////////////////////////
 
-  CollectionExport::Restrictions _restrictions;
+  MMFilesCollectionExport::Restrictions _restrictions;
 };
 }
 

@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_FULLTEXT_INDEX_FULLTEXT_COMMON_H
-#define ARANGOD_FULLTEXT_INDEX_FULLTEXT_COMMON_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_FULLTEXT_COMMON_H
+#define ARANGOD_MMFILES_MMFILES_FULLTEXT_COMMON_H 1
 
 #include "Basics/Common.h"
 

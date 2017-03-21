@@ -25,6 +25,8 @@
 #include "Basics/ReadLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
+#include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/mmfiles-replication-dump.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
@@ -33,8 +35,6 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
-#include "VocBase/replication-dump.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -165,11 +165,11 @@ static void JS_LastLoggerReplication(
     
   auto transactionContext = std::make_shared<transaction::StandaloneContext>(vocbase);
 
-  TRI_replication_dump_t dump(transactionContext, 0, true, 0);
+  MMFilesReplicationDumpContext dump(transactionContext, 0, true, 0);
   TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(args[0], true);
   TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(args[1], true);
 
-  int res = TRI_DumpLogReplication(&dump, std::unordered_set<TRI_voc_tid_t>(),
+  int res = MMFilesDumpLogReplication(&dump, std::unordered_set<TRI_voc_tid_t>(),
                                    0, tickStart, tickEnd, true);
 
   if (res != TRI_ERROR_NO_ERROR) {

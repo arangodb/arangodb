@@ -34,7 +34,9 @@
 #include "GeneralServer/GeneralServer.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesCollectionKeys.h"
 #include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/mmfiles-replication-dump.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
@@ -43,7 +45,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
@@ -53,7 +54,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/replication-applier.h"
-#include "VocBase/replication-dump.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
@@ -966,12 +966,12 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
       std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   // initialize the dump container
-  TRI_replication_dump_t dump(transactionContext,
+  MMFilesReplicationDumpContext dump(transactionContext,
                               static_cast<size_t>(determineChunkSize()),
                               includeSystem, cid, useVpp);
 
   // and dump
-  int res = TRI_DumpLogReplication(&dump, transactionIds, firstRegularTick,
+  int res = MMFilesDumpLogReplication(&dump, transactionIds, firstRegularTick,
                                    tickStart, tickEnd, false);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1070,11 +1070,11 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
       std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   // initialize the dump container
-  TRI_replication_dump_t dump(
+  MMFilesReplicationDumpContext dump(
       transactionContext, static_cast<size_t>(determineChunkSize()), false, 0);
 
   // and dump
-  int res = TRI_DetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
+  int res = MMFilesDetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
 
   if (res == TRI_ERROR_NO_ERROR) {
     // generate the result
@@ -1261,16 +1261,6 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   TRI_ASSERT(col != nullptr);
 
   /* Temporary ASSERTS to prove correctness of new constructor */
-  TRI_ASSERT(col->getPhysical()->doCompact() ==
-             arangodb::basics::VelocyPackHelper::getBooleanValue(
-                 slice, "doCompact", true));
-  TRI_ASSERT(
-      col->waitForSync() ==
-      arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, "waitForSync",
-          application_features::ApplicationServer::getFeature<DatabaseFeature>(
-              "Database")
-              ->waitForSync()));
   TRI_ASSERT(col->isSystem() == (name[0] == '_'));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_voc_cid_t planId = 0;
@@ -2358,7 +2348,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
 
   // initialize a container with the keys
   auto keys =
-      std::make_unique<CollectionKeys>(_vocbase, col->name(), id, 300.0);
+      std::make_unique<MMFilesCollectionKeys>(_vocbase, col->name(), id, 300.0);
 
   std::string const idString(std::to_string(keys->id()));
 
@@ -2412,7 +2402,7 @@ void RestReplicationHandler::handleCommandGetKeys() {
   auto keysRepository = _vocbase->collectionKeys();
   TRI_ASSERT(keysRepository != nullptr);
 
-  auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
+  auto collectionKeysId = static_cast<CollectionKeysId>(
       arangodb::basics::StringUtils::uint64(id));
 
   auto collectionKeys = keysRepository->find(collectionKeysId);
@@ -2511,7 +2501,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
   auto keysRepository = _vocbase->collectionKeys();
   TRI_ASSERT(keysRepository != nullptr);
 
-  auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
+  auto collectionKeysId = static_cast<CollectionKeysId>(
       arangodb::basics::StringUtils::uint64(id));
 
   auto collectionKeys = keysRepository->find(collectionKeysId);
@@ -2573,7 +2563,7 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
   auto keys = _vocbase->collectionKeys();
   TRI_ASSERT(keys != nullptr);
 
-  auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
+  auto collectionKeysId = static_cast<CollectionKeysId>(
       arangodb::basics::StringUtils::uint64(id));
   bool found = keys->remove(collectionKeysId);
 
@@ -2702,7 +2692,7 @@ void RestReplicationHandler::handleCommandDump() {
       std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   // initialize the dump container
-  TRI_replication_dump_t dump(transactionContext,
+  MMFilesReplicationDumpContext dump(transactionContext,
                               static_cast<size_t>(determineChunkSize()),
                               includeSystem, 0);
 
@@ -2711,7 +2701,7 @@ void RestReplicationHandler::handleCommandDump() {
   }
 
   int res =
-      TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks);
+      MMFilesDumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);

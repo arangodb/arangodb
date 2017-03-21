@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
-#include "MMFiles/geo-index.h"
+#include "MMFiles/mmfiles-geo-index.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 

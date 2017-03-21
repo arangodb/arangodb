@@ -249,8 +249,10 @@ void Scheduler::startRebalancer() {
 
     rebalanceThreads();
 
-    _threadManager->expires_from_now(interval);
-    _threadManager->async_wait(_threadHandler);
+    if (_threadManager != nullptr) {
+      _threadManager->expires_from_now(interval);
+      _threadManager->async_wait(_threadHandler);
+    }
   };
 
   _threadManager->expires_from_now(interval);
@@ -262,7 +264,13 @@ void Scheduler::startManagerThread() {
 
   auto thread = new SchedulerManagerThread(this, _managerService.get());
 
-  _threads.emplace(thread);
+  try {
+    _threads.emplace(thread);
+  } catch (...) {
+    delete thread;
+    throw;
+  }
+    
   thread->start();
 }
 
@@ -270,8 +278,14 @@ void Scheduler::startNewThread() {
   MUTEX_LOCKER(guard, _threadsLock);
 
   auto thread = new SchedulerThread(this, _ioService.get());
-
-  _threads.emplace(thread);
+  
+  try {
+    _threads.emplace(thread);
+  } catch (...) {
+    delete thread;
+    throw;
+  }
+    
   thread->start();
 }
 
@@ -374,9 +388,12 @@ void Scheduler::beginShutdown() {
   if (_stopping) {
     return;
   }
-
+  
   _jobQueue->beginShutdown();
 
+  if (_threadManager != nullptr) {
+    _threadManager->cancel();
+  }
   _threadManager.reset();
 
   _managerGuard.reset();
