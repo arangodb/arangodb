@@ -42,7 +42,7 @@
 
 #include "catch.hpp"
 
-#include "MMFiles/geo-index.h"
+#include "MMFiles/mmfiles-geo-index.h"
 #include "Basics/StringUtils.h"
 
 using namespace arangodb::basics;

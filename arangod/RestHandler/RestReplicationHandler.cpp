@@ -35,6 +35,7 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/mmfiles-replication-dump.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
@@ -53,7 +54,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/replication-applier.h"
-#include "VocBase/replication-dump.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
@@ -966,12 +966,12 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
       std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   // initialize the dump container
-  TRI_replication_dump_t dump(transactionContext,
+  MMFilesReplicationDumpContext dump(transactionContext,
                               static_cast<size_t>(determineChunkSize()),
                               includeSystem, cid, useVpp);
 
   // and dump
-  int res = TRI_DumpLogReplication(&dump, transactionIds, firstRegularTick,
+  int res = MMFilesDumpLogReplication(&dump, transactionIds, firstRegularTick,
                                    tickStart, tickEnd, false);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1070,11 +1070,11 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
       std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   // initialize the dump container
-  TRI_replication_dump_t dump(
+  MMFilesReplicationDumpContext dump(
       transactionContext, static_cast<size_t>(determineChunkSize()), false, 0);
 
   // and dump
-  int res = TRI_DetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
+  int res = MMFilesDetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
 
   if (res == TRI_ERROR_NO_ERROR) {
     // generate the result
@@ -2692,7 +2692,7 @@ void RestReplicationHandler::handleCommandDump() {
       std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   // initialize the dump container
-  TRI_replication_dump_t dump(transactionContext,
+  MMFilesReplicationDumpContext dump(transactionContext,
                               static_cast<size_t>(determineChunkSize()),
                               includeSystem, 0);
 
@@ -2701,7 +2701,7 @@ void RestReplicationHandler::handleCommandDump() {
   }
 
   int res =
-      TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks);
+      MMFilesDumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);

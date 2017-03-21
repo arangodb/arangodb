@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "fulltext-handles.h"
+#include "mmfiles-fulltext-handles.h"
 
 #include "MMFiles/MMFilesToken.h"
 

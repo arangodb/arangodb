@@ -340,7 +340,6 @@ SET(ARANGOD_SOURCES
   VocBase/modes.cpp
   VocBase/replication-applier.cpp
   VocBase/replication-common.cpp
-  VocBase/replication-dump.cpp
   VocBase/ticks.cpp
   VocBase/vocbase.cpp
   Pregel/AggregatorHandler.cpp
@@ -373,12 +372,12 @@ SET(ARANGOD_SOURCES
 # add sources for mmfiles engine
 set(ARANGOD_SOURCES
   ${ARANGOD_SOURCES}
-  MMFiles/fulltext-handles.cpp
-  MMFiles/fulltext-index.cpp
-  MMFiles/fulltext-list.cpp
-  MMFiles/fulltext-query.cpp
-  MMFiles/fulltext-result.cpp
-  MMFiles/geo-index.cpp
+  MMFiles/mmfiles-fulltext-handles.cpp
+  MMFiles/mmfiles-fulltext-index.cpp
+  MMFiles/mmfiles-fulltext-list.cpp
+  MMFiles/mmfiles-fulltext-query.cpp
+  MMFiles/mmfiles-fulltext-result.cpp
+  MMFiles/mmfiles-geo-index.cpp
   MMFiles/MMFilesAllocatorThread.cpp
   MMFiles/MMFilesAqlFunctions.cpp
   MMFiles/MMFilesCleanupThread.cpp
@@ -423,6 +422,7 @@ set(ARANGOD_SOURCES
   MMFiles/MMFilesWalRecoveryFeature.cpp
   MMFiles/MMFilesWalSlot.cpp
   MMFiles/MMFilesWalSlots.cpp
+  MMFiles/mmfiles-replication-dump.cpp
 )
 
 if (NOT MSVC)
