@@ -1,7 +1,7 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, window, arangoHelper, nv, d3 */
-/* global document, console, frontendConfig, Dygraph, _,templateEngine */
+/* global Backbone, $, window, arangoHelper, nv, d3, prettyBytes */
+/* global document, console, frontendConfig, Dygraph, _,templateEngine*/
 
 (function () {
   'use strict';
@@ -715,7 +715,7 @@
       }
 
       var currentP = fmtNumber(self.history[self.server].residentSizePercent * 100, 2);
-      var data = [fmtNumber(self.history[self.server].physicalMemory / 1024 / 1024 / 1024, 0) + ' GB'];
+      var data = [prettyBytes(self.history[self.server].physicalMemory)];
 
       if (self.history[self.server].residentSizeChart === undefined) {
         this.addEmptyDataLabels();

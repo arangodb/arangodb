@@ -350,17 +350,20 @@ int RocksDBEngine::openCollection(TRI_vocbase_t* vocbase,
 
 /// @brief Add engine-specific AQL functions.
 void RocksDBEngine::addAqlFunctions() {
-  throw std::runtime_error("not implemented");
+  LOG_TOPIC(WARN, Logger::STARTUP) << "adding aql functions for rocksdb";
+  LOG_TOPIC(WARN, Logger::STARTUP) << "NOT IMPLEMENTED - addAqlFunctions";
 }
 
 /// @brief Add engine-specific optimizer rules
 void RocksDBEngine::addOptimizerRules() {
-  throw std::runtime_error("not implemented");
+  LOG_TOPIC(WARN, Logger::STARTUP) << "adding optimizer rules for rocksdb";
+  LOG_TOPIC(WARN, Logger::STARTUP) << "NOT IMPLEMENTED - addOptimizerRules";
 }
 
 /// @brief Add engine-specific V8 functions
 void RocksDBEngine::addV8Functions() {
-  throw std::runtime_error("not implemented");
+  LOG_TOPIC(WARN, Logger::STARTUP) << "adding v8 functions rules for rocksdb";
+  LOG_TOPIC(WARN, Logger::STARTUP) << "NOT IMPLEMENTED - addV8Functions";
 }
 
 /// @brief Add engine-specific REST handlers

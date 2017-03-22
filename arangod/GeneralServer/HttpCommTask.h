@@ -25,7 +25,8 @@ class HttpCommTask final : public GeneralCommTask {
   };
 
   // convert from GeneralResponse to httpResponse
-  void addResponse(GeneralResponse* response, RequestStatistics* stat) override {
+  void addResponse(GeneralResponse* response,
+                   RequestStatistics* stat) override {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
 
     if (httpResponse == nullptr) {
@@ -37,6 +38,7 @@ class HttpCommTask final : public GeneralCommTask {
 
  protected:
   bool processRead(double startTime) override;
+  void compactify() override;
 
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;

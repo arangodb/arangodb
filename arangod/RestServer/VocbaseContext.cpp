@@ -149,7 +149,7 @@ rest::ResponseCode VocbaseContext::authenticateRequest(bool* forceOpen) {
         return rest::ResponseCode::OK;
       }
 
-      if (path.length() > 0 && path[1] != '_') {
+      if (path.size() > 1 && path[1] != '_') {
         *forceOpen = true;
         return rest::ResponseCode::OK;
       }

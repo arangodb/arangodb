@@ -49,12 +49,7 @@
                 <% } %>
 
                 <div class="<%= genClass1 %> left"><%= name %></div>
-
-                <% if (name === Object.keys(collection.Current)[counter]) { %>
-                  <div class="shardLeader <%= genClass1 %> positive left"><span><%= shard.leader %></span></div>
-                <% } else { %>
-                  <div class="<%= genClass1 %> negative left"><%= shard.leader %></div>
-                <% } %>
+                <div class="shardLeader <%= genClass1 %> positive left"><span><%= shard.leader %></span></div>
 
                 <% var found = null;  %>
                 <% _.each(shard.followers, function(db) {  %>

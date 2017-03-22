@@ -132,3 +132,7 @@ std::unordered_map<std::string, std::string> EngineSelectorFeature::availableEng
     {RocksDBEngine::EngineName, RocksDBEngine::FeatureName}
   };
 }
+  
+char const* EngineSelectorFeature::engineName() {
+  return ENGINE->typeName();
+}
