@@ -276,7 +276,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
       TRI_ASSERT(collection != nullptr);
       auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
       TRI_ASSERT(physical != nullptr);
-      MMFilesMarkerype_t const type = marker->getType();
+      MMFilesMarkerType const type = marker->getType();
 
       // new or updated document
       if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
@@ -371,7 +371,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   auto compactifier = [&context, &physical, this](MMFilesMarker const* marker, MMFilesDatafile* datafile) -> bool {
     TRI_voc_fid_t const targetFid = context->_compactor->fid();
 
-    MMFilesMarkerype_t const type = marker->getType();
+    MMFilesMarkerType const type = marker->getType();
 
     // new or updated document
     if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {

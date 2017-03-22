@@ -87,7 +87,7 @@ static char const* NameFromCid(MMFilesReplicationDumpContext* dump,
 
 /// @brief whether or not a marker should be replicated
 static inline bool MustReplicateWalMarkerType(MMFilesMarker const* marker) {
-  MMFilesMarkerype_t type = marker->getType();
+  MMFilesMarkerType type = marker->getType();
   return (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
           type == TRI_DF_MARKER_VPACK_REMOVE ||
           type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
@@ -103,7 +103,7 @@ static inline bool MustReplicateWalMarkerType(MMFilesMarker const* marker) {
 
 /// @brief whether or not a marker belongs to a transaction
 static inline bool IsTransactionWalMarkerType(MMFilesMarker const* marker) {
-  MMFilesMarkerype_t type = marker->getType();
+  MMFilesMarkerType type = marker->getType();
   return (type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
           type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
           type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION);
@@ -149,7 +149,7 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump,
                            MMFilesMarker const* marker, bool isDump,
                            bool withTicks, bool isEdgeCollection) {
   TRI_ASSERT(MustReplicateWalMarkerType(marker));
-  MMFilesMarkerype_t const type = marker->getType();
+  MMFilesMarkerType const type = marker->getType();
 
   if (!isDump) {
     // logger-follow command
@@ -305,7 +305,7 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
                           MMFilesMarker const* marker, bool isDump,
                           bool withTicks, bool isEdgeCollection) {
   TRI_ASSERT(MustReplicateWalMarkerType(marker));
-  MMFilesMarkerype_t const type = marker->getType();
+  MMFilesMarkerType const type = marker->getType();
 
   VPackBuffer<uint8_t> buffer;
   std::shared_ptr<VPackBuffer<uint8_t>> bufferPtr;
@@ -655,7 +655,7 @@ int MMFilesDumpLogReplication(
           break;
         }
 
-        MMFilesMarkerype_t type = marker->getType();
+        MMFilesMarkerType type = marker->getType();
 
         if (type <= TRI_DF_MARKER_MIN || type >= TRI_DF_MARKER_MAX) {
           break;
@@ -840,7 +840,7 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
           break;
         }
 
-        MMFilesMarkerype_t const type = marker->getType();
+        MMFilesMarkerType const type = marker->getType();
 
         if (type <= TRI_DF_MARKER_MIN || type >= TRI_DF_MARKER_MAX) {
           // somehow invalid

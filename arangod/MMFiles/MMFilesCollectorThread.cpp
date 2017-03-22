@@ -114,7 +114,7 @@ static bool ScanMarker(MMFilesMarker const* marker, void* data,
   CollectorState* state = static_cast<CollectorState*>(data);
 
   TRI_ASSERT(marker != nullptr);
-  MMFilesMarkerype_t const type = marker->getType();
+  MMFilesMarkerType const type = marker->getType();
   
   switch (type) {
     case TRI_DF_MARKER_PROLOGUE: {
@@ -570,7 +570,7 @@ void MMFilesCollectorThread::processCollectionMarker(
   TRI_voc_size_t const datafileMarkerSize = operation.datafileMarkerSize;
   TRI_voc_fid_t const fid = operation.datafileId;
 
-  MMFilesMarkerype_t const type = walMarker->getType();
+  MMFilesMarkerType const type = walMarker->getType();
 
   if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
     auto& dfi = cache->createDfi(fid);

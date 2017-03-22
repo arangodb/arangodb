@@ -383,7 +383,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(MMFilesMarker const* mar
 bool MMFilesCollection::OpenIterator(MMFilesMarker const* marker, MMFilesCollection::OpenIteratorState* data,
                                      MMFilesDatafile* datafile) {
   TRI_voc_tick_t const tick = marker->getTick();
-  MMFilesMarkerype_t const type = marker->getType();
+  MMFilesMarkerType const type = marker->getType();
 
   int res;
 
@@ -1304,7 +1304,7 @@ bool MMFilesCollection::applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t
         break;
       }
       
-      MMFilesMarkerype_t type = marker->getType();
+      MMFilesMarkerType type = marker->getType();
         
       if (type <= TRI_DF_MARKER_MIN) {
         break;
