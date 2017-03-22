@@ -72,7 +72,7 @@ static inline T AlignedMarkerSize(MMFilesMarker const* marker) {
 /// marker type
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline size_t VPackOffset(MMFilesMarkerype_t type) noexcept {
+static inline size_t VPackOffset(MMFilesMarkerType type) noexcept {
   if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
       type == TRI_DF_MARKER_VPACK_REMOVE) {
     // VPack is located after transaction id
@@ -112,7 +112,7 @@ static inline size_t VPackOffset(MMFilesMarkerype_t type) noexcept {
 /// @brief returns the marker-specific database id offset
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline size_t DatabaseIdOffset(MMFilesMarkerype_t type) noexcept {
+static inline size_t DatabaseIdOffset(MMFilesMarkerType type) noexcept {
   if (type == TRI_DF_MARKER_PROLOGUE ||
       type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
       type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
@@ -138,7 +138,7 @@ static inline size_t DatabaseIdOffset(MMFilesMarkerype_t type) noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_voc_tick_t DatabaseId(MMFilesMarker const* marker) noexcept {
-  MMFilesMarkerype_t type = marker->getType();
+  MMFilesMarkerType type = marker->getType();
   if (type == TRI_DF_MARKER_PROLOGUE ||
       type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
       type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
@@ -163,7 +163,7 @@ static inline TRI_voc_tick_t DatabaseId(MMFilesMarker const* marker) noexcept {
 /// @brief returns the marker-specific collection id offset
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline size_t CollectionIdOffset(MMFilesMarkerype_t type) noexcept {
+static inline size_t CollectionIdOffset(MMFilesMarkerType type) noexcept {
   if (type == TRI_DF_MARKER_PROLOGUE ||
       type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
       type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
@@ -181,7 +181,7 @@ static inline size_t CollectionIdOffset(MMFilesMarkerype_t type) noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_voc_tick_t CollectionId(MMFilesMarker const* marker) noexcept {
-  MMFilesMarkerype_t type = marker->getType();
+  MMFilesMarkerType type = marker->getType();
   if (type == TRI_DF_MARKER_PROLOGUE ||
       type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
       type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
@@ -198,7 +198,7 @@ static inline TRI_voc_tick_t CollectionId(MMFilesMarker const* marker) noexcept 
 /// @brief returns the marker-specific view id offset
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline size_t ViewIdOffset(MMFilesMarkerype_t type) noexcept {
+static inline size_t ViewIdOffset(MMFilesMarkerType type) noexcept {
   if (type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
       type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
       type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
@@ -212,7 +212,7 @@ static inline size_t ViewIdOffset(MMFilesMarkerype_t type) noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_voc_tick_t ViewId(MMFilesMarker const* marker) noexcept {
-  MMFilesMarkerype_t type = marker->getType();
+  MMFilesMarkerType type = marker->getType();
   if (type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
       type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
       type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
@@ -225,7 +225,7 @@ static inline TRI_voc_tick_t ViewId(MMFilesMarker const* marker) noexcept {
 /// @brief returns the marker-specific transaction id offset
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_voc_tick_t TransactionIdOffset(MMFilesMarkerype_t type) noexcept {
+static inline TRI_voc_tick_t TransactionIdOffset(MMFilesMarkerType type) noexcept {
   if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
       type == TRI_DF_MARKER_VPACK_REMOVE) {
     return sizeof(MMFilesMarker);
@@ -243,7 +243,7 @@ static inline TRI_voc_tick_t TransactionIdOffset(MMFilesMarkerype_t type) noexce
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_voc_tick_t TransactionId(MMFilesMarker const* marker) noexcept {
-  MMFilesMarkerype_t type = marker->getType();
+  MMFilesMarkerType type = marker->getType();
   if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
       type == TRI_DF_MARKER_VPACK_REMOVE ||
       type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
@@ -259,7 +259,7 @@ static inline TRI_voc_tick_t TransactionId(MMFilesMarker const* marker) noexcept
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void InitMarker(MMFilesMarker* marker, 
-                   MMFilesMarkerype_t type, uint32_t size, TRI_voc_tick_t tick) {
+                   MMFilesMarkerType type, uint32_t size, TRI_voc_tick_t tick) {
   TRI_ASSERT(marker != nullptr);
   TRI_ASSERT(type > TRI_DF_MARKER_MIN && type < TRI_DF_MARKER_MAX);
   TRI_ASSERT(size > 0);
@@ -274,7 +274,7 @@ static inline void InitMarker(MMFilesMarker* marker,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void InitMarker(MMFilesMarker* marker, 
-                              MMFilesMarkerype_t type, uint32_t size) {
+                              MMFilesMarkerType type, uint32_t size) {
   InitMarker(marker, type, size, 0); // always use tick 0
 }
 

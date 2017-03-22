@@ -374,7 +374,7 @@ MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, TRI_voc_fi
 /// @brief returns the name for a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* TRI_NameMarkerDatafile(MMFilesMarkerype_t type) {
+char const* TRI_NameMarkerDatafile(MMFilesMarkerType type) {
   switch (type) {
     // general markers
     case TRI_DF_MARKER_HEADER:
@@ -435,7 +435,7 @@ bool TRI_IsValidMarkerDatafile(MMFilesMarker const* marker) {
   }
 
   // check marker type
-  MMFilesMarkerype_t const type = marker->getType();
+  MMFilesMarkerType const type = marker->getType();
 
   if (type <= TRI_DF_MARKER_MIN) {
     // marker type is less than minimum allowed type value
@@ -622,7 +622,7 @@ int MMFilesDatafile::writeElement(void* position, MMFilesMarker const* marker, b
 
 void TRI_UpdateTicksDatafile(MMFilesDatafile* datafile,
                              MMFilesMarker const* marker) {
-  MMFilesMarkerype_t const type = marker->getType();
+  MMFilesMarkerType const type = marker->getType();
 
   if (type != TRI_DF_MARKER_HEADER && type != TRI_DF_MARKER_FOOTER &&
       type != TRI_DF_MARKER_COL_HEADER) {
@@ -916,7 +916,7 @@ static std::string DiagnoseMarker(MMFilesMarker const* marker,
   }
 
   // check marker type
-  MMFilesMarkerype_t type = marker->getType();
+  MMFilesMarkerType type = marker->getType();
 
   if (type <= TRI_DF_MARKER_MIN) {
     // marker type is less than minimum allowed type value
@@ -1250,7 +1250,7 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
     MMFilesMarker const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
     TRI_voc_size_t const size = marker->getSize();
     TRI_voc_tick_t const tick = marker->getTick();
-    MMFilesMarkerype_t const type = marker->getType();
+    MMFilesMarkerType const type = marker->getType();
 
 #ifdef DEBUG_DATAFILE
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "MARKER: size " << size << ", tick " << tick << ", crc " << marker->getCrc() << ", type " << type;
@@ -1591,7 +1591,7 @@ DatafileScan MMFilesDatafile::scanHelper() {
       scan.status = 4;
     }
 
-    MMFilesMarkerype_t const type = marker->getType();
+    MMFilesMarkerType const type = marker->getType();
 
     if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
         type == TRI_DF_MARKER_VPACK_REMOVE) {

@@ -3049,7 +3049,7 @@ int MMFilesEngine::transferMarkersWorker(
       }
     }
 
-    MMFilesMarkerype_t const type = source->getType();
+    MMFilesMarkerType const type = source->getType();
 
     if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
         type == TRI_DF_MARKER_VPACK_REMOVE) {
@@ -3082,7 +3082,7 @@ int MMFilesEngine::transferMarkersWorker(
 /// @brief get the next position for a marker of the specified size
 char* MMFilesEngine::nextFreeMarkerPosition(LogicalCollection* collection,
                                             TRI_voc_tick_t tick,
-                                            MMFilesMarkerype_t type,
+                                            MMFilesMarkerType type,
                                             TRI_voc_size_t size,
                                             MMFilesCollectorCache* cache) {
   // align the specified size

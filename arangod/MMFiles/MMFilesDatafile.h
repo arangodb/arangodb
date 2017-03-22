@@ -40,7 +40,7 @@ enum TRI_df_state_e {
 };
 
 /// @brief type of the marker
-enum MMFilesMarkerype_t : uint8_t {
+enum MMFilesMarkerType : uint8_t {
   TRI_DF_MARKER_MIN = 9,  // not a real marker type,
                           // but used for bounds checking
 
@@ -93,7 +93,7 @@ struct DatafileScanEntry {
   TRI_voc_size_t realSize;
   TRI_voc_tick_t tick;
 
-  MMFilesMarkerype_t type;
+  MMFilesMarkerType type;
   uint32_t status;
 
   char const* typeName;
@@ -179,7 +179,7 @@ struct DatafileScan {
 #define TRI_DF_VERSION (2)
 
 /// @brief datafile version
-typedef uint32_t TRI_df_version_t;
+typedef uint32_t MMFilesDatafileVersionType;
 
 /// @brief datafile
 struct MMFilesDatafile {
@@ -351,9 +351,9 @@ struct MMFilesDatafile {
 ///         the field _crc is equal to 0.</td>
 ///   </tr>
 ///   <tr>
-///     <td>MMFilesMarkerype_t</td>
+///     <td>MMFilesMarkerType</td>
 ///     <td>_type</td>
-///     <td>see @ref MMFilesMarkerype_t</td>
+///     <td>see @ref MMFilesMarkerType</td>
 ///   </tr>
 ///   <tr>
 ///     <td>TRI_voc_tick_t</td>
@@ -400,15 +400,15 @@ struct MMFilesMarker {
     _typeAndTick &= 0xff00000000000000ULL; 
     _typeAndTick |= tick & 0x00ffffffffffffffULL;
   }
-  inline MMFilesMarkerype_t getType() const noexcept { 
-    return static_cast<MMFilesMarkerype_t>((_typeAndTick & 0xff00000000000000ULL) >> 56); 
+  inline MMFilesMarkerType getType() const noexcept { 
+    return static_cast<MMFilesMarkerType>((_typeAndTick & 0xff00000000000000ULL) >> 56); 
   }
-  inline void setType(MMFilesMarkerype_t type) noexcept { 
+  inline void setType(MMFilesMarkerType type) noexcept { 
     uint64_t t = static_cast<uint64_t>(type) << 56;
     _typeAndTick &= 0x00ffffffffffffffULL; 
     _typeAndTick |= t;
   } 
-  inline void setTypeAndTick(MMFilesMarkerype_t type, TRI_voc_tick_t tick) noexcept {
+  inline void setTypeAndTick(MMFilesMarkerType type, TRI_voc_tick_t tick) noexcept {
     uint64_t t = static_cast<uint64_t>(type) << 56;
     t |= (tick & 0x00ffffffffffffffULL); 
     _typeAndTick = t;
@@ -427,9 +427,9 @@ static_assert(sizeof(MMFilesMarker) == 16, "invalid size for MMFilesMarker");
 ///
 /// <table border>
 ///   <tr>
-///     <td>TRI_df_version_t</td>
+///     <td>MMFilesDatafileVersionType</td>
 ///     <td>_version</td>
-///     <td>The version of a datafile, see @ref TRI_df_version_t.</td>
+///     <td>The version of a datafile, see @ref MMFilesDatafileVersionType.</td>
 ///   </tr>
 ///   <tr>
 ///     <td>TRI_voc_size_t</td>
@@ -451,7 +451,7 @@ static_assert(sizeof(MMFilesMarker) == 16, "invalid size for MMFilesMarker");
 struct MMFilesDatafileHeaderMarker {
   MMFilesMarker base;  // 16 bytes
 
-  TRI_df_version_t _version;    //  4 bytes
+  MMFilesDatafileVersionType _version;    //  4 bytes
   TRI_voc_size_t _maximalSize;  //  4 bytes
   TRI_voc_tick_t _fid;          //  8 bytes
 };
@@ -480,7 +480,7 @@ struct MMFilesCollectionHeaderMarker {
 /// @brief returns the name for a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* TRI_NameMarkerDatafile(MMFilesMarkerype_t);
+char const* TRI_NameMarkerDatafile(MMFilesMarkerType);
 
 static inline char const* TRI_NameMarkerDatafile(MMFilesMarker const* marker) {
   return TRI_NameMarkerDatafile(marker->getType());

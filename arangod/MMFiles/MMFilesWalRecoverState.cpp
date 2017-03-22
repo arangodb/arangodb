@@ -354,7 +354,7 @@ bool MMFilesWalRecoverState::InitialScanMarker(MMFilesMarker const* marker,
     state->lastTick = tick;
   }
 
-  MMFilesMarkerype_t const type = marker->getType();
+  MMFilesMarkerType const type = marker->getType();
 
   switch (type) {
     case TRI_DF_MARKER_VPACK_DOCUMENT: {
@@ -443,7 +443,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "replaying marker of type " << TRI_NameMarkerDatafile(marker);
 #endif
 
-  MMFilesMarkerype_t const type = marker->getType();
+  MMFilesMarkerType const type = marker->getType();
 
   try {
     switch (type) {
