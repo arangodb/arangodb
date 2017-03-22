@@ -83,7 +83,8 @@ function versionJsonJson() {
   expect(obj).to.have.property('license');
 
   expect(obj.server).to.be('arango');
-  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.+devel/);
+  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
+  
   expect(obj.license).to.match(/enterprise|community/g);
 };
 
@@ -108,7 +109,7 @@ function versionVpackJson() {
   expect(obj).to.have.property('license');
 
   expect(obj.server).to.be('arango');
-  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.+devel/);
+  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
   expect(obj.license).to.match(/enterprise|community/g);
 };
 
@@ -133,7 +134,7 @@ function versionJsonVpack () {
   expect(obj).to.have.property('license');
 
   expect(obj.server).to.be('arango');
-  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.+devel/);
+  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
   expect(obj.license).to.match(/enterprise|community/g);
 };
 
@@ -158,11 +159,10 @@ function versionVpackVpack () {
   expect(obj).to.have.property('license');
 
   expect(obj.server).to.be('arango');
-  expect(obj.version).to.match(/^[a-z0-9\.\-]+/);
+  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
   expect(obj.license).to.match(/enterprise|community/g);
 };
 
-///////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////
 
 function echoVpackVpack () {
