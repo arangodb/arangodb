@@ -716,13 +716,16 @@ describe('SyntheticResponse', function () {
     it('optionally adds some metadata', function () {
       require("console").log('optionally adds some metadata');
       const rawRes = {};
+      require("console").log("1");
       const res = new SyntheticResponse(rawRes, {});
+      require("console").log("2");
       res.cookie('hello', 'banana', {
         path: '/path',
         domain: 'cats.example',
         secure: true,
         httpOnly: true
       });
+      require("console").log("3");
       expect(rawRes.cookies).to.eql([
         {
           name: 'hello',
@@ -733,6 +736,7 @@ describe('SyntheticResponse', function () {
           httpOnly: true
         }
       ]);
+      require("console").log("4");
     });
     it('supports signed cookies when a secret is provided', function () {
       require("console").log('supports signed cookies when a secret is provided');

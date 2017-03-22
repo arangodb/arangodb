@@ -528,33 +528,35 @@ void Constituent::run() {
   // single instance
   _id = _agent->config().id();
 
-  TRI_ASSERT(_vocbase != nullptr);
-  auto bindVars = std::make_shared<VPackBuilder>();
-  bindVars->openObject();
-  bindVars->close();
+  {
+    TRI_ASSERT(_vocbase != nullptr);
+    auto bindVars = std::make_shared<VPackBuilder>();
+    bindVars->openObject();
+    bindVars->close();
 
-  // Most recent vote
-  std::string const aql("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
-  arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(), bindVars,
-                             nullptr, arangodb::aql::PART_MAIN);
+    // Most recent vote
+    std::string const aql("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
+    arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(), bindVars,
+                              nullptr, arangodb::aql::PART_MAIN);
 
-  auto queryResult = query.execute(_queryRegistry);
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
-  }
+    auto queryResult = query.execute(_queryRegistry);
+    if (queryResult.code != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    }
 
-  VPackSlice result = queryResult.result->slice();
+    VPackSlice result = queryResult.result->slice();
 
-  if (result.isArray()) {
-    for (auto const& i : VPackArrayIterator(result)) {
-      auto ii = i.resolveExternals();
-      try {
-        MUTEX_LOCKER(locker, _castLock);
-        _term = ii.get("term").getUInt();
-        _votedFor = ii.get("voted_for").copyString();
-      } catch (std::exception const&) {
-        LOG_TOPIC(ERR, Logger::AGENCY)
-            << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
+    if (result.isArray()) {
+      for (auto const& i : VPackArrayIterator(result)) {
+        auto ii = i.resolveExternals();
+        try {
+          MUTEX_LOCKER(locker, _castLock);
+          _term = ii.get("term").getUInt();
+          _votedFor = ii.get("voted_for").copyString();
+        } catch (std::exception const&) {
+          LOG_TOPIC(ERR, Logger::AGENCY)
+              << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
+        }
       }
     }
   }

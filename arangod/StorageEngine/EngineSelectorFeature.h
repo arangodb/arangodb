@@ -43,6 +43,8 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
 
   // return all available storage engines
   static std::unordered_map<std::string, std::string> availableEngines(); 
+
+  static char const* engineName();
   
  public:
   // selected storage engine. this will contain a pointer to the storage engine after

@@ -102,7 +102,8 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
   }
 }
 
-void HttpCommTask::addResponse(HttpResponse* response, RequestStatistics* stat) {
+void HttpCommTask::addResponse(HttpResponse* response,
+                               RequestStatistics* stat) {
   resetKeepAlive();
 
   // response has been queued, allow further requests
@@ -246,6 +247,7 @@ bool HttpCommTask::processRead(double startTime) {
       handleSimpleError(rest::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
                         1);  // ID does not matter for http (http default is 1)
 
+      _closeRequested = true;
       return false;
     }
 
@@ -274,6 +276,7 @@ bool HttpCommTask::processRead(double startTime) {
 
       if (slen == 11 && std::memcmp(sptr, "VST/1.1\r\n\r\n", 11) == 0) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "got VST request on HTTP port";
+        _closeRequested = true;
         return false;
       }
 
@@ -295,9 +298,9 @@ bool HttpCommTask::processRead(double startTime) {
 
       if (_protocolVersion != rest::ProtocolVersion::HTTP_1_0 &&
           _protocolVersion != rest::ProtocolVersion::HTTP_1_1) {
-        handleSimpleError(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
-                          1);  // FIXME
+        handleSimpleError(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED, 1);
 
+        _closeRequested = true;
         return false;
       }
 
@@ -305,8 +308,9 @@ bool HttpCommTask::processRead(double startTime) {
       _fullUrl = _incompleteRequest->fullUrl();
 
       if (_fullUrl.size() > 16384) {
-        handleSimpleError(rest::ResponseCode::REQUEST_URI_TOO_LONG,
-                          1);  // FIXME
+        handleSimpleError(rest::ResponseCode::REQUEST_URI_TOO_LONG, 1);
+
+        _closeRequested = true;
         return false;
       }
 
@@ -384,6 +388,7 @@ bool HttpCommTask::processRead(double startTime) {
 
           if (!checkContentLength(_incompleteRequest.get(),
                                   expectContentLength)) {
+            _closeRequested = true;
             return false;
           }
 
@@ -406,6 +411,8 @@ bool HttpCommTask::processRead(double startTime) {
 
           // bad request, method not allowed
           handleSimpleError(rest::ResponseCode::METHOD_NOT_ALLOWED, 1);
+
+          _closeRequested = true;
           return false;
         }
       }
@@ -692,8 +699,10 @@ std::unique_ptr<GeneralResponse> HttpCommTask::createResponse(
   return std::unique_ptr<GeneralResponse>(new HttpResponse(responseCode));
 }
 
-void HttpCommTask::resetState() {
-  _requestPending = true;
+void HttpCommTask::compactify() {
+  if (! _newRequest) {
+    return;
+  }
 
   bool compact = false;
 
@@ -704,22 +713,37 @@ void HttpCommTask::resetState() {
   }
 
   if (compact) {
-    _readBuffer.erase_front(_bodyPosition + _bodyLength);
-
-    _sinceCompactification = 0;
-    _readPosition = 0;
-  } else {
-    _readPosition = _bodyPosition + _bodyLength;
-
-    if (_readPosition == _readBuffer.length()) {
-      _sinceCompactification = 0;
-      _readPosition = 0;
-      _readBuffer.reset();
-    }
+    _readBuffer.erase_front(_readPosition);
+  } else if (_readPosition == _readBuffer.length()) {
+    _readBuffer.reset();
+    compact = true;
   }
+
+  if (compact) {
+    _sinceCompactification = 0;
+
+    if (_startPosition > 0) {
+      TRI_ASSERT(_startPosition >= _readPosition);
+      _startPosition -= _readPosition;
+    }
+
+    if (_bodyPosition > 0) {
+      TRI_ASSERT(_bodyPosition >= _readPosition);
+      _bodyPosition -= _readPosition;
+    }
+    
+    _readPosition = 0;
+  }
+}
+
+void HttpCommTask::resetState() {
+  _requestPending = true;
+
+  _readPosition = _bodyPosition + _bodyLength;
 
   _bodyPosition = 0;
   _bodyLength = 0;
+  _startPosition = 0;
 
   _newRequest = true;
   _readRequestBody = false;

@@ -40,7 +40,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class VocbaseContext : public arangodb::RequestContext {
+class VocbaseContext final : public arangodb::RequestContext {
  public:
   static double ServerSessionTtl;
 
