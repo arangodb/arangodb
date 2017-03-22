@@ -19,6 +19,7 @@
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/table.h>
 #include <rocksdb/write_batch.h>
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -83,6 +84,33 @@ void RocksDBEngine::start() {
   if (! status.ok()) {
     LOG_TOPIC(FATAL, arangodb::Logger::STARTUP) << "unable to initialize RocksDB engine: " << status.ToString();
     FATAL_ERROR_EXIT();
+  }
+
+  // create _system database if it should not exist
+  velocypack::Builder builder;
+  getDatabases(builder);
+  bool foundSystem = false;
+  for(auto const& item : velocypack::ArrayIterator(builder.slice())){
+    // static string for _system?!
+    // stringref instead copyString
+    if(item.get("name").copyString() == "_system"){
+      foundSystem = true;
+      break;
+    }
+  }
+
+  if(!foundSystem){
+    throw std::runtime_error("not fully implemented");
+
+    int err;
+    VPackBuilder builder;
+    TRI_voc_tick_t id(1337);
+
+    createDatabase(id, builder.slice(), err);
+    if(err){
+      LOG_TOPIC(FATAL, arangodb::Logger::STARTUP) << "unable to create _system database: " << err;
+      FATAL_ERROR_EXIT();
+    }
   }
 }
 
