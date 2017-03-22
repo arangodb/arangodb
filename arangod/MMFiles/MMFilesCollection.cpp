@@ -2987,6 +2987,7 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
                               ManagedDocumentResult& previous,
                               TRI_voc_rid_t const& revisionId,
                               VPackSlice const key) {
+
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
   TRI_IF_FAILURE("UpdateDocumentNoLock") { return TRI_ERROR_DEBUG; }
@@ -3034,6 +3035,9 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
   if (newSlice.length() <= 1) {
     // no need to do anything
     result = previous;
+    if (_logicalCollection->waitForSync()) {
+      options.waitForSync = true;
+    }
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -3107,7 +3111,6 @@ int MMFilesCollection::update(arangodb::transaction::Methods* trx,
   }
 
   return res;
-
 }
 
 int MMFilesCollection::replace(
