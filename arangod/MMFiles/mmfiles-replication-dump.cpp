@@ -86,8 +86,8 @@ static char const* NameFromCid(MMFilesReplicationDumpContext* dump,
 }
 
 /// @brief whether or not a marker should be replicated
-static inline bool MustReplicateWalMarkerType(TRI_df_marker_t const* marker) {
-  TRI_df_marker_type_t type = marker->getType();
+static inline bool MustReplicateWalMarkerType(MMFilesMarker const* marker) {
+  MMFilesMarkerType type = marker->getType();
   return (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
           type == TRI_DF_MARKER_VPACK_REMOVE ||
           type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
@@ -102,8 +102,8 @@ static inline bool MustReplicateWalMarkerType(TRI_df_marker_t const* marker) {
 }
 
 /// @brief whether or not a marker belongs to a transaction
-static inline bool IsTransactionWalMarkerType(TRI_df_marker_t const* marker) {
-  TRI_df_marker_type_t type = marker->getType();
+static inline bool IsTransactionWalMarkerType(MMFilesMarker const* marker) {
+  MMFilesMarkerType type = marker->getType();
   return (type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
           type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
           type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION);
@@ -111,7 +111,7 @@ static inline bool IsTransactionWalMarkerType(TRI_df_marker_t const* marker) {
 
 /// @brief translate a marker type to a replication type
 static TRI_replication_operation_e TranslateType(
-    TRI_df_marker_t const* marker) {
+    MMFilesMarker const* marker) {
   switch (marker->getType()) {
     case TRI_DF_MARKER_VPACK_DOCUMENT:
       return REPLICATION_MARKER_DOCUMENT;
@@ -146,10 +146,10 @@ static TRI_replication_operation_e TranslateType(
 static int StringifyMarker(MMFilesReplicationDumpContext* dump,
                            TRI_voc_tick_t databaseId,
                            TRI_voc_cid_t collectionId,
-                           TRI_df_marker_t const* marker, bool isDump,
+                           MMFilesMarker const* marker, bool isDump,
                            bool withTicks, bool isEdgeCollection) {
   TRI_ASSERT(MustReplicateWalMarkerType(marker));
-  TRI_df_marker_type_t const type = marker->getType();
+  MMFilesMarkerType const type = marker->getType();
 
   if (!isDump) {
     // logger-follow command
@@ -302,10 +302,10 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump,
 
 static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
                           TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                          TRI_df_marker_t const* marker, bool isDump,
+                          MMFilesMarker const* marker, bool isDump,
                           bool withTicks, bool isEdgeCollection) {
   TRI_ASSERT(MustReplicateWalMarkerType(marker));
-  TRI_df_marker_type_t const type = marker->getType();
+  MMFilesMarkerType const type = marker->getType();
 
   VPackBuffer<uint8_t> buffer;
   std::shared_ptr<VPackBuffer<uint8_t>> bufferPtr;
@@ -427,7 +427,7 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
 }
 /// @brief whether or not a marker belongs to a transaction
 static bool IsTransactionWalMarker(MMFilesReplicationDumpContext* dump,
-                                   TRI_df_marker_t const* marker) {
+                                   MMFilesMarker const* marker) {
   // first check the marker type
   if (!IsTransactionWalMarkerType(marker)) {
     return false;
@@ -443,7 +443,7 @@ static bool IsTransactionWalMarker(MMFilesReplicationDumpContext* dump,
 
 /// @brief whether or not a marker is replicated
 static bool MustReplicateWalMarker(
-    MMFilesReplicationDumpContext* dump, TRI_df_marker_t const* marker,
+    MMFilesReplicationDumpContext* dump, MMFilesMarker const* marker,
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     TRI_voc_tick_t firstRegularTick,
     std::unordered_set<TRI_voc_tid_t> const& transactionIds) {
@@ -508,7 +508,7 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
   auto callback = [&dump, &lastFoundTick, &databaseId, &collectionId,
                    &withTicks, &isEdgeCollection, &bufferFull, &useVpp,
                    &collection](
-      TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker) {
+      TRI_voc_tick_t foundTick, MMFilesMarker const* marker) {
     // note the last tick we processed
     lastFoundTick = foundTick;
 
@@ -538,7 +538,7 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
   };
 
   try {
-    bool hasMore = collection->getPhysical()->applyForTickRange(dataMin, dataMax, callback);
+    bool hasMore = static_cast<MMFilesCollection*>(collection->getPhysical())->applyForTickRange(dataMin, dataMax, callback);
 
     if (lastFoundTick > 0) {
       // data available for requested range
@@ -648,14 +648,14 @@ int MMFilesDumpLogReplication(
           logfile, ptr, end);
 
       while (ptr < end) {
-        auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
+        auto const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
 
         if (marker->getSize() == 0) {
           // end of datafile
           break;
         }
 
-        TRI_df_marker_type_t type = marker->getType();
+        MMFilesMarkerType type = marker->getType();
 
         if (type <= TRI_DF_MARKER_MIN || type >= TRI_DF_MARKER_MAX) {
           break;
@@ -833,14 +833,14 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
 
       // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "scanning logfile " << i;
       while (ptr < end) {
-        auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
+        auto const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
 
         if (marker->getSize() == 0) {
           // end of datafile
           break;
         }
 
-        TRI_df_marker_type_t const type = marker->getType();
+        MMFilesMarkerType const type = marker->getType();
 
         if (type <= TRI_DF_MARKER_MIN || type >= TRI_DF_MARKER_MAX) {
           // somehow invalid

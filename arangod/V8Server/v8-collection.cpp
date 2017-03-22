@@ -2158,52 +2158,6 @@ static void JS_RevisionVocbaseCol(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionRotate
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_RotateVocbaseCol(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (ServerState::instance()->isCoordinator()) {
-    // renaming a collection in a cluster is unsupported
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_UNSUPPORTED);
-  }
-
-  PREVENT_EMBEDDED_TRANSACTION();
-
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (collection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-  }
-  
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
-
-  SingleCollectionTransaction trx(
-      transaction::V8Context::Create(collection->vocbase(), true),
-      collection->cid(), AccessMode::Type::READ);
-
-  int res = trx.begin();
-  
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  res = collection->getPhysical()->rotateActiveJournal();
-
-  trx.finish(res);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "could not rotate journal");
-  }
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief retrieves a collection from a V8 argument
@@ -3071,8 +3025,6 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
                        JS_RenameVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("replace"),
                        JS_ReplaceVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("rotate"),
-                       JS_RotateVocbaseCol);
   TRI_AddMethodVocbase(
       isolate, rt, TRI_V8_ASCII_STRING("save"),
       JS_InsertVocbaseCol);  // note: save is now an alias for insert

@@ -52,8 +52,8 @@ TEST_CASE("CStructureSizeTest", "[structure-size]") {
 
 SECTION("tst_basic_elements") {
   CHECK(4 == (int) sizeof(TRI_col_type_e));
-  CHECK(1 == (int) sizeof(TRI_df_marker_type_t));
-  CHECK(4 == (int) sizeof(TRI_df_version_t));
+  CHECK(1 == (int) sizeof(MMFilesMarkerType));
+  CHECK(4 == (int) sizeof(MMFilesDatafileVersionType));
   CHECK(8 == (int) sizeof(TRI_voc_cid_t));
   CHECK(4 == (int) sizeof(TRI_voc_crc_t));
   CHECK(8 == (int) sizeof(TRI_voc_tid_t));
@@ -63,13 +63,13 @@ SECTION("tst_basic_elements") {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test sizeof TRI_df_marker_t
+/// @brief test sizeof MMFilesMarker
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_df_marker") {
-  size_t s = sizeof(TRI_df_marker_t);
+  size_t s = sizeof(MMFilesMarker);
 
-  TRI_df_marker_t m; 
+  MMFilesMarker m; 
   CHECK(16 == (int) s);
   CHECK(s % 8 == 0); 
 
@@ -79,56 +79,56 @@ SECTION("tst_df_marker") {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test sizeof TRI_df_header_marker_t
+/// @brief test sizeof MMFilesDatafileHeaderMarker
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_df_header_marker") {
-  size_t s = sizeof(TRI_df_header_marker_t);
+  size_t s = sizeof(MMFilesDatafileHeaderMarker);
 
   CHECK(16 + 16 == (int) s);
   CHECK(s % 8 == 0); 
 
-  CHECK(16 == (int) offsetOf(&TRI_df_header_marker_t::_version));
-  CHECK(20 == (int) offsetOf(&TRI_df_header_marker_t::_maximalSize));
-  CHECK(24 == (int) offsetOf(&TRI_df_header_marker_t::_fid));
+  CHECK(16 == (int) offsetOf(&MMFilesDatafileHeaderMarker::_version));
+  CHECK(20 == (int) offsetOf(&MMFilesDatafileHeaderMarker::_maximalSize));
+  CHECK(24 == (int) offsetOf(&MMFilesDatafileHeaderMarker::_fid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test sizeof TRI_df_footer_marker_t
+/// @brief test sizeof MMFilesDatafileFooterMarker
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_df_footer_marker") {
-  size_t s = sizeof(TRI_df_footer_marker_t);
+  size_t s = sizeof(MMFilesDatafileFooterMarker);
 
   CHECK(16 == (int) s);
   CHECK(s % 8 == 0); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test sizeof TRI_col_header_marker_t
+/// @brief test sizeof MMFilesCollectionHeaderMarker
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_col_header_marker") {
-  size_t s = sizeof(TRI_col_header_marker_t);
+  size_t s = sizeof(MMFilesCollectionHeaderMarker);
 
   CHECK(16 + 8 == (int) s); // base + own size
   CHECK(s % 8 == 0); 
 
-  CHECK(16 == (int) offsetOf(&TRI_col_header_marker_t::_cid));
+  CHECK(16 == (int) offsetOf(&MMFilesCollectionHeaderMarker::_cid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test sizeof TRI_df_prologue_marker_t
+/// @brief test sizeof MMFilesPrologueMarker
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("tst_df_prologue_marker") {
-  size_t s = sizeof(TRI_df_prologue_marker_t);
+  size_t s = sizeof(MMFilesPrologueMarker);
 
   CHECK(16 + 16 == (int) s);
   CHECK(s % 8 == 0); 
 
-  CHECK(16 == (int) offsetOf(&TRI_df_prologue_marker_t::_databaseId));
-  CHECK(24 == (int) offsetOf(&TRI_df_prologue_marker_t::_collectionId));
+  CHECK(16 == (int) offsetOf(&MMFilesPrologueMarker::_databaseId));
+  CHECK(24 == (int) offsetOf(&MMFilesPrologueMarker::_collectionId));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

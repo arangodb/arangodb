@@ -331,7 +331,7 @@ public:
   
   /// @brief get the next free position for a new marker of the specified size
   char* nextFreeMarkerPosition(LogicalCollection* collection,
-                               TRI_voc_tick_t, TRI_df_marker_type_t,
+                               TRI_voc_tick_t, MMFilesMarkerType,
                                TRI_voc_size_t, MMFilesCollectorCache*);
 
   /// @brief set the tick of a marker and calculate its CRC value
