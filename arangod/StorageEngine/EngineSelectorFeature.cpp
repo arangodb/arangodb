@@ -20,12 +20,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "EngineSelectorFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FileUtils.h"
+#include "EngineSelectorFeature.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "MMFiles/MMFilesEngine.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -40,6 +42,7 @@ EngineSelectorFeature::EngineSelectorFeature(
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
+  startsAfter("DatabasePath");
 }
 
 void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -51,12 +54,28 @@ void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 }
 
 void EngineSelectorFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  // engine from command line
   if(_engine == "auto"){
     _engine = MMFilesEngine::EngineName;
   }
 }
 
 void EngineSelectorFeature::prepare() {
+  // read engine from file in database_directory ENGINE (mmfiles/rocksdb)
+  auto databasePathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
+  auto path = databasePathFeature->directory();
+  _engineFilePath = basics::FileUtils::buildFilename(path,"ENGINE");
+  LOG_TOPIC(DEBUG, Logger::STARTUP) << "engine selector - using database directory: " << _engineFilePath ;
+
+  // file if engine in file does not match commandline option
+  if(basics::FileUtils::isRegularFile(_engineFilePath)){
+    std::string content = basics::FileUtils::slurp(_engineFilePath);
+    if (content != _engine) {
+      LOG_TOPIC(FATAL, Logger::STARTUP) << "engine selector - content of ENGINE file and commandline option do not match!";
+      FATAL_ERROR_EXIT();
+    }
+  }
+
   // deactivate all engines but the selected one
   for (auto const& engine : availableEngines()) {
     StorageEngine* e = application_features::ApplicationServer::getFeature<StorageEngine>(engine.second);
@@ -77,6 +96,18 @@ void EngineSelectorFeature::prepare() {
   }
 
   TRI_ASSERT(ENGINE != nullptr);
+}
+
+void EngineSelectorFeature::start() {
+  //write engine File
+  if(!basics::FileUtils::isRegularFile(_engineFilePath)){
+    try {
+      basics::FileUtils::spit(_engineFilePath, _engine);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(FATAL, Logger::STARTUP) << "engine selector - unable to write ENGINE file" << ex.what();
+      FATAL_ERROR_EXIT();
+    }
+  }
 }
 
 void EngineSelectorFeature::unprepare() {

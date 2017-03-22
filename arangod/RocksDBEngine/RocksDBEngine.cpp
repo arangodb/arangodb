@@ -24,7 +24,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-std::string const RocksDBEngine::EngineName("rocks");
+std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
 // create the storage engine
@@ -34,18 +34,20 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
       //inherits order from StorageEngine
 }
 
-RocksDBEngine::~RocksDBEngine() { throw std::runtime_error("not implemented"); }
+RocksDBEngine::~RocksDBEngine() {
+}
 
 // inherited from ApplicationFeature
 // ---------------------------------
 
 // add the storage engine's specifc options to the global list of options
 void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions>) {
-  throw std::runtime_error("not implemented");
+
 }
+
 // validate the storage engine's specific options
 void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {
-  throw std::runtime_error("not implemented");
+
 }
 
 void RocksDBEngine::start() {
@@ -75,7 +77,8 @@ void RocksDBEngine::start() {
 void RocksDBEngine::stop() { throw std::runtime_error("not implemented"); }
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
-void RocksDBEngine::prepare() { throw std::runtime_error("not implemented"); }
+void RocksDBEngine::prepare() {
+}
 
 transaction::ContextData* RocksDBEngine::createTransactionContextData() {
   throw std::runtime_error("not implemented");

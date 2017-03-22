@@ -37,14 +37,15 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
+  void start() override final;
   void unprepare() override final;
-  
+
   // return the names of all available storage engines
   static std::unordered_set<std::string> availableEngineNames();
 
   // return all available storage engines
-  static std::unordered_map<std::string, std::string> availableEngines(); 
-  
+  static std::unordered_map<std::string, std::string> availableEngines();
+
  public:
   // selected storage engine. this will contain a pointer to the storage engine after
   // prepare() and before unprepare()
@@ -52,6 +53,7 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
 
  private:
   std::string _engine;
+  std::string _engineFilePath;
 };
 }
 

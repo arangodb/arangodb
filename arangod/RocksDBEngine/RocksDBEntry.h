@@ -34,7 +34,7 @@ namespace arangodb {
 
 class RocksDBEntry {
  public:
-  enum class Type : char {
+  enum class Type : uint8_t {
     Database = '0',
     Collection = '1',
     Index = '2',
