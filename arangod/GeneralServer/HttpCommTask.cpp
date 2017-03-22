@@ -700,6 +700,10 @@ std::unique_ptr<GeneralResponse> HttpCommTask::createResponse(
 }
 
 void HttpCommTask::compactify() {
+  if (! _newRequest) {
+    return;
+  }
+
   bool compact = false;
 
   if (_sinceCompactification > RunCompactEvery) {
@@ -718,8 +722,15 @@ void HttpCommTask::compactify() {
   if (compact) {
     _sinceCompactification = 0;
 
+    TRI_ASSERT(_startPosition >= _readPosition);
+
     _startPosition -= _readPosition;
-    _bodyPosition -= _readPosition;
+
+    if (_bodyPosition > 0) {
+      TRI_ASSERT(_bodyPosition >= _readPosition);
+      _bodyPosition -= _readPosition;
+    }
+    
     _readPosition = 0;
   }
 }
