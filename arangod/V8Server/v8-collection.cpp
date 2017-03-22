@@ -2870,6 +2870,7 @@ static void JS_CompletionsVocbase(
   result->Set(j++, TRI_V8_ASCII_STRING("_id"));
   result->Set(j++, TRI_V8_ASCII_STRING("_isSystem()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_databases()"));
+  result->Set(j++, TRI_V8_ASCII_STRING("_engine()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_name()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_path()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_pregelStart()"));
