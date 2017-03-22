@@ -990,7 +990,14 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       if (!shardSet.empty()) {
         arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> headers;
-
+        std::string shardList;
+        for (auto const& shard : shardSet) {
+          if (!shardList.empty()) {
+            shardList += ",";
+          }
+          shardList += shard;
+        }
+        headers["X-Arango-Nolock"] = shardList;  // Prevent locking
         auto res = cc->syncRequest("", coordTransactionID, "server:" + list.first,
                                    RequestType::POST, url, engineInfo.toJson(),
                                    headers, 30.0);
@@ -1001,7 +1008,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
             message += std::string(" : ") + res->errorMessage;
           }
           THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED, message);
+              TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, message);
         } else {
           // Only if the result was successful we will get here
           arangodb::basics::StringBuffer& body = res->result->getBody();
@@ -1011,7 +1018,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           VPackSlice resultSlice = builder->slice();
           if (!resultSlice.isNumber()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_INTERNAL, "got unexpected response from engine lock request");
+                TRI_ERROR_INTERNAL, "got unexpected response from engine build request");
           }
           auto engineId = resultSlice.getNumericValue<traverser::TraverserEngineID>();
           TRI_ASSERT(engineId != 0);
@@ -1166,6 +1173,9 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           engine->_lockedShards = new std::unordered_set<std::string>();
           engine->_previouslyLockedShards = nullptr;
         }
+        // Note that it is crucial that this is a map and not an unordered_map,
+        // because we need to guarantee the order of locking by using
+        // alphabetical order on the shard names!
         std::map<std::string, std::pair<std::string, bool>> forLocking;
         for (auto& q : inst.get()->queryIds) {
           std::string theId = q.first;

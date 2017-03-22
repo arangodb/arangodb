@@ -293,10 +293,12 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
   int res;
   if (type == TRI_TRANSACTION_READ) {
     LOG_TRX(trx, nestingLevel) << "read-locking collection " << trxCollection->_cid;
+    //LOG_TOPIC(INFO, Logger::DEVEL) << "read-locking collection " << trxCollection->_cid;
     res = collection->beginReadTimed(useDeadlockDetector, timeout);
   } else {
     LOG_TRX(trx, nestingLevel) << "write-locking collection "
                                << trxCollection->_cid;
+    //LOG_TOPIC(INFO, Logger::DEVEL) << "write-locking collection " << trxCollection->_cid;
     res = collection->beginWriteTimed(useDeadlockDetector, timeout);
   }
 
@@ -360,9 +362,11 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
   TRI_ASSERT(collection != nullptr);
   if (trxCollection->_lockType == TRI_TRANSACTION_READ) {
     LOG_TRX(trxCollection->_transaction, nestingLevel) << "read-unlocking collection " << trxCollection->_cid;
+    //LOG_TOPIC(INFO, Logger::DEVEL) << "read-unlocking collection " << trxCollection->_cid;
     collection->endRead(useDeadlockDetector);
   } else {
     LOG_TRX(trxCollection->_transaction, nestingLevel) << "write-unlocking collection " << trxCollection->_cid;
+    //LOG_TOPIC(INFO, Logger::DEVEL) << "write-unlocking collection " << trxCollection->_cid;
     collection->endWrite(useDeadlockDetector);
   }
 
