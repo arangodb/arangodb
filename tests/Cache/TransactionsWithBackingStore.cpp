@@ -115,8 +115,8 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
     }
 
     auto hitRates = manager.globalHitRates();
-    REQUIRE(hitRates.first >= 30.0);
-    REQUIRE(hitRates.second >= 40.0);
+    CHECK(hitRates.first >= 15.0);
+    CHECK(hitRates.second >= 30.0);
 
     RandomGenerator::shutdown();
   }
@@ -193,8 +193,8 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
     }
 
     auto hitRates = manager.globalHitRates();
-    REQUIRE(hitRates.first >= 10.0);
-    REQUIRE(hitRates.second >= 20.0);
+    CHECK(hitRates.first >= 0.1);
+    CHECK(hitRates.second >= 5.0);
 
     RandomGenerator::shutdown();
   }
