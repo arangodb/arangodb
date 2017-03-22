@@ -16,7 +16,7 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">optimizer</span>: {
           <span class="hljs-number">1</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">2</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">3</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
         <span class="hljs-string">"collection"</span> : <span class="hljs-string">"_users"</span>, 
@@ -33,7 +33,7 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">optimizer</span>: {
           <span class="hljs-number">2</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">3</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">3</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">4</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"expression"</span> : { 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"compare =="</span>, 
@@ -68,7 +68,7 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">optimizer</span>: {
           <span class="hljs-number">3</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">4</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">4</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">5</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"inVariable"</span> : { 
           <span class="hljs-string">"id"</span> : <span class="hljs-number">2</span>, 
@@ -81,7 +81,7 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">optimizer</span>: {
           <span class="hljs-number">4</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">5</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">5</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">6</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"inVariable"</span> : { 
           <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
@@ -106,8 +106,9 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">optimizer</span>: {
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"user"</span> 
       } 
     ], 
-    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">5</span>, 
-    <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span> 
+    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">6</span>, 
+    <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"initialize"</span> : <span class="hljs-literal">true</span> 
   }, 
   <span class="hljs-string">"warnings"</span> : [ ], 
   <span class="hljs-string">"stats"</span> : { 

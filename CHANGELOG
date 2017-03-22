@@ -1,5 +1,5 @@
-devel
------
+v3.2.alpha3 (2017-03-22)
+------------------------
 
 * added function `db._engine()` for retrieval of storage engine information at
   server runtime

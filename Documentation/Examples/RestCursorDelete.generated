@@ -16,13 +16,13 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9477"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9477"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UWx9_8K---"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UtUumou---"</span>, 
       <span class="hljs-string">"hello2"</span> : <span class="hljs-string">"world1"</span> 
     }, 
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9473"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9473"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UWx9_8G---"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UtUumoq---"</span>, 
       <span class="hljs-string">"hello1"</span> : <span class="hljs-string">"world1"</span> 
     } 
   ], 
@@ -36,7 +36,8 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
       <span class="hljs-string">"scannedFull"</span> : <span class="hljs-number">5</span>, 
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00026607513427734375</span> 
+      <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0001919269561767578</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 
