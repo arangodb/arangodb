@@ -35,6 +35,10 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
 }
 
 RocksDBEngine::~RocksDBEngine() {
+  if(_db){
+    delete _db;
+    _db = nullptr;
+  }
 }
 
 // inherited from ApplicationFeature
@@ -48,6 +52,11 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions>) {
 // validate the storage engine's specific options
 void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 
+}
+
+// preparation phase for storage engine. can be used for internal setup.
+// the storage engine must not start any threads here or write any files
+void RocksDBEngine::prepare() {
 }
 
 void RocksDBEngine::start() {
@@ -74,10 +83,12 @@ void RocksDBEngine::start() {
     FATAL_ERROR_EXIT();
   }
 }
-void RocksDBEngine::stop() { throw std::runtime_error("not implemented"); }
-// preparation phase for storage engine. can be used for internal setup.
-// the storage engine must not start any threads here or write any files
-void RocksDBEngine::prepare() {
+
+void RocksDBEngine::stop() {
+  if(_db){
+    delete _db;
+    _db = nullptr;
+  }
 }
 
 transaction::ContextData* RocksDBEngine::createTransactionContextData() {
