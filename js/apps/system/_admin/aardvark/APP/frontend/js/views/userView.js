@@ -31,13 +31,11 @@
     },
 
     continueRender: function () {
-      this.breadcrumb();
-
       this.currentUser = this.collection.findWhere({
         user: this.username
       });
 
-      arangoHelper.buildUserSubNav(this.currentUser.get('user'), 'General');
+      this.breadcrumb();
 
       if (this.currentUser.get('loggedIn')) {
         this.editCurrentUser();
@@ -307,9 +305,18 @@
     },
 
     breadcrumb: function () {
-      $('#subNavigationBar .breadcrumb').html(
-        'User: ' + this.username
-      );
+      var self = this;
+
+      if (window.App.naviView) {
+        $('#subNavigationBar .breadcrumb').html(
+          'User: ' + this.username
+        );
+        arangoHelper.buildUserSubNav(self.currentUser.get('user'), 'General');
+      } else {
+        window.setTimeout(function () {
+          self.breadcrumb();
+        }, 100);
+      }
     }
 
   });
