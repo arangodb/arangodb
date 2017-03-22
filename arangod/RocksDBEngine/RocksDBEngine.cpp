@@ -6,6 +6,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RocksDBEngine.h"
+#include "RocksDBTypes.h"
 #include <Basics/Result.h>
 #include <stdexcept>
 #include <rocksdb/db.h>
@@ -124,7 +125,17 @@ PhysicalView* RocksDBEngine::createPhysicalView(LogicalView*,
 // -----------------------
 
 void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
-  throw std::runtime_error("not implemented");
+  LOG_TOPIC(WARN, Logger::STARTUP) << "getting databases for rocksdb";
+
+  rocksdb::ReadOptions read_options;
+  read_options.total_order_seek = true;
+  auto iter = _db->NewIterator(read_options);
+
+  RocksDBEntryType dbPrefix = RocksDBEntryType::Database;
+  rocksdb::Slice key(reinterpret_cast<char*>(&dbPrefix),1);
+  iter->Seek(key);
+
+
 }
 void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
                                       arangodb::velocypack::Builder& result,

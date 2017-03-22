@@ -25,10 +25,12 @@
 #ifndef ARANGO_ROCKSDB_ROCKSDB_TYPES_H
 #define ARANGO_ROCKSDB_ROCKSDB_TYPES_H 1
 
+#include <rocksdb/slice.h>
 #include <cstdint>
+
 namespace arangodb {
 
-enum class RocksDBEntryType : std::uint8_t {
+enum class RocksDBEntryType : char {
   Database = '0',
   Collection = '1',
   Index = '2',
@@ -39,6 +41,7 @@ enum class RocksDBEntryType : std::uint8_t {
   CrossReference = '9'
 };
 
+rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
 }
 
 #endif
