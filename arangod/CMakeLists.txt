@@ -284,6 +284,7 @@ SET(ARANGOD_SOURCES
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionContextData.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
+  RocksDBEngine/RocksDBTypes.cpp
   RocksDBEngine/RocksDBView.cpp
   Scheduler/Acceptor.cpp
   Scheduler/AcceptorTcp.cpp
