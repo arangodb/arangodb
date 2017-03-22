@@ -723,9 +723,10 @@ void HttpCommTask::compactify() {
   if (compact) {
     _sinceCompactification = 0;
 
-    TRI_ASSERT(_startPosition >= _readPosition);
-
-    _startPosition -= _readPosition;
+    if (_startPosition > 0) {
+      TRI_ASSERT(_startPosition >= _readPosition);
+      _startPosition -= _readPosition;
+    }
 
     if (_bodyPosition > 0) {
       TRI_ASSERT(_bodyPosition >= _readPosition);
@@ -743,6 +744,7 @@ void HttpCommTask::resetState() {
 
   _bodyPosition = 0;
   _bodyLength = 0;
+  _startPosition = 0;
 
   _newRequest = true;
   _readRequestBody = false;
