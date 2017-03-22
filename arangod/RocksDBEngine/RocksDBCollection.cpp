@@ -58,13 +58,6 @@ void RocksDBCollection::getPropertiesVPack(velocypack::Builder&) const {
 }
 
 // datafile management
-bool RocksDBCollection::applyForTickRange(
-    TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-    std::function<bool(TRI_voc_tick_t foundTick,
-                       TRI_df_marker_t const* marker)> const& callback) {
-  throw std::logic_error("not implemented");
-  return false;
-}
 
 /// @brief closes an open collection
 int RocksDBCollection::close() {
@@ -72,11 +65,6 @@ int RocksDBCollection::close() {
   return 0;
 }
 
-/// @brief rotate the active journal - will do nothing if there is no journal
-int RocksDBCollection::rotateActiveJournal() {
-  throw std::logic_error("not implemented");
-  return 0;
-}
 
 uint64_t RocksDBCollection::numberDocuments() const {
   throw std::logic_error("not implemented");

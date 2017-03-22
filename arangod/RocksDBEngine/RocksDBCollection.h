@@ -83,18 +83,11 @@ class RocksDBCollection final : public PhysicalCollection {
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   // datafile management
-  bool applyForTickRange(
-      TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-      std::function<bool(TRI_voc_tick_t foundTick,
-                         TRI_df_marker_t const* marker)> const& callback)
-      override;
 
   /// @brief closes an open collection
   int close() override;
 
   /// @brief rotate the active journal - will do nothing if there is no journal
-  int rotateActiveJournal() override;
-
   uint64_t numberDocuments() const override;
 
   void sizeHint(transaction::Methods* trx, int64_t hint) override;
