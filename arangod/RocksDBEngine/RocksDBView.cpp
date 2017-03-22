@@ -62,7 +62,6 @@ RocksDBView::RocksDBView(LogicalView* logical, PhysicalView* physical)
 }
 
 RocksDBView::~RocksDBView() {
-  throw std::logic_error("not implemented");
 }
 
 void RocksDBView::getPropertiesVPack(velocypack::Builder& result,

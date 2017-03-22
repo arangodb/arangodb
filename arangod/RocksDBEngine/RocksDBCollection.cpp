@@ -57,14 +57,11 @@ void RocksDBCollection::getPropertiesVPack(velocypack::Builder&) const {
   throw std::logic_error("not implemented");
 }
 
-// datafile management
-
 /// @brief closes an open collection
 int RocksDBCollection::close() {
   throw std::logic_error("not implemented");
   return 0;
 }
-
 
 uint64_t RocksDBCollection::numberDocuments() const {
   throw std::logic_error("not implemented");

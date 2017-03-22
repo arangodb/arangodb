@@ -82,12 +82,9 @@ class RocksDBCollection final : public PhysicalCollection {
 
   void getPropertiesVPack(velocypack::Builder&) const override;
 
-  // datafile management
-
   /// @brief closes an open collection
   int close() override;
 
-  /// @brief rotate the active journal - will do nothing if there is no journal
   uint64_t numberDocuments() const override;
 
   void sizeHint(transaction::Methods* trx, int64_t hint) override;
