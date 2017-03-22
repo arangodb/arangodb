@@ -5,7 +5,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products/figures
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9340"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9343"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
@@ -25,7 +25,7 @@ location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products
     }, 
     <span class="hljs-string">"compactionStatus"</span> : { 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-03-22T11:04:34Z"</span> 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-03-22T13:20:11Z"</span> 
     }, 
     <span class="hljs-string">"documentReferences"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"waitingFor"</span> : <span class="hljs-string">"document-reference"</span>, 
@@ -54,7 +54,7 @@ location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products
       <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"size"</span> : <span class="hljs-number">48192</span> 
     }, 
-    <span class="hljs-string">"lastTick"</span> : <span class="hljs-number">9345</span>, 
+    <span class="hljs-string">"lastTick"</span> : <span class="hljs-number">9348</span>, 
     <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">1</span> 
   }, 
   <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 

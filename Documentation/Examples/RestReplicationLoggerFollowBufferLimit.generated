@@ -1,11 +1,11 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=10438&chunkSize=400
+shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=10440&chunkSize=400
 
 HTTP/1.1 200 OK
 content-type: application/x-arango-dump; charset=utf-8
-x-arango-replication-lasttick: 10450
+x-arango-replication-lasttick: 10452
 x-arango-replication-active: true
 x-arango-replication-frompresent: true
 x-arango-replication-checkmore: true
-x-arango-replication-lastincluded: 10440
+x-arango-replication-lastincluded: 10442
 
-"{\"tick\":\"10440\",\"type\":2000,\"database\":\"1\",\"cid\":\"10439\",\"cname\":\"products\",\"data\":{\"allowUserKeys\":true,\"cid\":\"10439\",\"count\":0,\"deleted\":false,\"doCompact\":true,\"id\":\"10439\",\"indexBuckets\":8,\"indexes\":[{\"fields\":[\"_key\"],\"id\":\"0\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"primary\",\"unique\":true}],\"isSmart\":false,\"isSystem\":false,\"isVolatile\":false,\"journalSize\":33554432,\"keyOptions\":{\"allowUserKeys\":true,\"type\":\"traditional\"},\"name\":\"products\",\"numberOfShards\":1,\"planId\":\"10439\",\"replicationFactor\":1,\"shardKeys\":[\"_key\"],\"shards\":{},\"status\":3,\"type\":2,\"version\":6,\"waitForSync\":false}}\n"
+"{\"tick\":\"10442\",\"type\":2000,\"database\":\"1\",\"cid\":\"10441\",\"cname\":\"products\",\"data\":{\"allowUserKeys\":true,\"cid\":\"10441\",\"count\":0,\"deleted\":false,\"doCompact\":true,\"id\":\"10441\",\"indexBuckets\":8,\"indexes\":[{\"fields\":[\"_key\"],\"id\":\"0\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"primary\",\"unique\":true}],\"isSmart\":false,\"isSystem\":false,\"isVolatile\":false,\"journalSize\":33554432,\"keyOptions\":{\"allowUserKeys\":true,\"type\":\"traditional\"},\"name\":\"products\",\"numberOfShards\":1,\"planId\":\"10441\",\"replicationFactor\":1,\"shardKeys\":[\"_key\"],\"shards\":{},\"status\":3,\"type\":2,\"version\":6,\"waitForSync\":false}}\n"

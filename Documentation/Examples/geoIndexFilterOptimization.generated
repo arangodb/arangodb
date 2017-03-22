@@ -1,6 +1,6 @@
 arangosh&gt; db.geoFilter.ensureIndex({ <span class="hljs-attr">type</span>: <span class="hljs-string">"geo"</span>, <span class="hljs-attr">fields</span>: [ <span class="hljs-string">"latitude"</span>, <span class="hljs-string">"longitude"</span> ] });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"geoFilter/25947"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"geoFilter/25953"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"geo2"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"latitude"</span>, 
@@ -42,9 +42,9 @@ Optimization rules applied:
 arangosh&gt; db._query(query);
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"27004"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoFilter/27004"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UtUv7mK--_"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"27010"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoFilter/27010"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UtWsGwm--B"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/0"</span>, 
     <span class="hljs-string">"latitude"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"longitude"</span> : <span class="hljs-number">0</span> 
