@@ -25,6 +25,8 @@
 #ifndef ARANGO_ROCKSDB_ROCKSDB_ENTRY_H
 #define ARANGO_ROCKSDB_ROCKSDB_ENTRY_H 1
 
+#include "RocksDBTypes.h"
+
 #include "Basics/Common.h"
 
 #include <velocypack/Slice.h>
@@ -33,17 +35,6 @@
 namespace arangodb {
 
 class RocksDBEntry {
- public:
-  enum class Type : uint8_t {
-    Database = '0',
-    Collection = '1',
-    Index = '2',
-    Document = '3',
-    IndexValue = '4',
-    UniqueIndexValue = '5',
-    View = '6',
-    CrossReference = '9'
-  };
 
  public:
   RocksDBEntry() = delete;
@@ -67,7 +58,7 @@ class RocksDBEntry {
   static RocksDBEntry CrossReferenceView(uint64_t databaseId, uint64_t viewId);
 
  public:
-  Type type() const;
+  RocksDBEntryType type() const;
 
   uint64_t databaseId() const;
   uint64_t collectionId() const;
@@ -83,13 +74,13 @@ class RocksDBEntry {
   std::string& valueBuffer();
 
  private:
-  RocksDBEntry(Type type, Type subtype, uint64_t first, uint64_t second = 0,
+  RocksDBEntry(RocksDBEntryType type, RocksDBEntryType subtype, uint64_t first, uint64_t second = 0,
                uint64_t third = 0);
-  RocksDBEntry(Type type, uint64_t first, uint64_t second = 0,
+  RocksDBEntry(RocksDBEntryType type, uint64_t first, uint64_t second = 0,
                VPackSlice const& slice = VPackSlice());
 
  private:
-  const Type _type;
+  const RocksDBEntryType _type;
   std::string _keyBuffer;
   std::string _valueBuffer;
 };

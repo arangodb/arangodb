@@ -42,30 +42,30 @@ int RocksDBComparator::Compare(rocksdb::Slice const& lhs,
     return result;
   }
 
-  RocksDBEntry::Type type = static_cast<RocksDBEntry::Type>(lhs[0]);
+  RocksDBEntryType type = static_cast<RocksDBEntryType>(lhs[0]);
   switch (type) {
-    case RocksDBEntry::Type::Database: {
+    case RocksDBEntryType::Database: {
       return compareDatabases(lhs, rhs);
     }
-    case RocksDBEntry::Type::Collection: {
+    case RocksDBEntryType::Collection: {
       return compareCollections(lhs, rhs);
     }
-    case RocksDBEntry::Type::Index: {
+    case RocksDBEntryType::Index: {
       return compareIndices(lhs, rhs);
     }
-    case RocksDBEntry::Type::Document: {
+    case RocksDBEntryType::Document: {
       return compareDocuments(lhs, rhs);
     }
-    case RocksDBEntry::Type::IndexValue: {
+    case RocksDBEntryType::IndexValue: {
       return compareIndexValues(lhs, rhs);
     }
-    case RocksDBEntry::Type::UniqueIndexValue: {
+    case RocksDBEntryType::UniqueIndexValue: {
       return compareUniqueIndexValues(lhs, rhs);
     }
-    case RocksDBEntry::Type::View: {
+    case RocksDBEntryType::View: {
       return compareViews(lhs, rhs);
     }
-    case RocksDBEntry::Type::CrossReference: {
+    case RocksDBEntryType::CrossReference: {
       return compareCrossReferences(lhs, rhs);
     }
     default: { return compareLexicographic(lhs, rhs); }
@@ -159,13 +159,13 @@ int RocksDBComparator::compareCrossReferences(rocksdb::Slice const& lhs,
     return result;
   }
 
-  RocksDBEntry::Type subtype = static_cast<RocksDBEntry::Type>(lhs[offset]);
+  RocksDBEntryType subtype = static_cast<RocksDBEntryType>(lhs[offset]);
   switch (subtype) {
-    case RocksDBEntry::Type::Collection:
+    case RocksDBEntryType::Collection:
       return compareCrossReferenceCollections(lhs, rhs);
-    case RocksDBEntry::Type::Index:
+    case RocksDBEntryType::Index:
       return compareCrossReferenceIndices(lhs, rhs);
-    case RocksDBEntry::Type::View:
+    case RocksDBEntryType::View:
       return compareCrossReferenceViews(lhs, rhs);
     default:
       return compareLexicographic(lhs, rhs);

@@ -29,61 +29,61 @@ using namespace arangodb;
 using namespace arangodb::velocypack;
 
 RocksDBEntry RocksDBEntry::Database(uint64_t id, VPackSlice const& data) {
-  return RocksDBEntry(Type::Database, id, 0, data);
+  return RocksDBEntry(RocksDBEntryType::Database, id, 0, data);
 }
 
 RocksDBEntry RocksDBEntry::Collection(uint64_t id, VPackSlice const& data) {
-  return RocksDBEntry(Type::Collection, id, 0, data);
+  return RocksDBEntry(RocksDBEntryType::Collection, id, 0, data);
 }
 
 RocksDBEntry RocksDBEntry::Index(uint64_t id, VPackSlice const& data) {
-  return RocksDBEntry(Type::Index, id, 0, data);
+  return RocksDBEntry(RocksDBEntryType::Index, id, 0, data);
 }
 
 RocksDBEntry RocksDBEntry::Document(uint64_t collectionId, uint64_t revisionId,
                                     VPackSlice const& data) {
-  return RocksDBEntry(Type::Document, collectionId, revisionId, data);
+  return RocksDBEntry(RocksDBEntryType::Document, collectionId, revisionId, data);
 }
 
 RocksDBEntry RocksDBEntry::IndexValue(uint64_t indexId, uint64_t revisionId,
                                       VPackSlice const& indexValues) {
-  return RocksDBEntry(Type::IndexValue, indexId, revisionId, indexValues);
+  return RocksDBEntry(RocksDBEntryType::IndexValue, indexId, revisionId, indexValues);
 }
 
 RocksDBEntry RocksDBEntry::UniqueIndexValue(uint64_t indexId,
                                             uint64_t revisionId,
                                             VPackSlice const& indexValues) {
-  return RocksDBEntry(Type::UniqueIndexValue, indexId, revisionId, indexValues);
+  return RocksDBEntry(RocksDBEntryType::UniqueIndexValue, indexId, revisionId, indexValues);
 }
 
 RocksDBEntry RocksDBEntry::View(uint64_t id, VPackSlice const& data) {
-  return RocksDBEntry(Type::View, id, 0, data);
+  return RocksDBEntry(RocksDBEntryType::View, id, 0, data);
 }
 
 RocksDBEntry RocksDBEntry::CrossReferenceCollection(uint64_t databaseId,
                                                     uint64_t collectionId) {
-  return RocksDBEntry(Type::CrossReference, Type::Collection, databaseId,
+  return RocksDBEntry(RocksDBEntryType::CrossReference, RocksDBEntryType::Collection, databaseId,
                       collectionId);
 }
 
 RocksDBEntry RocksDBEntry::CrossReferenceIndex(uint64_t databaseId,
                                                uint64_t collectionId,
                                                uint64_t indexId) {
-  return RocksDBEntry(Type::CrossReference, Type::Index, databaseId,
+  return RocksDBEntry(RocksDBEntryType::CrossReference, RocksDBEntryType::Index, databaseId,
                       collectionId, indexId);
 }
 
 RocksDBEntry RocksDBEntry::CrossReferenceView(uint64_t databaseId,
                                               uint64_t viewId) {
-  return RocksDBEntry(Type::CrossReference, Type::View, databaseId, viewId);
+  return RocksDBEntry(RocksDBEntryType::CrossReference, RocksDBEntryType::View, databaseId, viewId);
 }
 
-RocksDBEntry::Type RocksDBEntry::type() const { return _type; }
+RocksDBEntryType RocksDBEntry::type() const { return _type; }
 
 uint64_t RocksDBEntry::databaseId() const {
   switch (_type) {
-    case Type::Database:
-    case Type::CrossReference: {
+    case RocksDBEntryType::Database:
+    case RocksDBEntryType::CrossReference: {
       return *reinterpret_cast<uint64_t const*>(_keyBuffer.data() +
                                                 sizeof(char));
     }
@@ -95,16 +95,16 @@ uint64_t RocksDBEntry::databaseId() const {
 
 uint64_t RocksDBEntry::collectionId() const {
   switch (_type) {
-    case Type::Collection:
-    case Type::Document: {
+    case RocksDBEntryType::Collection:
+    case RocksDBEntryType::Document: {
       return *reinterpret_cast<uint64_t const*>(_keyBuffer.data() +
                                                 sizeof(char));
     }
 
-    case Type::CrossReference: {
-      Type subtype =
-          *reinterpret_cast<Type const*>(_keyBuffer.data() + sizeof(char));
-      if ((subtype == Type::Collection) || (subtype == Type::Index)) {
+    case RocksDBEntryType::CrossReference: {
+      RocksDBEntryType subtype =
+          *reinterpret_cast<RocksDBEntryType const*>(_keyBuffer.data() + sizeof(char));
+      if ((subtype == RocksDBEntryType::Collection) || (subtype == RocksDBEntryType::Index)) {
         return *reinterpret_cast<uint64_t const*>(
             _keyBuffer.data() + (2 * sizeof(char)) + sizeof(uint64_t));
       } else {
@@ -119,17 +119,17 @@ uint64_t RocksDBEntry::collectionId() const {
 
 uint64_t RocksDBEntry::indexId() const {
   switch (_type) {
-    case Type::Index:
-    case Type::IndexValue:
-    case Type::UniqueIndexValue: {
+    case RocksDBEntryType::Index:
+    case RocksDBEntryType::IndexValue:
+    case RocksDBEntryType::UniqueIndexValue: {
       return *reinterpret_cast<uint64_t const*>(_keyBuffer.data() +
                                                 sizeof(char));
     }
 
-    case Type::CrossReference: {
-      Type subtype =
-          *reinterpret_cast<Type const*>(_keyBuffer.data() + sizeof(char));
-      if (subtype == Type::Index) {
+    case RocksDBEntryType::CrossReference: {
+      RocksDBEntryType subtype =
+          *reinterpret_cast<RocksDBEntryType const*>(_keyBuffer.data() + sizeof(char));
+      if (subtype == RocksDBEntryType::Index) {
         return *reinterpret_cast<uint64_t const*>(
             _keyBuffer.data() + (2 * sizeof(char)) + (2 * sizeof(uint64_t)));
       } else {
@@ -144,15 +144,15 @@ uint64_t RocksDBEntry::indexId() const {
 
 uint64_t RocksDBEntry::viewId() const {
   switch (_type) {
-    case Type::View: {
+    case RocksDBEntryType::View: {
       return *reinterpret_cast<uint64_t const*>(_keyBuffer.data() +
                                                 sizeof(char));
     }
 
-    case Type::CrossReference: {
-      Type subtype =
-          *reinterpret_cast<Type const*>(_keyBuffer.data() + sizeof(char));
-      if (subtype == Type::View) {
+    case RocksDBEntryType::CrossReference: {
+      RocksDBEntryType subtype =
+          *reinterpret_cast<RocksDBEntryType const*>(_keyBuffer.data() + sizeof(char));
+      if (subtype == RocksDBEntryType::View) {
         return *reinterpret_cast<uint64_t const*>(
             _keyBuffer.data() + (2 * sizeof(char)) + sizeof(uint64_t));
       } else {
@@ -167,17 +167,17 @@ uint64_t RocksDBEntry::viewId() const {
 
 uint64_t RocksDBEntry::revisionId() const {
   switch (_type) {
-    case Type::Document: {
+    case RocksDBEntryType::Document: {
       return *reinterpret_cast<uint64_t const*>(
           _keyBuffer.data() + sizeof(char) + sizeof(uint64_t));
     }
 
-    case Type::IndexValue: {
+    case RocksDBEntryType::IndexValue: {
       return *reinterpret_cast<uint64_t const*>(
           _keyBuffer.data() + (_keyBuffer.size() - sizeof(uint64_t)));
     }
 
-    case Type::UniqueIndexValue: {
+    case RocksDBEntryType::UniqueIndexValue: {
       return *reinterpret_cast<uint64_t const*>(_valueBuffer.data());
     }
 
@@ -188,8 +188,8 @@ uint64_t RocksDBEntry::revisionId() const {
 
 VPackSlice const RocksDBEntry::indexedValues() const {
   switch (_type) {
-    case Type::IndexValue:
-    case Type::UniqueIndexValue: {
+    case RocksDBEntryType::IndexValue:
+    case RocksDBEntryType::UniqueIndexValue: {
       return VPackSlice(*reinterpret_cast<VPackSlice const*>(
           _keyBuffer.data() + sizeof(char) + sizeof(uint64_t)));
     }
@@ -201,11 +201,11 @@ VPackSlice const RocksDBEntry::indexedValues() const {
 
 VPackSlice const RocksDBEntry::data() const {
   switch (_type) {
-    case Type::Database:
-    case Type::Collection:
-    case Type::Index:
-    case Type::Document:
-    case Type::View: {
+    case RocksDBEntryType::Database:
+    case RocksDBEntryType::Collection:
+    case RocksDBEntryType::Index:
+    case RocksDBEntryType::Document:
+    case RocksDBEntryType::View: {
       return VPackSlice(
           *reinterpret_cast<VPackSlice const*>(_valueBuffer.data()));
     }
@@ -221,14 +221,14 @@ std::string const& RocksDBEntry::value() const { return _valueBuffer; }
 
 std::string& RocksDBEntry::valueBuffer() { return _valueBuffer; }
 
-RocksDBEntry::RocksDBEntry(RocksDBEntry::Type type, RocksDBEntry::Type subtype,
+RocksDBEntry::RocksDBEntry(RocksDBEntryType type, RocksDBEntryType subtype,
                            uint64_t first, uint64_t second, uint64_t third)
     : _type(type), _keyBuffer(), _valueBuffer() {
-  TRI_ASSERT(_type == Type::CrossReference);
+  TRI_ASSERT(_type == RocksDBEntryType::CrossReference);
 
   switch (subtype) {
-    case Type::Collection:
-    case Type::View: {
+    case RocksDBEntryType::Collection:
+    case RocksDBEntryType::View: {
       size_t length = (2 * sizeof(char)) + (2 * sizeof(uint64_t));
       _keyBuffer.reserve(length);
       _keyBuffer.push_back(static_cast<char>(_type));
@@ -239,7 +239,7 @@ RocksDBEntry::RocksDBEntry(RocksDBEntry::Type type, RocksDBEntry::Type subtype,
       break;
     }
 
-    case Type::Index: {
+    case RocksDBEntryType::Index: {
       size_t length = (2 * sizeof(char)) + (3 * sizeof(uint64_t));
       _keyBuffer.reserve(length);
       _keyBuffer.push_back(static_cast<char>(_type));
@@ -256,15 +256,15 @@ RocksDBEntry::RocksDBEntry(RocksDBEntry::Type type, RocksDBEntry::Type subtype,
   }
 }
 
-RocksDBEntry::RocksDBEntry(RocksDBEntry::Type type, uint64_t first,
+RocksDBEntry::RocksDBEntry(RocksDBEntryType type, uint64_t first,
                            uint64_t second, VPackSlice const& slice)
     : _type(type), _keyBuffer(), _valueBuffer() {
-  TRI_ASSERT(_type != Type::CrossReference);
+  TRI_ASSERT(_type != RocksDBEntryType::CrossReference);
   switch (_type) {
-    case Type::Database:
-    case Type::Collection:
-    case Type::Index:
-    case Type::View: {
+    case RocksDBEntryType::Database:
+    case RocksDBEntryType::Collection:
+    case RocksDBEntryType::Index:
+    case RocksDBEntryType::View: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _keyBuffer.reserve(length);
       _keyBuffer.push_back(static_cast<char>(_type));
@@ -277,7 +277,7 @@ RocksDBEntry::RocksDBEntry(RocksDBEntry::Type type, uint64_t first,
       break;
     }
 
-    case Type::Document: {
+    case RocksDBEntryType::Document: {
       size_t length = sizeof(char) + (2 * sizeof(uint64_t));
       _keyBuffer.reserve(length);
       _keyBuffer.push_back(static_cast<char>(_type));
@@ -291,7 +291,7 @@ RocksDBEntry::RocksDBEntry(RocksDBEntry::Type type, uint64_t first,
       break;
     }
 
-    case Type::IndexValue: {
+    case RocksDBEntryType::IndexValue: {
       size_t length = sizeof(char) + static_cast<size_t>(slice.byteSize()) +
                       (2 * sizeof(uint64_t));
       _keyBuffer.reserve(length);
@@ -304,7 +304,7 @@ RocksDBEntry::RocksDBEntry(RocksDBEntry::Type type, uint64_t first,
       break;
     }
 
-    case Type::UniqueIndexValue: {
+    case RocksDBEntryType::UniqueIndexValue: {
       size_t length = sizeof(char) + static_cast<size_t>(slice.byteSize()) +
                       sizeof(uint64_t);
       _keyBuffer.reserve(length);
