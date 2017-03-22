@@ -30,6 +30,7 @@
 
 namespace arangodb {
 
+
 enum class RocksDBEntryType : char {
   Database = '0',
   Collection = '1',

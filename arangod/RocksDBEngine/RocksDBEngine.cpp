@@ -8,6 +8,7 @@
 #include "RocksDBEngine.h"
 #include "RocksDBTypes.h"
 #include <Basics/Result.h>
+#include <Basics/VelocyPackHelper.h>
 #include <stdexcept>
 #include <rocksdb/db.h>
 #include <rocksdb/convenience.h>
@@ -70,7 +71,7 @@ void RocksDBEngine::start() {
   auto database = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _path = database->subdirectoryName("engine-rocksdb");
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "initializing rocksdb, path: " << _path;
+  LOG_TOPIC(TRACE, arangodb::Logger::STARTUP) << "initializing rocksdb, path: " << _path;
 
   rocksdb::TransactionDBOptions transactionOptions;
 
@@ -80,7 +81,7 @@ void RocksDBEngine::start() {
   rocksdb::Status status = rocksdb::TransactionDB::Open(_options, transactionOptions, _path, &_db);
 
   if (! status.ok()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to initialize RocksDB engine: " << status.ToString();
+    LOG_TOPIC(FATAL, arangodb::Logger::STARTUP) << "unable to initialize RocksDB engine: " << status.ToString();
     FATAL_ERROR_EXIT();
   }
 }
@@ -129,14 +130,59 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
 
   rocksdb::ReadOptions read_options;
   read_options.total_order_seek = true;
-  auto iter = _db->NewIterator(read_options);
+  auto& iter = *_db->NewIterator(read_options);
 
-  RocksDBEntryType dbPrefix = RocksDBEntryType::Database;
-  rocksdb::Slice key(reinterpret_cast<char*>(&dbPrefix),1);
-  iter->Seek(key);
+  result.openArray();
+  auto rSlice = rocksDBSlice(RocksDBEntryType::Database);
+  for (iter.Seek(rSlice); iter.Valid() && iter.key().starts_with(rSlice);
+       iter.Next()) {
+    auto slice = VPackSlice(iter.value().data());
 
+    //// check format
+    // id
+    VPackSlice idSlice = slice.get("id");
+    if (!idSlice.isString() || false) {
+      // id != static_cast<TRI_voc_tick_t>(
+      //           basics::StringUtils::uint64(idSlice.copyString()))) {
+      LOG_TOPIC(ERR, arangodb::Logger::STARTUP)
+          << "database directory '" << _path
+          << "' does not contain a valid parameters file. database id is not a "
+             "string";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
+    }
 
+    // deleted
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "deleted",
+                                                            false)) {
+      // database is deleted, skip it!
+      LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP)
+          << "found dropped database in _path '" << _path << "'";
+      LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP)
+          << "removing superfluous database _path '" << _path << "'";
+
+      // delete persistent indexes for this database
+      TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(
+          basics::StringUtils::uint64(idSlice.copyString()));
+
+      auto result = dropDatabase(id);
+
+      continue;
+    }
+
+    // name
+    VPackSlice nameSlice = slice.get("name");
+    if (!nameSlice.isString()) {
+      LOG_TOPIC(ERR, arangodb::Logger::STARTUP)
+          << "database _path '"  // << _path
+          << "' does not contain a valid parameters file";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
+    }
+
+    result.add(slice);
+  }
+  result.close();
 }
+
 void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
                                       arangodb::velocypack::Builder& result,
                                       bool includeIndexes,
@@ -392,4 +438,11 @@ void RocksDBEngine::addV8Functions() {
 void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory*) {
   throw std::runtime_error("not implemented");
 }
+
+EngineResult RocksDBEngine::dropDatabase(TRI_voc_tick_t str){
+  LOG_TOPIC(WARN, Logger::STARTUP) << "rocksdb - dropping database: " << str;
+  LOG_TOPIC(WARN, Logger::STARTUP) << "NOT IMPLEMENTED - dropDatabase(std::string const& )";
+  return EngineResult{};
+}
+
 }

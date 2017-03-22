@@ -35,6 +35,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "StorageEngine/StorageEngine.h"
+#include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/AccessMode.h"
 
 #include <velocypack/Builder.h>
@@ -225,6 +226,8 @@ class RocksDBEngine final : public StorageEngine {
 
   /// @brief Add engine-specific REST handlers
   void addRestHandlers(rest::RestHandlerFactory*) override;
+private:
+  EngineResult dropDatabase(TRI_voc_tick_t);
 
 public:
   static std::string const EngineName;

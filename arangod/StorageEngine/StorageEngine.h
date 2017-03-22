@@ -26,6 +26,7 @@
 #define ARANGOD_STORAGE_ENGINE_STORAGE_ENGINE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Indexes/IndexFactory.h"
 #include "VocBase/AccessMode.h"
@@ -55,6 +56,8 @@ class RestHandlerFactory;
 namespace transaction {
 class ContextData;
 }
+
+class EngineResult : Result {};
 
 class StorageEngine : public application_features::ApplicationFeature {
  public:
