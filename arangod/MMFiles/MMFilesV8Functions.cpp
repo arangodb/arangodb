@@ -25,10 +25,13 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/V8Context.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -40,6 +43,50 @@
 #include <v8.h>
 
 using namespace arangodb;
+
+/// @brief rotate the active journal of the collection
+static void JS_RotateVocbaseCol(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (ServerState::instance()->isCoordinator()) {
+    // renaming a collection in a cluster is unsupported
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_UNSUPPORTED);
+  }
+
+  PREVENT_EMBEDDED_TRANSACTION();
+
+  arangodb::LogicalCollection* collection =
+      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+  
+  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
+
+  SingleCollectionTransaction trx(
+      transaction::V8Context::Create(collection->vocbase(), true),
+      collection->cid(), AccessMode::Type::READ);
+
+  int res = trx.begin();
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  res = static_cast<MMFilesCollection*>(collection->getPhysical())->rotateActiveJournal();
+
+  trx.finish(res);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "could not rotate journal");
+  }
+
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
 
 /// @brief returns information about the datafiles
 /// the collection must be unloaded.
@@ -497,14 +544,16 @@ void MMFilesV8Functions::registerResources() {
   v8::Handle<v8::ObjectTemplate> rt = v8::Handle<v8::ObjectTemplate>::New(isolate, v8g->VocbaseColTempl);
   TRI_ASSERT(!rt.IsEmpty());
   
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("truncateDatafile"),
-                       JS_TruncateDatafileVocbaseCol, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("tryRepairDatafile"),
-                       JS_TryRepairDatafileVocbaseCol, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("datafiles"),
                        JS_DatafilesVocbaseCol, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("datafileScan"),
                        JS_DatafileScanVocbaseCol, true);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("rotate"),
+                       JS_RotateVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("truncateDatafile"),
+                       JS_TruncateDatafileVocbaseCol, true);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("tryRepairDatafile"),
+                       JS_TryRepairDatafileVocbaseCol, true);
   
   // add global WAL handling functions
   TRI_AddGlobalFunctionVocbase(

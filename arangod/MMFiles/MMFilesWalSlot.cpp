@@ -65,9 +65,9 @@ void MMFilesWalSlot::finalize(MMFilesWalMarker const* marker) {
 
   TRI_ASSERT(_mem != nullptr);
   TRI_ASSERT(size == _size);
-  TRI_ASSERT(size >= sizeof(TRI_df_marker_t));
+  TRI_ASSERT(size >= sizeof(MMFilesMarker));
 
-  TRI_df_marker_t* dfm = static_cast<TRI_df_marker_t*>(_mem);
+  MMFilesMarker* dfm = static_cast<MMFilesMarker*>(_mem);
 
   // set type and tick
   dfm->setTypeAndTick(marker->type(), _tick);
@@ -96,7 +96,7 @@ void MMFilesWalSlot::fill(void* src, size_t size) {
   TRI_ASSERT(size == _size);
   TRI_ASSERT(src != nullptr);
 
-  TRI_df_marker_t* marker = static_cast<TRI_df_marker_t*>(src);
+  MMFilesMarker* marker = static_cast<MMFilesMarker*>(src);
 
   // set tick
   marker->setTick(_tick);

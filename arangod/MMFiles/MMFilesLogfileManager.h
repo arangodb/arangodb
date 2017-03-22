@@ -45,25 +45,6 @@ namespace options {
 class ProgramOptions;
 }
 
-struct LogfileRange {
-  LogfileRange(MMFilesWalLogfile::IdType id, std::string const& filename,
-               std::string const& state, TRI_voc_tick_t tickMin,
-               TRI_voc_tick_t tickMax)
-      : id(id),
-        filename(filename),
-        state(state),
-        tickMin(tickMin),
-        tickMax(tickMax) {}
-
-  MMFilesWalLogfile::IdType id;
-  std::string filename;
-  std::string state;
-  TRI_voc_tick_t tickMin;
-  TRI_voc_tick_t tickMax;
-};
-
-typedef std::vector<LogfileRange> LogfileRanges;
-
 struct MMFilesTransactionData final : public TransactionData {
   MMFilesTransactionData() = delete;
   MMFilesTransactionData(MMFilesWalLogfile::IdType lastCollectedId, MMFilesWalLogfile::IdType lastSealedId) :
@@ -79,17 +60,6 @@ struct MMFilesLogfileManagerState {
   uint64_t numEvents;
   uint64_t numEventsSync;
   std::string timeString;
-};
-
-struct LogfileBarrier {
-  LogfileBarrier() = delete;
-
-  LogfileBarrier(TRI_voc_tick_t id, double expires, TRI_voc_tick_t minTick)
-      : id(id), expires(expires), minTick(minTick) {}
-
-  TRI_voc_tick_t const id;
-  double expires;
-  TRI_voc_tick_t minTick;
 };
 
 class MMFilesLogfileManager final : public application_features::ApplicationFeature {
@@ -113,6 +83,36 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
  private:
   static MMFilesLogfileManager* Instance;
+
+  struct LogfileBarrier {
+    LogfileBarrier() = delete;
+
+    LogfileBarrier(TRI_voc_tick_t id, double expires, TRI_voc_tick_t minTick)
+        : id(id), expires(expires), minTick(minTick) {}
+
+    TRI_voc_tick_t const id;
+    double expires;
+    TRI_voc_tick_t minTick;
+  };
+
+  struct LogfileRange {
+    LogfileRange(MMFilesWalLogfile::IdType id, std::string const& filename,
+                std::string const& state, TRI_voc_tick_t tickMin,
+                TRI_voc_tick_t tickMax)
+        : id(id),
+          filename(filename),
+          state(state),
+          tickMin(tickMin),
+          tickMax(tickMax) {}
+
+    MMFilesWalLogfile::IdType id;
+    std::string filename;
+    std::string state;
+    TRI_voc_tick_t tickMin;
+    TRI_voc_tick_t tickMax;
+  };
+
+  typedef std::vector<LogfileRange> LogfileRanges;
 
  public:
   void collectOptions(
