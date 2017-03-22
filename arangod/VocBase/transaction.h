@@ -43,7 +43,7 @@ struct TRI_transaction_collection_t;
 struct TRI_vocbase_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief time (in µs) that is spent waiting for a lock
+/// @brief time (in s) that is spent waiting for a lock
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT 900.0
