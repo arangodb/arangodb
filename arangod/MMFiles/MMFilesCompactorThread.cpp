@@ -243,13 +243,13 @@ int MMFilesCompactorThread::removeDatafile(LogicalCollection* collection,
 /// @brief calculate the target size for the compactor to be created
 MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getCompactionContext(
     transaction::Methods* trx, LogicalCollection* collection,
-    std::vector<compaction_info_t> const& toCompact) {
+    std::vector<CompactionInfo> const& toCompact) {
   CompactionInitialContext context(trx, collection);
 
   // this is the minimum required size
   context._targetSize =
-      sizeof(TRI_df_header_marker_t) + sizeof(TRI_col_header_marker_t) +
-      sizeof(TRI_df_footer_marker_t) + 256;  // allow for some overhead
+      sizeof(MMFilesDatafileHeaderMarker) + sizeof(MMFilesCollectionHeaderMarker) +
+      sizeof(MMFilesDatafileFooterMarker) + 256;  // allow for some overhead
 
   size_t const n = toCompact.size();
 
@@ -271,12 +271,12 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
     context._keepDeletions = compaction._keepDeletions;
 
     /// @brief datafile iterator, calculates necessary total size
-    auto calculateSize = [&context](TRI_df_marker_t const* marker, MMFilesDatafile* datafile) -> bool {
+    auto calculateSize = [&context](MMFilesMarker const* marker, MMFilesDatafile* datafile) -> bool {
       LogicalCollection* collection = context._collection;
       TRI_ASSERT(collection != nullptr);
       auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
       TRI_ASSERT(physical != nullptr);
-      TRI_df_marker_type_t const type = marker->getType();
+      MMFilesMarkerype_t const type = marker->getType();
 
       // new or updated document
       if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
@@ -287,12 +287,12 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
 
         // check if the document is still active
         auto primaryIndex = physical->primaryIndex();
-        TRI_df_marker_t const* markerPtr = nullptr;
+        MMFilesMarker const* markerPtr = nullptr;
         MMFilesSimpleIndexElement element = primaryIndex->lookupKey(context._trx, keySlice);
         if (element) {
           MMFilesDocumentPosition const old =
               physical->lookupRevision(element.revisionId());
-          markerPtr = reinterpret_cast<TRI_df_marker_t const*>(
+          markerPtr = reinterpret_cast<MMFilesMarker const*>(
               static_cast<uint8_t const*>(old.dataptr()) -
               MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
         }
@@ -353,7 +353,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
 
 /// @brief compact the specified datafiles
 void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
-    std::vector<compaction_info_t> const& toCompact) {
+    std::vector<CompactionInfo> const& toCompact) {
   TRI_ASSERT(collection != nullptr);
   auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
@@ -368,10 +368,10 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   /// file.
   /// IMPORTANT: if the logic inside this function is adjusted, the total size
   /// calculated by function CalculateSize might need adjustment, too!!
-  auto compactifier = [&context, &physical, this](TRI_df_marker_t const* marker, MMFilesDatafile* datafile) -> bool {
+  auto compactifier = [&context, &physical, this](MMFilesMarker const* marker, MMFilesDatafile* datafile) -> bool {
     TRI_voc_fid_t const targetFid = context->_compactor->fid();
 
-    TRI_df_marker_type_t const type = marker->getType();
+    MMFilesMarkerype_t const type = marker->getType();
 
     // new or updated document
     if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
@@ -382,11 +382,11 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
       // check if the document is still active
       auto primaryIndex = physical->primaryIndex();
-      TRI_df_marker_t const* markerPtr = nullptr;
+      MMFilesMarker const* markerPtr = nullptr;
       MMFilesSimpleIndexElement element = primaryIndex->lookupKey(context->_trx, keySlice);
       if (element) {
         MMFilesDocumentPosition const old = physical->lookupRevision(element.revisionId());
-        markerPtr = reinterpret_cast<TRI_df_marker_t const*>(static_cast<uint8_t const*>(old.dataptr()) - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+        markerPtr = reinterpret_cast<MMFilesMarker const*>(static_cast<uint8_t const*>(old.dataptr()) - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
       }
         
       bool deleted = (markerPtr == nullptr || marker != markerPtr);
@@ -401,7 +401,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       context->_keepDeletions = true;
 
       // write to compactor files
-      TRI_df_marker_t* result;
+      MMFilesMarker* result;
       int res = copyMarker(context->_compactor, marker, &result);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -422,7 +422,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
       if (context->_keepDeletions) {
         // write to compactor files
-        TRI_df_marker_t* result;
+        MMFilesMarker* result;
         int res = copyMarker(context->_compactor, marker, &result);
 
         if (res != TRI_ERROR_NO_ERROR) {
@@ -661,7 +661,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     return false;
   }
   
-  std::vector<compaction_info_t> toCompact;
+  std::vector<CompactionInfo> toCompact;
   toCompact.reserve(maxFiles());
 
   // now we have datafiles that we can process 
@@ -786,7 +786,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "found datafile #" << i << " eligible for compaction. fid: " << df->fid() << ", size: " << df->maximalSize() << ", reason: " << reason << ", numberDead: " << dfi.numberDead << ", numberAlive: " << dfi.numberAlive << ", numberDeletions: " << dfi.numberDeletions << ", numberUncollected: " << dfi.numberUncollected << ", sizeDead: " << dfi.sizeDead << ", sizeAlive: " << dfi.sizeAlive;
     totalSize += static_cast<uint64_t>(df->maximalSize());
 
-    compaction_info_t compaction;
+    CompactionInfo compaction;
     compaction._datafile = df;
     compaction._keepDeletions = (numAlive > 0 && i > 0);
     // TODO: verify that keepDeletions actually works with wrong numAlive stats
@@ -999,8 +999,8 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collect
 }
 
 /// @brief write a copy of the marker into the datafile
-int MMFilesCompactorThread::copyMarker(MMFilesDatafile* compactor, TRI_df_marker_t const* marker,
-                                       TRI_df_marker_t** result) {
+int MMFilesCompactorThread::copyMarker(MMFilesDatafile* compactor, MMFilesMarker const* marker,
+                                       MMFilesMarker** result) {
   int res = compactor->reserveElement(marker->getSize(), result, 0);
 
   if (res != TRI_ERROR_NO_ERROR) {

@@ -98,7 +98,7 @@ class MMFilesWalLogfile {
   inline MMFilesWalLogfile::IdType id() const { return _id; }
 
   /// @brief update the logfile tick status
-  inline void update(TRI_df_marker_t const* marker) {
+  inline void update(MMFilesMarker const* marker) {
     TRI_UpdateTicksDatafile(df(), marker);
   }
 

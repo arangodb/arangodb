@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"
 
-struct TRI_df_marker_t;
+struct MMFilesMarker;
 
 /// @brief state of the datafile
 enum TRI_df_state_e {
@@ -40,7 +40,7 @@ enum TRI_df_state_e {
 };
 
 /// @brief type of the marker
-enum TRI_df_marker_type_t : uint8_t {
+enum MMFilesMarkerype_t : uint8_t {
   TRI_DF_MARKER_MIN = 9,  // not a real marker type,
                           // but used for bounds checking
 
@@ -93,7 +93,7 @@ struct DatafileScanEntry {
   TRI_voc_size_t realSize;
   TRI_voc_tick_t tick;
 
-  TRI_df_marker_type_t type;
+  MMFilesMarkerype_t type;
   uint32_t status;
 
   char const* typeName;
@@ -133,17 +133,17 @@ struct DatafileScan {
 ///
 /// @section DatafileMarker Datafile Marker
 ///
-/// @copydetails TRI_df_marker_t
+/// @copydetails MMFilesMarker
 ///
-/// @copydetails TRI_df_header_marker_t
+/// @copydetails MMFilesDatafileHeaderMarker
 ///
-/// @copydetails TRI_df_footer_marker_t
+/// @copydetails MMFilesDatafileFooterMarker
 ///
 /// A datafile is therefore structured as follows:
 ///
 /// <table border>
 ///   <tr>
-///     <td>TRI_df_header_marker_t</td>
+///     <td>MMFilesDatafileHeaderMarker</td>
 ///     <td>header entry</td>
 ///   </tr>
 ///   <tr>
@@ -163,7 +163,7 @@ struct DatafileScan {
 ///     <td>data entry</td>
 ///   </tr>
 ///   <tr>
-///     <td>TRI_df_footer_marker_t</td>
+///     <td>MMFilesDatafileFooterMarker</td>
 ///     <td>footer entry</td>
 ///   </tr>
 /// </table>
@@ -228,13 +228,13 @@ struct MMFilesDatafile {
 
   /// @brief writes a marker to the datafile
   /// this function will write the marker as-is, without any CRC or tick updates
-  int writeElement(void* position, TRI_df_marker_t const* marker, bool sync);
+  int writeElement(void* position, MMFilesMarker const* marker, bool sync);
 
   /// @brief checksums and writes a marker to the datafile
-  int writeCrcElement(void* position, TRI_df_marker_t* marker, bool sync);
+  int writeCrcElement(void* position, MMFilesMarker* marker, bool sync);
   
   /// @brief reserves room for an element, advances the pointer
-  int reserveElement(TRI_voc_size_t size, TRI_df_marker_t** position,
+  int reserveElement(TRI_voc_size_t size, MMFilesMarker** position,
                      TRI_voc_size_t maximalJournalSize);
   
   void sequentialAccess();
@@ -291,7 +291,7 @@ struct MMFilesDatafile {
   /// @brief tries to repair a datafile
   bool tryRepair();
 
-  void printMarker(TRI_df_marker_t const* marker, TRI_voc_size_t size, char const* begin, char const* end) const;
+  void printMarker(MMFilesMarker const* marker, TRI_voc_size_t size, char const* begin, char const* end) const;
   
  private:
   std::string _filename;  // underlying filename
@@ -351,9 +351,9 @@ struct MMFilesDatafile {
 ///         the field _crc is equal to 0.</td>
 ///   </tr>
 ///   <tr>
-///     <td>TRI_df_marker_type_t</td>
+///     <td>MMFilesMarkerype_t</td>
 ///     <td>_type</td>
-///     <td>see @ref TRI_df_marker_type_t</td>
+///     <td>see @ref MMFilesMarkerype_t</td>
 ///   </tr>
 ///   <tr>
 ///     <td>TRI_voc_tick_t</td>
@@ -368,24 +368,24 @@ struct MMFilesDatafile {
 /// and _crc the second.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_df_marker_t {
+struct MMFilesMarker {
  private:
   TRI_voc_size_t _size;  // 4 bytes
   TRI_voc_crc_t _crc;    // 4 bytes, generated
   uint64_t _typeAndTick; // 8 bytes, including 1 byte for type and 7 bytes for tick
  
  public:
-  TRI_df_marker_t() : _size(0), _crc(0), _typeAndTick(0) {}
-  ~TRI_df_marker_t() {}
+  MMFilesMarker() : _size(0), _crc(0), _typeAndTick(0) {}
+  ~MMFilesMarker() {}
 
   inline off_t offsetOfSize() const noexcept {
-    return offsetof(TRI_df_marker_t, _size);
+    return offsetof(MMFilesMarker, _size);
   }
   inline off_t offsetOfCrc() const noexcept {
-    return offsetof(TRI_df_marker_t, _crc);
+    return offsetof(MMFilesMarker, _crc);
   }
   inline off_t offsetOfTypeAndTick() const noexcept {
-    return offsetof(TRI_df_marker_t, _typeAndTick);
+    return offsetof(MMFilesMarker, _typeAndTick);
   }
   inline TRI_voc_size_t getSize() const noexcept { return _size; }
   inline void setSize(TRI_voc_size_t size) noexcept { _size = size; }
@@ -400,15 +400,15 @@ struct TRI_df_marker_t {
     _typeAndTick &= 0xff00000000000000ULL; 
     _typeAndTick |= tick & 0x00ffffffffffffffULL;
   }
-  inline TRI_df_marker_type_t getType() const noexcept { 
-    return static_cast<TRI_df_marker_type_t>((_typeAndTick & 0xff00000000000000ULL) >> 56); 
+  inline MMFilesMarkerype_t getType() const noexcept { 
+    return static_cast<MMFilesMarkerype_t>((_typeAndTick & 0xff00000000000000ULL) >> 56); 
   }
-  inline void setType(TRI_df_marker_type_t type) noexcept { 
+  inline void setType(MMFilesMarkerype_t type) noexcept { 
     uint64_t t = static_cast<uint64_t>(type) << 56;
     _typeAndTick &= 0x00ffffffffffffffULL; 
     _typeAndTick |= t;
   } 
-  inline void setTypeAndTick(TRI_df_marker_type_t type, TRI_voc_tick_t tick) noexcept {
+  inline void setTypeAndTick(MMFilesMarkerype_t type, TRI_voc_tick_t tick) noexcept {
     uint64_t t = static_cast<uint64_t>(type) << 56;
     t |= (tick & 0x00ffffffffffffffULL); 
     _typeAndTick = t;
@@ -416,12 +416,12 @@ struct TRI_df_marker_t {
 
 };
 
-static_assert(sizeof(TRI_df_marker_t) == 16, "invalid size for TRI_df_marker_t");
+static_assert(sizeof(MMFilesMarker) == 16, "invalid size for MMFilesMarker");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile header marker
 ///
-/// The first blob entry in a datafile is always a TRI_df_header_marker_t.
+/// The first blob entry in a datafile is always a MMFilesDatafileHeaderMarker.
 /// The header marker contains the version number of the datafile, its
 /// maximal size and the creation time. There is no data payload.
 ///
@@ -448,8 +448,8 @@ static_assert(sizeof(TRI_df_marker_t) == 16, "invalid size for TRI_df_marker_t")
 /// </table>
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_df_header_marker_t {
-  TRI_df_marker_t base;  // 16 bytes
+struct MMFilesDatafileHeaderMarker {
+  MMFilesMarker base;  // 16 bytes
 
   TRI_df_version_t _version;    //  4 bytes
   TRI_voc_size_t _maximalSize;  //  4 bytes
@@ -457,21 +457,21 @@ struct TRI_df_header_marker_t {
 };
 
 /// @brief datafile prologue marker
-struct TRI_df_prologue_marker_t {
-  TRI_df_marker_t base;  // 16 bytes
+struct MMFilesPrologueMarker {
+  MMFilesMarker base;  // 16 bytes
 
   TRI_voc_tick_t _databaseId; // 8 bytes
   TRI_voc_cid_t _collectionId; // 8 bytes
 };
 
 /// @brief datafile footer marker
-struct TRI_df_footer_marker_t {
-  TRI_df_marker_t base;  // 16 bytes
+struct MMFilesDatafileFooterMarker {
+  MMFilesMarker base;  // 16 bytes
 };
 
 /// @brief document datafile header marker
-struct TRI_col_header_marker_t {
-  TRI_df_marker_t base;  // 16 bytes
+struct MMFilesCollectionHeaderMarker {
+  MMFilesMarker base;  // 16 bytes
 
   TRI_voc_cid_t _cid;  //  8 bytes
 };
@@ -480,9 +480,9 @@ struct TRI_col_header_marker_t {
 /// @brief returns the name for a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* TRI_NameMarkerDatafile(TRI_df_marker_type_t);
+char const* TRI_NameMarkerDatafile(MMFilesMarkerype_t);
 
-static inline char const* TRI_NameMarkerDatafile(TRI_df_marker_t const* marker) {
+static inline char const* TRI_NameMarkerDatafile(MMFilesMarker const* marker) {
   return TRI_NameMarkerDatafile(marker->getType());
 }
 
@@ -490,13 +490,13 @@ static inline char const* TRI_NameMarkerDatafile(TRI_df_marker_t const* marker) 
 /// @brief checks whether a marker is valid
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsValidMarkerDatafile(TRI_df_marker_t const*);
+bool TRI_IsValidMarkerDatafile(MMFilesMarker const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update tick values for a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UpdateTicksDatafile(MMFilesDatafile*, TRI_df_marker_t const*);
+void TRI_UpdateTicksDatafile(MMFilesDatafile*, MMFilesMarker const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a datafile
@@ -504,11 +504,11 @@ void TRI_UpdateTicksDatafile(MMFilesDatafile*, TRI_df_marker_t const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateDatafile(MMFilesDatafile*,
-                         bool (*iterator)(TRI_df_marker_t const*, void*,
+                         bool (*iterator)(MMFilesMarker const*, void*,
                                           MMFilesDatafile*),
                          void* data);
                              
 bool TRI_IterateDatafile(MMFilesDatafile*,
-                         std::function<bool(TRI_df_marker_t const*, MMFilesDatafile*)> const& cb);
+                         std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const& cb);
 
 #endif

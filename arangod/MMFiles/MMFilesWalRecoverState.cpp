@@ -258,7 +258,7 @@ LogicalCollection* MMFilesWalRecoverState::getCollection(
 /// @brief executes a single operation inside a transaction
 int MMFilesWalRecoverState::executeSingleOperation(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-    TRI_df_marker_t const* marker, TRI_voc_fid_t fid,
+    MMFilesMarker const* marker, TRI_voc_fid_t fid,
     std::function<int(SingleCollectionTransaction*, MMFilesMarkerEnvelope*)>
         func) {
   // first find the correct database
@@ -337,7 +337,7 @@ int MMFilesWalRecoverState::executeSingleOperation(
 
 /// @brief callback to handle one marker during recovery
 /// this function only builds up state and does not change any data
-bool MMFilesWalRecoverState::InitialScanMarker(TRI_df_marker_t const* marker,
+bool MMFilesWalRecoverState::InitialScanMarker(MMFilesMarker const* marker,
                                                void* data,
                                                MMFilesDatafile* datafile) {
   MMFilesWalRecoverState* state =
@@ -354,7 +354,7 @@ bool MMFilesWalRecoverState::InitialScanMarker(TRI_df_marker_t const* marker,
     state->lastTick = tick;
   }
 
-  TRI_df_marker_type_t const type = marker->getType();
+  MMFilesMarkerype_t const type = marker->getType();
 
   switch (type) {
     case TRI_DF_MARKER_VPACK_DOCUMENT: {
@@ -433,7 +433,7 @@ bool MMFilesWalRecoverState::InitialScanMarker(TRI_df_marker_t const* marker,
 
 /// @brief callback to replay one marker during recovery
 /// this function modifies indexes etc.
-bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
+bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
                                           void* data,
                                           MMFilesDatafile* datafile) {
   MMFilesWalRecoverState* state =
@@ -443,7 +443,7 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "replaying marker of type " << TRI_NameMarkerDatafile(marker);
 #endif
 
-  TRI_df_marker_type_t const type = marker->getType();
+  MMFilesMarkerype_t const type = marker->getType();
 
   try {
     switch (type) {
@@ -496,8 +496,8 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
                 return TRI_ERROR_NO_ERROR;
               }
 
-              TRI_df_marker_t const* marker =
-                  static_cast<TRI_df_marker_t const*>(envelope->mem());
+              MMFilesMarker const* marker =
+                  static_cast<MMFilesMarker const*>(envelope->mem());
 
               std::string const collectionName =
                   trx->documentCollection()->name();
@@ -573,8 +573,8 @@ bool MMFilesWalRecoverState::ReplayMarker(TRI_df_marker_t const* marker,
                 return TRI_ERROR_NO_ERROR;
               }
 
-              TRI_df_marker_t const* marker =
-                  static_cast<TRI_df_marker_t const*>(envelope->mem());
+              MMFilesMarker const* marker =
+                  static_cast<MMFilesMarker const*>(envelope->mem());
 
               std::string const collectionName =
                   trx->documentCollection()->name();

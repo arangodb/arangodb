@@ -47,7 +47,7 @@ class MMFilesWalMarker {
   virtual ~MMFilesWalMarker() {}
  
   /// @brief returns the marker type 
-  virtual TRI_df_marker_type_t type() const = 0;
+  virtual MMFilesMarkerype_t type() const = 0;
 
   /// @brief returns the datafile id the marker comes from
   /// this should be 0 for new markers, but contain the actual
@@ -73,19 +73,19 @@ class MMFilesWalMarker {
 /// this type is used during recovery only, to represent existing markers
 class MMFilesMarkerEnvelope : public MMFilesWalMarker {
  public:
-  MMFilesMarkerEnvelope(TRI_df_marker_t const* other, TRI_voc_fid_t fid) 
+  MMFilesMarkerEnvelope(MMFilesMarker const* other, TRI_voc_fid_t fid) 
       : _other(other),
         _fid(fid),
         _size(other->getSize()) {
     // we must always have a datafile id, and a reasonable marker size
     TRI_ASSERT(_fid > 0);
-    TRI_ASSERT(_size >= sizeof(TRI_df_marker_t));
+    TRI_ASSERT(_size >= sizeof(MMFilesMarker));
   }
 
   ~MMFilesMarkerEnvelope() = default;
 
   /// @brief returns the marker type 
-  TRI_df_marker_type_t type() const override final { 
+  MMFilesMarkerype_t type() const override final { 
     // simply return the wrapped marker's type
     return _other->getType(); 
   }
@@ -115,7 +115,7 @@ class MMFilesMarkerEnvelope : public MMFilesWalMarker {
   }
 
  private:
-  TRI_df_marker_t const* _other;
+  MMFilesMarker const* _other;
   TRI_voc_fid_t _fid;
   uint32_t _size;
 };
@@ -124,7 +124,7 @@ class MMFilesMarkerEnvelope : public MMFilesWalMarker {
 /// updating/replacing or removing documents
 class MMFilesCrudMarker : public MMFilesWalMarker {
  public:
-  MMFilesCrudMarker(TRI_df_marker_type_t type, 
+  MMFilesCrudMarker(MMFilesMarkerype_t type, 
              TRI_voc_tid_t transactionId, 
              arangodb::velocypack::Slice const& data)
     : _transactionId(transactionId),
@@ -134,7 +134,7 @@ class MMFilesCrudMarker : public MMFilesWalMarker {
   ~MMFilesCrudMarker() = default;
 
   /// @brief returns the marker type 
-  TRI_df_marker_type_t type() const override final { return _type; }
+  MMFilesMarkerype_t type() const override final { return _type; }
   
   /// @brief returns the datafile id
   /// this is always 0 for this type of marker, as the marker is not
@@ -160,13 +160,13 @@ class MMFilesCrudMarker : public MMFilesWalMarker {
  private:
   TRI_voc_tid_t _transactionId;
   arangodb::velocypack::Slice _data;
-  TRI_df_marker_type_t _type;
+  MMFilesMarkerype_t _type;
 };
 
 /// @brief a marker used for database-related operations
 class MMFilesDatabaseMarker : public MMFilesWalMarker {
  public:
-  MMFilesDatabaseMarker(TRI_df_marker_type_t type, 
+  MMFilesDatabaseMarker(MMFilesMarkerype_t type, 
                  TRI_voc_tick_t databaseId, 
                  arangodb::velocypack::Slice const& data)
     : _databaseId(databaseId),
@@ -178,7 +178,7 @@ class MMFilesDatabaseMarker : public MMFilesWalMarker {
   ~MMFilesDatabaseMarker() = default;
 
   /// @brief returns the marker type 
-  TRI_df_marker_type_t type() const override final { return _type; }
+  MMFilesMarkerype_t type() const override final { return _type; }
 
   /// @brief returns the datafile id
   /// this is always 0 for this type of marker, as the marker is not
@@ -201,13 +201,13 @@ class MMFilesDatabaseMarker : public MMFilesWalMarker {
  private:
   TRI_voc_tick_t _databaseId;
   arangodb::velocypack::Slice _data;
-  TRI_df_marker_type_t _type;
+  MMFilesMarkerype_t _type;
 };
 
 /// @brief a marker used for collection-related operations
 class MMFilesCollectionMarker : public MMFilesWalMarker {
  public:
-  MMFilesCollectionMarker(TRI_df_marker_type_t type, 
+  MMFilesCollectionMarker(MMFilesMarkerype_t type, 
                    TRI_voc_tick_t databaseId, 
                    TRI_voc_cid_t collectionId, 
                    arangodb::velocypack::Slice const& data)
@@ -223,7 +223,7 @@ class MMFilesCollectionMarker : public MMFilesWalMarker {
   ~MMFilesCollectionMarker() = default;
 
   /// @brief returns the marker type 
-  TRI_df_marker_type_t type() const override final { return _type; }
+  MMFilesMarkerype_t type() const override final { return _type; }
   
   /// @brief returns the datafile id
   /// this is always 0 for this type of marker, as the marker is not
@@ -249,13 +249,13 @@ class MMFilesCollectionMarker : public MMFilesWalMarker {
   TRI_voc_tick_t _databaseId;
   TRI_voc_cid_t _collectionId;
   arangodb::velocypack::Slice _data;
-  TRI_df_marker_type_t _type;
+  MMFilesMarkerype_t _type;
 };
 
 /// @brief a marker used for view-related operations
 class MMFilesViewMarker : public MMFilesWalMarker {
  public:
-  MMFilesViewMarker(TRI_df_marker_type_t type, 
+  MMFilesViewMarker(MMFilesMarkerype_t type, 
                     TRI_voc_tick_t databaseId, 
                     TRI_voc_cid_t viewId, 
                    arangodb::velocypack::Slice const& data)
@@ -271,7 +271,7 @@ class MMFilesViewMarker : public MMFilesWalMarker {
   ~MMFilesViewMarker() = default;
 
   /// @brief returns the marker type 
-  TRI_df_marker_type_t type() const override final { return _type; }
+  MMFilesMarkerype_t type() const override final { return _type; }
   
   /// @brief returns the datafile id
   /// this is always 0 for this type of marker, as the marker is not
@@ -297,13 +297,13 @@ class MMFilesViewMarker : public MMFilesWalMarker {
   TRI_voc_tick_t _databaseId;
   TRI_voc_cid_t _viewId;
   arangodb::velocypack::Slice _data;
-  TRI_df_marker_type_t _type;
+  MMFilesMarkerype_t _type;
 };
 
 /// @brief a marker used for transaction-related operations
 class MMFilesTransactionMarker : public MMFilesWalMarker {
  public:
-  MMFilesTransactionMarker(TRI_df_marker_type_t type, 
+  MMFilesTransactionMarker(MMFilesMarkerype_t type, 
                     TRI_voc_tick_t databaseId, 
                     TRI_voc_tid_t transactionId)
     : _databaseId(databaseId),
@@ -316,7 +316,7 @@ class MMFilesTransactionMarker : public MMFilesWalMarker {
   ~MMFilesTransactionMarker() = default;
 
   /// @brief returns the marker type 
-  TRI_df_marker_type_t type() const override final { return _type; }
+  MMFilesMarkerype_t type() const override final { return _type; }
   
   /// @brief returns the datafile id
   /// this is always 0 for this type of marker, as the marker is not
@@ -340,7 +340,7 @@ class MMFilesTransactionMarker : public MMFilesWalMarker {
  private:
   TRI_voc_tick_t _databaseId;
   TRI_voc_tid_t _transactionId;
-  TRI_df_marker_type_t _type;
+  MMFilesMarkerype_t _type;
 };
 
 }
