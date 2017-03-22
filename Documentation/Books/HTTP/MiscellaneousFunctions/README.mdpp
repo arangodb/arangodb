@@ -6,6 +6,9 @@ This is an overview of ArangoDB's HTTP interface for miscellaneous functions.
 <!-- lib/Admin/RestVersionHandler.cpp -->
 @startDocuBlock JSF_get_api_return
 
+<!-- lib/Admin/RestEngineHandler.cpp -->
+@startDocuBlock JSF_get_engine
+
 <!-- ljs/actions/api-system.js -->
 @startDocuBlock JSF_put_admin_wal_flush
 
