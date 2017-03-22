@@ -145,6 +145,13 @@ void SchedulerFeature::start() {
       nullptr);
 }
 
+void SchedulerFeature::beginShutdown() {
+  // shut-down scheduler
+  if (_scheduler != nullptr) {
+    _scheduler->stopRebalancer();
+  }
+}
+
 void SchedulerFeature::stop() {
   static size_t const MAX_TRIES = 100;
 
@@ -178,7 +185,9 @@ void SchedulerFeature::stop() {
 }
 
 void SchedulerFeature::unprepare() {
-  _scheduler->shutdown();
+  if (_scheduler != nullptr) {
+    _scheduler->shutdown();
+  }
   SCHEDULER = nullptr;
 }
 

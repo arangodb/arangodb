@@ -176,9 +176,7 @@ Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrDesired, uint64_t nrMaximum,
 }
 
 Scheduler::~Scheduler() {
-  if (_threadManager != nullptr) {
-    _threadManager->cancel();
-  }
+  stopRebalancer();
 
   try {
     deleteOldThreads();
@@ -259,6 +257,15 @@ void Scheduler::startRebalancer() {
   _threadManager->async_wait(_threadHandler);
 }
 
+void Scheduler::stopRebalancer() noexcept {
+  if (_threadManager != nullptr) {
+    try {
+      _threadManager->cancel();
+    } catch (...) {
+    }
+  }
+}
+
 void Scheduler::startManagerThread() {
   MUTEX_LOCKER(guard, _threadsLock);
 
@@ -289,7 +296,7 @@ void Scheduler::startNewThread() {
   thread->start();
 }
 
-bool Scheduler::shouldStopThread() {
+bool Scheduler::shouldStopThread() const {
   if (_nrRunning <= _nrWorking + _nrQueued + _nrMinimum) {
     return false;
   }
@@ -301,7 +308,7 @@ bool Scheduler::shouldStopThread() {
   return false;
 }
 
-bool Scheduler::shouldQueueMore() {
+bool Scheduler::shouldQueueMore() const {
   if (_nrWorking + _nrQueued + _nrMinimum < _nrMaximum) {
     return true;
   }
@@ -309,7 +316,7 @@ bool Scheduler::shouldQueueMore() {
   return false;
 }
 
-bool Scheduler::hasQueueCapacity() {
+bool Scheduler::hasQueueCapacity() const {
   if (_nrWorking + _nrQueued + _nrMinimum >= _nrMaximum) {
     return false;
   }
@@ -391,9 +398,7 @@ void Scheduler::beginShutdown() {
   
   _jobQueue->beginShutdown();
 
-  if (_threadManager != nullptr) {
-    _threadManager->cancel();
-  }
+  stopRebalancer();
   _threadManager.reset();
 
   _managerGuard.reset();

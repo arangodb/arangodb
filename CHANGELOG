@@ -30,7 +30,7 @@ devel
   when unused.
 
   Waiting for an unused V8 context will now also abort if no V8 context can be 
-  acquired/created after 90 seconds.
+  acquired/created after 120 seconds.
 
 * improved diagnostic messages written to logfiles by supervisor process
 
@@ -151,6 +151,9 @@ v3.2.alpha1 (2017-02-05)
 
 
 v3.1.16 (2017-XX-XX)
+--------------------
+
+* fixed lost HTTP requests
 
 * ui - fixed some event issues
 

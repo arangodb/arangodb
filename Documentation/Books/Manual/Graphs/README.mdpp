@@ -123,6 +123,11 @@ like the permissions of **John** in this group, the date when he joined the grou
 
 ![User in group example](graph_user_in_group.png)
 
+So roughly put, if you use documents and their attributes in a sentence, nouns would typically be vertices, verbs become the edges.
+You can see this in the [knows graph](#the-knowsgraph) below:
+
+     Alice knows Bob, who in term knows Charlie.
+
 #### Advantages of this approach
 
 Graphs give you the advantage of not just being able to have a fixed number of **m:n** relations in a row, but an

@@ -86,9 +86,9 @@ class Scheduler {
   static void initializeSignalHandlers();
 
  public:
-  bool shouldStopThread();
-  bool shouldQueueMore();
-  bool hasQueueCapacity();
+  bool shouldStopThread() const;
+  bool shouldQueueMore() const;
+  bool hasQueueCapacity() const;
 
   bool queue(std::unique_ptr<Job> job);
 
@@ -102,6 +102,8 @@ class Scheduler {
   void startNewThread();
   void threadDone(Thread*);
   void deleteOldThreads();
+  
+  void stopRebalancer() noexcept;
 
  private:
   void workThread() { ++_nrWorking; }
