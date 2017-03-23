@@ -1,14 +1,40 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+/// @author Jan Christoph Uhde
+////////////////////////////////////////////////////////////////////////////////
+
+#include "RocksDBEngine.h"
 #include "Basics/Exceptions.h"
+#include <Basics/Result.h>
+#include <Basics/VelocyPackHelper.h>
 #include "Basics/FileUtils.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RocksDBEngine.h"
-#include "RocksDBTypes.h"
-#include <Basics/Result.h>
-#include <Basics/VelocyPackHelper.h>
+#include "RocksDBEngine/RocksDBTypes.h"
+#include "VocBase/ticks.h"
+
 #include <stdexcept>
 #include <rocksdb/db.h>
 #include <rocksdb/convenience.h>
@@ -33,15 +59,13 @@ std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, nullptr /*new
-                                                              MMFilesIndexFactory()*/) {
-      //inherits order from StorageEngine
+                                                              MMFilesIndexFactory()*/),
+      _db(nullptr) {
+  //inherits order from StorageEngine
 }
 
 RocksDBEngine::~RocksDBEngine() {
-  if(_db){
-    delete _db;
-    _db = nullptr;
-  }
+  delete _db;
 }
 
 // inherited from ApplicationFeature
@@ -81,10 +105,12 @@ void RocksDBEngine::start() {
 
   rocksdb::Status status = rocksdb::TransactionDB::Open(_options, transactionOptions, _path, &_db);
 
-  if (! status.ok()) {
+  if (!status.ok()) {
     LOG_TOPIC(FATAL, arangodb::Logger::STARTUP) << "unable to initialize RocksDB engine: " << status.ToString();
     FATAL_ERROR_EXIT();
   }
+
+  TRI_ASSERT(_db != nullptr);
 
   // create _system database if it should not exist
   velocypack::Builder builder;
@@ -104,7 +130,7 @@ void RocksDBEngine::start() {
 
     int err;
     VPackBuilder builder;
-    TRI_voc_tick_t id(1337);
+    TRI_voc_tick_t id = TRI_NewTickServer();
 
     createDatabase(id, builder.slice(), err);
     if(err){
@@ -115,7 +141,10 @@ void RocksDBEngine::start() {
 }
 
 void RocksDBEngine::stop() {
-  if(_db){
+}
+
+void RocksDBEngine::unprepare() {
+  if (_db) {
     delete _db;
     _db = nullptr;
   }
@@ -446,25 +475,25 @@ int RocksDBEngine::openCollection(TRI_vocbase_t* vocbase,
 
 /// @brief Add engine-specific AQL functions.
 void RocksDBEngine::addAqlFunctions() {
-  LOG_TOPIC(WARN, Logger::STARTUP) << "adding aql functions for rocksdb";
-  LOG_TOPIC(WARN, Logger::STARTUP) << "NOT IMPLEMENTED - addAqlFunctions";
+  // there are no specific AQL functions here
+  // TODO: potentially add NEAR, WITHIN? 
 }
 
 /// @brief Add engine-specific optimizer rules
 void RocksDBEngine::addOptimizerRules() {
-  LOG_TOPIC(WARN, Logger::STARTUP) << "adding optimizer rules for rocksdb";
-  LOG_TOPIC(WARN, Logger::STARTUP) << "NOT IMPLEMENTED - addOptimizerRules";
+  // there are no specific optimizer rules here
+  // TODO: add geo index optimization once there is the geo index
 }
 
 /// @brief Add engine-specific V8 functions
 void RocksDBEngine::addV8Functions() {
-  LOG_TOPIC(WARN, Logger::STARTUP) << "adding v8 functions rules for rocksdb";
-  LOG_TOPIC(WARN, Logger::STARTUP) << "NOT IMPLEMENTED - addV8Functions";
+  // there are no specific V8 functions here
+  // TODO: add WAL management functions here once they exist in the engine
 }
 
 /// @brief Add engine-specific REST handlers
 void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory*) {
-  throw std::runtime_error("not implemented");
+  // TODO: add /_api/export and /_admin/wal later
 }
 
 EngineResult RocksDBEngine::dropDatabase(TRI_voc_tick_t str){

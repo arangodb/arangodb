@@ -205,6 +205,10 @@ void MMFilesEngine::prepare() {
 
 // initialize engine
 void MMFilesEngine::start() {
+  if (!isEnabled()) {
+    return;
+  }
+
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
 
   // test if the "databases" directory is present and writable

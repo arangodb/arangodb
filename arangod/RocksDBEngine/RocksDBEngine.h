@@ -73,6 +73,7 @@ class RocksDBEngine final : public StorageEngine {
   // preparation phase for storage engine. can be used for internal setup.
   // the storage engine must not start any threads here or write any files
   void prepare() override;
+  void unprepare() override;
 
 
   transaction::ContextData* createTransactionContextData() override;
