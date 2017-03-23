@@ -35,7 +35,7 @@ struct SPGraphFormat;
 /// should have
 /// the value == 0, all others -1 or an undefined value
 struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
-  SPGraphFormat* _format;  // weak pointer
+  std::string _source, _target;
 
  public:
   ShortestPathAlgorithm(VPackSlice userParams);

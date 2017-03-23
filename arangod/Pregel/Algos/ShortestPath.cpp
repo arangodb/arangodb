@@ -106,7 +106,8 @@ ShortestPathAlgorithm::ShortestPathAlgorithm(VPackSlice userParams)
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "You must specify source and target");
   }
-  _format = new SPGraphFormat(val1.copyString(), val2.copyString());
+  _source = val1.copyString();
+  _target = val2.copyString();
 }
 
 std::set<std::string> ShortestPathAlgorithm::initialActiveSet() {
@@ -114,7 +115,7 @@ std::set<std::string> ShortestPathAlgorithm::initialActiveSet() {
 }
 
 GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {
-  return _format;
+  return new SPGraphFormat(_source, _target);
 }
 
 VertexComputation<int64_t, int64_t, int64_t>*
