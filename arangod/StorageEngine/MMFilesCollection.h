@@ -201,9 +201,9 @@ class MMFilesCollection final : public PhysicalCollection {
   uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const override;
   uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const override;
   MMFilesDocumentPosition insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr,
-                                         TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
+                                         TRI_voc_fid_t fid, bool isInWal, bool shouldLock) override;
 
-  void insertRevision(MMFilesDocumentPosition const& position, bool shouldLock);
+  void insertRevision(MMFilesDocumentPosition const& position, bool shouldLock) override;
   void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) override;
   bool updateRevisionConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal) override;
   void removeRevision(TRI_voc_rid_t revisionId, bool updateStats) override;
