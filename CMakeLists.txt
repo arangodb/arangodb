@@ -762,7 +762,7 @@ endif ()
 # ZLIB_INCLUDE_DIR
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
-add_definitions("-DARANGODB_BOOST_VERSION=\"1.62.0\"")
+add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
 ################################################################################
 ## VELOCYPACK
@@ -816,7 +816,7 @@ endif ()
 ################################################################################
 
 include_directories(${V8_INCLUDE_DIR})
-add_definitions("-DARANGODB_V8_VERSION=\"5.0.71.39\"")
+add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 
 ################################################################################
 ## ZLIB
