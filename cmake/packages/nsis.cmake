@@ -99,6 +99,8 @@ list(APPEND PACKAGES_LIST package-arongodb-client-nsis)
 add_custom_target(copy_client_nsis_package
   COMMAND ${CMAKE_COMMAND} -E copy ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.exe ${PACKAGE_TARGET_DIR})
 
+list(APPEND COPY_PACKAGES_LIST copy_client_nsis_package)
+
 add_custom_target(copy_nsis_packages
   COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_PACKAGE_FILE_NAME}.exe ${PACKAGE_TARGET_DIR})
 

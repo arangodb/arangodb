@@ -289,12 +289,12 @@ struct AstNode {
   /// @brief convert the node's value to a boolean value
   /// this may create a new node or return the node itself if it is already a
   /// boolean value node
-  AstNode* castToBool(Ast*);
+  AstNode const* castToBool(Ast*) const;
 
   /// @brief convert the node's value to a number value
   /// this may create a new node or return the node itself if it is already a
   /// numeric value node
-  AstNode* castToNumber(Ast*);
+  AstNode const* castToNumber(Ast*) const;
 
   /// @brief check a flag for the node
   inline bool hasFlag(AstNodeFlagType flag) const {

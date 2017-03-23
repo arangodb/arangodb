@@ -33,7 +33,7 @@
 
 using namespace arangodb;
   
-static uint32_t const PrologueSize = encoding::alignedSize<uint32_t>(sizeof(TRI_df_prologue_marker_t));
+static uint32_t const PrologueSize = encoding::alignedSize<uint32_t>(sizeof(MMFilesPrologueMarker));
 
 /// @brief create the slots
 MMFilesWalSlots::MMFilesWalSlots(MMFilesLogfileManager* logfileManager, size_t numberOfSlots,
@@ -428,8 +428,8 @@ void MMFilesWalSlots::returnSyncRegion(MMFilesWalSyncRegion const& region) {
       _lastCommittedTick = tick;
 
       // update the data tick
-      TRI_df_marker_t const* m =
-          static_cast<TRI_df_marker_t const*>(slot->mem());
+      MMFilesMarker const* m =
+          static_cast<MMFilesMarker const*>(slot->mem());
       if (m->getType() != TRI_DF_MARKER_HEADER &&
           m->getType() != TRI_DF_MARKER_FOOTER) {
         _lastCommittedDataTick = tick;
@@ -609,7 +609,7 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
 int MMFilesWalSlots::writeHeader(MMFilesWalSlot* slot) {
   TRI_ASSERT(_logfile != nullptr);
 
-  TRI_df_header_marker_t header = MMFilesDatafileHelper::CreateHeaderMarker(
+  MMFilesDatafileHeaderMarker header = MMFilesDatafileHelper::CreateHeaderMarker(
     static_cast<TRI_voc_size_t>(_logfile->allocatedSize()), 
     static_cast<TRI_voc_fid_t>(_logfile->id())
   );
@@ -631,7 +631,7 @@ int MMFilesWalSlots::writeHeader(MMFilesWalSlot* slot) {
 
 /// @brief write a prologue marker
 int MMFilesWalSlots::writePrologue(MMFilesWalSlot* slot, void* mem, TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
-  TRI_df_prologue_marker_t header = MMFilesDatafileHelper::CreatePrologueMarker(databaseId, collectionId);
+  MMFilesPrologueMarker header = MMFilesDatafileHelper::CreatePrologueMarker(databaseId, collectionId);
   size_t const size = header.base.getSize();
 
   TRI_ASSERT(size == PrologueSize);
@@ -649,7 +649,7 @@ int MMFilesWalSlots::writePrologue(MMFilesWalSlot* slot, void* mem, TRI_voc_tick
 int MMFilesWalSlots::writeFooter(MMFilesWalSlot* slot) {
   TRI_ASSERT(_logfile != nullptr);
 
-  TRI_df_footer_marker_t footer = MMFilesDatafileHelper::CreateFooterMarker();
+  MMFilesDatafileFooterMarker footer = MMFilesDatafileHelper::CreateFooterMarker();
   size_t const size = footer.base.getSize();
 
   auto* mem = static_cast<void*>(_logfile->reserve(size));

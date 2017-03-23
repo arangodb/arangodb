@@ -109,12 +109,12 @@ static bool ShouldIgnoreCollection(CollectorState const* state,
 }
 
 /// @brief callback to handle one marker during collection
-static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
+static bool ScanMarker(MMFilesMarker const* marker, void* data,
                        MMFilesDatafile* datafile) {
   CollectorState* state = static_cast<CollectorState*>(data);
 
   TRI_ASSERT(marker != nullptr);
-  TRI_df_marker_type_t const type = marker->getType();
+  MMFilesMarkerType const type = marker->getType();
   
   switch (type) {
     case TRI_DF_MARKER_PROLOGUE: {
@@ -564,13 +564,13 @@ void MMFilesCollectorThread::processCollectionMarker(
     MMFilesCollectorOperation const& operation) {
   auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
-  auto const* walMarker = reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
+  auto const* walMarker = reinterpret_cast<MMFilesMarker const*>(operation.walPosition);
   TRI_ASSERT(walMarker != nullptr);
-  TRI_ASSERT(reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition));
+  TRI_ASSERT(reinterpret_cast<MMFilesMarker const*>(operation.datafilePosition));
   TRI_voc_size_t const datafileMarkerSize = operation.datafileMarkerSize;
   TRI_voc_fid_t const fid = operation.datafileId;
 
-  TRI_df_marker_type_t const type = walMarker->getType();
+  MMFilesMarkerType const type = walMarker->getType();
 
   if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
     auto& dfi = cache->createDfi(fid);
@@ -589,7 +589,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     if (element &&
         element.revisionId() == revisionId) { 
       // make it point to datafile now
-      TRI_df_marker_t const* newPosition = reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition);
+      MMFilesMarker const* newPosition = reinterpret_cast<MMFilesMarker const*>(operation.datafilePosition);
       wasAdjusted = physical->updateRevisionConditional(element.revisionId(), walMarker, newPosition, fid, false); 
     }
       
@@ -810,7 +810,7 @@ int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
 
       // sort vector by marker tick
       std::sort(sortedOperations.begin(), sortedOperations.end(),
-                [](TRI_df_marker_t const* left, TRI_df_marker_t const* right) {
+                [](MMFilesMarker const* left, MMFilesMarker const* right) {
                   return (left->getTick() < right->getTick());
                 });
     }

@@ -655,7 +655,7 @@ void MMFilesLogfileManager::signalSync(bool waitForSync) {
 
 // allocate space in a logfile for later writing
 MMFilesWalSlotInfo MMFilesLogfileManager::allocate(uint32_t size) {
-  TRI_ASSERT(size >= sizeof(TRI_df_marker_t));
+  TRI_ASSERT(size >= sizeof(MMFilesMarker));
 
   if (!_allowWrites) {
     // no writes allowed
@@ -678,7 +678,7 @@ MMFilesWalSlotInfo MMFilesLogfileManager::allocate(uint32_t size) {
 // allocate space in a logfile for later writing
 MMFilesWalSlotInfo MMFilesLogfileManager::allocate(TRI_voc_tick_t databaseId,
                                   TRI_voc_cid_t collectionId, uint32_t size) {
-  TRI_ASSERT(size >= sizeof(TRI_df_marker_t));
+  TRI_ASSERT(size >= sizeof(MMFilesMarker));
 
   if (!_allowWrites) {
     // no writes allowed
@@ -1531,7 +1531,7 @@ MMFilesLogfileManagerState MMFilesLogfileManager::state() {
 }
 
 // return the current available logfile ranges
-LogfileRanges MMFilesLogfileManager::ranges() {
+MMFilesLogfileManager::LogfileRanges MMFilesLogfileManager::ranges() {
   LogfileRanges result;
 
   READ_LOCKER(readLocker, _logfilesLock);

@@ -37,7 +37,7 @@
 #include "VocBase/PhysicalCollection.h"
 
 struct MMFilesDatafile;
-struct TRI_df_marker_t;
+struct MMFilesMarker;
 
 namespace arangodb {
 class LogicalCollection;
@@ -158,13 +158,13 @@ class MMFilesCollection final : public PhysicalCollection {
 
   // datafile management
   bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                         std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) override;
+                         std::function<bool(TRI_voc_tick_t foundTick, MMFilesMarker const* marker)> const& callback);
 
   /// @brief closes an open collection
   int close() override;
   
   /// @brief rotate the active journal - will do nothing if there is no journal
-  int rotateActiveJournal() override;
+  int rotateActiveJournal();
 
   /// @brief sync the active journal - will do nothing if there is no journal
   /// or if the journal is volatile
@@ -372,8 +372,8 @@ class MMFilesCollection final : public PhysicalCollection {
                       TRI_voc_fid_t fid, bool isInWal);
 
   bool updateRevisionConditional(TRI_voc_rid_t revisionId,
-                                 TRI_df_marker_t const* oldPosition,
-                                 TRI_df_marker_t const* newPosition,
+                                 MMFilesMarker const* oldPosition,
+                                 MMFilesMarker const* newPosition,
                                  TRI_voc_fid_t newFid, bool isInWal);
 
   void removeRevision(TRI_voc_rid_t revisionId, bool updateStats);
@@ -407,13 +407,13 @@ class MMFilesCollection final : public PhysicalCollection {
                      arangodb::velocypack::Slice const toRemove);
 
 
-  static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
+  static int OpenIteratorHandleDocumentMarker(MMFilesMarker const* marker,
                                               MMFilesDatafile* datafile,
                                               OpenIteratorState* state);
-  static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
+  static int OpenIteratorHandleDeletionMarker(MMFilesMarker const* marker,
                                               MMFilesDatafile* datafile,
                                               OpenIteratorState* state);
-  static bool OpenIterator(TRI_df_marker_t const* marker,
+  static bool OpenIterator(MMFilesMarker const* marker,
                            OpenIteratorState* data, MMFilesDatafile* datafile);
 
   /// @brief create statistics for a datafile, using the stats provided
@@ -424,7 +424,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
     /// @brief iterates over a collection
     bool iterateDatafiles(
-        std::function<bool(TRI_df_marker_t const*, MMFilesDatafile*)> const&
+        std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const&
             cb);
 
     /// @brief creates a datafile
@@ -441,7 +441,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
     bool iterateDatafilesVector(
         std::vector<MMFilesDatafile*> const& files,
-        std::function<bool(TRI_df_marker_t const*, MMFilesDatafile*)> const&
+        std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const&
             cb);
 
     MMFilesDocumentPosition lookupRevision(TRI_voc_rid_t revisionId) const;
