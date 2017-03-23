@@ -45,7 +45,7 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
-  try {
+  return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
     context.installHup();
 
@@ -89,12 +89,5 @@ int main(int argc, char* argv[]) {
     }
 
     return context.exit(ret);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangosh terminated because of an unhandled exception: "
-             << ex.what();
-  } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangosh terminated because of an unhandled exception of "
-                "unknown type";
-  }
-  exit(EXIT_FAILURE);
+  });
 }
