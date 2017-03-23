@@ -9,6 +9,14 @@ v3.1.16 (2017-XX-XX)
 
 * avoid name resolution when given connection string is a valid ip address
 
+* resolved issue #1482, bug in COLLECT statement in connection with LIMIT.
+
+* fix locking bug in cluster traversals
+
+* increase lock timeout defaults
+
+* increase various cluster timeouts
+
 v3.1.15 (2017-03-20)
 --------------------
 
