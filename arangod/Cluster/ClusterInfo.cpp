@@ -1385,6 +1385,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
  
   VPackBuilder temp;     
   temp.openObject();
+  temp.add("waitForSync", VPackValue(info->waitForSync()));
   info->getPhysical()->getPropertiesVPackCoordinator(temp);
   temp.close();
 

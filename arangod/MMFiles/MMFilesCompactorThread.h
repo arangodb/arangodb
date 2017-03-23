@@ -30,7 +30,7 @@
 #include "VocBase/voc-types.h"
 
 struct MMFilesDatafile;
-struct TRI_df_marker_t;
+struct MMFilesMarker;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -44,7 +44,7 @@ class Methods;
 class MMFilesCompactorThread final : public Thread {
  private:
   /// @brief compaction instruction for a single datafile
-  struct compaction_info_t {
+  struct CompactionInfo {
     MMFilesDatafile* _datafile;
     bool _keepDeletions;
   };
@@ -80,10 +80,10 @@ class MMFilesCompactorThread final : public Thread {
   /// @brief calculate the target size for the compactor to be created
   CompactionInitialContext getCompactionContext(
     transaction::Methods* trx, LogicalCollection* collection,
-    std::vector<compaction_info_t> const& toCompact);
+    std::vector<CompactionInfo> const& toCompact);
 
   /// @brief compact the specified datafiles
-  void compactDatafiles(LogicalCollection* collection, std::vector<compaction_info_t> const&);
+  void compactDatafiles(LogicalCollection* collection, std::vector<CompactionInfo> const&);
 
   /// @brief checks all datafiles of a collection
   bool compactCollection(LogicalCollection* collection, bool& wasBlocked);
@@ -97,8 +97,8 @@ class MMFilesCompactorThread final : public Thread {
   uint64_t getNumberOfDocuments(LogicalCollection* collection);
 
   /// @brief write a copy of the marker into the datafile
-  int copyMarker(MMFilesDatafile* compactor, TRI_df_marker_t const* marker,
-                 TRI_df_marker_t** result);
+  int copyMarker(MMFilesDatafile* compactor, MMFilesMarker const* marker,
+                 MMFilesMarker** result);
 
   /// @brief wait time between compaction runs when idle
   static constexpr unsigned compactionSleepTime() { return 1000 * 1000; }

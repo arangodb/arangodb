@@ -199,7 +199,7 @@ if [ "$BOOK" == "1" ];  then
 fi
 
 case "$TAG" in
-    *-alpha*|*-beta*|devel)
+    *-milestone*|*-alpha*|*-beta*|devel)
     ;;
 
     *)

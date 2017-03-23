@@ -37,35 +37,35 @@ using namespace arangodb::cache;
 
 TEST_CASE("cache::TransactionalBucket", "[cache]") {
   SECTION("test locking behavior") {
-    TransactionalBucket bucket;
+    auto bucket = std::make_unique<TransactionalBucket>();
     bool success;
 
     // check lock without contention
-    REQUIRE(!bucket.isLocked());
-    success = bucket.lock(-1LL);
+    REQUIRE(!bucket->isLocked());
+    success = bucket->lock(-1LL);
     REQUIRE(success);
-    REQUIRE(bucket.isLocked());
+    REQUIRE(bucket->isLocked());
 
     // check lock with contention
-    success = bucket.lock(10LL);
+    success = bucket->lock(10LL);
     REQUIRE(!success);
-    REQUIRE(bucket.isLocked());
+    REQUIRE(bucket->isLocked());
 
     // check unlock
-    bucket.unlock();
-    REQUIRE(!bucket.isLocked());
+    bucket->unlock();
+    REQUIRE(!bucket->isLocked());
 
     // check that blacklist term is updated appropriately
-    REQUIRE(0ULL == bucket._blacklistTerm);
-    bucket.lock(-1LL);
-    bucket.updateBlacklistTerm(1ULL);
-    REQUIRE(1ULL == bucket._blacklistTerm);
-    bucket.unlock();
-    REQUIRE(1ULL == bucket._blacklistTerm);
+    REQUIRE(0ULL == bucket->_blacklistTerm);
+    bucket->lock(-1LL);
+    bucket->updateBlacklistTerm(1ULL);
+    REQUIRE(1ULL == bucket->_blacklistTerm);
+    bucket->unlock();
+    REQUIRE(1ULL == bucket->_blacklistTerm);
   }
 
   SECTION("verify that insertion works as expected") {
-    TransactionalBucket bucket;
+    auto bucket = std::make_unique<TransactionalBucket>();
     bool success;
 
     uint32_t hashes[4] = {
@@ -79,31 +79,31 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
                                        &(values[i]), sizeof(uint64_t));
     }
 
-    success = bucket.lock(-1LL);
+    success = bucket->lock(-1LL);
     REQUIRE(success);
 
     // insert three to fill
-    REQUIRE(!bucket.isFull());
+    REQUIRE(!bucket->isFull());
     for (size_t i = 0; i < 3; i++) {
-      bucket.insert(hashes[i], ptrs[i]);
+      bucket->insert(hashes[i], ptrs[i]);
       if (i < 2) {
-        REQUIRE(!bucket.isFull());
+        REQUIRE(!bucket->isFull());
       } else {
-        REQUIRE(bucket.isFull());
+        REQUIRE(bucket->isFull());
       }
     }
     for (size_t i = 0; i < 3; i++) {
       CachedValue* res =
-          bucket.find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
+          bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
       REQUIRE(res == ptrs[i]);
     }
 
     // check that insert is ignored if full
-    bucket.insert(hashes[3], ptrs[3]);
-    CachedValue* res = bucket.find(hashes[3], ptrs[3]->key(), ptrs[3]->keySize);
+    bucket->insert(hashes[3], ptrs[3]);
+    CachedValue* res = bucket->find(hashes[3], ptrs[3]->key(), ptrs[3]->keySize);
     REQUIRE(nullptr == res);
 
-    bucket.unlock();
+    bucket->unlock();
 
     // cleanup
     for (size_t i = 0; i < 4; i++) {
@@ -112,7 +112,7 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
   }
 
   SECTION("verify that removal works as expected") {
-    TransactionalBucket bucket;
+    auto bucket = std::make_unique<TransactionalBucket>();
     bool success;
 
     uint32_t hashes[3] = {
@@ -125,33 +125,33 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
                                        &(values[i]), sizeof(uint64_t));
     }
 
-    success = bucket.lock(-1LL);
+    success = bucket->lock(-1LL);
     REQUIRE(success);
 
     for (size_t i = 0; i < 3; i++) {
-      bucket.insert(hashes[i], ptrs[i]);
+      bucket->insert(hashes[i], ptrs[i]);
     }
     for (size_t i = 0; i < 3; i++) {
       CachedValue* res =
-          bucket.find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
+          bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
       REQUIRE(res == ptrs[i]);
     }
 
     CachedValue* res;
-    res = bucket.remove(hashes[1], ptrs[1]->key(), ptrs[1]->keySize);
+    res = bucket->remove(hashes[1], ptrs[1]->key(), ptrs[1]->keySize);
     REQUIRE(res == ptrs[1]);
-    res = bucket.find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize);
+    res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize);
     REQUIRE(nullptr == res);
-    res = bucket.remove(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
+    res = bucket->remove(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
     REQUIRE(res == ptrs[0]);
-    res = bucket.find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
+    res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
     REQUIRE(nullptr == res);
-    res = bucket.remove(hashes[2], ptrs[2]->key(), ptrs[2]->keySize);
+    res = bucket->remove(hashes[2], ptrs[2]->key(), ptrs[2]->keySize);
     REQUIRE(res == ptrs[2]);
-    res = bucket.find(hashes[2], ptrs[2]->key(), ptrs[2]->keySize);
+    res = bucket->find(hashes[2], ptrs[2]->key(), ptrs[2]->keySize);
     REQUIRE(nullptr == res);
 
-    bucket.unlock();
+    bucket->unlock();
 
     // cleanup
     for (size_t i = 0; i < 3; i++) {
@@ -160,7 +160,7 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
   }
 
   SECTION("verify that eviction works as expected") {
-    TransactionalBucket bucket;
+    auto bucket = std::make_unique<TransactionalBucket>();
     bool success;
 
     uint32_t hashes[4] = {
@@ -174,47 +174,47 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
                                        &(values[i]), sizeof(uint64_t));
     }
 
-    success = bucket.lock(-1LL);
+    success = bucket->lock(-1LL);
     REQUIRE(success);
 
     // insert three to fill
-    REQUIRE(!bucket.isFull());
+    REQUIRE(!bucket->isFull());
     for (size_t i = 0; i < 3; i++) {
-      bucket.insert(hashes[i], ptrs[i]);
+      bucket->insert(hashes[i], ptrs[i]);
       if (i < 2) {
-        REQUIRE(!bucket.isFull());
+        REQUIRE(!bucket->isFull());
       } else {
-        REQUIRE(bucket.isFull());
+        REQUIRE(bucket->isFull());
       }
     }
     for (size_t i = 0; i < 3; i++) {
       CachedValue* res =
-          bucket.find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
+          bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
       REQUIRE(res == ptrs[i]);
     }
 
     // check that we get proper eviction candidate
-    CachedValue* candidate = bucket.evictionCandidate();
+    CachedValue* candidate = bucket->evictionCandidate();
     REQUIRE(candidate == ptrs[0]);
-    bucket.evict(candidate, false);
-    CachedValue* res = bucket.find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
+    bucket->evict(candidate, false);
+    CachedValue* res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
     REQUIRE(nullptr == res);
-    REQUIRE(!bucket.isFull());
+    REQUIRE(!bucket->isFull());
 
     // check that we still find the right candidate if not full
-    candidate = bucket.evictionCandidate();
+    candidate = bucket->evictionCandidate();
     REQUIRE(candidate == ptrs[1]);
-    bucket.evict(candidate, true);
-    res = bucket.find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize);
+    bucket->evict(candidate, true);
+    res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize);
     REQUIRE(nullptr == res);
-    REQUIRE(!bucket.isFull());
+    REQUIRE(!bucket->isFull());
 
     // check that we can insert now after eviction optimized for insertion
-    bucket.insert(hashes[3], ptrs[3]);
-    res = bucket.find(hashes[3], ptrs[3]->key(), ptrs[3]->keySize);
+    bucket->insert(hashes[3], ptrs[3]);
+    res = bucket->find(hashes[3], ptrs[3]->key(), ptrs[3]->keySize);
     REQUIRE(res == ptrs[3]);
 
-    bucket.unlock();
+    bucket->unlock();
 
     // cleanup
     for (size_t i = 0; i < 4; i++) {
@@ -223,7 +223,7 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
   }
 
   SECTION("verify that blacklisting works as expected") {
-    TransactionalBucket bucket;
+    auto bucket = std::make_unique<TransactionalBucket>();
     bool success;
     CachedValue* res;
 
@@ -237,68 +237,68 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
                                        &(values[i]), sizeof(uint64_t));
     }
 
-    success = bucket.lock(-1LL);
-    bucket.updateBlacklistTerm(1ULL);
+    success = bucket->lock(-1LL);
+    bucket->updateBlacklistTerm(1ULL);
     REQUIRE(success);
 
     // insert three to fill
-    REQUIRE(!bucket.isFull());
+    REQUIRE(!bucket->isFull());
     for (size_t i = 0; i < 3; i++) {
-      bucket.insert(hashes[i], ptrs[i]);
+      bucket->insert(hashes[i], ptrs[i]);
       if (i < 2) {
-        REQUIRE(!bucket.isFull());
+        REQUIRE(!bucket->isFull());
       } else {
-        REQUIRE(bucket.isFull());
+        REQUIRE(bucket->isFull());
       }
     }
     for (size_t i = 0; i < 3; i++) {
-      res = bucket.find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
+      res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
       REQUIRE(res == ptrs[i]);
     }
 
     // blacklist 1-4 to fill blacklist
     for (size_t i = 1; i < 5; i++) {
-      bucket.blacklist(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
+      bucket->blacklist(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
     }
     for (size_t i = 1; i < 5; i++) {
-      REQUIRE(bucket.isBlacklisted(hashes[i]));
-      res = bucket.find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
+      REQUIRE(bucket->isBlacklisted(hashes[i]));
+      res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
       REQUIRE(nullptr == res);
     }
     // verify actually not fully blacklisted
-    REQUIRE(!bucket.isFullyBlacklisted());
-    REQUIRE(!bucket.isBlacklisted(hashes[6]));
+    REQUIRE(!bucket->isFullyBlacklisted());
+    REQUIRE(!bucket->isBlacklisted(hashes[6]));
     // verify it didn't remove matching hash with non-matching key
-    res = bucket.find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
+    res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
     REQUIRE(res == ptrs[0]);
 
     // verify we can't insert a key with a blacklisted hash
-    bucket.insert(hashes[1], ptrs[1]);
-    res = bucket.find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize);
+    bucket->insert(hashes[1], ptrs[1]);
+    res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize);
     REQUIRE(nullptr == res);
 
     // proceed to fully blacklist
-    bucket.blacklist(hashes[5], ptrs[5]->key(), ptrs[5]->keySize);
-    REQUIRE(bucket.isBlacklisted(hashes[5]));
-    res = bucket.find(hashes[5], ptrs[5]->key(), ptrs[5]->keySize);
+    bucket->blacklist(hashes[5], ptrs[5]->key(), ptrs[5]->keySize);
+    REQUIRE(bucket->isBlacklisted(hashes[5]));
+    res = bucket->find(hashes[5], ptrs[5]->key(), ptrs[5]->keySize);
     REQUIRE(nullptr == res);
     // make sure it still didn't remove non-matching key
-    res = bucket.find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
+    res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
     REQUIRE(ptrs[0] == res);
     // make sure it's fully blacklisted
-    REQUIRE(bucket.isFullyBlacklisted());
-    REQUIRE(bucket.isBlacklisted(hashes[6]));
+    REQUIRE(bucket->isFullyBlacklisted());
+    REQUIRE(bucket->isBlacklisted(hashes[6]));
 
-    bucket.unlock();
+    bucket->unlock();
 
     // check that updating blacklist term clears blacklist
-    bucket.lock(-1LL);
-    bucket.updateBlacklistTerm(2ULL);
-    REQUIRE(!bucket.isFullyBlacklisted());
+    bucket->lock(-1LL);
+    bucket->updateBlacklistTerm(2ULL);
+    REQUIRE(!bucket->isFullyBlacklisted());
     for (size_t i = 0; i < 7; i++) {
-      REQUIRE(!bucket.isBlacklisted(hashes[i]));
+      REQUIRE(!bucket->isBlacklisted(hashes[i]));
     }
-    bucket.unlock();
+    bucket->unlock();
 
     // cleanup
     for (size_t i = 0; i < 6; i++) {

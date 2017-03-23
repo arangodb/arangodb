@@ -30,7 +30,7 @@
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_df_marker_t;
+struct MMFilesMarker;
 
 namespace arangodb {
 
@@ -49,7 +49,7 @@ class MMFilesRevisionsCache {
   MMFilesDocumentPosition insert(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
   void insert(MMFilesDocumentPosition const& position, bool shouldLock);
   void update(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
-  bool updateConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal);
+  bool updateConditional(TRI_voc_rid_t revisionId, MMFilesMarker const* oldPosition, MMFilesMarker const* newPosition, TRI_voc_fid_t newFid, bool isInWal);
   void remove(TRI_voc_rid_t revisionId);
   MMFilesDocumentPosition fetchAndRemove(TRI_voc_rid_t revisionId);
 

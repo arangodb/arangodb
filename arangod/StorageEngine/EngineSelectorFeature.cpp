@@ -92,3 +92,7 @@ std::unordered_map<std::string, std::string> EngineSelectorFeature::availableEng
     {MMFilesEngine::EngineName, MMFilesEngine::FeatureName}
   };
 }
+  
+char const* EngineSelectorFeature::engineName() {
+  return ENGINE->typeName();
+}
