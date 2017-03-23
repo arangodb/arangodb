@@ -171,6 +171,7 @@ v3.1.16 (2017-XX-XX)
 
 
 v3.1.15 (2017-03-20)
+--------------------
 
 * add logrotate configuration as requested in #2355
 
