@@ -525,6 +525,10 @@
 ///   cannot bind to a LDAP server
 /// - 1803: @LIT{cannot unbind from a LDAP server}
 ///   cannot unbind from a LDAP server
+/// - 1804: @LIT{cannot issue a LDAP search}
+///   cant search the LDAP server
+/// - 1805: @LIT{LDAP didn't found any objects}
+///   LDAP didn't found any objects with the specified search query
 /// - 1810: @LIT{invalid ldap mode}
 ///   cant distinguish a valid mode for provided ldap configuration
 /// - 1850: @LIT{invalid task id}
@@ -2858,6 +2862,26 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_LDAP_CANNOT_UNBIND                                      (1803)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1804: ERROR_LDAP_CANNOT_SEARCH
+///
+/// cannot issue a LDAP search
+///
+/// cant search the LDAP server
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_CANNOT_SEARCH                                      (1804)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1805: ERROR_LDAP_FOUND_NO_OBJECTS
+///
+/// LDAP didn't found any objects
+///
+/// LDAP didn't found any objects with the specified search query
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LDAP_FOUND_NO_OBJECTS                                   (1805)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1810: ERROR_LDAP_INVALID_MODE

@@ -218,6 +218,8 @@
     "ERROR_LDAP_CANNOT_SET_OPTION" : { "code" : 1801, "message" : "cannot set a LDAP option" },
     "ERROR_LDAP_CANNOT_BIND"       : { "code" : 1802, "message" : "cannot bind to a LDAP server" },
     "ERROR_LDAP_CANNOT_UNBIND"     : { "code" : 1803, "message" : "cannot unbind from a LDAP server" },
+    "ERROR_LDAP_CANNOT_SEARCH"     : { "code" : 1804, "message" : "cannot issue a LDAP search" },
+    "ERROR_LDAP_FOUND_NO_OBJECTS"  : { "code" : 1805, "message" : "LDAP didn't found any objects" },
     "ERROR_LDAP_INVALID_MODE"      : { "code" : 1810, "message" : "invalid ldap mode" },
     "ERROR_TASK_INVALID_ID"        : { "code" : 1850, "message" : "invalid task id" },
     "ERROR_TASK_DUPLICATE_ID"      : { "code" : 1851, "message" : "duplicate task id" },

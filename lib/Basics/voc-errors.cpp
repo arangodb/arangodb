@@ -214,6 +214,8 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_LDAP_CANNOT_SET_OPTION, "cannot set a LDAP option");
   REG_ERROR(ERROR_LDAP_CANNOT_BIND, "cannot bind to a LDAP server");
   REG_ERROR(ERROR_LDAP_CANNOT_UNBIND, "cannot unbind from a LDAP server");
+  REG_ERROR(ERROR_LDAP_CANNOT_SEARCH, "cannot issue a LDAP search");
+  REG_ERROR(ERROR_LDAP_FOUND_NO_OBJECTS, "LDAP didn't found any objects");
   REG_ERROR(ERROR_LDAP_INVALID_MODE, "invalid ldap mode");
   REG_ERROR(ERROR_TASK_INVALID_ID, "invalid task id");
   REG_ERROR(ERROR_TASK_DUPLICATE_ID, "duplicate task id");
