@@ -1118,7 +1118,11 @@ bool AstNode::containsNodeType(AstNodeType searchType) const {
 /// @brief convert the node's value to a boolean value
 /// this may create a new node or return the node itself if it is already a
 /// boolean value node
-AstNode* AstNode::castToBool(Ast* ast) {
+AstNode const* AstNode::castToBool(Ast* ast) const {
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    return Ast::resolveConstAttributeAccess(this)->castToBool(ast);
+  }
+
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY ||
              type == NODE_TYPE_OBJECT);
 
@@ -1151,7 +1155,11 @@ AstNode* AstNode::castToBool(Ast* ast) {
 /// @brief convert the node's value to a number value
 /// this may create a new node or return the node itself if it is already a
 /// numeric value node
-AstNode* AstNode::castToNumber(Ast* ast) {
+AstNode const* AstNode::castToNumber(Ast* ast) const {
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    return Ast::resolveConstAttributeAccess(this)->castToNumber(ast);
+  }
+
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY ||
              type == NODE_TYPE_OBJECT);
 

@@ -54,6 +54,11 @@ function ahuacatlArithmeticTestSuite () {
     tearDown : function () {
     },
 
+    testConstAttributeAccess : function () {
+      var actual = getQueryResults("LET it = { a: 4, b: 5, c: 6 } RETURN [ it.a * 3, it.b * 4, it.c * 5 ]");
+      assertEqual([ [ 4 * 3, 5 * 4, 6 * 5 ] ], actual);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test unary plus
 ////////////////////////////////////////////////////////////////////////////////

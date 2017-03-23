@@ -949,7 +949,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
 
       if (!handled) {
         // if no sort order is set, ensure we have one
-        auto ascendingNode = ascending->castToBool(_ast);
+        AstNode const* ascendingNode = ascending->castToBool(_ast);
         if (ascendingNode->type == NODE_TYPE_VALUE &&
             ascendingNode->value.type == VALUE_TYPE_BOOL) {
           isAscending = ascendingNode->value.value._bool;
