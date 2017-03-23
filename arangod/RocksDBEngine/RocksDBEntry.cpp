@@ -186,7 +186,7 @@ uint64_t RocksDBEntry::revisionId() const {
   }
 }
 
-VPackSlice const RocksDBEntry::indexedValues() const {
+VPackSlice RocksDBEntry::indexedValues() const {
   switch (_type) {
     case RocksDBEntryType::IndexValue:
     case RocksDBEntryType::UniqueIndexValue: {
@@ -199,7 +199,7 @@ VPackSlice const RocksDBEntry::indexedValues() const {
   }
 }
 
-VPackSlice const RocksDBEntry::data() const {
+VPackSlice RocksDBEntry::data() const {
   switch (_type) {
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
@@ -220,7 +220,7 @@ std::string const& RocksDBEntry::key() const { return _keyBuffer; }
 std::string const& RocksDBEntry::value() const { return _valueBuffer; }
 
 std::string& RocksDBEntry::valueBuffer() { return _valueBuffer; }
-
+  
 RocksDBEntry::RocksDBEntry(RocksDBEntryType type, RocksDBEntryType subtype,
                            uint64_t first, uint64_t second, uint64_t third)
     : _type(type), _keyBuffer(), _valueBuffer() {
@@ -233,9 +233,8 @@ RocksDBEntry::RocksDBEntry(RocksDBEntryType type, RocksDBEntryType subtype,
       _keyBuffer.reserve(length);
       _keyBuffer.push_back(static_cast<char>(_type));
       _keyBuffer.push_back(static_cast<char>(subtype));
-      _keyBuffer.append(std::to_string(first));
-      _keyBuffer.append(std::to_string(second));
-
+      uint64ToPersistent(_keyBuffer, first);
+      uint64ToPersistent(_keyBuffer, second);
       break;
     }
 
@@ -244,10 +243,9 @@ RocksDBEntry::RocksDBEntry(RocksDBEntryType type, RocksDBEntryType subtype,
       _keyBuffer.reserve(length);
       _keyBuffer.push_back(static_cast<char>(_type));
       _keyBuffer.push_back(static_cast<char>(subtype));
-      _keyBuffer.append(std::to_string(first));
-      _keyBuffer.append(std::to_string(second));
-      _keyBuffer.append(std::to_string(third));
-
+      uint64ToPersistent(_keyBuffer, first);
+      uint64ToPersistent(_keyBuffer, second);
+      uint64ToPersistent(_keyBuffer, third);
       break;
     }
 
@@ -268,7 +266,7 @@ RocksDBEntry::RocksDBEntry(RocksDBEntryType type, uint64_t first,
       size_t length = sizeof(char) + sizeof(uint64_t);
       _keyBuffer.reserve(length);
       _keyBuffer.push_back(static_cast<char>(_type));
-      _keyBuffer.append(std::to_string(first));
+      uint64ToPersistent(_keyBuffer, first);
 
       _valueBuffer.reserve(static_cast<size_t>(slice.byteSize()));
       _valueBuffer.append(reinterpret_cast<char const*>(slice.begin()),
@@ -281,8 +279,8 @@ RocksDBEntry::RocksDBEntry(RocksDBEntryType type, uint64_t first,
       size_t length = sizeof(char) + (2 * sizeof(uint64_t));
       _keyBuffer.reserve(length);
       _keyBuffer.push_back(static_cast<char>(_type));
-      _keyBuffer.append(std::to_string(first));
-      _keyBuffer.append(std::to_string(second));
+      uint64ToPersistent(_keyBuffer, first);
+      uint64ToPersistent(_keyBuffer, second);
 
       _valueBuffer.reserve(static_cast<size_t>(slice.byteSize()));
       _valueBuffer.append(reinterpret_cast<char const*>(slice.begin()),
@@ -296,7 +294,7 @@ RocksDBEntry::RocksDBEntry(RocksDBEntryType type, uint64_t first,
                       (2 * sizeof(uint64_t));
       _keyBuffer.reserve(length);
       _keyBuffer.push_back(static_cast<char>(_type));
-      _keyBuffer.append(std::to_string(first));
+      uint64ToPersistent(_keyBuffer, first);
       _keyBuffer.append(reinterpret_cast<char const*>(slice.begin()),
                         static_cast<size_t>(slice.byteSize()));
       _keyBuffer.append(std::to_string(second));
@@ -309,7 +307,7 @@ RocksDBEntry::RocksDBEntry(RocksDBEntryType type, uint64_t first,
                       sizeof(uint64_t);
       _keyBuffer.reserve(length);
       _keyBuffer.push_back(static_cast<char>(_type));
-      _keyBuffer.append(std::to_string(first));
+      uint64ToPersistent(_keyBuffer, first);
       _keyBuffer.append(reinterpret_cast<char const*>(slice.begin()),
                         static_cast<size_t>(slice.byteSize()));
 
@@ -322,4 +320,44 @@ RocksDBEntry::RocksDBEntry(RocksDBEntryType type, uint64_t first,
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
+}
+
+bool RocksDBEntry::isSameDatabase(RocksDBEntryType type, TRI_voc_tick_t id, rocksdb::Slice const& slice) {
+  switch (type) {
+    case RocksDBEntryType::Collection: 
+    case RocksDBEntryType::View: {
+      TRI_ASSERT(slice.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+      return id == uint64FromPersistent(slice.data() + sizeof(char));
+    }
+    
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
+
+uint64_t RocksDBEntry::uint64FromPersistent(char const* p) {
+  uint64_t value = 0;
+  uint64_t x = 0;
+  char const* end = p + sizeof(uint64_t);
+  do {
+    value += static_cast<uint64_t>(*p++) << x;
+    x += 8;
+  } while (p < end);
+  return value;
+}
+
+void RocksDBEntry::uint64ToPersistent(char* p, uint64_t value) {
+  char* end = p + sizeof(uint64_t);
+  do {
+    *p++ = static_cast<uint8_t>(value & 0xff);
+    value >>= 8;
+  } while (p < end);
+}
+
+void RocksDBEntry::uint64ToPersistent(std::string& p, uint64_t value) {
+  size_t len = 0;
+  do {
+    p.push_back(static_cast<char>(value & 0xff));
+    value >>= 8;
+  } while (++len < sizeof(uint64_t));
 }

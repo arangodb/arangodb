@@ -25,9 +25,9 @@
 #ifndef ARANGO_ROCKSDB_ROCKSDB_ENTRY_H
 #define ARANGO_ROCKSDB_ROCKSDB_ENTRY_H 1
 
-#include "RocksDBTypes.h"
-
 #include "Basics/Common.h"
+#include "RocksDBEngine/RocksDBTypes.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -66,12 +66,17 @@ class RocksDBEntry {
   uint64_t viewId() const;
   uint64_t revisionId() const;
 
-  VPackSlice const indexedValues() const;
-  VPackSlice const data() const;
+  VPackSlice indexedValues() const;
+  VPackSlice data() const;
 
   std::string const& key() const;
   std::string const& value() const;
   std::string& valueBuffer();
+    
+  static bool isSameDatabase(RocksDBEntryType type, TRI_voc_tick_t id, rocksdb::Slice const& slice);
+  static uint64_t uint64FromPersistent(char const* p);
+  static void uint64ToPersistent(char* p, uint64_t value);
+  static void uint64ToPersistent(std::string& out, uint64_t value);
 
  private:
   RocksDBEntry(RocksDBEntryType type, RocksDBEntryType subtype, uint64_t first, uint64_t second = 0,
@@ -80,7 +85,7 @@ class RocksDBEntry {
                VPackSlice const& slice = VPackSlice());
 
  private:
-  const RocksDBEntryType _type;
+  RocksDBEntryType const _type;
   std::string _keyBuffer;
   std::string _valueBuffer;
 };

@@ -25,11 +25,11 @@
 #ifndef ARANGO_ROCKSDB_ROCKSDB_TYPES_H
 #define ARANGO_ROCKSDB_ROCKSDB_TYPES_H 1
 
+#include "Basics/Common.h"
+
 #include <rocksdb/slice.h>
-#include <cstdint>
 
 namespace arangodb {
-
 
 enum class RocksDBEntryType : char {
   Database = '0',

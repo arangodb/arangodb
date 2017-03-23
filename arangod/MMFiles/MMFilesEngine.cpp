@@ -683,7 +683,6 @@ TRI_vocbase_t* MMFilesEngine::openDatabase(
       MMFilesLogfileManager::instance()->hasFoundLastTick();
   status = TRI_ERROR_NO_ERROR;
 
-  // try catch?!
   return openExistingDatabase(id, name, wasCleanShutdown, isUpgrade);
 }
 
@@ -3221,8 +3220,8 @@ bool MMFilesEngine::inRecovery() {
 }
 
 /// @brief writes a create-database marker into the log
-int MMFilesEngine::writeCreateMarker(TRI_voc_tick_t id,
-                                     VPackSlice const& slice) {
+int MMFilesEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
+                                             VPackSlice const& slice) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
@@ -3248,4 +3247,54 @@ int MMFilesEngine::writeCreateMarker(TRI_voc_tick_t id,
   }
 
   return res;
+}
+  
+std::shared_ptr<arangodb::velocypack::Builder> MMFilesEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& status) {
+  std::string const filename = arangodb::basics::FileUtils::buildFilename(databasePath(vocbase), "REPLICATION-APPLIER-CONFIG");
+
+  std::shared_ptr<VPackBuilder> builder;
+
+  if (!TRI_ExistsFile(filename.c_str())) {
+    status = TRI_ERROR_FILE_NOT_FOUND;
+    return builder;
+  }
+
+  try {
+    builder = VelocyPackHelper::velocyPackFromFile(filename);
+    if (builder->slice().isObject()) {
+      status = TRI_ERROR_NO_ERROR;
+    } else {
+      LOG_TOPIC(ERR, Logger::REPLICATION)
+          << "unable to read replication applier configuration from file '"
+          << filename << "'";
+      status = TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
+    } 
+  } catch (...) {
+    LOG_TOPIC(ERR, Logger::REPLICATION)
+        << "unable to read replication applier configuration from file '"
+        << filename << "'";
+    status = TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
+  }
+
+  return builder;
+}
+
+int MMFilesEngine::removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) {
+  std::string const filename = arangodb::basics::FileUtils::buildFilename(databasePath(vocbase), "REPLICATION-APPLIER-CONFIG");
+
+  if (TRI_ExistsFile(filename.c_str())) {
+    return TRI_UnlinkFile(filename.c_str());
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+ 
+int MMFilesEngine::saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) { 
+  std::string const filename = arangodb::basics::FileUtils::buildFilename(databasePath(vocbase), "REPLICATION-APPLIER-CONFIG");
+
+  if (!VelocyPackHelper::velocyPackToFile(filename, slice, doSync)) {
+    return TRI_errno();
+  } 
+  
+  return TRI_ERROR_NO_ERROR;
 }

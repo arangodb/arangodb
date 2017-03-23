@@ -570,7 +570,6 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     // createDatabase must return a valid database or throw
     vocbase.reset(engine->createDatabase(id, builder.slice()));
 
-
     TRI_ASSERT(vocbase != nullptr);
 
     try {
@@ -637,7 +636,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
   int res = TRI_ERROR_NO_ERROR;
 
   if (!engine->inRecovery()) {
-    res = engine->writeCreateMarker(id, builder.slice());
+    res = engine->writeCreateDatabaseMarker(id, builder.slice());
   }
 
   result = vocbase.release();

@@ -173,7 +173,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   }
 
   // @brief wirte create marker for database
-  virtual int writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) = 0;
+  virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) = 0;
 
   // asks the storage engine to drop the specified database and persist the
   // deletion info. Note that physical deletion of the database data must not
@@ -397,6 +397,11 @@ class StorageEngine : public application_features::ApplicationFeature {
   
   /// @brief Add engine-specific REST handlers
   virtual void addRestHandlers(rest::RestHandlerFactory*) {}
+
+  // replication
+  virtual std::shared_ptr<arangodb::velocypack::Builder> getReplicationApplierConfiguration(TRI_vocbase_t*, int& status) = 0;
+  virtual int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) = 0;
+  virtual int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) = 0; 
 
  protected:
   void registerCollection(TRI_vocbase_t* vocbase,

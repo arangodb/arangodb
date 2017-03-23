@@ -24,18 +24,21 @@
 
 #include "RocksDBEngine.h"
 #include "Basics/Exceptions.h"
-#include <Basics/Result.h>
-#include <Basics/VelocyPackHelper.h>
 #include "Basics/FileUtils.h"
-#include "Basics/tri-strings.h"
+#include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/ViewTypesFeature.h"
+#include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBEntry.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "RocksDBEngine/RocksDBView.h"
 #include "VocBase/ticks.h"
 
-#include <stdexcept>
 #include <rocksdb/db.h>
 #include <rocksdb/convenience.h>
 #include <rocksdb/env.h>
@@ -45,7 +48,9 @@
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/table.h>
 #include <rocksdb/write_batch.h>
+
 #include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -112,31 +117,8 @@ void RocksDBEngine::start() {
 
   TRI_ASSERT(_db != nullptr);
 
-  // create _system database if it should not exist
-  velocypack::Builder builder;
-  getDatabases(builder);
-  bool foundSystem = false;
-  for(auto const& item : velocypack::ArrayIterator(builder.slice())){
-    // static string for _system?!
-    // stringref instead copyString
-    if(item.get("name").copyString() == "_system"){
-      foundSystem = true;
-      break;
-    }
-  }
-
-  if(!foundSystem){
-    throw std::runtime_error("not fully implemented");
-
-    int err;
-    VPackBuilder builder;
-    TRI_voc_tick_t id = TRI_NewTickServer();
-
-    createDatabase(id, builder.slice(), err);
-    if(err){
-      LOG_TOPIC(FATAL, arangodb::Logger::STARTUP) << "unable to create _system database: " << err;
-      FATAL_ERROR_EXIT();
-    }
+  if (!systemDatabaseExists()) {
+    addSystemDatabase();
   }
 }
 
@@ -151,31 +133,33 @@ void RocksDBEngine::unprepare() {
 }
 
 transaction::ContextData* RocksDBEngine::createTransactionContextData() {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented35");
   return nullptr;
 }
+
 TransactionState* RocksDBEngine::createTransactionState(TRI_vocbase_t*) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented36");
   return nullptr;
 }
+
 TransactionCollection* RocksDBEngine::createTransactionCollection(
     TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
     int nestingLevel) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented37");
   return nullptr;
 }
 
 // create storage-engine specific collection
 PhysicalCollection* RocksDBEngine::createPhysicalCollection(LogicalCollection*,
                                                             VPackSlice const&) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented38");
   return nullptr;
 }
 
 // create storage-engine specific view
 PhysicalView* RocksDBEngine::createPhysicalView(LogicalView*,
                                                 VPackSlice const&) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented39");
   return nullptr;
 }
 
@@ -183,11 +167,11 @@ PhysicalView* RocksDBEngine::createPhysicalView(LogicalView*,
 // -----------------------
 
 void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
-  LOG_TOPIC(WARN, Logger::STARTUP) << "getting databases for rocksdb";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "getting existing databases";
 
-  rocksdb::ReadOptions read_options;
-  read_options.total_order_seek = true;
-  auto& iter = *_db->NewIterator(read_options);
+  rocksdb::ReadOptions readOptions;
+  readOptions.total_order_seek = true; // TODO: why?
+  auto& iter = *_db->NewIterator(readOptions);
 
   result.openArray();
   auto rSlice = rocksDBSlice(RocksDBEntryType::Database);
@@ -198,31 +182,23 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
     //// check format
     // id
     VPackSlice idSlice = slice.get("id");
-    if (!idSlice.isString() || false) {
-      // id != static_cast<TRI_voc_tick_t>(
-      //           basics::StringUtils::uint64(idSlice.copyString()))) {
+    if (!idSlice.isString()) {
       LOG_TOPIC(ERR, arangodb::Logger::STARTUP)
-          << "database directory '" << _path
-          << "' does not contain a valid parameters file. database id is not a "
-             "string";
+          << "found invalid database declaration with non-string id: " << slice.toJson();
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
     }
-
+      
     // deleted
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "deleted",
                                                             false)) {
-      // database is deleted, skip it!
-      LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP)
-          << "found dropped database in _path '" << _path << "'";
-      LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP)
-          << "removing superfluous database _path '" << _path << "'";
-
-      // delete persistent indexes for this database
       TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(
           basics::StringUtils::uint64(idSlice.copyString()));
+      
+      // database is deleted, skip it!
+      LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP)
+          << "found dropped database " << id;
 
-      auto result = dropDatabase(id);
-
+      dropDatabase(id);
       continue;
     }
 
@@ -230,8 +206,7 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
     VPackSlice nameSlice = slice.get("name");
     if (!nameSlice.isString()) {
       LOG_TOPIC(ERR, arangodb::Logger::STARTUP)
-          << "database _path '"  // << _path
-          << "' does not contain a valid parameters file";
+          << "found invalid database declaration with non-string name: " << slice.toJson();
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
     }
 
@@ -244,160 +219,247 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
                                       arangodb::velocypack::Builder& result,
                                       bool includeIndexes,
                                       TRI_voc_tick_t maxTick) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented1");
 }
+
 int RocksDBEngine::getCollectionsAndIndexes(
     TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result,
     bool wasCleanShutdown, bool isUpgrade) {
-  throw std::runtime_error("not implemented");
-  return 0;
+  
+  rocksdb::ReadOptions readOptions;
+  readOptions.total_order_seek = true; // TODO: why?
+  auto& iter = *_db->NewIterator(readOptions);
+
+  result.openArray();
+  auto rSlice = rocksDBSlice(RocksDBEntryType::Collection);
+  for (iter.Seek(rSlice); iter.Valid() && iter.key().starts_with(rSlice);
+       iter.Next()) {
+
+    if (!RocksDBEntry::isSameDatabase(RocksDBEntryType::Collection, vocbase->id(), iter.key())) {
+      continue;
+    }
+
+    auto slice = VPackSlice(iter.value().data());
+
+    LOG_TOPIC(TRACE, Logger::FIXME) << "got collection slice: " << slice.toJson();
+
+    if (arangodb::basics::VelocyPackHelper::readBooleanValue(slice, "deleted", false)) {
+      continue;
+    }
+    result.add(slice);
+  }
+
+  result.close();
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 int RocksDBEngine::getViews(TRI_vocbase_t* vocbase,
                             arangodb::velocypack::Builder& result) {
-  throw std::runtime_error("not implemented");
-  return 0;
+  
+  rocksdb::ReadOptions readOptions;
+  readOptions.total_order_seek = true; // TODO: why?
+  auto& iter = *_db->NewIterator(readOptions);
+
+  result.openArray();
+  auto rSlice = rocksDBSlice(RocksDBEntryType::View);
+  for (iter.Seek(rSlice); iter.Valid() && iter.key().starts_with(rSlice);
+       iter.Next()) {
+    
+    if (!RocksDBEntry::isSameDatabase(RocksDBEntryType::View, vocbase->id(), iter.key())) {
+      continue;
+    }
+
+    auto slice = VPackSlice(iter.value().data());
+
+    LOG_TOPIC(TRACE, Logger::FIXME) << "got view slice: " << slice.toJson();
+
+    if (arangodb::basics::VelocyPackHelper::readBooleanValue(slice, "deleted", false)) {
+      continue;
+    }
+    result.add(slice);
+  }
+
+  result.close();
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 std::string RocksDBEngine::databasePath(TRI_vocbase_t const* vocbase) const {
-  throw std::runtime_error("not implemented");
-  return "not implemented";
+  return std::string(); // no path to be returned here!
 }
+
 std::string RocksDBEngine::collectionPath(TRI_vocbase_t const* vocbase,
                                           TRI_voc_cid_t id) const {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented3");
   return "not implemented";
+}
+
+void RocksDBEngine::waitForSync(TRI_voc_tick_t tick) {
+  throw std::runtime_error("not implemented4");
+}
+
+std::shared_ptr<arangodb::velocypack::Builder> RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& status) {
+  // TODO!
+  status = TRI_ERROR_FILE_NOT_FOUND;
+  return std::shared_ptr<arangodb::velocypack::Builder>();
+}
+  
+int RocksDBEngine::removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) {
+  // TODO!
+  return TRI_ERROR_NO_ERROR;
+}
+
+int RocksDBEngine::saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) { 
+  // TODO!
+  return TRI_ERROR_NO_ERROR;
 }
 
 // database, collection and index management
 // -----------------------------------------
 
-// return the path for a database
-
-void RocksDBEngine::waitForSync(TRI_voc_tick_t tick) {
-  throw std::runtime_error("not implemented");
-}
-
 TRI_vocbase_t* RocksDBEngine::openDatabase(
-    arangodb::velocypack::Slice const& parameters, bool isUpgrade, int&) {
-  throw std::runtime_error("not implemented");
-  return nullptr;
+    arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) {
+  
+  VPackSlice idSlice = args.get("id");
+  TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(
+      basics::StringUtils::uint64(idSlice.copyString()));
+  std::string const name = args.get("name").copyString();
+
+  status = TRI_ERROR_NO_ERROR;
+
+  return openExistingDatabase(id, name, true, isUpgrade);
 }
+
 RocksDBEngine::Database* RocksDBEngine::createDatabase(
     TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
-  throw std::runtime_error("not implemented");
-  return nullptr;
+  status = TRI_ERROR_NO_ERROR;
+  auto vocbase =
+      std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, args.get("name").copyString());
+  return vocbase.release();
 }
-int RocksDBEngine::writeCreateMarker(TRI_voc_tick_t id,
-                                     VPackSlice const& slice) {
-  throw std::runtime_error("not implemented");
-  return 0;
+
+int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
+                                             VPackSlice const& slice) {
+ 
+  RocksDBEntry entry = RocksDBEntry::Database(id, slice);
+  rocksdb::WriteOptions options; // TODO: check which options would make sense
+
+  rocksdb::Status res = _db->Put(options, entry.key(), entry.value());
+  if (res.ok()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  return TRI_ERROR_INTERNAL; // TODO: need translation for RocksDB errors
 }
+
 void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
                                         bool useWriteMarker, int& status) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented5");
 }
+
 void RocksDBEngine::dropDatabase(Database* database, int& status) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented6");
 }
-void RocksDBEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force,
+
+void RocksDBEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
                                       int& status) {
-  throw std::runtime_error("not implemented");
+  // can delete databases instantly
+  status = TRI_ERROR_NO_ERROR;
 }
 
 // wal in recovery
 bool RocksDBEngine::inRecovery() {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented7");
   return true;
 }
 
-// start compactor thread and delete files form collections marked as deleted
 void RocksDBEngine::recoveryDone(TRI_vocbase_t* vocbase) {
-  throw std::runtime_error("not implemented");
+  // nothing to do here
 }
 
 std::string RocksDBEngine::createCollection(
     TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
     arangodb::LogicalCollection const*) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented9");
   return "not implemented";
 }
 
 arangodb::Result RocksDBEngine::persistCollection(
     TRI_vocbase_t* vocbase, arangodb::LogicalCollection const*) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented10");
   return arangodb::Result{};
 }
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t* vocbase,
                                                arangodb::LogicalCollection*) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented11");
   return arangodb::Result{};
 }
 void RocksDBEngine::destroyCollection(TRI_vocbase_t* vocbase,
                                       arangodb::LogicalCollection*) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented12");
 }
 void RocksDBEngine::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                      arangodb::LogicalCollection const*,
                                      bool doSync) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented13");
 }
 arangodb::Result RocksDBEngine::renameCollection(
     TRI_vocbase_t* vocbase, arangodb::LogicalCollection const*,
     std::string const& oldName) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented14");
   return arangodb::Result{};
 }
 void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
                                 TRI_voc_cid_t collectionId, TRI_idx_iid_t id,
                                 arangodb::velocypack::Slice const& data) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented15");
 }
 void RocksDBEngine::dropIndex(TRI_vocbase_t* vocbase,
                               TRI_voc_cid_t collectionId, TRI_idx_iid_t id) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented16");
 }
 void RocksDBEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase,
                                        TRI_voc_cid_t collectionId,
                                        arangodb::velocypack::Slice const& data,
                                        bool writeMarker, int&) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented17");
 }
 void RocksDBEngine::unloadCollection(TRI_vocbase_t* vocbase,
                                      arangodb::LogicalCollection* collection) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented18");
 }
 void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                arangodb::LogicalView const*) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented19");
 }
 
 arangodb::Result RocksDBEngine::persistView(TRI_vocbase_t* vocbase,
                                             arangodb::LogicalView const*) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented20");
   return arangodb::Result{};
 }
 
 arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t* vocbase,
                                          arangodb::LogicalView*) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented21");
   return arangodb::Result{};
 }
 void RocksDBEngine::destroyView(TRI_vocbase_t* vocbase,
                                 arangodb::LogicalView*) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented22");
 }
 void RocksDBEngine::changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                arangodb::LogicalView const*, bool doSync) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented23");
 }
 std::string RocksDBEngine::createViewDirectoryName(std::string const& basePath,
                                                    TRI_voc_cid_t id) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented24");
   return "not implemented";
 }
-void RocksDBEngine::signalCleanup(TRI_vocbase_t* vocbase) {
-  throw std::runtime_error("not implemented");
+
+void RocksDBEngine::signalCleanup(TRI_vocbase_t*) {
+  // nothing to do here
 }
 
 // document operations
@@ -405,43 +467,43 @@ void RocksDBEngine::signalCleanup(TRI_vocbase_t* vocbase) {
 void RocksDBEngine::iterateDocuments(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     std::function<void(arangodb::velocypack::Slice const&)> const& cb) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented25");
 }
 void RocksDBEngine::addDocumentRevision(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     arangodb::velocypack::Slice const& document) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented26");
 }
 void RocksDBEngine::removeDocumentRevision(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     arangodb::velocypack::Slice const& document) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented27");
 }
 
 /// @brief remove data of expired compaction blockers
 bool RocksDBEngine::cleanupCompactionBlockers(TRI_vocbase_t* vocbase) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented28");
   return true;
 }
 
 /// @brief insert a compaction blocker
 int RocksDBEngine::insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
                                            TRI_voc_tick_t& id) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented29");
   return true;
 }
 
 /// @brief touch an existing compaction blocker
 int RocksDBEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase,
                                            TRI_voc_tick_t id, double ttl) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented30");
   return true;
 }
 
 /// @brief remove an existing compaction blocker
 int RocksDBEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase,
                                            TRI_voc_tick_t id) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented31");
   return true;
 }
 
@@ -450,26 +512,25 @@ int RocksDBEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase,
 void RocksDBEngine::preventCompaction(
     TRI_vocbase_t* vocbase,
     std::function<void(TRI_vocbase_t*)> const& callback) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented32");
 }
 
 /// @brief a callback function that is run there is no compaction ongoing
 bool RocksDBEngine::tryPreventCompaction(
     TRI_vocbase_t* vocbase, std::function<void(TRI_vocbase_t*)> const& callback,
     bool checkForActiveBlockers) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented33");
   return true;
 }
 
 int RocksDBEngine::shutdownDatabase(TRI_vocbase_t* vocbase) {
-  throw std::runtime_error("not implemented");
-  return 0;
+  return TRI_ERROR_NO_ERROR;
 }
 
 int RocksDBEngine::openCollection(TRI_vocbase_t* vocbase,
                                   LogicalCollection* collection,
                                   bool ignoreErrors) {
-  throw std::runtime_error("not implemented");
+  throw std::runtime_error("not implemented34");
   return 0;
 }
 
@@ -498,8 +559,135 @@ void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory*) {
 
 EngineResult RocksDBEngine::dropDatabase(TRI_voc_tick_t str){
   LOG_TOPIC(WARN, Logger::STARTUP) << "rocksdb - dropping database: " << str;
-  LOG_TOPIC(WARN, Logger::STARTUP) << "NOT IMPLEMENTED - dropDatabase(std::string const& )";
   return EngineResult{};
 }
+  
+bool RocksDBEngine::systemDatabaseExists() {
+  velocypack::Builder builder;
+  getDatabases(builder);
 
+  for (auto const& item : velocypack::ArrayIterator(builder.slice())) {
+    if (item.get("name").copyString() == StaticStrings::SystemDatabase) {
+      return true;
+    }
+  }
+  return false;
 }
+
+void RocksDBEngine::addSystemDatabase() {
+  // create system database entry
+  TRI_voc_tick_t id = TRI_NewTickServer();
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("id", VPackValue(std::to_string(id)));
+  builder.add("name", VPackValue(StaticStrings::SystemDatabase));
+  builder.add("deleted", VPackValue(false));
+  builder.close();
+
+  int res = writeCreateDatabaseMarker(id, builder.slice());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(FATAL, arangodb::Logger::STARTUP) << "unable to write database marker: " << TRI_errno_string(res);
+    FATAL_ERROR_EXIT();
+  }
+}
+  
+/// @brief open an existing database. internal function
+TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
+                                                   std::string const& name,
+                                                   bool wasCleanShutdown,
+                                                   bool isUpgrade) {
+  auto vocbase =
+      std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
+
+  // scan the database path for views
+  try {
+    VPackBuilder builder;
+    int res = getViews(vocbase.get(), builder);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    VPackSlice slice = builder.slice();
+    TRI_ASSERT(slice.isArray());
+  
+    ViewTypesFeature* viewTypesFeature =
+        application_features::ApplicationServer::getFeature<ViewTypesFeature>(
+            "ViewTypes");
+
+    for (auto const& it : VPackArrayIterator(slice)) {
+      // we found a view that is still active
+
+      std::string type = it.get("type").copyString();
+      // will throw if type is invalid
+      ViewCreator& creator = viewTypesFeature->creator(type);
+
+      TRI_ASSERT(!it.get("id").isNone());
+
+      std::shared_ptr<LogicalView> view =
+          std::make_shared<arangodb::LogicalView>(vocbase.get(), it);
+      
+      StorageEngine::registerView(vocbase.get(), view);
+
+      auto physical = static_cast<RocksDBView*>(view->getPhysical());
+      TRI_ASSERT(physical != nullptr);
+
+      view->spawnImplementation(creator, it, false);
+      view->getImplementation()->open();
+    }
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "
+                                            << ex.what();
+    throw;
+  } catch (...) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "error while opening database: unknown exception";
+    throw;
+  }
+
+  // scan the database path for collections
+  try {
+    VPackBuilder builder;
+    int res = getCollectionsAndIndexes(vocbase.get(), builder, wasCleanShutdown,
+                                       isUpgrade);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    VPackSlice slice = builder.slice();
+    TRI_ASSERT(slice.isArray());
+
+    for (auto const& it : VPackArrayIterator(slice)) {
+      // we found a collection that is still active
+      TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
+      auto uniqCol =
+          std::make_unique<arangodb::LogicalCollection>(vocbase.get(), it);
+      auto collection = uniqCol.get();
+      TRI_ASSERT(collection != nullptr);
+      StorageEngine::registerCollection(vocbase.get(), uniqCol.get());
+      // The vocbase has taken over control
+      uniqCol.release();
+
+      auto physical =
+          static_cast<RocksDBCollection*>(collection->getPhysical());
+      TRI_ASSERT(physical != nullptr);
+
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "added document collection '"
+                                                << collection->name() << "'";
+    }
+
+    return vocbase.release();
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "
+                                            << ex.what();
+    throw;
+  } catch (...) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "error while opening database: unknown exception";
+    throw;
+  }
+}
+
+} // namespace

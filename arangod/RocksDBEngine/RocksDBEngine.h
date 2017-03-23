@@ -25,19 +25,14 @@
 #ifndef ARANGOD_STORAGE_ENGINE_ROCKSDB_ENGINE_H
 #define ARANGOD_STORAGE_ENGINE_ROCKSDB_ENGINE_H 1
 
-#include <rocksdb/db.h>
-#include <string>
-#include <vector>
-
-#include <rocksdb/db.h>
-#include <rocksdb/utilities/transaction_db.h>
-
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "StorageEngine/StorageEngine.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/AccessMode.h"
 
+#include <rocksdb/db.h>
+#include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Builder.h>
 
 namespace arangodb {
@@ -75,7 +70,6 @@ class RocksDBEngine final : public StorageEngine {
   void prepare() override;
   void unprepare() override;
 
-
   transaction::ContextData* createTransactionContextData() override;
   TransactionState* createTransactionState(TRI_vocbase_t*) override;
   TransactionCollection* createTransactionCollection(
@@ -107,10 +101,12 @@ class RocksDBEngine final : public StorageEngine {
   std::string collectionPath(TRI_vocbase_t const* vocbase,
                              TRI_voc_cid_t id) const override;
 
+  std::shared_ptr<arangodb::velocypack::Builder> getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& status) override;
+  int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) override;
+  int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) override; 
+
   // database, collection and index management
   // -----------------------------------------
-
-  // return the path for a database
 
   void waitForSync(TRI_voc_tick_t tick) override;
 
@@ -120,7 +116,7 @@ class RocksDBEngine final : public StorageEngine {
   Database* createDatabase(TRI_voc_tick_t id,
                            arangodb::velocypack::Slice const& args,
                            int& status) override;
-  int writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
+  int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
   void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker,
                            int& status) override;
   void dropDatabase(Database* database, int& status) override;
@@ -227,8 +223,13 @@ class RocksDBEngine final : public StorageEngine {
 
   /// @brief Add engine-specific REST handlers
   void addRestHandlers(rest::RestHandlerFactory*) override;
-private:
+
+ private:
   EngineResult dropDatabase(TRI_voc_tick_t);
+  bool systemDatabaseExists();
+  void addSystemDatabase();
+  /// @brief open an existing database. internal function
+  TRI_vocbase_t* openExistingDatabase(TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade);
 
 public:
   static std::string const EngineName;
