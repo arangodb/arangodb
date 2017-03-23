@@ -2288,7 +2288,7 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
   }
 
   // operand is a constant, now convert it into a number
-  auto converted = operand->castToNumber(this);
+  AstNode const* converted = operand->castToNumber(this);
 
   if (converted->isNullValue()) {
     return const_cast<AstNode*>(&ZeroNode);
@@ -2302,7 +2302,7 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
 
   if (node->type == NODE_TYPE_OPERATOR_UNARY_PLUS) {
     // + number => number
-    return converted;
+    return const_cast<AstNode*>(converted);
   } else {
     // - number
     if (converted->value.type == VALUE_TYPE_INT) {
@@ -2366,7 +2366,7 @@ AstNode* Ast::optimizeUnaryOperatorLogical(AstNode* node) {
     return optimizeNotExpression(node);
   }
 
-  auto converted = operand->castToBool(this);
+  AstNode const* converted = operand->castToBool(this);
 
   // replace unary negation operation with result of negation
   return createNodeValueBool(!converted->getBoolValue());
@@ -2520,8 +2520,8 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
     // now calculate the expression result
     if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS) {
       // arithmetic +
-      auto left = lhs->castToNumber(this);
-      auto right = rhs->castToNumber(this);
+      AstNode const* left = lhs->castToNumber(this);
+      AstNode const* right = rhs->castToNumber(this);
 
       bool useDoublePrecision =
           (left->isDoubleValue() || right->isDoubleValue());
@@ -2542,8 +2542,8 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
       return createArithmeticResultNode(left->getDoubleValue() +
                                         right->getDoubleValue());
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_MINUS) {
-      auto left = lhs->castToNumber(this);
-      auto right = rhs->castToNumber(this);
+      AstNode const* left = lhs->castToNumber(this);
+      AstNode const* right = rhs->castToNumber(this);
 
       bool useDoublePrecision =
           (left->isDoubleValue() || right->isDoubleValue());
@@ -2564,8 +2564,8 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
       return createArithmeticResultNode(left->getDoubleValue() -
                                         right->getDoubleValue());
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_TIMES) {
-      auto left = lhs->castToNumber(this);
-      auto right = rhs->castToNumber(this);
+      AstNode const* left = lhs->castToNumber(this);
+      AstNode const* right = rhs->castToNumber(this);
 
       bool useDoublePrecision =
           (left->isDoubleValue() || right->isDoubleValue());
@@ -2586,8 +2586,8 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
       return createArithmeticResultNode(left->getDoubleValue() *
                                         right->getDoubleValue());
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV) {
-      auto left = lhs->castToNumber(this);
-      auto right = rhs->castToNumber(this);
+      AstNode const* left = lhs->castToNumber(this);
+      AstNode const* right = rhs->castToNumber(this);
 
       bool useDoublePrecision =
           (left->isDoubleValue() || right->isDoubleValue());
@@ -2618,8 +2618,8 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
       return createArithmeticResultNode(left->getDoubleValue() /
                                         right->getDoubleValue());
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
-      auto left = lhs->castToNumber(this);
-      auto right = rhs->castToNumber(this);
+      AstNode const* left = lhs->castToNumber(this);
+      AstNode const* right = rhs->castToNumber(this);
 
       bool useDoublePrecision =
           (left->isDoubleValue() || right->isDoubleValue());
