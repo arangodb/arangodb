@@ -115,6 +115,7 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
     }
   }
 
+
   _trx->begin(); // We begin the transaction before we lock.
                  // We also setup indexes before we lock.
 }
